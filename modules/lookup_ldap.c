@@ -1,4 +1,4 @@
-#ident "$Id: lookup_ldap.c,v 1.19 2005/01/26 07:21:21 raven Exp $"
+#ident "$Id: lookup_ldap.c,v 1.20 2005/02/20 09:49:33 raven Exp $"
 /*
  * lookup_ldap.c - Module for Linux automountd to access automount
  *		   maps in LDAP directories.
@@ -51,6 +51,7 @@ static LDAP *do_connect(struct lookup_context *ctxt, int *result_ldap)
 {
 	LDAP *ldap;
 	int version = 3;
+	int timeout = 8;
 	int rv;
 
 	/* Initialize the LDAP context. */
@@ -73,6 +74,13 @@ static LDAP *do_connect(struct lookup_context *ctxt, int *result_ldap)
 		} else {
 			version = 2;
 		}
+	}
+
+	/* Sane network connection timeout */
+	rv = ldap_set_option(ldap, LDAP_OPT_NETWORK_TIMEOUT, &timeout);
+	if (rv != LDAP_SUCCESS) {
+		warn(MODPREFIX
+		     "failed to set connection timeout to %d", timeout);
 	}
 
 	/* Connect to the server as an anonymous user. */
