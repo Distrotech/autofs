@@ -1,9 +1,10 @@
-#ident "$Id: spawn.c,v 1.6 2005/01/09 09:34:07 raven Exp $"
+#ident "$Id: spawn.c,v 1.7 2005/01/16 15:23:58 raven Exp $"
 /* ----------------------------------------------------------------------- *
  * 
  *  spawn.c - run programs synchronously with output redirected to syslog
  *   
  *   Copyright 1997 Transmeta Corporation - All Rights Reserved
+ *   Copyright 2005 Ian Kent <raven@themaw.net>
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -105,6 +106,91 @@ void discard_pending(int sig)
 
 	sigaction(sig, &sa, &oldsa);
 	sigaction(sig, &oldsa, NULL);
+}
+
+/*
+ * Process group signals each child in the process group the given signal.
+ * For us we must signal deepest mount path to shortest to avoid mount
+ * busy on exit.
+ */
+int signal_children(int sig)
+{
+	struct mnt_list *mnts = get_mnt_list(_PATH_MOUNTED, "/", 0);
+	struct mnt_list *next;
+	pid_t pgrp = getpgrp();
+	int ret = -1;
+
+	if (!mnts) {
+		warn("signal_children: no mounts found");
+		goto out;
+	}
+
+	info("signal_children: send %d to process group %d", sig, pgrp);
+
+	next = mnts;
+	while (next) {
+		/* 30 * 100000000 ns = 5 secs */
+		int tries = 30;
+		int status;
+		struct mnt_list *this = next;
+		pid_t pid = this->pid;
+
+		next = this->next;
+
+		if (!pid)
+			continue;
+
+		/* Don't signal ourselves */
+		if (pid == pgrp)
+			continue;
+
+		/* Only signal members of our process group */
+		if (getpgid(pid) != pgrp)
+			continue;
+
+		if (strncmp(this->fs_type, "autofs", 6))
+			continue;
+
+		/* Gone in between */
+		if (kill(pid, SIGCONT) == -1 && errno == ESRCH)
+			continue;
+
+		debug("signal_children: signal %s %d", this->path, pid);
+
+		status = kill(pid, sig);
+		if (status)
+			goto out;
+
+		while (tries--) {
+			struct timespec t = { 0, 100000000L };
+			struct timespec r;
+
+		again:
+			status = nanosleep(&t, &r);
+			/* For a prune event delay a little and pass it on */
+/*
+			if (sig == SIGUSR1)
+				break;
+*/
+			if (kill(pid, SIGCONT) == -1 && errno == ESRCH)
+				break;
+
+			if (status = -1 && errno == EINTR) {
+				memcpy(&t, &r, sizeof(struct timespec));
+				goto again;
+			}
+		}
+
+		if (sig != SIGUSR1 && tries < 0) {
+			warn("signal_children: "
+			      "%d did nor exit - giving up.", pid);
+			goto out;
+		}
+	}
+	ret = 0;
+out:
+	free_mnt_list(mnts);
+	return ret;
 }
 
 #define ERRBUFSIZ 2047		/* Max length of error string excl \0 */

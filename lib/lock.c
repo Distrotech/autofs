@@ -1,4 +1,4 @@
-#ident "$Id: lock.c,v 1.13 2005/01/11 12:15:28 raven Exp $"
+#ident "$Id: lock.c,v 1.14 2005/01/16 15:23:58 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  lock.c - autofs lockfile management
@@ -59,6 +59,8 @@ static int signals_have_been_setup = 0;
 
 /* Save previous actions */
 static struct sigaction actions[NSIG];
+static struct sigaction sigusr1;
+static struct sigaction sigusr2;
 
 /* Flag to identify we got a TERM signal */
 static int got_term = 0;
@@ -77,11 +79,6 @@ static void handler(int sig)
 	 */
 	if (sig == SIGQUIT || sig == SIGTERM || sig == SIGINT)
 		got_term = 1;
-}
-
-static void setlkw_timeout(int sig)
-{
-     /* nothing, fcntl will fail anyway */
 }
 
 static int lock_is_owned(int fd)
@@ -160,8 +157,8 @@ static void setup_locksigs(void)
 		sigaction(sig, &sa, &actions[sig]);
 	}
 
-	sa.sa_handler = setlkw_timeout;
-	sigaction(SIGVTALRM, &sa, NULL);
+	sigaction(SIGUSR1, &sa, &sigusr1);
+	sigaction(SIGUSR2, &sa, &sigusr2);
 
 	signals_have_been_setup = 1;
 	sigprocmask(SIG_UNBLOCK, &sa.sa_mask, NULL);
@@ -176,19 +173,16 @@ static void reset_locksigs(void)
 	sigfillset(&fullset);
 	sigprocmask(SIG_BLOCK, &fullset, NULL);
 
+	sigaction(SIGUSR1, &sigusr1, NULL);
+	sigaction(SIGUSR2, &sigusr2, NULL);
+
 	while (sigismember(&fullset, ++sig) != -1
 			&& sig != SIGCHLD) {
 		sigaction(sig, &actions[sig], NULL);
 	}
 
-	sa.sa_handler = SIG_IGN;
-	sa.sa_flags = SA_RESTART;
-	sigaction(SIGVTALRM, &sa, NULL);
-	
 	signals_have_been_setup = 0;
 	sigprocmask(SIG_UNBLOCK, &fullset, NULL);
-	if (ap.exp_runfreq)
-		alarm(ap.exp_runfreq);
 }
 
 /* Remove lock file. */

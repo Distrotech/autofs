@@ -1,4 +1,4 @@
-#ident "$Id: automount.c,v 1.34 2005/01/12 04:09:45 raven Exp $"
+#ident "$Id: automount.c,v 1.35 2005/01/16 15:23:57 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  automount.c - Linux automounter daemon
@@ -823,6 +823,10 @@ static int st_prepare_shutdown(void)
 
 	ap.state = ST_SHUTDOWN_PENDING;
 
+	/* Where're the boss, tell everyone to finish up */
+	if (getpid() == getpgrp()) 
+		signal_children(SIGUSR2);
+
 	/* Unmount everything */
 	exp = expire_proc(1);
 
@@ -853,6 +857,10 @@ static int st_prune(void)
 	debug("st_prune(): state = %d\n", ap.state);
 
 	assert(ap.state == ST_READY);
+
+	/* We're the boss, pass on the prune event */
+	if (getpid() == getpgrp()) 
+		signal_children(SIGUSR1);
 
 	switch (expire_proc(1)) {
 	case EXP_DONE:
@@ -1473,15 +1481,17 @@ static void sig_supervisor(int sig)
 
 	case SIGTERM:
 	case SIGUSR2:
+		/* Tell everyone to finish up */
+		signal_children(sig);
 		break;
 
 	case SIGUSR1:
 		/* Pass on the prune event and ignore self signal */
-		kill(0, SIGUSR1);
-		discard_pending(SIGUSR1);
+		signal_children(sig);
 		break;
 
 	case SIGCHLD:
+		wait(NULL);
 		break;
 
 	case SIGHUP:

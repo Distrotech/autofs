@@ -1,4 +1,4 @@
-#ident "$Id: automount.h,v 1.13 2005/01/13 08:41:29 raven Exp $"
+#ident "$Id: automount.h,v 1.14 2005/01/16 15:23:58 raven Exp $"
 /*
  * automount.h
  *
@@ -125,6 +125,7 @@ int spawnv(int logpri, const char *prog, const char *const *argv);
 void reset_signals(void);
 void ignore_signals(void);
 void discard_pending(int sig);
+int signal_children(int sig);
 int do_mount(const char *root, const char *name, int name_len,
 	     const char *what, const char *fstype, const char *options);
 int mkdir_path(const char *path, mode_t mode);

@@ -1,4 +1,4 @@
-#ident "$Id: mounts.c,v 1.7 2005/01/13 08:41:37 raven Exp $"
+#ident "$Id: mounts.c,v 1.8 2005/01/16 15:23:58 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  mounts.c - module for Linux automount mount table lookup functions
@@ -32,7 +32,7 @@ struct mnt_list *get_mnt_list(const char *table, const char *path, int include)
 	FILE *tab;
 	int pathlen = strlen(path);
 	struct mntent *mnt;
-	struct mnt_list *ent, *mptr;
+	struct mnt_list *ent, *mptr, *last;
 	struct mnt_list *list = NULL;
 	struct stat st;
 	int len;
@@ -54,15 +54,10 @@ struct mnt_list *get_mnt_list(const char *table, const char *path, int include)
 			continue;
 
 		/* Not a subdirectory of requested path ? */
-		if (len > pathlen && mnt->mnt_dir[pathlen] != '/')
+		/* pathlen == 1 => everything is subdir    */
+		if (pathlen > 1 && len > pathlen &&
+				mnt->mnt_dir[pathlen] != '/')
 			continue;
-
-		mptr = list;
-		while (mptr) {
-			if (len > strlen(mptr->path))
-				break;
-			mptr = mptr->next;
-		}
 
 		ent = malloc(sizeof(*ent));
 		if (!ent) {
@@ -70,6 +65,22 @@ struct mnt_list *get_mnt_list(const char *table, const char *path, int include)
 			free_mnt_list(list);
 			return NULL;
 		}
+
+		mptr = list;
+		last = NULL;
+		while (mptr) {
+			if (len > strlen(mptr->path))
+				break;
+			last = mptr;
+			mptr = mptr->next;
+		}
+
+		if (mptr == list)
+			list = ent;
+
+		ent->next = mptr;
+		if (last)
+			last->next = ent;
 
 		ent->path = malloc(len + 1);
 		if (!ent->path) {
@@ -89,12 +100,7 @@ struct mnt_list *get_mnt_list(const char *table, const char *path, int include)
 
 		ent->pid = 0;
 		if (strncmp(ent->fs_type, "autofs", 6) == 0)
-			sscanf(ent->fs_type, "automount(%d)", &ent->pid);
-
-		if (mptr == list)
-			list = ent;
-
-		ent->next = mptr;
+			sscanf(mnt->mnt_fsname, "automount(pid%d)", &ent->pid);
 	}
 	endmntent(tab);
 
@@ -146,8 +152,10 @@ static struct mnt_list *copy_mnt_list_ent(struct mnt_list *ent)
 		return NULL;
 	}
 
-	if (!ent->path || !ent->fs_type)
+	if (!ent->path || !ent->fs_type) {
+		free(new);
 		return NULL;
+	}
 
 	new->path = malloc(strlen(ent->path) + 1);
 	if (!new->path) {

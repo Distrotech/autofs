@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# $Id: rc.autofs.in,v 1.36 2005/01/12 13:31:44 raven Exp $
+# $Id: rc.autofs.in,v 1.37 2005/01/16 15:23:58 raven Exp $
 #
 # rc file for automount using a Sun-style "master map".
 # We first look for a local /etc/auto.master, then a YP
@@ -387,63 +387,46 @@ function alive()
 }
 
 #
-# Find pid of deepest nested submount
+# Find pids of process group leaders
 #
-function get_deepest_submount()
+function get_pgrp_pids()
 {
-	ps -eo pid,pgrp,cmd|grep $1|\
-	   grep submount|\
-	   sed -e 's/--timeout[ =][0-9]*//g; s/--[a-z]*//g'|\
-	   awk '{print $1,$4}'|\
-	   sort -r|\
-	   awk 'BEGIN {ORS=" "} {print $1}'|\
-	   awk '{print $1}'
-}
-
-#
-# Signal each nested submount
-#
-function signal_submounts()
-{
-	tries=0
-	pid=`get_deepest_submount $1`
-	while [ -n "$pid" -a $tries -lt 8 ]; do
-		oldpid=$pid
-		kill -USR2 $pid 2 > /dev/null
-		sleep 1
-		pid=`get_deepest_submount $1`
-		if [ "$oldpid" = "$pid" ]; then
-			tries=`expr $tries + 1`
-		else
-			tries=0
+	ps -eo pid,pgrp,cmd|grep $DAEMON|\
+	awk '{print $1,$2}'|\
+	while read pid pgrp
+	do
+		if [ $pid -eq $pgrp ]
+		then
+			echo $pid
 		fi
 	done
-	echo -n $pid
 }
 
 #
-# Signal each automount
+# Signal each automount process group leader
 #
 function signal_automounts()
 {
 	RETVAL=0
-	if [ -z "`signal_submounts $DAEMON`" ]; then
-		pids="`/sbin/pidof $DAEMON`"
-		for one_pid in $pids ; do
-			kill -USR2 $one_pid 2 > /dev/null
-			count=0
-			while ps ax|grep -v grep|grep $one_pid >/dev/null; do
-				sleep 1 
-				count=$(expr $count + 1)
-				if [ $count -gt 20 ]; then
-					break;
-				fi
-			done
+	pgrp_pids=`get_pgrp_pids`
+	for pid in $pgrp_pids
+	do
+		kill -USR2 $pid 2 > /dev/null
+		count=0
+		while ps ax|grep -v grep|grep $pid >/dev/null
+		do
+			sleep 1 
+			count=$(expr $count + 1)
+			if [ $count -gt 20 ]; then
+				break;
+			fi
 		done
-	fi
+	done
+
 	if [ -n "`/sbin/pidof $DAEMON`" ] ; then
 		RETVAL=1
 	fi
+
 	return $RETVAL
 }
 
@@ -674,22 +657,9 @@ stop)
 			mnt=`ps -wwo 'cmd=' $pid | sed -e \
 			  's,.* --pid-file=/var/run/autofs/\([^ ]*\)\.pid.*,\1,; s,_,/,g'`
 
-			# Signal any submounts to exit otherwise just signal process
-			if [ -n "$(get_deepest_submount $pid)" ]
-			then
-				if [ -n "$(signal_submounts $pid)" ]
-				then
-					ret=2
-				else
-					start-stop-daemon --stop --quiet --retry USR2/5 \
-						--oknodo --pidfile $file --exec $DAEMON
-					ret=$?
-				fi
-			else
-				start-stop-daemon --stop --quiet --retry USR2/5 \
+			start-stop-daemon --stop --quiet --retry USR2/20 \
 					--pidfile $file --exec $DAEMON
-				ret=$?
-			fi
+			ret=$?
 
 			case $ret in
 			0)

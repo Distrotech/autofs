@@ -1,7 +1,7 @@
 #!/sbin/runscript
 # Copyright 1999-2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Header: /home/cvs/root/autofs/gentoo/net-fs/autofs/files/autofs.init,v 1.1 2005/01/02 06:01:46 raven Exp $
+# $Header: /home/cvs/root/autofs/gentoo/net-fs/autofs/files/autofs.init,v 1.2 2005/01/16 15:23:58 raven Exp $
 
 # rc file for automount using a Sun-style "master map".
 # We first look for a local /etc/autofs/auto.master, then a YP
@@ -205,8 +205,6 @@ function getmounts()
 		    elif [ "$map" = "multi" ] ; then
 			maptype=$map
 			map=
-		    elif echo "$map" | grep -q '^!'; then
-		        map=`echo "$map"| sed -e 's/^!//g'`
 		    elif [ -x "$map" ]; then
 			maptype=program
 		    elif [ -x "${SYSCONFDIR}/$map" ]; then
@@ -242,44 +240,6 @@ function getmounts()
 	    fi
 	done
     )
-}
-
-#
-# Find pid of deepest nested submount
-#
-function get_deepest_submount()
-{
-	ps -eo pid,pgrp,cmd|grep $1|\
-	   grep submount|\
-	   sed -e 's/--timeout[ =][0-9]*//g;  s/--[a-z]*//g'|\
-	   awk '{print $1,$4}'|\
-	   sort -r|\
-	   awk 'BEGIN {ORS=" "} {print $1}'|\
-	   awk '{print $1}'
-}
-
-#
-# Signal each nested submount
-#
-function signal_submounts()
-{
-	tries=0
-	pid=`get_deepest_submount $1`
-	while [ -n "$pid" -a $tries -lt 8 ]; do
-		oldpid=$pid
-		kill -USR2 $pid 2 > /dev/null
-		sleep 1
-		pid=`get_deepest_submount $1`
-		if [ "$oldpid" = "$pid" ]; then
-			tries=`expr $tries + 1`
-		else
-			tries=0
-		fi
-	done
-	if [ -n "$pid" ]
-	then
-		echo -n $pid
-	fi
 }
 
 function umount_loopback()
@@ -392,22 +352,9 @@ stop() {
 			mnt=`ps -wwo 'cmd=' $pid | sed -e \
 			  's,.* --pid-file=/var/run/autofs/\([^ ]*\)\.pid.*,\1,; s,_,/,g'`
 
-			# Signal any submounts to exit otherwise just signal process
-			if [ -n "$(get_deepest_submount $pid)" ]
-			then
-				if [ -n "$(signal_submounts $pid)" ]
-				then
-					ret=2
-				else
-					start-stop-daemon --stop --quiet --retry USR2/5 \
-						--oknodo --pidfile $file --exec $DAEMON
-					ret=$?
-				fi
-			else
-				start-stop-daemon --stop --quiet --retry USR2/5 \
+			start-stop-daemon --stop --quiet --retry USR2/20 \
 					--pidfile $file --exec $DAEMON
-				ret=$?
-			fi
+			ret=$?
 
 			case $ret in
 			0)
