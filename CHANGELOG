@@ -8,6 +8,7 @@ xx/xx/2004 autofs-4.1.?
 - fix socket leak (Jeff Moyer).
 - fix potential race in signal handling code (Jeff Moyer).
 - miscelaneous corrections to doco and typos (Peter Breitenlohner).
+- fix i18n init script underline output (Jef Moyer).
 
 19/05/2004 autofs-4.1.3
 -----------------------

@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# $Id: rc.autofs.in,v 1.15 2004/05/10 13:57:14 raven Exp $
+# $Id: rc.autofs.in,v 1.16 2004/08/29 13:53:17 raven Exp $
 #
 # rc file for automount using a Sun-style "master map".
 # We first look for a local /etc/auto.master, then a YP
@@ -242,12 +242,10 @@ function getmounts()
 #
 function status()
 {
-	echo $"Configured Mount Points:"
-	echo  "------------------------"
+	echo -e $"Configured Mount Points:\n------------------------"
 	getmounts
 	echo ""
-	echo $"Active Mount Points:"
-	echo  "--------------------"
+	echo -e $"Active Mount Points:\n--------------------"
 	ps axwww|grep "[0-9]:[0-9][0-9] $DAEMON " | (
 		while read pid tt stat time command; do echo $command; done
 	)
@@ -354,7 +352,7 @@ case "$1" in
 	    fi
 	    [ $RETVAL = 0 ] && touch /var/lock/subsys/autofs
 	else
-	    echo -n "" $"No Mountpoints Defined"
+	    echo -n $"No Mountpoints Defined"
 	    success "$prog startup"
 	fi
 	rm -f $TMP
