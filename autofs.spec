@@ -1,7 +1,7 @@
-# $Id: autofs.spec,v 1.1 2003/09/09 11:21:28 raven Exp $
+# $Id: autofs.spec,v 1.2 2003/09/28 11:06:54 raven Exp $
 Summary: autofs daemon
 Name: autofs
-%define version 4.0.0pre10
+%define version 4.0.0-1
 Version: %{version}
 Release: 1
 Copyright: GPL
@@ -86,8 +86,11 @@ fi
 
 %changelog
 # $Log: autofs.spec,v $
-# Revision 1.1  2003/09/09 11:21:28  raven
-# Initial revision
+# Revision 1.2  2003/09/28 11:06:54  raven
+# Updated autofs.spec version string.
+#
+# Revision 1.1.1.1  2003/09/09 11:21:28  raven
+# Initial import of autofs
 #
 # Revision 1.5  1999/03/07 23:04:23  hpa
 # Remove silly commented-out patch line
