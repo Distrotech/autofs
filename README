@@ -1,6 +1,6 @@
 -*- text -*-
 
-ident $Id: README,v 1.4 2003/09/29 08:22:35 raven Exp $
+ident $Id: README,v 1.5 2003/12/04 15:34:52 raven Exp $
 
 autofs is a kernel-based automounter for Linux.  It performs a job
 similar to amd(8) but relies on a small stub of kernel code instead of
@@ -45,9 +45,9 @@ Fitzhardinge's <jeremy@goop.org> work on autofs 3. Further enhancements
 have been made by Ian Kent <raven@themaw.net>.
 
 If you use or want to help develop autofs, please join the autofs
-mailing list:
+mailing list by visiting:
 
-	autofs@linux.kernel.org
+	http://linux.kernel.org/mailman/listinfo/autofs
 
-by sending a message containing the line "subscribe autofs" to
-majordomo@linux.kernel.org.
+and folling the instructions there to subscribe to the autofs mailing list.
+
