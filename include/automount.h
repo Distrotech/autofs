@@ -1,4 +1,4 @@
-#ident "$Id: automount.h,v 1.4 2004/03/07 12:17:54 raven Exp $"
+#ident "$Id: automount.h,v 1.5 2004/05/18 12:20:08 raven Exp $"
 /*
  * automount.h
  *
@@ -241,8 +241,16 @@ int ncat_path(char *buf, size_t len,
               const char *dir, const char *base, size_t blen);
 
 /* rpc helper subs */
-int rpc_ping(const char *host, long seconds, long micros);
-int rpc_time(const char *host, int seconds, int micros, double *result);
+#define RPC_PING_FAIL           0x0000
+#define RPC_PING_V2             NFS2_VERSION
+#define RPC_PING_V3             NFS3_VERSION
+#define RPC_PING_UDP            0x0100
+#define RPC_PING_TCP            0x0200
+
+unsigned int rpc_ping(const char *host, long seconds, long micros);
+int rpc_time(const char *host, 
+	     unsigned int ping_vers, unsigned int ping_proto,
+	     long seconds, long micros, double *result);
 
 /* log notification */
 extern int do_verbose;

@@ -1,4 +1,4 @@
-#ident "$Id: mount_nfs.c,v 1.11 2004/05/10 12:44:30 raven Exp $"
+#ident "$Id: mount_nfs.c,v 1.12 2004/05/18 12:20:08 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  * mount_nfs.c - Module for Linux automountd to mount an NFS filesystem,
@@ -29,6 +29,8 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <netinet/in.h>
+#include <linux/nfs.h>
+#include <linux/nfs2.h>
 
 #define MODULE_MOUNT
 #include "automount.h"
@@ -139,6 +141,7 @@ int get_best_mount(char *what, const char *original, int longtimeout, int skiplo
 
 	while (p && *p) {
 		char *next;
+		unsigned int ping_stat = 0;
 
 		p += strspn(p, " \t,");
 		delim = strpbrk(p, "(, \t:");
@@ -148,7 +151,7 @@ int get_best_mount(char *what, const char *original, int longtimeout, int skiplo
 		/* Find lowest weight whose server is alive */
 		if (*delim == '(') {
 			char *weight = delim + 1;
-			int alive;
+			unsigned int alive;
 
 			*delim = '\0';
 
@@ -217,7 +220,7 @@ int get_best_mount(char *what, const char *original, int longtimeout, int skiplo
 		 * If it's not local and it's a replicated server map entry
 		 * is it alive
 		 */
-		if (!local && is_replicated && !rpc_ping(p, sec, micros)) {
+		if (!local && is_replicated && !(ping_stat = rpc_ping(p, sec, micros))) {
 			p = next;
 			continue;
 		}
@@ -228,18 +231,25 @@ int get_best_mount(char *what, const char *original, int longtimeout, int skiplo
 		}
 		/* compare RPC times if there are no weighted hosts */
 		else if (winner_weight == INT_MAX) {
+			int status;
 			double resp_time;
+			unsigned int vers = NFS2_VERSION;
+			unsigned int proto = RPC_PING_UDP;
 
+			if (ping_stat) {
+				vers = ping_stat & 0x00ff;
+				proto = ping_stat & 0xff00;
+			}
+
+			status = rpc_time(winner, vers, proto, sec, micros, &resp_time);
 			/* did we time the first winner? */
 			if (winner_time == 0) {
-				if (rpc_time(winner, sec, micros, &resp_time))
+				if (status)
 					winner_time = resp_time;
 				else
 					winner_time = 6;
-			}
-
-			if (rpc_time(winner, sec, micros, &resp_time)) {
-				if (resp_time < winner_time) {
+			} else {
+				if ((status) && (resp_time < winner_time)) {
 					winner = p;
 					winner_time = resp_time;
 				}
