@@ -1,4 +1,4 @@
-#ident "$Id: mount_nfs.c,v 1.12 2004/05/18 12:20:08 raven Exp $"
+#ident "$Id: mount_nfs.c,v 1.13 2004/08/29 12:04:27 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  * mount_nfs.c - Module for Linux automountd to mount an NFS filesystem,
@@ -432,13 +432,18 @@ int mount_mount(const char *root, const char *name, int name_len,
 			       whatstr, "bind", NULL, mount_bind->context);
 	} else {
 		/* Not a local host - do an NFS mount */
-		int status;
+		int status, existed = 1;
 
 		debug(MODPREFIX "calling mkdir_path %s", fullpath);
-		if ((status = mkdir_path(fullpath, 0555)) && errno != EEXIST) {
+
+		status = mkdir_path(fullpath, 0555);
+		if (status && errno != EEXIST) {
 			error(MODPREFIX "mkdir_path %s failed: %m", fullpath);
 			return 1;
 		}
+
+		if (!status)
+			existed = 0;
 
 		if (is_mounted(fullpath)) {
 			error("BUG: %s already mounted", fullpath);
@@ -464,8 +469,9 @@ int mount_mount(const char *root, const char *name, int name_len,
 		unlink(AUTOFS_LOCK);
 
 		if (err) {
-			if (!ap.ghost && name_len)
+			if ((!ap.ghost && name_len) || !existed)
 				rmdir_path(name);
+
 			error(MODPREFIX "nfs: mount failure %s on %s",
 			      whatstr, fullpath);
 			return 1;

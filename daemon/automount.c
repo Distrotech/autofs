@@ -1,4 +1,4 @@
-#ident "$Id: automount.c,v 1.15 2004/04/05 13:14:10 raven Exp $"
+#ident "$Id: automount.c,v 1.16 2004/08/29 12:04:26 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  automount.c - Linux automounter daemon
@@ -99,8 +99,11 @@ int mkdir_path(const char *path, mode_t mode)
 
 					if (stat(buf, &st) == 0 && !S_ISDIR(st.st_mode))
 						errno = ENOTDIR;
-					else
-						continue;
+					else {
+						/* last component, return -1 */
+						if (*cp != '\0')
+							continue;
+					}
 				}
 				return -1;
 			}
@@ -1088,9 +1091,11 @@ static int handle_packet_missing(const struct autofs_packet_missing *pkt)
 			close(ap.state_pipe[0]);
 			close(ap.state_pipe[1]);
 
+			chdir(ap.path);
 			err = ap.lookup->lookup_mount(ap.path,
 						      pkt->name, pkt->len,
 						      ap.lookup->context);
+			chdir("/");
 
 			/*
 			 * If at first you don't succeed, hide all
@@ -1163,8 +1168,11 @@ static void do_expire(const char *name, int namelen)
 		   it.
 		 */
 
+		chdir(ap.path);
 		ret = ap.lookup->lookup_mount(ap.path, 
 					name, namelen, ap.lookup->context);
+		chdir("/");
+
 		if (ret)
 			error("failed to recover from partial expiry of %s\n",
 			       buf);

@@ -1,4 +1,4 @@
-#ident "$Id: mount_bind.c,v 1.8 2004/05/10 12:44:30 raven Exp $"
+#ident "$Id: mount_bind.c,v 1.9 2004/08/29 12:04:26 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  mount_bind.c      - module to mount a local filesystem if possible;
@@ -107,14 +107,18 @@ int mount_mount(const char *root, const char *name, int name_len,
 		fullpath[i] = '\0';
 
 	if (bind_works) {
-		int status;
+		int status, existed = 1;
 
 		debug(MODPREFIX "calling mkdir_path %s", fullpath);
 
-		if ((status = mkdir_path(fullpath, 0555)) && errno != EEXIST) {
+		status = mkdir_path(fullpath, 0555);
+		if (status && errno != EEXIST) {
 			error(MODPREFIX "mkdir_path %s failed: %m", fullpath);
 			return 1;
 		}
+
+		if (!status)
+			existed = 0;
 
 		if (is_mounted(fullpath)) {
 			warn("BUG: %s already mounted", fullpath);
@@ -130,7 +134,7 @@ int mount_mount(const char *root, const char *name, int name_len,
 		unlink(AUTOFS_LOCK);
 
 		if (err) {
-			if (!ap.ghost && name_len)
+			if ((!ap.ghost && name_len) || !existed)
 				rmdir_path(name);
 			return 1;
 		} else {

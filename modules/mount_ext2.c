@@ -1,4 +1,4 @@
-#ident "$Id: mount_ext2.c,v 1.11 2004/05/10 12:44:30 raven Exp $"
+#ident "$Id: mount_ext2.c,v 1.12 2004/08/29 12:04:27 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  mount_ext2.c - module for Linux automountd to mount ext2 filesystems
@@ -40,7 +40,6 @@ int mount_init(void **context)
 	return 0;
 }
 
-
 int mount_mount(const char *root, const char *name, int name_len,
 		const char *what, const char *fstype, const char *options, void *context)
 {
@@ -48,7 +47,7 @@ int mount_mount(const char *root, const char *name, int name_len,
 	const char *p, *p1;
 	int err, ro = 0;
 	const char *fsck_prog;
-	int status;
+	int status, existed = 1;
 
 	fullpath = alloca(strlen(root) + name_len + 2);
 	if (!fullpath) {
@@ -63,10 +62,14 @@ int mount_mount(const char *root, const char *name, int name_len,
 
 	debug(MODPREFIX "calling mkdir_path %s", fullpath);
 
-	if ((status = mkdir_path(fullpath, 0555)) && errno != EEXIST) {
+	status = mkdir_path(fullpath, 0555);
+	if (status && errno != EEXIST) {
 		error(MODPREFIX "mkdir_path %s failed: %m", fullpath);
 		return 1;
 	}
+
+	if (!status)
+		existed = 0;
 
 	if (is_mounted(fullpath)) {
 		error("BUG: %s already mounted", fullpath);
@@ -120,7 +123,7 @@ int mount_mount(const char *root, const char *name, int name_len,
 	unlink(AUTOFS_LOCK);
 
 	if (err) {
-		if (!ap.ghost && name_len)
+		if ((!ap.ghost && name_len) || !existed)
 			rmdir_path(name);
 		error(MODPREFIX "failed to mount %s (type %s) on %s",
 		      what, fstype, fullpath);

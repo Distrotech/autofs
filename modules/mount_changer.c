@@ -52,7 +52,7 @@ int mount_mount(const char *root, const char *name, int name_len,
 {
 	char *fullpath;
 	int err;
-	int status;
+	int status, existed = 1;
 
 	fstype = "iso9660";
 
@@ -80,10 +80,14 @@ int mount_mount(const char *root, const char *name, int name_len,
 
 	debug(MODPREFIX "calling mkdir_path %s", fullpath);
 
-	if ((status = mkdir_path(fullpath, 0555)) && errno != EEXIST) {
+	status = mkdir_path(fullpath, 0555);
+	if (status && errno != EEXIST) {
 		error(MODPREFIX "mkdir_path %s failed: %m", fullpath);
 		return 1;
 	}
+
+	if (!status)
+		existed = 0;
 
 	debug(MODPREFIX "Swapping CD to slot %s", name);
 
@@ -111,7 +115,7 @@ int mount_mount(const char *root, const char *name, int name_len,
 	unlink(AUTOFS_LOCK);
 
 	if (err) {
-		if (!ap.ghost && name_len)
+		if ((!ap.ghost && name_len) || !existed)
 			rmdir_path(name);
 
 		error(MODPREFIX "failed to mount %s (type %s) on %s",
