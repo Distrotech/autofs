@@ -1,4 +1,4 @@
-#ident "$Id: parse_sun.c,v 1.18 2005/01/05 09:59:31 raven Exp $"
+#ident "$Id: parse_sun.c,v 1.19 2005/01/15 07:21:53 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  parse_sun.c - module for Linux automountd to parse a Sun-format
@@ -260,11 +260,11 @@ int check_colon(const char *str)
 {
 	char *ptr = (char *) str;
 
-	while (ptr && *ptr != ':' && *ptr != '/') {
+	while (*ptr && *ptr != ':' && *ptr != '/') {
 		ptr++;
 	}
 
-	if (!ptr || *ptr == '/')
+	if (!*ptr || *ptr == '/')
 		return 0;
 
 	return 1;
