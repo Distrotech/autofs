@@ -1,4 +1,4 @@
-#ident "$Id: mounts.c,v 1.4 2004/11/21 05:35:06 raven Exp $"
+#ident "$Id: mounts.c,v 1.5 2004/11/23 11:51:18 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  mounts.c - module for Linux automount mount table lookup functions
@@ -27,7 +27,7 @@
 /*
  * Get list of mounts under path in longest->shortest order
  */
-struct mnt_list *get_mnt_list(const char *path, int include)
+struct mnt_list *get_mnt_list(const cahr *table, const char *path, int include)
 {
 	FILE *tab;
 	int pathlen = strlen(path);
@@ -40,7 +40,7 @@ struct mnt_list *get_mnt_list(const char *path, int include)
 	if (!path || !pathlen || pathlen > PATH_MAX)
 		return NULL;
 
-	tab = setmntent(_PATH_MOUNTED, "r");
+	tab = setmntent(table, "r");
 	if (!tab) {
 		error("get_mntlist: setmntent: %m");
 		return NULL;
@@ -285,7 +285,7 @@ int has_fstab_option(const char *path, const char *opt)
 	struct mntent ent;
 	char *res = NULL;
 
-	if (find_mntent(MNTTAB, path, &ent)) {
+	if (find_mntent(_PATH_MNTTAB, path, &ent)) {
 		if ((res = hasmntopt(&ent, opt)))
 			return 1;
 	}
@@ -305,7 +305,7 @@ int allow_owner_mount(const char *path)
 	if (getuid() || is_mounted(_PATH_MOUNTED, path))
 		return 0;
 
-	if (find_mntent(MNTTAB, path, &ent)) {
+	if (find_mntent(_PATH_MNTTAB, path, &ent)) {
 		struct stat st;
 
 		if (!hasmntopt(&ent, "owner"))

@@ -1,4 +1,4 @@
-#ident "$Id: automount.c,v 1.22 2004/11/21 05:35:06 raven Exp $"
+#ident "$Id: automount.c,v 1.23 2004/11/23 11:51:18 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  automount.c - Linux automounter daemon
@@ -248,10 +248,14 @@ static int umount_multi(const char *path, int incl)
 
 	debug("umount_multi: path=%s incl=%d\n", path, incl);
 
-	mntlist = get_mnt_list(path, incl);
+	mntlist = get_mnt_list(_PATH_MOUNTED, path, incl);
 
 	if (!mntlist) {
-		error("umount_multi: failed to get list of mounts");
+		if (!include) {
+			warn("umount_multi: no mounts found under %s", path);
+			return 0;
+		}
+		error("umount_multi: no mount found for %s", path);
 		return -1;
 	}
 
@@ -262,6 +266,8 @@ static int umount_multi(const char *path, int incl)
 			left++;
 		}
 	}
+
+	free_mnt_list(mntlist);
 
 	/* Delete detritus like unwanted mountpoints and symlinks */
 	if (left == 0) {
