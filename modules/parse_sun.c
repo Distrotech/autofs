@@ -1,4 +1,4 @@
-#ident "$Id: parse_sun.c,v 1.13 2004/11/20 03:00:40 raven Exp $"
+#ident "$Id: parse_sun.c,v 1.14 2004/11/20 13:51:08 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  parse_sun.c - module for Linux automountd to parse a Sun-format
@@ -70,6 +70,7 @@ static struct substvar
 
 /* Default context pattern */
 
+static char *child_args = NULL;
 static struct parse_context default_context = {
 	NULL,			/* No mount options */
 	&sv_osvers,		/* The substvar predefined variables */
@@ -379,7 +380,19 @@ int parse_init(int argc, const char *const *argv, void **context)
 						*(sv->val++) = '\0';
 					else
 						sv->val = "";
-
+					/* we use 4 for the "-D", the "=", and the null */
+					if (child_args) {
+						child_args = realloc(child_args, strlen(child_args) + strlen(sv->def) + strlen(sv->val) + 4);
+						strcat(child_args, ",");
+					}
+					else {
+						child_args = malloc(strlen(sv->def) + strlen(sv->val) + 4);
+						*child_args = '\0';
+					}
+					strcat(child_args, "-D");
+					strcat(child_args, sv->def);
+					strcat(child_args, "=");
+					strcat(child_args, sv->val);
 					sv->next = ctxt->subst;
 					ctxt->subst = sv;
 				}
@@ -571,6 +584,29 @@ static int sun_mount(const char *root, const char *name, int namelen,
 			np[-1] = '\0';
 
 		options = noptions;
+	}
+
+
+	if (child_args && !strcmp(fstype, "autofs")) {
+		char *noptions;
+		if (! options) {
+			noptions = alloca(strlen(child_args) + 1);
+			*noptions = '\0';
+		}
+		else {
+			noptions = alloca(strlen(options) + strlen(child_args) + 2);
+			if (noptions) {
+				strcpy(noptions, options);
+				strcat(noptions, ",");
+			}
+		}
+		if (noptions) {
+			strcat(noptions, child_args);
+			options = noptions;
+		}
+		else {
+			error(MODPREFIX "alloca failed for options");
+		}
 	}
 
 	while (*name == '/') {

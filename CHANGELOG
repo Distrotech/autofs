@@ -35,6 +35,7 @@ xx/xx/2004 autofs-4.1.4
 - allow for LDAP maps that have greater than the LDAP result count limit (Chris Feist).
 - allow for program maps returning larger than 4kb (Jeff Moyer and Chris Feist?).
 - fix some potential buffer overflows (Steve Grubb).
+- carry -D variable definitions to submounts (Michael Blandforf).
 
 19/05/2004 autofs-4.1.3
 -----------------------
