@@ -1,9 +1,9 @@
 #
-# $Id: autofs.spec,v 1.20 2005/01/01 04:24:59 raven Exp $
+# $Id: autofs.spec,v 1.21 2005/01/01 07:51:02 raven Exp $
 #
 Summary: A tool from automatically mounting and umounting filesystems.
 Name: autofs
-%define version 4.1.3
+%define version 4.1.4_beta1
 %define release 1
 Version: %{version}
 Release: %{release}
@@ -80,7 +80,7 @@ fi
 
 %files
 %defattr(-,root,root)
-%doc CREDITS CHANGELOG COPY* README* TODO multiserver_mount.patch patches/* samples/ldap* samples/autofs.schema
+%doc CREDITS CHANGELOG COPY* README* patches/* samples/ldap* samples/autofs.schema
 %config /etc/rc.d/init.d/autofs
 %config(noreplace) /etc/auto.master
 %config(noreplace,missingok) /etc/auto.misc
@@ -93,6 +93,9 @@ fi
 %dir /net
 
 %changelog
+* Sat Jan 1 2005 Ian Kent <raven@themaw.net>
+- Update package to version 4.1.4_beta1.
+
 * Sat Apr 3 2004 Ian Kent <raven@themaw.net>
 - Update package to version 4.1.2.
 
