@@ -26,7 +26,8 @@ xx/xx/2004 autofs-4.1.4
     - see README.ncpfs.
 - second signal race fix (almost what Chris Feist recommended).
 - fix the ordering of +ypmapname entries in master map (Chris Feist).
-- fix backslash parse for smb mount option username\password.
+- fix backslash parse for smb mount option username\password (George Hansper).
+- keep udp rpc ping routine from using up reserved ports (Jeff Moyer).
 
 19/05/2004 autofs-4.1.3
 -----------------------

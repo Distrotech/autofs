@@ -48,28 +48,50 @@ struct conn_info {
  */
 static CLIENT* create_udp_client(struct conn_info *info)
 {
-	int fd = RPC_ANYSOCK;
+	int fd;
 	CLIENT *client;
-	struct sockaddr_in addr;
+	struct sockaddr_in laddr, raddr;
 	struct hostent *hp;
 
 	if (info->proto->p_proto != IPPROTO_UDP)
 		return NULL;
 
-	memset(&addr, 0, sizeof(addr));
+	memset(&laddr, 0, sizeof(laddr));
+	memset(&raddr, 0, sizeof(raddr));
 
 	hp = gethostbyname(info->host);
 	if (!hp)
 		return NULL;
 
-	addr.sin_family = AF_INET;
-	addr.sin_port = htons(info->port);
-	memcpy(&addr.sin_addr.s_addr, hp->h_addr, hp->h_length);
+	raddr.sin_family = AF_INET;
+	raddr.sin_port = htons(info->port);
+	memcpy(&raddr.sin_addr.s_addr, hp->h_addr, hp->h_length);
 
-	client = clntudp_bufcreate(&addr,
+	/*
+	 * bind to any unused port.  If we left this up to the rpc
+	 * layer, it would bind to a reserved port, which has been shown
+	 * to exhaust the reserved port range in some situations.
+	 */
+	fd = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
+	if (fd < 0)
+		return NULL;
+	laddr.sin_family = AF_INET;
+	laddr.sin_port = 0;
+	laddr.sin_addr.s_addr = htonl(INADDR_ANY);
+
+	if (bind(fd, (struct sockaddr *)&laddr, 
+		 sizeof(struct sockaddr_in)) < 0) {
+		close(fd);
+		fd = RPC_ANYSOCK;
+		/* FALLTHROUGH */
+	}
+
+	client = clntudp_bufcreate(&raddr,
 				   info->program, info->version,
 				   info->timeout, &fd,
 				   info->send_sz, info->recv_sz);
+	if (client)
+		clnt_control(client, CLSET_FD_CLOSE, NULL);
 
 	return client;
 }
