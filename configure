@@ -4037,6 +4037,7 @@ if test $gcc_supports_pie = yes ; then
 	DAEMON_CFLAGS="-fpie"
 	DAEMON_LDFLAGS="-pie"
 fi
+rm -f pietest.c
 
 
 

@@ -14,6 +14,8 @@ xx/xx/2004 autofs-4.1.2
      on reload.
 - fix unchecked return from get_best_mount.
 - add example file master map using LDAP.
+- 1st attempt to deal with smb mounts that go away while
+  mounted.
 
 14/03/2004 autofs-4.1.1
 -----------------------

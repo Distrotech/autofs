@@ -1,4 +1,4 @@
-#ident "$Id: automount.c,v 1.13 2004/04/03 11:52:15 raven Exp $"
+#ident "$Id: automount.c,v 1.14 2004/04/03 12:51:51 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  automount.c - Linux automounter daemon
@@ -135,21 +135,31 @@ int rmdir_path(const char *path)
 	return 0;
 }
 
-static int umount_ent(const char *root, const char *name)
+static int umount_ent(const char *root, const char *name, const char *type)
 {
 	char path_buf[PATH_MAX];
 	struct stat st;
+	int sav_errno;
+	int is_smbfs = (strcmp(type, "smbfs") == 0);
+	int status;
 	int rv = 0;
 
 	sprintf(path_buf, "%s/%s", root, name);
-	if (!lstat(path_buf, &st)) {
-		if (S_ISDIR(st.st_mode)) {
-			if (st.st_dev != ap.dev) {
-				wait_for_lock();
-				rv = spawnl(LOG_DEBUG, MOUNTED_LOCK, PATH_UMOUNT,
-					    PATH_UMOUNT, path_buf, NULL);
-				unlink(AUTOFS_LOCK);
-			}
+	status =  lstat(path_buf, &st);
+	sav_errno = errno;
+
+	/* EIO appears to correspond to an smb mount that has gone away */
+	if (!status || (is_smbfs && sav_errno == EIO)) {
+		int umount_ok = 0;
+
+		if (!status && (S_ISDIR(st.st_mode) && (st.st_dev != ap.dev)))
+			umount_ok = 1;
+
+		if (umount_ok || is_smbfs) {
+			wait_for_lock();
+			rv = spawnl(LOG_DEBUG, MOUNTED_LOCK,
+				    PATH_UMOUNT, PATH_UMOUNT, path_buf, NULL);
+			unlink(AUTOFS_LOCK);
 		}
 	}
 	return rv;
@@ -234,6 +244,7 @@ static int umount_multi(const char *path, int incl)
 	FILE *mtab;
 	struct mntlist {
 		const char *path;
+		const char *fs_type;
 		struct mntlist *next;
 	} *mntlist = NULL, *mptr;
 	size_t pathlen = strlen(path);
@@ -268,9 +279,15 @@ static int umount_multi(const char *path, int incl)
 				break;
 
 		m = alloca(sizeof(*m));
+
 		p = alloca(len + 1);
 		strcpy(p, mnt->mnt_dir);
 		m->path = p;
+
+		p = alloca(strlen(mnt->mnt_type) + 1);
+		strcpy(p, mnt->mnt_type);
+		m->fs_type = p;
+		
 		m->next = *prev;
 		*prev = m;
 	}
@@ -281,7 +298,7 @@ static int umount_multi(const char *path, int incl)
 	left = 0;
 	for (mptr = mntlist; mptr != NULL; mptr = mptr->next) {
 		debug("umount_multi: unmounting dir=%s\n", mptr->path);
-		if (umount_ent("", mptr->path)) {
+		if (umount_ent("", mptr->path, mptr->fs_type)) {
 			left++;
 		}
 	}
