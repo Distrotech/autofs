@@ -1,6 +1,7 @@
 
 - fixed lookup problem with wildcard order in map.
 - added CHANGELOG.
+- fixed error in some ident tags
 - documented nonstrict special option (Debian patch).
 - updated spec file to standardise paths etc.
 - reintroduced some 4.0.0 init script code to help serialise
