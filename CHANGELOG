@@ -1,3 +1,7 @@
+??/2/2005 autofs-4.1.4_beta3
+----------------------------
+- add /proc/modules check to Debian init script.
+
 14/2/2005 autofs-4.1.4_beta2
 ----------------------------
 - add update to -D variable propogation patch (Michael Blanddford).

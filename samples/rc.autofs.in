@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# $Id: rc.autofs.in,v 1.47 2005/02/10 14:30:07 raven Exp $
+# $Id: rc.autofs.in,v 1.48 2005/02/15 15:27:34 raven Exp $
 #
 # rc file for automount using a Sun-style "master map".
 # We first look for a local /etc/auto.master, then a YP
@@ -604,7 +604,7 @@ start)
 		# autofs filesystem support not loaded
 		echo -n ' loading autofs4 kernel module,'
 		modprobe autofs4 || true
-	elif lsmod | grep -q autofs[^4]; then
+	elif ([ -f /proc/modules ] && lsmod) | grep -q autofs[^4]; then
 		# wrong autofs filesystem module loaded
 		echo
 		echo "WARNING: autofs kernel module is loaded, autofs4 needed"
