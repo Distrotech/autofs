@@ -2,6 +2,10 @@
 ----------------------------
 - add /proc/modules check to Debian init script.
 - fix typo in Gentoo init script reload function.
+- fix default map type selection for submounts.
+  - a side affect of this patch is that when the first mount
+    point of a multi-mount entry is '/' it is no longer
+    mandatory. This matches the Solaris automount parsing.
 
 14/2/2005 autofs-4.1.4_beta2
 ----------------------------

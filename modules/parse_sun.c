@@ -1,4 +1,4 @@
-#ident "$Id: parse_sun.c,v 1.25 2005/02/06 05:46:10 raven Exp $"
+#ident "$Id: parse_sun.c,v 1.26 2005/02/20 05:40:41 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  parse_sun.c - module for Linux automountd to parse a Sun-format
@@ -605,8 +605,11 @@ static int sun_mount(const char *root, const char *name, int namelen,
 				np += comma - cp + 1;
 			}
 		}
-		if (np > noptions)
-			np[-1] = '\0';
+
+		if (np > noptions) {
+			warn(MODPREFIX "options string truncated");
+			np[len] = '\0';
+		}
 
 		options = noptions;
 	}
@@ -614,22 +617,23 @@ static int sun_mount(const char *root, const char *name, int namelen,
 
 	if (child_args && !strcmp(fstype, "autofs")) {
 		char *noptions;
-		if (! options) {
+
+		if (!options) {
 			noptions = alloca(strlen(child_args) + 1);
 			*noptions = '\0';
-		}
-		else {
+		} else {
 			noptions = alloca(strlen(options) + strlen(child_args) + 2);
+
 			if (noptions) {
 				strcpy(noptions, options);
 				strcat(noptions, ",");
 			}
 		}
+
 		if (noptions) {
 			strcat(noptions, child_args);
 			options = noptions;
-		}
-		else {
+		} else {
 			error(MODPREFIX "alloca failed for options");
 		}
 	}
@@ -646,11 +650,25 @@ static int sun_mount(const char *root, const char *name, int namelen,
 	memcpy(what, loc, loclen);
 	what[loclen] = '\0';
 
-	if (! strcmp(fstype, "autofs") && strchr(loc, ':') == NULL) {
-		what = alloca(loclen + 3 + 1); /* 1 for '0', 3 for yp: */
-		memcpy(what, "yp:", 3);
-		memcpy(what + 3, loc, loclen);
-		what[loclen + 3] = '\0';
+	if (!strcmp(fstype, "autofs") && strchr(loc, ':') == NULL) {
+		char mtype[7];
+		int mtype_len;
+
+		if (loc[0] == '/') {
+			mtype_len = 5;
+			if (loc[1] == '/')
+				strcpy(mtype, "ldap:");
+			else
+				strcpy(mtype, "file:");
+		} else {
+			mtype_len = 3;
+			strcpy(mtype, "yp:");
+		}
+
+		what = alloca(loclen + mtype_len + 1);
+		memcpy(what, mtype, mtype_len);
+		memcpy(what + mtype_len, loc, loclen);
+		what[loclen + mtype_len] = '\0';
 	} else {
 		what = alloca(loclen + 1);
 		memcpy(what, loc, loclen);
@@ -740,6 +758,50 @@ void multi_free_list(struct multi_mnt *list)
 }
 
 /*
+ * Scan map entry looking for evidence it has multiple key/mapent
+ * pairs.
+ */
+static int check_is_multi(const char *mapent)
+{
+	const char *p = (char *) mapent;
+	int multi = 0;
+	int first_chunk = 0;
+
+	while (*p) {
+		p = skipspace(p);
+
+		/*
+		 * After the first chunk there can be additional
+		 * locations (possibly not multi) or possibly an
+		 * options string if the first entry includes the
+		 * optional '/' (is multi). Following this any
+		 * path that begins with '/' indicates a mutil-mount
+		 * entry.
+		 */
+		if (first_chunk) {
+			if (*p == '/' || *p == '-') {
+				multi = 1;
+				break;
+			}
+		}
+
+		while (*p == '-') {
+			p += chunklen(p, 0);
+			p = skipspace(p);
+		}
+
+		/*
+		 * Expect either a path or location
+		 * after which it's a multi mount.
+		 */
+		p += chunklen(p, check_colon(p));
+		first_chunk++;
+	}
+
+	return multi;
+}
+
+/*
  * syntax is:
  *	[-options] location [location] ...
  *	[-options] [mountpoint [-options] location [location] ... ]...
@@ -759,6 +821,7 @@ int parse_mount(const char *root, const char *name,
 		error(MODPREFIX "alloca: %m");
 		return 1;
 	}
+	pmapent[mapent_len] = '\0';
 
 	expandsunent(mapent, pmapent, name, ctxt->subst, ctxt->slashify_colons);
 
@@ -791,7 +854,7 @@ int parse_mount(const char *root, const char *name,
 
 	debug(MODPREFIX "gathered options: %s", options);
 
-	if (*p == '/') {
+	if (check_is_multi(p)) {
 		struct multi_mnt *list, *head = NULL;
 		char *multi_root;
 		int l;
