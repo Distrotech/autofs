@@ -1,5 +1,5 @@
 #
-# $Id: autofs.spec,v 1.15 2004/04/03 07:55:10 raven Exp $
+# $Id: autofs.spec,v 1.16 2004/04/03 08:23:52 raven Exp $
 #
 Summary: A tool from automatically mounting and umounting filesystems.
 Name: autofs
@@ -93,6 +93,9 @@ fi
 %dir /net
 
 %changelog
+* Sat Apr 3 2004 Ian Kent <raven@themaw.net>
+- Update package to version 4.1.2.
+
 * Tue Jan 19 2004 Ian Kent <raven@themaw.net>
 - Update spec file to version 4.1.1.
 - Remove BuildRequires on LDAP and Hesoid as make allows
