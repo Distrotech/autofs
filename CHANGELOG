@@ -1,25 +1,28 @@
 
 - fixed lookup problem with wildcard order in map.
 - added CHANGELOG.
-- fixed error in some ident tags
-- merge debian patch 032 document nonstrict special option
+- fixed error in some ident tags.
+- merge debian patch 032 document nonstrict special option.
 - updated spec file to standardise paths etc.
 - reintroduced some 4.0.0 init script code to help serialise
   shutdown signaling and umount of submounts. This should
   alieviate some of the contention for umount at shutdown.
 - fix invalid path reference on error exit.
-- merged debian patches
-   - 030 man page corrections in autofs(5) and automount(8)
-   - 033 correct url in man page automount(8)
-   - 034 correct mount call in mount_changer.c
-   - 040 document gid option in man page autofs(5)
+- merged debian patches.
+   - 030 man page corrections in autofs(5) and automount(8).
+   - 033 correct url in man page automount(8).
+   - 034 correct mount call in mount_changer.c.
+   - 040 document gid option in man page autofs(5).
+- change fsck return code check.
+   - still try to mount if fsck fails to run.
+   - error only if fsck finds uncorrectable errors.
 
 
 4/12/2003 autofs-4.1.0
 ----------------------
 
 - Fixed problem with regex in init script not recognising -g option.
-- removed patch to ignore failed mounts in tree mountsi in favour
+- removed patch to ignore failed mounts in tree mounts in favour
   of using nonstrict option.
 - updated autofs4 kernel module patches.
 

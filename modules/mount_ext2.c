@@ -1,4 +1,4 @@
-#ident "$Id: mount_ext2.c,v 1.6 2003/10/04 13:20:27 raven Exp $"
+#ident "$Id: mount_ext2.c,v 1.7 2004/01/01 11:49:09 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  mount_ext2.c - module for Linux automountd to mount ext2 filesystems
@@ -97,7 +97,7 @@ int mount_mount(const char *root, const char *name, int name_len,
 		err = spawnl(LOG_DEBUG, fsck_prog, fsck_prog, "-p", what, NULL);
 	}
 
-	if (err & ~7) {
+	if (err & ~6) {
 		syslog(LOG_ERR, MODPREFIX "%s: filesystem needs repair, won't mount",
 		       what);
 		return 1;
