@@ -1,4 +1,4 @@
-#ident "$Id: parse_sun.c,v 1.11 2004/06/06 03:06:12 raven Exp $"
+#ident "$Id: parse_sun.c,v 1.12 2004/11/15 14:44:54 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  parse_sun.c - module for Linux automountd to parse a Sun-format
@@ -618,7 +618,7 @@ int parse_mount(const char *root, const char *name,
 {
 	struct parse_context *ctxt = (struct parse_context *) context;
 	char *pmapent, *options;
-	const char *p, *q;
+	const char *p;
 	int mapent_len, rv;
 	int optlen;
 
@@ -688,6 +688,12 @@ int parse_mount(const char *root, const char *name,
 			}
 
 			path = dequote(p, l = chunklen(p, 0));
+			if (!path) {
+				error(MODPREFIX "out of memory");
+				free(myoptions);
+				free(options);
+				return 1;
+			}
 			pathlen = strlen(path);
 
 			p += l;
@@ -712,27 +718,50 @@ int parse_mount(const char *root, const char *name,
 				} while (*p == '-');
 			}
 
-			q = p;
-			while (*q && *q != '/') {
-				l = chunklen(q, 1);
-				q += l;
-				q = skipspace(q);
-			}
-			l = q - p;
-
-			loc = dequote(p, l);
-			loclen = strlen(loc);
-
-			if (loc == NULL || path == NULL) {
+			loc = dequote(p, l = chunklen(p, 1));
+			if (!loc) {
 				error(MODPREFIX "out of memory");
-				free(loc);
 				free(path);
+				free(myoptions);
 				free(options);
 				return 1;
 			}
 
 			p += l;
 			p = skipspace(p);
+
+			while (*p && *p != '/') {
+				char *ent;
+
+				ent = dequote(p, l = chunklen(p, 1));
+				if (!ent) {
+					error(MODPREFIX "out of memory");
+					free(path);
+					free(myoptions);
+					free(options);
+					return 1;
+				}
+
+				loc = realloc(loc, strlen(loc) + l + 2);
+				if (!loc) {
+					error(MODPREFIX "out of memory");
+					free(ent);
+					free(path);
+					free(myoptions);
+					free(options);
+					return 1;
+				}
+
+				strcat(loc, " ");
+				strcat(loc, ent);
+
+				free(ent);
+
+				p += l;
+				p = skipspace(p);
+			}
+
+			loclen = strlen(loc);
 
 			debug(MODPREFIX
 			      "multimount: %.*s on %.*s with options %s",
@@ -763,15 +792,7 @@ int parse_mount(const char *root, const char *name,
 		if (*p == ':')
 			p++;	/* Sun escape for entries starting with / */
 
-		q = p;
-		while (*q) {
-			l = chunklen(q, 1);
-			q += l;
-			q = skipspace(q);
-		}
-		l = q - p;
-
-		loc = dequote(p, l);
+		loc = dequote(p, chunklen(p, 1));
 		loclen = strlen(loc);
 
 		if (loc == NULL) {

@@ -1,4 +1,4 @@
-#ident "$Id: mount_nfs.c,v 1.15 2004/11/15 14:42:47 raven Exp $"
+#ident "$Id: mount_nfs.c,v 1.16 2004/11/15 14:44:54 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  * mount_nfs.c - Module for Linux automountd to mount an NFS filesystem,
@@ -329,7 +329,7 @@ int mount_mount(const char *root, const char *name, int name_len,
 	int local, err;
 	int nosymlink = 0;
 
-	debug(MODPREFIX " root=%s name=%s what=%s, fstype=%s, options=%s",
+	debug(MODPREFIX "root=%s name=%s what=%s, fstype=%s, options=%s",
 	      root, name, what, fstype, options);
 
 	whatstr = alloca(strlen(what) + 1);
