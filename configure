@@ -4262,7 +4262,7 @@ fi
 echo "$as_me:$LINENO: result: $gcc_supports_pie" >&5
 echo "${ECHO_T}$gcc_supports_pie" >&6
 if test $gcc_supports_pie = yes ; then
-	DAEMON_CFLAGS="-fpie"
+	DAEMON_CFLAGS="-fPIE"
 	DAEMON_LDFLAGS="-pie"
 fi
 rm -f pietest.c

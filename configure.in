@@ -1,5 +1,5 @@
 #
-#ident $Id: configure.in,v 1.13 2004/05/11 14:07:44 raven Exp $
+#ident $Id: configure.in,v 1.14 2004/05/11 15:09:07 raven Exp $
 #
 # configure.in for the autofs daemon
 
@@ -143,7 +143,7 @@ AC_RUN_IFELSE([AC_LANG_PROGRAM([[]], [[int main(void) {return 0;}]])],
 	      [gcc_supports_pie=yes], [gcc_supports_pie=no])
 AC_MSG_RESULT([$gcc_supports_pie])
 if test $gcc_supports_pie = yes ; then
-	DAEMON_CFLAGS="-fpie"
+	DAEMON_CFLAGS="-fPIE"
 	DAEMON_LDFLAGS="-pie"
 fi
 rm -f pietest.c
