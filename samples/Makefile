@@ -1,5 +1,5 @@
 #
-# $Id: Makefile,v 1.4 2004/01/29 16:01:22 raven Exp $
+# $Id: Makefile,v 1.5 2004/08/29 12:46:23 raven Exp $
 #
 -include ../Makefile.conf
 include ../Makefile.rules
@@ -31,7 +31,7 @@ install: all
 	-mv -f $(INSTALLROOT)/etc/auto.misc $(INSTALLROOT)/etc/auto.misc.old
 	install -c auto.misc   -m 644 $(INSTALLROOT)/etc
 	install -c auto.net    -m 755 $(INSTALLROOT)/etc
-	install -d -m 755 $(INSTALLROOT)/$(initdir)
+	install -d -m 755 $(INSTALLROOT)$(initdir)
 	install -c rc.autofs   -m 755 $(INSTALLROOT)$(initdir)/autofs
 	install -d -m 755 $(INSTALLROOT)$(autofslibdir)
 ifeq ($(LDAP), 1)

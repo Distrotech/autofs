@@ -14,9 +14,9 @@
 #
 # When using the nisMap schema use an entry like
 # 
-#/other   ldap://budgie/nisMapNmae=auto.indirect,dc=themaw,dc=net
+#/other   ldap://budgie/nisMapName=auto.indirect,dc=themaw,dc=net
 #
 # or if the default LDAP server is set in your LDAP config
 # you can use this
 #
-/other   ldap:nisMapNmae=auto.indirect,dc=themaw,dc=net
+/other   ldap:nisMapName=auto.indirect,dc=themaw,dc=net

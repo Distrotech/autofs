@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.4 2004/04/03 07:14:33 raven Exp $
+# $Id: Makefile,v 1.5 2004/08/29 12:46:23 raven Exp $
 #
 # Makefile for autofs
 #
@@ -57,7 +57,7 @@ install: all
 	-rm -f $(INSTALLROOT)$(autofslibdir)/mount_smbfs.so
 ifeq ($(EXT2FS), 1)
  ifeq ($(EXT3FS), 1)
-	ln -s mount_ext2.so $(INSTALLROOT)$(autofslibdir)/mount_ext3.so
+	ln -fs mount_ext2.so $(INSTALLROOT)$(autofslibdir)/mount_ext3.so
  endif
 else
  ifeq ($(EXT3FS), 1)

@@ -6,7 +6,7 @@
 .\"
 .\" This is free documentation.
 .\"
-.\" $Id: automount.8,v 1.6 2004/05/18 12:22:40 raven Exp $
+.\" $Id: automount.8,v 1.7 2004/08/29 12:46:23 raven Exp $
 .\"
 .TH AUTOMOUNT 8 "14 Jan 2000"
 .SH NAME
@@ -45,12 +45,13 @@ until accesssed. The wildcard map is not ghosted.
 Display the version number, then exit.
 .SH ARGUMENTS
 \fBautomount\fP takes at least three arguments.  Mandatory arguments 
-include \fImount-point\fP, \fImap-type\fP and \fImap\fP.  Both mandatory
+include \fImount-point\fP, \fImap-type\fP, and \fImap\fP.  Both mandatory
 and optional arguments are described below.
 .TP
 \fBmount-point\fP
 Base location for autofs-mounted filesystems to be attached.  This is a
-directory name which must already exist.
+directory name that will be created (as with \fBmkdir \-p\fP) and later
+when \fBautomount\fP terminates will be removed (as with \fBrmdir \-p\fP).
 .TP
 \fBmap-type\fP
 Type of map used for this invocation of \fBautomount\fP.  The following are
@@ -78,7 +79,7 @@ entries are used for maps.
 .B ldap
 map names are of the form \fB[//servername/]basedn\fP, where the optional
 \fBservername\fP is the name of the LDAP server to query, and \fBbasedn\fP is
-the DN to do a subtree search under. Two LDAP schema are supported. The i
+the DN to do a subtree search under. Two LDAP schema are supported. The
 automountMap and the nisMap (RFC 2307) object classes.
 .P
 Entries in the automountMap schema are \fBautomount\fP objects in
@@ -88,12 +89,13 @@ information used by the automounter.  Documentation on the schema
 used by this module is available online at
 \fIhttp://docs.sun.com/source/806-4251-10/mapping.htm\fP.
 .P
-RFC 2307 schema entries are \fBnisObject\fB objects and use the \fBcn\fB
-attribute as the key and the \fBnisMapEntry\fB contains information used
+RFC 2307 schema entries are \fBnisObject\fP objects and use the \fBcn\fP
+attribute as the key and the \fBnisMapEntry\fP contains information used
 by the automounter. 
 .RE
 .TP
-\fBformat\fP Format of the map data; currently the only formats
+\fBformat\fP
+Format of the map data; currently the only formats
 recognized are \fBsun\fP, which is a subset of the Sun automounter map
 format, and \fBhesiod\fP, for hesiod filesys entries.  If the format is
 left unspecified, it defaults to \fBsun\fP for all map types except

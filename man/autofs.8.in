@@ -1,10 +1,10 @@
-.\" $Id: autofs.8.in,v 1.2 2003/09/29 08:22:35 raven Exp $
+.\" $Id: autofs.8.in,v 1.3 2004/08/29 12:46:23 raven Exp $
 .TH AUTOFS 8 "9 Sep 1997"
 .SH NAME
 @@INIT.D@@/autofs \- Control Script for automounter
 .SH SYNOPSIS
 .B @@INIT.D@@/autofs
-.I start|stop|reload
+.I start|stop|reload|status
 .SH "DESCRIPTION"
 .B autofs
 control the operation of the
