@@ -1,4 +1,4 @@
-#ident "$Id: lock.c,v 1.3 2005/01/09 12:48:45 raven Exp $"
+#ident "$Id: lock.c,v 1.4 2005/01/09 13:10:04 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  lock.c - autofs lockfile management
@@ -116,7 +116,7 @@ static void setup_locksigs(void)
 	sa.sa_flags = 0;
 	sigfillset(&sa.sa_mask);
 
-	alarm_remaining = alarm(0);
+	alarm(0);
 	sigprocmask(SIG_BLOCK, &sa.sa_mask, NULL);
 
 	while (sigismember(&sa.sa_mask, ++sig) != -1
@@ -124,9 +124,6 @@ static void setup_locksigs(void)
 		sigaction(sig, &sa, &actions[sig]);
 	}
 
-	sigaction(SIGUSR1, &sa, &actions[SIGUSR1]);
-	sigaction(SIGUSR2, &sa, &actions[SIGUSR2]);
-	
 	sa.sa_handler = setlkw_timeout;
 	sigaction(SIGVTALRM, &sa, &actions[SIGVTALRM]);
 
@@ -147,13 +144,11 @@ static void reset_locksigs(void)
 		sigaction(sig, &actions[sig], NULL);
 	}
 
-	sigaction(SIGUSR1, &actions[SIGUSR1], NULL);
-	sigaction(SIGUSR2, &actions[SIGUSR2], NULL);
 	sigaction(SIGVTALRM, &actions[SIGVTALRM], NULL);
 	
 	signals_have_been_setup = 0;
 	sigprocmask(SIG_UNBLOCK, &fullset, NULL);
-	alarm(alarm_remaining);
+	alarm(ap.exp_runfreq);
 }
 
 /* Remove lock file. */
