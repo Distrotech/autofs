@@ -1,6 +1,6 @@
 diff -Nur linux-2.4.18.dist/fs/autofs4/autofs_i.h autofs4-2.4/fs/autofs4/autofs_i.h
 --- linux-2.4.18.dist/fs/autofs4/autofs_i.h	2001-11-23 03:46:40.000000000 +0800
-+++ autofs4-2.4/fs/autofs4/autofs_i.h	2003-09-29 15:21:59.000000000 +0800
++++ autofs4-2.4/fs/autofs4/autofs_i.h	2003-09-29 18:03:18.000000000 +0800
 @@ -68,11 +68,18 @@
  	} u;
  };
@@ -20,15 +20,7 @@ diff -Nur linux-2.4.18.dist/fs/autofs4/autofs_i.h autofs4-2.4/fs/autofs4/autofs_
  	autofs_wqt_t wait_queue_token;
  	/* We use the following to see what we are waiting for */
  	int hash;
-@@ -80,6 +87,7 @@
- 	char *name;
- 	/* This is for status reporting upon return */
- 	int status;
-+	struct task_struct *owner;
- 	int wait_ctr;
- };
- 
-@@ -91,7 +99,10 @@
+@@ -91,7 +98,10 @@
  	pid_t oz_pgrp;
  	int catatonic;
  	int version;
@@ -39,7 +31,7 @@ diff -Nur linux-2.4.18.dist/fs/autofs4/autofs_i.h autofs4-2.4/fs/autofs4/autofs_
  	struct super_block *sb;
  	struct autofs_wait_queue *queues; /* Wait queue pointer */
  };
-@@ -123,6 +134,12 @@
+@@ -123,6 +133,12 @@
  		(inf != NULL && inf->flags & AUTOFS_INF_EXPIRING);
  }
  
@@ -52,7 +44,7 @@ diff -Nur linux-2.4.18.dist/fs/autofs4/autofs_i.h autofs4-2.4/fs/autofs4/autofs_
  struct inode *autofs4_get_inode(struct super_block *, struct autofs_info *);
  struct autofs_info *autofs4_init_inf(struct autofs_sb_info *, mode_t mode);
  void autofs4_free_ino(struct autofs_info *);
-@@ -156,6 +173,56 @@
+@@ -156,6 +172,56 @@
  	NFY_EXPIRE
  };
  
@@ -112,7 +104,7 @@ diff -Nur linux-2.4.18.dist/fs/autofs4/autofs_i.h autofs4-2.4/fs/autofs4/autofs_
 +
 diff -Nur linux-2.4.18.dist/fs/autofs4/expire.c autofs4-2.4/fs/autofs4/expire.c
 --- linux-2.4.18.dist/fs/autofs4/expire.c	2001-06-12 10:15:27.000000000 +0800
-+++ autofs4-2.4/fs/autofs4/expire.c	2003-09-29 15:21:59.000000000 +0800
++++ autofs4-2.4/fs/autofs4/expire.c	2003-09-29 18:03:18.000000000 +0800
 @@ -4,6 +4,7 @@
   *
   *  Copyright 1997-1998 Transmeta Corporation -- All Rights Reserved
@@ -582,7 +574,7 @@ diff -Nur linux-2.4.18.dist/fs/autofs4/expire.c autofs4-2.4/fs/autofs4/expire.c
  
 diff -Nur linux-2.4.18.dist/fs/autofs4/inode.c autofs4-2.4/fs/autofs4/inode.c
 --- linux-2.4.18.dist/fs/autofs4/inode.c	2001-11-10 06:11:14.000000000 +0800
-+++ autofs4-2.4/fs/autofs4/inode.c	2003-09-29 15:21:59.000000000 +0800
++++ autofs4-2.4/fs/autofs4/inode.c	2003-09-29 18:03:18.000000000 +0800
 @@ -87,7 +87,7 @@
  
  	kfree(sbi);
@@ -665,7 +657,7 @@ diff -Nur linux-2.4.18.dist/fs/autofs4/inode.c autofs4-2.4/fs/autofs4/inode.c
  	 */
 diff -Nur linux-2.4.18.dist/fs/autofs4/Makefile autofs4-2.4/fs/autofs4/Makefile
 --- linux-2.4.18.dist/fs/autofs4/Makefile	2000-12-30 06:07:23.000000000 +0800
-+++ autofs4-2.4/fs/autofs4/Makefile	2003-09-29 15:21:59.000000000 +0800
++++ autofs4-2.4/fs/autofs4/Makefile	2003-09-29 18:03:18.000000000 +0800
 @@ -6,7 +6,7 @@
  
  O_TARGET := autofs4.o
@@ -677,7 +669,7 @@ diff -Nur linux-2.4.18.dist/fs/autofs4/Makefile autofs4-2.4/fs/autofs4/Makefile
  
 diff -Nur linux-2.4.18.dist/fs/autofs4/readdir.c autofs4-2.4/fs/autofs4/readdir.c
 --- linux-2.4.18.dist/fs/autofs4/readdir.c	1970-01-01 08:00:00.000000000 +0800
-+++ autofs4-2.4/fs/autofs4/readdir.c	2003-09-29 15:21:59.000000000 +0800
++++ autofs4-2.4/fs/autofs4/readdir.c	2003-09-29 18:03:18.000000000 +0800
 @@ -0,0 +1,73 @@
 +/*
 + *  linux/fs/readdir.c
@@ -754,7 +746,7 @@ diff -Nur linux-2.4.18.dist/fs/autofs4/readdir.c autofs4-2.4/fs/autofs4/readdir.
 +}
 diff -Nur linux-2.4.18.dist/fs/autofs4/root.c autofs4-2.4/fs/autofs4/root.c
 --- linux-2.4.18.dist/fs/autofs4/root.c	2000-10-24 12:57:38.000000000 +0800
-+++ autofs4-2.4/fs/autofs4/root.c	2003-09-29 15:21:59.000000000 +0800
++++ autofs4-2.4/fs/autofs4/root.c	2003-09-29 18:03:18.000000000 +0800
 @@ -4,6 +4,7 @@
   *
   *  Copyright 1997-1998 Transmeta Corporation -- All Rights Reserved
@@ -1541,7 +1533,7 @@ diff -Nur linux-2.4.18.dist/fs/autofs4/root.c autofs4-2.4/fs/autofs4/root.c
  }
 diff -Nur linux-2.4.18.dist/fs/autofs4/waitq.c autofs4-2.4/fs/autofs4/waitq.c
 --- linux-2.4.18.dist/fs/autofs4/waitq.c	2001-02-10 03:29:44.000000000 +0800
-+++ autofs4-2.4/fs/autofs4/waitq.c	2003-09-29 15:21:59.000000000 +0800
++++ autofs4-2.4/fs/autofs4/waitq.c	2003-09-29 18:03:18.000000000 +0800
 @@ -3,6 +3,7 @@
   * linux/fs/autofs/waitq.c
   *
@@ -1746,7 +1738,7 @@ diff -Nur linux-2.4.18.dist/fs/autofs4/waitq.c autofs4-2.4/fs/autofs4/waitq.c
  }
 diff -Nur linux-2.4.18.dist/include/linux/auto_fs4.h autofs4-2.4/include/linux/auto_fs4.h
 --- linux-2.4.18.dist/include/linux/auto_fs4.h	2001-11-23 03:46:40.000000000 +0800
-+++ autofs4-2.4/include/linux/auto_fs4.h	2003-09-29 15:21:59.000000000 +0800
++++ autofs4-2.4/include/linux/auto_fs4.h	2003-09-29 18:03:18.000000000 +0800
 @@ -23,6 +23,12 @@
  #define AUTOFS_MIN_PROTO_VERSION	3
  #define AUTOFS_MAX_PROTO_VERSION	4
@@ -1775,7 +1767,7 @@ diff -Nur linux-2.4.18.dist/include/linux/auto_fs4.h autofs4-2.4/include/linux/a
  #endif /* _LINUX_AUTO_FS4_H */
 diff -Nur linux-2.4.18.dist/include/linux/auto_fs.h autofs4-2.4/include/linux/auto_fs.h
 --- linux-2.4.18.dist/include/linux/auto_fs.h	2001-11-23 03:46:40.000000000 +0800
-+++ autofs4-2.4/include/linux/auto_fs.h	2003-09-29 15:21:59.000000000 +0800
++++ autofs4-2.4/include/linux/auto_fs.h	2003-09-29 18:03:18.000000000 +0800
 @@ -45,7 +45,7 @@
   * If so, 32-bit user-space code should be backwards compatible.
   */
