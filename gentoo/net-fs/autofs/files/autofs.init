@@ -1,7 +1,7 @@
 #!/sbin/runscript
 # Copyright 1999-2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Header: /home/cvs/root/autofs/gentoo/net-fs/autofs/files/autofs.init,v 1.12 2005/03/27 05:30:42 raven Exp $
+# $Header: /home/cvs/root/autofs/gentoo/net-fs/autofs/files/autofs.init,v 1.13 2005/03/27 05:41:26 raven Exp $
 
 # rc file for automount using a Sun-style "master map".
 # We first look for a local /etc/autofs/auto.master, then a YP
@@ -220,10 +220,10 @@ function getmounts()
 			map=`echo ${SYSCONFDIR}/$map | sed 's^//^/^g'`
 		    else
 			maptype=yp
-			if [ "$underscoredot" = "0" ] ; then
-			    map=`basename $map | sed 's^//^/^g'`
-			else
+			if [ "$underscoredot" = "1" ] ; then
 			    map=`basename $map | sed -e s/^auto_home/auto.home/ -e s/^auto_mnt/auto.mnt/`
+			else
+			    map=`basename $map | sed 's^//^/^g'`
 			fi
 		    fi
 		fi
