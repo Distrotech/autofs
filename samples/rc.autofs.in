@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# $Id: rc.autofs.in,v 1.14 2004/04/28 12:39:41 raven Exp $
+# $Id: rc.autofs.in,v 1.15 2004/05/10 13:57:14 raven Exp $
 #
 # rc file for automount using a Sun-style "master map".
 # We first look for a local /etc/auto.master, then a YP
@@ -444,12 +444,13 @@ function debian()
 case "$1" in
     start)
 	echo -n 'Starting automounter:'
-	getmounts | while read cmd mnt rest
+	getmounts | while read cmd rest
 	do
+		mnt=`echo $rest | sed 's/^.* \(\/[^ ]*\) [A-Za-z].*$/\1/'`
 		echo -n " $mnt"
 		pidfile=/var/run/autofs`echo $mnt | sed 's/\//./'`.pid
 		start-stop-daemon --start --pidfile $pidfile --quiet \
-			--exec $DAEMON $daemonoptions -- $mnt $rest
+			--exec $DAEMON $daemonoptions -- $rest
 	done
 	echo "."
 	;;
