@@ -1,4 +1,4 @@
-#ident "$Id: automount.c,v 1.24 2004/12/26 05:05:32 raven Exp $"
+#ident "$Id: automount.c,v 1.25 2004/12/31 06:30:08 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  automount.c - Linux automounter daemon
@@ -800,7 +800,7 @@ static int st_readmap(void)
 {
 	int status;
 
-	status = ap.lookup->lookup_ghost(ap.path, ap.ghost, ap.lookup->context);
+	status = ap.lookup->lookup_ghost(ap.path, ap.ghost, 0, ap.lookup->context);
 
 	debug("st_readmap: status %d\n", status);
 
@@ -1505,7 +1505,7 @@ static void sig_supervisor(int sig)
 		break;
 
 	case SIGHUP:
-		ap.lookup->lookup_ghost(ap.path, ap.ghost, ap.lookup->context);
+		ap.lookup->lookup_ghost(ap.path, ap.ghost, 0, ap.lookup->context);
 
 		/* Pass on the reread event and ignore self signal */
 		kill(0, SIGHUP);
@@ -1523,7 +1523,7 @@ int supervisor(char *path)
 	ap.path = alloca(strlen(path) + 1);
 	strcpy(ap.path, path);
 
-	map = ap.lookup->lookup_ghost(ap.path, ap.ghost, ap.lookup->context);
+	map = ap.lookup->lookup_ghost(ap.path, ap.ghost, 0, ap.lookup->context);
 	if (map & LKP_FAIL) {
 		error("failed to load map exiting");
 		cleanup_exit(ap.path, 1);
@@ -1591,7 +1591,7 @@ int handle_mounts(char *path)
 			alarm(ap.exp_runfreq + my_pid % ap.exp_runfreq);
 	}
 
-	map = ap.lookup->lookup_ghost(ap.path, ap.ghost, ap.lookup->context);
+	map = ap.lookup->lookup_ghost(ap.path, ap.ghost, 0, ap.lookup->context);
 	if (map & LKP_FAIL) {
 		if (map & LKP_INDIRECT) {
 			error("bad map format: found indirect, "

@@ -1,4 +1,4 @@
-#ident "$Id: lookup_hesiod.c,v 1.4 2004/11/17 13:39:12 raven Exp $"
+#ident "$Id: lookup_hesiod.c,v 1.5 2004/12/31 06:30:08 raven Exp $"
 /*
  * lookup_hesiod.c
  *
@@ -57,7 +57,7 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 	return !(ctxt->parser = open_parse(mapfmt, MODPREFIX, argc - 1, argv + 1));
 }
 
-int lookup_ghost(const char *root, int ghost, void *context)
+int lookup_ghost(const char *root, int ghost, time_t now, void *context)
 {
 	return LKP_NOTSUP;
 }

@@ -1,4 +1,4 @@
-#ident "$Id: cache.c,v 1.9 2004/11/21 05:35:06 raven Exp $"
+#ident "$Id: cache.c,v 1.10 2004/12/31 06:30:08 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  cache.c - mount entry cache management routines
@@ -165,7 +165,7 @@ struct mapent_cache *cache_partial_match(const char *prefix)
 
 int cache_add(const char *root, const char *key, const char *mapent, time_t age)
 {
-	struct mapent_cache *me = NULL;
+	struct mapent_cache *me = NULL, *existing = NULL;
 	char *pkey, *pent;
 	unsigned int hashval = hash(key);
 
@@ -190,8 +190,27 @@ int cache_add(const char *root, const char *key, const char *mapent, time_t age)
 	me->mapent = strcpy(pent, mapent);
 	me->age = age;
 
-	me->next = mapent_hash[hashval];
-	mapent_hash[hashval] = me;
+	/* 
+	 * We need to add to the end if values exist in order to
+	 * preserve the order in which the map was read on lookup.
+	 */
+	existing = cache_lookup(key);
+	if (!existing) {
+		me->next = mapent_hash[hashval];
+		mapent_hash[hashval] = me;
+	} else {
+		while (1) {
+			struct mapent_cache *next;
+		
+			next = cache_lookup_next(existing);
+			if (!next)
+				break;
+
+			existing = next;
+		}
+		me->next = existing->next;
+		existing->next = me;
+	}
 
 	return CHE_OK;
 }

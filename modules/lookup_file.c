@@ -1,4 +1,4 @@
-#ident "$Id: lookup_file.c,v 1.10 2004/12/26 05:05:32 raven Exp $"
+#ident "$Id: lookup_file.c,v 1.11 2004/12/31 06:30:08 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup_file.c - module for Linux automount to query a flat file map
@@ -226,14 +226,14 @@ static int read_one(FILE *f, char *key, char *mapent)
 	return 0;
 }
 
-static int read_map(const char *root, struct lookup_context *ctxt)
+static int read_map(const char *root, time_t now, struct lookup_context *ctxt)
 {
 	char key[KEY_MAX_LEN + 1];
 	char mapent[MAPENT_MAX_LEN + 1];
 	char *mapname;
 	FILE *f;
 	int  entry;
-	time_t age = time(NULL);
+	time_t age = now ? now : time(NULL);
 
 	mapname = alloca(strlen(ctxt->mapname) + 6);
 	sprintf(mapname, "file:%s", ctxt->mapname);
@@ -261,14 +261,14 @@ static int read_map(const char *root, struct lookup_context *ctxt)
 	return 1;
 }
 
-int lookup_ghost(const char *root, int ghost, void *context)
+int lookup_ghost(const char *root, int ghost, time_t now, void *context)
 {
 	struct lookup_context *ctxt = (struct lookup_context *) context;
 	struct mapent_cache *me;
 	struct stat st;
 	int status = 1;
 
-	if (!read_map(root, ctxt))
+	if (!read_map(root, now, ctxt))
 		return LKP_FAIL;
 
 	if (stat(ctxt->mapname, &st)) {

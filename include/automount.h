@@ -1,4 +1,4 @@
-#ident "$Id: automount.h,v 1.10 2004/12/26 04:48:15 raven Exp $"
+#ident "$Id: automount.h,v 1.11 2004/12/31 06:30:08 raven Exp $"
 /*
  * automount.h
  *
@@ -139,12 +139,12 @@ int rmdir_path(const char *path);
 
 #ifdef MODULE_LOOKUP
 int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **context);
-int lookup_ghost(const char *, int, void *);
+int lookup_ghost(const char *, int, time_t, void *);
 int lookup_mount(const char *, const char *, int, void *);
 int lookup_done(void *);
 #endif
 typedef int (*lookup_init_t) (const char *, int, const char *const *, void **);
-typedef int (*lookup_ghost_t) (const char *, int, void *);
+typedef int (*lookup_ghost_t) (const char *, int, time_t, void *);
 typedef int (*lookup_mount_t) (const char *, const char *, int, void *);
 typedef int (*lookup_done_t) (void *);
 

@@ -1,4 +1,4 @@
-#ident "$Id: lookup_ldap.c,v 1.10 2004/11/21 05:35:06 raven Exp $"
+#ident "$Id: lookup_ldap.c,v 1.11 2004/12/31 06:30:08 raven Exp $"
 /*
  * lookup_ldap.c - Module for Linux automountd to access automount
  *		   maps in LDAP directories.
@@ -184,10 +184,9 @@ static int read_one_map(const char *root,
 			const char *class, char *key,
 			const char *keyval, int keyvallen, char *type,
 			struct lookup_context *ctxt,
-			int *result_ldap)
+			time_t age, int *result_ldap)
 {
 	int rv, i, l, count;
-	time_t age = time(NULL);
 	char *query;
 	LDAPMessage *result, *e;
 	char **keyValue = NULL;
@@ -290,17 +289,16 @@ static int read_one_map(const char *root,
 }
 
 static int read_map(const char *root, struct lookup_context *ctxt,
-		    const char *key, int keyvallen, int *result_ldap)
+		    const char *key, int keyvallen, time_t age, int *result_ldap)
 {
-	time_t age = time(NULL);
 	int rv = LDAP_SUCCESS;
 
 	/* all else fails read entire map */
 	if (!read_one_map(root, "nisObject", "cn", 
-			  key, keyvallen, "nisMapEntry", ctxt, &rv)) {
+			  key, keyvallen, "nisMapEntry", ctxt, age, &rv)) {
 		if ((rv != LDAP_SUCCESS) || 
 		    !read_one_map(root, "automount", "cn", key, keyvallen, 
-				  "automountInformation", ctxt, &rv)) {
+				  "automountInformation", ctxt, age, &rv)) {
 			if (result_ldap != NULL)
 				*result_ldap = rv;
 			return 0;
@@ -313,16 +311,17 @@ static int read_map(const char *root, struct lookup_context *ctxt,
 	return 1;
 }
 
-int lookup_ghost(const char *root, int ghost, void *context)
+int lookup_ghost(const char *root, int ghost, time_t now, void *context)
 {
 	struct lookup_context *ctxt = (struct lookup_context *) context;
 	struct mapent_cache *me;
 	int status = 1, rv = LDAP_SUCCESS;
 	char *mapname;
+	time_t age = now ? now : time(NULL);
 
 	chdir("/");
 
-	if (!read_map(root, ctxt, NULL, 0, &rv))
+	if (!read_map(root, ctxt, NULL, 0, age, &rv))
 		switch (rv) {
 		case LDAP_SIZELIMIT_EXCEEDED:
 		case LDAP_UNWILLING_TO_PERFORM:

@@ -1,4 +1,4 @@
-#ident "$Id: lookup_yp.c,v 1.6 2004/11/21 08:38:00 raven Exp $"
+#ident "$Id: lookup_yp.c,v 1.7 2004/12/31 06:30:09 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup_yp.c - module for Linux automountd to access a YP (NIS)
@@ -44,16 +44,8 @@ struct lookup_context {
 };
 
 struct callback_data {
-	int status;
-	int map;
 	const char *root;
-	char direct_base[KEY_MAX_LEN + 1];
-	const char *name;
-	int name_len;
-	unsigned long type;
-	const char *mapname;
 	time_t age;
-	struct lookup_context *context;
 };
 
 int lookup_version = AUTOFS_LOOKUP_VERSION;	/* Required by protocol */
@@ -93,8 +85,9 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 int yp_all_callback(int status, char *ypkey, int ypkeylen,
 		    char *val, int vallen, char *ypcb_data)
 {
-	time_t age = time(NULL);
-	char *root = ypcb_data;
+	struct callback_data *cbdata = (struct callback_data *) ypcb_data;
+	char *root = cbdata->root;
+	time_t age = cbdata->age;
 	char *key;
 	char *mapent;
 
@@ -114,15 +107,18 @@ int yp_all_callback(int status, char *ypkey, int ypkeylen,
 	return 0;
 }
 
-static int read_map(const char *root, struct lookup_context *context)
+static int read_map(const char *root, time_t age, struct lookup_context *context)
 {
 	struct lookup_context *ctxt = (struct lookup_context *) context;
 	struct ypall_callback ypcb;
-	time_t age = time(NULL);
+	struct callback_data ypcb_data;
 	int err;
 
+	ypcb_data.root = root;
+	ypcb_data.age = age;
+
 	ypcb.foreach = yp_all_callback;
-	ypcb.data = (char *) root;
+	ypcb.data = (char *) &ypcb_data;
 
 	err = yp_all((char *) ctxt->domainname, (char *) ctxt->mapname, &ypcb);
 
@@ -138,13 +134,14 @@ static int read_map(const char *root, struct lookup_context *context)
 	return 1;
 }
 
-int lookup_ghost(const char *root, int ghost, void *context)
+int lookup_ghost(const char *root, int ghost, time_t now, void *context)
 {
 	struct lookup_context *ctxt = (struct lookup_context *) context;
+	time_t age = now ? now : time(NULL);
 	struct mapent_cache *me;
 	int status = 1;
 
-	if (!read_map(root, ctxt))
+	if (!read_map(root, age, ctxt))
 		return LKP_FAIL;
 
 	status = cache_ghost(root, ghost, ctxt->mapname, "yp", ctxt->parse);

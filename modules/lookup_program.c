@@ -1,4 +1,4 @@
-#ident "$Id: lookup_program.c,v 1.6 2004/12/28 04:16:28 raven Exp $"
+#ident "$Id: lookup_program.c,v 1.7 2004/12/31 06:30:09 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup_program.c - module for Linux automount to access an
@@ -76,7 +76,7 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 	return !(ctxt->parse = open_parse(mapfmt, MODPREFIX, argc - 1, argv + 1));
 }
 
-int lookup_ghost(const char *root, int ghost, void *context)
+int lookup_ghost(const char *root, int ghost, time_t now, void *context)
 {
 	return LKP_NOTSUP;
 }
