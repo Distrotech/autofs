@@ -1,4 +1,4 @@
-#ident "$Id: lock.c,v 1.7 2005/01/10 08:31:00 raven Exp $"
+#ident "$Id: lock.c,v 1.8 2005/01/10 08:40:37 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  lock.c - autofs lockfile management
@@ -23,6 +23,7 @@
 
 #include <sys/time.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <time.h>
 #include <unistd.h>
 #include <string.h>
@@ -92,7 +93,7 @@ static int lock_is_owned(int fd)
 		 * If the write isn't finish in 300 milliseconds then it's
 		 * probably a stale lock file.
 		 */
-		if (got > 0 && pibbuf[got - 1] == '\n') {
+		if (got > 0 && pidbuf[got - 1] == '\n') {
 			sscanf(pidbuf, "%d", &pid);
 			break;
 		} else {
@@ -273,10 +274,10 @@ int aquire_lock(void)
 				struct timespec t = { 0, 100000000 };
 				struct timespec r;
 				int ts_size = sizeof(struct timespec);
-				int stat;
+				int status;
 				struct stat st;
 
-				stat = stat(LOCK_FILE, &st);
+				status = stat(LOCK_FILE, &st);
 				if (!stat) {
 					while (nanosleep(&t, &r) == -1 && errno == EINTR) {
 						if (got_term) {
@@ -288,7 +289,7 @@ int aquire_lock(void)
 							  LOCK_FILE);
 							return 0;
 						}
-						memcpy(&t, &r, ts_size));
+						memcpy(&t, &r, ts_size);
 					}
 				}
 			}
@@ -312,6 +313,7 @@ int aquire_lock(void)
 				fd = -1;
 				reset_locksigs();
 			}
+		}
 
 	}
 
