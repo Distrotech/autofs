@@ -76,6 +76,7 @@
 - implement signaling of submount processes from within daemon.
    - Fix errors in mount entry handling module.
    - Update lock module to suit.
+- merge multi map over mount patch.
 
 19/05/2004 autofs-4.1.3
 -----------------------
