@@ -1,6 +1,6 @@
-#!/bin/sh
+#!/bin/bash
 
-# $Id: auto.smb,v 1.2 2005/03/07 08:49:09 raven Exp $
+# $Id: auto.smb,v 1.3 2005/04/05 13:02:09 raven Exp $
 
 # This file must be executable to work! chmod 755!
 

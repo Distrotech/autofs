@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# $Id: rc.autofs.in,v 1.55 2005/04/05 12:40:07 raven Exp $
+# $Id: rc.autofs.in,v 1.56 2005/04/05 13:02:09 raven Exp $
 #
 # rc file for automount using a Sun-style "master map".
 # We first look for a local /etc/auto.master, then a YP
@@ -456,11 +456,11 @@ function umount_loopback()
 		echo ""
 		echo -n $"Unmounting loopback filesystem $match:  "
 		loopdev=`LC_ALL=C grep $l /proc/mounts | awk '{print $1}'`
-		umount -d $match || ret=$?
-		if [ $ret -eq 0 ]; then
+		umount -d $match
+		if [ $? -eq 0 ]; then
 		    echo "done"
 		else
-		    echo "failed ($ret)"
+		    echo "failed ($?)"
 		fi
 	    fi
 	done
@@ -478,11 +478,11 @@ function umount_loopback()
 	    if [ -n "$match" ]; then
 		echo ""
 		echo -n $"Unmounting loopback filesystem $match:  "
-		umount -d $match || ret=$?
-		if [ $ret -eq 0 ]; then
+		umount -d $match
+		if [ $? -eq 0 ]; then
 		    echo "done"
 		else
-		    echo "failed ($ret)"
+		    echo "failed ($?)"
 		fi
 	    fi
 	done
@@ -600,8 +600,6 @@ esac
 function debian()
 {
 
-set -e
-
 case "$1" in
 start)
 	echo -n 'Starting automounter:'
@@ -636,10 +634,12 @@ start)
 	do
 		mnt=`echo $rest | sed 's/^.* \(\/[^ ]*\) [A-Za-z].*$/\1/'`
 		pidfile=/var/run/autofs/`echo $mnt | sed 's,/,_,g'`.pid
+		dname=`basename $DAEMON`
 
 		start-stop-daemon --start --pidfile $pidfile --quiet \
-	  		--exec $DAEMON -- --pid-file=$pidfile $rest ||
-			ret=$?
+	  		--name $dname -- --pid-file=$pidfile $rest
+
+		ret=$?
 
 		if [ $ret -ne 0 ]
 		then
@@ -664,11 +664,13 @@ stop)
 			pid=`head -n 1 $file`
 			mnt=`ps -wwo 'cmd=' $pid | sed -e \
 			  's,.* --pid-file=/var/run/autofs/\([^ ]*\)\.pid.*,\1,; s,_,/,g'`
+			dname=`basename $DAEMON`
 
 			start-stop-daemon --stop --quiet \
 					--retry USR2/$DAEMON_EXIT_WAIT \
-					--pidfile $file --exec $DAEMON ||
-				ret=$?
+					--pidfile $file --name $dname
+
+			ret=$?
 
 			case $ret in
 			0)
@@ -726,10 +728,12 @@ reload)
 
 			mnt=`echo $rest | sed 's/^.* \(\/[^ ]*\) [A-Za-z].*$/\1/'`
 			pidfile=/var/run/autofs/`echo $mnt | sed 's,/,_,g'`.pid
+			dname=`basename $DAEMON`
 
 			start-stop-daemon --start --pidfile $pidfile --quiet \
-				--exec $DAEMON -- --pid-file=$pidfile $rest ||
-				ret=$?
+				--name $dname -- --pid-file=$pidfile $rest
+
+			ret=$?
 
 			if [ $ret -ne 0 ]
 			then
