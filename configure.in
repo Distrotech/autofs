@@ -1,5 +1,5 @@
 #
-#ident $Id: configure.in,v 1.12 2004/05/11 13:51:36 raven Exp $
+#ident $Id: configure.in,v 1.13 2004/05/11 14:07:44 raven Exp $
 #
 # configure.in for the autofs daemon
 
@@ -138,7 +138,7 @@ CFLAGS=-fPIE
 LDFLAGS=-pie
 DAEMON_CFLAGS=
 DAEMON_LDFLAGS=
-AC_MSG_CHECKING([whether gcc accepts -fpie])
+AC_MSG_CHECKING([whether gcc -fPIE works])
 AC_RUN_IFELSE([AC_LANG_PROGRAM([[]], [[int main(void) {return 0;}]])],
 	      [gcc_supports_pie=yes], [gcc_supports_pie=no])
 AC_MSG_RESULT([$gcc_supports_pie])
