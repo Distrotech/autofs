@@ -38,6 +38,7 @@ xx/xx/2004 autofs-4.1.4
 - carry -D variable definitions to submounts (Michael Blandforf).
 - merge Debian patch 044 044 update reference to mailing list (Arthur Korn).
 - provide ability to convert read-only NFS mounts to read-only bind mounts (Thorild Selen).
+- fix incorrect direct map entry lookup in yp module. 
 
 19/05/2004 autofs-4.1.3
 -----------------------
