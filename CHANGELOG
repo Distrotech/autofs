@@ -77,7 +77,6 @@
    - Fix errors in mount entry handling module.
    - Update lock module to suit.
 - merge multi map over mount patch.
-- add Debian package infrastructure.
 - add init script variable to allow adjustment of time to wait for shutdown.
 
 19/05/2004 autofs-4.1.3

@@ -1,6 +1,0 @@
-build_dir/CHANGELOG
-build_dir/README*
-build_dir/CREDITS
-build_dir/patches/*.patch
-build_dir/samples/autofs.schema
-build_dir/samples/ldap*
