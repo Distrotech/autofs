@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# $Id: rc.autofs.in,v 1.50 2005/03/07 08:58:00 raven Exp $
+# $Id: rc.autofs.in,v 1.51 2005/03/26 07:27:12 raven Exp $
 #
 # rc file for automount using a Sun-style "master map".
 # We first look for a local /etc/auto.master, then a YP
@@ -86,6 +86,11 @@ if [ "$system" = "redhat" ]; then
 	DAEMON_EXIT_WAIT=20
 
 	[ -f /etc/sysconfig/autofs ] && . /etc/sysconfig/autofs
+
+	# Over-ride localoptions if set
+	if [ -n "$LOCALOPTIONS" ]; then
+		localoptions=$LOCALOPTIONS
+	fi
 
 	# Over-ride daemonoptions if set
 	if [ -n "$DAEMONOPTIONS" ]; then
@@ -332,7 +337,7 @@ function getmounts()
 		for m in $mapoptions
 		do
 			if [ x"$m" = x"--" ]; then
-				NEWOPTIONS="$NEWOPTIONS $LOCALOPTIONS --"
+				NEWOPTIONS="$NEWOPTIONS $localoptions --"
 			else
 				NEWOPTIONS="$NEWOPTIONS $m"
 			fi
