@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# $Id: rc.autofs.in,v 1.26 2005/01/02 05:01:41 raven Exp $
+# $Id: rc.autofs.in,v 1.27 2005/01/02 05:37:46 raven Exp $
 #
 # rc file for automount using a Sun-style "master map".
 # We first look for a local /etc/auto.master, then a YP
@@ -606,6 +606,12 @@ start)
 	then
 		echo "No automount maps defined"
 		exit 1
+	fi
+
+	# ensure pid file directory exists
+	if [ ! -e /var/run/autofs ]
+	then
+		mkdir /var/run/autofs
 	fi
 
 	getmounts | while read cmd rest
