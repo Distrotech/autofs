@@ -1,4 +1,4 @@
-#ident "$Id: lock.c,v 1.11 2005/01/10 14:07:28 raven Exp $"
+#ident "$Id: lock.c,v 1.12 2005/01/10 15:50:24 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  lock.c - autofs lockfile management
@@ -195,8 +195,10 @@ static void reset_locksigs(void)
 void release_lock(void)
 {
 	if (we_created_lockfile) {
-		close(fd);
-		fd = -1;
+		if (fd > 0) {
+			close(fd);
+			fd = -1;
+		}
 		unlink (LOCK_FILE);
 		we_created_lockfile = 0;
 	}
@@ -318,7 +320,10 @@ int aquire_lock(void)
 				fd = -1;
 				reset_locksigs();
 			}
+			return 0;
 		}
+		close(fd);
+		fd = -1;
 	}
 
 	reset_locksigs();
