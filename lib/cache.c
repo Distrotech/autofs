@@ -148,11 +148,15 @@ struct mapent_cache *cache_partial_match(const char *prefix)
 
 int cache_update(const char *key, const char *mapent, time_t age)
 {
-	struct mapent_cache *me = NULL;
+	struct mapent_cache *s, *me = NULL;
 	char *pkey, *pent;
 	unsigned int hashval;
 
-	if ((me = cache_lookup(key)) == NULL) {
+	for (s = mapent_hash[hash(key)]; s != NULL; s = s->next)
+		if (strcmp(key, s->key) == 0)
+			me = s;
+
+	if (me == NULL) {
 		me = (struct mapent_cache *) malloc(sizeof(struct mapent_cache));
 		if (me == NULL) {
 			return 0;
@@ -348,14 +352,11 @@ int cache_ghost(const char *root, int ghosted,
 				       "cache_ghost: entry in %s not valid map format, key %s",
 				       gc.mapname, gc.key);
 			} else if (match == LKP_WILD) {
-				/* Wildcard must be last key in map */
 				if (*me->key == '/')
 					syslog(LOG_NOTICE,
 					       "cache_ghost: wildcard map key not valid in direct map");
-				else
-					syslog(LOG_NOTICE,
-					       "cache_ghost: cannot ghost wildcard map key");
-				break;
+				me = me->next;
+				continue;;
 			}
 
 			switch (match) {
