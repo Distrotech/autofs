@@ -1,4 +1,4 @@
-#ident "$Id: automount.h,v 1.9 2004/11/23 11:51:18 raven Exp $"
+#ident "$Id: automount.h,v 1.10 2004/12/26 04:48:15 raven Exp $"
 /*
  * automount.h
  *
@@ -268,7 +268,7 @@ struct mnt_list {
 	struct mnt_list *next;
 };
 
-struct mnt_list *get_mnt_list(const cahr *table, const char *path, int include);
+struct mnt_list *get_mnt_list(const char *table, const char *path, int include);
 struct mnt_list *reverse_mnt_list(struct mnt_list *list);
 struct mnt_list *get_base_mnt_list(struct mnt_list *list);
 void free_mnt_list(struct mnt_list *list);
