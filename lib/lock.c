@@ -1,4 +1,4 @@
-#ident "$Id: lock.c,v 1.6 2005/01/09 13:41:14 raven Exp $"
+#ident "$Id: lock.c,v 1.7 2005/01/10 08:31:00 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  lock.c - autofs lockfile management
@@ -23,6 +23,7 @@
 
 #include <sys/time.h>
 #include <sys/types.h>
+#include <time.h>
 #include <unistd.h>
 #include <string.h>
 #include <fcntl.h>
@@ -78,20 +79,49 @@ static void setlkw_timeout(int sig)
 
 static int lock_is_owned(int fd)
 {
-	char pidbuf[MAX_PIDSIZE];
-	int pid = 0;
-	int ret, got;
+	int pid = 0, tries = 3;
 
-	got = read(fd, pidbuf, MAX_PIDSIZE);
-	if (got > 0)
-		sscanf(pidbuf, "%d", &pid);
+	while (tries--) {
+		char pidbuf[MAX_PIDSIZE + 1];
+		int got;
+
+		lseek(fd, 0, SEEK_SET);
+		got = read(fd, pidbuf, MAX_PIDSIZE);
+		/*
+		 * We add a terminator to the pid to verify write complete.
+		 * If the write isn't finish in 300 milliseconds then it's
+		 * probably a stale lock file.
+		 */
+		if (got > 0 && pibbuf[got - 1] == '\n') {
+			sscanf(pidbuf, "%d", &pid);
+			break;
+		} else {
+			struct timespec t = { 0, 1000000 };
+			struct timespec r;
+
+			while (nanosleep(&t, &r) == -1 && errno == EINTR) {
+				/* So we can exit quickly, return owned */
+				if (got_term)
+					return 1;
+				memcpy(&t, &r, sizeof(struct timespec));
+			}
+			continue;
+		}
+
+		/* Stale lockfile */
+		if (!tries)
+			return 0;
+	}
+
 
 	if (pid) {
+		int ret;
+
 		ret = kill(pid, SIGCONT);
 		/* 
-		 * If lock file exists but is not owned we return
-		 * unowned status so we can get rid of it and
-		 * continue.
+		 * If lock file exists but is not owned by a process
+		 * we return unowned status so we can get rid of it
+		 * and continue.
 		 */
 		if (ret == -1 && errno == ESRCH)
 			return 0;
@@ -103,6 +133,7 @@ static int lock_is_owned(int fd)
 		 */
 		return 0;
 	}
+
 	return 1;
 }
 
@@ -191,7 +222,7 @@ int aquire_lock(void)
 		i = open(linkf, O_WRONLY|O_CREAT, 0);
 		if (i < 0) {
 			release_lock();
-			return(0);
+			return 0;
 		}
 		close(i);
 
@@ -205,40 +236,25 @@ int aquire_lock(void)
 			return 0;
 		}
 
-		/* Maybe someone has this open from last time */
+		fd = open(LOCK_FILE, O_RDWR);
 		if (fd < 0) {
-			fd = open(LOCK_FILE, O_RDWR);
-			if (fd < 0) {
-				/* Maybe the file was just deleted? */
-				if (errno == ENOENT && tries-- > 0)
-					continue;
-				release_lock();
-				return 0;
-			}
+			/* Maybe the file was just deleted? */
+			if (errno == ENOENT && tries-- > 0)
+				continue;
+			release_lock();
+			return 0;
 		}
 
-		flock.l_type = F_WRLCK;
-		flock.l_whence = SEEK_SET;
-		flock.l_start = 0;
-		flock.l_len = 0;
-
 		if (j == 0) {
-			char pidbuf[MAX_PIDSIZE];
+			char pidbuf[MAX_PIDSIZE + 1];
 			int pidlen;
-
-			/* We made the link. Now claim the lock. */
-			if (fcntl(fd, F_SETLK, &flock) == -1) {
-				warn("aquire_lock: Can't get lock for %s: %s\n",
-				       LOCK_FILE, strerror(errno));
-				/* proceed anyway */
-			}
 
 			pidlen = sprintf(pidbuf, "%d\n", getpid());
 			write(fd, pidbuf, pidlen);
 
 			we_created_lockfile = 1;
 		} else {
-			static int tries = 0;
+			int tries = 3;
 
 			/*
 			 * Someone else made the link.
@@ -253,24 +269,37 @@ int aquire_lock(void)
 				continue;
 			}
 
-			setitimer(ITIMER_VIRTUAL, &timer, NULL);
-			if (fcntl(fd, F_SETLKW, &flock) == -1) {
-				int errsv = errno;
+			while (tries--) {
+				struct timespec t = { 0, 100000000 };
+				struct timespec r;
+				int ts_size = sizeof(struct timespec);
+				int stat;
+				struct stat st;
 
-				/* Limit the number of iterations */
-				if (errsv == EINTR || tries++ > LOCK_RETRIES) {
-					char *error = (errsv == EINTR) ?
-						"timed out" : strerror(errno);
-
-					crit("aquire_lock: can't lock lock file %s: %s",
-						LOCK_FILE, error);
-
-					close(fd);
-					fd = -1;
-					reset_locksigs();
-					return 0;
+				stat = stat(LOCK_FILE, &st);
+				if (!stat) {
+					while (nanosleep(&t, &r) == -1 && errno == EINTR) {
+						if (got_term) {
+							close(fd);
+							fd = -1;
+							reset_locksigs();
+							crit("aquire_lock: can't "
+							  "lock lock file %s: interrupted",
+							  LOCK_FILE);
+							return 0;
+						}
+						memcpy(&t, &r, ts_size));
+					}
 				}
+			}
 
+			if (tries < 0) {
+				close(fd);
+				fd = -1;
+				reset_locksigs();
+				crit("aquire_lock: can't "
+				  "lock lock file %s: timed out", LOCK_FILE);
+				return 0;
 			}
 		}
 
@@ -283,8 +312,7 @@ int aquire_lock(void)
 				fd = -1;
 				reset_locksigs();
 			}
-			return(0);
-		}
+
 	}
 
 	reset_locksigs();
