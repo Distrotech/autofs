@@ -1,7 +1,7 @@
 #!/sbin/runscript
 # Copyright 1999-2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Header: /home/cvs/root/autofs/gentoo/net-fs/autofs/files/autofs.init,v 1.11 2005/03/07 08:58:00 raven Exp $
+# $Header: /home/cvs/root/autofs/gentoo/net-fs/autofs/files/autofs.init,v 1.12 2005/03/27 05:30:42 raven Exp $
 
 # rc file for automount using a Sun-style "master map".
 # We first look for a local /etc/autofs/auto.master, then a YP
@@ -46,7 +46,7 @@ function catnismap()
 function getfilemounts()
 {
 	if [ -f ${SYSCONFDIR}/auto.master ] ; then
-		cat ${SYSCONFDIR}/auto.master | sed -e '/^#/d' -e '/^$/d' | (
+		cat ${SYSCONFDIR}/auto.master | awk '{print $0}' | sed -e '/^#/d' -e '/^$/d' | (
 		while read auto_master_in
 		do
 			if [ "`echo $auto_master_in | grep '^+'`" = "" ]; then
