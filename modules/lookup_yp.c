@@ -1,4 +1,4 @@
-#ident "$Id: lookup_yp.c,v 1.12 2005/01/26 05:31:38 raven Exp $"
+#ident "$Id: lookup_yp.c,v 1.13 2005/01/26 07:21:21 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup_yp.c - module for Linux automountd to access a YP (NIS)
@@ -203,10 +203,14 @@ static int lookup_wild(const char *root, struct lookup_context *ctxt)
 	err = yp_match((char *) ctxt->domainname,
 		       (char *) ctxt->mapname, "*", 1, &mapent, &mapent_len);
 
-	if (err == YPERR_SUCCESS)
-		return cache_update(root, "*", mapent, age);
-	
-	return -err;
+	if (err != YPERR_SUCCESS) {
+		if (err == YPERR_KEY)
+			return CHE_MISSING;
+
+		return -err;
+	}
+
+	return cache_update(root, "*", mapent, age);
 }
 
 int lookup_mount(const char *root, const char *name, int name_len, void *context)

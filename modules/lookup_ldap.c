@@ -1,4 +1,4 @@
-#ident "$Id: lookup_ldap.c,v 1.18 2005/01/26 05:31:38 raven Exp $"
+#ident "$Id: lookup_ldap.c,v 1.19 2005/01/26 07:21:21 raven Exp $"
 /*
  * lookup_ldap.c - Module for Linux automountd to access automount
  *		   maps in LDAP directories.
@@ -442,7 +442,7 @@ static int lookup_one(const char *root, const char *qKey,
 		debug(MODPREFIX "no %s defined for %s", type, query);
 		ldap_msgfree(result);
 		ldap_unbind(ldap);
-		return 0;
+		return CHE_MISSING;
 	}
 
 	/* Compare cache entry against LDAP */
@@ -540,7 +540,7 @@ static int lookup_wild(const char *root,
 		crit(MODPREFIX "got answer, but no first entry for %s", query);
 		ldap_msgfree(result);
 		ldap_unbind(ldap);
-		return 0;
+		return CHE_MISSING;
 	}
 
 	debug(MODPREFIX "examining first entry");
@@ -550,7 +550,7 @@ static int lookup_wild(const char *root,
 		debug(MODPREFIX "no %s defined for %s", type, query);
 		ldap_msgfree(result);
 		ldap_unbind(ldap);
-		return 0;
+		return CHE_MISSING;
 	}
 
 	/* Compare cache entry against LDAP */
@@ -631,7 +631,7 @@ int lookup_mount(const char *root, const char *name, int name_len, void *context
 			wild = (ret & (CHE_MISSING | CHE_FAIL)) &&
 					(ret2 & (CHE_MISSING | CHE_FAIL));
 
-			if (ret & CHE_MISSING || ret2 & CHE_MISSING)
+			if (ret & CHE_MISSING && ret2 & CHE_MISSING)
 				cache_delete(root, "*", 0);
 		}
 
