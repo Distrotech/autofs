@@ -1,4 +1,4 @@
-#ident "$Id: lookup_program.c,v 1.5 2004/11/20 10:37:43 raven Exp $"
+#ident "$Id: lookup_program.c,v 1.6 2004/12/28 04:16:28 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup_program.c - module for Linux automount to access an
@@ -186,11 +186,15 @@ int lookup_mount(const char *root, const char *name, int name_len, void *context
 				if (!quoted && ch == '\n') {
 					*mapp = '\0';
 					state = st_done;
+					break;
+				}
+
 				/* We overwrite up to 3 characters, so we
 				 * need to make sure we have enough room
 				 * in the buffer for this. */
-				} else if (mapp - mapent > 
-					   ((MAPENT_MAX_LEN+1) * alloci) - 3) {
+				/* else */
+				if (mapp - mapent > 
+				    ((MAPENT_MAX_LEN+1) * alloci) - 3) {
 					/*
 					 * Alloc another page for map entries.
 					 */

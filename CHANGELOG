@@ -43,6 +43,7 @@ xx/xx/2004 autofs-4.1.4
 - fix file handle being left open in lookup_file.c.
 - update 2.4 kernel module patches.
 - add 2.6 kernel module patches.
+- merge fix for program maps returning larger than 4kb (Jeff Moyer).
 
 19/05/2004 autofs-4.1.3
 -----------------------
