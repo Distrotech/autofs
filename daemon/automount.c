@@ -1,4 +1,4 @@
-#ident "$Id: automount.c,v 1.6 2003/09/29 08:22:35 raven Exp $"
+#ident "$Id: automount.c,v 1.7 2003/10/04 13:20:27 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  automount.c - Linux automounter daemon
@@ -726,7 +726,7 @@ static enum expire expire_proc(int now)
 		close(ap.state_pipe[1]);
 
 		/* Work around O(1) scheduler */
-		nice(-10);
+		nice(-4);
 
 		/* Set the leaves of mount tree to expire for maps
 		 * that support ghosting */
