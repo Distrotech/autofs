@@ -10,6 +10,7 @@ xx/xx/2004 autofs-4.1.3
 - replicated server fixup.
 - fix segv in NIS lookup module (Jeff Moyer).
 - init script fix for Debian (Thorild Selen).
+- fix pie option not checking for runable executable.
 
 07/04/2004 autofs-4.1.2
 -----------------------
