@@ -34,7 +34,6 @@
 
 struct conn_info {
 	const char *host;
-	int fd;
 	unsigned short port;
 	unsigned long program;
 	unsigned long version;
@@ -49,6 +48,7 @@ struct conn_info {
  */
 static CLIENT* create_udp_client(struct conn_info *info)
 {
+	int fd = RPC_ANYSOCK;
 	CLIENT *client;
 	struct sockaddr_in addr;
 	struct hostent *hp;
@@ -62,14 +62,13 @@ static CLIENT* create_udp_client(struct conn_info *info)
 	if (!hp)
 		return NULL;
 
-	info->fd = RPC_ANYSOCK;
 	addr.sin_family = AF_INET;
 	addr.sin_port = htons(info->port);
 	memcpy(&addr.sin_addr.s_addr, hp->h_addr, hp->h_length);
 
 	client = clntudp_bufcreate(&addr,
 				   info->program, info->version,
-				   info->timeout, &info->fd,
+				   info->timeout, &fd,
 				   info->send_sz, info->recv_sz);
 
 	return client;
@@ -180,7 +179,12 @@ static CLIENT* create_tcp_client(struct conn_info *info)
 	if (!client)
 		goto out_close;
 
-	info->fd = fd;
+	/* Close socket fd on destroy, as is default for rpcowned fds */
+	if  (!clnt_control(client, CLSET_FD_CLOSE, NULL)) {
+		clnt_destroy(client);
+		goto out_close;
+	}
+
 	return client;
 
 out_close:
@@ -226,7 +230,6 @@ static unsigned short portmap_getport(struct conn_info *info)
 			 pmap_info.timeout);
 
 	clnt_destroy(client);
-	close(pmap_info.fd);
 
 	if (stat != RPC_SUCCESS)
 		return 0;
