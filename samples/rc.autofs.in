@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# $Id: rc.autofs.in,v 1.18 2004/11/18 13:39:35 raven Exp $
+# $Id: rc.autofs.in,v 1.19 2004/11/20 05:58:17 raven Exp $
 #
 # rc file for automount using a Sun-style "master map".
 # We first look for a local /etc/auto.master, then a YP
@@ -227,6 +227,9 @@ function getmounts()
 			map=`echo /etc/$map | sed 's^//^/^g'`
 		    elif [ -f "$map" ]; then
 			maptype=file
+		    elif [ -f "/etc/$map" ]; then
+			maptype=file
+			map=`echo /etc/$map | sed 's^//^/^g'`
 		    elif [ "$map" = "hesiod" -o "$map" = "userhome" ] ; then
 			maptype=$map
 			map=
