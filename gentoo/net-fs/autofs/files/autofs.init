@@ -1,7 +1,7 @@
 #!/sbin/runscript
 # Copyright 1999-2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Header: /home/cvs/root/autofs/gentoo/net-fs/autofs/files/autofs.init,v 1.8 2005/02/10 14:30:07 raven Exp $
+# $Header: /home/cvs/root/autofs/gentoo/net-fs/autofs/files/autofs.init,v 1.9 2005/02/20 05:31:50 raven Exp $
 
 # rc file for automount using a Sun-style "master map".
 # We first look for a local /etc/autofs/auto.master, then a YP
@@ -419,7 +419,7 @@ reload() {
 		[ "$pid" = "" ] && continue
 
 		cmd=`get_command_from_pid $pid`
-		echo $mnt >>$TMP2
+		echo $cmd >>$TMP2
 
 		mnt=`ps -wwo 'cmd=' $pid | sed -e \
 		 's,.* --pid-file=/var/run/autofs/\([^ ]*\)\.pid.*,\1,; s,_,/,g'`
