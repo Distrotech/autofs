@@ -1,5 +1,5 @@
 #
-# $Id: autofs.spec,v 1.12 2003/12/11 14:58:52 raven Exp $
+# $Id: autofs.spec,v 1.13 2004/01/11 12:00:51 raven Exp $
 #
 Summary: A tool from automatically mounting and umounting filesystems.
 Name: autofs
@@ -7,7 +7,6 @@ Name: autofs
 %define release 1
 Version: %{version}
 Release: %{release}
-Epoch: 1
 License: GPL
 Group: System Environment/Daemons
 Source: ftp://ftp.kernel.org/pub/linux/daemons/autofs/v4/autofs-%{version}.tar.gz
@@ -47,7 +46,6 @@ inkludera nätfilsystem, CD-ROM, floppydiskar, och så vidare.
 
 %prep
 %setup -q
-%patch0 -p1
 
 %build
 CFLAGS="$RPM_OPT_FLAGS" ./configure --prefix=/usr
