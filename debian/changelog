@@ -1,0 +1,6 @@
+autofs (4.1.4-beta1-1) unstable; urgency=high
+
+  * created 4.1.4 beta1 package using Debian 4.1.3-6 package framework.
+
+ -- Ian Kent <raven@themaw.net>  Sun,  2 Jan 2005 19:41:00 +0800
+

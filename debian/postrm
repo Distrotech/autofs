@@ -1,0 +1,12 @@
+#!/bin/sh
+
+#DEBHELPER#
+if [ "$1" = "purge" ] ; then
+	update-rc.d autofs remove >/dev/null
+	if [ -d /var/autofs/misc ]; then
+		rmdir /var/autofs/misc
+	fi
+	if [ -d /var/autofs ]; then
+		rmdir --ignore-fail-on-non-empty /var/autofs
+	fi
+fi

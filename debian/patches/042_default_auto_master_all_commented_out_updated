@@ -1,0 +1,11 @@
+diff -Nurp autofs-4.1.4_beta1.orig/samples/auto.master autofs-4.1.4_beta1/samples/auto.master
+--- autofs-4.1.4_beta1.orig/samples/auto.master	2005-01-04 22:36:54.000000000 +0800
++++ autofs-4.1.4_beta1/samples/auto.master	2005-01-05 20:10:05.000000000 +0800
+@@ -7,5 +7,5 @@
+ # For details of the format look at autofs(5).
+ #/misc	/etc/auto.misc --timeout=60
+ #/smb	/etc/auto.smb
+-/misc	/etc/auto.misc
+-/net	/etc/auto.net
++#/misc	/etc/auto.misc
++#/net	/etc/auto.net

@@ -77,6 +77,7 @@
    - Fix errors in mount entry handling module.
    - Update lock module to suit.
 - merge multi map over mount patch.
+- add Debian package infrastructure.
 
 19/05/2004 autofs-4.1.3
 -----------------------

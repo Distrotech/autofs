@@ -1,0 +1,22 @@
+This package can be downloaded from ftp://ftp.kernel.org/pub/linux/daemons/autofs/v4
+
+Upstream development is taking place over the autofs mailing list at
+linux.kernel.org: http://linux.kernel.org/mailman/listinfo/autofs
+
+Copyright:
+
+For all software in this distribution:
+
+        Copyright 1997 Transmeta Corporation -- All Rights Reserved
+	Copyright 1999-2000 Jeremy Fitzhardinge <jeremy@goop.org>
+	Copyright 2001-2005 Ian Kent <raven@themaw.net>
+
+   This program is free software; you can redistribute it and/or modify
+   it under the terms of the GNU General Public License as published by
+   the Free Software Foundation, 59 Temple Place - Suite 330, Boston,
+   MA  02111-1307, USA; either version 2 of the License, or (at your
+   option) any later version.
+
+On Debian GNU/Linux systems, the complete text of the GNU General Public
+License can be found in the `/usr/share/common-licenses' directory.
+

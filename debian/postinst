@@ -1,0 +1,74 @@
+#!/bin/sh
+
+if [ "$1" = "configure" ]; then
+	if [ ! -z "$2" -a ! "$2" = "<unknown>" ] && dpkg --compare-versions $2 le 3.9.99-4.0.0pre10-2; then
+		# kill old automount processes manually, since earlier
+		# prerm scripts didn't call /etc/init.d/autofs stop
+		# during upgrade
+		# (Actually, it could be that a lot of automount daemons
+		# with the same mountpoint are still running. But we assume
+		# that only one is running.)
+
+		pkill automount
+	fi
+fi
+
+if [ -x "/etc/init.d/autofs" ]; then
+	update-rc.d autofs defaults 20 > /dev/null
+fi
+
+mkdirs() {
+	if [ ! -d /var/autofs ]; then
+		mkdir /var/autofs
+	fi
+	if [ ! -d /var/autofs/misc ]; then
+		mkdir /var/autofs/misc
+	fi
+}
+
+if [ "$1" = "configure" ]; then
+	if [ -z "$2" -o "$2" = "<unknown>" ]; then
+		#
+		# First time this has been installed on this machine,
+		# or the pkg was previously purged.
+		#
+		mkdirs
+		if [ -x "/etc/init.d/autofs" ]; then
+			/etc/init.d/autofs start
+		fi
+	elif dpkg --compare-versions $2 le 3.1.4-1; then
+		#
+		# This is an upgrade from a version prior to the above.
+		# The preinst for these older versions did a 'stop',
+		# so lets do a 'start'
+		#
+		mkdirs
+		if [ -x "/etc/init.d/autofs" ]; then
+			/etc/init.d/autofs start
+		fi
+	elif dpkg --compare-versions $2 le 3.1.4-4; then
+		#
+		# This is an upgrade from a version prior to the above.
+		# The preinst for these older versions con't stop autofs,
+		# so we do a 'restart' here.
+		#
+		mkdirs
+		if [ -x "/etc/init.d/autofs" ]; then
+			/etc/init.d/autofs restart
+		fi
+	else
+		#
+		# This is an upgrade, and the version is after 3.1.4-4.
+		# These versions don't stop automount during the preinst,
+		# so we do a restart here.
+		#
+		# 3.1.4-5 creates the dynamic directories, we don't
+		# need to recreate them here.
+		#
+		if [ -x "/etc/init.d/autofs" ]; then
+			/etc/init.d/autofs restart
+		fi
+	fi
+fi
+
+#DEBHELPER#

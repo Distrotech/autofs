@@ -1,0 +1,28 @@
+diff -ruN autofs-4.1.3.orig/Makefile.rules autofs-4.1.3/Makefile.rules
+--- autofs-4.1.3.orig/Makefile.rules	2004-01-29 17:01:22.000000000 +0100
++++ autofs-4.1.3/Makefile.rules	2004-09-27 21:30:37.000000000 +0200
+@@ -17,15 +16,15 @@
+ # Compilers, linkers and flags
+ # The STRIP defined here *must not* remove any dynamic-loading symbols
+ 
+-ifdef DEBUG
+-CFLAGS    = -O2 -g -DDEBUG
+-LDFLAGS   = -g
+-STRIP     = :
+-else
+-CFLAGS    = -O3 -fomit-frame-pointer -Wall
+-LDFLAGS   = -s
+-STRIP     = strip --strip-debug
+-endif
++#ifdef DEBUG
++#CFLAGS    = -O2 -g -DDEBUG
++#LDFLAGS   = -g
++STRIP     = :
++#else
++#CFLAGS    = -O3 -fomit-frame-pointer -Wall
++#LDFLAGS   = -s
++#STRIP     = strip --strip-debug
++#endif
+ 
+ CC        = gcc
+ CXX       = g++
