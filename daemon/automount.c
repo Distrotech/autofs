@@ -1,4 +1,4 @@
-#ident "$Id: automount.c,v 1.28 2005/01/06 12:51:38 raven Exp $"
+#ident "$Id: automount.c,v 1.29 2005/01/08 11:05:09 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  automount.c - Linux automounter daemon
@@ -818,7 +818,7 @@ static int st_prepare_shutdown(void)
 {
 	int exp;
 
-	DB(syslog(LOG_INFO, "prep_shutdown: state = %d\n", ap.state));
+	info("prep_shutdown: state = %d\n", ap.state);
 
 	assert(ap.state == ST_READY || ap.state == ST_EXPIRE);
 
