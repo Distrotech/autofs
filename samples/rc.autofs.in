@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# $Id: rc.autofs.in,v 1.12 2004/04/18 02:10:09 raven Exp $
+# $Id: rc.autofs.in,v 1.13 2004/04/26 05:15:03 raven Exp $
 #
 # rc file for automount using a Sun-style "master map".
 # We first look for a local /etc/auto.master, then a YP
@@ -111,7 +111,9 @@ function getnismounts()
 }
 function getldapmounts()
 {
-    @@autofslibdir@@/autofs-ldap-auto-master 2> /dev/null
+    if [ -x @@autofslibdir@@/autofs-ldap-auto-master ]; then
+        @@autofslibdir@@/autofs-ldap-auto-master 2> /dev/null
+    fi
 }
 function getrawmounts()
 {
@@ -164,8 +166,9 @@ function getmounts()
 			-a x`echo "$map" | cut -c1` != 'x-' \
 			-a "`echo "$knownmaps" | grep '\<'$dir/`" = "" ]
 	    then
-		# If the options include a -t or --timeout or a -g or --ghost
-		# parameter, then pull those particular options out.
+		# If the options include a -t or --timeout, a -g or --ghost,
+		# a -v or --verbose or a -d or --debug paramter, then pull
+		# those particular options out.
 		: echo DAEMONOPTIONS OPTIONS $daemonoptions $options
 		startupoptions=
 		if echo "$daemonoptions" | grep -q -- '-t' ; then
