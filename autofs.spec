@@ -1,15 +1,15 @@
 #
-# $Id: autofs.spec,v 1.19 2005/01/01 03:59:09 raven Exp $
+# $Id: autofs.spec,v 1.20 2005/01/01 04:24:59 raven Exp $
 #
 Summary: A tool from automatically mounting and umounting filesystems.
 Name: autofs
-%define version 4.1.4
-%define release beta1
+%define version 4.1.3
+%define release 1
 Version: %{version}
 Release: %{release}
 License: GPL
 Group: System Environment/Daemons
-Source: ftp://ftp.kernel.org/pub/linux/daemons/autofs/v4/autofs-%{version}-%{release}.tar.gz
+Source: ftp://ftp.kernel.org/pub/linux/daemons/autofs/v4/autofs-%{version}.tar.gz
 Buildroot: %{_tmppath}/%{name}-tmp
 Prereq: chkconfig
 Requires: /bin/bash mktemp sed textutils sh-utils grep /bin/ps
@@ -93,9 +93,6 @@ fi
 %dir /net
 
 %changelog
-* Sat Jan 1 2005 Ian Kent <raven@themaw.net>
-- Update package to version 4.1.4-beta1.
-
 * Sat Apr 3 2004 Ian Kent <raven@themaw.net>
 - Update package to version 4.1.2.
 
