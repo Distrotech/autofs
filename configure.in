@@ -1,5 +1,5 @@
 #
-#ident $Id: configure.in,v 1.6 2004/03/07 12:17:54 raven Exp $
+#ident $Id: configure.in,v 1.7 2004/04/03 07:14:33 raven Exp $
 #
 # configure.in for the autofs daemon
 
@@ -124,6 +124,27 @@ AC_SUBST(LDAP_FLAGS)
 AC_SUBST(HAVE_LDAP)
 AC_SUBST(LIBLDAP)
 LDFLAGS="${AF_tmp_ldflags}"
+
+#
+# Does gcc support building position independent executables?
+#
+AC_PROG_CC
+cat > pietest.c <<EOF
+int main(void) { return 0; }
+EOF
+CFLAGS=-fpie
+DAEMON_CFLAGS=
+DAEMON_LDFLAGS=
+AC_MSG_CHECKING([whether gcc accepts -fpie])
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[]], [[int main(void) {return 0;}]])],
+		  [gcc_supports_pie=yes], [gcc_supports_pie=no])
+AC_MSG_RESULT([$gcc_supports_pie])
+if test $gcc_supports_pie = yes ; then
+	DAEMON_CFLAGS="-fpie"
+	DAEMON_LDFLAGS="-pie"
+fi
+AC_SUBST(DAEMON_CFLAGS)
+AC_SUBST(DAEMON_LDFLAGS)
 
 #
 # Location of init.d directory?

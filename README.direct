@@ -1,5 +1,5 @@
 
-ident $Id: README.direct,v 1.2 2003/12/10 14:54:32 raven Exp $
+ident $Id: README.direct,v 1.3 2004/04/03 07:14:33 raven Exp $
 
 Direct Mounts
 =============
@@ -33,3 +33,7 @@ and so on.
 WARNING: don't mount one direct mount within another. This does
   not work properly at the moment.
 
+NOTE: Due to current design limitations, direct maps will take over an
+  entire directory hierarchy.  What this means is, if your direct map key
+  is /usr/share/bilbo, then /usr will become an automount mount point,
+  mounting over the existing /usr.

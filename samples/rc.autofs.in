@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# $Id: rc.autofs.in,v 1.10 2004/01/29 16:01:22 raven Exp $
+# $Id: rc.autofs.in,v 1.11 2004/04/03 07:14:33 raven Exp $
 #
 # rc file for automount using a Sun-style "master map".
 # We first look for a local /etc/auto.master, then a YP
@@ -162,7 +162,7 @@ function getmounts()
 	    fi
 	    if [ ! -z "$dir" -a ! -z "$map" \
 			-a x`echo "$map" | cut -c1` != 'x-' \
-			-a "`echo "$knownmaps" | grep $dir/`" = "" ]
+			-a "`echo "$knownmaps" | grep '\<'$dir/`" = "" ]
 	    then
 		# If the options include a -t or --timeout or a -g or --ghost
 		# parameter, then pull those particular options out.
@@ -344,7 +344,11 @@ case "$1" in
         getmounts | tee $TMP | sh
         RETVAL=$?
 	if [ -s $TMP ] ; then
-	    success "$prog startup" || failure "$prog startup"
+	    if [ $RETVAL -eq 0 ] ; then
+		success "$prog startup"
+	    else
+		failure "$prog startup"
+	    fi
 	    [ $RETVAL = 0 ] && touch /var/lock/subsys/autofs
 	else
 	    echo -n "" $"No Mountpoints Defined"
@@ -356,22 +360,25 @@ case "$1" in
   stop)
 	echo -n $"Stopping $prog:"
 	if [ -z "`pidofproc $prog`" -a -z "`getmounts`" ]; then
-		success $"$prog shutdown"
 		RETVAL=0
 	else
 		signal_automounts
 		RETVAL=$?
-		success "$prog shutdown" || failure "$prog shutdown"
 	fi
 	count=0
 	while [ -n "`/sbin/pidof $DAEMON`" -a $count -lt 10 ] ; do
-	   killproc $DAEMON -USR2 2> /dev/null
+	   killproc $DAEMON -USR2 >& /dev/null
 	   RETVAL=$?
 	   [ $RETVAL = 0 -a -z "`/sbin/pidof $DAEMON`" ] || sleep 3
 	   count=`expr $count + 1`
 	done
 	umount -a -f -t autofs
 	rm -f /var/lock/subsys/autofs
+	if [ -n "`/sbin/pidof $DAEMON`" ] ; then
+	    failure "$prog shutdown"
+	else
+	    success "$prog shutdown"
+	fi
 	echo
 	;;
   restart)
@@ -396,6 +403,9 @@ case "$1" in
 			kill -USR2 $pid 2> /dev/null
 			echo $"Stop $command"
 		    fi
+		else
+			kill -HUP $pid 2> /dev/null
+			echo $"Reload map $command"
 		fi
 	    done
 	)
@@ -457,6 +467,9 @@ case "$1" in
 		then
 			echo "Stopping automounter: $command"
 			kill -USR2 $pid 2> /dev/null
+		else
+			echo "Reloading automounter map: $command"
+			kill -HUP $pid 2> /dev/null
 		fi
 	done
 	rm -f $TMP

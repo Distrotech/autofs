@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.3 2003/09/29 08:22:35 raven Exp $
+# $Id: Makefile,v 1.4 2004/04/03 07:14:33 raven Exp $
 #
 # Makefile for autofs
 #
@@ -43,7 +43,7 @@ ifeq ($(LDAP), 1)
   MODS += lookup_ldap.so
 endif
 
-CFLAGS += -I../include -fpic -DAUTOFS_LIB_DIR=\"$(autofslibdir)\" -DPATH_AUTOMOUNT=\"$(sbindir)/automount\"
+CFLAGS += -I../include -fPIC -DAUTOFS_LIB_DIR=\"$(autofslibdir)\" -DPATH_AUTOMOUNT=\"$(sbindir)/automount\"
 
 all: $(MODS)
 

@@ -1,4 +1,4 @@
-#ident "$Id: mount_nfs.c,v 1.9 2004/03/07 12:17:54 raven Exp $"
+#ident "$Id: mount_nfs.c,v 1.10 2004/04/03 07:14:33 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  * mount_nfs.c - Module for Linux automountd to mount an NFS filesystem,
@@ -379,6 +379,10 @@ int mount_mount(const char *root, const char *name, int name_len,
 		local = 1;
 	} else if (!nosymlink) {
 		local = get_best_mount(whatstr, what, 0, 0);
+		if (!*whatstr) {
+			warn(MODPREFIX "no host elected");
+			return 1;
+		}
 		debug(MODPREFIX "from %s elected %s", what, whatstr);
 	}
 

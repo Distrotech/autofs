@@ -7,6 +7,10 @@
 # build autofs.
 #
 
+# Do we build with -fpie?
+DAEMON_CFLAGS  = @DAEMON_CFLAGS@
+DAEMON_LDFLAGS = @DAEMON_LDFLAGS@
+
 # Special parameters for glibc (libc 6)
 LIBNSL    = @LIBNSL@
 LIBRESOLV = @LIBRESOLV@

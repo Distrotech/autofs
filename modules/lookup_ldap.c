@@ -1,4 +1,4 @@
-#ident "$Id: lookup_ldap.c,v 1.5 2004/01/29 16:01:22 raven Exp $"
+#ident "$Id: lookup_ldap.c,v 1.6 2004/04/03 07:14:33 raven Exp $"
 /*
  * lookup_ldap.c
  *
@@ -94,6 +94,13 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 
 			ptr = q + 1;
 		}
+	} else if (strchr(ptr, ':') != NULL) {
+		l = strchr(ptr, ':') - ptr;
+		/* Isolate the server's name. */
+		ctxt->server = malloc(l + 1);
+		memset(ctxt->server, 0, l + 1);
+		memcpy(ctxt->server, argv[0], l);
+		ptr += l+1;
 	}
 
 	/* Isolate the base DN. */

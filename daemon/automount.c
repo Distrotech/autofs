@@ -1,4 +1,4 @@
-#ident "$Id: automount.c,v 1.11 2004/03/07 12:17:54 raven Exp $"
+#ident "$Id: automount.c,v 1.12 2004/04/03 07:14:33 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  automount.c - Linux automounter daemon
@@ -388,8 +388,8 @@ static int mount_autofs(char *path)
 	struct stat st;
 	int len;
 
-	if (ap.state != ST_INIT) {
-		/* This can't happen */
+	if ((ap.state != ST_INIT) || is_mounted(path)) {
+		/* This can happen if an autofs process is already running*/
 		error("mount_autofs: already mounted");
 		return -1;
 	}

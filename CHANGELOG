@@ -1,3 +1,19 @@
+xx/xx/2004 autofs-4.1.2
+-----------------------
+- merge patches from Jeff Moyer.
+   - Change (back) compile option -fpic -> -fPIC.
+   - add code to recognise old LDAP master map format.
+   - document limitation of direct mounts obscuring mount
+     points in README.direct.
+   - fix error in detecting duplicate master map entries
+     in init script.
+   - add check for automount base already mounted.
+   - check for pie support and enable compile option if
+     available.
+   - corrections to init script including send HUP signal
+     on reload.
+- fix unchecked return from get_best_mount.
+- add example file master map using LDAP.
 
 14/03/2004 autofs-4.1.1
 -----------------------
