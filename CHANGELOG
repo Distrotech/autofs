@@ -40,6 +40,7 @@ xx/xx/2004 autofs-4.1.4
 - provide ability to convert read-only NFS mounts to read-only bind mounts (Thorild Selen).
 - fix incorrect direct map entry lookup in yp module. 
 - merge most of RedHat init patch and the browse and umount loopback patches (Jeff Moyer).
+- fix file handle being left open in lookup_file.c.
 
 19/05/2004 autofs-4.1.3
 -----------------------
