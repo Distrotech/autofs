@@ -44,6 +44,7 @@ xx/xx/2004 autofs-4.1.4
 - update 2.4 kernel module patches.
 - add 2.6 kernel module patches.
 - merge fix for program maps returning larger than 4kb (Jeff Moyer).
+- fix trailing white space not removed from map entries not containing a colon.
 
 19/05/2004 autofs-4.1.3
 -----------------------

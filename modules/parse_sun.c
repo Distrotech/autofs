@@ -1,4 +1,4 @@
-#ident "$Id: parse_sun.c,v 1.15 2004/11/21 05:35:06 raven Exp $"
+#ident "$Id: parse_sun.c,v 1.16 2004/12/30 06:54:12 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  parse_sun.c - module for Linux automountd to parse a Sun-format
@@ -251,6 +251,23 @@ const char *skipspace(const char *whence)
 			return whence;
 		}
 	}
+}
+
+/*
+ * Check a string to see if a colon appears before the next '/'.
+ */
+int check_colon(const char *str)
+{
+	char *ptr = (char *) str;
+
+	while (ptr && *ptr != ':' && *ptr != '/') {
+		ptr++;
+	}
+
+	if (!ptr || *ptr == '/')
+		return 0;
+
+	return 1;
 }
 
 /* Get the length of a chunk delimitered by whitespace */
@@ -761,7 +778,7 @@ int parse_mount(const char *root, const char *name,
 				} while (*p == '-');
 			}
 
-			loc = dequote(p, l = chunklen(p, 1));
+			loc = dequote(p, l = chunklen(p, check_colon(p)));
 			if (!loc) {
 				error(MODPREFIX "out of memory");
 				free(path);
@@ -776,7 +793,7 @@ int parse_mount(const char *root, const char *name,
 			while (*p && *p != '/') {
 				char *ent;
 
-				ent = dequote(p, l = chunklen(p, 1));
+				ent = dequote(p, l = chunklen(p, check_colon(p)));
 				if (!ent) {
 					error(MODPREFIX "out of memory");
 					free(path);
@@ -835,7 +852,7 @@ int parse_mount(const char *root, const char *name,
 		if (*p == ':')
 			p++;	/* Sun escape for entries starting with / */
 
-		loc = dequote(p, chunklen(p, 1));
+		loc = dequote(p, chunklen(p, check_colon(p)));
 		loclen = strlen(loc);
 
 		if (loc == NULL) {
