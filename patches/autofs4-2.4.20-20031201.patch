@@ -1,17 +1,7 @@
-diff -Nur linux-2.4.18.dist/fs/autofs4/autofs_i.h autofs4-2.4/fs/autofs4/autofs_i.h
---- linux-2.4.18.dist/fs/autofs4/autofs_i.h	2001-11-23 03:46:40.000000000 +0800
-+++ autofs4-2.4/fs/autofs4/autofs_i.h	2003-11-09 19:33:52.000000000 +0800
-@@ -56,6 +56,9 @@
- 
- 	int		flags;
- 
-+	atomic_t	fp_count;
-+	struct file	*fp;
-+
- 	struct autofs_sb_info *sbi;
- 	unsigned long last_used;
- 
-@@ -73,6 +76,7 @@
+diff -Nur linux-2.4.20.dist/fs/autofs4/autofs_i.h autofs4-2.4/fs/autofs4/autofs_i.h
+--- linux-2.4.20.dist/fs/autofs4/autofs_i.h	2002-08-03 08:39:45.000000000 +0800
++++ autofs4-2.4/fs/autofs4/autofs_i.h	2003-12-01 21:23:00.748374888 +0800
+@@ -73,6 +73,7 @@
  struct autofs_wait_queue {
  	wait_queue_head_t queue;
  	struct autofs_wait_queue *next;
@@ -19,7 +9,7 @@ diff -Nur linux-2.4.18.dist/fs/autofs4/autofs_i.h autofs4-2.4/fs/autofs4/autofs_
  	autofs_wqt_t wait_queue_token;
  	/* We use the following to see what we are waiting for */
  	int hash;
-@@ -91,7 +95,10 @@
+@@ -91,7 +92,10 @@
  	pid_t oz_pgrp;
  	int catatonic;
  	int version;
@@ -30,7 +20,7 @@ diff -Nur linux-2.4.18.dist/fs/autofs4/autofs_i.h autofs4-2.4/fs/autofs4/autofs_
  	struct super_block *sb;
  	struct autofs_wait_queue *queues; /* Wait queue pointer */
  };
-@@ -123,6 +130,12 @@
+@@ -123,6 +127,12 @@
  		(inf != NULL && inf->flags & AUTOFS_INF_EXPIRING);
  }
  
@@ -43,7 +33,15 @@ diff -Nur linux-2.4.18.dist/fs/autofs4/autofs_i.h autofs4-2.4/fs/autofs4/autofs_
  struct inode *autofs4_get_inode(struct super_block *, struct autofs_info *);
  struct autofs_info *autofs4_init_inf(struct autofs_sb_info *, mode_t mode);
  void autofs4_free_ino(struct autofs_info *);
-@@ -156,6 +169,56 @@
+@@ -139,6 +149,7 @@
+ extern struct inode_operations autofs4_symlink_inode_operations;
+ extern struct inode_operations autofs4_dir_inode_operations;
+ extern struct inode_operations autofs4_root_inode_operations;
++extern struct file_operations autofs4_dir_operations;
+ extern struct file_operations autofs4_root_operations;
+ 
+ /* Initializing function */
+@@ -155,6 +166,56 @@
  	NFY_EXPIRE
  };
  
@@ -101,9 +99,9 @@ diff -Nur linux-2.4.18.dist/fs/autofs4/autofs_i.h autofs4-2.4/fs/autofs4/autofs_
 +	return ret;
 +}
 +
-diff -Nur linux-2.4.18.dist/fs/autofs4/expire.c autofs4-2.4/fs/autofs4/expire.c
---- linux-2.4.18.dist/fs/autofs4/expire.c	2001-06-12 10:15:27.000000000 +0800
-+++ autofs4-2.4/fs/autofs4/expire.c	2003-11-09 19:33:52.000000000 +0800
+diff -Nur linux-2.4.20.dist/fs/autofs4/expire.c autofs4-2.4/fs/autofs4/expire.c
+--- linux-2.4.20.dist/fs/autofs4/expire.c	2001-06-12 10:15:27.000000000 +0800
++++ autofs4-2.4/fs/autofs4/expire.c	2003-12-01 21:23:00.751374432 +0800
 @@ -4,6 +4,7 @@
   *
   *  Copyright 1997-1998 Transmeta Corporation -- All Rights Reserved
@@ -564,19 +562,10 @@ diff -Nur linux-2.4.18.dist/fs/autofs4/expire.c autofs4-2.4/fs/autofs4/expire.c
  	return ret;
  }
  
-diff -Nur linux-2.4.18.dist/fs/autofs4/inode.c autofs4-2.4/fs/autofs4/inode.c
---- linux-2.4.18.dist/fs/autofs4/inode.c	2001-11-10 06:11:14.000000000 +0800
-+++ autofs4-2.4/fs/autofs4/inode.c	2003-11-09 19:33:52.000000000 +0800
-@@ -45,6 +45,8 @@
- 	ino->inode = NULL;
- 	ino->dentry = NULL;
- 	ino->size = 0;
-+	atomic_set(&ino->fp_count, 0);
-+	ino->fp = NULL;
- 
- 	ino->last_used = jiffies;
- 
-@@ -87,7 +89,7 @@
+diff -Nur linux-2.4.20.dist/fs/autofs4/inode.c autofs4-2.4/fs/autofs4/inode.c
+--- linux-2.4.20.dist/fs/autofs4/inode.c	2002-08-03 08:39:45.000000000 +0800
++++ autofs4-2.4/fs/autofs4/inode.c	2003-12-01 21:23:00.750374584 +0800
+@@ -87,7 +87,7 @@
  
  	kfree(sbi);
  
@@ -585,7 +574,7 @@ diff -Nur linux-2.4.18.dist/fs/autofs4/inode.c autofs4-2.4/fs/autofs4/inode.c
  }
  
  static int autofs4_statfs(struct super_block *sb, struct statfs *buf);
-@@ -181,12 +183,13 @@
+@@ -181,12 +181,13 @@
  	struct file * pipe;
  	int pipefd;
  	struct autofs_sb_info *sbi;
@@ -600,7 +589,7 @@ diff -Nur linux-2.4.18.dist/fs/autofs4/inode.c autofs4-2.4/fs/autofs4/inode.c
  
  	memset(sbi, 0, sizeof(*sbi));
  
-@@ -197,7 +200,10 @@
+@@ -197,7 +198,10 @@
  	sbi->oz_pgrp = current->pgrp;
  	sbi->sb = s;
  	sbi->version = 0;
@@ -611,7 +600,7 @@ diff -Nur linux-2.4.18.dist/fs/autofs4/inode.c autofs4-2.4/fs/autofs4/inode.c
  	s->s_blocksize = 1024;
  	s->s_blocksize_bits = 10;
  	s->s_magic = AUTOFS_SUPER_MAGIC;
-@@ -206,7 +212,9 @@
+@@ -206,7 +210,9 @@
  	/*
  	 * Get the root inode and dentry, but defer checking for errors.
  	 */
@@ -622,7 +611,7 @@ diff -Nur linux-2.4.18.dist/fs/autofs4/inode.c autofs4-2.4/fs/autofs4/inode.c
  	root_inode->i_op = &autofs4_root_inode_operations;
  	root_inode->i_fop = &autofs4_root_operations;
  	root = d_alloc_root(root_inode);
-@@ -220,14 +228,14 @@
+@@ -220,14 +226,14 @@
  			  &root_inode->i_uid, &root_inode->i_gid,
  			  &sbi->oz_pgrp,
  			  &minproto, &maxproto)) {
@@ -639,7 +628,7 @@ diff -Nur linux-2.4.18.dist/fs/autofs4/inode.c autofs4-2.4/fs/autofs4/inode.c
  		       "daemon (%d, %d) kernel (%d, %d)\n",
  			minproto, maxproto,
  			AUTOFS_MIN_PROTO_VERSION, AUTOFS_MAX_PROTO_VERSION);
-@@ -235,12 +243,13 @@
+@@ -235,12 +241,13 @@
  	}
  
  	sbi->version = maxproto > AUTOFS_MAX_PROTO_VERSION ? AUTOFS_MAX_PROTO_VERSION : maxproto;
@@ -655,7 +644,7 @@ diff -Nur linux-2.4.18.dist/fs/autofs4/inode.c autofs4-2.4/fs/autofs4/inode.c
  		goto fail_dput;
  	}
  	if ( !pipe->f_op || !pipe->f_op->write )
-@@ -257,7 +266,7 @@
+@@ -257,7 +264,7 @@
  	 * Failure ... clean up.
  	 */
  fail_fput:
@@ -664,7 +653,7 @@ diff -Nur linux-2.4.18.dist/fs/autofs4/inode.c autofs4-2.4/fs/autofs4/inode.c
  	/*
  	 * fput() can block, so we clear the super block first.
  	 */
-@@ -270,7 +279,7 @@
+@@ -270,7 +277,7 @@
  	dput(root);
  	goto fail_free;
  fail_iput:
@@ -673,39 +662,133 @@ diff -Nur linux-2.4.18.dist/fs/autofs4/inode.c autofs4-2.4/fs/autofs4/inode.c
  	/*
  	 * iput() can block, so we clear the super block first.
  	 */
-diff -Nur linux-2.4.18.dist/fs/autofs4/Makefile autofs4-2.4/fs/autofs4/Makefile
---- linux-2.4.18.dist/fs/autofs4/Makefile	2000-12-30 06:07:23.000000000 +0800
-+++ autofs4-2.4/fs/autofs4/Makefile	2003-11-09 19:33:52.000000000 +0800
-@@ -6,7 +6,7 @@
- 
- O_TARGET := autofs4.o
- 
--obj-y   := init.o inode.o root.o symlink.o waitq.o expire.o
-+obj-y   := init.o inode.o root.o symlink.o waitq.o expire.o readdir.o
- 
- obj-m   := $(O_TARGET)
- 
-diff -Nur linux-2.4.18.dist/fs/autofs4/readdir.c autofs4-2.4/fs/autofs4/readdir.c
---- linux-2.4.18.dist/fs/autofs4/readdir.c	1970-01-01 08:00:00.000000000 +0800
-+++ autofs4-2.4/fs/autofs4/readdir.c	2003-11-09 19:33:52.000000000 +0800
-@@ -0,0 +1,73 @@
-+/*
-+ *  linux/fs/readdir.c
-+ *
-+ *  Copyright (C) 1995  Linus Torvalds
-+ */
-+
-+#include <linux/sched.h>
+@@ -314,7 +321,7 @@
+ 	if (S_ISDIR(inf->mode)) {
+ 		inode->i_nlink = 2;
+ 		inode->i_op = &autofs4_dir_inode_operations;
+-		inode->i_fop = &dcache_dir_ops;
++		inode->i_fop = &autofs4_dir_operations;
+ 	} else if (S_ISLNK(inf->mode)) {
+ 		inode->i_size = inf->size;
+ 		inode->i_op = &autofs4_symlink_inode_operations;
+diff -Nur linux-2.4.20.dist/fs/autofs4/root.c autofs4-2.4/fs/autofs4/root.c
+--- linux-2.4.20.dist/fs/autofs4/root.c	2002-08-03 08:39:45.000000000 +0800
++++ autofs4-2.4/fs/autofs4/root.c	2003-12-01 21:23:00.749374736 +0800
+@@ -4,6 +4,7 @@
+  *
+  *  Copyright 1997-1998 Transmeta Corporation -- All Rights Reserved
+  *  Copyright 1999-2000 Jeremy Fitzhardinge <jeremy@goop.org>
++ *  Copyright 2001-2003 Ian Kent <raven@themaw.net>
+  *
+  * This file is part of the Linux kernel and is made available under
+  * the terms of the GNU General Public License, version 2, or at your
+@@ -16,6 +17,10 @@
+ #include <linux/param.h>
+ #include <linux/sched.h>
+ #include <linux/smp_lock.h>
 +#include <linux/file.h>
-+#include <linux/smp_lock.h>
++#include <linux/limits.h>
++#include <linux/iobuf.h>
++#include <linux/module.h>
+ #include "autofs_i.h"
+ 
+ static struct dentry *autofs4_dir_lookup(struct inode *,struct dentry *);
+@@ -24,18 +29,26 @@
+ static int autofs4_dir_rmdir(struct inode *,struct dentry *);
+ static int autofs4_dir_mkdir(struct inode *,struct dentry *,int);
+ static int autofs4_root_ioctl(struct inode *, struct file *,unsigned int,unsigned long);
++static int autofs4_dir_open(struct inode *inode, struct file *file);
++static int autofs4_dir_close(struct inode *inode, struct file *file);
++static int autofs4_dir_readdir(struct file * filp, void * dirent, filldir_t filldir);
++static int autofs4_root_readdir(struct file * filp, void * dirent, filldir_t filldir);
+ static struct dentry *autofs4_root_lookup(struct inode *,struct dentry *);
++static int autofs4_dcache_readdir(struct file *, void *, filldir_t);
+ 
+ struct file_operations autofs4_root_operations = {
+-	open:		dcache_dir_open,
+-	release:	dcache_dir_close,
+-	llseek:		dcache_dir_lseek,
+ 	read:		generic_read_dir,
+-	readdir:	dcache_readdir,
+-	fsync:		dcache_dir_fsync,
++	readdir:	autofs4_root_readdir,
+ 	ioctl:		autofs4_root_ioctl,
+ };
+ 
++struct file_operations autofs4_dir_operations = {
++	open:		autofs4_dir_open,
++	release:	autofs4_dir_close,
++	read:		generic_read_dir,
++	readdir:	autofs4_dir_readdir,
++};
++
+ struct inode_operations autofs4_root_inode_operations = {
+ 	lookup:		autofs4_root_lookup,
+ 	unlink:		autofs4_dir_unlink,
+@@ -54,10 +67,11 @@
+ 
+ /* Update usage from here to top of tree, so that scan of
+    top-level directories will give a useful result */
+-static void autofs4_update_usage(struct dentry *dentry)
++static inline void autofs4_update_usage(struct dentry *dentry)
+ {
+ 	struct dentry *top = dentry->d_sb->s_root;
+ 
++	spin_lock(&dcache_lock);
+ 	for(; dentry != top; dentry = dentry->d_parent) {
+ 		struct autofs_info *ino = autofs4_dentry_ino(dentry);
+ 
+@@ -66,11 +80,233 @@
+ 			ino->last_used = jiffies;
+ 		}
+ 	}
++	spin_unlock(&dcache_lock);
++}
++
++static int autofs4_root_readdir(struct file *file, void *dirent, filldir_t filldir)
++{
++	struct autofs_sb_info *sbi = autofs4_sbi(file->f_dentry->d_sb);
++	int oz_mode = autofs4_oz_mode(sbi);
++
++	DPRINTK(("autofs4_root_readdir called, filp->f_pos = %lld\n", file->f_pos));
++
++	/*
++	 * Don't set reghost flag if:
++	 * 1) f_pos is larger than zero -- we've already been here.
++	 * 2) we haven't even enabled reghosting in the 1st place.
++	 * 3) this is the daemon doing a readdir
++	 */
++	if ( oz_mode && file->f_pos == 0 && sbi->reghost_enabled )
++		sbi->needs_reghost = 1;
++
++	DPRINTK(("autofs4_root_readdir: needs_reghost = %d\n", sbi->needs_reghost));
++
++	return autofs4_dcache_readdir(file, dirent, filldir);
++}
++
++static void autofs4_check_pwd(struct file *file, struct file *fp)
++{
++	struct dentry *pwd = file->f_dentry;
++	struct dentry *new_pwd = fp->f_dentry;
++	struct vfsmount *new_mnt = fp->f_vfsmnt;
++
++	/* dentry is a pwd of mountpoint so move to it */
++	if ( current->fs->pwd == pwd )
++		set_fs_pwd(current->fs, new_mnt, new_pwd);
++
++	/* dentry is root of a chrooted mountpoint so move to it */
++	if ( current->fs->root == pwd ) {
++		set_fs_root(current->fs, new_mnt, new_pwd);
++		/* alternate os ABI not supported  */
++		/* set_fs_altroot(); */
++	}
++}
++
 +
 +/*
-+ * Directory is locked and all positive dentries in it are safe, since
-+ * for ramfs-type trees they can't go away without unlink() or rmdir(),
-+ * both impossible due to the lock on directory.
++ * From 2.4 kernel readdir.c
 + */
-+
-+int autofs4_dcache_readdir(struct file * filp, void * dirent, filldir_t filldir)
++static int autofs4_dcache_readdir(struct file * filp, void * dirent, filldir_t filldir)
 +{
 +	int i;
 +	struct dentry *dentry = filp->f_dentry;
@@ -762,144 +845,6 @@ diff -Nur linux-2.4.18.dist/fs/autofs4/readdir.c autofs4-2.4/fs/autofs4/readdir.
 +	}
 +	return 0;
 +}
-diff -Nur linux-2.4.18.dist/fs/autofs4/root.c autofs4-2.4/fs/autofs4/root.c
---- linux-2.4.18.dist/fs/autofs4/root.c	2000-10-24 12:57:38.000000000 +0800
-+++ autofs4-2.4/fs/autofs4/root.c	2003-11-09 19:33:52.000000000 +0800
-@@ -4,6 +4,7 @@
-  *
-  *  Copyright 1997-1998 Transmeta Corporation -- All Rights Reserved
-  *  Copyright 1999-2000 Jeremy Fitzhardinge <jeremy@goop.org>
-+ *  Copyright 2001-2003 Ian Kent <raven@themaw.net>
-  *
-  * This file is part of the Linux kernel and is made available under
-  * the terms of the GNU General Public License, version 2, or at your
-@@ -16,6 +17,10 @@
- #include <linux/param.h>
- #include <linux/sched.h>
- #include <linux/smp_lock.h>
-+#include <linux/file.h>
-+#include <linux/limits.h>
-+#include <linux/iobuf.h>
-+#include <linux/module.h>
- #include "autofs_i.h"
- 
- static struct dentry *autofs4_dir_lookup(struct inode *,struct dentry *);
-@@ -24,17 +29,24 @@
- static int autofs4_dir_rmdir(struct inode *,struct dentry *);
- static int autofs4_dir_mkdir(struct inode *,struct dentry *,int);
- static int autofs4_root_ioctl(struct inode *, struct file *,unsigned int,unsigned long);
-+static int autofs4_dir_open(struct inode *inode, struct file *file);
-+static int autofs4_dir_close(struct inode *inode, struct file *file);
-+static int autofs4_dir_readdir(struct file * filp, void * dirent, filldir_t filldir);
-+static int autofs4_root_readdir(struct file * filp, void * dirent, filldir_t filldir);
- static struct dentry *autofs4_root_lookup(struct inode *,struct dentry *);
-+int autofs4_dcache_readdir(struct file *, void *, filldir_t);
- 
- struct file_operations autofs4_root_operations = {
- 	read:		generic_read_dir,
--	readdir:	dcache_readdir,
-+	readdir:	autofs4_root_readdir,
- 	ioctl:		autofs4_root_ioctl,
- };
- 
- struct file_operations autofs4_dir_operations = {
-+	open:		autofs4_dir_open,
-+	release:	autofs4_dir_close,
- 	read:		generic_read_dir,
--	readdir:	dcache_readdir,
-+	readdir:	autofs4_dir_readdir,
- };
- 
- struct inode_operations autofs4_root_inode_operations = {
-@@ -55,10 +67,11 @@
- 
- /* Update usage from here to top of tree, so that scan of
-    top-level directories will give a useful result */
--static void autofs4_update_usage(struct dentry *dentry)
-+static inline void autofs4_update_usage(struct dentry *dentry)
- {
- 	struct dentry *top = dentry->d_sb->s_root;
- 
-+	spin_lock(&dcache_lock);
- 	for(; dentry != top; dentry = dentry->d_parent) {
- 		struct autofs_info *ino = autofs4_dentry_ino(dentry);
- 
-@@ -67,11 +80,210 @@
- 			ino->last_used = jiffies;
- 		}
- 	}
-+	spin_unlock(&dcache_lock);
-+}
-+
-+static int autofs4_root_readdir(struct file *file, void *dirent, filldir_t filldir)
-+{
-+	struct autofs_sb_info *sbi = autofs4_sbi(file->f_dentry->d_sb);
-+	int oz_mode = autofs4_oz_mode(sbi);
-+
-+	DPRINTK(("autofs4_root_readdir called, filp->f_pos = %lld\n", file->f_pos));
-+
-+	/*
-+	 * Don't set reghost flag if:
-+	 * 1) f_pos is larger than zero -- we've already been here.
-+	 * 2) we haven't even enabled reghosting in the 1st place.
-+	 * 3) this is the daemon doing a readdir
-+	 */
-+	if ( oz_mode && file->f_pos == 0 && sbi->reghost_enabled )
-+		sbi->needs_reghost = 1;
-+
-+	DPRINTK(("autofs4_root_readdir: needs_reghost = %d\n", sbi->needs_reghost));
-+
-+	return autofs4_dcache_readdir(file, dirent, filldir);
-+}
-+
-+static void autofs4_check_pwd(struct file *file, struct file *fp)
-+{
-+	struct dentry *pwd = file->f_dentry;
-+	struct dentry *new_pwd = fp->f_dentry;
-+	struct vfsmount *new_mnt = fp->f_vfsmnt;
-+
-+	/* dentry is a pwd of mountpoint so move to it */
-+	if ( current->fs->pwd == pwd )
-+		set_fs_pwd(current->fs, new_mnt, new_pwd);
-+
-+	/* dentry is root of a chrooted mountpoint so move to it */
-+	if ( current->fs->root == pwd ) {
-+		set_fs_root(current->fs, new_mnt, new_pwd);
-+		/* alternate os ABI not supported  */
-+		/* set_fs_altroot(); */
-+	}
-+}
-+
-+static struct file *autofs4_dentry_open(struct dentry *dentry, struct vfsmount *mnt, int flags)
-+{
-+	struct vfsmount *tmp, *dir_mnt;
-+	struct dentry *dir_dentry;
-+	struct file *fp;
-+	int status;
-+
-+	DPRINTK(("autofs4_dentry_open: dentry=%p %.*s\n",
-+		 dentry, dentry->d_name.len, dentry->d_name.name));
-+
-+	spin_lock(&dcache_lock);
-+	tmp = lookup_mnt(mnt, dentry);
-+	if ( !tmp ) {
-+		spin_unlock(&dcache_lock);
-+		return ERR_PTR(-ENOENT);
-+	}
-+	dir_mnt = mntget(tmp);
-+	dir_dentry = dget(dir_mnt->mnt_root);
-+	spin_unlock(&dcache_lock);
-+	
-+	fp = dentry_open(dir_dentry, dir_mnt, flags);
-+	if ( !IS_ERR(fp) ) {
-+		status = permission( fp->f_dentry->d_inode, MAY_READ );
-+		if ( status ) {
-+			filp_close(fp, current->files);
-+			return ERR_PTR(status);
-+		}
-+	}
-+	return fp;
-+}
 +
 +static int autofs4_dir_open(struct inode *inode, struct file *file)
 +{
@@ -937,25 +882,20 @@ diff -Nur linux-2.4.18.dist/fs/autofs4/root.c autofs4-2.4/fs/autofs4/root.c
 +	}
 +
 +	if ( d_mountpoint(dentry) ) {
-+		struct autofs_info *ino = autofs4_dentry_ino(dentry);
-+		struct file *fp;
++		struct file *fp = NULL;
++		struct vfsmount *fp_mnt = mntget(mnt);
++		struct dentry *fp_dentry = dget(dentry);
 +
-+		if (ino && atomic_read(&ino->fp_count)) {
-+			atomic_inc(&ino->fp_count);
-+			return 0;
-+		}
++		while (follow_down(&fp_mnt, &fp_dentry) && d_mountpoint(fp_dentry));
 +
-+		down(&dentry->d_inode->i_sem);
-+		fp = autofs4_dentry_open(dentry, mnt, file->f_flags);
++		fp = dentry_open(fp_dentry, fp_mnt, file->f_flags);
 +		status = PTR_ERR(fp);
 +		if ( IS_ERR(fp) ) {
-+			up(&dentry->d_inode->i_sem);
++			file->private_data = NULL;
 +			return status;
 +		}
-+		atomic_inc(&ino->fp_count);
 +		autofs4_check_pwd(file, fp);
-+		ino->fp = fp;
-+		up(&dentry->d_inode->i_sem);
++		file->private_data = fp;
 +	}
 +out:
 +	return 0;
@@ -978,17 +918,13 @@ diff -Nur linux-2.4.18.dist/fs/autofs4/root.c autofs4-2.4/fs/autofs4/root.c
 +	}
 +
 +	if ( d_mountpoint(dentry) ) {
-+		struct autofs_info *ino = autofs4_dentry_ino(dentry);
++		struct file *fp = file->private_data;
 +
-+		if (!(ino && atomic_read(&ino->fp_count)))
++		if (!fp)
 +			return -ENOENT;
 +
-+		if (atomic_dec_and_test(&ino->fp_count)) {
-+			down(&dentry->d_inode->i_sem);
-+			filp_close(ino->fp, current->files);
-+			ino->fp = NULL;
-+			up(&dentry->d_inode->i_sem);
-+		}
++		filp_close(fp, current->files);
++		file->private_data = NULL;
 +	}
 +out:
 +	return 0;
@@ -1012,17 +948,18 @@ diff -Nur linux-2.4.18.dist/fs/autofs4/root.c autofs4-2.4/fs/autofs4/root.c
 +	}
 +
 +	if ( d_mountpoint(dentry) ) {
-+		struct autofs_info *ino = autofs4_dentry_ino(dentry);
++		struct file *fp = file->private_data;
 +
-+		if (!(ino && atomic_read(&ino->fp_count)))
++		if (!fp)
 +			return -ENOENT;
 +
-+		/* dentry->d_inode->i_sem held by calling vfs_readdir */
-+		ino->fp->f_pos = file->f_pos;
-+		status = vfs_readdir(ino->fp, filldir, dirent);
-+		file->f_pos = ino->fp->f_pos;
++		if (!fp->f_op || !fp->f_op->readdir)
++			goto out;
++
++		status = vfs_readdir(fp, filldir, dirent);
++		file->f_pos = fp->f_pos;
 +		if ( status )
-+			autofs4_copy_atime(file, ino->fp);
++			autofs4_copy_atime(file, fp);
 +		return status;
 +	}
 +out:
@@ -1036,7 +973,7 @@ diff -Nur linux-2.4.18.dist/fs/autofs4/root.c autofs4-2.4/fs/autofs4/root.c
  {
  	struct autofs_info *de_info = autofs4_dentry_ino(dentry);
  	int status = 0;
-@@ -80,12 +292,11 @@
+@@ -79,12 +315,11 @@
             when expiration is done to trigger mount request with a new
             dentry */
  	if (de_info && (de_info->flags & AUTOFS_INF_EXPIRING)) {
@@ -1054,7 +991,7 @@ diff -Nur linux-2.4.18.dist/fs/autofs4/root.c autofs4-2.4/fs/autofs4/root.c
  		DPRINTK(("try_to_fill_entry: expire done status=%d\n", status));
  		
  		return 0;
-@@ -95,12 +306,12 @@
+@@ -94,12 +329,12 @@
  		 dentry, dentry->d_name.len, dentry->d_name.name, dentry->d_inode));
  
  	/* Wait for a pending mount, triggering one if there isn't one already */
@@ -1073,7 +1010,7 @@ diff -Nur linux-2.4.18.dist/fs/autofs4/root.c autofs4-2.4/fs/autofs4/root.c
  		DPRINTK(("try_to_fill_entry: mount done status=%d\n", status));
  
  		if (status && dentry->d_inode)
-@@ -115,19 +326,21 @@
+@@ -114,19 +349,21 @@
  			/* Return a negative dentry, but leave it "pending" */
  			return 1;
  		}
@@ -1106,7 +1043,7 @@ diff -Nur linux-2.4.18.dist/fs/autofs4/root.c autofs4-2.4/fs/autofs4/root.c
  
  	/* We don't update the usages for the autofs daemon itself, this
  	   is necessary for recursive autofs mounts */
-@@ -138,46 +351,46 @@
+@@ -137,46 +374,46 @@
  	return 1;
  }
  
@@ -1169,7 +1106,7 @@ diff -Nur linux-2.4.18.dist/fs/autofs4/root.c autofs4-2.4/fs/autofs4/root.c
  	}
  	spin_unlock(&dcache_lock);
  
-@@ -185,25 +398,13 @@
+@@ -184,25 +421,13 @@
  	if (!oz_mode)
  		autofs4_update_usage(dentry);
  
@@ -1196,7 +1133,7 @@ diff -Nur linux-2.4.18.dist/fs/autofs4/root.c autofs4-2.4/fs/autofs4/root.c
  	DPRINTK(("autofs4_dentry_release: releasing %p\n", de));
  
  	inf = autofs4_dentry_ino(de);
-@@ -215,13 +416,11 @@
+@@ -214,13 +439,11 @@
  
  		autofs4_free_ino(inf);
  	}
@@ -1211,7 +1148,7 @@ diff -Nur linux-2.4.18.dist/fs/autofs4/root.c autofs4-2.4/fs/autofs4/root.c
  	d_release:	autofs4_dentry_release,
  };
  
-@@ -231,16 +430,114 @@
+@@ -230,16 +453,114 @@
  	d_release:	autofs4_dentry_release,
  };
  
@@ -1331,7 +1268,7 @@ diff -Nur linux-2.4.18.dist/fs/autofs4/root.c autofs4-2.4/fs/autofs4/root.c
  	dentry->d_fsdata = NULL;
  	d_add(dentry, NULL);
  	return NULL;
-@@ -252,7 +549,7 @@
+@@ -251,7 +572,7 @@
  	struct autofs_sb_info *sbi;
  	int oz_mode;
  
@@ -1340,7 +1277,7 @@ diff -Nur linux-2.4.18.dist/fs/autofs4/root.c autofs4-2.4/fs/autofs4/root.c
  		 dentry->d_name.len, dentry->d_name.name));
  
  	if (dentry->d_name.len > NAME_MAX)
-@@ -261,7 +558,8 @@
+@@ -260,7 +581,8 @@
  	sbi = autofs4_sbi(dir->i_sb);
  
  	oz_mode = autofs4_oz_mode(sbi);
@@ -1350,7 +1287,7 @@ diff -Nur linux-2.4.18.dist/fs/autofs4/root.c autofs4-2.4/fs/autofs4/root.c
  		 current->pid, current->pgrp, sbi->catatonic, oz_mode));
  
  	/*
-@@ -317,7 +615,7 @@
+@@ -316,7 +638,7 @@
  	struct inode *inode;
  	char *cp;
  
@@ -1359,7 +1296,7 @@ diff -Nur linux-2.4.18.dist/fs/autofs4/root.c autofs4-2.4/fs/autofs4/root.c
  		 dentry->d_name.len, dentry->d_name.name));
  
  	if (!autofs4_oz_mode(sbi))
-@@ -367,7 +665,7 @@
+@@ -366,7 +688,7 @@
   * If a process is blocked on the dentry waiting for the expire to finish,
   * it will invalidate the dentry and try to mount with a new one.
   *
@@ -1368,7 +1305,7 @@ diff -Nur linux-2.4.18.dist/fs/autofs4/root.c autofs4-2.4/fs/autofs4/root.c
   */
  static int autofs4_dir_unlink(struct inode *dir, struct dentry *dentry)
  {
-@@ -417,8 +715,6 @@
+@@ -416,8 +738,6 @@
  	return 0;
  }
  
@@ -1377,7 +1314,7 @@ diff -Nur linux-2.4.18.dist/fs/autofs4/root.c autofs4-2.4/fs/autofs4/root.c
  static int autofs4_dir_mkdir(struct inode *dir, struct dentry *dentry, int mode)
  {
  	struct autofs_sb_info *sbi = autofs4_sbi(dir->i_sb);
-@@ -428,7 +724,7 @@
+@@ -427,7 +747,7 @@
  	if ( !autofs4_oz_mode(sbi) )
  		return -EACCES;
  
@@ -1386,7 +1323,7 @@ diff -Nur linux-2.4.18.dist/fs/autofs4/root.c autofs4-2.4/fs/autofs4/root.c
  		 dentry, dentry->d_name.len, dentry->d_name.name));
  
  	ino = autofs4_init_ino(ino, sbi, S_IFDIR | 0555);
-@@ -452,6 +748,19 @@
+@@ -451,6 +771,19 @@
  	return 0;
  }
  
@@ -1406,7 +1343,7 @@ diff -Nur linux-2.4.18.dist/fs/autofs4/root.c autofs4-2.4/fs/autofs4/root.c
  /* Get/set timeout ioctl() operation */
  static inline int autofs4_get_set_timeout(struct autofs_sb_info *sbi,
  					 unsigned long *p)
-@@ -477,19 +786,67 @@
+@@ -476,16 +809,65 @@
  	return put_user(sbi->version, p);
  }
  
@@ -1423,9 +1360,9 @@ diff -Nur linux-2.4.18.dist/fs/autofs4/root.c autofs4-2.4/fs/autofs4/root.c
 -		 dentry->d_op == &autofs4_dentry_operations) &&
 -		dentry->d_fsdata != NULL;
 +	return put_user(sbi->sub_version, p);
- }
- 
- /*
++}
++
++/*
 + * Tells the daemon whether we need to reghost or not. Also, clears
 + * the reghost_needed flag.
 + */
@@ -1470,7 +1407,7 @@ diff -Nur linux-2.4.18.dist/fs/autofs4/root.c autofs4-2.4/fs/autofs4/root.c
 +{
 +	int status = 0;
 +
-+	if ( may_umount(mnt) == 0 )
++	if (may_umount(mnt) == 0)
 +		status = 1;
 +
 +	DPRINTK(("autofs_ask_umount: returning %d\n", status));
@@ -1478,12 +1415,10 @@ diff -Nur linux-2.4.18.dist/fs/autofs4/root.c autofs4-2.4/fs/autofs4/root.c
 +	status = put_user(status, p);
 +
 +	return status;
-+}
-+/*
-  * ioctl()'s on the root directory is the chief method for the daemon to
-  * generate kernel reactions
-  */
-@@ -498,7 +855,7 @@
+ }
+ 
+ /*
+@@ -497,7 +879,7 @@
  {
  	struct autofs_sb_info *sbi = autofs4_sbi(inode->i_sb);
  
@@ -1492,7 +1427,7 @@ diff -Nur linux-2.4.18.dist/fs/autofs4/root.c autofs4-2.4/fs/autofs4/root.c
  		 cmd,arg,sbi,current->pgrp));
  
  	if ( _IOC_TYPE(cmd) != _IOC_TYPE(AUTOFS_IOC_FIRST) ||
-@@ -509,28 +866,47 @@
+@@ -508,28 +890,47 @@
  		return -EPERM;
  	
  	switch(cmd) {
@@ -1529,7 +1464,7 @@ diff -Nur linux-2.4.18.dist/fs/autofs4/root.c autofs4-2.4/fs/autofs4/root.c
 +		case AUTOFS_IOC_PROTOVER: /* Get protocol version */
 +			return autofs4_get_protover(sbi, (int *)arg);
 +
-+		case AUTOFS_IOC_PROTOSUBVER: /* Get protocol version */
++		case AUTOFS_IOC_PROTOSUBVER: /* Get protocol sub version */
 +			return autofs4_get_protosubver(sbi, (int *) arg);
 +
 +		case AUTOFS_IOC_SETTIMEOUT:
@@ -1562,9 +1497,9 @@ diff -Nur linux-2.4.18.dist/fs/autofs4/root.c autofs4-2.4/fs/autofs4/root.c
 +			return -ENOSYS;
  	}
  }
-diff -Nur linux-2.4.18.dist/fs/autofs4/waitq.c autofs4-2.4/fs/autofs4/waitq.c
---- linux-2.4.18.dist/fs/autofs4/waitq.c	2001-02-10 03:29:44.000000000 +0800
-+++ autofs4-2.4/fs/autofs4/waitq.c	2003-11-09 19:33:53.000000000 +0800
+diff -Nur linux-2.4.20.dist/fs/autofs4/waitq.c autofs4-2.4/fs/autofs4/waitq.c
+--- linux-2.4.20.dist/fs/autofs4/waitq.c	2001-02-10 03:29:44.000000000 +0800
++++ autofs4-2.4/fs/autofs4/waitq.c	2003-12-01 21:23:00.926347832 +0800
 @@ -3,6 +3,7 @@
   * linux/fs/autofs/waitq.c
   *
@@ -1582,19 +1517,21 @@ diff -Nur linux-2.4.18.dist/fs/autofs4/waitq.c autofs4-2.4/fs/autofs4/waitq.c
  
  	sbi->catatonic = 1;
  	wq = sbi->queues;
-@@ -35,8 +36,10 @@
+@@ -35,9 +36,11 @@
  	while ( wq ) {
  		nwq = wq->next;
  		wq->status = -ENOENT; /* Magic is gone - report failure */
 -		kfree(wq->name);
 -		wq->name = NULL;
+-		wake_up(&wq->queue);
 +		if ( wq->name ) {
 +			kfree(wq->name);
 +			wq->name = NULL;
 +		}
- 		wake_up(&wq->queue);
++		wake_up_interruptible(&wq->queue);
  		wq = nwq;
  	}
+ 	if (sbi->pipe) {
 @@ -90,8 +93,8 @@
  	union autofs_packet_union pkt;
  	size_t pktsz;
@@ -1615,7 +1552,7 @@ diff -Nur linux-2.4.18.dist/fs/autofs4/waitq.c autofs4-2.4/fs/autofs4/waitq.c
  		return;
  	}
  
-@@ -124,62 +127,102 @@
+@@ -124,62 +127,101 @@
  		autofs4_catatonic_mode(sbi);
  }
  
@@ -1717,7 +1654,6 @@ diff -Nur linux-2.4.18.dist/fs/autofs4/waitq.c autofs4-2.4/fs/autofs4/waitq.c
  		wq->status = -EINTR; /* Status return if interrupted */
 -		memcpy(wq->name, name->name, name->len);
  		wq->next = sbi->queues;
-+		wq->owner = current;
  		sbi->queues = wq;
  
 -		DPRINTK(("autofs_wait: new wait id = 0x%08lx, name = %.*s, nfy=%d\n",
@@ -1743,7 +1679,7 @@ diff -Nur linux-2.4.18.dist/fs/autofs4/waitq.c autofs4-2.4/fs/autofs4/waitq.c
  	}
  
  	/* wq->name is NULL if and only if the lock is already released */
-@@ -204,7 +247,12 @@
+@@ -204,7 +246,12 @@
  		recalc_sigpending(current);
  		spin_unlock_irqrestore(&current->sigmask_lock, irqflags);
  
@@ -1757,7 +1693,7 @@ diff -Nur linux-2.4.18.dist/fs/autofs4/waitq.c autofs4-2.4/fs/autofs4/waitq.c
  
  		spin_lock_irqsave(&current->sigmask_lock, irqflags);
  		current->blocked = oldset;
-@@ -243,7 +291,7 @@
+@@ -243,7 +290,7 @@
  	if (--wq->wait_ctr == 0)	/* Is anyone still waiting for this guy? */
  		kfree(wq);
  	else
@@ -1766,9 +1702,9 @@ diff -Nur linux-2.4.18.dist/fs/autofs4/waitq.c autofs4-2.4/fs/autofs4/waitq.c
  
  	return 0;
  }
-diff -Nur linux-2.4.18.dist/include/linux/auto_fs4.h autofs4-2.4/include/linux/auto_fs4.h
---- linux-2.4.18.dist/include/linux/auto_fs4.h	2001-11-23 03:46:40.000000000 +0800
-+++ autofs4-2.4/include/linux/auto_fs4.h	2003-11-09 19:33:52.000000000 +0800
+diff -Nur linux-2.4.20.dist/include/linux/auto_fs4.h autofs4-2.4/include/linux/auto_fs4.h
+--- linux-2.4.20.dist/include/linux/auto_fs4.h	2001-11-23 03:46:40.000000000 +0800
++++ autofs4-2.4/include/linux/auto_fs4.h	2003-12-01 21:23:00.696382792 +0800
 @@ -23,6 +23,12 @@
  #define AUTOFS_MIN_PROTO_VERSION	3
  #define AUTOFS_MAX_PROTO_VERSION	4
@@ -1795,14 +1731,14 @@ diff -Nur linux-2.4.18.dist/include/linux/auto_fs4.h autofs4-2.4/include/linux/a
 +#define AUTOFS_IOC_ASKUMOUNT		_IOR(0x93,0x70,int)
  
  #endif /* _LINUX_AUTO_FS4_H */
-diff -Nur linux-2.4.18.dist/include/linux/auto_fs.h autofs4-2.4/include/linux/auto_fs.h
---- linux-2.4.18.dist/include/linux/auto_fs.h	2001-11-23 03:46:40.000000000 +0800
-+++ autofs4-2.4/include/linux/auto_fs.h	2003-11-09 19:33:52.000000000 +0800
+diff -Nur linux-2.4.20.dist/include/linux/auto_fs.h autofs4-2.4/include/linux/auto_fs.h
+--- linux-2.4.20.dist/include/linux/auto_fs.h	2003-06-13 22:51:38.000000000 +0800
++++ autofs4-2.4/include/linux/auto_fs.h	2003-12-01 21:23:00.696382792 +0800
 @@ -45,7 +45,7 @@
   * If so, 32-bit user-space code should be backwards compatible.
   */
  
--#if defined(__sparc__) || defined(__mips__)
+-#if !defined(__alpha__) && !defined(__ia64__)   
 +#if defined(__sparc__) || defined(__mips__) || defined(__s390__) || defined(__powerpc__) || defined(__x86_64__)
  typedef unsigned int autofs_wqt_t;
  #else

@@ -1,15 +1,15 @@
 #
-# $Id: autofs.spec,v 1.10 2003/10/04 13:11:23 raven Exp $
+# $Id: autofs.spec,v 1.11 2003/12/04 15:41:32 raven Exp $
 #
 Summary: autofs daemon
 Name: autofs
 %define version 4.1.0
-%define release beta2
+%define release 1
 Version: %{version}
 Release: %{release}
 Copyright: GPL
 Group: Networking/Daemons
-Source: ftp://ftp.kernel.org/pub/linux/daemons/autofs/v4/autofs-%{version}-%{release}.tar.gz
+Source: ftp://ftp.kernel.org/pub/linux/daemons/autofs/v4/autofs-%{version}.tar.gz
 Buildroot: /var/tmp/autofs-tmp
 Prereq: chkconfig
 Requires: /bin/bash mktemp sed textutils sh-utils grep /bin/ps
