@@ -1,4 +1,4 @@
-#ident "$Id: mount_bind.c,v 1.1 2003/09/09 11:22:10 raven Exp $"
+#ident "$Id: mount_bind.c,v 1.2 2003/09/10 14:27:41 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  mount_bind.c      - module to mount a local filesystem if possible;
@@ -16,6 +16,7 @@
 
 #include <stdio.h>
 #include <malloc.h>
+#include <alloca.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <unistd.h>

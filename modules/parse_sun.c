@@ -1,4 +1,4 @@
-#ident "$Id: parse_sun.c,v 1.2 2003/09/09 11:52:30 raven Exp $"
+#ident "$Id: parse_sun.c,v 1.3 2003/09/10 14:27:41 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  parse_sun.c - module for Linux automountd to parse a Sun-format
@@ -17,6 +17,7 @@
 
 #include <stdio.h>
 #include <malloc.h>
+#include <alloca.h>
 #include <errno.h>
 #include <netdb.h>
 #include <fcntl.h>

@@ -1,4 +1,4 @@
-#ident "$Id: automount.c,v 1.3 2003/09/09 13:35:11 raven Exp $"
+#ident "$Id: automount.c,v 1.4 2003/09/10 14:27:41 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  automount.c - Linux automounter daemon
@@ -1433,7 +1433,7 @@ int main(int argc, char *argv[])
     
     timeout = ap.exp_timeout;
 
-    syslog(LOG_INFO, "using timeout %d seconds; freq %d secs",
+    syslog(LOG_INFO, "using timeout %ld seconds; freq %d secs",
 	   timeout, ap.exp_runfreq);
 
     ioctl(ap.ioctlfd, AUTOFS_IOC_SETTIMEOUT, &timeout);

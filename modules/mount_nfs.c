@@ -1,4 +1,4 @@
-#ident "$Id: mount_nfs.c,v 1.1 2003/09/09 11:22:10 raven Exp $"
+#ident "$Id: mount_nfs.c,v 1.2 2003/09/10 14:27:41 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  * mount_nfs.c - Module for Linux automountd to mount an NFS filesystem,
@@ -17,6 +17,7 @@
 
 #include <stdio.h>
 #include <malloc.h>
+#include <alloca.h>
 #include <errno.h>
 #include <netdb.h>
 #include <fcntl.h>
