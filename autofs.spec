@@ -1,5 +1,5 @@
 #
-# $Id: autofs.spec,v 1.24 2005/04/06 15:24:37 raven Exp $
+# $Id: autofs.spec,v 1.25 2005/04/06 15:27:40 raven Exp $
 #
 Summary: A tool from automatically mounting and umounting filesystems.
 Name: autofs
@@ -102,6 +102,9 @@ fi
 %dir /smb
 
 %changelog
+* Wed Apr 6 2005 Ian Kent <raven@themaw.net>
+- Update package to version 4.1.4.
+
 * Mon Jan 4 2005 Ian Kent <raven@themaw.net>
 - Update package spec file to add auto.smb program map example.
 
