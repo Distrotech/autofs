@@ -15,6 +15,9 @@
 - fix handling of localoptions options init script variable.
 - sanitize records from auto.master file (Debian bug#298649).
 - alter logic of UNDERSCORETODOT to work when it's not set (Debian bug#301358).
+- attempt to fix Debian upgrade fail bug#300703.
+  - changes from Herbert Xus' patch.
+  - he`s not sure he got all cases and I can't see more either, so we'll see.
 
 14/2/2005 autofs-4.1.4_beta2
 ----------------------------

@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# $Id: rc.autofs.in,v 1.53 2005/03/27 05:41:26 raven Exp $
+# $Id: rc.autofs.in,v 1.54 2005/03/27 06:29:44 raven Exp $
 #
 # rc file for automount using a Sun-style "master map".
 # We first look for a local /etc/auto.master, then a YP
@@ -456,11 +456,11 @@ function umount_loopback()
 		echo ""
 		echo -n $"Unmounting loopback filesystem $match:  "
 		loopdev=`LC_ALL=C grep $l /proc/mounts | awk '{print $1}'`
-		umount -d $match
-		if [ $? -eq 0 ]; then
+		umount -d $match || ret=$?
+		if [ $ret -eq 0 ]; then
 		    echo "done"
 		else
-		    echo "failed ($?)"
+		    echo "failed ($ret)"
 		fi
 	    fi
 	done
@@ -478,11 +478,11 @@ function umount_loopback()
 	    if [ -n "$match" ]; then
 		echo ""
 		echo -n $"Unmounting loopback filesystem $match:  "
-		umount -d $match
-		if [ $? -eq 0 ]; then
+		umount -d $match || ret=$?
+		if [ $ret -eq 0 ]; then
 		    echo "done"
 		else
-		    echo "failed ($?)"
+		    echo "failed ($ret)"
 		fi
 	    fi
 	done
@@ -638,9 +638,10 @@ start)
 		pidfile=/var/run/autofs/`echo $mnt | sed 's,/,_,g'`.pid
 
 		start-stop-daemon --start --pidfile $pidfile --quiet \
-	  		--exec $DAEMON -- --pid-file=$pidfile $rest
+	  		--exec $DAEMON -- --pid-file=$pidfile $rest ||
+			ret=$?
 
-		if [ $? -ne 0 ]
+		if [ $ret -ne 0 ]
 		then
 			echo
 			echo " failed to start automount point $mnt"
@@ -666,8 +667,8 @@ stop)
 
 			start-stop-daemon --stop --quiet \
 					--retry USR2/$DAEMON_EXIT_WAIT \
-					--pidfile $file --exec $DAEMON
-			ret=$?
+					--pidfile $file --exec $DAEMON ||
+				ret=$?
 
 			case $ret in
 			0)
@@ -683,7 +684,7 @@ stop)
 				;;
 			*)
 				echo -n -e \
-			 	"\n Strange start-stop-daemon exit status: $?"
+			 	"\n Strange start-stop-daemon exit status: $ret
 				;;
 			esac
 		fi
@@ -727,9 +728,11 @@ reload)
 			pidfile=/var/run/autofs/`echo $mnt | sed 's,/,_,g'`.pid
 
 			start-stop-daemon --start --pidfile $pidfile --quiet \
-				--exec $DAEMON -- --pid-file=$pidfile $rest
-			
-			if [ $? -ne 0 ]; then
+				--exec $DAEMON -- --pid-file=$pidfile $rest ||
+				ret=$?
+
+			if [ $ret -ne 0 ]
+			then
 				echo
 				echo " failed to start automount point $mnt"
 			else
