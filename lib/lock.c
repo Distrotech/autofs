@@ -1,4 +1,4 @@
-#ident "$Id: lock.c,v 1.4 2005/01/09 13:10:04 raven Exp $"
+#ident "$Id: lock.c,v 1.5 2005/01/09 13:12:27 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  lock.c - autofs lockfile management
@@ -56,7 +56,6 @@ static int signals_have_been_setup = 0;
 /* Save previous actions */
 static struct sigaction actions[NSIG];
 static struct itimerval timer = {{0, 0}, {LOCK_TIMEOUT, 0}};
-static time_t alarm_remaining;
 
 /* Flag to identify we got a TERM signal */
 static int got_term = 0;
@@ -116,7 +115,6 @@ static void setup_locksigs(void)
 	sa.sa_flags = 0;
 	sigfillset(&sa.sa_mask);
 
-	alarm(0);
 	sigprocmask(SIG_BLOCK, &sa.sa_mask, NULL);
 
 	while (sigismember(&sa.sa_mask, ++sig) != -1
@@ -148,7 +146,6 @@ static void reset_locksigs(void)
 	
 	signals_have_been_setup = 0;
 	sigprocmask(SIG_UNBLOCK, &fullset, NULL);
-	alarm(ap.exp_runfreq);
 }
 
 /* Remove lock file. */
