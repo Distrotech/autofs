@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# $Id: rc.autofs.in,v 1.39 2005/01/17 14:53:17 raven Exp $
+# $Id: rc.autofs.in,v 1.40 2005/01/19 15:03:34 raven Exp $
 #
 # rc file for automount using a Sun-style "master map".
 # We first look for a local /etc/auto.master, then a YP
@@ -602,7 +602,7 @@ start)
 	if ! grep -q autofs /proc/filesystems
 	then
 		# autofs filesystem support not loaded
-		echo -n ' loading autofs4 kernel module,'
+#		echo -n ' loading autofs4 kernel module,'
 		modprobe autofs4 || modprobe autofs || true
 	fi
 
@@ -634,15 +634,14 @@ start)
 		start-stop-daemon --start --pidfile $pidfile --quiet \
 	  		--exec $DAEMON -- --pid-file=$pidfile $rest
 
-		if [ $? -eq 0 ]
+		if [ $? -ne 0 ]
 		then
-			# Mmmm ... this could be a bug report later.
-			# What if we have 50+ entries in our master map.
-			echo -n " $mnt"
+			echo
+			echo " failed to start automount point $mnt"
 		fi
 	done
 
-	echo -e "\ndone."
+	echo " done."
 	;;
 stop)
 	echo -n 'Stopping automounter:'
@@ -666,7 +665,7 @@ stop)
 
 			case $ret in
 			0)
-				echo -n " $mnt"
+#				echo -n " $mnt"
 				rm -f $file
 				;;
 			1)
@@ -684,7 +683,7 @@ stop)
 		fi
 	done
 
-	echo -e "\ndone."
+	echo " done."
 	;;
 reload)
 	echo "Reloading automounter: checking for changes ... "
