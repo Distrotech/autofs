@@ -1,5 +1,5 @@
 .\" t
-.\" $Id: autofs.5,v 1.7 2004/02/03 15:23:21 raven Exp $
+.\" $Id: autofs.5,v 1.8 2004/05/18 12:22:40 raven Exp $
 .TH AUTOFS 5 "6 Apr 1998"
 .TH AUTOFS 5 "14 Jan 2000"
 .SH NAME
@@ -46,10 +46,10 @@ command. There are two special options
 used to specify a filesystem type if the filesystem is not of the default
 NFS type.  This option is processed by the automounter and not by the mount
 command.
-.I -nonstrict
-used to ignore file systems that can't be mounted. This is important if
+.I -strict
+is used to treat errors when mounting file systems as fatal. This is important when
 multiple file systems should be mounted (`multimounts'). If this option
-is not given, no file system is mounted at all if at least one file system
+is given, no file system is mounted at all if at least one file system
 can't be mounted.
 
 .SS location

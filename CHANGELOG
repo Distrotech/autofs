@@ -11,6 +11,8 @@ xx/xx/2004 autofs-4.1.3
 - fix segv in NIS lookup module (Jeff Moyer).
 - init script fix for Debian (Thorild Selen).
 - fix pie option not checking for runable executable.
+- add NFS V3 and TCP to rpc discovery.
+- make nonstrict the default for multi-mount map entries.
 
 07/04/2004 autofs-4.1.2
 -----------------------

@@ -6,7 +6,7 @@
 .\"
 .\" This is free documentation.
 .\"
-.\" $Id: automount.8,v 1.5 2004/01/29 16:01:22 raven Exp $
+.\" $Id: automount.8,v 1.6 2004/05/18 12:22:40 raven Exp $
 .\"
 .TH AUTOMOUNT 8 "14 Jan 2000"
 .SH NAME
@@ -114,6 +114,12 @@ The \fBsun\fP format supports the following options:
 .TP
 .I "\-Dvariable=value"
 Replace \fIvariable\fP with \fIvalue\fP in map substitutions.
+.TP
+.I "\-strict"
+Treat errors when mounting file systems as fatal. This is important when
+multiple file systems should be mounted (`multimounts'). If this option
+is given, no file system is mounted at all if at least one file system
+can't be mounted.
 .RE
 .SH NOTES
 If the \fBautomount\fP daemon catches signal USR1, it will unmount all

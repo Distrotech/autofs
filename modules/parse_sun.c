@@ -1,4 +1,4 @@
-#ident "$Id: parse_sun.c,v 1.9 2004/05/10 12:44:30 raven Exp $"
+#ident "$Id: parse_sun.c,v 1.10 2004/05/18 12:22:40 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  parse_sun.c - module for Linux automountd to parse a Sun-format
@@ -517,7 +517,7 @@ static int sun_mount(const char *root, const char *name, int namelen,
 		     const char *loc, int loclen, const char *options)
 {
 	char *fstype = "nfs";	/* Default filesystem type */
-	int nonstrict = 0;
+	int nonstrict = 1;
 	int rv;
 	char *mountpoint;
 	char *what;
@@ -551,6 +551,8 @@ static int sun_mount(const char *root, const char *name, int namelen,
 				fstype = alloca(typelen + 1);
 				memcpy(fstype, cp + 7, typelen);
 				fstype[typelen] = '\0';
+			} else if (strncmp("strict", cp, 6) == 0) {
+				nonstrict = 0;
 			} else if (strncmp("nonstrict", cp, 9) == 0) {
 				nonstrict = 1;
 			} else {
