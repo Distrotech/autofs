@@ -1,6 +1,6 @@
 diff -Nurp linux-2.6.0.orig/fs/Kconfig linux-2.6.0/fs/Kconfig
 --- linux-2.6.0.orig/fs/Kconfig	2003-12-18 10:58:57.000000000 +0800
-+++ linux-2.6.0/fs/Kconfig	2004-12-28 02:20:13.000000000 +0800
++++ linux-2.6.0/fs/Kconfig	2005-04-04 22:28:36.000000000 +0800
 @@ -452,7 +452,7 @@ config AUTOFS4_FS
  	  automounter (amd), which is a pure user space daemon.
  
@@ -10,9 +10,10 @@ diff -Nurp linux-2.6.0.orig/fs/Kconfig linux-2.6.0/fs/Kconfig
  	  want to answer Y to "NFS file system support", below.
  
  	  To compile this support as a module, choose M here: the module will be
+Files linux-2.6.0.orig/fs/autofs4/.waitq.c.rej.swp and linux-2.6.0/fs/autofs4/.waitq.c.rej.swp differ
 diff -Nurp linux-2.6.0.orig/fs/autofs4/autofs_i.h linux-2.6.0/fs/autofs4/autofs_i.h
 --- linux-2.6.0.orig/fs/autofs4/autofs_i.h	2003-12-18 10:59:05.000000000 +0800
-+++ linux-2.6.0/fs/autofs4/autofs_i.h	2004-12-28 02:20:13.000000000 +0800
++++ linux-2.6.0/fs/autofs4/autofs_i.h	2005-04-04 22:35:56.000000000 +0800
 @@ -25,6 +25,8 @@
  #include <linux/string.h>
  #include <linux/wait.h>
@@ -22,16 +23,17 @@ diff -Nurp linux-2.6.0.orig/fs/autofs4/autofs_i.h linux-2.6.0/fs/autofs4/autofs_
  #include <asm/current.h>
  #include <asm/uaccess.h>
  
-@@ -82,7 +84,7 @@ struct autofs_wait_queue {
+@@ -82,7 +84,8 @@ struct autofs_wait_queue {
  	char *name;
  	/* This is for status reporting upon return */
  	int status;
 -	int wait_ctr;
++	atomic_t notified;
 +	atomic_t wait_ctr;
  };
  
  #define AUTOFS_SBI_MAGIC 0x6d4a556d
-@@ -93,8 +95,12 @@ struct autofs_sb_info {
+@@ -93,8 +96,13 @@ struct autofs_sb_info {
  	pid_t oz_pgrp;
  	int catatonic;
  	int version;
@@ -41,23 +43,38 @@ diff -Nurp linux-2.6.0.orig/fs/autofs4/autofs_i.h linux-2.6.0/fs/autofs4/autofs_
 +	int needs_reghost;
  	struct super_block *sb;
 +	struct semaphore wq_sem;
++	spinlock_t fs_lock;
  	struct autofs_wait_queue *queues; /* Wait queue pointer */
  };
  
-@@ -125,6 +131,12 @@ static inline int autofs4_ispending(stru
- 		(inf != NULL && inf->flags & AUTOFS_INF_EXPIRING);
- }
+@@ -120,9 +128,24 @@ static inline int autofs4_oz_mode(struct
+ static inline int autofs4_ispending(struct dentry *dentry)
+ {
+ 	struct autofs_info *inf = autofs4_dentry_ino(dentry);
++	int pending;
  
+-	return (dentry->d_flags & DCACHE_AUTOFS_PENDING) ||
+-		(inf != NULL && inf->flags & AUTOFS_INF_EXPIRING);
++	if (dentry->d_flags & DCACHE_AUTOFS_PENDING)
++		return 1;
++
++	if (inf) {
++		spin_lock(&inf->sbi->fs_lock);
++		pending = inf->flags & AUTOFS_INF_EXPIRING;
++		spin_unlock(&inf->sbi->fs_lock);
++	}
++
++	return pending;
++}
++
 +static inline void autofs4_copy_atime(struct file *src, struct file *dst)
 +{
 +	dst->f_dentry->d_inode->i_atime = src->f_dentry->d_inode->i_atime;
 +	return;
-+}
-+
+ }
+ 
  struct inode *autofs4_get_inode(struct super_block *, struct autofs_info *);
- struct autofs_info *autofs4_init_inf(struct autofs_sb_info *, mode_t mode);
- void autofs4_free_ino(struct autofs_info *);
-@@ -141,6 +153,7 @@ int autofs4_expire_multi(struct super_bl
+@@ -141,6 +164,7 @@ int autofs4_expire_multi(struct super_bl
  extern struct inode_operations autofs4_symlink_inode_operations;
  extern struct inode_operations autofs4_dir_inode_operations;
  extern struct inode_operations autofs4_root_inode_operations;
@@ -65,7 +82,7 @@ diff -Nurp linux-2.6.0.orig/fs/autofs4/autofs_i.h linux-2.6.0/fs/autofs4/autofs_
  extern struct file_operations autofs4_root_operations;
  
  /* Initializing function */
-@@ -157,6 +170,24 @@ enum autofs_notify
+@@ -157,6 +181,24 @@ enum autofs_notify
  	NFY_EXPIRE
  };
  
@@ -93,7 +110,7 @@ diff -Nurp linux-2.6.0.orig/fs/autofs4/autofs_i.h linux-2.6.0/fs/autofs4/autofs_
 +}
 diff -Nurp linux-2.6.0.orig/fs/autofs4/expire.c linux-2.6.0/fs/autofs4/expire.c
 --- linux-2.6.0.orig/fs/autofs4/expire.c	2003-12-18 10:59:05.000000000 +0800
-+++ linux-2.6.0/fs/autofs4/expire.c	2004-12-28 02:20:13.000000000 +0800
++++ linux-2.6.0/fs/autofs4/expire.c	2005-04-04 22:35:56.000000000 +0800
 @@ -4,6 +4,7 @@
   *
   *  Copyright 1997-1998 Transmeta Corporation -- All Rights Reserved
@@ -102,7 +119,7 @@ diff -Nurp linux-2.6.0.orig/fs/autofs4/expire.c linux-2.6.0/fs/autofs4/expire.c
   *
   * This file is part of the Linux kernel and is made available under
   * the terms of the GNU General Public License, version 2, or at your
-@@ -12,139 +13,198 @@
+@@ -12,139 +13,202 @@
   * ------------------------------------------------------------------------- */
  
  #include "autofs_i.h"
@@ -199,6 +216,10 @@ diff -Nurp linux-2.6.0.orig/fs/autofs4/expire.c linux-2.6.0/fs/autofs4/expire.c
 +
 +	/* Timeout of a tree mount is determined by its top dentry */
 +	if (!autofs4_can_expire(top, timeout, do_now))
++		return 0;
++
++	/* Is someone visiting anywhere in the tree ? */
++	if (autofs4_may_umount(mnt))
 +		return 0;
 +
 +	spin_lock(&dcache_lock);
@@ -393,7 +414,7 @@ diff -Nurp linux-2.6.0.orig/fs/autofs4/expire.c linux-2.6.0/fs/autofs4/expire.c
  }
  
  /*
-@@ -156,61 +216,86 @@ static int is_tree_busy(struct vfsmount 
+@@ -156,61 +220,94 @@ static int is_tree_busy(struct vfsmount 
  static struct dentry *autofs4_expire(struct super_block *sb,
  				     struct vfsmount *mnt,
  				     struct autofs_sb_info *sbi,
@@ -478,10 +499,18 @@ diff -Nurp linux-2.6.0.orig/fs/autofs4/expire.c linux-2.6.0/fs/autofs4/expire.c
 -			ino->last_used = now;
 +		/* Case 2: tree mount, expire iff entire tree is not busy */
 +		if (!exp_leaves) {
++			/* Lock the tree as we must expire as a whole */
++			spin_lock(&sbi->fs_lock);
 +			if (autofs4_check_tree(mnt, dentry, timeout, do_now)) {
-+			expired = dentry;
-+			break;
++				struct autofs_info *inf = autofs4_dentry_ino(dentry);
++
++				/* Set this flag early to catch sys_chdir and the like */
++				inf->flags |= AUTOFS_INF_EXPIRING;
++				spin_unlock(&sbi->fs_lock);
++				expired = dentry;
++				break;
 +			}
++			spin_unlock(&sbi->fs_lock);
 +		/* Case 3: direct mount, expire individual leaves */
 +		} else {
 +			expired = autofs4_check_leaves(mnt, dentry, timeout, do_now);
@@ -517,7 +546,7 @@ diff -Nurp linux-2.6.0.orig/fs/autofs4/expire.c linux-2.6.0/fs/autofs4/expire.c
  	}
  	spin_unlock(&dcache_lock);
  
-@@ -263,7 +348,7 @@ int autofs4_expire_multi(struct super_bl
+@@ -263,7 +360,7 @@ int autofs4_expire_multi(struct super_bl
  		/* This is synchronous because it makes the daemon a
                     little easier */
  		de_info->flags |= AUTOFS_INF_EXPIRING;
@@ -528,7 +557,7 @@ diff -Nurp linux-2.6.0.orig/fs/autofs4/expire.c linux-2.6.0/fs/autofs4/expire.c
  	}
 diff -Nurp linux-2.6.0.orig/fs/autofs4/inode.c linux-2.6.0/fs/autofs4/inode.c
 --- linux-2.6.0.orig/fs/autofs4/inode.c	2003-12-18 10:59:16.000000000 +0800
-+++ linux-2.6.0/fs/autofs4/inode.c	2004-12-28 02:20:13.000000000 +0800
++++ linux-2.6.0/fs/autofs4/inode.c	2005-04-04 22:35:56.000000000 +0800
 @@ -187,6 +187,7 @@ int autofs4_fill_super(struct super_bloc
  	struct file * pipe;
  	int pipefd;
@@ -537,16 +566,17 @@ diff -Nurp linux-2.6.0.orig/fs/autofs4/inode.c linux-2.6.0/fs/autofs4/inode.c
  	int minproto, maxproto;
  
  	sbi = (struct autofs_sb_info *) kmalloc(sizeof(*sbi), GFP_KERNEL);
-@@ -203,6 +204,8 @@ int autofs4_fill_super(struct super_bloc
+@@ -203,6 +204,9 @@ int autofs4_fill_super(struct super_bloc
  	sbi->oz_pgrp = process_group(current);
  	sbi->sb = s;
  	sbi->version = 0;
 +	sbi->sub_version = 0;
 +	init_MUTEX(&sbi->wq_sem);
++	spin_lock_init(&sbi->fs_lock);
  	sbi->queues = NULL;
  	s->s_blocksize = 1024;
  	s->s_blocksize_bits = 10;
-@@ -212,7 +215,14 @@ int autofs4_fill_super(struct super_bloc
+@@ -212,7 +216,14 @@ int autofs4_fill_super(struct super_bloc
  	/*
  	 * Get the root inode and dentry, but defer checking for errors.
  	 */
@@ -562,7 +592,7 @@ diff -Nurp linux-2.6.0.orig/fs/autofs4/inode.c linux-2.6.0/fs/autofs4/inode.c
  	root_inode->i_op = &autofs4_root_inode_operations;
  	root_inode->i_fop = &autofs4_root_operations;
  	root = d_alloc_root(root_inode);
-@@ -241,6 +251,7 @@ int autofs4_fill_super(struct super_bloc
+@@ -241,6 +252,7 @@ int autofs4_fill_super(struct super_bloc
  	}
  
  	sbi->version = maxproto > AUTOFS_MAX_PROTO_VERSION ? AUTOFS_MAX_PROTO_VERSION : maxproto;
@@ -570,7 +600,7 @@ diff -Nurp linux-2.6.0.orig/fs/autofs4/inode.c linux-2.6.0/fs/autofs4/inode.c
  
  	DPRINTK(("autofs: pipe fd = %d, pgrp = %u\n", pipefd, sbi->oz_pgrp));
  	pipe = fget(pipefd);
-@@ -311,7 +322,7 @@ struct inode *autofs4_get_inode(struct s
+@@ -311,7 +323,7 @@ struct inode *autofs4_get_inode(struct s
  	if (S_ISDIR(inf->mode)) {
  		inode->i_nlink = 2;
  		inode->i_op = &autofs4_dir_inode_operations;
@@ -581,7 +611,7 @@ diff -Nurp linux-2.6.0.orig/fs/autofs4/inode.c linux-2.6.0/fs/autofs4/inode.c
  		inode->i_op = &autofs4_symlink_inode_operations;
 diff -Nurp linux-2.6.0.orig/fs/autofs4/root.c linux-2.6.0/fs/autofs4/root.c
 --- linux-2.6.0.orig/fs/autofs4/root.c	2003-12-18 10:58:04.000000000 +0800
-+++ linux-2.6.0/fs/autofs4/root.c	2004-12-28 02:21:06.000000000 +0800
++++ linux-2.6.0/fs/autofs4/root.c	2005-04-04 22:28:36.000000000 +0800
 @@ -4,6 +4,7 @@
   *
   *  Copyright 1997-1998 Transmeta Corporation -- All Rights Reserved
@@ -1330,7 +1360,7 @@ diff -Nurp linux-2.6.0.orig/fs/autofs4/root.c linux-2.6.0/fs/autofs4/root.c
  		return autofs4_expire_run(inode->i_sb,filp->f_vfsmnt,sbi,
 diff -Nurp linux-2.6.0.orig/fs/autofs4/waitq.c linux-2.6.0/fs/autofs4/waitq.c
 --- linux-2.6.0.orig/fs/autofs4/waitq.c	2003-12-18 10:59:41.000000000 +0800
-+++ linux-2.6.0/fs/autofs4/waitq.c	2004-12-28 02:20:13.000000000 +0800
++++ linux-2.6.0/fs/autofs4/waitq.c	2005-04-04 22:34:09.000000000 +0800
 @@ -3,6 +3,7 @@
   * linux/fs/autofs/waitq.c
   *
@@ -1366,7 +1396,7 @@ diff -Nurp linux-2.6.0.orig/fs/autofs4/waitq.c linux-2.6.0/fs/autofs4/waitq.c
  		return;
  	}
  
-@@ -124,62 +125,107 @@ static void autofs4_notify_daemon(struct
+@@ -124,62 +125,110 @@ static void autofs4_notify_daemon(struct
  		autofs4_catatonic_mode(sbi);
  }
  
@@ -1426,16 +1456,16 @@ diff -Nurp linux-2.6.0.orig/fs/autofs4/waitq.c linux-2.6.0/fs/autofs4/waitq.c
 +		kfree(name);
  		return -ENOENT;
 +	}
++
++	if (down_interruptible(&sbi->wq_sem)) {
++		kfree(name);
++		return -EINTR;
++	}
  
 -	for ( wq = sbi->queues ; wq ; wq = wq->next ) {
 -		if ( wq->hash == name->hash &&
 -		     wq->len == name->len &&
 -		     wq->name && !memcmp(wq->name,name->name,name->len) )
-+	if (down_interruptible(&sbi->wq_sem)) {
-+		kfree(name);
-+		return -EINTR;
-+	}
-+
 +	for (wq = sbi->queues ; wq ; wq = wq->next) {
 +		if (wq->hash == dentry->d_name.hash &&
 +		    wq->len == len &&
@@ -1475,34 +1505,41 @@ diff -Nurp linux-2.6.0.orig/fs/autofs4/waitq.c linux-2.6.0/fs/autofs4/waitq.c
 +		wq->len = len;
 +		wq->status = -EINTR; /* Status return if interrupted */
 +		atomic_set(&wq->wait_ctr, 2);
++		atomic_set(&wq->notified, 1);
 +		up(&sbi->wq_sem);
++	} else {
++		atomic_inc(&wq->wait_ctr);
++		up(&sbi->wq_sem);
++		kfree(name);
++		DPRINTK(("autofs4_wait: existing wait id = 0x%08lx, name = %.*s, nfy=%d\n",
++			 (unsigned long) wq->wait_queue_token, wq->len, wq->name, notify));
++	}
++
++	if (notify != NFY_NONE && atomic_dec_and_test(&wq->notified)) {
++		int type = (notify == NFY_MOUNT ? 
++			autofs_ptype_missing : autofs_ptype_expire_multi);
++
++		DPRINTK(("autofs4_wait: new wait id = 0x%08lx, name = %.*s, nfy=%d\n",
++			(unsigned long) wq->wait_queue_token, wq->len, wq->name, notify));
  
 -		DPRINTK(("autofs_wait: new wait id = 0x%08lx, name = %.*s, nfy=%d\n",
 -			 wq->wait_queue_token, wq->len, wq->name, notify));
-+		DPRINTK(("autofs4_wait: new wait id = 0x%08lx, name = %.*s, nfy=%d\n",
-+			 (unsigned long) wq->wait_queue_token, wq->len, wq->name, notify));
  		/* autofs4_notify_daemon() may block */
 -		wq->wait_ctr = 2;
- 		if (notify != NFY_NONE) {
- 			autofs4_notify_daemon(sbi,wq, 
+-		if (notify != NFY_NONE) {
+-			autofs4_notify_daemon(sbi,wq, 
 -					      notify == NFY_MOUNT ? autofs_ptype_missing :
 -								    autofs_ptype_expire_multi);
-+					notify == NFY_MOUNT ?
-+						  autofs_ptype_missing :
-+						  autofs_ptype_expire_multi);
- 		}
- 	} else {
+-		}
+-	} else {
 -		wq->wait_ctr++;
 -		DPRINTK(("autofs_wait: existing wait id = 0x%08lx, name = %.*s, nfy=%d\n",
 -			 wq->wait_queue_token, wq->len, wq->name, notify));
-+		atomic_inc(&wq->wait_ctr);
-+		up(&sbi->wq_sem);
-+		DPRINTK(("autofs4_wait: existing wait id = 0x%08lx, name = %.*s, nfy=%d\n",
-+			 (unsigned long) wq->wait_queue_token, wq->len, wq->name, notify));
++		autofs4_notify_daemon(sbi, wq, type);
  	}
  
  	/* wq->name is NULL if and only if the lock is already released */
-@@ -204,19 +250,20 @@ int autofs4_wait(struct autofs_sb_info *
+@@ -204,19 +253,20 @@ int autofs4_wait(struct autofs_sb_info *
  		recalc_sigpending();
  		spin_unlock_irqrestore(&current->sighand->siglock, irqflags);
  
@@ -1526,7 +1563,7 @@ diff -Nurp linux-2.6.0.orig/fs/autofs4/waitq.c linux-2.6.0/fs/autofs4/waitq.c
  		kfree(wq);
  
  	return status;
-@@ -227,23 +274,28 @@ int autofs4_wait_release(struct autofs_s
+@@ -227,23 +277,28 @@ int autofs4_wait_release(struct autofs_s
  {
  	struct autofs_wait_queue *wq, **wql;
  
@@ -1560,7 +1597,7 @@ diff -Nurp linux-2.6.0.orig/fs/autofs4/waitq.c linux-2.6.0/fs/autofs4/waitq.c
  }
 diff -Nurp linux-2.6.0.orig/fs/namespace.c linux-2.6.0/fs/namespace.c
 --- linux-2.6.0.orig/fs/namespace.c	2003-12-18 10:59:05.000000000 +0800
-+++ linux-2.6.0/fs/namespace.c	2004-12-28 02:20:13.000000000 +0800
++++ linux-2.6.0/fs/namespace.c	2005-04-04 22:28:36.000000000 +0800
 @@ -251,7 +251,65 @@ struct seq_operations mounts_op = {
  	.show	= show_vfsmnt
  };
@@ -1630,12 +1667,12 @@ diff -Nurp linux-2.6.0.orig/fs/namespace.c linux-2.6.0/fs/namespace.c
   * a non-destructive way to look for easily umountable filesystems.
 diff -Nurp linux-2.6.0.orig/include/linux/auto_fs4.h linux-2.6.0/include/linux/auto_fs4.h
 --- linux-2.6.0.orig/include/linux/auto_fs4.h	2003-12-18 10:58:07.000000000 +0800
-+++ linux-2.6.0/include/linux/auto_fs4.h	2004-12-28 02:20:13.000000000 +0800
++++ linux-2.6.0/include/linux/auto_fs4.h	2005-04-04 22:38:08.000000000 +0800
 @@ -23,6 +23,12 @@
  #define AUTOFS_MIN_PROTO_VERSION	3
  #define AUTOFS_MAX_PROTO_VERSION	4
  
-+#define AUTOFS_PROTO_SUBVERSION         5
++#define AUTOFS_PROTO_SUBVERSION		6
 +
 +/* Mask for expire behaviour */
 +#define AUTOFS_EXP_IMMEDIATE		1
@@ -1659,7 +1696,7 @@ diff -Nurp linux-2.6.0.orig/include/linux/auto_fs4.h linux-2.6.0/include/linux/a
  #endif /* _LINUX_AUTO_FS4_H */
 diff -Nurp linux-2.6.0.orig/include/linux/compat_ioctl.h linux-2.6.0/include/linux/compat_ioctl.h
 --- linux-2.6.0.orig/include/linux/compat_ioctl.h	2003-12-18 10:59:43.000000000 +0800
-+++ linux-2.6.0/include/linux/compat_ioctl.h	2004-12-28 02:20:13.000000000 +0800
++++ linux-2.6.0/include/linux/compat_ioctl.h	2005-04-04 22:28:36.000000000 +0800
 @@ -550,6 +550,10 @@ COMPATIBLE_IOCTL(AUTOFS_IOC_CATATONIC)
  COMPATIBLE_IOCTL(AUTOFS_IOC_PROTOVER)
  COMPATIBLE_IOCTL(AUTOFS_IOC_EXPIRE)
@@ -1673,7 +1710,7 @@ diff -Nurp linux-2.6.0.orig/include/linux/compat_ioctl.h linux-2.6.0/include/lin
  COMPATIBLE_IOCTL(DEVFSDIOC_SET_EVENT_MASK)
 diff -Nurp linux-2.6.0.orig/include/linux/fs.h linux-2.6.0/include/linux/fs.h
 --- linux-2.6.0.orig/include/linux/fs.h	2003-12-18 10:58:29.000000000 +0800
-+++ linux-2.6.0/include/linux/fs.h	2004-12-28 02:20:13.000000000 +0800
++++ linux-2.6.0/include/linux/fs.h	2005-04-04 22:28:36.000000000 +0800
 @@ -1042,6 +1042,7 @@ struct super_block *get_sb_pseudo(struct
  extern int register_filesystem(struct file_system_type *);
  extern int unregister_filesystem(struct file_system_type *);

@@ -1,5 +1,5 @@
 
-ident $Id: README.patches,v 1.8 2004/12/28 03:16:47 raven Exp $
+ident $Id: README.patches,v 1.9 2005/04/06 15:09:01 raven Exp $
 
 The 2.4 kernel patches:
 
@@ -28,7 +28,10 @@ autofs4-2.4.22-fc1-20041227.patch
 	current autofs4 patch for Fedora Core 1
 
 autofs4-2.4.27-20041227.patch
-	current autofs4 patch for kernel 2.4.27 and above
+	current autofs4 patch for kernel 2.4.27 to 2.4.29
+
+autofs4-2.4.29-20041227.patch
+	current autofs4 patch for kernel 2.4.29 and above
 
 
 The 2.6 kernel patches:
@@ -44,6 +47,9 @@ autofs4-2.6.7-20041227.patch
 
 autofs4-2.6.9-20041227.patch
 	current autofs4 patch for 2.6.9.
+
+autofs4-2.6.10-20041227.patch
+	current autofs4 patch for 2.6.10 and above.
 
 No additional patches are needed for 2.6.10 at the time of this
 release.
