@@ -1,4 +1,4 @@
-#ident "$Id: lookup_file.c,v 1.6 2004/11/20 15:08:38 raven Exp $"
+#ident "$Id: lookup_file.c,v 1.7 2004/11/21 07:58:55 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup_file.c - module for Linux automount to query a flat file map
@@ -355,8 +355,10 @@ static int lookup_wild(const char *root, struct lookup_context *ctxt)
 	while(1) {
 		entry = read_one(f, mkey, mapent);
 		if (entry)
-			if (strncmp(mkey, "*", 1) == 0)
+			if (strncmp(mkey, "*", 1) == 0) {
+				close(f);
 				return cache_update(root, "*", mapent, age);
+			}
 
 		if (feof(f))
 			break;
