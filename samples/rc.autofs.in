@@ -1,6 +1,6 @@
 #! /bin/bash
 #
-# $Id: rc.autofs.in,v 1.1 2003/09/09 11:22:24 raven Exp $
+# $Id: rc.autofs.in,v 1.2 2003/09/09 11:52:30 raven Exp $
 #
 # rc file for automount using a Sun-style "master map".
 # We first look for a local /etc/auto.master, then a YP
@@ -159,6 +159,41 @@ function alive()
 }
 
 #
+# Find pid of deepest nested submount
+#
+function get_deepest_submount()
+{
+   ps axw|grep $DAEMON|\
+      grep submount|\
+      sed -e 's/--timeout[ =][0-9]*//g'|\
+      awk '{print $7,$1}'|\
+      sort -r|\
+      awk 'BEGIN {ORS=" "} {print $2}'|\
+      awk '{print $1}'
+}
+
+#
+# Signal each nested submount
+#
+function signal_submounts()
+{
+   tries=0
+   pid=`get_deepest_submount`
+   while [ -n "$pid" -a $tries -lt 3 ]; do
+      oldpid=$pid
+      kill -USR2 $pid
+      sleep 1
+      pid=`get_deepest_submount`
+      if [ "$oldpid" = "$pid" ]; then
+         tries=`expr $tries + 1`
+      else
+         tries=0
+      fi
+   done
+   echo $pid
+}
+
+#
 # Redhat start/stop function.
 #
 function redhat()
@@ -177,22 +212,27 @@ case "$1" in
 	fi
 	;;
   stop)
-	pids=$(/sbin/pidof $DAEMON)
-	kill -TERM $pids 2> /dev/null && sleep 1
-	count=1
-	while alive $pids; do
-	    sleep 5
-	    count=$(expr $count + 1)
-	    if [ $count -gt 5 ]; then
-		echo "Giving up on automounter"
-		break;
-	    fi
-	    echo "Automounter not stopped yet: retrying... (attempt $count)"
-	done
-	if [ $count -gt 1 -a $count -le 10 ]; then
-	    echo "Automounter stopped"
+	# Clear submounts first ...
+	if [ -z "`signal_submounts`" ]; then
+	   pids=$(/sbin/pidof $DAEMON)
+	   kill -TERM $pids 2> /dev/null && sleep 1
+	   count=1
+	   while alive $pids; do
+	       sleep 5
+	       count=$(expr $count + 1)
+	       if [ $count -gt 5 ]; then
+		   echo "Giving up on automounter"
+		   break;
+	       fi
+	       echo "Automounter not stopped yet: retrying... (attempt $count)"
+	   done
+	   if [ $count -gt 1 -a $count -le 10 ]; then
+	       echo "Automounter stopped"
+	   fi
+	   rm -f /var/lock/subsys/autofs
+	else
+	   echo "Automounter submounts busy ... manual stop needed"
 	fi
-	rm -f /var/lock/subsys/autofs
 	;;
   reload|restart)
 	if [ ! -f /var/lock/subsys/autofs ]; then

@@ -1,4 +1,4 @@
-#ident "$Id: automount.c,v 1.1 2003/09/09 11:21:55 raven Exp $"
+#ident "$Id: automount.c,v 1.2 2003/09/09 11:52:30 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  automount.c - Linux automounter daemon
@@ -764,7 +764,7 @@ static int st_prepare_shutdown(void)
 	DB(syslog(LOG_INFO, "prep_shutdown: state = %d\n",
 		  ap.state));
 
-	assert(ap.state == ST_READY);
+	assert(ap.state == ST_READY || (submount && ap.state == ST_EXPIRE));
 
 	/* Turn off timeouts */
 	alarm(0);
@@ -1233,6 +1233,10 @@ static unsigned long getnumopt(char *str, char option)
     exit(1);
   }
   return val;
+}
+
+unsigned get_timeout(void) {
+  return ap.exp_timeout;
 }
 
 static void usage(void)

@@ -1,4 +1,4 @@
-#ident "$Id: mount_autofs.c,v 1.1 2003/09/09 11:22:10 raven Exp $"
+#ident "$Id: mount_autofs.c,v 1.2 2003/09/09 11:52:30 raven Exp $"
 /*
  * mount_autofs.c
  *
@@ -27,6 +27,19 @@
 #define MODPREFIX "mount(autofs): "
 int mount_version = AUTOFS_MOUNT_VERSION; /* Required by protocol */
 
+extern int get_timeout(void);
+
+int num_length(unsigned num) {
+  int i = 1;
+  int divisor = 10;
+
+  while (num / divisor) {
+    i++;
+    divisor *= 10;
+  }
+  return i;
+}
+
 int mount_init(void **context)
 {
   return 0;
@@ -40,7 +53,17 @@ int mount_mount(const char *root, const char *name, int name_len,
   int argc, status;
   char *options, *p;
   pid_t slave, wp;
+  unsigned timeout = get_timeout();
+  char *option_timeout;
 
+  /* Allocate space for --timeout option */
+  option_timeout = alloca(num_length(timeout)+11+1);
+  if ( !option_timeout ) {
+    syslog(LOG_ERR, MODPREFIX "alloca: %m");
+    return 1;
+  }
+  sprintf(option_timeout, "--timeout=%d", timeout);
+  
   fullpath = alloca(strlen(root)+name_len+2);
   if ( !fullpath ) {
     syslog(LOG_ERR, MODPREFIX "alloca: %m");
@@ -65,12 +88,12 @@ int mount_mount(const char *root, const char *name, int name_len,
     return 1;
   }
     
-  syslog(LOG_DEBUG, MODPREFIX "fullpath=%s what=%s options=%s", 
-	 fullpath, what, options);
+  syslog(LOG_DEBUG, MODPREFIX "option_timeout=%s fullpath=%s what=%s options=%s", 
+	 option_timeout,fullpath, what, options);
 
   /* Build our argument vector.  */
 
-  argc = 5;
+  argc = 6;
   if ( options ) {
     char *p = options;
     do {
@@ -83,6 +106,7 @@ int mount_mount(const char *root, const char *name, int name_len,
   argc = 0;
   argv[argc++] = PATH_AUTOMOUNT;
   argv[argc++] = "--submount";
+  argv[argc++] = option_timeout;
   argv[argc++] = fullpath;
   argv[argc++] = strcpy(alloca(strlen(what)+1), what);
   

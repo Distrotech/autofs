@@ -1,4 +1,4 @@
-#ident "$Id: parse_sun.c,v 1.1 2003/09/09 11:22:14 raven Exp $"
+#ident "$Id: parse_sun.c,v 1.2 2003/09/09 11:52:30 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  parse_sun.c - module for Linux automountd to parse a Sun-format
@@ -522,7 +522,10 @@ static int sun_mount(const char *root, const char *name, int namelen,
   }
   mountpoint = alloca(namelen + pathlen + 2);
   
-  sprintf(mountpoint, "%.*s/%.*s", namelen, name, pathlen, path);
+  if (pathlen)
+    sprintf(mountpoint, "%.*s/%.*s", namelen, name, pathlen, path);
+  else
+    sprintf(mountpoint, "%.*s", namelen, name);
 
   what = alloca(loclen + 1);
   memcpy(what, loc, loclen);
