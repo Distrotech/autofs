@@ -1,4 +1,4 @@
-#ident "$Id: automount.c,v 1.16 2004/08/29 12:04:26 raven Exp $"
+#ident "$Id: automount.c,v 1.17 2004/08/29 12:15:19 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  automount.c - Linux automounter daemon
@@ -833,9 +833,9 @@ static int st_prepare_shutdown(void)
 	alarm(0);
 
 	/* Prevent any new mounts */
-	ap.state = ST_SHUTDOWN_PENDING;
-
 	sigprocmask(SIG_SETMASK, &lock_sigs, NULL);
+
+	ap.state = ST_SHUTDOWN_PENDING;
 
 	/* Unmount everything */
 	exp = expire_proc(1);
@@ -904,8 +904,8 @@ static int st_expire(void)
 		return 1;
 
 	case EXP_STARTED:
-		ap.state = ST_EXPIRE;
 		sigprocmask(SIG_SETMASK, &ready_sigs, NULL);
+		ap.state = ST_EXPIRE;
 		return 0;
 	}
 	return 1;

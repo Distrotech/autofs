@@ -6,6 +6,7 @@ xx/xx/2004 autofs-4.1.?
   (Jeff Moyer and Ian Kent).
 - fix error when setting pwd.
 - fix socket leak (Jeff Moyer).
+- fix potential race in signal handling code (Jeff Moyer).
 
 19/05/2004 autofs-4.1.3
 -----------------------
