@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# $Id: rc.autofs.in,v 1.31 2005/01/02 14:55:18 raven Exp $
+# $Id: rc.autofs.in,v 1.32 2005/01/02 17:04:38 raven Exp $
 #
 # rc file for automount using a Sun-style "master map".
 # We first look for a local /etc/auto.master, then a YP
@@ -392,7 +392,7 @@ function signal_submounts()
 	while [ -n "$pid" -a $tries -lt 8 ]; do
 		oldpid=$pid
 		kill -USR2 $pid 2 > /dev/null
-		usleep 300000
+		sleep 1
 		pid=`get_deepest_submount $1`
 		if [ "$oldpid" = "$pid" ]; then
 			tries=`expr $tries + 1`
@@ -415,7 +415,7 @@ function signal_automounts()
 			kill -USR2 $one_pid 2 > /dev/null
 			count=0
 			while ps ax|grep -v grep|grep $one_pid >/dev/null; do
-				usleep 200000 
+				sleep 1 
 				count=$(expr $count + 1)
 				if [ $count -gt 20 ]; then
 					break;
