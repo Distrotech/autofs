@@ -1,7 +1,9 @@
 #
-#ident $Id: configure.in,v 1.9 2004/04/03 12:51:51 raven Exp $
+#ident $Id: configure.in,v 1.10 2004/04/28 12:55:36 raven Exp $
 #
 # configure.in for the autofs daemon
+
+AC_PREREQ(2.5)
 
 #
 # Disable caching (the script is tiny, and it doesn't work with --with-path)
@@ -9,7 +11,7 @@
 #
 define([AC_CACHE_LOAD], )dnl
 define([AC_CACHE_SAVE], )dnl
-AC_INIT(.autofs-4.1.2)
+AC_INIT(.autofs-4.1.3)
 
 #
 # autofs installs by default in /usr
