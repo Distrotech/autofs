@@ -1,4 +1,4 @@
-#ident "$Id: automount.c,v 1.31 2005/01/09 09:16:43 raven Exp $"
+#ident "$Id: automount.c,v 1.32 2005/01/09 14:07:47 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  automount.c - Linux automounter daemon
@@ -313,7 +313,6 @@ static int do_umount_autofs(void)
 		struct stat st;
 		int ret;
 
-		/* We need to continue here even if we don't get the lock */
 		rv = spawnll(LOG_DEBUG,
 			    PATH_UMOUNT, PATH_UMOUNT, ap.path, NULL);
 		if (rv & MTAB_NOTUPDATED) {
