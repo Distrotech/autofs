@@ -1,4 +1,4 @@
-#ident "$Id: automount.c,v 1.7 2003/10/04 13:20:27 raven Exp $"
+#ident "$Id: automount.c,v 1.8 2003/11/10 12:10:21 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  automount.c - Linux automounter daemon
@@ -284,8 +284,11 @@ static int umount_multi(const char *path, int incl)
 	/* Delete detritus like unwanted mountpoints and symlinks */
 	if (left == 0) {
 		if ((!ap.ghost) ||
-		    (ap.state == ST_SHUTDOWN_PENDING || ap.state == ST_SHUTDOWN))
+		    (ap.state == ST_SHUTDOWN_PENDING ||
+		     ap.state == ST_SHUTDOWN))
 			rm_unwanted(path, incl, 1);
+		else if (ap.ghost && (ap.type == LKP_INDIRECT))
+			rm_unwanted(path, 0, 1);
 	}
 
 	return left;
@@ -1255,7 +1258,7 @@ static void cleanup_exit(const char *path, int exit_code)
 
 	if ((!ap.ghost || !submount) && *(path + 1) != '-')
 		if (rmdir(path) == -1)
-			syslog(LOG_WARNING, "failed to remove diri %s: %m", path);
+			syslog(LOG_WARNING, "failed to remove dir %s: %m", path);
 
 	exit(exit_code);
 }
