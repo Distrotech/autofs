@@ -1,4 +1,4 @@
-#ident "$Id"
+#ident "$Id: mounts.c,v 1.3 2004/11/20 14:52:59 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  mounts.c - module for Linux automount mount table lookup functions
