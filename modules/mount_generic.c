@@ -1,4 +1,4 @@
-#ident "$Id: mount_generic.c,v 1.12 2004/11/17 13:39:12 raven Exp $"
+#ident "$Id: mount_generic.c,v 1.13 2005/01/03 03:00:44 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  mount_generic.c - module for Linux automountd to mount filesystems
@@ -69,7 +69,7 @@ int mount_mount(const char *root, const char *name, int name_len,
 		existed = 0;
 
 	if (is_mounted(_PATH_MOUNTED, fullpath)) {
-		error("BUG: %s already mounted", fullpath);
+		error(MODPREFIX ":warning: %s is already mounted", fullpath);
 		return 0;
 	}
 

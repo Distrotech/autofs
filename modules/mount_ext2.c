@@ -1,4 +1,4 @@
-#ident "$Id: mount_ext2.c,v 1.15 2004/11/17 13:39:12 raven Exp $"
+#ident "$Id: mount_ext2.c,v 1.16 2005/01/03 03:00:44 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  mount_ext2.c - module for Linux automountd to mount ext2 filesystems
@@ -70,7 +70,8 @@ int mount_mount(const char *root, const char *name, int name_len,
 		existed = 0;
 
 	if (is_mounted(_PATH_MOUNTED, fullpath)) {
-		error("BUG: %s already mounted", fullpath);
+		error(MODPREFIX 
+		  ":warning: %s is already mounted", fullpath);
 		return 0;
 	}
 

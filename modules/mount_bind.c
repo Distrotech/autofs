@@ -1,4 +1,4 @@
-#ident "$Id: mount_bind.c,v 1.12 2004/11/20 14:30:42 raven Exp $"
+#ident "$Id: mount_bind.c,v 1.13 2005/01/03 03:00:44 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  mount_bind.c      - module to mount a local filesystem if possible;
@@ -122,7 +122,8 @@ int mount_mount(const char *root, const char *name, int name_len,
 			existed = 0;
 
 		if (is_mounted(_PATH_MOUNTED, fullpath)) {
-			warn("BUG: %s already mounted", fullpath);
+			error(MODPREFIX 
+			  ":warning: %s is already mounted", fullpath);
 			return 0;
 		}
 
