@@ -1,4 +1,4 @@
-.\" $Id: autofs.8.in,v 1.3 2004/08/29 12:46:23 raven Exp $
+.\" $Id: autofs.8.in,v 1.4 2005/01/05 10:12:42 raven Exp $
 .TH AUTOFS 8 "9 Sep 1997"
 .SH NAME
 @@INIT.D@@/autofs \- Control Script for automounter
@@ -31,13 +31,16 @@ to find mount points on the system. For each of those mount points a
 process is started with the appropriate parameters. You can check the
 active mount points for the automounter with the
 .B @@INIT.D@@/autofs status
-command. After the
+command. If the
 .I auto.master
-configuration file is processed the
-.B autofs
-script will check for an NIS map with the same name. If such a map exists
-then that map will be processed in the same way as the auto.master map. The
-NIS map will be processed last.
+configuration file contains a line of the form
+.P
+.I +map
+.B [options]
+.P
+then the script will check for an NIS map with the same name.  If such a
+map exists then that map will be processed in the same way as the
+auto.master map, with any optional arguments.
 .P
 .B @@INIT.D@@/autofs reload
 will check the current auto.master map against running daemons. It will kill
