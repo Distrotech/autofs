@@ -1,4 +1,4 @@
-#ident "$Id: lookup_nisplus.c,v 1.1 2003/09/09 11:22:05 raven Exp $"
+#ident "$Id: lookup_nisplus.c,v 1.2 2003/09/29 08:22:35 raven Exp $"
 /*
  * lookup_nisplus.c
  *
@@ -20,85 +20,96 @@
 #define MODULE_LOOKUP
 #include "automount.h"
 
+#ifdef DEBUG
+#define DB(x)           do { x; } while(0)
+#else
+#define DB(x)           do { } while(0)
+#endif
+
 #define MAPFMT_DEFAULT "sun"
 
 #define MODPREFIX "lookup(nisplus): "
 
 struct lookup_context {
-  const char *domainname;
-  const char *mapname;
-  struct parse_mod *parse;
+	const char *domainname;
+	const char *mapname;
+	struct parse_mod *parse;
 };
 
-int lookup_version = AUTOFS_LOOKUP_VERSION; /* Required by protocol */
+int lookup_version = AUTOFS_LOOKUP_VERSION;	/* Required by protocol */
 
-int lookup_init(const char *mapfmt, int argc, const char * const *argv,
-		void **context)
+int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **context)
 {
-  struct lookup_context *ctxt;
+	struct lookup_context *ctxt;
 
-  if ( !(*context = ctxt = malloc(sizeof(struct lookup_context))) ) {
-    syslog(LOG_CRIT, MODPREFIX "%m");
-    return 1;
-  }
+	if (!(*context = ctxt = malloc(sizeof(struct lookup_context)))) {
+		syslog(LOG_CRIT, MODPREFIX "%m");
+		return 1;
+	}
 
-  if ( argc < 1 ) {
-    syslog(LOG_CRIT, MODPREFIX "No map name");
-    return 1;
-  }
-  ctxt->mapname = argv[0];
+	if (argc < 1) {
+		syslog(LOG_CRIT, MODPREFIX "No map name");
+		return 1;
+	}
+	ctxt->mapname = argv[0];
 
-  /* nis_local_directory () returns a pointer to a static buffer.
-     We don't need to copy or free it. */
-  ctxt->domainname = nis_local_directory ();
+	/* nis_local_directory () returns a pointer to a static buffer.
+	   We don't need to copy or free it. */
+	ctxt->domainname = nis_local_directory();
 
-  if ( !mapfmt )
-    mapfmt = MAPFMT_DEFAULT;
+	if (!mapfmt)
+		mapfmt = MAPFMT_DEFAULT;
 
-  return !(ctxt->parse = open_parse(mapfmt,MODPREFIX,argc-1,argv+1));
+	return !(ctxt->parse = open_parse(mapfmt, MODPREFIX, argc - 1, argv + 1));
 }
 
-int lookup_mount(const char *root, const char *name, int name_len,
-		 void *context)
+int lookup_ghost(const char *root, int ghost, void *context)
 {
-  struct lookup_context *ctxt = (struct lookup_context *) context;
-  char tablename[strlen (name) + strlen (ctxt->mapname) +
-		strlen (ctxt->domainname) + 20];
-  nis_result *result;
-  int rv;
+	return LKP_NOTSUP;
+}
 
-  syslog(LOG_DEBUG, MODPREFIX "looking up %s", name);
+int lookup_mount(const char *root, const char *name, int name_len, void *context)
+{
+	struct lookup_context *ctxt = (struct lookup_context *) context;
+	char tablename[strlen(name) + strlen(ctxt->mapname) +
+		       strlen(ctxt->domainname) + 20];
+	nis_result *result;
+	int rv;
 
-  sprintf (tablename, "[key=%s],%s.org_dir.%s", name, ctxt->mapname,
-	   ctxt->domainname);
+	DB(syslog(LOG_DEBUG, MODPREFIX "looking up %s", name));
 
-  result = nis_list (tablename, FOLLOW_PATH | FOLLOW_LINKS, NULL, NULL);
-  if (result->status != NIS_SUCCESS && result->status != NIS_S_SUCCESS) {
-    /* Try to get the "*" entry if there is one - note that we *don't*
-       modify "name" so & -> the name we used, not "*" */
-    sprintf (tablename, "[key=*],%s.org_dir.%s", ctxt->mapname,
-	     ctxt->domainname);
-    result = nis_list (tablename, FOLLOW_PATH | FOLLOW_LINKS, NULL, NULL);
-  }
-  if (result->status != NIS_SUCCESS && result->status != NIS_S_SUCCESS) {
-    syslog(LOG_NOTICE, MODPREFIX "lookup for %s failed: %s", name,
-	   nis_sperrno (result->status));
-    return 1;
-  }
+	sprintf(tablename, "[key=%s],%s.org_dir.%s", name, ctxt->mapname,
+		ctxt->domainname);
 
-  syslog(LOG_DEBUG, MODPREFIX "%s -> %s", name,
-	 NIS_RES_OBJECT(result)->EN_data.en_cols.en_cols_val[1].ec_value.ec_value_val);
+	result = nis_list(tablename, FOLLOW_PATH | FOLLOW_LINKS, NULL, NULL);
+	if (result->status != NIS_SUCCESS && result->status != NIS_S_SUCCESS) {
+		/* Try to get the "*" entry if there is one - note that we *don't*
+		   modify "name" so & -> the name we used, not "*" */
+		sprintf(tablename, "[key=*],%s.org_dir.%s", ctxt->mapname,
+			ctxt->domainname);
+		result = nis_list(tablename, FOLLOW_PATH | FOLLOW_LINKS, NULL, NULL);
+	}
+	if (result->status != NIS_SUCCESS && result->status != NIS_S_SUCCESS) {
+		syslog(LOG_NOTICE, MODPREFIX "lookup for %s failed: %s", name,
+		       nis_sperrno(result->status));
+		return 1;
+	}
 
-  rv = ctxt->parse->parse_mount(root,name,name_len,
-  NIS_RES_OBJECT(result)->EN_data.en_cols.en_cols_val[1].ec_value.ec_value_val,
-				ctxt->parse->context);
-  return rv;
+	syslog(LOG_DEBUG, MODPREFIX "%s -> %s", name,
+	       NIS_RES_OBJECT(result)->EN_data.en_cols.en_cols_val[1].ec_value.
+	       ec_value_val);
+
+	rv = ctxt->parse->parse_mount(root, name, name_len,
+				      NIS_RES_OBJECT(result)->EN_data.en_cols.
+				      en_cols_val[1].ec_value.ec_value_val,
+				      ctxt->parse->context);
+	return rv;
 }
 
 int lookup_done(void *context)
 {
-  struct lookup_context *ctxt = (struct lookup_context *) context;
-  int rv = close_parse(ctxt->parse);
-  free(ctxt);
-  return rv;
+	struct lookup_context *ctxt = (struct lookup_context *) context;
+	int rv = close_parse(ctxt->parse);
+	free(ctxt);
+	return rv;
 }

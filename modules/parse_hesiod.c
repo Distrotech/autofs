@@ -1,4 +1,4 @@
-#ident "$Id: parse_hesiod.c,v 1.1 2003/09/09 11:22:11 raven Exp $"
+#ident "$Id: parse_hesiod.c,v 1.2 2003/09/29 08:22:35 raven Exp $"
 /*
  * parse_hesiod.c
  *
@@ -18,192 +18,243 @@
 #define MODULE_PARSE
 #include "automount.h"
 
+#ifdef DEBUG
+#define DB(x)           do { x; } while(0)
+#else
+#define DB(x)           do { } while(0)
+#endif
+
 #define MODPREFIX "parse(hesiod): "
-int parse_version = AUTOFS_PARSE_VERSION; /* Required by protocol */
+int parse_version = AUTOFS_PARSE_VERSION;	/* Required by protocol */
 
 #define HESIOD_LEN 512
 
 /* Break out the fields in an AFS record of the form:
    "AFS /afs/athena/mit/tytso w /mit/tytso-afs" */
 static int parse_afs(const char *filsysline, const char *name, int name_len,
-                     char *source, int source_len,
-                     char *options, int options_len)
+		     char *source, int source_len, char *options, int options_len)
 {
-  const char *p;
-  int i;
+	const char *p;
+	int i;
 
-  p = filsysline;
+	p = filsysline;
 
-  while(isspace(*p)) p++;    /* Skip whitespace. */
-  while(!isspace(*p)) p++;   /* Skip the filesystem type. */
-  while(isspace(*p)) p++;    /* Skip whitespace. */
+	/* Skip whitespace. */
+	while (isspace(*p))
+		p++;
 
-  /* Isolate the source for this AFS fs. */
-  for(i = 0; (!isspace(p[i]) && i < source_len); i++) {
-    source[i] = p[i];
-  }
-  source[i] = 0;
-  p += i;
+	/* Skip the filesystem type. */
+	while (!isspace(*p))
+		p++;
 
-  while((*p) && (isspace(*p))) p++;    /* Skip whitespace. */
+	/* Skip whitespace. */
+	while (isspace(*p))
+		p++;
 
-  /* Isolate the source for this AFS fs. */
-  for(i = 0; (!isspace(p[i]) && i < options_len); i++) {
-    options[i] = p[i];
-  }
-  options[i] = 0;
+	/* Isolate the source for this AFS fs. */
+	for (i = 0; (!isspace(p[i]) && i < source_len); i++) {
+		source[i] = p[i];
+	}
 
-  if(!strcmp(options, "r"))             /* Hack for "r" or "w" options. */
-    strcpy(options, "ro");
-  if(!strcmp(options, "w"))
-    strcpy(options, "rw");
+	source[i] = 0;
+	p += i;
 
-  syslog(LOG_DEBUG, MODPREFIX "parsing AFS record gives '%s'->'%s' with options"         " '%s'", name, source, options);
+	/* Skip whitespace. */
+	while ((*p) && (isspace(*p)))
+		p++;
 
-  return 0;
+	/* Isolate the source for this AFS fs. */
+	for (i = 0; (!isspace(p[i]) && i < options_len); i++) {
+		options[i] = p[i];
+	}
+	options[i] = 0;
+
+	/* Hack for "r" or "w" options. */
+	if (!strcmp(options, "r"))
+		strcpy(options, "ro");
+
+	if (!strcmp(options, "w"))
+		strcpy(options, "rw");
+
+	DB(syslog
+	   (LOG_DEBUG,
+	    MODPREFIX "parsing AFS record gives '%s'->'%s' with options" " '%s'", name,
+	    source, options));
+
+	return 0;
 }
 
 /* Break out the fields in an NFS record of the form:
    "NFS /export/src nelson.tx.ncsu.edu w /ncsu/tx-src" */
 static int parse_nfs(const char *filsysline, const char *name, int name_len,
-                     char *source, int source_len,
-                     char *options, int options_len)
+		     char *source, int source_len, char *options, int options_len)
 {
-  const char *p;
-  char mount[HESIOD_LEN + 1];
-  int i;
+	const char *p;
+	char mount[HESIOD_LEN + 1];
+	int i;
 
-  p = filsysline;
+	p = filsysline;
 
-  while(isspace(*p)) p++;    /* Skip whitespace. */
-  while(!isspace(*p)) p++;   /* Skip the filesystem type. */
-  while(isspace(*p)) p++;    /* Skip whitespace. */
+	/* Skip whitespace. */
+	while (isspace(*p))
+		p++;
 
-  /* Isolate the remote mountpoint for this NFS fs. */
-  for(i = 0; (!isspace(p[i]) && i < sizeof(mount)); i++) {
-    mount[i] = p[i];
-  }
-  mount[i] = 0;
-  p += i;
+	/* Skip the filesystem type. */
+	while (!isspace(*p))
+		p++;
 
-  while((*p) && (isspace(*p))) p++;    /* Skip whitespace. */
+	/* Skip whitespace. */
+	while (isspace(*p))
+		p++;
 
-  /* Isolate the remote host. */
-  for(i = 0; (!isspace(p[i]) && i < source_len); i++) {
-    source[i] = p[i];
-  }
-  source[i] = 0;
-  p += i;
+	/* Isolate the remote mountpoint for this NFS fs. */
+	for (i = 0; (!isspace(p[i]) && i < sizeof(mount)); i++) {
+		mount[i] = p[i];
+	}
 
-  /* Append ":mountpoint" to the source to get "host:mountpoint". */
-  strncat(source, ":", source_len);
-  strncat(source, mount, source_len);
+	mount[i] = 0;
+	p += i;
 
-  while((*p) && (isspace(*p))) p++;    /* Skip whitespace. */
+	/* Skip whitespace. */
+	while ((*p) && (isspace(*p)))
+		p++;
 
-  /* Isolate the mount options. */
-  for(i = 0; (!isspace(p[i]) && i < options_len); i++) {
-    options[i] = p[i];
-  }
-  options[i] = 0;
+	/* Isolate the remote host. */
+	for (i = 0; (!isspace(p[i]) && i < source_len); i++) {
+		source[i] = p[i];
+	}
 
-  if(!strcmp(options, "r"))             /* Hack for "r" or "w" options. */
-    strcpy(options, "ro");
-  if(!strcmp(options, "w"))
-    strcpy(options, "rw");
+	source[i] = 0;
+	p += i;
 
-  syslog(LOG_DEBUG, MODPREFIX "parsing NFS record gives '%s'->'%s' with options"         "'%s'", name, source, options);
+	/* Append ":mountpoint" to the source to get "host:mountpoint". */
+	strncat(source, ":", source_len);
+	strncat(source, mount, source_len);
 
-  return 0;
+	/* Skip whitespace. */
+	while ((*p) && (isspace(*p)))
+		p++;
+
+	/* Isolate the mount options. */
+	for (i = 0; (!isspace(p[i]) && i < options_len); i++) {
+		options[i] = p[i];
+	}
+	options[i] = 0;
+
+	/* Hack for "r" or "w" options. */
+	if (!strcmp(options, "r"))
+		strcpy(options, "ro");
+
+	if (!strcmp(options, "w"))
+		strcpy(options, "rw");
+
+	syslog(LOG_DEBUG,
+	       MODPREFIX "parsing NFS record gives '%s'->'%s' with options" "'%s'", name,
+	       source, options);
+
+	return 0;
 }
 
 /* Break out the fields in a generic record of the form:
    "UFS /dev/ra0g w /site" */
 static int parse_generic(const char *filsysline, const char *name, int name_len,
-                         char *source, int source_len,
-                         char *options, int options_len)
+			 char *source, int source_len, char *options, int options_len)
 {
-  const char *p;
-  int i;
+	const char *p;
+	int i;
 
-  p = filsysline;
+	p = filsysline;
 
-  while(isspace(*p)) p++;    /* Skip whitespace. */
-  while(!isspace(*p)) p++;   /* Skip the filesystem type. */
-  while(isspace(*p)) p++;    /* Skip whitespace. */
+	/* Skip whitespace. */
+	while (isspace(*p))
+		p++;
 
-  /* Isolate the source for this fs. */
-  for(i = 0; (!isspace(p[i]) && i < source_len); i++) {
-    source[i] = p[i];
-  }
-  source[i] = 0;
-  p += i;
+	/* Skip the filesystem type. */
+	while (!isspace(*p))
+		p++;
 
-  while((*p) && (isspace(*p))) p++;    /* Skip whitespace. */
+	/* Skip whitespace. */
+	while (isspace(*p))
+		p++;
 
-  /* Isolate the mount options. */
-  for(i = 0; (!isspace(p[i]) && i < options_len); i++) {
-    options[i] = p[i];
-  }
-  options[i] = 0;
+	/* Isolate the source for this fs. */
+	for (i = 0; (!isspace(p[i]) && i < source_len); i++) {
+		source[i] = p[i];
+	}
 
-  if(!strcmp(options, "r"))             /* Hack for "r" or "w" options. */
-    strcpy(options, "ro");
-  if(!strcmp(options, "w"))
-    strcpy(options, "rw");
+	source[i] = 0;
+	p += i;
 
-  syslog(LOG_DEBUG, MODPREFIX "parsing generic record gives '%s'->'%s' "
-         "with options '%s'", name, source, options);
-  return 0;
+	/* Skip whitespace. */
+	while ((*p) && (isspace(*p)))
+		p++;
+
+	/* Isolate the mount options. */
+	for (i = 0; (!isspace(p[i]) && i < options_len); i++) {
+		options[i] = p[i];
+	}
+	options[i] = 0;
+
+	/* Hack for "r" or "w" options. */
+	if (!strcmp(options, "r"))
+		strcpy(options, "ro");
+
+	if (!strcmp(options, "w"))
+		strcpy(options, "rw");
+
+	DB(syslog(LOG_DEBUG, MODPREFIX "parsing generic record gives '%s'->'%s' "
+		  "with options '%s'", name, source, options));
+	return 0;
 }
 
-int parse_init(int argc, const char * const *argv, void **context)
+int parse_init(int argc, const char *const *argv, void **context)
 {
-  return 0;
+	return 0;
 }
 
 int parse_done(void *context)
 {
-  return 0;
+	return 0;
 }
 
 int parse_mount(const char *root, const char *name,
-                int name_len, const char *mapent, void *context)
+		int name_len, const char *mapent, void *context)
 {
-  char source[HESIOD_LEN+1],
-       fstype[HESIOD_LEN+1],
-       options[HESIOD_LEN+1],
-       *q;
-  const char *p;
+	char source[HESIOD_LEN + 1], fstype[HESIOD_LEN + 1], options[HESIOD_LEN + 1], *q;
+	const char *p;
 
-  p = mapent;
-  q = fstype;
+	p = mapent;
+	q = fstype;
 
-  while(isspace(*p)) p++;    /* Skip any initial whitespace... */
+	/* Skip any initial whitespace... */
+	while (isspace(*p))
+		p++;
 
-  while(!isspace(*p)) {      /* Isolate the filesystem type... */
-    *q++ = tolower(*p++);
-  }
-  *q = 0;
+	/* Isolate the filesystem type... */
+	while (!isspace(*p)) {
+		*q++ = tolower(*p++);
+	}
+	*q = 0;
 
-  if(!strcasecmp(fstype, "err")) {    /* If it's an error message... */
-    syslog(LOG_DEBUG, MODPREFIX "%s", mapent);
-    return 1;
-  }
-  else                                /* If it's an AFS fs... */
-  if(!strcasecmp(fstype, "afs")) parse_afs(mapent, name, name_len,
-                                           source, sizeof(source),
-                                           options, sizeof(options));
-  else                                /* If it's NFS... */
-  if(!strcasecmp(fstype, "nfs")) parse_nfs(mapent, name, name_len,
-                                           source, sizeof(source),
-                                           options, sizeof(options));
-  else                                /* Punt. */
-  parse_generic(mapent, name, name_len, source, sizeof(source),
-                        options, sizeof(options));
+	/* If it's an error message... */
+	if (!strcasecmp(fstype, "err")) {
+		syslog(LOG_DEBUG, MODPREFIX "%s", mapent);
+		return 1;
+	/* If it's an AFS fs... */
+	} else if (!strcasecmp(fstype, "afs"))
+		parse_afs(mapent, name, name_len,
+			  source, sizeof(source), options, sizeof(options));
+	/* If it's NFS... */
+	else if (!strcasecmp(fstype, "nfs"))
+		parse_nfs(mapent, name, name_len,
+			  source, sizeof(source), options, sizeof(options));
+	/* Punt. */
+	else
+		parse_generic(mapent, name, name_len, source, sizeof(source),
+			      options, sizeof(options));
 
-  syslog(LOG_DEBUG, MODPREFIX "mount %s is type %s from %s",
-         name, fstype, source);
+	DB(syslog(LOG_DEBUG, MODPREFIX "mount %s is type %s from %s",
+		  name, fstype, source));
 
-  return do_mount(root, name, name_len, source, fstype, options);
+	return do_mount(root, name, name_len, source, fstype, options);
 }

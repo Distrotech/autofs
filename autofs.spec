@@ -1,13 +1,15 @@
-# $Id: autofs.spec,v 1.5 2003/09/28 11:48:37 raven Exp $
+#
+# $Id: autofs.spec,v 1.6 2003/09/29 08:22:35 raven Exp $
+#
 Summary: autofs daemon
 Name: autofs
-%define version 4.0.0
-%define release 1
+%define version 4.1.0
+%define revision 1
 Version: %{version}
-Release: %{release}
+Release: 1
 Copyright: GPL
 Group: Networking/Daemons
-Source: ftp://ftp.kernel.org/pub/linux/daemons/autofs/v4/autofs-%{version}-%{release}.tar.gz
+Source: ftp://ftp.kernel.org/pub/linux/daemons/autofs/v4/autofs-%{version}-%{revision}.tar.gz
 Buildroot: /var/tmp/autofs-tmp
 Prereq: chkconfig
 Requires: /bin/bash mktemp sed textutils sh-utils grep /bin/ps
@@ -46,15 +48,15 @@ inkludera nätfilsystem, CD-ROM, floppydiskar, och så vidare.
 
 %build
 CFLAGS="$RPM_OPT_FLAGS" ./configure --prefix=/usr
-make
+make initdir=/etc/rc.d/init.d
 
 %install
 rm -rf $RPM_BUILD_ROOT
-mkdir -p $RPM_BUILD_ROOT/etc/rc.d/init.d
-mkdir -p $RPM_BUILD_ROOT/usr/sbin
-mkdir -p $RPM_BUILD_ROOT/usr/lib/autofs
-mkdir -p $RPM_BUILD_ROOT/usr/man/man5
-mkdir -p $RPM_BUILD_ROOT/usr/man/man8
+mkdir -p -m755 $RPM_BUILD_ROOT/etc/rc.d/init.d
+mkdir -p -m755 $RPM_BUILD_ROOT/usr/sbin
+mkdir -p -m755 $RPM_BUILD_ROOT/usr/lib/autofs
+mkdir -p -m755 $RPM_BUILD_ROOT/usr/man/man5
+mkdir -p -m755 $RPM_BUILD_ROOT/usr/man/man8
 
 make install initdir=/etc/rc.d/init.d INSTALLROOT=$RPM_BUILD_ROOT
 make install_samples initdir=/etc/rc.d/init.d INSTALLROOT=$RPM_BUILD_ROOT
@@ -67,14 +69,10 @@ rm -rf $RPM_BUILD_ROOT
 %post
 chkconfig --add autofs
 
-%postun
-if [ "$1" = 0 ] ; then
-  chkconfig --del autofs
-fi
-
 %files
 %defattr(-,root,root)
-%doc COPYRIGHT NEWS README TODO
+%doc COPYRIGHT README* TODO multiserver_mount.patch patches/* samples/ldap*
+%doc 
 %config /etc/rc.d/init.d/autofs
 %config(missingok) /etc/auto.master
 %config(missingok) /etc/auto.misc
@@ -86,66 +84,43 @@ fi
 /usr/man/*/*
 
 %changelog
-# $Log: autofs.spec,v $
-# Revision 1.5  2003/09/28 11:48:37  raven
-# Fix autofs.spec again.
-#
-# Revision 1.4  2003/09/28 11:37:56  raven
-# Fix typo in autofs.spec
-#
-# Revision 1.3  2003/09/28 11:27:49  raven
-# Fix autofs.spec ... more
-#
-# Revision 1.2  2003/09/28 11:06:54  raven
-# Updated autofs.spec version string.
-#
-# Revision 1.1.1.1  2003/09/09 11:21:28  raven
-# Initial import of autofs
-#
-# Revision 1.5  1999/03/07 23:04:23  hpa
-# Remove silly commented-out patch line
+* Mon Sep 29 2003 Ian Kent <raven@themaw.net>
+- Added work around for O(1) patch oddity.
 
-# Revision 1.4  1999/03/07 22:34:02  hpa
-# Added (missingok) to auto.master.
+* Sat Aug 17 2003 Ian Kent <raven@themaw.net>
+- Fixed tree mounts.
+- Corrected transciption error in autofs4-2.4.18 kernel module
 
-# Revision 1.3  1998/11/05 04:06:00  hpa
-# Regularized the logs.
+* Sun Aug 10 2003 Ian Kent <raven@themaw.net>
+- Checked and merged most of the RedHat v3 patches
+- Fixed kernel module handling wu-ftpd login problem (again)
 
-# Revision 1.2  1998/11/05 04:00:50  hpa
-# Add RCS Id/Log tags.
+* Thu Aug 7 2003 Ian Kent <raven@themaw.net>
+- Removed ineffective lock stuff
+- Added -n to bind mount to prevent mtab update error
+- Added retry to autofs umount to clean matb after fail
+- Redirected messages from above to debug log and added info message
+- Fixed autofs4 module reentrancy, pwd and chroot handling
 
-# Revision 1.1  1998/11/05 01:13:10  hpa
-# Imported spec file from RedHat Rawhide SRPM 3.1.1-8;
-# adjusted to be closer to 3.1.4 recommended use; not
-# done yet, however.
+* Wed Jul 30 2003 Ian Kent <raven@themaw.net>
+- Fixed autofs4 ghosting patch for 2.4.19 and above (again)
+- Fixed autofs directory removal on failure of autofs mount
+- Fixed lock file wait function overlapping calls to (u)mount
 
-# RedHat logs:
+* Sun Jul 27 2003 Ian Kent <raven@themaw.net>
+- Implemented LDAP direct map handling for nisMap and automountMap schema
+- Fixed autofs4 ghosting patch for 2.4.19 and above (again)
+- Added locking to fix overlapping internal calls to (u)mount 
+- Added wait for mtab~ to improve tolerance of overlapping external calls to (u)mount
+- Fixed ghosted directory removal after failed mount attempt
 
-* Tue Oct  6 1998 Bill Nottingham <notting@redhat.com>
-- fix bash2 breakage in init script
+* Wed May 28 2003 Ian Kent <raven@themaw.net>
+- Cleaned up an restructured my added code
+- Corrected ghosting problem with 2.4.19 and above
+- Added autofs4 ghosting patch for 2.4.19 and above
+- Implemented HUP signal to force update of ghosted maps
 
-* Sun Aug 23 1998 Jeff Johnson <jbj@redhat.com>
-- typo in man page.
+* Mon Mar 23 2002 Ian Kent <ian.kent@pobox.com>
+- Add patch to implement directory ghosting and direct mounts
+- Add patch to for autofs4 module to support ghosting
 
-* Mon Jul 20 1998 Jeff Johnson <jbj@redhat.com>
-- added sparc to ExclusiveArch.
-
-* Thu May 07 1998 Prospector System <bugs@redhat.com>
-- translations modified for de, fr, tr
-
-* Thu Apr 30 1998 Cristian Gafton <gafton@redhat.com>
-- updated to 3.1.1
-
-* Wed Apr 22 1998 Michael K. Johnson <johnsonm@redhat.com>
-- enhanced initscripts
-
-* Fri Dec 05 1997 Michael K. Johnson <johnsonm@redhat.com>
-- Link with -lnsl for glibc compliance.
-
-* Thu Oct 23 1997 Michael K. Johnson <johnsonm@redhat.com>
-- exclusivearch for i386 for now, since our kernel packages on
-  other platforms don't include autofs yet.
-- improvements to initscripts.
-
-* Thu Oct 16 1997 Michael K. Johnson <johnsonm@redhat.com>
-- Built package from 0.3.14 for 5.0

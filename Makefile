@@ -1,4 +1,5 @@
-# $Id: Makefile,v 1.2 2003/09/10 13:56:35 raven Exp $
+#
+# $Id: Makefile,v 1.3 2003/09/29 08:22:35 raven Exp $
 #
 # Main Makefile for the autofs user-space tools
 #
@@ -27,6 +28,9 @@ clean:
 install:
 	for i in $(SUBDIRS); do $(MAKE) -C $$i install; done 	
 
+install_kernel:
+	if [ -d kernel ]; then $(MAKE) -C kernel install; fi
+
 install_samples:
 	if [ -d samples ]; then $(MAKE) -C samples install; fi
 
@@ -39,14 +43,16 @@ mrproper distclean: clean
 	rm -f configure
 	$(MAKE) configure
 
-TODAY := $(shell date +'%Y%m%d')
+TODAY  := $(shell date +'%Y%m%d')
+PKGDIR := $(shell basename `pwd`)
+VERSION := $(shell cat .version)
 
 backup: mrproper
-	cd .. ; tar cf - autofs | gzip -9 > autofs-bu-$(TODAY).tar.gz 
+	cd .. ; tar zcf - $(PKGDIR) | gzip -9 > autofs-$(VERSION)-bu-$(TODAY).tar.gz 
 
 configure: configure.in aclocal.m4
 	autoconf
-	rm -f config.*
+	rm -rf config.* *.cache
 
 configure.in: .version
 	-rm -f .autofs-*

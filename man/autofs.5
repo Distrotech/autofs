@@ -1,5 +1,5 @@
 .\" t
-.\" $Id: autofs.5,v 1.1 2003/09/09 11:21:59 raven Exp $
+.\" $Id: autofs.5,v 1.2 2003/09/29 08:22:35 raven Exp $
 .TH AUTOFS 5 "6 Apr 1998"
 .TH AUTOFS 5 "14 Jan 2000"
 .SH NAME
@@ -27,9 +27,12 @@ ignored. The basic format of one line in such maps is:
 .BI "key [" -options "] location"
 
 .SS key
-is the part of the pathname between the mountpoint and the path into the
-filesystem mounted.  Usually you can think about the key as a subdirectory
-name below the mountpoint.
+For indirect mounts this is the part of the pathname between the mountpointi
+and the path into the filesystem mounted. Usually you can think about the
+key as a subdirectory name below the mountpoint.
+
+For direct mounts this is the full path of the mountpoint. This map is always
+associated with the /- mountpoint in the master map. 
 
 .SS options
 Options are optional.  Options can also be given in the 
@@ -88,7 +91,8 @@ a wildcard key).
 .SS Wildcard Key
 A * in the
 .B key
-field matches all keys.  An example for the usefulness is the following entry:
+field of indirect maps matches all keys.  An example for the usefulness
+is the following entry:
 .sp
 .RS +.2i
 .ta 1.0i
@@ -156,8 +160,8 @@ This may extend over multiple lines, quoting the line-breaks with \`\\\'.
 If present, the per-mountpoint mount-options are appended to the
 default mount-options.
 .SH UNSUPPORTED
-The automounter does not support direct maps and
-handles SunOS-style replicated filesystems only to the extent that
+This version of the automounter supports direct maps for FILE and NIS maps only
+and handles SunOS-style replicated filesystems only to the extent that
 .BR mount (8)
 does.
 .SH CAVEATS

@@ -6,7 +6,7 @@
 .\"
 .\" This is free documentation.
 .\"
-.\" $Id: automount.8,v 1.2 2003/09/09 13:35:11 raven Exp $
+.\" $Id: automount.8,v 1.3 2003/09/29 08:22:35 raven Exp $
 .\"
 .TH AUTOMOUNT 8 "14 Jan 2000"
 .SH NAME
@@ -32,6 +32,10 @@ Write the pid of the daemon to the specified file.
 Set the minimum timeout, in seconds, until directories are unmounted.
 The default is 5 minutes.  Setting the timeout to zero disables
 unmounts completely.
+.TP
+.I "\-g, \-\-ghost"
+Request that directories in the automount be shown but not mounted
+until accesssed. The wildcard map is not ghosted.
 .TP
 .I "\-v, \-\-version"
 Display the version number, then exit.
@@ -68,14 +72,21 @@ The map is a hesiod database whose
 entries are used for maps.
 .TP
 .B ldap
-map names are of the form \fB[servername:]basedn\fP, where the optional
+map names are of the form \fB[//servername/]basedn\fP, where the optional
 \fBservername\fP is the name of the LDAP server to query, and \fBbasedn\fP is
-the DN to do a subtree search under.  Entries are \fBautomount\fP objects in
+the DN to do a subtree search under. Two LDAP schema are supported. The i
+automountMap and the nisMap (RFC 2307) object classes.
+.P
+Entries in the automountMap schema are \fBautomount\fP objects in
 the specified subtree, where the \fBcn\fP attribute is the key (the wildcard
-key is "/"), and the \fBautomounterInformation\fP attribute contains the
+key is "/"), and the \fBautomountInformation\fP attribute contains the
 information used by the automounter.  Documentation on the schema
 used by this module is available online at
 \fIhttp://docs.iplanet.com/docs/manuals/directory/411ext/nis/mapping.htm\fP.
+.P
+RFC 2307 schema entries are \fBnisObject\fB objects and use the \fBcn\fB
+attribute as the key and the \fBnisMapEntry\fB contains information used
+by the automounter. 
 .RE
 .TP
 \fBformat\fP Format of the map data; currently the only formats
@@ -99,6 +110,8 @@ currently unused autofs-mounted filesystems and continue running
 (forced expire).  If it catches signals TERM or USR2 it will unmount
 all unused autofs-mounted filesystems and exit if all filesystems were
 unmounted.  Busy filesystems will not be unmounted.
+The daemon also responds to a HUP signal which triggers an update of
+maps for which ghosting is implemented (currently FILE and NIS maps).
 .P
 If the autofs directory itself is busy when the daemon is signalled
 with an exit signal then the daemon will exit without unmounting the

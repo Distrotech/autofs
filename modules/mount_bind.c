@@ -1,4 +1,4 @@
-#ident "$Id: mount_bind.c,v 1.2 2003/09/10 14:27:41 raven Exp $"
+#ident "$Id: mount_bind.c,v 1.3 2003/09/29 08:22:35 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  mount_bind.c      - module to mount a local filesystem if possible;
@@ -16,12 +16,12 @@
 
 #include <stdio.h>
 #include <malloc.h>
-#include <alloca.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <syslog.h>
 #include <string.h>
+#include <stdlib.h>
 #include <sys/param.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -29,122 +29,151 @@
 #define MODULE_MOUNT
 #include "automount.h"
 
+#ifdef DEBUG
+#define DB(x)           do { x; } while(0)
+#else
+#define DB(x)           do { } while(0)
+#endif
+
 #define MODPREFIX "mount(bind): "
-int mount_version = AUTOFS_MOUNT_VERSION; /* Required by protocol */
+int mount_version = AUTOFS_MOUNT_VERSION;	/* Required by protocol */
+
+extern struct autofs_point ap;
 
 static int bind_works = 0;
 
 int mount_init(void **context)
 {
-  char *tmp1 = tempnam(NULL, "auto");
-  char *tmp2 = tempnam(NULL, "auto");
-  int err;
-  struct stat st1, st2;
+	char *tmp1 = tempnam(NULL, "auto");
+	char *tmp2 = tempnam(NULL, "auto");
+	int err;
+	struct stat st1, st2;
 
-  if (tmp1 == NULL || tmp2 == NULL) {
-    if (tmp1)
-      free(tmp1);
-    if (tmp2)
-      free(tmp2);
-    return 0;
-  }
+	if (tmp1 == NULL || tmp2 == NULL) {
+		if (tmp1)
+			free(tmp1);
+		if (tmp2)
+			free(tmp2);
+		return 0;
+	}
 
-  if (mkdir(tmp1, 0700) == -1)
-    goto out2;
+	if (mkdir(tmp1, 0700) == -1)
+		goto out2;
 
-  if (mkdir(tmp2, 0700) == -1)
-    goto out1;
+	if (mkdir(tmp2, 0700) == -1)
+		goto out1;
 
-  if (lstat(tmp1, &st1) == -1)
-    goto out;
-    
-  err = spawnl(LOG_DEBUG, PATH_MOUNT, PATH_MOUNT, "--bind", tmp1, tmp2, NULL);
+	if (lstat(tmp1, &st1) == -1)
+		goto out;
 
-  if (err == 0 &&
-      lstat(tmp2, &st2) == 0 &&
-      st1.st_dev == st2.st_dev &&
-      st1.st_ino == st2.st_ino) {
-    bind_works = 1;
-  }
-  syslog(LOG_DEBUG, MODPREFIX "bind_works = %d\n", bind_works);
-  spawnl(LOG_DEBUG, PATH_UMOUNT, PATH_UMOUNT, tmp2, NULL);
+	err =
+	    spawnl(LOG_DEBUG, MOUNTED_LOCK, PATH_MOUNT, PATH_MOUNT, "-n", "--bind", tmp1,
+		   tmp2, NULL);
 
-out:
-  rmdir(tmp2);
-out1:
-  free(tmp2);
-  rmdir(tmp1);
-out2:
-  free(tmp1);
-  return 0;
+	if (err == 0 &&
+	    lstat(tmp2, &st2) == 0 &&
+	    st1.st_dev == st2.st_dev && st1.st_ino == st2.st_ino) {
+		bind_works = 1;
+	}
+	DB(syslog(LOG_DEBUG, MODPREFIX "bind_works = %d\n", bind_works));
+	spawnl(LOG_DEBUG, MOUNTED_LOCK, PATH_UMOUNT, PATH_UMOUNT, "-n", tmp2, NULL);
+
+      out:
+	rmdir(tmp2);
+      out1:
+	free(tmp2);
+	rmdir(tmp1);
+      out2:
+	free(tmp1);
+	return 0;
 }
 
 int mount_mount(const char *root, const char *name, int name_len,
-		const char *what, const char *fstype, const char *options,
-		void *context)
+		const char *what, const char *fstype, const char *options, void *context)
 {
-  char *fullpath;
-  int err;
-  int i;
+	char *fullpath;
+	int err;
+	int i;
 
-  fullpath = alloca(strlen(root)+name_len+2);
-  if ( !fullpath ) {
-    syslog(LOG_ERR, MODPREFIX "alloca: %m");
-    return 1;
-  }
-  sprintf(fullpath, "%s/%s", root, name);
-  i = strlen(fullpath);
-  while(--i > 0 && fullpath[i] == '/')
-    fullpath[i] = '\0';
+	fullpath = alloca(strlen(root) + name_len + 2);
+	if (!fullpath) {
+		syslog(LOG_ERR, MODPREFIX "alloca: %m");
+		return 1;
+	}
+	sprintf(fullpath, "%s/%s", root, name);
+	i = strlen(fullpath);
+	while (--i > 0 && fullpath[i] == '/')
+		fullpath[i] = '\0';
 
-  if (bind_works) {
-    syslog(LOG_DEBUG, MODPREFIX "calling mkdir_path %s", fullpath);
-    if ( mkdir_path(fullpath, 0555) && errno != EEXIST ) {
-      syslog(LOG_NOTICE, MODPREFIX "mkdir_path %s failed: %m", fullpath);
-      return 1;
-    }
-   
-    syslog(LOG_DEBUG, MODPREFIX "calling mount --bind %s %s",
-	   what, fullpath);
-    err = spawnl(LOG_NOTICE, PATH_MOUNT, PATH_MOUNT, "--bind",
-		 what, fullpath, NULL);
+	if (bind_works) {
+		DB(syslog(LOG_DEBUG, MODPREFIX "calling mkdir_path %s", fullpath));
 
-    if ( err ) {
-      rmdir_path(fullpath);
-      return 1;
-    } else {
-      syslog(LOG_DEBUG, MODPREFIX "mounted %s type %s on %s",
-	     what, fstype, fullpath);
-      return 0;
-    }
-  } else {
-    char *cp;
-    char *basepath = alloca(strlen(fullpath) + 1);
+		if (mkdir_path(fullpath, 0555) && errno != EEXIST) {
+			syslog(LOG_NOTICE, MODPREFIX "mkdir_path %s failed: %m",
+			       fullpath);
+			return 1;
+		}
 
-    strcpy(basepath, fullpath);
-    cp = strrchr(basepath, '/');
-    if (cp != NULL && cp != basepath)
-      *cp = '\0';
+		DB(syslog(LOG_DEBUG, MODPREFIX "calling mount --bind %s %s",
+			  what, fullpath));
+		wait_for_lock();
+		err =
+		    spawnl(LOG_NOTICE, MOUNTED_LOCK, PATH_MOUNT, PATH_MOUNT, "--bind",
+			   what, fullpath, NULL);
+		unlink(AUTOFS_LOCK);
 
-    syslog(LOG_DEBUG, MODPREFIX "calling mkdir_path %s", basepath);
-    if ( mkdir_path(basepath, 0555) ) {
-      syslog(LOG_NOTICE, MODPREFIX "mkdir_path %s failed: %m", basepath);
-      return 1;
-    }
-    
-    if ( symlink(what, fullpath) && errno != EEXIST ) {
-      syslog(LOG_NOTICE, MODPREFIX "failed to create local mount %s -> %s", fullpath, what);
-      rmdir_path(fullpath);
-      
-      return 1;
-    } else {
-      syslog(LOG_DEBUG, MODPREFIX "symlinked %s -> %s", fullpath, what);
-      return 0;
-    }
-  }
+		if (err) {
+			if (!ap.ghost)
+				rmdir_path(fullpath);
+			return 1;
+		} else {
+			DB(syslog(LOG_DEBUG, MODPREFIX "mounted %s type %s on %s",
+				  what, fstype, fullpath));
+			return 0;
+		}
+	} else {
+		char *cp;
+		char *basepath = alloca(strlen(fullpath) + 1);
+		struct stat st;
+
+		strcpy(basepath, fullpath);
+		cp = strrchr(basepath, '/');
+
+		if (cp != NULL && cp != basepath)
+			*cp = '\0';
+
+		if (stat(fullpath, &st) == 0) {
+			if (S_ISDIR(st.st_mode))
+				rmdir(fullpath);
+		} else {
+			DB(syslog
+			   (LOG_DEBUG, MODPREFIX "calling mkdir_path %s", basepath));
+			if (mkdir_path(basepath, 0555) && errno != EEXIST) {
+				syslog(LOG_ERR, MODPREFIX "mkdir_path %s failed: %m",
+				       basepath);
+				return 1;
+			}
+		}
+
+		if (symlink(what, fullpath) && errno != EEXIST) {
+			syslog(LOG_WARNING,
+			       MODPREFIX "failed to create local mount %s -> %s",
+			       fullpath, what);
+			if (ap.ghost)
+				mkdir_path(fullpath, 0555);
+			else
+				rmdir_path(fullpath);
+
+			return 1;
+		} else {
+			DB(syslog
+			   (LOG_DEBUG, MODPREFIX "symlinked %s -> %s", fullpath, what));
+			return 0;
+		}
+	}
 }
 
 int mount_done(void *context)
 {
-  return 0;
+	return 0;
 }

@@ -1,4 +1,4 @@
-#ident "$Id: lookup_hesiod.c,v 1.1 2003/09/09 11:22:05 raven Exp $"
+#ident "$Id: lookup_hesiod.c,v 1.2 2003/09/29 08:22:35 raven Exp $"
 /*
  * lookup_hesiod.c
  *
@@ -21,40 +21,50 @@
 #define MODULE_LOOKUP
 #include "automount.h"
 
+#ifdef DEBUG
+#define DB(x)           do { x; } while(0)
+#else
+#define DB(x)           do { } while(0)
+#endif
+
 #define MAPFMT_DEFAULT "hesiod"
 
 #define MODPREFIX "lookup(hesiod): "
 #define HESIOD_LEN 512
 
 struct lookup_context {
-  struct parse_mod *parser;
+	struct parse_mod *parser;
 };
 
-int lookup_version = AUTOFS_LOOKUP_VERSION; /* Required by protocol */
+int lookup_version = AUTOFS_LOOKUP_VERSION;	/* Required by protocol */
 
 /* This initializes a context (persistent non-global data) for queries to
    this module. */
-int lookup_init(const char *mapfmt, int argc, const char * const *argv,
-                void **context)
+int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **context)
 {
-  struct lookup_context *ctxt = NULL;
+	struct lookup_context *ctxt = NULL;
 
-  /* If we can't build a context, bail. */
-  if((*context = ctxt = (struct lookup_context*) 
-             malloc(sizeof(struct lookup_context))) == NULL) {
-    syslog(LOG_CRIT, MODPREFIX "malloc: %m");
-    return 1;
-  }
+	/* If we can't build a context, bail. */
+	if ((*context = ctxt = (struct lookup_context *)
+	     malloc(sizeof(struct lookup_context))) == NULL) {
+		syslog(LOG_CRIT, MODPREFIX "malloc: %m");
+		return 1;
+	}
 
-  /* Initialize the resolver. */
-  res_init();
+	/* Initialize the resolver. */
+	res_init();
 
-  /* If a map type isn't explicitly given, parse it as hesiod entries. */
-  if ( !mapfmt )
-    mapfmt = MAPFMT_DEFAULT;
+	/* If a map type isn't explicitly given, parse it as hesiod entries. */
+	if (!mapfmt)
+		mapfmt = MAPFMT_DEFAULT;
 
-  /* Open the parser, if we can. */
-  return !(ctxt->parser = open_parse(mapfmt,MODPREFIX,argc-1,argv+1));
+	/* Open the parser, if we can. */
+	return !(ctxt->parser = open_parse(mapfmt, MODPREFIX, argc - 1, argv + 1));
+}
+
+int lookup_ghost(const char *root, int ghost, void *context)
+{
+	return LKP_NOTSUP;
 }
 
 /* Lookup and act on a filesystem name.  In this case, lookup the "filsys"
@@ -63,36 +73,37 @@ int lookup_init(const char *mapfmt, int argc, const char * const *argv,
    assume it's something we know how to deal with already (generic). */
 int lookup_mount(const char *root, const char *name, int name_len, void *context)
 {
-  char **hes_result;
-  struct lookup_context *ctxt = (struct lookup_context *) context;
-  int rv;
+	char **hes_result;
+	struct lookup_context *ctxt = (struct lookup_context *) context;
+	int rv;
 
-  syslog(LOG_DEBUG, MODPREFIX "looking up root=\"%s\", name=\"%s\"",
-        root, name);
+	DB(syslog(LOG_DEBUG, MODPREFIX "looking up root=\"%s\", name=\"%s\"",
+		  root, name));
 
-  chdir("/");                  /* If this is not here the filesystem stays
-                                  busy, for some reason... */
+	chdir("/");		/* If this is not here the filesystem stays
+				   busy, for some reason... */
 
-  hes_result = hes_resolve(name, "filsys");
+	hes_result = hes_resolve(name, "filsys");
 
-  if ( !hes_result ) {
-    syslog(LOG_NOTICE, MODPREFIX "entry \"%s\" not found in map\n", name);
-    return 1;
-  }
-  
-  syslog(LOG_DEBUG, MODPREFIX "lookup for \"%s\" gave \"%s\"",
-	 name, hes_result[0]);
-  rv = ctxt->parser->parse_mount(root,name,name_len,hes_result[0],ctxt->parser->context);
-  free(hes_result);
-  return rv;
+	if (!hes_result) {
+		syslog(LOG_NOTICE, MODPREFIX "entry \"%s\" not found in map\n", name);
+		return 1;
+	}
+
+	DB(syslog(LOG_DEBUG, MODPREFIX "lookup for \"%s\" gave \"%s\"",
+		  name, hes_result[0]));
+	rv = ctxt->parser->parse_mount(root, name, name_len, hes_result[0],
+				       ctxt->parser->context);
+	free(hes_result);
+	return rv;
 }
 
 /* This destroys a context for queries to this module.  It releases the parser
    structure (unloading the module) and frees the memory used by the context. */
 int lookup_done(void *context)
 {
-  struct lookup_context *ctxt = (struct lookup_context *) context;
-  int rv = close_parse(ctxt->parser);
-  free(ctxt);
-  return rv;
+	struct lookup_context *ctxt = (struct lookup_context *) context;
+	int rv = close_parse(ctxt->parser);
+	free(ctxt);
+	return rv;
 }

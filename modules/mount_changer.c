@@ -34,116 +34,135 @@
 #define MODULE_MOUNT
 #include "automount.h"
 
+#ifdef DEBUG
+#define DB(x)           do { x; } while(0)
+#else
+#define DB(x)           do { } while(0)
+#endif
+
 #define MODPREFIX "mount(changer): "
-int mount_version = AUTOFS_MOUNT_VERSION; /* Required by protocol */
+int mount_version = AUTOFS_MOUNT_VERSION;	/* Required by protocol */
+
+extern struct autofs_point ap;
 
 int swapCD(const char *device, const char *slotName);
 
 int mount_init(void **context)
 {
-return 0;
+	return 0;
 }
 
 int mount_mount(const char *root, const char *name, int name_len,
-		const char *what, const char *fstype, const char *options,
-		void *context)
+		const char *what, const char *fstype, const char *options, void *context)
 {
-  char *fullpath;
-  int err;
+	char *fullpath;
+	int err;
 
-  fstype = "iso9660";
+	fstype = "iso9660";
 
-  fullpath = alloca(strlen(root)+name_len+2);
-  if ( !fullpath ) {
-    syslog(LOG_ERR, MODPREFIX "alloca: %m");
-    return 1;
-  }
-  sprintf(fullpath, "%s/%s", root, name);
+	fullpath = alloca(strlen(root) + name_len + 2);
+	if (!fullpath) {
+		syslog(LOG_ERR, MODPREFIX "alloca: %m");
+		return 1;
+	}
+	sprintf(fullpath, "%s/%s", root, name);
 
-  syslog(LOG_DEBUG, MODPREFIX "calling umount %s", what);
-  err = spawnl(LOG_DEBUG, "/bin/umount", "/bin/umount", what, NULL);
-  if ( err ) {
-    syslog(LOG_DEBUG, MODPREFIX "umount of %s failed (all may be unmounted)", what);
-  }
+	DB(syslog(LOG_DEBUG, MODPREFIX "calling umount %s", what));
 
-  syslog(LOG_DEBUG, MODPREFIX "calling mkdir_path %s", fullpath);
-  if ( mkdir_path(fullpath, 0555) && errno != EEXIST ) {
-    syslog(LOG_NOTICE, MODPREFIX "mkdir_path %s failed: %m", name);
-    return 1;
-  }
+	wait_for_lock();
+	err = spawnl(LOG_DEBUG, MOUNTED_LOCK, PATH_UMOUNT, PATH_UMOUNT, what, NULL);
+	unlink(AUTOFS_LOCK);
+	if (err) {
+		syslog(LOG_ERR, MODPREFIX "umount of %s failed (all may be unmounted)",
+		       what);
+	}
 
-  syslog(LOG_NOTICE, MODPREFIX "Swapping CD to slot %s", name);
-  err = swapCD(what, name);
-  if ( err ) {
-    syslog(LOG_NOTICE, MODPREFIX "failed to swap CD to slot %s", name);
-    return 1;
-  }
-  if ( options ) {
-    syslog(LOG_DEBUG, MODPREFIX "calling mount -t %s " SLOPPY "-o %s %s %s",
-	   fstype, options, what, fullpath);
-    err = spawnl(LOG_DEBUG, PATH_MOUNT, PATH_MOUNT, "-t", fstype, what, SLOPPYOPT "-o", options, what, fullpath, NULL);
-  } else {
-    syslog(LOG_DEBUG, MODPREFIX "calling mount -t %s %s %s",
-	   fstype, what, fullpath);
-      err = spawnl(LOG_DEBUG, PATH_MOUNT, PATH_MOUNT, "-t", fstype, what, fullpath, NULL);
-  }
-  if ( err ) {
-    rmdir_path(fullpath);
-    syslog(LOG_NOTICE, MODPREFIX "failed to mount %s (type %s) on %s",
-	   what, fstype, fullpath);
-    return 1;
-  } else {
-    syslog(LOG_DEBUG, MODPREFIX "mounted %s type %s on %s",
-	   what, fstype, fullpath);
-    return 0;
-  }
+	DB(syslog(LOG_DEBUG, MODPREFIX "calling mkdir_path %s", fullpath));
+
+	if (mkdir_path(fullpath, 0555) && errno != EEXIST) {
+		syslog(LOG_ERR, MODPREFIX "mkdir_path %s failed: %m", name);
+		return 1;
+	}
+
+	DB(syslog(LOG_NOTICE, MODPREFIX "Swapping CD to slot %s", name));
+
+	err = swapCD(what, name);
+	if (err) {
+		syslog(LOG_NOTICE, MODPREFIX "failed to swap CD to slot %s", name);
+		return 1;
+	}
+	wait_for_lock();
+
+	if (options) {
+		DB(syslog
+		   (LOG_DEBUG, MODPREFIX "calling mount -t %s " SLOPPY "-o %s %s %s",
+		    fstype, options, what, fullpath));
+		err =
+		    spawnl(LOG_DEBUG, MOUNTED_LOCK, PATH_MOUNT, PATH_MOUNT, "-t", fstype,
+			   what, SLOPPYOPT "-o", options, what, fullpath, NULL);
+	} else {
+		DB(syslog(LOG_DEBUG, MODPREFIX "calling mount -t %s %s %s",
+			  fstype, what, fullpath));
+		err = spawnl(LOG_DEBUG, MOUNTED_LOCK, PATH_MOUNT, PATH_MOUNT,
+			     "-t", fstype, what, fullpath, NULL);
+	}
+	unlink(AUTOFS_LOCK);
+	if (err) {
+		if (!ap.ghost)
+			rmdir_path(fullpath);
+		syslog(LOG_ERR, MODPREFIX "failed to mount %s (type %s) on %s",
+		       what, fstype, fullpath);
+		return 1;
+	} else {
+		DB(syslog(LOG_DEBUG, MODPREFIX "mounted %s type %s on %s",
+			  what, fstype, fullpath));
+		return 0;
+	}
 }
 
 int mount_done(void *context)
 {
-  return 0;
+	return 0;
 }
 
 int swapCD(const char *device, const char *slotName)
 {
-int fd;           /* file descriptor for CD-ROM device */
-int status;       /* return status for system calls */
-int slot=-1;
-int total_slots_available;
+	int fd;			/* file descriptor for CD-ROM device */
+	int status;		/* return status for system calls */
+	int slot = -1;
+	int total_slots_available;
 
-slot = atoi (slotName) - 1;
+	slot = atoi(slotName) - 1;
 
-/* open device */ 
-fd = open(device, O_RDONLY | O_NONBLOCK);
-if (fd < 0)
-	{
-	syslog(LOG_NOTICE, MODPREFIX "Opening device %s failed : %s", device, strerror(errno));
-	return 1;
+	/* open device */
+	fd = open(device, O_RDONLY | O_NONBLOCK);
+	if (fd < 0) {
+		syslog(LOG_NOTICE, MODPREFIX "Opening device %s failed : %s", device,
+		       strerror(errno));
+		return 1;
 	}
 
-/* Check CD player status */ 
-total_slots_available = ioctl (fd, CDROM_CHANGER_NSLOTS);
-if (total_slots_available <= 1 )
-	{
-	syslog(LOG_NOTICE, MODPREFIX "Device %s is not an ATAPI compliant CD changer.\n", device);
-	return 1;
+	/* Check CD player status */
+	total_slots_available = ioctl(fd, CDROM_CHANGER_NSLOTS);
+	if (total_slots_available <= 1) {
+		syslog(LOG_NOTICE, MODPREFIX
+		       "Device %s is not an ATAPI compliant CD changer.\n", device);
+		return 1;
 	}
 
-/* load */ 
-slot=ioctl (fd, CDROM_SELECT_DISC, slot);
-if (slot<0)
-	{
-	syslog(LOG_NOTICE, MODPREFIX "CDROM_SELECT_DISC failed");
-	return 1;
+	/* load */
+	slot = ioctl(fd, CDROM_SELECT_DISC, slot);
+	if (slot < 0) {
+		syslog(LOG_NOTICE, MODPREFIX "CDROM_SELECT_DISC failed");
+		return 1;
 	}
 
-/* close device */
-status = close (fd);
-if (status != 0)
-	{
-	syslog(LOG_NOTICE, MODPREFIX "close failed for `%s': %s\n", device, strerror(errno));
-	return 1;
+	/* close device */
+	status = close(fd);
+	if (status != 0) {
+		syslog(LOG_NOTICE, MODPREFIX "close failed for `%s': %s\n", device,
+		       strerror(errno));
+		return 1;
 	}
-return 0;
+	return 0;
 }
-

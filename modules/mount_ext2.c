@@ -1,4 +1,4 @@
-#ident "$Id: mount_ext2.c,v 1.3 2003/09/10 14:27:41 raven Exp $"
+#ident "$Id: mount_ext2.c,v 1.4 2003/09/29 08:22:35 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  mount_ext2.c - module for Linux automountd to mount ext2 filesystems
@@ -16,12 +16,12 @@
 
 #include <stdio.h>
 #include <malloc.h>
-#include <alloca.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <syslog.h>
 #include <string.h>
+#include <stdlib.h>
 #include <sys/param.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -29,93 +29,105 @@
 #define MODULE_MOUNT
 #include "automount.h"
 
+#ifdef DEBUG
+#define DB(x)           do { x; } while(0)
+#else
+#define DB(x)           do { } while(0)
+#endif
+
 #define MODPREFIX "mount(ext2): "
-int mount_version = AUTOFS_MOUNT_VERSION; /* Required by protocol */
+
+int mount_version = AUTOFS_MOUNT_VERSION;	/* Required by protocol */
+
+extern struct autofs_point ap;
 
 int mount_init(void **context)
 {
-  return 0;
+	return 0;
 }
 
 
 int mount_mount(const char *root, const char *name, int name_len,
-		const char *what, const char *fstype, const char *options,
-		void *context)
+		const char *what, const char *fstype, const char *options, void *context)
 {
-  char *fullpath;
-  const char *p, *p1;
-  int err, ro = 0;
-  const char *fsck_prog;
+	char *fullpath;
+	const char *p, *p1;
+	int err, ro = 0;
+	const char *fsck_prog;
 
-  fullpath = alloca(strlen(root)+name_len+2);
-  if ( !fullpath ) {
-    syslog(LOG_ERR, MODPREFIX "alloca: %m");
-    return 1;
-  }
-  sprintf(fullpath, "%s/%s", root, name);
-    
-  syslog(LOG_DEBUG, MODPREFIX "calling mkdir_path %s", fullpath);
-  if ( mkdir_path(fullpath, 0555) && errno != EEXIST ) {
-    syslog(LOG_NOTICE, MODPREFIX "mkdir_path %s failed: %m", name);
-    return 1;
-  }
+	fullpath = alloca(strlen(root) + name_len + 2);
+	if (!fullpath) {
+		syslog(LOG_ERR, MODPREFIX "alloca: %m");
+		return 1;
+	}
+	sprintf(fullpath, "%s/%s", root, name);
 
-  if (options) {
-    for (p = options; (p1 = strchr(p, ',')); p=p1) 
-      if (!strncmp(p, "ro", p1 - p) && ++p1 - p == sizeof("ro"))
-	ro = 1;
-    if (!strcmp(p, "ro"))
-      ro = 1;
-  }
+	DB(syslog(LOG_DEBUG, MODPREFIX "calling mkdir_path %s", fullpath));
+	if (mkdir_path(fullpath, 0555) && errno != EEXIST) {
+		syslog(LOG_ERR, MODPREFIX "mkdir_path %s failed: %m", name);
+		return 1;
+	}
 
+	if (options) {
+		for (p = options; (p1 = strchr(p, ',')); p = p1)
+			if (!strncmp(p, "ro", p1 - p) && ++p1 - p == sizeof("ro"))
+				ro = 1;
+		if (!strcmp(p, "ro"))
+			ro = 1;
+	}
 
 #ifdef HAVE_E3FSCK
-  if (!strcmp(fstype,"ext3") || !strcmp(fstype,"auto"))
-    fsck_prog = PATH_E3FSCK;
-  else
-    fsck_prog = PATH_E2FSCK;
-# else
-  fsck_prog = PATH_E2FSCK;
+	if (!strcmp(fstype,"ext3") || !strcmp(fstype,"auto"))
+		fsck_prog = PATH_E3FSCK;
+	else
+		fsck_prog = PATH_E2FSCK;
+#else
+	fsck_prog = PATH_E2FSCK;
 #endif
+	if (ro) {
+		DB(syslog(LOG_DEBUG, MODPREFIX "calling %s -n %s", fsck_prog, what));
+		err = spawnl(LOG_DEBUG, fsck_prog, fsck_prog, "-n", what, NULL);
+	} else {
+		DB(syslog(LOG_DEBUG, MODPREFIX "calling %s -p %s", fsck_prog, what));
+		err = spawnl(LOG_DEBUG, fsck_prog, fsck_prog, "-p", what, NULL);
+	}
 
-  if(ro) {
-    syslog(LOG_DEBUG, MODPREFIX "calling %s -n %s", fsck_prog, what);
-    err = spawnl(LOG_DEBUG, fsck_prog, fsck_prog, "-n", what, NULL);
-  } else {
-    syslog(LOG_DEBUG, MODPREFIX "calling %s -p %s", fsck_prog, what);
-    err = spawnl(LOG_DEBUG, fsck_prog, fsck_prog, "-p", what, NULL);
-  }
+	if (err & ~7) {
+		syslog(LOG_ERR, MODPREFIX "%s: filesystem needs repair, won't mount",
+		       what);
+		return 1;
+	}
+	wait_for_lock();
 
-  if ( err & ~7 ) {
-    syslog(LOG_ERR, MODPREFIX "%s: filesystem needs repair, won't mount",
-	   what);
-    return 1;
-  }
-    
-  if ( options ) {
-    syslog(LOG_DEBUG, MODPREFIX "calling mount -t %s " SLOPPY "-o %s %s %s",
-	   fstype, options, what, fullpath);
-    err = spawnl(LOG_NOTICE, PATH_MOUNT, PATH_MOUNT, "-t", fstype,
-		 SLOPPYOPT "-o", options, what, fullpath, NULL);
-  } else {
-    syslog(LOG_DEBUG, MODPREFIX "calling mount -t %s %s %s",
-	   fstype, what, fullpath);
-      err = spawnl(LOG_NOTICE, PATH_MOUNT, PATH_MOUNT, "-t", fstype,
-		   what, fullpath, NULL);
-  }
-  if ( err ) {
-    rmdir_path(fullpath);
-    syslog(LOG_NOTICE, MODPREFIX "failed to mount %s (type %s) on %s",
-	   what, fstype, fullpath);
-    return 1;
-  } else {
-    syslog(LOG_DEBUG, MODPREFIX "mounted %s type %s on %s",
-	   what, fstype, fullpath);
-    return 0;
-  }
+	if (options) {
+		DB(syslog
+		   (LOG_DEBUG, MODPREFIX "calling mount -t %s " SLOPPY "-o %s %s %s",
+		    fstype, options, what, fullpath));
+		err =
+		    spawnl(LOG_NOTICE, MOUNTED_LOCK, PATH_MOUNT, PATH_MOUNT, "-t", fstype,
+			   SLOPPYOPT "-o", options, what, fullpath, NULL);
+	} else {
+		DB(syslog(LOG_DEBUG, MODPREFIX "calling mount -t %s %s %s",
+			  fstype, what, fullpath));
+		err =
+		    spawnl(LOG_NOTICE, MOUNTED_LOCK, PATH_MOUNT, PATH_MOUNT, "-t", fstype,
+			   what, fullpath, NULL);
+	}
+	unlink(AUTOFS_LOCK);
+	if (err) {
+		if (!ap.ghost)
+			rmdir_path(fullpath);
+		syslog(LOG_ERR, MODPREFIX "failed to mount %s (type %s) on %s",
+		       what, fstype, fullpath);
+		return 1;
+	} else {
+		DB(syslog(LOG_DEBUG, MODPREFIX "mounted %s type %s on %s",
+			  what, fstype, fullpath));
+		return 0;
+	}
 }
 
 int mount_done(void *context)
 {
-  return 0;
+	return 0;
 }

@@ -1,5 +1,6 @@
-dnl $Id: aclocal.m4,v 1.1 2003/09/09 11:21:28 raven Exp $
-
+dnl
+dnl $Id: aclocal.m4,v 1.2 2003/09/29 08:22:35 raven Exp $
+dnl
 dnl --------------------------------------------------------------------------
 dnl AF_PATH_INCLUDE:
 dnl

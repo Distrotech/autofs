@@ -1,5 +1,6 @@
 -*- text -*-
-$Id: README,v 1.3 2003/09/29 05:44:25 raven Exp $
+
+ident $Id: README,v 1.4 2003/09/29 08:22:35 raven Exp $
 
 autofs is a kernel-based automounter for Linux.  It performs a job
 similar to amd(8) but relies on a small stub of kernel code instead of
@@ -28,14 +29,20 @@ After configuring, you can:
 Development kernels 2.3.41 and onwards contain the autofs4 as
 standard.  If you're using 2.2, you can apply the patch in
 the patches directory; it was made from 2.2.14, but it should
-work on 2.2.10 onwards.
+work on 2.2.10 onwards. Patches related to extensions written
+by Ian Kent are also in the patches directory. See README.ghosting
+for a description of the kernel patches.
 
-If you use autofs as a module, you need to add "alias autofs autofs4"
+If you use autofs as a module, you need to add "alias autofs4 autofs"
 to your modules config file (/etc/modules.conf or /etc/conf.modules).
+
+Limited direct mount functionality has been implemented and a
+describtion of what can be done can be found in README.direct.
 
 autofs was written by H. Peter Anvin of Transmeta Corporation, please
 read the COPYRIGHT file.  autofs 4 is the result of Jeremy
-Fitzhardinge's <jeremy@goop.org> work on autofs 3.
+Fitzhardinge's <jeremy@goop.org> work on autofs 3. Further enhancements
+have been made by Ian Kent <raven@themaw.net>.
 
 If you use or want to help develop autofs, please join the autofs
 mailing list:

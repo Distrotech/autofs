@@ -270,7 +270,7 @@ PACKAGE_VERSION=
 PACKAGE_STRING=
 PACKAGE_BUGREPORT=
 
-ac_unique_file=".autofs-4.0.0"
+ac_unique_file=".autofs-4.1.0"
 ac_default_prefix=/usr
 # Factoring default headers for most tests.
 ac_includes_default="\
@@ -3255,7 +3255,7 @@ if test "${ac_cv_lib_ldap_ldap_init+set}" = set; then
   echo $ECHO_N "(cached) $ECHO_C" >&6
 else
   ac_check_lib_save_LIBS=$LIBS
-LIBS="-lldap -llber $LIBS"
+LIBS="-lldap -llber -lresolv $LIBS $LIBS"
 cat >conftest.$ac_ext <<_ACEOF
 #line $LINENO "configure"
 /* confdefs.h.  */
@@ -3304,7 +3304,7 @@ fi
 echo "$as_me:$LINENO: result: $ac_cv_lib_ldap_ldap_init" >&5
 echo "${ECHO_T}$ac_cv_lib_ldap_ldap_init" >&6
 if test $ac_cv_lib_ldap_ldap_init = yes; then
-  HAVE_LDAP=1 LIBLDAP="$LIBLDAP -lldap -llber"
+  HAVE_LDAP=1 LIBLDAP="$LIBLDAP -lldap -llber -lresolv"
 fi
 
 fi

@@ -1,10 +1,19 @@
-$Id: TODO,v 1.1 2003/09/09 11:21:28 raven Exp $
 
-autofs v4 TODO list
--------------------
-* More testing under stress
+$Id: TODO,v 1.2 2003/09/29 08:22:35 raven Exp $
 
-autofs v5 TODO list
--------------------
-* visible mountpoints
-* direct maps?
+autofs v4 daemon
+----------------
+* Review/fix smbfs mount behaviour
+* Reformat entire code base to K&R standard		done
+* Fix directory removal of non-ghosted directory	done
+* Stop daemon from exiting on busy mountpoint
+* Merge Mark Fasehs' wildcard ghost patches		started
+* Merge SuSE rpm patches				started
+* Review/merge Debian package patches			started
+
+Kernel module
+-------------
+* Locate and fix 'hung mount point' bug			started
+* Review locking - eliminate BKL locks
+* Transparent autofs filesystem
+

@@ -1,4 +1,4 @@
-#ident "$Id: lookup_userhome.c,v 1.1 2003/09/09 11:22:10 raven Exp $"
+#ident "$Id: lookup_userhome.c,v 1.2 2003/09/29 08:22:35 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup_userhome.c - module for Linux automount to generate symlinks
@@ -27,45 +27,54 @@
 #define MODULE_LOOKUP
 #include "automount.h"
 
+#ifdef DEBUG
+#define DB(x)           do { x; } while(0)
+#else
+#define DB(x)           do { } while(0)
+#endif
+
 #define MODPREFIX "lookup(userhome): "
 
-int lookup_version = AUTOFS_LOOKUP_VERSION; /* Required by protocol */
+int lookup_version = AUTOFS_LOOKUP_VERSION;	/* Required by protocol */
 
-int lookup_init(const char *mapfmt, int argc, const char * const *argv,
-		void **context)
+int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **context)
 {
-  return 0;			/* Nothing to do */
+	return 0;		/* Nothing to do */
 }
 
-int lookup_mount(const char *root, const char *name,
-		 int name_len, void *context)
+int lookup_ghost(const char *root, int ghost, void *context)
 {
-  struct passwd *pw;
+	return LKP_NOTSUP;
+}
 
-  syslog(LOG_DEBUG, MODPREFIX "looking up %s", name);
+int lookup_mount(const char *root, const char *name, int name_len, void *context)
+{
+	struct passwd *pw;
 
-  /* Get the equivalent username */
-  pw = getpwnam(name);
-  if ( !pw ) {
-    syslog(LOG_DEBUG, MODPREFIX "not found: %s", name);
-    return 1;			/* Unknown user or error */
-  }
+	DB(syslog(LOG_DEBUG, MODPREFIX "looking up %s", name));
 
-  /* Create the appropriate symlink */
-  if ( chdir(root) ) {
-    syslog(LOG_ERR, MODPREFIX "chdir failed: %m");
-    return 1;
-  }
+	/* Get the equivalent username */
+	pw = getpwnam(name);
+	if (!pw) {
+		syslog(LOG_INFO, MODPREFIX "not found: %s", name);
+		return 1;	/* Unknown user or error */
+	}
 
-  if ( symlink(pw->pw_dir, name) && errno != EEXIST ) {
-    syslog(LOG_DEBUG, MODPREFIX "symlink failed: %m");
-    return 1;
-  }
+	/* Create the appropriate symlink */
+	if (chdir(root)) {
+		syslog(LOG_ERR, MODPREFIX "chdir failed: %m");
+		return 1;
+	}
 
-  return 0;
+	if (symlink(pw->pw_dir, name) && errno != EEXIST) {
+		syslog(LOG_ERR, MODPREFIX "symlink failed: %m");
+		return 1;
+	}
+
+	return 0;
 }
 
 int lookup_done(void *context)
 {
-  return 0;
+	return 0;
 }

@@ -1,4 +1,4 @@
-.\" $Id: autofs.8.in,v 1.1 2003/09/09 11:21:59 raven Exp $
+.\" $Id: autofs.8.in,v 1.2 2003/09/29 08:22:35 raven Exp $
 .TH AUTOFS 8 "9 Sep 1997"
 .SH NAME
 @@INIT.D@@/autofs \- Control Script for automounter
