@@ -29,6 +29,7 @@ xx/xx/2004 autofs-4.1.4
 - fix backslash parse for smb mount option username\password (George Hansper).
 - keep udp rpc ping routine from using up reserved ports (Jeff Moyer).
 - maintain backwards compatibility w/ local file maps (Chris Feist).
+- init script fix (Arthur Korn).
 
 19/05/2004 autofs-4.1.3
 -----------------------

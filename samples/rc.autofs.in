@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# $Id: rc.autofs.in,v 1.19 2004/11/20 05:58:17 raven Exp $
+# $Id: rc.autofs.in,v 1.20 2004/11/20 08:32:55 raven Exp $
 #
 # rc file for automount using a Sun-style "master map".
 # We first look for a local /etc/auto.master, then a YP
@@ -193,8 +193,10 @@ function getmounts()
 		: echo DAEMONOPTIONS OPTIONS $daemonoptions $options
 		startupoptions=
 		if echo "$daemonoptions" | grep -q -- '-t' ; then
+		    # the last timout value in "$daemonoptions $options" is
+		    # the one that is taken.
 		    startupoptions="--timeout=$(echo $daemonoptions $options | \
-		      sed 's/.*--*t\(imeout\)*[ \t=]*\([0-9][0-9]*\).*$/\2/g')"
+		      sed 's/^.*--*t\(imeout\)*[ \t=]*\([0-9][0-9]*\).*$/\2/')"
 		fi
 		# Override timeout in $daemonoptions with map $options
 		if echo "$options" | grep -q -- '-t' ; then
