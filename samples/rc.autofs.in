@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# $Id: rc.autofs.in,v 1.28 2005/01/02 10:36:58 raven Exp $
+# $Id: rc.autofs.in,v 1.29 2005/01/02 14:19:17 raven Exp $
 #
 # rc file for automount using a Sun-style "master map".
 # We first look for a local /etc/auto.master, then a YP
@@ -82,7 +82,7 @@ if [ "$system" = "redhat" ]; then
 	[ -f /etc/sysconfig/autofs ] && . /etc/sysconfig/autofs
 
 	# Over-ride daemonoptions if set
-	if [ -n "$DAEMONOPTIONS" ]
+	if [ -n "$DAEMONOPTIONS" ]; then
 		daemonoptions=$DAEMONOPTIONS
 	fi
 elif [ "$system" = "debian" ]; then
@@ -599,21 +599,21 @@ start)
 	if ! grep -q autofs /proc/filesystems
 	then
 		# autofs filesystem support not loaded
-		echo -n 'loading autofs4 kernel module, '
+		echo -n ' loading autofs4 kernel module,'
 		modprobe autofs4 || modprobe autofs || true
 	fi
 
 	if lsmod | grep -q autofs[^4]; then
-		 # wrong autofs filesystem module loaded
+		# wrong autofs filesystem module loaded
 		echo
-		echo WARNING: autofs kernel module is loaded, autofs4 needed
+		echo "WARNING: autofs kernel module is loaded, autofs4 needed"
 		echo " for correct behaviour. You might experience mount failures."
 	fi
 
 	# Check that maps exist
 	if [ -z "$(getmounts)" ]
 	then
-		echo "No automount maps defined"
+		echo " no automount maps defined."
 		exit 1
 	fi
 
@@ -665,17 +665,17 @@ stop)
 				else
 					start-stop-daemon --stop --quiet --retry USR2/5 \
 						--oknodo --pidfile $file --exec $DAEMON
-					ret = $?
+					ret=$?
 				fi
 			else
 				start-stop-daemon --stop --quiet --retry USR2/5 \
 					--pidfile $file --exec $DAEMON
-				ret = $?
+				ret=$?
 			fi
 
 			case $ret in
 			0)
-				echo -n -e " $mnt"
+				echo -n " $mnt"
 				rm -f $file
 				;;
 			1)
@@ -693,11 +693,7 @@ stop)
 		fi
 	done
 
-	if [ $any -eq 1 ]; then
-		echo
-	fi
-
-	echo "done."
+	echo -e "\ndone."
 	;;
 reload)
 	echo "Reloading automounter: checking for changes ... "
