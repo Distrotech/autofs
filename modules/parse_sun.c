@@ -1,4 +1,4 @@
-#ident "$Id: parse_sun.c,v 1.12 2004/11/15 14:44:54 raven Exp $"
+#ident "$Id: parse_sun.c,v 1.13 2004/11/20 03:00:40 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  parse_sun.c - module for Linux automountd to parse a Sun-format
@@ -261,9 +261,12 @@ int chunklen(const char *whence, int expect_colon)
 	for (; *whence; whence++, n++) {
 		switch (*whence) {
 		case '\\':
-			quote = 1;
-			continue;
-
+			if( quote ) {
+				break;
+			} else {
+				quote = 1;
+				continue;
+			}
 		case ':':
 			if (expect_colon)
 				expect_colon = 0;
@@ -451,13 +454,17 @@ static char *dequote(const char *str, int strlen)
 	char *cp = ret;
 	const char *scp;
 	int origlen = strlen;
+	int quote = 0;
 
 	if (ret == NULL)
 		return NULL;
 
 	for (scp = str; strlen > 0 && *scp; scp++, strlen--) {
-		if (*scp == '\\')
+		if (*scp == '\\' && !quote ) {
+			quote = 1;
 			continue;
+		}
+		quote = 0;
 		*cp++ = *scp;
 	}
 	*cp = '\0';
