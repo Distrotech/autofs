@@ -1,4 +1,4 @@
-#ident "$Id: lookup_ldap.c,v 1.7 2004/11/15 14:42:47 raven Exp $"
+#ident "$Id: lookup_ldap.c,v 1.8 2004/11/20 10:28:39 raven Exp $"
 /*
  * lookup_ldap.c
  *
@@ -37,7 +37,7 @@ struct lookup_context {
 
 int lookup_version = AUTOFS_LOOKUP_VERSION;	/* Required by protocol */
 
-static LDAP *do_connect(struct lookup_context *ctxt)
+static LDAP *do_connect(struct lookup_context *ctxt, int *result_ldap)
 {
 	LDAP *ldap;
 	int version = 3;
@@ -74,6 +74,7 @@ static LDAP *do_connect(struct lookup_context *ctxt)
 	if (rv != LDAP_SUCCESS) {
 		crit(MODPREFIX "couldn't bind to %s",
 		     ctxt->server ? ctxt->server : "default server");
+		*result_ldap = rv;
 		return NULL;
 	}
 
@@ -87,7 +88,7 @@ static LDAP *do_connect(struct lookup_context *ctxt)
 int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **context)
 {
 	struct lookup_context *ctxt = NULL;
-	int l;
+	int l, rv;
 	LDAP *ldap;
 	char *ptr = NULL;
 
@@ -158,7 +159,7 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 		  ctxt->port, ctxt->base);
 
 	/* Initialize the LDAP context. */
-	ldap = do_connect(ctxt);
+	ldap = do_connect(ctxt, &rv);
 	if (!ldap)
 		return 1;
 
@@ -170,8 +171,10 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 }
 
 static int read_one_map(const char *root,
-			const char *class, char *key, char *type,
-			struct lookup_context *ctxt)
+			const char *class, char *key,
+			const char *keyval, int keyvallen, char *type,
+			struct lookup_context *ctxt,
+			int *result_ldap)
 {
 	int rv, i, l, count;
 	time_t age = time(NULL);
@@ -188,7 +191,10 @@ static int read_one_map(const char *root,
 	}
 
 	/* Build a query string. */
-	l = strlen("(&(objectclass=))") + strlen(class) + 1;
+	l = strlen("(objectclass=)") + strlen(class) + 1;
+	if (keyvallen > 0) {
+		l += strlen(key) +keyvallen + strlen("(&(=))");
+	}
 
 	query = alloca(l);
 	if (query == NULL) {
@@ -197,13 +203,20 @@ static int read_one_map(const char *root,
 	}
 
 	memset(query, '\0', l);
-	if (sprintf(query, "(&(objectclass=%s))", class) >= l) {
-		debug(MODPREFIX "error forming query string");
+	if (keyvallen > 0) {
+		if (sprintf(query, "(&(objectclass=%s)(%s=%.*s))", class,
+			    key, keyvallen, keyval) >= l) {
+			debug(MODPREFIX "error forming query string");
+		}
+	} else {
+		if (sprintf(query, "(objectclass=%s)", class) >= l) {
+			debug(MODPREFIX "error forming query string");
+		}
 	}
 	query[l - 1] = '\0';
 
 	/* Initialize the LDAP context. */
-	ldap = do_connect(ctxt);
+	ldap = do_connect(ctxt, result_ldap);
 	if (!ldap)
 		return 0;
 
@@ -216,6 +229,7 @@ static int read_one_map(const char *root,
 	if ((rv != LDAP_SUCCESS) || !result) {
 		crit(MODPREFIX "query failed for %s", query);
 		ldap_unbind(ldap);
+		*result_ldap = rv;
 		return 0;
 	}
 
@@ -265,21 +279,24 @@ static int read_one_map(const char *root,
 	return 1;
 }
 
-static int read_map(const char *root, struct lookup_context *ctxt)
+static int read_map(const char *root, struct lookup_context *ctxt,
+		    const char *key, int keyvallen, int *result_ldap)
 {
 	time_t age = time(NULL);
-	int ret;
+	int rv = LDAP_SUCCESS;
 
 	/* all else fails read entire map */
-	ret = read_one_map(root, "nisObject", "cn", "nisMapEntry", ctxt);
-	if (ret)
-		goto done;
+	if (!read_one_map(root, "nisObject", "cn", 
+			  key, keyvallen, "nisMapEntry", ctxt, &rv)) {
+		if ((rv != LDAP_SUCCESS) || 
+		    !read_one_map(root, "automount", "cn", key, keyvallen, 
+				  "automountInformation", ctxt, &rv)) {
+			if (result_ldap != NULL)
+				*result_ldap = rv;
+			return 0;
+		}
+	}
 
-	ret = read_one_map(root, "automount", "cn", "automountInformation", ctxt);
-	if (!ret)
-		return 0;
-
-done:
 	/* Clean stale entries from the cache */
 	cache_clean(root, age);
 
@@ -290,13 +307,19 @@ int lookup_ghost(const char *root, int ghost, void *context)
 {
 	struct lookup_context *ctxt = (struct lookup_context *) context;
 	struct mapent_cache *me;
-	int status = 1;
+	int status = 1, rv = LDAP_SUCCESS;
 	char *mapname;
 
 	chdir("/");
 
-	if (!read_map(root, ctxt))
-		return LKP_FAIL;
+	if (!read_map(root, ctxt, NULL, 0, &rv))
+		switch (rv) {
+		case LDAP_SIZELIMIT_EXCEEDED:
+		case LDAP_UNWILLING_TO_PERFORM:
+			return LKP_NOTSUP;
+		default:
+			return LKP_FAIL;
+		}
 
 	if (ctxt->server) {
 		int len = strlen(ctxt->server) + strlen(ctxt->base) + 4;
@@ -370,7 +393,7 @@ static int lookup_one(const char *root, const char *qKey,
 	debug(MODPREFIX "searching for \"%s\" under \"%s\"", query, ctxt->base);
 
 	/* Initialize the LDAP context. */
-	ldap = do_connect(ctxt);
+	ldap = do_connect(ctxt, &rv);
 	if (!ldap)
 		return 0;
 
@@ -478,7 +501,7 @@ static int lookup_wild(const char *root,
 	debug(MODPREFIX "searching for \"%s\" under \"%s\"", query, ctxt->base);
 
 	/* Initialize the LDAP context. */
-	ldap = do_connect(ctxt);
+	ldap = do_connect(ctxt, &rv);
 	if (!ldap)
 		return 0;
 
@@ -572,8 +595,6 @@ int lookup_mount(const char *root, const char *name, int name_len, void *context
 	t_last_read = now - me->age;
 
 	if (ret == CHE_MISSING && ret2 == CHE_MISSING) {
-		int rv;
-
 		if (!cache_delete(root, key, CHE_RMPATH))
 			rmdir_path(key);
 
