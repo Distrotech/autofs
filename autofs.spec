@@ -1,12 +1,13 @@
-# $Id: autofs.spec,v 1.2 2003/09/28 11:06:54 raven Exp $
+# $Id: autofs.spec,v 1.3 2003/09/28 11:27:49 raven Exp $
 Summary: autofs daemon
 Name: autofs
-%define version 4.0.0-1
+%define version 4.0.0
+%define release 1
 Version: %{version}
-Release: 1
+Release: %{release}
 Copyright: GPL
 Group: Networking/Daemons
-Source: ftp://ftp.kernel.org/pub/linux/daemons/autofs/autofs-%{version}.tar.gz
+Source: ftp://ftp.kernel.org/pub/linux/daemons/autofs/v4/autofs-%{version}-%{release).tar.gz
 Buildroot: /var/tmp/autofs-tmp
 Prereq: chkconfig
 Requires: /bin/bash mktemp sed textutils sh-utils grep /bin/ps
@@ -55,8 +56,8 @@ mkdir -p $RPM_BUILD_ROOT/usr/lib/autofs
 mkdir -p $RPM_BUILD_ROOT/usr/man/man5
 mkdir -p $RPM_BUILD_ROOT/usr/man/man8
 
-make install INSTALLROOT=$RPM_BUILD_ROOT
-make install_samples INSTALLROOT=$RPM_BUILD_ROOT
+make install initdir=/etc/init.d INSTALLROOT=$RPM_BUILD_ROOT
+make install_samples initdir=/etc/init.d INSTALLROOT=$RPM_BUILD_ROOT
 install -m 755 -d $RPM_BUILD_ROOT/misc
 install -m 755 -d $RPM_BUILD_ROOT/net
 
@@ -86,6 +87,9 @@ fi
 
 %changelog
 # $Log: autofs.spec,v $
+# Revision 1.3  2003/09/28 11:27:49  raven
+# Fix autofs.spec ... more
+#
 # Revision 1.2  2003/09/28 11:06:54  raven
 # Updated autofs.spec version string.
 #
