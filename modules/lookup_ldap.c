@@ -1,4 +1,4 @@
-#ident "$Id: lookup_ldap.c,v 1.11 2004/12/31 06:30:08 raven Exp $"
+#ident "$Id: lookup_ldap.c,v 1.12 2005/01/02 10:36:58 raven Exp $"
 /*
  * lookup_ldap.c - Module for Linux automountd to access automount
  *		   maps in LDAP directories.
@@ -236,7 +236,7 @@ static int read_one_map(const char *root,
 			   query, attrs, 0, &result);
 
 	if ((rv != LDAP_SUCCESS) || !result) {
-		crit(MODPREFIX "query failed for %s", query);
+		crit(MODPREFIX "query failed for %s: %s", query, ldap_err2string(rv));
 		ldap_unbind(ldap);
 		*result_ldap = rv;
 		return 0;

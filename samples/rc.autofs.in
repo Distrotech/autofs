@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# $Id: rc.autofs.in,v 1.27 2005/01/02 05:37:46 raven Exp $
+# $Id: rc.autofs.in,v 1.28 2005/01/02 10:36:58 raven Exp $
 #
 # rc file for automount using a Sun-style "master map".
 # We first look for a local /etc/auto.master, then a YP
@@ -87,6 +87,7 @@ if [ "$system" = "redhat" ]; then
 	fi
 elif [ "$system" = "debian" ]; then
     TIMEOUT=300
+    DISABLE_DIRECT=1
 
     [ -f /etc/default/autofs ] && . /etc/default/autofs
 
@@ -204,6 +205,7 @@ function getmounts()
 	    if [ ! -z "$map" -a "$map" = "-hosts" ] ; then
 		continue
 	    fi
+
 	    if [ $DISABLE_DIRECT -eq 1 \
 			-a x`echo $dir | grep -E "^/-"` != 'x' ]
 	    then
@@ -586,19 +588,26 @@ esac
 #
 function debian()
 {
-#
-# See how we were called.
-#
+
+set -e
+
 case "$1" in
 start)
 	echo -n 'Starting automounter:'
 
-	# ensure autofs support is loaded
-	grep -q autofs /proc/filesystems || modprobe -k autofs4 ||  modprobe -k autofs 2>/dev/null
-	if [ $? -ne 0 ]
+	# make shure autofs4 is loaded
+	if ! grep -q autofs /proc/filesystems
 	then
-		echo "No autofs support available"
-		exit 1
+		# autofs filesystem support not loaded
+		echo -n 'loading autofs4 kernel module, '
+		modprobe autofs4 || modprobe autofs || true
+	fi
+
+	if lsmod | grep -q autofs[^4]; then
+		 # wrong autofs filesystem module loaded
+		echo
+		echo WARNING: autofs kernel module is loaded, autofs4 needed
+		echo " for correct behaviour. You might experience mount failures."
 	fi
 
 	# Check that maps exist

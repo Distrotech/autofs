@@ -52,6 +52,19 @@
 - fix compile warning in lookup_yp.c.
 - more work on Debian part of init script (wip).
 - add Gentoo portage ebuild files.
+- review remaining Debian patches
+   - all 000 patches are included in 4.1.4.
+   - 002 log cause of ldap errors applied
+   - 030 document +map in auto master applied.
+   - 031 document -D in automount 8 applied in another diff.
+   - 040 init script policy conformance and backwards compatibility
+         merged but slightly broken (see above).
+   - 041 needs review against new version.
+   - 045 module loading set e applied with minor change.
+   - 046 needs review against new version.
+   - 047 277320 correct automount nsswitch regex applied.
+   - 049 parse_sun to be merged in another diff.
+   - 050 disable_direct_maps.diff applied.
 
 19/05/2004 autofs-4.1.3
 -----------------------
