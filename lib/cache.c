@@ -1,4 +1,4 @@
-#ident "$Id: cache.c,v 1.10 2004/12/31 06:30:08 raven Exp $"
+#ident "$Id: cache.c,v 1.11 2005/01/24 14:10:19 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  cache.c - mount entry cache management routines
@@ -195,7 +195,7 @@ int cache_add(const char *root, const char *key, const char *mapent, time_t age)
 	 * preserve the order in which the map was read on lookup.
 	 */
 	existing = cache_lookup(key);
-	if (!existing) {
+	if (!existing || *existing->key == '*') {
 		me->next = mapent_hash[hashval];
 		mapent_hash[hashval] = me;
 	} else {
