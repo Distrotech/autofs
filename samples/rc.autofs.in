@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# $Id: rc.autofs.in,v 1.22 2004/11/20 09:05:40 raven Exp $
+# $Id: rc.autofs.in,v 1.23 2004/12/05 05:35:03 raven Exp $
 #
 # rc file for automount using a Sun-style "master map".
 # We first look for a local /etc/auto.master, then a YP
@@ -76,6 +76,13 @@ localoptions=''
 daemonoptions=''
 
 #
+# Preserve the code for underscore in master map name option (0 = leave alone)
+# and the disable_direct option from the init-redhat-only patch
+#
+UNDERSCORETODOT=0
+DISABLE_DIRECT=0
+
+#
 # Check for all maps that are to be loaded
 #
 function getschemes()
@@ -109,6 +116,7 @@ function getfilemounts()
         )
     fi
 }
+
 function getnismounts()
 {
     YPMAP=`catnismap auto.master`
@@ -118,45 +126,35 @@ function getnismounts()
        catnismap auto.master
     fi
 }
+
 function getldapmounts()
 {
     if [ -x @@autofslibdir@@/autofs-ldap-auto-master ]; then
         @@autofslibdir@@/autofs-ldap-auto-master 2> /dev/null
     fi
 }
+
 function getrawmounts()
 {
     for scheme in `getschemes` ; do
         case "$scheme" in
             files)
                 if [ -z "$filescheme" ] ; then
-                    MOUNTS=`getfilemounts`
-                    if [ -n "$MOUNTS" ] ; then
-                        getfilemounts
-                        return
-		    fi
-		    filescheme=1
+                    getfilemounts
+                    filescheme=1
                     export filescheme
                 fi
                 ;;
             nis)
                 if [ -z "$nisscheme" ] ; then
-                    MOUNTS=`getnismounts`
-                    if [ -n "$MOUNTS" ] ; then
-                        getnismounts
-                        return
-		    fi
+                    getnismounts
                     nisscheme=1
                     export nisscheme
                 fi
                 ;;
             ldap*)
                 if [ -z "$ldapscheme" ] ; then
-                    MOUNTS=`getldapmounts`
-                    if [ -n "$MOUNTS" ] ; then
-                        getldapmounts
-                        return
-                    fi
+                    getldapmounts
                     ldapscheme=1
                     export ldapscheme
                 fi
@@ -188,6 +186,11 @@ function getmounts()
 	    if [ ! -z "$map" -a "$map" = "-hosts" ] ; then
 		continue
 	    fi
+	    if [ $DISABLE_DIRECT -eq 1 \
+			-a x`echo $dir | grep -E "^/-"` != 'x' ]
+	    then
+		continue
+	    fi
 
 	    # Do not include a map if it is a duplicate, maps on top of
 	    # another map or another map, maps on top of it.
@@ -208,42 +211,61 @@ function getmounts()
 		# those particular options out.
 		: echo DAEMONOPTIONS OPTIONS $daemonoptions $options
 		startupoptions=
-		if echo "$daemonoptions" | grep -q -- '-t' ; then
-		    # the last timout value in "$daemonoptions $options" is
-		    # the one that is taken.
-		    startupoptions="--timeout=$(echo $daemonoptions $options | \
-		      sed 's/^.*--*t\(imeout\)*[ \t=]*\([0-9][0-9]*\).*$/\2/')"
-		fi
-		# Override timeout in $daemonoptions with map $options
-		if echo "$options" | grep -q -- '-t' ; then
-		    startupoptions="--timeout=$(echo $daemonoptions $options | \
+		if echo "$options" | grep -qE -- '\B-(t\b|-timeout\b=)' ;
+		then
+		    startupoptions="--timeout=$(echo $options |\
+			sed 's/.*-\(t[^0-9]*\|-timeout\)[ \t=]*\([0-9][0-9]*\).*$/\2/g')"
+		elif echo "$daemonoptions" | grep -q -- '-t' ;
+		then
+		    # It's okay to be sloppy with DAEMONOPTIONS as there is no
+		    # possibility of conflicting with mount or map options.
+		    startupoptions="--timeout=$(echo $daemonoptions | \
 		      sed 's/.*--*t\(imeout\)*[ \t=]*\([0-9][0-9]*\).*$/\2/g')"
 		fi
-		if echo "$daemonoptions $options" | grep -q -- '-g' ; then
+
+		# Check for the ghost option
+		if echo "$daemonoptions $options" | grep -qE -- '\B-(g\b|-ghost\b)' ;
+		then
 		    startupoptions="$startupoptions --ghost"
 		fi
-		if echo "$daemonoptions $options" | grep -q -- '-v' ; then
+		# Dont even deal with conflicts between --ghost and [no]browse
+		# Its just insane to configure things like that.
+		if echo "$options" | grep -qE -- '\B-browse\b' ;
+		then
+		    startupoptions="$startupoptions --ghost"
+		fi
+		# Check for verbose
+		if echo "$daemonoptions $options" | \
+					grep -qE -- '\B-(v\b|-verbose\b)' ;
+		then
 		    startupoptions="$startupoptions --verbose"
 		fi
-		if echo "$daemonoptions $options" | grep -q -- '-d' ; then
+
+		# Check for debug
+		if echo "$daemonoptions $options" | \
+					grep -qE -- '\B-(d\b|-debug\b)' ;
+		then
 		    startupoptions="$startupoptions --debug"
 		fi
+
 		# Other option flags are intended for maps.
 		mapoptions="$(echo "$daemonoptions $options" |\
-		      sed   's/--*t\(imeout\)*[ \t=]*\([0-9][0-9]*\)//g' |
-		      sed   's/--*g\(host\)*//g' |
-		      sed   's/--*v\(erbose\)*//g' |
-		      sed   's/--*d\(ebug\)*//g')"
+		      sed   's/-\(t[^0-9]*\|-timeout\)[ \t=]*\([0-9][0-9]*\)//g' |
+		      sed   's/-\(g\b\|-ghost\b\)//g' |
+		      sed   's/-\(v\b\|-verbose\b\)//g' |
+		      sed   's/-\(d\b\|-debug\b\)//g' |
+		      sed   's/-\b\(no\)\?browse\b//g')"
+
 		# Break up the maptype and map, if the map type is specified
 		maptype=`echo $map | cut -f1 -d:`
 		# Handle degenerate map specifiers
 		if [ "$maptype" = "$map" ] ; then
-		    if `echo $map | grep -q "^/"` && [ -x "$map" ]; then
+		    if [ -x "$map" ]; then
 			maptype=program
 		    elif [ -x "/etc/$map" ]; then
 			maptype=program
 			map=`echo /etc/$map | sed 's^//^/^g'`
-		    elif `echo $map | grep -q "^/"` && [ -f "$map" ]; then
+		    elif [ -f "$map" ]; then
 			maptype=file
 		    elif [ -f "/etc/$map" ]; then
 			maptype=file
@@ -256,10 +278,12 @@ function getmounts()
 			map=
 		    else
 			maptype=yp
-			# If the master map says the maps have '_' why change it?
-			# map=`basename $map | sed -e s/^auto_home/auto.home/ -e s/^auto_mnt/auto.mnt/`
-			map=`basename $map | sed 's^//^/^g'`
-		fi
+			if [ "$UNDERSCORETODOT" = "0" ] ; then
+			    map=`basename $map | sed 's^//^/^g'`
+			else
+			    map=`basename $map | sed -e s/^auto_home/auto.home/ -e s/^auto_mnt/auto.mnt/`
+			fi
+		    fi
 		fi
 		map=`echo $map | cut -f2- -d:`
 
@@ -273,7 +297,7 @@ function getmounts()
 		echo "$DAEMON $startupoptions $dir $maptype $map $mapoptions $localoptions" | sed -e 's/	/ /g' -e 's/  */ /g'
 
 		: echo ------------------------
-	    knownmaps=" $dir/ $knownmaps"
+	        knownmaps=" $dir/ $knownmaps"
 	    fi
 	done
     )
@@ -370,6 +394,56 @@ function signal_automounts()
 	return $RETVAL
 }
 
+function umount_loopback()
+{
+    loops=`LC_ALL=C awk '!/^#/ && $1 ~ /^\/dev\/loop/ && $2 != "/" {print $2}' /proc/mounts`
+    automounts=`LC_ALL=C awk '!/^#/ && $1 ~ /^automount/ {print $2}' /proc/mounts`
+
+    for l in $loops
+    do
+	# If a loop device is mounted into a subdir of the automount point,
+	# umount it here.
+	for a in $automounts
+	do
+	    match=`echo $l | grep -E "^$a[\$|/]"`
+	    if [ -n "$match" ]; then
+		echo ""
+		echo -n $"Unmounting loopback filesystem $match:  "
+		loopdev=`LC_ALL=C grep $l /proc/mounts | awk '{print $1}'`
+		umount -d $match
+		if [ $? -eq 0 ]; then
+		    echo "done"
+		else
+		    echo "failed ($?)"
+		fi
+	    fi
+	done
+    done
+
+    # If the loop device file exists under the automount point, umount
+    # it here.
+    loopmnts=`LC_ALL=C awk '!/^#/ && $1 ~ /^\/dev\/loop/ && $2 != "/" {print $1}' /proc/mounts`
+    for l in $loopmnts
+    do
+	loopmnt=`losetup $l | awk -F\( '{print $2}' | awk -F\) '{print $1}'`
+	for a in $automounts
+	do
+	    match=`echo $loopmnt | grep -E "^$a[\$|/]"`
+	    if [ -n "$match" ]; then
+		echo ""
+		echo -n $"Unmounting loopback filesystem $match:  "
+		umount -d $match
+		if [ $? -eq 0 ]; then
+		    echo "done"
+		else
+		    echo "failed ($?)"
+		fi
+	    fi
+	done
+
+    done
+}
+
 # Redhat start/stop function.
 #
 function redhat()
@@ -382,7 +456,7 @@ case "$1" in
   start)
         # Make sure the autofs filesystem type is available.
         (grep -q autofs /proc/filesystems || /sbin/modprobe -k autofs4 || /sbin/modprobe -k autofs) 2> /dev/null
-        echo -n $"Starting $prog:"
+        echo -n $"Starting $prog: "
         TMP=`mktemp /tmp/autofs.XXXXXX` || { echo $"could not make temp file" >& 2; exit 1; }
         getmounts | tee $TMP | sh
         RETVAL=$?
@@ -405,6 +479,7 @@ case "$1" in
 	if [ -z "`pidofproc $prog`" -a -z "`getmounts`" ]; then
 		RETVAL=0
 	else
+		umount_loopback
 		signal_automounts
 		RETVAL=$?
 	fi
@@ -434,9 +509,9 @@ case "$1" in
 		RETVAL=1
 		return
 	fi
-	echo "Checking for changes to /etc/auto.master ...."
-        TMP1=`mktemp /tmp/autofs.XXXXXX` || { echo "could not make temp file" >& 2; exit 1; }
-        TMP2=`mktemp /tmp/autofs.XXXXXX` || { echo "could not make temp file" >& 2; exit 1; }
+	echo $"Checking for changes to /etc/auto.master ...."
+        TMP1=`mktemp /tmp/autofs.XXXXXX` || { echo $"could not make temp file" >& 2; exit 1; }
+        TMP2=`mktemp /tmp/autofs.XXXXXX` || { echo $"could not make temp file" >& 2; exit 1; }
 	getmounts >$TMP1
 	ps axwww|grep "[0-9]:[0-9][0-9] $DAEMON " | (
 	    while read pid tt stat time command; do
@@ -496,6 +571,7 @@ case "$1" in
 	;;
     stop)
 	echo 'Stopping automounter.'
+	umount_loopback
 	start-stop-daemon --stop --quiet --signal USR2 --exec $DAEMON
 	;;
     reload|restart)

@@ -1,4 +1,4 @@
-#ident "$Id: mount_autofs.c,v 1.11 2004/11/15 14:47:13 raven Exp $"
+#ident "$Id: mount_autofs.c,v 1.12 2004/12/05 05:35:03 raven Exp $"
 /*
  * mount_autofs.c
  *
@@ -38,7 +38,7 @@ int mount_mount(const char *root, const char *name, int name_len,
 		void *context)
 {
 	char *fullpath, **argv;
-	int argc, status;
+	int argc, status, ghost = ap.ghost;
 	char *options, *p;
 	pid_t slave, wp;
 	char timeout_opt[30];
@@ -76,10 +76,16 @@ int mount_mount(const char *root, const char *name, int name_len,
 		return 0;
 	}
 
+	if (strstr(options, "browse")) {
+		if (strstr(options, "nobrowse"))
+			ghost = 0;
+		else
+			ghost = 1;
+	}
 	/* Build our argument vector.  */
 
 	argc = 5;
-	if (ap.ghost)
+	if (ghost)
 		argc++;
 
 	if (do_verbose || do_debug)
@@ -104,7 +110,7 @@ int mount_mount(const char *root, const char *name, int name_len,
 	argv[argc++] = PATH_AUTOMOUNT;
 	argv[argc++] = "--submount";
 
-	if (ap.ghost)
+	if (ghost)
 		argv[argc++] = "--ghost";
 
 	if (ap.exp_timeout != DEFAULT_TIMEOUT)
