@@ -1,7 +1,7 @@
 #!/sbin/runscript
 # Copyright 1999-2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Header: /home/cvs/root/autofs/gentoo/net-fs/autofs/files/autofs.init,v 1.4 2005/01/19 15:48:30 raven Exp $
+# $Header: /home/cvs/root/autofs/gentoo/net-fs/autofs/files/autofs.init,v 1.5 2005/01/20 11:00:24 raven Exp $
 
 # rc file for automount using a Sun-style "master map".
 # We first look for a local /etc/autofs/auto.master, then a YP
@@ -324,13 +324,9 @@ start() {
 		start-stop-daemon --start --pidfile $pidfile --quiet \
 			--exec $DAEMON -- --pid-file=$pidfile $rest
 
-		# Mmmm ... this could be a bug report later.
-		# What if we have 50+ entries in our master map.
 		if [ $? -ne 0 ]
 		then
-			echo "   Could not start automount for $mnt"	
-		else
-			echo "   Started automount for $mnt"
+			echo "Could not start automount for $mnt"	
 		fi
 	done
 
@@ -359,18 +355,17 @@ stop() {
 
 			case $ret in
 			0)
-			 	echo "   Stopped automount for $mnt"
 				rm -f $file
 				;;
 			1)
-				echo "   No process for automount $mnt"
+				echo "No process for automount $mnt"
 				rm -f $file
 				;;
 			2)
-				echo "   Couldn't stop automount for $mnt"
+				echo "Couldn't stop automount for $mnt"
 				;;
 			*)
-				echo "   Strange start-stop-daemon exit status: $?"
+				echo "Strange start-stop-daemon exit status: $?"
 				;;
 			esac
 		fi
