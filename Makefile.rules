@@ -1,12 +1,12 @@
 # -*- makefile -*-
-# $Id: Makefile.rules,v 1.1 2003/09/09 11:21:22 raven Exp $
+# $Id: Makefile.rules,v 1.2 2003/09/09 13:41:49 raven Exp $
 #
 # Makefile rules for autofs project
 #
 
 # Root directory contents
-SUBDIRS = daemon modules man
-INCDIRS = include samples
+SUBDIRS = daemon modules man samples
+INCDIRS = include
 INCFILES = COPYING COPYRIGHT NEWS README* TODO Makefile Makefile.rules \
 	   Makefile.conf.in .version .autofs-* configure.in aclocal.m4 \
 	   configure *.patch autofs.spec
