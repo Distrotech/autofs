@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# $Id: rc.autofs.in,v 1.16 2004/08/29 13:53:17 raven Exp $
+# $Id: rc.autofs.in,v 1.17 2004/11/15 15:09:16 raven Exp $
 #
 # rc file for automount using a Sun-style "master map".
 # We first look for a local /etc/auto.master, then a YP
@@ -121,21 +121,33 @@ function getrawmounts()
         case "$scheme" in
             files)
                 if [ -z "$filescheme" ] ; then
-                    getfilemounts
-                    filescheme=1
+                    MOUNTS=`getfilemounts`
+                    if [ -n "$MOUNTS" ] ; then
+                        getfilemounts
+                        return
+		    fi
+		    filescheme=1
                     export filescheme
                 fi
                 ;;
             nis)
                 if [ -z "$nisscheme" ] ; then
-                    getnismounts
+                    MOUNTS=`getnismounts`
+                    if [ -n "$MOUNTS" ] ; then
+                        getnismounts
+                        return
+		    fi
                     nisscheme=1
                     export nisscheme
                 fi
                 ;;
             ldap*)
                 if [ -z "$ldapscheme" ] ; then
-                    getldapmounts
+                    MOUNTS=`getldapmounts`
+                    if [ -n "$MOUNTS" ] ; then
+                        getldapmounts
+                        return
+                    fi
                     ldapscheme=1
                     export ldapscheme
                 fi

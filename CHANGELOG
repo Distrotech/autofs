@@ -15,6 +15,7 @@ xx/xx/2004 autofs-4.1.4
 - correct whitespace handling in maps.
 - mount table handling cleanup.
 - fix multi map lookup broken after the map update patch.
+- fix auto master map concatenation bug (Jeff Moyer).
 
 19/05/2004 autofs-4.1.3
 -----------------------
