@@ -20,6 +20,7 @@
   - he`s not sure he got all cases and I can't see more either, so we'll see.
 - revert some broken changes in Gentoo init script.
 - fix end of string handling at end of parsing options string.
+- more work on replicated server code - fix occasional mount fail.
 
 14/2/2005 autofs-4.1.4_beta2
 ----------------------------

@@ -1,4 +1,4 @@
-#ident "$Id: mount_nfs.c,v 1.21 2005/01/10 13:28:29 raven Exp $"
+#ident "$Id: mount_nfs.c,v 1.22 2005/04/05 12:42:42 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  * mount_nfs.c - Module for Linux automountd to mount an NFS filesystem,
@@ -116,7 +116,6 @@ int get_best_mount(char *what, const char *original, int longtimeout, int skiplo
 {
 	char *p = what;
 	char *winner = NULL;
-	char *is_replicated = NULL;
 	int winner_weight = INT_MAX, local = 0;
 	double winner_time = 0;
 	char *delim;
@@ -127,15 +126,6 @@ int get_best_mount(char *what, const char *original, int longtimeout, int skiplo
 		*what = '\0';
 		return -1;
 	}
-
-	/*
-	 * If it's not a replicated server map entry we need
-	 * to only check for a local mount and return the mount
-	 * string
-	 */
-	is_replicated = strpbrk(p, "(,");
-	if (skiplocal)
-		return local;
 
 	while (p && *p) {
 		char *next;
@@ -178,9 +168,9 @@ int get_best_mount(char *what, const char *original, int longtimeout, int skiplo
 		} else
 			break;
 
-		/* p points to a server, next is our next parse point */
+		/* p points to a server, "next is our next parse point */
 		if (!skiplocal) {
-			/* First, check if it's up and if it's localhost */
+			/* Check if it's localhost */
 			struct hostent *he;
 			char **haddr;
 
@@ -214,16 +204,22 @@ int get_best_mount(char *what, const char *original, int longtimeout, int skiplo
 				break;
 		}
 
-		/*
-		 * If it's not local and it's a replicated server map entry
-		 * is it alive
-		 */
-		if (!local && is_replicated && !(ping_stat = rpc_ping(p, sec, micros))) {
+		/* ping each (or the) entry to see if it's alive. */
+		ping_stat = rpc_ping(p, sec, micros);
+		if (!ping_stat) {
 			p = next;
 			continue;
 		}
 
-		/* compare RPC times if there are no weighted hosts */
+		/* First unweighted or only host is alive so set winner */
+		if (!winner) {
+			winner = p;
+			/* No more to check, return it */
+			if (!next || !*next)
+				break;
+		}
+
+		/* Multiple entries and no weighted hosts so compare times */
 		if (winner_weight == INT_MAX) {
 			int status;
 			double resp_time;
@@ -242,7 +238,7 @@ int get_best_mount(char *what, const char *original, int longtimeout, int skiplo
 					winner = p;
 					winner_time = resp_time;
 				} else
-					winner_time = 6;
+					winner_time = 501;
 			} else {
 				if ((status) && (resp_time < winner_time)) {
 					winner = p;
@@ -256,23 +252,18 @@ int get_best_mount(char *what, const char *original, int longtimeout, int skiplo
 	debug(MODPREFIX "winner = %s local = %d", winner, local);
 
 	/*
-	 * We didn't find a weighted winner or local and it's a replicated
-	 * server map entry
+	 * We didn't find a weighted winner or local
 	 */
-	if (!local && is_replicated && winner_weight == INT_MAX) {
+	if (!local && winner_weight == INT_MAX) {
 		/* We had more than one contender and none responded in time */
-		if (winner_time != 0 && winner_time > 5) {
+		if (winner_time != 0 && winner_time > 500) {
 			/* We've already tried a longer timeout */
-			if (longtimeout) {
-				/* SOL: Just pick the first one */
-				winner = what;
-			}
-			/* Reset string and try again */
-			else {
+			if (!longtimeout) {
+				/* Reset string and try again */
 				strcpy(what, original);
 
 				debug(MODPREFIX 
-				      "all hosts rpc timed out for '%s', "
+				      "all hosts timed out for '%s', "
 				      "retrying with longer timeout",
 				      original);
 

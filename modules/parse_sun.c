@@ -1,4 +1,4 @@
-#ident "$Id: parse_sun.c,v 1.27 2005/04/05 12:40:07 raven Exp $"
+#ident "$Id: parse_sun.c,v 1.28 2005/04/05 12:42:42 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  parse_sun.c - module for Linux automountd to parse a Sun-format
@@ -1007,22 +1007,52 @@ int parse_mount(const char *root, const char *name,
 		/* Normal (non-multi) entries */
 		char *loc;
 		int loclen;
+		int l;
 
 		if (*p == ':')
 			p++;	/* Sun escape for entries starting with / */
 
-		loc = dequote(p, chunklen(p, check_colon(p)));
-		loclen = strlen(loc);
-
-		if (loc == NULL) {
+		loc = dequote(p, l = chunklen(p, check_colon(p)));
+		if (!loc) {
 			error(MODPREFIX "out of memory");
-			free(loc);
 			free(options);
 			return 1;
 		}
 
+		p += l;
+		p = skipspace(p);
+
+		while (*p) {
+			char *ent;
+
+			ent = dequote(p, l = chunklen(p, check_colon(p)));
+			if (!ent) {
+				error(MODPREFIX "out of memory");
+				free(options);
+				return 1;
+			}
+
+			loc = realloc(loc, strlen(loc) + l + 2);
+			if (!loc) {
+				error(MODPREFIX "out of memory");
+				free(ent);
+				free(options);
+				return 1;
+			}
+
+			strcat(loc, " ");
+			strcat(loc, ent);
+
+			free(ent);
+
+			p += l;
+			p = skipspace(p);
+		}
+
+		loclen = strlen(loc);
 		if (loclen == 0) {
 			error(MODPREFIX "entry %s is empty!", name);
+			free(loc);
 			free(options);
 			return 1;
 		}
