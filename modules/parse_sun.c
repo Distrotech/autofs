@@ -1,4 +1,4 @@
-#ident "$Id: parse_sun.c,v 1.17 2005/01/04 14:36:54 raven Exp $"
+#ident "$Id: parse_sun.c,v 1.18 2005/01/05 09:59:31 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  parse_sun.c - module for Linux automountd to parse a Sun-format
@@ -424,7 +424,7 @@ int parse_init(int argc, const char *const *argv, void **context)
 					bval = 1;
 				}
 
-				if (strmcmp(xopt, "slashify-colons", 1))
+				if (!strmcmp(xopt, "slashify-colons", 1))
 					ctxt->slashify_colons = bval;
 				else
 					error(MODPREFIX "unknown option: %s",

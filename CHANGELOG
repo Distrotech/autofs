@@ -69,6 +69,7 @@
 - update auto.net to search for showmount and use lang variable.
 - allow for ":" escape in multi mount parse (Elmar Pruesse).
 - add auto.smb example program map (Elmar Pruesse).
+- apply slashify-colons patch to enable it work (Timo Felbinger).
 
 19/05/2004 autofs-4.1.3
 -----------------------
