@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# $Id: rc.autofs.in,v 1.32 2005/01/02 17:04:38 raven Exp $
+# $Id: rc.autofs.in,v 1.33 2005/01/12 13:15:07 raven Exp $
 #
 # rc file for automount using a Sun-style "master map".
 # We first look for a local /etc/auto.master, then a YP
@@ -190,6 +190,8 @@ function getrawmounts()
 #
 function getmounts()
 {
+	local LC_ALL=C
+	export LC_ALL
 	knownmaps=" "
 	getrawmounts | (
 	while read dir map options
