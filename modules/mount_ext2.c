@@ -1,4 +1,4 @@
-#ident "$Id: mount_ext2.c,v 1.9 2004/01/29 16:01:22 raven Exp $"
+#ident "$Id: mount_ext2.c,v 1.10 2004/04/22 14:39:08 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  mount_ext2.c - module for Linux automountd to mount ext2 filesystems
@@ -87,10 +87,10 @@ int mount_mount(const char *root, const char *name, int name_len,
 #endif
 	if (ro) {
 		debug(MODPREFIX "calling %s -n %s", fsck_prog, what);
-		err = spawnl(LOG_DEBUG, fsck_prog, fsck_prog, "-n", what, NULL);
+		err = spawnl(LOG_DEBUG, MOUNTED_LOCK, fsck_prog, fsck_prog, "-n", what, NULL);
 	} else {
 		debug(MODPREFIX "calling %s -p %s", fsck_prog, what);
-		err = spawnl(LOG_DEBUG, fsck_prog, fsck_prog, "-p", what, NULL);
+		err = spawnl(LOG_DEBUG, MOUNTED_LOCK, fsck_prog, fsck_prog, "-p", what, NULL);
 	}
 
 	if (err & ~6) {
