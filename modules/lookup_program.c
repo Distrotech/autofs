@@ -1,4 +1,4 @@
-#ident "$Id: lookup_program.c,v 1.3 2004/01/29 16:01:22 raven Exp $"
+#ident "$Id: lookup_program.c,v 1.4 2004/11/17 13:39:12 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup_program.c - module for Linux automount to access an
@@ -159,6 +159,7 @@ int lookup_mount(const char *root, const char *name, int name_len, void *context
 			if (read(pipefd[0], &ch, 1) < 1) {
 				FD_CLR(pipefd[0], &ourfds);
 				files_left--;
+				state = st_done;
 			}
 
 			if (!quoted && ch == '\\') {

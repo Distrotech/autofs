@@ -1,4 +1,4 @@
-#ident "$Id: mount_afs.c,v 1.3 2004/01/29 16:01:22 raven Exp $"
+#ident "$Id: mount_afs.c,v 1.4 2004/11/17 13:39:12 raven Exp $"
 /*
  * mount_afs.c
  *
@@ -38,6 +38,10 @@ int mount_mount(const char *root, const char *name, int name_len,
 	strcpy(dest, root);	/* Convert the name to a mount point. */
 	strncat(dest, "/", sizeof(dest));
 	strncat(dest, name, sizeof(dest));
+
+	/* remove trailing slash (http://bugs.debian.org/141775) */
+	if (dest[strlen(dest)-1] == '/')
+	    dest[strlen(dest)-1] = '\0';
 
 	debug(MODPREFIX "mounting AFS %s -> %s", dest, what);
 

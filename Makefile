@@ -1,5 +1,5 @@
 #
-# $Id: Makefile,v 1.3 2003/09/29 08:22:35 raven Exp $
+# $Id: Makefile,v 1.4 2004/11/17 13:39:12 raven Exp $
 #
 # Main Makefile for the autofs user-space tools
 #
@@ -13,26 +13,26 @@ include Makefile.rules
 all:	daemon samples
 
 daemon:
-	for i in $(SUBDIRS); do $(MAKE) -C $$i all; done 
+	set -e; for i in $(SUBDIRS); do $(MAKE) -C $$i all; done 
 
 kernel:
-	if [ -d kernel ]; then $(MAKE) -C kernel all; fi
+	set -e; if [ -d kernel ]; then $(MAKE) -C kernel all; fi
 
 samples:
-	if [ -d samples ]; then $(MAKE) -C samples all; fi
+	set -e; if [ -d samples ]; then $(MAKE) -C samples all; fi
 
 clean:
 	for i in $(SUBDIRS) samples kernel; do \
 		if [ -d $$i ]; then $(MAKE) -C $$i clean; fi; done 	
 
 install:
-	for i in $(SUBDIRS); do $(MAKE) -C $$i install; done 	
+	set -e; for i in $(SUBDIRS); do $(MAKE) -C $$i install; done 	
 
 install_kernel:
-	if [ -d kernel ]; then $(MAKE) -C kernel install; fi
+	set -e; if [ -d kernel ]; then $(MAKE) -C kernel install; fi
 
 install_samples:
-	if [ -d samples ]; then $(MAKE) -C samples install; fi
+	set -e; if [ -d samples ]; then $(MAKE) -C samples install; fi
 
 mrproper distclean: clean
 	find . -noleaf \( -name '*~' -o -name '#*' -o -name '*.orig' -o -name '*.rej' -o -name '*.old' \) -print0 | xargs -0 rm -f

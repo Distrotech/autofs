@@ -2,8 +2,7 @@ xx/xx/2004 autofs-4.1.4
 -----------------------
 - fix error in define of mtab lock file.
 - fix mischief caused by change in default strict -> nonstrict.
-- fix replicated server detection (TCP/UDP/NFSv2/NFSv3) logic
-  (Jeff Moyer and Ian Kent).
+- fix replicated server detection (TCP/UDP/NFSv2/NFSv3) logic (Jeff Moyer and Ian Kent).
 - fix error when setting pwd.
 - fix socket leak (Jeff Moyer and Ian Kent).
 - fix potential race in signal handling code (Jeff Moyer).
@@ -16,6 +15,12 @@ xx/xx/2004 autofs-4.1.4
 - mount table handling cleanup.
 - fix multi map lookup broken after the map update patch.
 - fix auto master map concatenation bug (Jeff Moyer).
+- merge some Debian patches (Arthur Korn)
+    - 032 remove trailing slash in mount_afs.c.
+    - 033 support hesiod priorities in lookup_hesiod.c.
+    - 034 handle empty options in changer ,ext2 and generic modules.
+    - 035 program mount repeated last character of map output.
+    - 036 make make fail on failure.
 
 19/05/2004 autofs-4.1.3
 -----------------------

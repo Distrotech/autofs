@@ -1,4 +1,4 @@
-#ident "$Id: mount_ext2.c,v 1.14 2004/11/15 14:47:13 raven Exp $"
+#ident "$Id: mount_ext2.c,v 1.15 2004/11/17 13:39:12 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  mount_ext2.c - module for Linux automountd to mount ext2 filesystems
@@ -74,7 +74,7 @@ int mount_mount(const char *root, const char *name, int name_len,
 		return 0;
 	}
 
-	if (options) {
+	if (options && options[0]) {
 		for (p = options; (p1 = strchr(p, ',')); p = p1)
 			if (!strncmp(p, "ro", p1 - p) && ++p1 - p == sizeof("ro"))
 				ro = 1;

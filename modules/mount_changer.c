@@ -96,7 +96,7 @@ int mount_mount(const char *root, const char *name, int name_len,
 	}
 
 	wait_for_lock();
-	if (options) {
+	if (options && options[0]) {
 		debug(MODPREFIX "calling mount -t %s " SLOPPY "-o %s %s %s",
 		    fstype, options, what, fullpath);
 

@@ -1,4 +1,4 @@
-#ident "$Id: lookup_hesiod.c,v 1.3 2004/01/29 16:01:22 raven Exp $"
+#ident "$Id: lookup_hesiod.c,v 1.4 2004/11/17 13:39:12 raven Exp $"
 /*
  * lookup_hesiod.c
  *
@@ -9,6 +9,7 @@
 
 #include <sys/types.h>
 #include <ctype.h>
+#include <limits.h>
 #include <string.h>
 #include <syslog.h>
 #include <unistd.h>
@@ -70,6 +71,8 @@ int lookup_mount(const char *root, const char *name, int name_len, void *context
 	char **hes_result;
 	struct lookup_context *ctxt = (struct lookup_context *) context;
 	int rv;
+	char **record, *best_record = NULL, *p;
+	int priority, lowest_priority = INT_MAX;	
 
 	debug(MODPREFIX "looking up root=\"%s\", name=\"%s\"", root, name);
 
@@ -78,14 +81,30 @@ int lookup_mount(const char *root, const char *name, int name_len, void *context
 
 	hes_result = hes_resolve(name, "filsys");
 
-	if (!hes_result) {
+	if (!hes_result || !hes_result[0]) {
 		warn(MODPREFIX "entry \"%s\" not found in map\n", name);
 		return 1;
 	}
 
-	debug(MODPREFIX "lookup for \"%s\" gave \"%s\"", name, hes_result[0]);
+	/* autofs doesn't support falling back to alternate records, so just
+	   find the record with the lowest priority and hope it works.
+	   -- Aaron Ucko <amu@alum.mit.edu> 2002-03-11 */
+	for (record = hes_result; *record; ++record) {
+	    p = strrchr(*record, ' ');
+	    if ( p && isdigit(p[1]) ) {
+		priority = atoi(p+1);
+	    } else {
+		priority = INT_MAX - 1;
+	    }
+	    if (priority < lowest_priority) {
+		lowest_priority = priority;
+		best_record = *record;
+	    }
+	}
 
-	rv = ctxt->parser->parse_mount(root, name, name_len, hes_result[0],
+	debug(MODPREFIX "lookup for \"%s\" gave \"%s\"", name, best_record);
+
+	rv = ctxt->parser->parse_mount(root, name, name_len, best_record,
 				       ctxt->parser->context);
 	free(hes_result);
 	return rv;
