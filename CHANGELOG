@@ -49,6 +49,7 @@
 - fix duplicate map entry order - return first read instead of last.
 - bump version to 4.1.4 beta1 and start testing.
 - fix spec file to build the beta.
+- fix compile warning in lookup_yp.c.
 
 
 19/05/2004 autofs-4.1.3

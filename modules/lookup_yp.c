@@ -1,4 +1,4 @@
-#ident "$Id: lookup_yp.c,v 1.7 2004/12/31 06:30:09 raven Exp $"
+#ident "$Id: lookup_yp.c,v 1.8 2005/01/01 08:17:37 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup_yp.c - module for Linux automountd to access a YP (NIS)
@@ -86,7 +86,7 @@ int yp_all_callback(int status, char *ypkey, int ypkeylen,
 		    char *val, int vallen, char *ypcb_data)
 {
 	struct callback_data *cbdata = (struct callback_data *) ypcb_data;
-	char *root = cbdata->root;
+	const char *root = cbdata->root;
 	time_t age = cbdata->age;
 	char *key;
 	char *mapent;
