@@ -3,10 +3,20 @@ ident "$Id"
 
 The patches located in the patches directory are:
 
-autofs4-2.2.17-20001023.diff		original autofs4 patch for kernel 2.2
-autofs4-2.4.18-20030929.patch		current autofs4 patch for kernel 2.4.18 and below
-autofs4-2.4.20-20030929.patch		current autofs4 patch for kernel 2.4.19 and above
-autofs4-2.4.20-redhat-20030929.patch	current autofs4 patch for RedHat kernel 2.4.20 and above
+autofs4-2.2.17-20001023.diff
+	original autofs4 patch for kernel 2.2
+
+autofs4-2.4.18-20030929.patch
+	current autofs4 patch for kernel 2.4.18 and below
+
+autofs4-2.4.20-20030929.patch
+	current autofs4 patch for kernel 2.4.19 through 2.4.21
+
+autofs4-2.4.20-redhat-20030929.patch
+	current autofs4 patch for RedHat kernel 2.4.20 and above
+
+autofs4-2.4.22-20030929.patch
+	current autofs4 patch for kernel 2.4.22 and above
 
 These patches reflect the state of my autofs4 kernel module updates
 as they were at the time of release of this package. They may be out
