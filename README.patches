@@ -13,7 +13,11 @@ autofs4-2.4.20-20031008.patch
 	current autofs4 patch for kernel 2.4.19 through 2.4.21
 
 autofs4-2.4.20-redhat-20031008.patch
-	current autofs4 patch for RedHat kernel 2.4.20 and above
+	current autofs4 patch for RedHat kernel 2.4.20-20.9.
+	As far as I can tell this RedHat kernel has a patch
+	which changes the task structure which is not present
+	in other RedHat kernels. If you get compile errors in
+	waitq.c try the other 2.4.20 patch.
 
 autofs4-2.4.22-20031008.patch
 	current autofs4 patch for kernel 2.4.22 and above
