@@ -34,7 +34,7 @@
 - force local map paths to begin with / (Chris Feist).
 - allow for LDAP maps that have greater than the LDAP result count limit (Chris Feist).
 - allow for program maps returning larger than 4kb (Jeff Moyer and Chris Feist?).
-- fix some potential buffer overflows (Steve Grubb).
+- fix some potential buffer overflows, applied with amendments (Steve Grubb).
 - carry -D variable definitions to submounts (Michael Blandford).
 - merge Debian patch 044 update reference to mailing list (Arthur Korn).
 - provide ability to convert read-only NFS mounts to read-only bind mounts (Thorild Selen).
@@ -54,8 +54,7 @@
 - add Gentoo portage ebuild files.
 - review remaining Debian patches
    - all 000 and 001 patches are included in 4.1.4.
-   - 002 log cause of ldap errors applied.
-   - 020 covered by another change.
+   - 002 log cause of ldap errors applied
    - 030 document +map in auto master applied.
    - 031 document -D in automount 8 applied in another diff.
    - 040 init script policy conformance and backwards compatibility
