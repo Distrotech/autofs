@@ -1,4 +1,4 @@
-#ident "$Id: lookup_ldap.c,v 1.15 2005/01/20 14:37:43 raven Exp $"
+#ident "$Id: lookup_ldap.c,v 1.16 2005/01/23 12:18:57 raven Exp $"
 /*
  * lookup_ldap.c - Module for Linux automountd to access automount
  *		   maps in LDAP directories.
@@ -301,7 +301,7 @@ static int read_map(const char *root, struct lookup_context *ctxt,
 	/* all else fails read entire map */
 	ret = read_one_map(root, "nisObject", "cn", 
 			  key, keyvallen, "nisMapEntry", ctxt, age, &rv1);
-	if (ret) {
+	if (ret)
 		goto ret_ok;
 
 	ret = read_one_map(root, "automount", "cn", key, keyvallen, 
@@ -309,7 +309,7 @@ static int read_map(const char *root, struct lookup_context *ctxt,
 	if (ret)
 		goto ret_ok;
 
-	if (result_ldap != NULL)
+	if (result_ldap)
 		*result_ldap = (rv1 == LDAP_SUCCESS ? rv2 : rv1);
 
 	return 0;
