@@ -1,4 +1,4 @@
-#ident "$Id: mount_generic.c,v 1.5 2003/10/04 13:20:27 raven Exp $"
+#ident "$Id: mount_generic.c,v 1.6 2004/01/18 11:49:35 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  mount_generic.c - module for Linux automountd to mount filesystems
@@ -50,6 +50,7 @@ int mount_mount(const char *root, const char *name, int name_len,
 {
 	char *fullpath;
 	int err;
+	int status;
 
 	fullpath = alloca(strlen(root) + name_len + 2);
 	if (!fullpath) {
@@ -59,7 +60,7 @@ int mount_mount(const char *root, const char *name, int name_len,
 	sprintf(fullpath, "%s/%s", root, name);
 
 	DB(syslog(LOG_DEBUG, MODPREFIX "calling mkdir_path %s", fullpath));
-	if (mkdir_path(fullpath, 0555) && errno != EEXIST) {
+	if ((status = mkdir_path(fullpath, 0555)) && errno != EEXIST) {
 		syslog(LOG_NOTICE, MODPREFIX "mkdir_path %s failed: %m", name);
 		return 1;
 	}
@@ -86,7 +87,7 @@ int mount_mount(const char *root, const char *name, int name_len,
 	}
 	unlink(AUTOFS_LOCK);
 	if (err) {
-		if (!ap.ghost)
+		if (!ap.ghost || (ap.ghost && !status))
 			rmdir_path(fullpath);
 		syslog(LOG_ERR, MODPREFIX "failed to mount %s (type %s) on %s",
 		       what, fstype, fullpath);

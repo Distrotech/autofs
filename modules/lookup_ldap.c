@@ -1,4 +1,4 @@
-#ident "$Id: lookup_ldap.c,v 1.3 2003/09/29 08:22:35 raven Exp $"
+#ident "$Id: lookup_ldap.c,v 1.4 2004/01/18 11:49:35 raven Exp $"
 /*
  * lookup_ldap.c
  *
@@ -330,7 +330,7 @@ static int lookup(const char *root, const char *name, int name_len, void *contex
 	char mapent[MAPENT_MAX_LEN + 1];
 	struct mapent_cache *me = NULL;
 	char *mapname;
-	int status = 1;
+	int status = -1;
 
 	me = cache_lookup(name);
 	if (me == NULL) {
@@ -374,11 +374,12 @@ static int lookup(const char *root, const char *name, int name_len, void *contex
 int lookup_mount(const char *root, const char *name, int name_len, void *context)
 {
 	struct lookup_context *ctxt = (struct lookup_context *) context;
-	int status = 1;
+	int status;
 
 	chdir("/");
 
-	if ((status = lookup(root, name, name_len, ctxt))) {
+	status = lookup(root, name, name_len, ctxt);
+	if (status == -1) {
 		/* all else fails read entire map */
 		if (!read_map(root, ctxt))
 			return 1;

@@ -1,4 +1,4 @@
-#ident "$Id: mount_bind.c,v 1.5 2003/10/04 13:20:27 raven Exp $"
+#ident "$Id: mount_bind.c,v 1.6 2004/01/18 11:49:35 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  mount_bind.c      - module to mount a local filesystem if possible;
@@ -106,9 +106,11 @@ int mount_mount(const char *root, const char *name, int name_len,
 		fullpath[i] = '\0';
 
 	if (bind_works) {
+		int status;
+
 		DB(syslog(LOG_DEBUG, MODPREFIX "calling mkdir_path %s", fullpath));
 
-		if (mkdir_path(fullpath, 0555) && errno != EEXIST) {
+		if ((status = mkdir_path(fullpath, 0555)) && errno != EEXIST) {
 			syslog(LOG_NOTICE, MODPREFIX "mkdir_path %s failed: %m",
 			       fullpath);
 			return 1;
@@ -128,7 +130,7 @@ int mount_mount(const char *root, const char *name, int name_len,
 		unlink(AUTOFS_LOCK);
 
 		if (err) {
-			if (!ap.ghost)
+			if (!ap.ghost || (ap.ghost && !status))
 				rmdir_path(fullpath);
 			return 1;
 		} else {
@@ -139,6 +141,7 @@ int mount_mount(const char *root, const char *name, int name_len,
 	} else {
 		char *cp;
 		char *basepath = alloca(strlen(fullpath) + 1);
+		int status;
 		struct stat st;
 
 		strcpy(basepath, fullpath);
@@ -147,7 +150,7 @@ int mount_mount(const char *root, const char *name, int name_len,
 		if (cp != NULL && cp != basepath)
 			*cp = '\0';
 
-		if (stat(fullpath, &st) == 0) {
+		if ((status = stat(fullpath, &st)) == 0) {
 			if (S_ISDIR(st.st_mode))
 				rmdir(fullpath);
 		} else {
@@ -164,7 +167,7 @@ int mount_mount(const char *root, const char *name, int name_len,
 			syslog(LOG_WARNING,
 			       MODPREFIX "failed to create local mount %s -> %s",
 			       fullpath, what);
-			if (ap.ghost)
+			if (ap.ghost && !status)
 				mkdir_path(fullpath, 0555);
 			else
 				rmdir_path(fullpath);

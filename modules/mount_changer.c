@@ -57,6 +57,7 @@ int mount_mount(const char *root, const char *name, int name_len,
 {
 	char *fullpath;
 	int err;
+	int status;
 
 	fstype = "iso9660";
 
@@ -79,7 +80,7 @@ int mount_mount(const char *root, const char *name, int name_len,
 
 	DB(syslog(LOG_DEBUG, MODPREFIX "calling mkdir_path %s", fullpath));
 
-	if (mkdir_path(fullpath, 0555) && errno != EEXIST) {
+	if ((status = mkdir_path(fullpath, 0555)) && errno != EEXIST) {
 		syslog(LOG_ERR, MODPREFIX "mkdir_path %s failed: %m", name);
 		return 1;
 	}
@@ -91,8 +92,8 @@ int mount_mount(const char *root, const char *name, int name_len,
 		syslog(LOG_NOTICE, MODPREFIX "failed to swap CD to slot %s", name);
 		return 1;
 	}
-	wait_for_lock();
 
+	wait_for_lock();
 	if (options) {
 		DB(syslog
 		   (LOG_DEBUG, MODPREFIX "calling mount -t %s " SLOPPY "-o %s %s %s",
@@ -108,7 +109,7 @@ int mount_mount(const char *root, const char *name, int name_len,
 	}
 	unlink(AUTOFS_LOCK);
 	if (err) {
-		if (!ap.ghost)
+		if (!ap.ghost || (ap.ghost && !status))
 			rmdir_path(fullpath);
 		syslog(LOG_ERR, MODPREFIX "failed to mount %s (type %s) on %s",
 		       what, fstype, fullpath);
