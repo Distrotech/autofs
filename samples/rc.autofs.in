@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# $Id: rc.autofs.in,v 1.13 2004/04/26 05:15:03 raven Exp $
+# $Id: rc.autofs.in,v 1.14 2004/04/28 12:39:41 raven Exp $
 #
 # rc file for automount using a Sun-style "master map".
 # We first look for a local /etc/auto.master, then a YP
@@ -228,7 +228,7 @@ function getmounts()
 		: echo MAPOPTIONS $mapoptions
 		: echo LOCALOPTIONS $localoptions
 
-		echo "$DAEMON $startupoptions $dir $maptype $map $mapoptions $localoptions" | sed -e 's/	/ /g' -e 's/  / /g'
+		echo "$DAEMON $startupoptions $dir $maptype $map $mapoptions $localoptions" | sed -e 's/	/ /g' -e 's/  */ /g'
 
 		: echo ------------------------
 	    fi
