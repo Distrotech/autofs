@@ -1,4 +1,4 @@
-#ident "$Id: automount.c,v 1.26 2005/01/02 06:01:46 raven Exp $"
+#ident "$Id: automount.c,v 1.27 2005/01/03 04:12:51 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  automount.c - Linux automounter daemon
@@ -261,14 +261,9 @@ static int umount_multi(const char *path, int incl)
 	mntlist = get_mnt_list(_PATH_MOUNTED, path, incl);
 
 	if (!mntlist) {
-		if (!incl) {
-			warn("umount_multi: no mounts found under %s", path);
-			check_rm_dirs(path, incl);
-			return 0;
-		}
-		error("umount_multi: no mount found for %s", path);
+		warn("umount_multi: no mounts found under %s", path);
 		check_rm_dirs(path, incl);
-		return -1;
+		return 0;
 	}
 
 	left = 0;
@@ -1098,10 +1093,10 @@ static int handle_packet_missing(const struct autofs_packet_missing *pkt)
 			if (err) {
 				error("failed to mount %s", buf);
 				umount_multi(buf, 1);
-				if ((!ap.ghost) ||
+/*				if ((!ap.ghost) ||
 				    (ap.state == ST_SHUTDOWN_PENDING
 				     || ap.state == ST_SHUTDOWN))
-					rm_unwanted(buf, 1, 0);
+					rm_unwanted(buf, 1, 0); */
 			}
 
 			_exit(err ? 1 : 0);
