@@ -1,5 +1,5 @@
 
-indent $Id: README.gentoo,v 1.1 2005/01/02 06:08:43 raven Exp $
+indent $Id: README.gentoo,v 1.2 2005/04/06 15:24:37 raven Exp $
 
 Howto do an ebuild from the distribution for Gentoo
 ===================================================
@@ -7,9 +7,9 @@ Howto do an ebuild from the distribution for Gentoo
 In the distribution directory:
 
 cd gentoo
-PORTDIR_OVERLAY=`pwd` ebuild net-fs/autofs/autofs-4.1.4_beta1.ebuild digest
-PORTDIR_OVERLAY=`pwd` ebuild net-fs/autofs/autofs-4.1.4_beta1.ebuild clean install
-PORTDIR_OVERLAY=`pwd` ebuild net-fs/autofs/autofs-4.1.4_beta1.ebuild qmerge
+PORTDIR_OVERLAY=`pwd` ebuild net-fs/autofs/autofs-4.1.4.ebuild digest
+PORTDIR_OVERLAY=`pwd` ebuild net-fs/autofs/autofs-4.1.4.ebuild clean install
+PORTDIR_OVERLAY=`pwd` ebuild net-fs/autofs/autofs-4.1.4.ebuild qmerge
 
 and you should have a working autofs.
 

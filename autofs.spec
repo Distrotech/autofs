@@ -1,9 +1,9 @@
 #
-# $Id: autofs.spec,v 1.23 2005/01/04 14:36:54 raven Exp $
+# $Id: autofs.spec,v 1.24 2005/04/06 15:24:37 raven Exp $
 #
 Summary: A tool from automatically mounting and umounting filesystems.
 Name: autofs
-%define version 4.1.4_beta1
+%define version 4.1.4
 %define release 1
 Version: %{version}
 Release: %{release}
