@@ -1,6 +1,7 @@
 ??/2/2005 autofs-4.1.4_beta2
 ----------------------------
 - add update to -D variable propogation patch (Michael Blanddford).
+- fix rentrancy problem when releasing the cache.
 
 26/1/2005 autofs-4.1.4_beta1
 ---------------------------
