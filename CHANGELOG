@@ -10,7 +10,7 @@
 - change setpgrp to setsid to disascociate from tty properly.
 - fix auto.net and auto.smb to not use non-bourne shell regex
    when searching for their export list programs.
-- fix nsswitch.conf sources detection.
+- fix nsswitch.conf sources detection. Debian bug #296238.
 - fix grep failing causing assignments to terminate init script.
    Debian bug #295480.
 
