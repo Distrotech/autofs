@@ -1,5 +1,5 @@
-??/4/2005 autofs-4.1.4_beta3
-----------------------------
+??/4/2005 autofs-4.1.4
+----------------------
 - add /proc/modules check to Debian init script.
 - fix typo in Gentoo init script reload function.
 - fix default map type selection for submounts.
