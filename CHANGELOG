@@ -1,4 +1,4 @@
-2/1/2005 autofs-4.1.4_beta1
+3/1/2005 autofs-4.1.4_beta1
 ---------------------------
 - fix error in define of mtab lock file.
 - fix mischief caused by change in default strict -> nonstrict.
@@ -65,6 +65,7 @@
    - 047 277320 correct automount nsswitch regex applied.
    - 049 parse_sun to be merged in another diff.
    - 050 disable_direct_maps.diff applied.
+- update spec file to use autofs sysconfig.
 
 19/05/2004 autofs-4.1.3
 -----------------------

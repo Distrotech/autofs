@@ -1,5 +1,5 @@
 #
-# $Id: autofs.spec,v 1.21 2005/01/01 07:51:02 raven Exp $
+# $Id: autofs.spec,v 1.22 2005/01/03 02:31:23 raven Exp $
 #
 Summary: A tool from automatically mounting and umounting filesystems.
 Name: autofs
@@ -7,12 +7,14 @@ Name: autofs
 %define release 1
 Version: %{version}
 Release: %{release}
-License: GPL
+Copyright: GPL
 Group: System Environment/Daemons
 Source: ftp://ftp.kernel.org/pub/linux/daemons/autofs/v4/autofs-%{version}.tar.gz
 Buildroot: %{_tmppath}/%{name}-tmp
+BuildPrereq: autoconf, hesiod-devel, openldap-devel, perl
 Prereq: chkconfig
 Requires: /bin/bash mktemp sed textutils sh-utils grep /bin/ps
+Obsoletes: autofs-ldap
 Summary(de): autofs daemon 
 Summary(fr): démon autofs
 Summary(tr): autofs sunucu süreci
@@ -45,9 +47,10 @@ inkludera nätfilsystem, CD-ROM, floppydiskar, och så vidare.
 
 %prep
 %setup -q
+echo %{version}-%{release} > .version
 
 %build
-CFLAGS="$RPM_OPT_FLAGS" ./configure --prefix=/usr
+CFLAGS="$RPM_OPT_FLAGS" ./configure --prefix=/usr --libdir=%{_libdir}
 make initdir=/etc/rc.d/init.d
 
 %install
@@ -56,10 +59,12 @@ mkdir -p -m755 $RPM_BUILD_ROOT/etc/rc.d/init.d
 mkdir -p -m755 $RPM_BUILD_ROOT%{_sbindir}
 mkdir -p -m755 $RPM_BUILD_ROOT%{_libdir}/autofs
 mkdir -p -m755 $RPM_BUILD_ROOT%{_mandir}/{man5,man8}
+mkdir -p -m755 $RPM_BUILD_ROOT/etc/sysconfig
 
 make install mandir=%{_mandir} initdir=/etc/rc.d/init.d INSTALLROOT=$RPM_BUILD_ROOT
 install -m 755 -d $RPM_BUILD_ROOT/misc
 install -m 755 -d $RPM_BUILD_ROOT/net
+install -m 644 redhat/autofs.sysconfig $RPM_BUILD_ROOT/etc/sysconfig/autofs
 
 %clean
 [ "$RPM_BUILD_ROOT" != "/" ] && rm -rf $RPM_BUILD_ROOT
@@ -75,7 +80,7 @@ fi
 %preun
 if [ "$1" = 0 ] ; then
 	/sbin/service autofs stop > /dev/null 2>&1 || :
-	chkconfig --del autofs
+	/sbin/chkconfig --del autofs
 fi
 
 %files
@@ -85,6 +90,7 @@ fi
 %config(noreplace) /etc/auto.master
 %config(noreplace,missingok) /etc/auto.misc
 %config(noreplace,missingok) /etc/auto.net
+%config(noreplace) /etc/sysconfig/autofs
 %{_sbindir}/automount
 %dir %{_libdir}/autofs
 %{_libdir}/autofs/*
@@ -93,6 +99,9 @@ fi
 %dir /net
 
 %changelog
+* Mon Jan 3 2005 Ian Kent <raven@themaw.net>
+- Update package spec file to use autofs.sysconfig.
+
 * Sat Jan 1 2005 Ian Kent <raven@themaw.net>
 - Update package to version 4.1.4_beta1.
 
