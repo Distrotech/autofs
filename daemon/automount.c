@@ -1,4 +1,4 @@
-#ident "$Id: automount.c,v 1.20 2004/11/18 13:20:49 raven Exp $"
+#ident "$Id: automount.c,v 1.21 2004/11/20 11:19:12 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  automount.c - Linux automounter daemon
@@ -415,16 +415,30 @@ static int mount_autofs(char *path)
 			(unsigned) my_pgrp, AUTOFS_MAX_PROTO_VERSION);
 	if (len >= sizeof(options)) {
 		crit("buffer to small for options - truncated");
-		len = sizeof(options);
+		len = sizeof(options)-1;
 	}
+	if (len < 0) {
+                crit("failed setting up options for autofs path %s", ap.path);
+                rmdir_path(ap.path);
+                close(pipefd[0]);
+                close(pipefd[1]);
+                return -1;
+        }	
 	options[len] = '\0';
 
 	len = snprintf(our_name, sizeof(our_name),
 			"automount(pid%u)", (unsigned) my_pid);
 	if (len >= sizeof(our_name)) {
 		crit("buffer to small for our_name - truncated");
-		len = sizeof(our_name);
+		len = sizeof(our_name)-1;
 	}
+        if (len < 0) {
+                crit("failed setting up our_name for autofs path %s", ap.path);
+                rmdir_path(ap.path);
+                close(pipefd[0]);
+                close(pipefd[1]);
+                return -1;
+        }
 	our_name[len] = '\0';
 
 	wait_for_lock();
@@ -990,6 +1004,7 @@ static int handle_packet_missing(const struct autofs_packet_missing *pkt)
 	struct stat st;
 	sigset_t oldsig;
 	pid_t f;
+	int mem_not_recorded = 0;
 
 	debug("handle_packet_missing: token %ld, name %s\n",
 		pkt->wait_queue_token, pkt->name);
@@ -1004,7 +1019,7 @@ static int handle_packet_missing(const struct autofs_packet_missing *pkt)
 	if (lstat(pkt->name, &st) == -1 ||
 	   (S_ISDIR(st.st_mode) && st.st_dev == ap.dev)) {
 		/* Need to mount or symlink */
-		struct pending_mount *mt;
+		struct pending_mount *mt=NULL;
 		char buf[PATH_MAX + 1];
 		int size;
 
@@ -1013,10 +1028,13 @@ static int handle_packet_missing(const struct autofs_packet_missing *pkt)
 		sigprocmask(SIG_BLOCK, &sigchld_mask, NULL);
 		if ((mt = (struct pending_mount *) junk_mounts)) {
 			junk_mounts = junk_mounts->next;
-		} else if (!(mt = malloc(sizeof(struct pending_mount)))) {
-			error("handle_packet_missing: malloc: %m");
-			send_fail(pkt->wait_queue_token);
-			return 1;
+		} else {
+			if (!(mt = malloc(sizeof(struct pending_mount)))) {
+				error("handle_packet_missing: malloc: %m");
+				send_fail(pkt->wait_queue_token);
+				return 1;
+			}
+			mem_not_recorded = 1;
 		}
 		sigprocmask(SIG_UNBLOCK, &sigchld_mask, NULL);
 
@@ -1026,6 +1044,8 @@ static int handle_packet_missing(const struct autofs_packet_missing *pkt)
 			crit("handle_packet_missing: "
 			     "path to be mounted is to long");
 			send_fail(pkt->wait_queue_token);
+			if (mem_not_recorded)
+				free(mt);
 			return 0;
 		}
 
@@ -1038,6 +1058,8 @@ static int handle_packet_missing(const struct autofs_packet_missing *pkt)
 			sigprocmask(SIG_SETMASK, &oldsig, NULL);
 			error("handle_packet_missing: fork: %m");
 			send_fail(pkt->wait_queue_token);
+			if (mem_not_recorded)
+				free(mt);
 			return 1;
 		} else if (!f) {
 			int err;
@@ -1078,6 +1100,7 @@ static int handle_packet_missing(const struct autofs_packet_missing *pkt)
 			mt->wait_queue_token = pkt->wait_queue_token;
 			mt->next = ap.mounts;
 			ap.mounts = mt;
+			mem_not_recorded = 0;
 
 			sigprocmask(SIG_SETMASK, &oldsig, NULL);
 		}
@@ -1096,6 +1119,8 @@ static int handle_packet_missing(const struct autofs_packet_missing *pkt)
 		send_ready(pkt->wait_queue_token);
 	}
 	chdir("/");
+	if (mem_not_recorded)
+		free(mt);
 	return 0;
 }
 
@@ -1141,7 +1166,8 @@ static int handle_expire(const char *name, int namelen, autofs_wqt_t token)
 {
 	sigset_t olds;
 	pid_t f;
-	struct pending_mount *mt;
+	struct pending_mount *mt=NULL;
+	int mem_not_recorded = 0;
 
 	chdir("/");		/* make sure we're out of the way */
 
@@ -1153,16 +1179,21 @@ static int handle_expire(const char *name, int namelen, autofs_wqt_t token)
 	/* Reclaim from doomed list if there is one */
 	if ((mt = (struct pending_mount *) junk_mounts)) {
 		junk_mounts = junk_mounts->next;
-	} else if (!(mt = malloc(sizeof(struct pending_mount)))) {
-		sigprocmask(SIG_SETMASK, &olds, NULL);
-		error("handle_expire: malloc: %m");
-		return 1;
+	} else {
+		if (!(mt = malloc(sizeof(struct pending_mount)))) {
+			sigprocmask(SIG_SETMASK, &olds, NULL);
+			error("handle_expire: malloc: %m");
+			return 1;
+		}
+		mem_not_recorded = 1;
 	}
 
 	f = fork();
 	if (f == -1) {
 		sigprocmask(SIG_SETMASK, &olds, NULL);
 		error("handle_expire: fork: %m");
+		if (mem_not_recorded)
+			free(mt);
 		return 1;
 	}
 	if (f > 0) {
@@ -1170,6 +1201,7 @@ static int handle_expire(const char *name, int namelen, autofs_wqt_t token)
 		mt->wait_queue_token = token;
 		mt->next = ap.mounts;
 		ap.mounts = mt;
+		mem_not_recorded = 0;
 
 		sigprocmask(SIG_SETMASK, &olds, NULL);
 		return 0;
@@ -1182,6 +1214,8 @@ static int handle_expire(const char *name, int namelen, autofs_wqt_t token)
 	close(ap.ioctlfd);
 	close(ap.state_pipe[0]);
 	close(ap.state_pipe[1]);
+	if (mem_not_recorded)
+		free(mt);
 
 	do_expire(name, namelen);
 
