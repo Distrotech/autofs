@@ -31,6 +31,7 @@ xx/xx/2004 autofs-4.1.4
 - maintain backwards compatibility w/ local file maps (Chris Feist).
 - init script fix (Arthur Korn).
 - fix duplicate map handling in init script (Chris Feist).
+- force local map paths to begin with / (Chris Feist).
 
 19/05/2004 autofs-4.1.3
 -----------------------

@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# $Id: rc.autofs.in,v 1.21 2004/11/20 08:50:15 raven Exp $
+# $Id: rc.autofs.in,v 1.22 2004/11/20 09:05:40 raven Exp $
 #
 # rc file for automount using a Sun-style "master map".
 # We first look for a local /etc/auto.master, then a YP
@@ -238,12 +238,12 @@ function getmounts()
 		maptype=`echo $map | cut -f1 -d:`
 		# Handle degenerate map specifiers
 		if [ "$maptype" = "$map" ] ; then
-		    if [ -x "$map" ]; then
+		    if `echo $map | grep -q "^/"` && [ -x "$map" ]; then
 			maptype=program
 		    elif [ -x "/etc/$map" ]; then
 			maptype=program
 			map=`echo /etc/$map | sed 's^//^/^g'`
-		    elif [ -f "$map" ]; then
+		    elif `echo $map | grep -q "^/"` && [ -f "$map" ]; then
 			maptype=file
 		    elif [ -f "/etc/$map" ]; then
 			maptype=file
