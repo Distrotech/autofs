@@ -1,4 +1,4 @@
-#ident "$Id: parse_sun.c,v 1.19 2005/01/15 07:21:53 raven Exp $"
+#ident "$Id: parse_sun.c,v 1.20 2005/01/17 04:21:41 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  parse_sun.c - module for Linux automountd to parse a Sun-format
@@ -6,6 +6,7 @@
  * 
  *   Copyright 1997 Transmeta Corporation - All Rights Reserved
  *   Copyright 2000 Jeremy Fitzhardinge <jeremy@goop.org>
+ *   Copyright 2004, 2005 Ian Kent <raven@themaw.net>
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -53,6 +54,13 @@ struct parse_context {
 	char *optstr;		/* Mount options */
 	struct substvar *subst;	/* $-substitutions */
 	int slashify_colons;	/* Change colons to slashes? */
+};
+
+struct multi_mnt {
+	char *path;
+	char *options;
+	char *location;
+	struct multi_mnt *next;
 };
 
 struct utsname un;
@@ -669,6 +677,69 @@ static int sun_mount(const char *root, const char *name, int namelen,
 }
 
 /*
+ * Build list of mounts in shortest -> longest order.
+ * Pass in list head and return list head.
+ */
+struct multi_mnt *multi_add_list(struct multi_mnt *list,
+				 char *path, char *options, char *location)
+{
+	struct multi_mnt *mmptr, *new, *old = NULL;
+	int plen;
+
+	if (!path || !options || !location)
+		return NULL;
+
+	new = malloc(sizeof(struct multi_mnt));
+	if (!new)
+		return NULL;
+
+	new->path = path;
+	new->options = options;
+	new->location = location;
+
+	plen = strlen(path);
+	mmptr = list;
+	while (mmptr) {
+		if (plen <= strlen(mmptr->path))
+			break;
+		old = mmptr;
+		mmptr = mmptr->next;
+	}
+
+	if (old)
+		old->next = new;
+	new->next = mmptr;
+
+	return old ? list : new;
+}
+
+void multi_free_list(struct multi_mnt *list)
+{
+	struct multi_mnt *next;
+
+	if (!list)
+		return;
+
+	next = list;
+	while (next) {
+		struct multi_mnt *this = next;
+
+		next = this->next;
+
+		if (this->path)
+			free(this->path);
+
+		if (this->options)
+			free(this->options);
+
+		if (this->location)
+			free(this->location);
+
+		free(this);
+	}
+}
+
+/*
  * syntax is:
  *	[-options] location [location] ...
  *	[-options] [mountpoint [-options] location [location] ... ]...
@@ -721,8 +792,9 @@ int parse_mount(const char *root, const char *name,
 	debug(MODPREFIX "gathered options: %s", options);
 
 	if (*p == '/') {
-		int l;
+		struct multi_mnt *list, *head = NULL, *next;
 		char *multi_root;
+		int l;
 
 		multi_root = alloca(strlen(root) + name_len + 2);
 		if (!multi_root) {
@@ -739,11 +811,11 @@ int parse_mount(const char *root, const char *name,
 		do {
 			char *myoptions = strdup(options);
 			char *path, *loc;
-			int pathlen, loclen;
 
 			if (myoptions == NULL) {
 				error(MODPREFIX "multi strdup: %m");
 				free(options);
+				multi_free_list(head);
 				return 1;
 			}
 
@@ -752,9 +824,9 @@ int parse_mount(const char *root, const char *name,
 				error(MODPREFIX "out of memory");
 				free(myoptions);
 				free(options);
+				multi_free_list(head);
 				return 1;
 			}
-			pathlen = strlen(path);
 
 			p += l;
 			p = skipspace(p);
@@ -772,6 +844,7 @@ int parse_mount(const char *root, const char *name,
 						    "multi concat_options: %m");
 						free(options);
 						free(path);
+						multi_free_list(head);
 						return 1;
 					}
 					p = skipspace(p);
@@ -788,6 +861,7 @@ int parse_mount(const char *root, const char *name,
 				free(path);
 				free(myoptions);
 				free(options);
+				multi_free_list(head);
 				return 1;
 			}
 
@@ -803,6 +877,7 @@ int parse_mount(const char *root, const char *name,
 					free(path);
 					free(myoptions);
 					free(options);
+					multi_free_list(head);
 					return 1;
 				}
 
@@ -813,6 +888,7 @@ int parse_mount(const char *root, const char *name,
 					free(path);
 					free(myoptions);
 					free(options);
+					multi_free_list(head);
 					return 1;
 				}
 
@@ -825,17 +901,29 @@ int parse_mount(const char *root, const char *name,
 				p = skipspace(p);
 			}
 
-			loclen = strlen(loc);
+			list = head;
+			head = multi_add_list(list, path, myoptions, loc);
+			if (!head) {
+				free(loc);
+				free(path);
+				free(options);
+				free(myoptions);
+				multi_free_list(list);
+				return 1;
+			}
+		} while (*p != '/')
 
+		list = head;
+		while (list) {
 			debug(MODPREFIX
 			      "multimount: %.*s on %.*s with options %s",
-			      loclen, loc, pathlen, path, myoptions);
+			      strlen(list->location), list->location,
+			      strlen(list->path), list->path, list->options);
 
-			rv = sun_mount(multi_root, path, pathlen, loc, loclen,
-				       myoptions);
-			free(path);
-			free(loc);
-			free(myoptions);
+			rv = sun_mount(multi_root,
+				       list->path, strlen(list->path),
+				       list->location, strlen(list->location,
+				       list->options);
 
 			/* Convert non-strict failure into success */
 			if (rv < 0) {
@@ -844,7 +932,10 @@ int parse_mount(const char *root, const char *name,
 			} else if (rv > 0)
 				break;
 
-		} while (*p == '/');
+			list = list->next;
+		}
+
+		multi_free_list(head);
 
 		free(options);
 		return rv;
