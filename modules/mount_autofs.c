@@ -1,4 +1,4 @@
-#ident "$Id: mount_autofs.c,v 1.13 2005/01/03 03:00:44 raven Exp $"
+#ident "$Id: mount_autofs.c,v 1.14 2005/01/10 13:28:29 raven Exp $"
 /*
  * mount_autofs.c
  *
@@ -73,7 +73,7 @@ int mount_mount(const char *root, const char *name, int name_len,
 
 	if (is_mounted(_PATH_MOUNTED, fullpath)) {
 		error(MODPREFIX 
-		 ":warning: about to mount over %s, continuing", fullpath);
+		 "warning: about to mount over %s, continuing", fullpath);
 		return 0;
 	}
 
