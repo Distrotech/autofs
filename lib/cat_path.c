@@ -1,3 +1,18 @@
+#ident "$Id: cat_path.c,v 1.3 2004/11/20 15:08:38 raven Exp $"
+/* ----------------------------------------------------------------------- *
+ *
+ *  cat_path.c - boundary aware buffer management routines
+ *
+ *   Copyright 2002-2003 Ian Kent <raven@themaw.net> - All Rights Reserved
+ *
+ *   This program is free software; you can redistribute it and/or modify
+ *   it under the terms of the GNU General Public License as published by
+ *   the Free Software Foundation, Inc., 675 Mass Ave, Cambridge MA 02139,
+ *   USA; either version 2 of the License, or (at your option) any later
+ *   version; incorporated herein by reference.
+ *
+ * ----------------------------------------------------------------------- */
+
 #include <alloca.h>
 #include <string.h>
 #include <limits.h>

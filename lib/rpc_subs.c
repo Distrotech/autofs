@@ -1,3 +1,4 @@
+#ident "$Id: rpc_subs.c,v 1.7 2004/11/20 15:08:38 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  rpc_subs.c - routines for rpc discovery

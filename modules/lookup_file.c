@@ -1,4 +1,4 @@
-#ident "$Id: lookup_file.c,v 1.5 2004/11/15 14:42:47 raven Exp $"
+#ident "$Id: lookup_file.c,v 1.6 2004/11/20 15:08:38 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup_file.c - module for Linux automount to query a flat file map
@@ -13,7 +13,6 @@
  *   version; incorporated herein by reference.
  *
  * ----------------------------------------------------------------------- */
-
 
 #include <stdio.h>
 #include <malloc.h>

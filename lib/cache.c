@@ -1,3 +1,4 @@
+#ident "$Id: cache.c,v 1.8 2004/11/20 15:08:38 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  cache.c - mount entry cache management routines

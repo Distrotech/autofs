@@ -1,3 +1,4 @@
+#ident "$Id: mount_changer.c,v 1.12 2004/11/20 15:08:38 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  mount_changer.c - module for Linux automountd to mount filesystems

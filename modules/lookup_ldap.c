@@ -1,10 +1,20 @@
-#ident "$Id: lookup_ldap.c,v 1.8 2004/11/20 10:28:39 raven Exp $"
+#ident "$Id: lookup_ldap.c,v 1.9 2004/11/20 15:08:38 raven Exp $"
 /*
- * lookup_ldap.c
+ * lookup_ldap.c - Module for Linux automountd to access automount
+ *		   maps in LDAP directories.
  *
  *   Copyright 2001-2003 Ian Kent <raven@themaw.net>
  *
- * Module for Linux automountd to access automount maps in LDAP directories.
+ *   This program is free software; you can redistribute it and/or modify
+ *   it under the terms of the GNU General Public License as published by
+ *   the Free Software Foundation, Inc., 675 Mass Ave, Cambridge MA 02139,
+ *   USA; either version 2 of the License, or (at your option) any later
+ *   version.
+ *
+ *   This program is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *   GNU General Public License for more details.
  *
  */
 
