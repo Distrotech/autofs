@@ -1,4 +1,4 @@
-#ident "$Id: automount.h,v 1.5 2004/05/18 12:20:08 raven Exp $"
+#ident "$Id: automount.h,v 1.6 2004/06/06 03:03:50 raven Exp $"
 /*
  * automount.h
  *
@@ -36,7 +36,7 @@
 
 #define DEFAULT_TIMEOUT (5*60)			/* 5 minutes */
 #define AUTOFS_LOCK	"/var/lock/autofs"	/* To serialize access to mount */
-#define MOUNTED_LOCK	"_PATH_MOUNTED~"	/* mounts' lock file */
+#define MOUNTED_LOCK	_PATH_MOUNTED "~"	/* mounts' lock file */
 #define MTAB_NOTUPDATED 0x1000			/* mtab succeded but not updated */
 #define NOT_MOUNTED     0x0100			/* path notmounted */
 
