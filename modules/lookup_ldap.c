@@ -1,4 +1,4 @@
-#ident "$Id: lookup_ldap.c,v 1.12 2005/01/02 10:36:58 raven Exp $"
+#ident "$Id: lookup_ldap.c,v 1.13 2005/01/06 15:05:01 raven Exp $"
 /*
  * lookup_ldap.c - Module for Linux automountd to access automount
  *		   maps in LDAP directories.
@@ -186,7 +186,7 @@ static int read_one_map(const char *root,
 			struct lookup_context *ctxt,
 			time_t age, int *result_ldap)
 {
-	int rv, i, l, count;
+	int rv, i, j, l, count, keycount;
 	char *query;
 	LDAPMessage *result, *e;
 	char **keyValue = NULL;
@@ -268,10 +268,14 @@ static int read_one_map(const char *root,
 		}
 
 		count = ldap_count_values(values);
+		keycount = ldap_count_values(keyValue);
 		for (i = 0; i < count; i++) {
-			if (**keyValue == '/' && strlen(*keyValue) == 1)
-				**keyValue = '*';
-			cache_add(root, *keyValue, values[i], age);
+			for (j = 0; j < keycount; j++) {
+				if (*(keyValue[j]) == '/' &&
+				    strlen(keyValue[j]) == 1)
+					*(keyValue[j]) = '*';
+				cache_add(root, *keyValue, values[i], age);
+			}
 		}
 		ldap_value_free(values);
 
