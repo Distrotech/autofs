@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# $Id: rc.autofs.in,v 1.43 2005/01/26 13:03:02 raven Exp $
+# $Id: rc.autofs.in,v 1.44 2005/02/06 06:32:53 raven Exp $
 #
 # rc file for automount using a Sun-style "master map".
 # We first look for a local /etc/auto.master, then a YP
@@ -106,7 +106,7 @@ fi
 #
 function getschemes()
 {
-    if grep -q '^automount: ' /etc/nsswitch.conf; then
+    if grep -q '^automount:[ \t]' /etc/nsswitch.conf; then
         grep ^automount: /etc/nsswitch.conf | \
                 sed -e 's/^.*://' -e 's/\[.*\]/ /g'
     else
