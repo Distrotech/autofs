@@ -1,4 +1,4 @@
-#ident "$Id: mounts.c,v 1.6 2004/12/26 05:05:32 raven Exp $"
+#ident "$Id: mounts.c,v 1.7 2005/01/13 08:41:37 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  mounts.c - module for Linux automount mount table lookup functions
@@ -86,6 +86,10 @@ struct mnt_list *get_mnt_list(const char *table, const char *path, int include)
 			return NULL;
 		}
 		strcpy(ent->fs_type, mnt->mnt_type);
+
+		ent->pid = 0;
+		if (strncmp(ent->fs_type, "autofs", 6) == 0)
+			sscanf(ent->fs_type, "automount(%d)", &ent->pid);
 
 		if (mptr == list)
 			list = ent;

@@ -1,4 +1,4 @@
-#ident "$Id: automount.h,v 1.12 2005/01/09 09:16:43 raven Exp $"
+#ident "$Id: automount.h,v 1.13 2005/01/13 08:41:29 raven Exp $"
 /*
  * automount.h
  *
@@ -266,6 +266,7 @@ int rpc_time(const char *host,
 struct mnt_list {
 	char *path;
 	char *fs_type;
+	pid_t pid;
 	time_t last_access;
 	struct mnt_list *next;
 };
