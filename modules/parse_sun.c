@@ -1,4 +1,4 @@
-#ident "$Id: parse_sun.c,v 1.22 2005/01/17 15:09:28 raven Exp $"
+#ident "$Id: parse_sun.c,v 1.23 2005/01/17 15:22:28 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  parse_sun.c - module for Linux automountd to parse a Sun-format
@@ -792,7 +792,7 @@ int parse_mount(const char *root, const char *name,
 	debug(MODPREFIX "gathered options: %s", options);
 
 	if (*p == '/') {
-		struct multi_mnt *list, *head = NULL, *next;
+		struct multi_mnt *list, *head = NULL;
 		char *multi_root;
 		int l;
 
@@ -911,7 +911,7 @@ int parse_mount(const char *root, const char *name,
 				multi_free_list(list);
 				return 1;
 			}
-		} while (*p != '/')
+		} while (*p != '/');
 
 		list = head;
 		while (list) {

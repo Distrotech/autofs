@@ -1,4 +1,4 @@
-#ident "$Id: spawn.c,v 1.8 2005/01/17 15:09:28 raven Exp $"
+#ident "$Id: spawn.c,v 1.9 2005/01/17 15:22:28 raven Exp $"
 /* ----------------------------------------------------------------------- *
  * 
  *  spawn.c - run programs synchronously with output redirected to syslog
@@ -176,7 +176,7 @@ int signal_children(int sig)
 			if (kill(pid, SIGCONT) == -1 && errno == ESRCH)
 				break;
 
-			if (status = -1 && errno == EINTR) {
+			if (status == -1 && errno == EINTR) {
 				memcpy(&t, &r, sizeof(struct timespec));
 				goto again;
 			}
