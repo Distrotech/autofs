@@ -1,5 +1,5 @@
-xx/xx/2004 autofs-4.1.4
------------------------
+1/1/2005 autofs-4.1.4-beta1
+---------------------------
 - fix error in define of mtab lock file.
 - fix mischief caused by change in default strict -> nonstrict.
 - fix replicated server detection (TCP/UDP/NFSv2/NFSv3) logic (Jeff Moyer and Ian Kent).
@@ -47,6 +47,7 @@ xx/xx/2004 autofs-4.1.4
 - fix trailing white space not removed from map entries not containing a colon.
 - merge remaining bits of Debian and Redhat init script patches.
 - fix duplicate map entry order - return first read instead of last.
+- bump version to 4.1.4-beta1 and start testing.
 
 
 19/05/2004 autofs-4.1.3
