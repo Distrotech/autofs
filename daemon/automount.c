@@ -1,4 +1,4 @@
-#ident "$Id: automount.c,v 1.35 2005/01/16 15:23:57 raven Exp $"
+#ident "$Id: automount.c,v 1.36 2005/01/26 13:03:02 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  automount.c - Linux automounter daemon
@@ -388,9 +388,17 @@ static int mount_autofs(char *path)
 	ap.pipefd = ap.ioctlfd = -1;
 
 	/* In case the directory doesn't exist, try to mkdir it */
-	if (mkdir_path(path, 0555) < 0 && errno != EEXIST && errno != EROFS) {
-		crit("failed to create iautofs directory %s", ap.path);
-		return -1;
+	if (mkdir_path(path, 0555) < 0) {
+		if (errno != EEXIST && errno != EROFS) {
+			crit("failed to create iautofs directory %s", ap.path);
+			return -1;
+		}
+		/* If we recieve an error, and it's EEXIST or EROFS we know
+		   the directory was not created. */
+		ap.dir_created = 0;
+	} else {
+		/* No errors so the directory was successfully created */
+		ap.dir_created = 1;
 	}
 
 	/* Pipe for kernel communications */
@@ -1341,7 +1349,7 @@ static void cleanup_exit(const char *path, int exit_code)
 
 	closelog();
 
-	if ((!ap.ghost || !submount) && *(path + 1) != '-')
+	if ((!ap.ghost || !submount) && (*(path + 1) != '-') && ap.dir_created)
 		if (rmdir(path) == -1)
 			warn("failed to remove dir %s: %m", path);
 
@@ -1666,6 +1674,7 @@ int main(int argc, char *argv[])
 	ap.exp_timeout = DEFAULT_TIMEOUT;
 	ap.ghost = DEFAULT_GHOST_MODE;
 	ap.type = LKP_INDIRECT;
+	ap.dir_created = 0; /* We haven't created the main directory yet */
 
 	opterr = 0;
 	while ((opt = getopt_long(argc, argv, "+hp:t:vdVg", long_options, NULL)) != EOF) {

@@ -27,7 +27,10 @@ Mutliple weighted, replicated hosts same path:
 Will pick lowest weighted host that responds to RPC call.  
 RPC time is not counted, only whether the call got a reply 
 at all.  Initially does a .1 second timeout, if all hosts 
-fail this, moves to 10 second timeout.
+fail this, moves to 10 second timeout.  If one of the hosts
+is localhost, the automounter will choose that regardless of
+its weight.  (This has been done to remain compatible with
+Sun's automounter)
 
 Multiple weighted, replicated hosts different (potentially) 
 paths:

@@ -1,4 +1,4 @@
-#ident "$Id: automount.h,v 1.14 2005/01/16 15:23:58 raven Exp $"
+#ident "$Id: automount.h,v 1.15 2005/01/26 13:03:02 raven Exp $"
 /*
  * automount.h
  *
@@ -111,6 +111,8 @@ struct autofs_point {
 	struct lookup_mod *lookup;		/* Lookup module */
 	enum states state;
 	int state_pipe[2];
+	unsigned dir_created;		/* Was a directory created for this
+					   mount? */
 };
 
 extern struct autofs_point ap; 

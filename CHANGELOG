@@ -1,4 +1,4 @@
-??/1/2005 autofs-4.1.4_beta1
+26/1/2005 autofs-4.1.4_beta1
 ---------------------------
 - fix error in define of mtab lock file.
 - fix mischief caused by change in default strict -> nonstrict.
@@ -79,6 +79,9 @@
 - merge multi map over mount patch.
 - add init script variable to allow adjustment of time to wait for shutdown.
 - fix no directory list when map entry deleted and wild card matches.
+- prevent pre-existing automount point directory from being removed at termination (Chirs Feist).
+- update replicated server doco
+   - autofs will always choose localhost regardless of weights (Chirs Feist).
 
 19/05/2004 autofs-4.1.3
 -----------------------

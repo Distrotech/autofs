@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# $Id: rc.autofs.in,v 1.42 2005/01/26 09:39:49 raven Exp $
+# $Id: rc.autofs.in,v 1.43 2005/01/26 13:03:02 raven Exp $
 #
 # rc file for automount using a Sun-style "master map".
 # We first look for a local /etc/auto.master, then a YP
@@ -704,7 +704,7 @@ reload)
 	  		--exec $DAEMON -- --pid-file=$pidfile $rest
 
 		ret=$?
-		if [ $ret -eq 1]
+		if [ $ret -eq 1 ]
 		then
 			continue
 		elif [ $ret -eq 0 ]
