@@ -1,5 +1,5 @@
 #
-# $Id: autofs.spec,v 1.7 2003/09/29 09:34:10 raven Exp $
+# $Id: autofs.spec,v 1.8 2003/09/29 11:52:17 raven Exp $
 #
 Summary: autofs daemon
 Name: autofs
@@ -70,7 +70,7 @@ chkconfig --add autofs
 
 %files
 %defattr(-,root,root)
-%doc COPYRIGHT README* TODO multiserver_mount.patch patches/* samples/ldap*
+%doc CREDITS COPY* README* TODO multiserver_mount.patch patches/* samples/ldap* samples/autofs.schema
 %doc 
 %config /etc/rc.d/init.d/autofs
 %config(missingok) /etc/auto.master
