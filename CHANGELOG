@@ -1,0 +1,64 @@
+
+
+autofs-4.1.0
+------------
+
+- Fixed problem with regex in init script not recognising -g option.
+- removed patch to ignore failed mounts in tree mountsi in favour
+  of using nonstrict option.
+- updated autofs4 kernel module patches.
+
+
+autofs-4.1.0-beta3
+------------------
+
+- I'm aware of one outstanding problem with multi-mount maps. The
+  senario is that the daemon cannot remount a manualy umounted multi-mount
+  entry until after the following expire event. This is due kernel module
+  and daemon not knowing the umount has occured and consequently not
+  cleaning up afterward. This causes the kernel module to return a longer
+  path than it should which cannot be matched in the map. I hope to be able
+  to fix this a some time in the future.
+- removed debug print to catch reported mount problem.
+- added patch to ignore failed mounts in tree mounts.
+
+
+autofs-4.1.0-beta2
+------------------
+
+- added debug print to catch reported mount problem.
+- updated autofs4 patches and their documention.
+- added autofs4 patch for 2.4.22.
+
+
+autofs-4.1.0-beta1
+------------------
+
+This is a restructuring and improvement of my original v4 patch which added
+direct mount support for file and NIS maps.
+                                                                                
+As well the considerable restructure and tidy up of my original patch it
+includes:
+                                                                                
+- Merge of all the RedHat autofs v3 patches. This includes the RedHat
+  init script and LDAP improvements. See the README files in the package
+  for more info.
+- Add LDAP direct mount support to complement the file and NIS map direct
+  mount support already present.
+- Merged some patches from the Debian and SuSE autofs v4 packages.
+- Found a bunch of bugs and fixed them. This was largely due to the huge
+  efforts made by Aaron Ogden in testing a never ending stream of attempted
+  corrections. Thanks Aaron.
+
+
+autofs-4.0.0-1
+--------------
+Largely the autofs-4.0.0pre10 with:
+- Some patches that I did ages ago to improve submounts. This includes
+  correcting the double slash in mount points. Changes to the init script
+  to improve the shutdown when submounts are involved.
+- Merged some small patches from the Debian and SuSE autofs v4 packages.
+- A simple work around to allow tree mounts to work with RedHat 2.4.20,
+  and above, kernels in the autofs4 module patch.
+                                                                                
+
