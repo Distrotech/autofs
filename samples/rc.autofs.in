@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# $Id: rc.autofs.in,v 1.38 2005/01/17 14:27:46 raven Exp $
+# $Id: rc.autofs.in,v 1.39 2005/01/17 14:53:17 raven Exp $
 #
 # rc file for automount using a Sun-style "master map".
 # We first look for a local /etc/auto.master, then a YP
@@ -83,6 +83,7 @@ if [ "$system" = "redhat" ]; then
 	DAEMONOPTIONS=""
 	UNDERSCORETODOT=1
 	DISABLE_DIRECT=1
+	DAEMON_EXIT_WAIT=10
 
 	[ -f /etc/sysconfig/autofs ] && . /etc/sysconfig/autofs
 
@@ -91,12 +92,13 @@ if [ "$system" = "redhat" ]; then
 		daemonoptions=$DAEMONOPTIONS
 	fi
 elif [ "$system" = "debian" ]; then
-    TIMEOUT=300
-    DISABLE_DIRECT=1
+	TIMEOUT=300
+	DISABLE_DIRECT=1
+	DAEMON_EXIT_WAIT=10
 
-    [ -f /etc/default/autofs ] && . /etc/default/autofs
+	[ -f /etc/default/autofs ] && . /etc/default/autofs
 
-    daemonoptions="$daemonoptions --timeout=$TIMEOUT"
+	daemonoptions="$daemonoptions --timeout=$TIMEOUT"
 fi
 
 #
@@ -417,7 +419,7 @@ function signal_automounts()
 		do
 			sleep 1 
 			count=$(expr $count + 1)
-			if [ $count -gt 20 ]; then
+			if [ $count -gt $DAEMON_EXIT_WAIT ]; then
 				break;
 			fi
 		done
@@ -657,7 +659,8 @@ stop)
 			mnt=`ps -wwo 'cmd=' $pid | sed -e \
 			  's,.* --pid-file=/var/run/autofs/\([^ ]*\)\.pid.*,\1,; s,_,/,g'`
 
-			start-stop-daemon --stop --quiet --retry USR2/20 \
+			start-stop-daemon --stop --quiet \
+					--retry USR2/$DAEMON_EXIT_WAIT \
 					--pidfile $file --exec $DAEMON
 			ret=$?
 
