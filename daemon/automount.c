@@ -1,4 +1,4 @@
-#ident "$Id: automount.c,v 1.18 2004/11/15 14:42:47 raven Exp $"
+#ident "$Id: automount.c,v 1.19 2004/11/15 14:47:13 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  automount.c - Linux automounter daemon
@@ -30,7 +30,6 @@
 #include <string.h>
 #include <syslog.h>
 #include <unistd.h>
-#include <mntent.h>
 #include <sys/ioctl.h>
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -246,58 +245,18 @@ static int umount_multi(const char *path, int incl)
 	int left;
 	struct mntent *mnt;
 	FILE *mtab;
-	struct mntlist {
-		const char *path;
-		const char *fs_type;
-		struct mntlist *next;
-	} *mntlist = NULL, *mptr;
+	struct mnt_list *mntlist = NULL;
+	struct mnt_list *mptr;
 	size_t pathlen = strlen(path);
 
 	debug("umount_multi: path=%s incl=%d\n", path, incl);
 
-	wait_for_lock();
-	mtab = setmntent(_PATH_MOUNTED, "r");
-	if (!mtab) {
-		unlink(AUTOFS_LOCK);
-		error("umount_multi: setmntent: %m");
+	mntlist = get_mnt_list(path, incl);
+
+	if (!mntlist) {
+		error("umount_multi: failed to get list of mounts");
 		return -1;
 	}
-
-	/* Construct a list of eligible dirs ordered longest->shortest
-	   so that umount will work */
-	while ((mnt = getmntent(mtab)) != NULL) {
-		size_t len = strlen(mnt->mnt_dir);
-		struct mntlist *m, **prev;
-		char *p;
-
-		if ((!incl && len <= pathlen) ||
-		    strncmp(mnt->mnt_dir, path, pathlen) != 0)
-			continue;
-
-		if (len > pathlen && mnt->mnt_dir[pathlen] != '/')
-			continue;
-
-		prev = &mntlist;
-		for (mptr = mntlist; mptr != NULL; prev = &mptr->next, mptr = mptr->next)
-			if (len > strlen(mptr->path))
-				break;
-
-		m = alloca(sizeof(*m));
-
-		p = alloca(len + 1);
-		strcpy(p, mnt->mnt_dir);
-		m->path = p;
-
-		p = alloca(strlen(mnt->mnt_type) + 1);
-		strcpy(p, mnt->mnt_type);
-		m->fs_type = p;
-		
-		m->next = *prev;
-		*prev = m;
-	}
-
-	endmntent(mtab);
-	unlink(AUTOFS_LOCK);
 
 	left = 0;
 	for (mptr = mntlist; mptr != NULL; mptr = mptr->next) {
@@ -409,7 +368,7 @@ static int mount_autofs(char *path)
 	struct stat st;
 	int len;
 
-	if ((ap.state != ST_INIT) || is_mounted(path)) {
+	if ((ap.state != ST_INIT) || is_mounted(_PATH_MOUNTED, path)) {
 		/* This can happen if an autofs process is already running*/
 		error("mount_autofs: already mounted");
 		return -1;

@@ -1,4 +1,4 @@
-#ident "$Id: automount.h,v 1.7 2004/11/15 14:42:47 raven Exp $"
+#ident "$Id: automount.h,v 1.8 2004/11/15 14:47:13 raven Exp $"
 /*
  * automount.h
  *
@@ -127,7 +127,6 @@ int do_mount(const char *root, const char *name, int name_len,
 	     const char *what, const char *fstype, const char *options);
 int mkdir_path(const char *path, mode_t mode);
 int rmdir_path(const char *path);
-int is_mounted(const char *path);
 
 /* Prototype for module functions */
 
@@ -261,6 +260,22 @@ int rpc_time(const char *host,
 	     unsigned int ping_vers, unsigned int ping_proto,
 	     long seconds, long micros, double *result);
 
+/* mount table utilities */
+struct mnt_list {
+	char *path;
+	char *fs_type;
+	time_t last_access;
+	struct mnt_list *next;
+};
+
+struct mnt_list *get_mnt_list(const char *path, int include);
+struct mnt_list *reverse_mnt_list(struct mnt_list *list);
+struct mnt_list *get_base_mnt_list(struct mnt_list *list);
+void free_mnt_list(struct mnt_list *list);
+int is_mounted(const char *table, const char *path);
+int has_fstab_option(const char *path, const char *opt);
+int allow_owner_mount(const char *);
+
 /* log notification */
 extern int do_verbose;
 extern int do_debug;
@@ -282,3 +297,4 @@ if (do_debug) 				\
 	syslog(LOG_DEBUG, msg, ##args);
 
 #endif
+

@@ -23,7 +23,6 @@
 #include <syslog.h>
 #include <stdio.h>
 #include <fcntl.h>
-#include <mntent.h>
 #include <sys/param.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -244,7 +243,7 @@ int cache_delete(const char *root, const char *key, int rmpath)
 	if (!path)
 		return CHE_FAIL;
 
-	if (is_mounted(path)) {
+	if (is_mounted(_PATH_MOUNTED, path)) {
 		free(path);
 		return CHE_FAIL;
 	}
@@ -294,7 +293,7 @@ void cache_clean(const char *root, time_t age)
 			if (!path)
 				return;
 
-			if (is_mounted(path))
+			if (is_mounted(_PATH_MOUNTED, path))
 				continue;
 
 			if (me->age < age) {
@@ -317,7 +316,7 @@ void cache_clean(const char *root, time_t age)
 		if (!path)
 			return;
 
-		if (is_mounted(path))
+		if (is_mounted(_PATH_MOUNTED, path))
 			continue;
 
 		if (me->age < age) {
@@ -422,7 +421,7 @@ int cache_ghost(const char *root, int ghosted,
 				break;
 
 			case LKP_MOUNT:
-				if (!is_mounted(gc.direct_base)) {
+				if (!is_mounted(_PATH_MOUNTED, gc.direct_base)) {
 					debug("cache_ghost: attempting to mount map, "
 					      "key %s",
 					      gc.direct_base);
@@ -442,39 +441,6 @@ int cache_ghost(const char *root, int ghosted,
 	if (*me->key == '/')
 		map = LKP_DIRECT;
 	return map;
-}
-
-int is_mounted(const char *path)
-{
-	struct mntent *mnt;
-	FILE *mtab;
-	int pathlen = strlen(path);
-	int ret = 0;
-
-	if (!path || !pathlen)
-		return ret;
-
-	wait_for_lock();
-	mtab = setmntent(_PATH_MOUNTED, "r");
-	if (!mtab) {
-		unlink(AUTOFS_LOCK);
-		error("is_mounted: setmntent: %m");
-		return -1;
-	}
-
-	while ((mnt = getmntent(mtab)) != NULL) {
-		int len = strlen(mnt->mnt_dir);
-
-		if (pathlen == len && !strncmp(path, mnt->mnt_dir, pathlen)) {
-			ret = 1;
-			break;
-		}
-	}
-
-	endmntent(mtab);
-	unlink(AUTOFS_LOCK);
-
-	return ret;
 }
 
 static unsigned long ent_check(struct ghost_context *gc, char **pkey, int ghosted)

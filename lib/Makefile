@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.4 2004/03/07 12:17:54 raven Exp $
+# $Id: Makefile,v 1.5 2004/11/15 14:47:13 raven Exp $
 #
 # Makefile for autofs utility library
 #
@@ -9,13 +9,14 @@ include ../Makefile.rules
 RPCGEN = /usr/bin/rpcgen
 RANLIB = /usr/bin/ranlib
 
-SRCS = cache.c listmount.c cat_path.c rpc_subs.c
+SRCS = cache.c listmount.c cat_path.c rpc_subs.c mounts.c
 RPCS = mount.h mount_clnt.c mount_xdr.c
-OBJS = cache.o mount_clnt.o mount_xdr.o listmount.o cat_path.o rpc_subs.o
+OBJS = cache.o mount_clnt.o mount_xdr.o listmount.o \
+	cat_path.o rpc_subs.o mounts.o
 
 LIB = autofs.a
 
-CFLAGS += -I../include -fpic -D_GNU_SOURCE -DHAVE_TCP_WRAPPER -DNFS3_SUPPORTED
+CFLAGS += -I../include -fPIC -D_GNU_SOURCE -DHAVE_TCP_WRAPPER -DNFS3_SUPPORTED
 
 .PHONY: all install clean
 
