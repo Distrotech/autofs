@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# $Id: rc.autofs.in,v 1.34 2005/01/12 13:18:03 raven Exp $
+# $Id: rc.autofs.in,v 1.35 2005/01/12 13:19:56 raven Exp $
 #
 # rc file for automount using a Sun-style "master map".
 # We first look for a local /etc/auto.master, then a YP
@@ -602,7 +602,7 @@ case "$1" in
 start)
 	echo -n 'Starting automounter:'
 
-	# make shure autofs4 is loaded
+	# make sure autofs4 is loaded
 	if ! grep -q autofs /proc/filesystems
 	then
 		# autofs filesystem support not loaded
