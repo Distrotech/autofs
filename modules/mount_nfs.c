@@ -1,4 +1,4 @@
-#ident "$Id: mount_nfs.c,v 1.13 2004/08/29 12:04:27 raven Exp $"
+#ident "$Id: mount_nfs.c,v 1.14 2004/10/24 13:14:02 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  * mount_nfs.c - Module for Linux automountd to mount an NFS filesystem,
@@ -225,12 +225,8 @@ int get_best_mount(char *what, const char *original, int longtimeout, int skiplo
 			continue;
 		}
 
-		/* see if we have a previous 'winner' */
-		if (!winner) {
-			winner = p;
-		}
 		/* compare RPC times if there are no weighted hosts */
-		else if (winner_weight == INT_MAX) {
+		if (winner_weight == INT_MAX) {
 			int status;
 			double resp_time;
 			unsigned int vers = NFS2_VERSION;
@@ -241,12 +237,13 @@ int get_best_mount(char *what, const char *original, int longtimeout, int skiplo
 				proto = ping_stat & 0xff00;
 			}
 
-			status = rpc_time(winner, vers, proto, sec, micros, &resp_time);
+			status = rpc_time(p, vers, proto, sec, micros, &resp_time);
 			/* did we time the first winner? */
 			if (winner_time == 0) {
-				if (status)
+				if (status) {
+					winner = p;
 					winner_time = resp_time;
-				else
+				} else
 					winner_time = 6;
 			} else {
 				if ((status) && (resp_time < winner_time)) {

@@ -1,14 +1,15 @@
-xx/xx/2004 autofs-4.1.?
+xx/xx/2004 autofs-4.1.4
 -----------------------
 - fix error in define of mtab lock file.
 - fix mischief caused by change in default strict -> nonstrict.
 - fix replicated server detection (TCP/UDP/NFSv2/NFSv3) logic
   (Jeff Moyer and Ian Kent).
 - fix error when setting pwd.
-- fix socket leak (Jeff Moyer).
+- fix socket leak (Jeff Moyer and Ian Kent).
 - fix potential race in signal handling code (Jeff Moyer).
 - miscelaneous corrections to doco and typos (Peter Breitenlohner).
-- fix i18n init script underline output (Jef Moyer).
+- fix i18n init script underline output (Jeff Moyer).
+- fix logic error in replicated server selection (Jeremy Rosengren and Ian Kent).
 
 19/05/2004 autofs-4.1.3
 -----------------------
