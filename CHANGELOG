@@ -42,6 +42,7 @@ xx/xx/2004 autofs-4.1.4
 - merge most of RedHat init patch and the browse and umount loopback patches (Jeff Moyer).
 - fix file handle being left open in lookup_file.c.
 - update 2.4 kernel module patches.
+- add 2.6 kernel module patches.
 
 19/05/2004 autofs-4.1.3
 -----------------------
