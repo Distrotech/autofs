@@ -1,5 +1,5 @@
 -*- text -*-
-$Id: README,v 1.1 2003/09/09 11:21:28 raven Exp $
+$Id: README,v 1.2 2003/09/28 09:22:57 raven Exp $
 
 autofs is a kernel-based automounter for Linux.  It performs a job
 similar to amd(8) but relies on a small stub of kernel code instead of
@@ -30,7 +30,16 @@ standard.  If you're using 2.2, you can apply the patch in
 the patches directory; it was made from 2.2.14, but it should
 work on 2.2.10 onwards.
 
-If you use autofs as a module, you need to add "alias autofs4 autofs"
+A problem with the autofs4 kernel module not expiring mounts
+properly and then remaining busy on exit has been seen with
+kernels that have the O(1) scheduler patch. Patches that provide
+a workaround for this are included in the patches directory.
+They are named autofs4-2.4.20-deadlock.patch for standard kernels
+that have the O(1) patch iapplied and autofs4-2.4.20-redhat-deadlock.patch
+for RedHat kernels that have the patch. It appears that this applies
+to RedHat kernels from 2.4.20.
+
+If you use autofs as a module, you need to add "alias autofs autofs4"
 to your modules config file (/etc/modules.conf or /etc/conf.modules).
 
 autofs was written by H. Peter Anvin of Transmeta Corporation, please
