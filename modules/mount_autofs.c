@@ -1,4 +1,4 @@
-#ident "$Id: mount_autofs.c,v 1.6 2003/10/04 14:14:03 raven Exp $"
+#ident "$Id: mount_autofs.c,v 1.7 2003/10/08 13:59:46 raven Exp $"
 /*
  * mount_autofs.c
  *
@@ -79,8 +79,8 @@ int mount_mount(const char *root, const char *name, int name_len,
 		  fullpath, what, options));
 
 	if (is_mounted(fullpath)) {
-		syslog(LOG_WARNING, "BUG: %s already mounted", fullpath);
-		return 1;
+		syslog(LOG_WARNING, "BUG: about mount over %s, continuing", fullpath);
+		return 0;
 	}
 
 	/* Build our argument vector.  */
