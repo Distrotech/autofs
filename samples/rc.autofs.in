@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# $Id: rc.autofs.in,v 1.56 2005/04/05 13:02:09 raven Exp $
+# $Id: rc.autofs.in,v 1.57 2005/04/06 16:27:08 raven Exp $
 #
 # rc file for automount using a Sun-style "master map".
 # We first look for a local /etc/auto.master, then a YP
@@ -686,7 +686,7 @@ stop)
 				;;
 			*)
 				echo -n -e \
-			 	"\n Strange start-stop-daemon exit status: $ret
+			 	"\n Strange start-stop-daemon exit status: $ret"
 				;;
 			esac
 		fi
