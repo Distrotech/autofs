@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# $Id: rc.autofs.in,v 1.49 2005/03/07 08:52:14 raven Exp $
+# $Id: rc.autofs.in,v 1.50 2005/03/07 08:58:00 raven Exp $
 #
 # rc file for automount using a Sun-style "master map".
 # We first look for a local /etc/auto.master, then a YP
@@ -446,7 +446,7 @@ function umount_loopback()
 	# umount it here.
 	for a in $automounts
 	do
-	    match=`echo $l | grep -E "^$a[\$|/]"`
+	    match=`echo $l | grep -E "^$a[\$|/]" || true`
 	    if [ -n "$match" ]; then
 		echo ""
 		echo -n $"Unmounting loopback filesystem $match:  "
@@ -469,7 +469,7 @@ function umount_loopback()
 	loopmnt=`losetup $l | awk -F\( '{print $2}' | awk -F\) '{print $1}'`
 	for a in $automounts
 	do
-	    match=`echo $loopmnt | grep -E "^$a[\$|/]"`
+	    match=`echo $loopmnt | grep -E "^$a[\$|/]" || true`
 	    if [ -n "$match" ]; then
 		echo ""
 		echo -n $"Unmounting loopback filesystem $match:  "

@@ -1,7 +1,7 @@
 #!/sbin/runscript
 # Copyright 1999-2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Header: /home/cvs/root/autofs/gentoo/net-fs/autofs/files/autofs.init,v 1.10 2005/03/07 08:52:14 raven Exp $
+# $Header: /home/cvs/root/autofs/gentoo/net-fs/autofs/files/autofs.init,v 1.11 2005/03/07 08:58:00 raven Exp $
 
 # rc file for automount using a Sun-style "master map".
 # We first look for a local /etc/autofs/auto.master, then a YP
@@ -270,7 +270,7 @@ function umount_loopback()
 	# umount it here.
 	for a in $automounts
 	do
-	    match=`echo $l | grep -E "^$a[\$|/]"`
+	    match=`echo $l | grep -E "^$a[\$|/]" || true`
 	    if [ -n "$match" ]; then
 		echo ""
 		echo -n $"Unmounting loopback filesystem $match:  "
@@ -293,7 +293,7 @@ function umount_loopback()
 	loopmnt=`losetup $l | awk -F\( '{print $2}' | awk -F\) '{print $1}'`
 	for a in $automounts
 	do
-	    match=`echo $loopmnt | grep -E "^$a[\$|/]"`
+	    match=`echo $loopmnt | grep -E "^$a[\$|/]" || true`
 	    if [ -n "$match" ]; then
 		echo ""
 		echo -n $"Unmounting loopback filesystem $match:  "
