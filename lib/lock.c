@@ -1,4 +1,4 @@
-#ident "$Id: lock.c,v 1.9 2005/01/10 12:02:05 raven Exp $"
+#ident "$Id: lock.c,v 1.10 2005/01/10 13:25:35 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  lock.c - autofs lockfile management
@@ -44,7 +44,7 @@ static void reset_locksigs(void);
  * probably no good the requestor continuing anyway?
  */
 /* LOCK_TIMEOUT = WAIT_INTERVAL/10**9 * WAIT_TRIES */
-#define WAIT_INTERVAL	1000000000
+#define WAIT_INTERVAL	1000000000L
 #define WAIT_TRIES	30
 #define LOCK_RETRIES    3
 #define MAX_PIDSIZE	20
@@ -69,8 +69,13 @@ static int fd = -1;
 /* Ignore all signals except for SIGTERM */
 static void handler(int sig)
 {
-	if (sig == SIGQUIT || sig == SIGTERM ||
-	    sig == SIGUSR2 || sig == SIGINT)
+	/* 
+	 * We need ignore most signals as there are quite a few sent
+	 * during shutdown. We must continue to wait for the lock.
+	 * We should use the USR2 signal for normal operation
+	 * and only use a TERM signal to shutdown harshly.
+	 */
+	if (sig == SIGQUIT || sig == SIGTERM || sig == SIGINT)
 		got_term = 1;
 }
 
@@ -218,7 +223,6 @@ int aquire_lock(void)
 
 	/* Repeat until it was us who made the link */
 	while (!we_created_lockfile) {
-		struct flock flock;
 		int errsv, i, j;
 
 		i = open(linkf, O_WRONLY|O_CREAT, 0);
@@ -257,6 +261,7 @@ int aquire_lock(void)
 			we_created_lockfile = 1;
 		} else {
 			int tries = WAIT_TRIES;
+			int status = 0;
 
 			/*
 			 * Someone else made the link.
@@ -271,15 +276,14 @@ int aquire_lock(void)
 				continue;
 			}
 
-			while (tries--) {
+			while (tries-- && !status) {
 				struct timespec t = { 0, WAIT_INTERVAL };
 				struct timespec r;
 				int ts_size = sizeof(struct timespec);
-				int status;
 				struct stat st;
 
 				status = stat(LOCK_FILE, &st);
-				if (!stat) {
+				if (!status) {
 					while (nanosleep(&t, &r) == -1 && errno == EINTR) {
 						if (got_term) {
 							close(fd);
