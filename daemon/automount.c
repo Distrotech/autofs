@@ -1,4 +1,4 @@
-#ident "$Id: automount.c,v 1.19 2004/11/15 14:47:13 raven Exp $"
+#ident "$Id: automount.c,v 1.20 2004/11/18 13:20:49 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  automount.c - Linux automounter daemon
@@ -775,7 +775,6 @@ static enum expire expire_proc(int now)
 	default:
 		debug("expire_proc: exp_proc=%d", f);
 		ap.exp_process = f;
-		sigprocmask(SIG_SETMASK, &old, NULL);
 		return EXP_STARTED;
 	}
 }
@@ -878,8 +877,8 @@ static int st_expire(void)
 		return 1;
 
 	case EXP_STARTED:
-		sigprocmask(SIG_SETMASK, &ready_sigs, NULL);
 		ap.state = ST_EXPIRE;
+		sigprocmask(SIG_SETMASK, &ready_sigs, NULL);
 		return 0;
 	}
 	return 1;

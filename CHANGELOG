@@ -24,6 +24,7 @@ xx/xx/2004 autofs-4.1.4
 - fix memory leak in cache_clean function (Jeff Moyer).
 - remove restriction of mounting ncpfs filesystems (Mike Fleetwood).
     - see README.ncpfs.
+- second signal race fix (almost what Chris Feist recommended).
 
 19/05/2004 autofs-4.1.3
 -----------------------
