@@ -1,4 +1,4 @@
-#ident "$Id: lookup_ldap.c,v 1.16 2005/01/23 12:18:57 raven Exp $"
+#ident "$Id: lookup_ldap.c,v 1.17 2005/01/26 04:02:44 raven Exp $"
 /*
  * lookup_ldap.c - Module for Linux automountd to access automount
  *		   maps in LDAP directories.
@@ -592,6 +592,7 @@ int lookup_mount(const char *root, const char *name, int name_len, void *context
 	struct mapent_cache *me;
 	time_t now = time(NULL);
 	time_t t_last_read;
+	int need_hup = 0;
 
 	if (ap.type == LKP_DIRECT)
 		key_len = snprintf(key, KEY_MAX_LEN, "%s/%s", root, name);
@@ -611,15 +612,15 @@ int lookup_mount(const char *root, const char *name, int name_len, void *context
 		return 1;
 
 	me = cache_lookup_first();
-	t_last_read = now - me->age;
+	t_last_read = me ? now - me->age : ap.exp_runfreq + 1;
+
+	if (t_last_read > ap.exp_runfreq) 
+		if ((ret & (CHE_MISSING | CHE_UPDATED)) && 
+		    (ret2 & (CHE_MISSING | CHE_UPDATED)))
+			need_hup = 1;
 
 	if (ret == CHE_MISSING && ret2 == CHE_MISSING) {
-		if (!cache_delete(root, key, CHE_RMPATH))
-			rmdir_path(key);
-
-		/* Have parent update its map */
-		if (t_last_read > ap.exp_runfreq)
-			kill(getppid(), SIGHUP);
+		int wild = CHE_MISSING;
 
 		/* Maybe update wild card map entry */
 		if (ap.type == LKP_INDIRECT) {
@@ -627,11 +628,12 @@ int lookup_mount(const char *root, const char *name, int name_len, void *context
 					  "cn", "nisMapEntry", ctxt);
 			ret2 = lookup_wild(root, "automount",
 					   "cn", "automountInformation", ctxt);
+			wild = (ret & (CHE_MISSING | CHE_FAIL)) &&
+					(ret2 & (CHE_MISSING | CHE_FAIL));
 		}
-	} else if (ret == CHE_UPDATED || ret2 == CHE_UPDATED) {
-		/* Have parent update its map */
-		if (t_last_read > ap.exp_runfreq)
-			kill(getppid(), SIGHUP);
+
+		if (cache_delete(root, key, 0) && wild)
+			rmdir_path(key);
 	}
 
 	me = cache_lookup(key);
@@ -665,6 +667,10 @@ int lookup_mount(const char *root, const char *name, int name_len, void *context
 						  mapent, ctxt->parse->context);
 		}
 	}
+
+	/* Have parent update its map */
+	if (need_hup)
+		kill(getppid(), SIGHUP);
 
 	return ret;
 }

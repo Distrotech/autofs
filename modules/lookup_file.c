@@ -1,4 +1,4 @@
-#ident "$Id: lookup_file.c,v 1.11 2004/12/31 06:30:08 raven Exp $"
+#ident "$Id: lookup_file.c,v 1.12 2005/01/26 04:02:43 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup_file.c - module for Linux automount to query a flat file map
@@ -381,6 +381,7 @@ int lookup_mount(const char *root, const char *name, int name_len, void *context
 	struct mapent_cache *me;
 	time_t now = time(NULL);
 	time_t t_last_read;
+	int need_hup = 0;
 	int ret = 0;
 
 	if (stat(ctxt->mapname, &st)) {
@@ -407,21 +408,20 @@ int lookup_mount(const char *root, const char *name, int name_len, void *context
 
 		debug("ret = %d", ret);
 
+		if (t_last_read > ap.exp_runfreq)
+			if (ret & (CHE_UPDATED | CHE_MISSING))
+				need_hup = 1;
+
 		if (ret == CHE_MISSING) {
-			if (!cache_delete(root, key, CHE_RMPATH))
-				rmdir_path(key);
+			int wild = CHE_MISSING;
 
 			/* Maybe update wild card map entry */
 			if (ap.type == LKP_INDIRECT)
-				lookup_wild(root, ctxt);
+				wild = lookup_wild(root, ctxt);
 
-			/* Have parent update its map */
-			if (t_last_read > ap.exp_runfreq)
-				kill(getppid(), SIGHUP);
-		} else if (ret == CHE_UPDATED) {
-			/* Have parent update its map */
-			if (t_last_read > ap.exp_runfreq)
-				kill(getppid(), SIGHUP);
+			if (cache_delete(root, key, 0) &&
+					wild & (CHE_MISSING | CHE_FAIL))
+				rmdir_path(key);
 		}
 	}
 
@@ -439,6 +439,10 @@ int lookup_mount(const char *root, const char *name, int name_len, void *context
 		ret = ctxt->parse->parse_mount(root, name, name_len,
 						  mapent, ctxt->parse->context);
 	}
+
+	/* Have parent update its map ? */
+	if (need_hup)
+		kill(getppid(), SIGHUP);
 
 	return ret;
 }

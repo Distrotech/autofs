@@ -1,4 +1,4 @@
-#ident "$Id: lookup_yp.c,v 1.9 2005/01/24 15:06:48 raven Exp $"
+#ident "$Id: lookup_yp.c,v 1.10 2005/01/26 04:02:44 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup_yp.c - module for Linux automountd to access a YP (NIS)
@@ -217,9 +217,10 @@ int lookup_mount(const char *root, const char *name, int name_len, void *context
 	char *mapent;
 	int mapent_len;
 	struct mapent_cache *me;
-	int ret;
 	time_t now = time(NULL);
 	time_t t_last_read;
+	int need_hup = 0;
+	int ret;
 
 	debug(MODPREFIX "looking up %s", name);
 
@@ -233,11 +234,10 @@ int lookup_mount(const char *root, const char *name, int name_len, void *context
 
 	/* check map and if change is detected re-read map */
 	ret = lookup_one(root, key, key_len, ctxt);
-
-	debug("ret = %d", ret);
-
 	if (!ret)
 		return 1;
+
+	debug("ret = %d", ret);
 
 	if (ret < 0) {
 		warn(MODPREFIX 
@@ -248,22 +248,20 @@ int lookup_mount(const char *root, const char *name, int name_len, void *context
 	me = cache_lookup_first();
 	t_last_read = me ? now - me->age : ap.exp_runfreq + 1;
 
-	if (ret == CHE_UPDATED) {
-		/* Have parent update its map */
-		if (t_last_read > ap.exp_runfreq)
-			kill(getppid(), SIGHUP);
-	} else if (ret == CHE_MISSING) {
-		if (!cache_delete(root, key, CHE_RMPATH)) {
-			rmdir_path(key);
-		}
+	if (t_last_read > ap.exp_runfreq)
+		if (ret & (CHE_UPDATED | CHE_MISSING))
+			need_hup = 1;
+
+	if (ret == CHE_MISSING) {
+		int wild = CHE_MISSING;
 
 		/* Maybe update wild card map entry */
 		if (ap.type == LKP_INDIRECT)
-			lookup_wild(root, ctxt);
+			wild = lookup_wild(root, ctxt);
 
-		/* Have parent update its map */
-		if (t_last_read > ap.exp_runfreq)
-			kill(getppid(), SIGHUP);
+		if (cache_delete(root, key, 0) &&
+				wild & (CHE_MISSING | CHE_FAIL))
+			rmdir_path(key);
 	}
 
 
@@ -281,14 +279,16 @@ int lookup_mount(const char *root, const char *name, int name_len, void *context
 		}
 	}
 
-	if (!me)
-		return 1;
+	if (me) {
+		mapent[mapent_len] = '\0';
+		debug(MODPREFIX "%s -> %s", key, mapent);
+		ret = ctxt->parse->parse_mount(root, name, name_len,
+						mapent, ctxt->parse->context);
+	}
 
-	mapent[mapent_len] = '\0';
-
-	debug(MODPREFIX "%s -> %s", key, mapent);
-
-	return ctxt->parse->parse_mount(root, name, name_len, mapent, ctxt->parse->context);
+	/* Have parent update its map */
+	if (need_hup)
+		kill(getppid(), SIGHUP);
 }
 
 int lookup_done(void *context)
