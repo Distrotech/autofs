@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# $Id: auto.net,v 1.6 2005/01/04 14:36:54 raven Exp $
+# $Id: auto.net,v 1.7 2005/03/07 08:49:09 raven Exp $
 
 # This file must be executable to work! chmod 755!
 
@@ -20,15 +20,16 @@ opts="-fstype=nfs,hard,intr,nodev,nosuid"
 #SHOWMOUNT="kshowmount --no-headers -e $key"
 #SHOWMOUNT="showmount -e $key | tail -n +2"
 
-# I've wanted to do this for ages.
-# Taken from a script contributed by Elmar Pruesse for
-# mounting smb mounts.
-for SMNT in /{,usr/}{,s}bin/{,k}showmount
+for P in /bin /sbin /usr/bin /usr/sbin
 do
-	if [ -x $SMNT ]
-	then
-		break
-	fi
+	for M in showmount kshowmount
+	do
+		if [ -x $P/$M ]
+		then
+			SMNT=$P/$M
+			break
+		fi
+	done
 done
 
 [ -x $SMNT ] || exit 1

@@ -8,6 +8,8 @@
     mandatory. This matches the Solaris automount parsing.
 - implement a timeout for LDAP communication (Dan Cox).
 - change setpgrp to setsid to disascociate from tty properly.
+- fix auto.net and auto.smb to not use non-bourne shell regex
+   when searching for their export list programs.
 
 14/2/2005 autofs-4.1.4_beta2
 ----------------------------

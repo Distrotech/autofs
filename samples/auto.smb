@@ -1,16 +1,17 @@
 #!/bin/sh
 
-# $Id: auto.smb,v 1.1 2005/01/04 14:36:54 raven Exp $
+# $Id: auto.smb,v 1.2 2005/03/07 08:49:09 raven Exp $
 
 # This file must be executable to work! chmod 755!
 
 key="$1"
 opts="-fstype=smbfs"
 
-for SMBCLIENT in /{,usr/}{,s}bin/smbclient
+for P in /bin /sbin /usr/bin /usr/sbin
 do
-	if [ -x $SMBCLIENT ]
+	if [ -x $P/smbclient ]
 	then
+		SMBCLIENT=$P/smbclient
 		break
 	fi
 done
