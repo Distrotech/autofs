@@ -1,4 +1,4 @@
-#ident "$Id: mount_bind.c,v 1.7 2004/01/29 16:01:22 raven Exp $"
+#ident "$Id: mount_bind.c,v 1.8 2004/05/10 12:44:30 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  mount_bind.c      - module to mount a local filesystem if possible;
@@ -96,7 +96,12 @@ int mount_mount(const char *root, const char *name, int name_len,
 		error(MODPREFIX "alloca: %m");
 		return 1;
 	}
-	sprintf(fullpath, "%s/%s", root, name);
+
+	if (name_len)
+		sprintf(fullpath, "%s/%s", root, name);
+	else
+		sprintf(fullpath, "%s", root);
+
 	i = strlen(fullpath);
 	while (--i > 0 && fullpath[i] == '/')
 		fullpath[i] = '\0';
@@ -125,8 +130,8 @@ int mount_mount(const char *root, const char *name, int name_len,
 		unlink(AUTOFS_LOCK);
 
 		if (err) {
-			if (!ap.ghost || (ap.ghost && !status))
-				rmdir_path(fullpath);
+			if (!ap.ghost && name_len)
+				rmdir_path(name);
 			return 1;
 		} else {
 			debug(MODPREFIX "mounted %s type %s on %s",

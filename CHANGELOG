@@ -6,7 +6,9 @@ xx/xx/2004 autofs-4.1.3
 - updated comment about option handling in getmounts in init script.
 - updated kernel module patches.
 - fix to init script for reload option.
-- autofs now requires autoconf later than 2.5
+- autofs now requires autoconf later than 2.5.
+- replicated server fixup.
+- fix segv in NIS lookup module (Jeff Moyer).
 
 07/04/2004 autofs-4.1.2
 -----------------------

@@ -1,4 +1,4 @@
-#ident "$Id: mount_ext2.c,v 1.10 2004/04/22 14:39:08 raven Exp $"
+#ident "$Id: mount_ext2.c,v 1.11 2004/05/10 12:44:30 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  mount_ext2.c - module for Linux automountd to mount ext2 filesystems
@@ -55,12 +55,16 @@ int mount_mount(const char *root, const char *name, int name_len,
 		error(MODPREFIX "alloca: %m");
 		return 1;
 	}
-	sprintf(fullpath, "%s/%s", root, name);
+
+	if (name_len)
+		sprintf(fullpath, "%s/%s", root, name);
+	else
+		sprintf(fullpath, "%s", root);
 
 	debug(MODPREFIX "calling mkdir_path %s", fullpath);
 
 	if ((status = mkdir_path(fullpath, 0555)) && errno != EEXIST) {
-		error(MODPREFIX "mkdir_path %s failed: %m", name);
+		error(MODPREFIX "mkdir_path %s failed: %m", fullpath);
 		return 1;
 	}
 
@@ -116,8 +120,8 @@ int mount_mount(const char *root, const char *name, int name_len,
 	unlink(AUTOFS_LOCK);
 
 	if (err) {
-		if (!ap.ghost || (ap.ghost && !status))
-			rmdir_path(fullpath);
+		if (!ap.ghost && name_len)
+			rmdir_path(name);
 		error(MODPREFIX "failed to mount %s (type %s) on %s",
 		      what, fstype, fullpath);
 		return 1;

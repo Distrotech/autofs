@@ -1,4 +1,4 @@
-#ident "$Id: parse_sun.c,v 1.8 2004/02/03 15:23:21 raven Exp $"
+#ident "$Id: parse_sun.c,v 1.9 2004/05/10 12:44:30 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  parse_sun.c - module for Linux automountd to parse a Sun-format
@@ -514,7 +514,6 @@ static char *concat_options(char *left, char *right)
 }
 
 static int sun_mount(const char *root, const char *name, int namelen,
-		     const char *path, int pathlen,
 		     const char *loc, int loclen, const char *options)
 {
 	char *fstype = "nfs";	/* Default filesystem type */
@@ -565,17 +564,13 @@ static int sun_mount(const char *root, const char *name, int namelen,
 		options = noptions;
 	}
 
-	while (*path == '/') {
-		path++;
-		pathlen--;
+	while (*name == '/') {
+		name++;
+		namelen--;
 	}
 
-	mountpoint = alloca(namelen + pathlen + 2);
-
-	if (pathlen)
-		sprintf(mountpoint, "%.*s/%.*s", namelen, name, pathlen, path);
-	else
-		sprintf(mountpoint, "%.*s", namelen, name);
+	mountpoint = alloca(namelen + 1);
+	sprintf(mountpoint, "%.*s", namelen, name);
 
 	what = alloca(loclen + 1);
 	memcpy(what, loc, loclen);
@@ -615,15 +610,15 @@ static int sun_mount(const char *root, const char *name, int namelen,
 
 /*
  * syntax is:
- *	[-options] location
- *	[-options] [mountpoint [-options] location]...
+ *	[-options] location [location] ...
+ *	[-options] [mountpoint [-options] location [location] ... ]...
  */
 int parse_mount(const char *root, const char *name,
 		int name_len, const char *mapent, void *context)
 {
 	struct parse_context *ctxt = (struct parse_context *) context;
 	char *pmapent, *options;
-	const char *p;
+	const char *p, *q;
 	int mapent_len, rv;
 	int optlen;
 
@@ -667,6 +662,18 @@ int parse_mount(const char *root, const char *name,
 
 	if (*p == '/') {
 		int l;
+		char *multi_root;
+
+		multi_root = alloca(strlen(root) + name_len + 2);
+		if (!multi_root) {
+			error(MODPREFIX "alloca: %m");
+			free(options);
+			return 1;
+		}
+
+		strcpy(multi_root, root);
+		strcat(multi_root, "/");
+		strcat(multi_root, name);
 
 		/* It's a multi-mount; deal with it */
 		do {
@@ -705,7 +712,15 @@ int parse_mount(const char *root, const char *name,
 				} while (*p == '-');
 			}
 
-			loc = dequote(p, l = chunklen(p, 1));
+			q = p;
+			while (*q && *q != '/') {
+				l = chunklen(q, 1);
+				q += l;
+				q = skipspace(q);
+			}
+			l = q - p;
+
+			loc = dequote(p, l);
 			loclen = strlen(loc);
 
 			if (loc == NULL || path == NULL) {
@@ -723,7 +738,7 @@ int parse_mount(const char *root, const char *name,
 			      "multimount: %.*s on %.*s with options %s",
 			      loclen, loc, pathlen, path, myoptions);
 
-			rv = sun_mount(root, name, name_len, path, pathlen, loc, loclen,
+			rv = sun_mount(multi_root, path, pathlen, loc, loclen,
 				       myoptions);
 			free(path);
 			free(loc);
@@ -739,12 +754,20 @@ int parse_mount(const char *root, const char *name,
 	} else {
 		/* Normal (non-multi) entries */
 		char *loc;
-		int loclen;
+		int loclen, l;
 
 		if (*p == ':')
 			p++;	/* Sun escape for entries starting with / */
 
-		loc = dequote(p, chunklen(p, 1));
+		q = p;
+		while (*q) {
+			l = chunklen(q, 1);
+			q += l;
+			q = skipspace(q);
+		}
+		l = q - p;
+
+		loc = dequote(p, l);
 		loclen = strlen(loc);
 
 		if (loc == NULL) {
@@ -763,7 +786,7 @@ int parse_mount(const char *root, const char *name,
 		debug(MODPREFIX "core of entry: options=%s, loc=%.*s",
 		      options, loclen, loc);
 
-		rv = sun_mount(root, name, name_len, "/", 1, loc, loclen, options);
+		rv = sun_mount(root, name, name_len, loc, loclen, options);
 		free(loc);
 		free(options);
 	}

@@ -61,7 +61,11 @@ int mount_mount(const char *root, const char *name, int name_len,
 		error(MODPREFIX "alloca: %m");
 		return 1;
 	}
-	sprintf(fullpath, "%s/%s", root, name);
+
+	if (name_len)
+		sprintf(fullpath, "%s/%s", root, name);
+	else
+		sprintf(fullpath, "%s", root);
 
 	debug(MODPREFIX "calling umount %s", what);
 
@@ -77,7 +81,7 @@ int mount_mount(const char *root, const char *name, int name_len,
 	debug(MODPREFIX "calling mkdir_path %s", fullpath);
 
 	if ((status = mkdir_path(fullpath, 0555)) && errno != EEXIST) {
-		error(MODPREFIX "mkdir_path %s failed: %m", name);
+		error(MODPREFIX "mkdir_path %s failed: %m", fullpath);
 		return 1;
 	}
 
@@ -105,9 +109,10 @@ int mount_mount(const char *root, const char *name, int name_len,
 			     "-t", fstype, what, fullpath, NULL);
 	}
 	unlink(AUTOFS_LOCK);
+
 	if (err) {
-		if (!ap.ghost || (ap.ghost && !status))
-			rmdir_path(fullpath);
+		if (!ap.ghost && name_len)
+			rmdir_path(name);
 
 		error(MODPREFIX "failed to mount %s (type %s) on %s",
 		      what, fstype, fullpath);

@@ -1,4 +1,4 @@
-#ident "$Id: lookup_yp.c,v 1.3 2004/01/29 16:01:22 raven Exp $"
+#ident "$Id: lookup_yp.c,v 1.4 2004/05/10 12:44:30 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup_yp.c - module for Linux automountd to access a YP (NIS)
@@ -195,19 +195,26 @@ int lookup_mount(const char *root, const char *name, int name_len, void *context
 	}
 
 	if (!me) {
-		/* For reasons unknown, the standard YP definitions doesn't define input
-		   strings as const char *.  However, my understanding is that they will
-		   not be modified by the library. */
+		/* For reasons unknown, the standard YP definitions doesn't
+		   define input strings as const char *.  However, my
+		   understanding is that they will not be modified by the
+		   library. */
 		err = yp_match((char *) ctxt->domainname, (char *) ctxt->mapname,
 			       (char *) name, name_len, &mapent, &mapent_len);
 
-		if (err == YPERR_KEY) {
+		if (err != YPERR_SUCCESS) {
+			if (err != YPERR_KEY)
+				goto out_err;
+
 			/* See if there is an entry "root/name" */
 			key_len = sprintf(key, "%s/%s", root, name);
-			err = yp_match((char *) ctxt->domainname, (char *) ctxt->mapname,
+			err = yp_match((char *) ctxt->domainname, 
+				       (char *) ctxt->mapname,
 				       key, key_len, &mapent, &mapent_len);
 
-			if (err == YPERR_KEY) {
+			if (err != YPERR_SUCCESS) {
+				if (err != YPERR_KEY)
+					goto out_err;
 				/* 
 				 * Try to get the "*" entry if there is one i
 				 * - note that we *don't* modify "name" so
@@ -215,18 +222,13 @@ int lookup_mount(const char *root, const char *name, int name_len, void *context
 				 */
 				err =
 				    yp_match((char *) ctxt->domainname,
-					     (char *) ctxt->mapname, "*", 1, &mapent,
-					     &mapent_len);
+					     (char *) ctxt->mapname, "*", 1, 
+					     &mapent, &mapent_len);
 			} else
 				cache_update(key, mapent, age);
 
-			if (err) {
-				warn(MODPREFIX "lookup for %s failed: %s", name,
-				     yperr_string(err));
-				if (mapent)
-					free(mapent);
-				return 1;
-			}
+			if (err)
+				goto out_err;
 		} else
 			cache_update(name, mapent, age);
 	}
@@ -238,6 +240,12 @@ int lookup_mount(const char *root, const char *name, int name_len, void *context
 	rv = ctxt->parse->parse_mount(root, name, name_len, mapent, ctxt->parse->context);
 	free(mapent);
 	return rv;
+
+out_err:
+	warn(MODPREFIX "lookup for %s failed: %s", name, yperr_string(err));
+	if (mapent)
+		free(mapent);
+	return 1;
 }
 
 int lookup_done(void *context)

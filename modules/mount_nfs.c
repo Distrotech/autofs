@@ -1,4 +1,4 @@
-#ident "$Id: mount_nfs.c,v 1.10 2004/04/03 07:14:33 raven Exp $"
+#ident "$Id: mount_nfs.c,v 1.11 2004/05/10 12:44:30 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  * mount_nfs.c - Module for Linux automountd to mount an NFS filesystem,
@@ -105,8 +105,6 @@ int is_local_addr(const char *host, const char *host_addr, int addr_len)
 	
 	return 1;
 }
-
-
 /*
  * Given a mount string, return (in the same string) the
  * best mount to use based on weight/locality/rpctime
@@ -118,6 +116,7 @@ int get_best_mount(char *what, const char *original, int longtimeout, int skiplo
 {
 	char *p = what;
 	char *winner = NULL;
+	char *is_replicated = NULL;
 	int winner_weight = INT_MAX, local = 0;
 	double winner_time = 0;
 	char *delim;
@@ -129,9 +128,17 @@ int get_best_mount(char *what, const char *original, int longtimeout, int skiplo
 		return -1;
 	}
 
+	/*
+	 * If it's not a replicated server map entry we need
+	 * to only check for a local mount and return the mount
+	 * string
+	 */
+	is_replicated = strpbrk(p, "(,");
+	if (skiplocal)
+		return local;
+
 	while (p && *p) {
 		char *next;
-		int alive = -1;
 
 		p += strspn(p, " \t,");
 		delim = strpbrk(p, "(, \t:");
@@ -187,29 +194,35 @@ int get_best_mount(char *what, const char *original, int longtimeout, int skiplo
 			for (haddr = he->h_addr_list; *haddr; haddr++) {
 				local = is_local_addr(p, *haddr, he->h_length);
 
-				if (local < 0) {
-					local = 0;
-					p = next;
-				}
+				if (local < 0)
+					continue;
 
 				if (local) {
-					alive = rpc_ping(p, sec, micros);
-					if (alive) {
-						winner = p;
-						break;
-					}
-					local = 0;
+					winner = p;
+					break;
 				}
 			}
+			
+			if (local < 0) {
+				local = 0;
+				p = next;
+				continue;
+			}
+
+			if (local)
+				break;
 		}
 
-		/* Are we actually alive */
-		if (!alive || (alive < 0 && !rpc_ping(p, sec, micros))) {
+		/*
+		 * If it's not local and it's a replicated server map entry
+		 * is it alive
+		 */
+		if (!local && is_replicated && !rpc_ping(p, sec, micros)) {
 			p = next;
 			continue;
 		}
 
-		/* Not local, see if we have a previous 'winner' */
+		/* see if we have a previous 'winner' */
 		if (!winner) {
 			winner = p;
 		}
@@ -237,8 +250,11 @@ int get_best_mount(char *what, const char *original, int longtimeout, int skiplo
 
 	debug(MODPREFIX "winner = %s local = %d", winner, local);
 
-	/* We didn't find a weighted winner or local */
-	if (!local && winner_weight == INT_MAX) {
+	/*
+	 * We didn't find a weighted winner or local and it's a replicated
+	 * server map entry
+	 */
+	if (!local && is_replicated && winner_weight == INT_MAX) {
 		/* We had more than one contender and none responded in time */
 		if (winner_time != 0 && winner_time > 5) {
 			/* We've already tried a longer timeout */
@@ -391,7 +407,11 @@ int mount_mount(const char *root, const char *name, int name_len,
 		error(MODPREFIX "alloca: %m");
 		return 1;
 	}
-	sprintf(fullpath, "%s/%s", root, name);
+
+	if (name_len)
+		sprintf(fullpath, "%s/%s", root, name);
+	else
+		sprintf(fullpath, "%s", root);
 
 	if (local) {
 		/* Local host -- do a "bind" */
@@ -406,7 +426,7 @@ int mount_mount(const char *root, const char *name, int name_len,
 
 		debug(MODPREFIX "calling mkdir_path %s", fullpath);
 		if ((status = mkdir_path(fullpath, 0555)) && errno != EEXIST) {
-			error(MODPREFIX "mkdir_path %s failed: %m", name);
+			error(MODPREFIX "mkdir_path %s failed: %m", fullpath);
 			return 1;
 		}
 
@@ -434,8 +454,8 @@ int mount_mount(const char *root, const char *name, int name_len,
 		unlink(AUTOFS_LOCK);
 
 		if (err) {
-			if (!ap.ghost || (ap.ghost && !status))
-				rmdir_path(fullpath);
+			if (!ap.ghost && name_len)
+				rmdir_path(name);
 			error(MODPREFIX "nfs: mount failure %s on %s",
 			      whatstr, fullpath);
 			return 1;
