@@ -1,4 +1,4 @@
-#ident "$Id: lock.c,v 1.10 2005/01/10 13:25:35 raven Exp $"
+#ident "$Id: lock.c,v 1.11 2005/01/10 14:07:28 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  lock.c - autofs lockfile management
@@ -44,8 +44,8 @@ static void reset_locksigs(void);
  * probably no good the requestor continuing anyway?
  */
 /* LOCK_TIMEOUT = WAIT_INTERVAL/10**9 * WAIT_TRIES */
-#define WAIT_INTERVAL	1000000000L
-#define WAIT_TRIES	30
+#define WAIT_INTERVAL	100000000L
+#define WAIT_TRIES	300
 #define LOCK_RETRIES    3
 #define MAX_PIDSIZE	20
 
