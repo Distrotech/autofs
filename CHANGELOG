@@ -4,6 +4,7 @@
 - fix rentrancy problem when releasing the cache.
 - fix 'automount: ' error in patern match in init script.
 - applied autofs4 module check changes in Debian init script.
+- fix handling of missing newline on last file map entry.
 
 26/1/2005 autofs-4.1.4_beta1
 ---------------------------
