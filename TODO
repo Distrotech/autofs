@@ -1,0 +1,10 @@
+$Id: TODO,v 1.1 2003/09/09 11:21:28 raven Exp $
+
+autofs v4 TODO list
+-------------------
+* More testing under stress
+
+autofs v5 TODO list
+-------------------
+* visible mountpoints
+* direct maps?
