@@ -6,7 +6,7 @@
 .\"
 .\" This is free documentation.
 .\"
-.\" $Id: automount.8,v 1.1 2003/09/09 11:22:05 raven Exp $
+.\" $Id: automount.8,v 1.2 2003/09/09 13:35:11 raven Exp $
 .\"
 .TH AUTOMOUNT 8 "14 Jan 2000"
 .SH NAME
@@ -21,6 +21,9 @@ taking a base \fImount-point\fP and \fImap\fP file, and using these
 within the base \fImount-point\fP when they are accessed in any way.
 The filesystems are then autounmounted after a period of inactivity.
 .SH OPTIONS
+.TP
+.I "\-Dvariable=value"
+Replace \fIvariable\fP with \fIvalue\fP in map substitutions.
 .TP
 .I "\-p, \-\-pid-file"
 Write the pid of the daemon to the specified file.

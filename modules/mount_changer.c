@@ -125,7 +125,7 @@ if (fd < 0)
 total_slots_available = ioctl (fd, CDROM_CHANGER_NSLOTS);
 if (total_slots_available <= 1 )
 	{
-	syslog(LOG_NOTICE, MODPREFIX, "Device %s is not an ATAPI compliant CD changer.\n", device);
+	syslog(LOG_NOTICE, MODPREFIX "Device %s is not an ATAPI compliant CD changer.\n", device);
 	return 1;
 	}
 
@@ -133,7 +133,7 @@ if (total_slots_available <= 1 )
 slot=ioctl (fd, CDROM_SELECT_DISC, slot);
 if (slot<0)
 	{
-	syslog(LOG_NOTICE, MODPREFIX, "CDROM_SELECT_DISC failed");
+	syslog(LOG_NOTICE, MODPREFIX "CDROM_SELECT_DISC failed");
 	return 1;
 	}
 
@@ -141,7 +141,7 @@ if (slot<0)
 status = close (fd);
 if (status != 0)
 	{
-	syslog(LOG_NOTICE, MODPREFIX, "close failed for `%s': %s\n", device, strerror(errno));
+	syslog(LOG_NOTICE, MODPREFIX "close failed for `%s': %s\n", device, strerror(errno));
 	return 1;
 	}
 return 0;

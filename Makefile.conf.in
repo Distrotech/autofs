@@ -29,6 +29,9 @@ SMBFS = @HAVE_SMBMOUNT@
 # Support for calling e2fsck when mounting ext2 filesystems
 EXT2FS = @HAVE_E2FSCK@
 
+# Support for calling e3fsck when mounting ext3 filesystems
+EXT3FS = @HAVE_E3FSCK@
+
 #
 # Note: the DESTDIR define is so you can build autofs into a temporary
 # directory and still have all the compiled-in paths point to the right

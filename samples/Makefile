@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.1 2003/09/09 11:22:24 raven Exp $
+# $Id: Makefile,v 1.2 2003/09/09 13:35:11 raven Exp $
 
 -include ../Makefile.conf
 include ../Makefile.rules
@@ -9,11 +9,13 @@ clean:
 	rm -f rc.autofs
 
 install: all
+	install -d -m 755 $(INSTALLROOT)/etc
 	-mv -f $(INSTALLROOT)/etc/auto.master $(INSTALLROOT)/etc/auto.master.old
 	install -c auto.master -m 644 $(INSTALLROOT)/etc
 	-mv -f $(INSTALLROOT)/etc/auto.misc $(INSTALLROOT)/etc/auto.misc.old
 	install -c auto.misc   -m 644 $(INSTALLROOT)/etc
 	install -c auto.net    -m 755 $(INSTALLROOT)/etc
+	install -d -m 755 $(INSTALLROOT)/$(initdir)
 	install -c rc.autofs   -m 755 $(INSTALLROOT)$(initdir)/autofs
 
 rc.autofs: rc.autofs.in

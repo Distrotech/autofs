@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# $Id: auto.net,v 1.1 2003/09/09 11:22:24 raven Exp $
+# $Id: auto.net,v 1.2 2003/09/09 13:35:11 raven Exp $
 
 # Look at what a host is exporting to determine what we can mount.
 # This is very simple, but it appears to work surprisingly well
@@ -19,7 +19,7 @@ opts="-fstype=nfs,hard,intr,nodev,nosuid"
 #SHOWMOUNT="showmount -e $key | tail +2"
 
 # Newer distributions get this right
-SHOWMOUNT="showmount --no-headers -e $key"
+SHOWMOUNT="/sbin/showmount --no-headers -e $key"
 
 $SHOWMOUNT | sort +0 | \
 	awk -v key="$key" -v opts="$opts" -- '

@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.1 2003/09/09 11:21:49 raven Exp $
+# $Id: Makefile,v 1.2 2003/09/09 13:35:11 raven Exp $
 #
 # Makefile for autofs
 #
@@ -25,6 +25,7 @@ clean:
 	rm -f *.o *.s automount
 
 install: all
+	install -d -m 755 $(INSTALLROOT)$(sbindir)
 	install -c automount -m 755 $(INSTALLROOT)$(sbindir)
 
 

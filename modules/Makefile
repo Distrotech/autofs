@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.1 2003/09/09 11:22:05 raven Exp $
+# $Id: Makefile,v 1.2 2003/09/09 13:35:11 raven Exp $
 #
 # Makefile for autofs
 #
@@ -21,6 +21,11 @@ MODS :=	lookup_yp.so lookup_file.so lookup_program.so lookup_userhome.so \
 ifeq ($(EXT2FS), 1)
   SRCS += mount_ext2.c
   MODS += mount_ext2.so
+else
+ ifeq ($(EXT3FS), 1)
+   SRCS += mount_ext2.c
+   MODS += mount_ext2.so
+ endif
 endif
 
 ifeq ($(HESIOD), 1)
@@ -50,6 +55,15 @@ install: all
 	install -d -m 755 $(INSTALLROOT)$(autofslibdir)
 	install -c $(MODS) -m 644 $(INSTALLROOT)$(autofslibdir)
 	-rm -f $(INSTALLROOT)$(autofslibdir)/mount_smbfs.so
+ifeq ($(EXT2FS), 1)
+ ifeq ($(EXT3FS), 1)
+	ln -s mount_ext2.so $(INSTALLROOT)$(autofslibdir)/mount_ext3.so
+ endif
+else
+ ifeq ($(EXT3FS), 1)
+	mv $(INSTALLROOT)$(autofslibdir)/mount_ext2.so $(INSTALLROOT)$(autofslibdir)/mount_ext3.so
+ endif
+endif
 
 #
 # Ad hoc compilation rules for modules which need auxilliary libraries

@@ -1,4 +1,4 @@
-#ident "$Id: mount_ext2.c,v 1.1 2003/09/09 11:22:10 raven Exp $"
+#ident "$Id: mount_ext2.c,v 1.2 2003/09/09 13:35:11 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  mount_ext2.c - module for Linux automountd to mount ext2 filesystems
@@ -36,12 +36,15 @@ int mount_init(void **context)
   return 0;
 }
 
+
 int mount_mount(const char *root, const char *name, int name_len,
 		const char *what, const char *fstype, const char *options,
 		void *context)
 {
   char *fullpath;
-  int err;
+  const char *p, *p1;
+  int err, ro = 0;
+  const char *fsck_prog;
 
   fullpath = alloca(strlen(root)+name_len+2);
   if ( !fullpath ) {
@@ -56,8 +59,32 @@ int mount_mount(const char *root, const char *name, int name_len,
     return 1;
   }
 
-  syslog(LOG_DEBUG, MODPREFIX "calling fsck.ext2 -p %s", what);
-  err = spawnl(LOG_DEBUG, PATH_E2FSCK, PATH_E2FSCK, "-p", what, NULL);
+  if (options) {
+    for (p = options; (p1 = strchr(p, ',')); p=p1) 
+      if (!strncmp(p, "ro", p1 - p) && ++p1 - p == sizeof("ro"))
+	ro = 1;
+    if (!strcmp(p, "ro"))
+      ro = 1;
+  }
+
+
+#ifdef HAVE_E3FSCK
+  if (!strcmp(fstype,"ext3") || !strcmp(fstype,"auto"))
+    fsck_prog = PATH_E3FSCK;
+  else
+    fsck_prog = PATH_E2FSCK;
+# else
+  fsck_prog = PATH_E2FSCK;
+#endif
+
+  if(ro) {
+    syslog(LOG_DEBUG, MODPREFIX "calling %s -n %s", fsck_prog, what);
+    err = spawnl(LOG_DEBUG, fsck_prog, fsck_prog, "-n", what, NULL);
+  } else {
+    syslog(LOG_DEBUG, MODPREFIX "calling %s -p %s", fsck_prog, what);
+    err = spawnl(LOG_DEBUG, fsck_prog, fsck_prog, "-p", what, NULL);
+  }
+
   if ( err & ~7 ) {
     syslog(LOG_ERR, MODPREFIX "%s: filesystem needs repair, won't mount",
 	   what);

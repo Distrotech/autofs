@@ -1,4 +1,4 @@
-#ident "$Id: automount.c,v 1.2 2003/09/09 11:52:30 raven Exp $"
+#ident "$Id: automount.c,v 1.3 2003/09/09 13:35:11 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  automount.c - Linux automounter daemon
@@ -418,7 +418,7 @@ static int mount_autofs(char *path)
   ap.pipefd = ap.ioctlfd = -1;
   
   /* In case the directory doesn't exist, try to mkdir it */
-  if ( mkdir_path(path, 0555) < 0 && errno != EEXIST )
+  if (mkdir_path(path, 0555) < 0 && errno != EEXIST && errno != EROFS)
     return -1;
   
   /* Pipe for kernel communications */
@@ -426,7 +426,7 @@ static int mount_autofs(char *path)
     return -1;
   
   /* Pipe state changes from signal handler to main loop */
-  if ( pipe(ap.state_pipe) < 0) {
+  if (pipe(ap.state_pipe) < 0) {
     close(pipefd[0]);
     close(pipefd[1]);
     return -1;

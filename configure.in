@@ -1,4 +1,4 @@
-# $Id: configure.in,v 1.1 2003/09/09 11:21:49 raven Exp $
+# $Id: configure.in,v 1.2 2003/09/09 13:35:11 raven Exp $
 # configure.in for the autofs daemon
 
 #
@@ -37,6 +37,7 @@ AC_MSG_RESULT([$searchpath])
 AF_PATH_INCLUDE(MOUNT, mount, /bin/mount, $searchpath)
 AF_PATH_INCLUDE(UMOUNT, umount, /bin/umount, $searchpath)
 AF_PATH_INCLUDE(E2FSCK, fsck.ext2 e2fsck, , $searchpath)
+AF_PATH_INCLUDE(E3FSCK, fsck.ext3 e3fsck, , $searchpath)
 
 #
 # Newer mounts have the -s (sloppy) option to ignore unknown options,
