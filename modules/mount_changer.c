@@ -99,7 +99,7 @@ int mount_mount(const char *root, const char *name, int name_len,
 		    fstype, options, what, fullpath));
 		err =
 		    spawnl(LOG_DEBUG, MOUNTED_LOCK, PATH_MOUNT, PATH_MOUNT, "-t", fstype,
-			   what, SLOPPYOPT "-o", options, what, fullpath, NULL);
+			   SLOPPYOPT "-o", options, what, fullpath, NULL);
 	} else {
 		DB(syslog(LOG_DEBUG, MODPREFIX "calling mount -t %s %s %s",
 			  fstype, what, fullpath));

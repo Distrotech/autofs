@@ -2,12 +2,17 @@
 - fixed lookup problem with wildcard order in map.
 - added CHANGELOG.
 - fixed error in some ident tags
-- documented nonstrict special option (Debian patch).
+- merge debian patch 032 document nonstrict special option
 - updated spec file to standardise paths etc.
 - reintroduced some 4.0.0 init script code to help serialise
-  shutdown signaling and umount of submounts. This is an attempt
-  to alieviate some of the contention for umount.
+  shutdown signaling and umount of submounts. This should
+  alieviate some of the contention for umount at shutdown.
 - fix invalid path reference on error exit.
+- merged debian patches
+   - 030 man page corrections in autofs(5) and automount(8)
+   - 033 correct url in man page automount(8)
+   - 034 correct mount call in mount_changer.c
+   - 040 document gid option in man page autofs(5)
 
 
 4/12/2003 autofs-4.1.0
