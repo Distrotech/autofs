@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# $Id: rc.autofs.in,v 1.7 2003/11/22 07:42:08 raven Exp $
+# $Id: rc.autofs.in,v 1.8 2003/11/24 14:36:51 raven Exp $
 #
 # rc file for automount using a Sun-style "master map".
 # We first look for a local /etc/auto.master, then a YP
@@ -104,9 +104,10 @@ function getnismounts()
 {
     YPMAP=`catnismap auto.master`
     if [ -z "$YPMAP" ]; then
-       YPMAP=`catnismap`
+       catnismap
+    else
+       catnismap auto.master
     fi
-    echo $YPMAP
 }
 function getldapmounts()
 {
