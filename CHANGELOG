@@ -10,6 +10,7 @@
 - change setpgrp to setsid to disascociate from tty properly.
 - fix auto.net and auto.smb to not use non-bourne shell regex
    when searching for their export list programs.
+- fix nsswitch.conf sources detection.
 
 14/2/2005 autofs-4.1.4_beta2
 ----------------------------

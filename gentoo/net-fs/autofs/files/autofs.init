@@ -1,7 +1,7 @@
 #!/sbin/runscript
 # Copyright 1999-2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Header: /home/cvs/root/autofs/gentoo/net-fs/autofs/files/autofs.init,v 1.9 2005/02/20 05:31:50 raven Exp $
+# $Header: /home/cvs/root/autofs/gentoo/net-fs/autofs/files/autofs.init,v 1.10 2005/03/07 08:52:14 raven Exp $
 
 # rc file for automount using a Sun-style "master map".
 # We first look for a local /etc/autofs/auto.master, then a YP
@@ -22,9 +22,12 @@ opts="start stop status stats reload restart"
 #
 function getschemes()
 {
-	if grep -q '^automount: ' /etc/nsswitch.conf; then
-		grep ^automount: /etc/nsswitch.conf | \
-			sed -e 's/^.*://' -e 's/\[.*\]/ /g'
+	SOURCES=`grep ^automount: nsswitch.conf | \
+		sed -e 's/^.*://' -e 's/\[.*\]/ /g'`
+	
+	if [ `echo $SOURCES | awk '{print NF}'` -gt 0 ]
+	then
+		echo ${SOURCES}
 	else
 		echo files
 	fi
