@@ -1,4 +1,4 @@
-#ident "$Id: lookup_file.c,v 1.9 2004/12/05 05:39:27 raven Exp $"
+#ident "$Id: lookup_file.c,v 1.10 2004/12/26 05:05:32 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup_file.c - module for Linux automount to query a flat file map
@@ -381,7 +381,7 @@ int lookup_mount(const char *root, const char *name, int name_len, void *context
 	struct mapent_cache *me;
 	time_t now = time(NULL);
 	time_t t_last_read;
-	int ret;
+	int ret = 0;
 
 	if (stat(ctxt->mapname, &st)) {
 		crit(MODPREFIX "file map %s, could not stat", ctxt->mapname);

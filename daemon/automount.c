@@ -1,4 +1,4 @@
-#ident "$Id: automount.c,v 1.23 2004/11/23 11:51:18 raven Exp $"
+#ident "$Id: automount.c,v 1.24 2004/12/26 05:05:32 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  automount.c - Linux automounter daemon
@@ -251,7 +251,7 @@ static int umount_multi(const char *path, int incl)
 	mntlist = get_mnt_list(_PATH_MOUNTED, path, incl);
 
 	if (!mntlist) {
-		if (!include) {
+		if (!incl) {
 			warn("umount_multi: no mounts found under %s", path);
 			return 0;
 		}
@@ -1007,6 +1007,7 @@ static int handle_packet_missing(const struct autofs_packet_missing *pkt)
 	struct stat st;
 	sigset_t oldsig;
 	pid_t f;
+	struct pending_mount *mt=NULL;
 	int mem_not_recorded = 0;
 
 	debug("handle_packet_missing: token %ld, name %s\n",
@@ -1022,7 +1023,6 @@ static int handle_packet_missing(const struct autofs_packet_missing *pkt)
 	if (lstat(pkt->name, &st) == -1 ||
 	   (S_ISDIR(st.st_mode) && st.st_dev == ap.dev)) {
 		/* Need to mount or symlink */
-		struct pending_mount *mt=NULL;
 		char buf[PATH_MAX + 1];
 		int size;
 
@@ -1046,7 +1046,9 @@ static int handle_packet_missing(const struct autofs_packet_missing *pkt)
 		if (!size) {
 			crit("handle_packet_missing: "
 			     "path to be mounted is to long");
+
 			send_fail(pkt->wait_queue_token);
+
 			if (mem_not_recorded)
 				free(mt);
 			return 0;
@@ -1060,9 +1062,12 @@ static int handle_packet_missing(const struct autofs_packet_missing *pkt)
 		if (f == -1) {
 			sigprocmask(SIG_SETMASK, &oldsig, NULL);
 			error("handle_packet_missing: fork: %m");
+
 			send_fail(pkt->wait_queue_token);
+
 			if (mem_not_recorded)
 				free(mt);
+
 			return 1;
 		} else if (!f) {
 			int err;
@@ -1103,6 +1108,7 @@ static int handle_packet_missing(const struct autofs_packet_missing *pkt)
 			mt->wait_queue_token = pkt->wait_queue_token;
 			mt->next = ap.mounts;
 			ap.mounts = mt;
+
 			mem_not_recorded = 0;
 
 			sigprocmask(SIG_SETMASK, &oldsig, NULL);
@@ -1121,9 +1127,12 @@ static int handle_packet_missing(const struct autofs_packet_missing *pkt)
 		 */
 		send_ready(pkt->wait_queue_token);
 	}
+
 	chdir("/");
+
 	if (mem_not_recorded)
 		free(mt);
+
 	return 0;
 }
 
