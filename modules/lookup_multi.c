@@ -1,4 +1,4 @@
-#ident "$Id: lookup_multi.c,v 1.5 2004/12/31 06:30:08 raven Exp $"
+#ident "$Id: lookup_multi.c,v 1.6 2005/02/10 10:59:59 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup_multi.c - module for Linux automount to seek multiple lookup
@@ -116,12 +116,8 @@ int lookup_ghost(const char *root, int ghost, time_t now, void *context)
 	struct lookup_context *ctxt = (struct lookup_context *) context;
 	int i, ret, at_least_1 = 0;
 
-	/* 
-	 * Read each map in reverse order to ensure that when we lookup a key
-	 * in the cache we get what would be seen first.
-	 */
-	for (i = ctxt->n - 1; i >= 0 ; i--) {
-		ret = ctxt->m[i].mod->lookup_ghost(root, ghost, now,
+	for (i = 0; i < ctxt->n; i++) {
+		ret = ctxt->m[i].mod->lookup_ghost(root, ghost,
 						   ctxt->m[i].mod->context);
 		if (ret & LKP_FAIL)
 			continue;

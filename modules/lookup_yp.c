@@ -1,4 +1,4 @@
-#ident "$Id: lookup_yp.c,v 1.13 2005/01/26 07:21:21 raven Exp $"
+#ident "$Id: lookup_yp.c,v 1.14 2005/02/10 10:59:59 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup_yp.c - module for Linux automountd to access a YP (NIS)
@@ -102,7 +102,7 @@ int yp_all_callback(int status, char *ypkey, int ypkeylen,
 	strncpy(mapent, val, vallen);
 	*(mapent + vallen) = '\0';
 
-	cache_update(root, key, mapent, age);
+	cache_add(root, key, mapent, age);
 
 	return 0;
 }
