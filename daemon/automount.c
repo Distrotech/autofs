@@ -1,4 +1,4 @@
-#ident "$Id: automount.c,v 1.14 2004/04/03 12:51:51 raven Exp $"
+#ident "$Id: automount.c,v 1.15 2004/04/05 13:14:10 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  automount.c - Linux automounter daemon
@@ -149,7 +149,8 @@ static int umount_ent(const char *root, const char *name, const char *type)
 	sav_errno = errno;
 
 	/* EIO appears to correspond to an smb mount that has gone away */
-	if (!status || (is_smbfs && sav_errno == EIO)) {
+	if (!status ||
+	    (is_smbfs && (sav_errno == EIO || sav_errno == EBADSLT))) {
 		int umount_ok = 0;
 
 		if (!status && (S_ISDIR(st.st_mode) && (st.st_dev != ap.dev)))
