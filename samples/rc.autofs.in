@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# $Id: rc.autofs.in,v 1.29 2005/01/02 14:19:17 raven Exp $
+# $Id: rc.autofs.in,v 1.30 2005/01/02 14:35:37 raven Exp $
 #
 # rc file for automount using a Sun-style "master map".
 # We first look for a local /etc/auto.master, then a YP
@@ -639,7 +639,7 @@ start)
 		fi
 	done
 
-	echo "."
+	echo -e "\ndone."
 	;;
 stop)
 	echo -n 'Stopping automounter:'
@@ -719,11 +719,11 @@ reload)
 		fi
 	done
 	rm -f $TMP
-	$debian start
+	debian start
 	;;
 force-reload|restart)
-        $debian stop
-	$debian start
+	debian stop
+	debian start
 	;;
 status)
 	status
