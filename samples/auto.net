@@ -1,6 +1,8 @@
 #!/bin/sh
 
-# $Id: auto.net,v 1.3 2003/09/20 15:35:36 raven Exp $
+# $Id: auto.net,v 1.4 2003/09/20 15:47:26 raven Exp $
+
+PATH=/usr/bin:/bin:/usr/sbin:/sbin
 
 # Look at what a host is exporting to determine what we can mount.
 # This is very simple, but it appears to work surprisingly well
@@ -19,7 +21,7 @@ opts="-fstype=nfs,hard,intr,nodev,nosuid"
 #SHOWMOUNT="showmount -e $key | tail +2"
 
 # Newer distributions get this right
-SHOWMOUNT="/usr/sbin/showmount --no-headers -e $key"
+SHOWMOUNT="showmount --no-headers -e $key"
 
 $SHOWMOUNT | sort +0 | \
 	awk -v key="$key" -v opts="$opts" -- '
