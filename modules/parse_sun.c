@@ -1,4 +1,4 @@
-#ident "$Id: parse_sun.c,v 1.24 2005/01/23 14:47:40 raven Exp $"
+#ident "$Id: parse_sun.c,v 1.25 2005/02/06 05:46:10 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  parse_sun.c - module for Linux automountd to parse a Sun-format
@@ -405,12 +405,12 @@ int parse_init(int argc, const char *const *argv, void **context)
 						*(sv->val++) = '\0';
 					else
 						sv->val = "";
-					/* we use 4 for the "-D", the "=", and the null */
+					/* we use 5 for the "-D", the "=", and the null */
 					if (child_args) {
-						child_args = realloc(child_args, strlen(child_args) + strlen(sv->def) + strlen(sv->val) + 4);
+						child_args = realloc(child_args, strlen(child_args) + strlen(sv->def) + strlen(sv->val) + 5);
 						strcat(child_args, ",");
 					}
-					else {
+					else { /* No comma, so only +4 */
 						child_args = malloc(strlen(sv->def) + strlen(sv->val) + 4);
 						*child_args = '\0';
 					}
