@@ -1,4 +1,4 @@
-xx/xx/2004 autofs-4.1.2
+07/04/2004 autofs-4.1.2
 -----------------------
 - merge patches from Jeff Moyer.
    - Change (back) compile option -fpic -> -fPIC.
@@ -16,6 +16,7 @@ xx/xx/2004 autofs-4.1.2
 - add example file master map using LDAP.
 - 1st attempt to deal with smb mounts that go away while
   mounted.
+- updated kernel patches.
 
 14/03/2004 autofs-4.1.1
 -----------------------
