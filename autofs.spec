@@ -1,16 +1,18 @@
 #
-# $Id: autofs.spec,v 1.11 2003/12/04 15:41:32 raven Exp $
+# $Id: autofs.spec,v 1.12 2003/12/11 14:58:52 raven Exp $
 #
-Summary: autofs daemon
+Summary: A tool from automatically mounting and umounting filesystems.
 Name: autofs
 %define version 4.1.0
 %define release 1
 Version: %{version}
 Release: %{release}
-Copyright: GPL
-Group: Networking/Daemons
+Epoch: 1
+License: GPL
+Group: System Environment/Daemons
 Source: ftp://ftp.kernel.org/pub/linux/daemons/autofs/v4/autofs-%{version}.tar.gz
-Buildroot: /var/tmp/autofs-tmp
+Buildroot: %{_tmppath}/%{name}-tmp
+BuildPrereq: hesiod-devel, openldap-devel
 Prereq: chkconfig
 Requires: /bin/bash mktemp sed textutils sh-utils grep /bin/ps
 Summary(de): autofs daemon 
@@ -45,6 +47,7 @@ inkludera nätfilsystem, CD-ROM, floppydiskar, och så vidare.
 
 %prep
 %setup -q
+%patch0 -p1
 
 %build
 CFLAGS="$RPM_OPT_FLAGS" ./configure --prefix=/usr
@@ -53,73 +56,63 @@ make initdir=/etc/rc.d/init.d
 %install
 rm -rf $RPM_BUILD_ROOT
 mkdir -p -m755 $RPM_BUILD_ROOT/etc/rc.d/init.d
-mkdir -p -m755 $RPM_BUILD_ROOT/usr/sbin
-mkdir -p -m755 $RPM_BUILD_ROOT/usr/lib/autofs
-mkdir -p -m755 $RPM_BUILD_ROOT/usr/man/man5
-mkdir -p -m755 $RPM_BUILD_ROOT/usr/man/man8
+mkdir -p -m755 $RPM_BUILD_ROOT%{_sbindir}
+mkdir -p -m755 $RPM_BUILD_ROOT%{_libdir}/autofs
+mkdir -p -m755 $RPM_BUILD_ROOT%{_mandir}/{man5,man8}
 
-make install initdir=/etc/rc.d/init.d INSTALLROOT=$RPM_BUILD_ROOT
+make install mandir=%{_mandir} initdir=/etc/rc.d/init.d INSTALLROOT=$RPM_BUILD_ROOT
 install -m 755 -d $RPM_BUILD_ROOT/misc
 install -m 755 -d $RPM_BUILD_ROOT/net
 
 %clean
-rm -rf $RPM_BUILD_ROOT
+[ "$RPM_BUILD_ROOT" != "/" ] && rm -rf $RPM_BUILD_ROOT
 
 %post
 chkconfig --add autofs
 
+%postun
+if [ $1 -ge 1 ] ; then
+	/sbin/service autofs condrestart > /dev/null 2>&1 || :
+fi
+
+%preun
+if [ "$1" = 0 ] ; then
+	/sbin/service autofs stop > /dev/null 2>&1 || :
+	chkconfig --del autofs
+fi
+
 %files
 %defattr(-,root,root)
 %doc CREDITS COPY* README* TODO multiserver_mount.patch patches/* samples/ldap* samples/autofs.schema
-%doc 
 %config /etc/rc.d/init.d/autofs
-%config(missingok) /etc/auto.master
-%config(missingok) /etc/auto.misc
-%config(missingok) /etc/auto.net
-/usr/sbin/automount
+%config(noreplace) /etc/auto.master
+%config(noreplace,missingok) /etc/auto.misc
+%config(noreplace,missingok) /etc/auto.net
+%{_sbindir}/automount
+%dir %{_libdir}/autofs
+%{_libdir}/autofs/autofs-ldap-auto-master
+%{_libdir}/autofs/lookup_file.so
+%{_libdir}/autofs/lookup_hesiod.so
+%{_libdir}/autofs/lookup_ldap.so
+%{_libdir}/autofs/lookup_multi.so
+%{_libdir}/autofs/lookup_nisplus.so
+%{_libdir}/autofs/lookup_program.so
+%{_libdir}/autofs/lookup_userhome.so
+%{_libdir}/autofs/lookup_yp.so
+%{_libdir}/autofs/mount_afs.so
+%{_libdir}/autofs/mount_autofs.so
+%{_libdir}/autofs/mount_bind.so
+%{_libdir}/autofs/mount_changer.so
+%{_libdir}/autofs/mount_ext2.so
+%{_libdir}/autofs/mount_generic.so
+%{_libdir}/autofs/mount_nfs.so
+%{_libdir}/autofs/parse_hesiod.so
+%{_libdir}/autofs/parse_sun.so
+%{_mandir}/*/*
 %dir /misc
 %dir /net
-/usr/lib/autofs
-/usr/man/*/*
 
 %changelog
-* Mon Sep 29 2003 Ian Kent <raven@themaw.net>
-- Added work around for O(1) patch oddity.
-
-* Sat Aug 17 2003 Ian Kent <raven@themaw.net>
-- Fixed tree mounts.
-- Corrected transciption error in autofs4-2.4.18 kernel module
-
-* Sun Aug 10 2003 Ian Kent <raven@themaw.net>
-- Checked and merged most of the RedHat v3 patches
-- Fixed kernel module handling wu-ftpd login problem (again)
-
-* Thu Aug 7 2003 Ian Kent <raven@themaw.net>
-- Removed ineffective lock stuff
-- Added -n to bind mount to prevent mtab update error
-- Added retry to autofs umount to clean matb after fail
-- Redirected messages from above to debug log and added info message
-- Fixed autofs4 module reentrancy, pwd and chroot handling
-
-* Wed Jul 30 2003 Ian Kent <raven@themaw.net>
-- Fixed autofs4 ghosting patch for 2.4.19 and above (again)
-- Fixed autofs directory removal on failure of autofs mount
-- Fixed lock file wait function overlapping calls to (u)mount
-
-* Sun Jul 27 2003 Ian Kent <raven@themaw.net>
-- Implemented LDAP direct map handling for nisMap and automountMap schema
-- Fixed autofs4 ghosting patch for 2.4.19 and above (again)
-- Added locking to fix overlapping internal calls to (u)mount 
-- Added wait for mtab~ to improve tolerance of overlapping external calls to (u)mount
-- Fixed ghosted directory removal after failed mount attempt
-
-* Wed May 28 2003 Ian Kent <raven@themaw.net>
-- Cleaned up an restructured my added code
-- Corrected ghosting problem with 2.4.19 and above
-- Added autofs4 ghosting patch for 2.4.19 and above
-- Implemented HUP signal to force update of ghosted maps
-
-* Mon Mar 23 2002 Ian Kent <ian.kent@pobox.com>
-- Add patch to implement directory ghosting and direct mounts
-- Add patch to for autofs4 module to support ghosting
+* Thu Dec 11 2003 Ian Kent <raven@themaw.net>
+- Updated spec file to standardise paths etc.
 

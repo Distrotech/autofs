@@ -2,6 +2,7 @@
 - fixed lookup problem with wildcard order in map.
 - added CHANGELOG.
 - documented nonstrict special option (Debian patch).
+- updated spec file to standardise paths etc.
 
 autofs-4.1.0
 ------------
