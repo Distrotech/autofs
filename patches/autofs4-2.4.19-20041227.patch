@@ -69,7 +69,7 @@
  #define NR_IOCTL32_HANDLERS	(sizeof(ioctl32_handler_table) /	\
 diff -Nur linux-2.4.19/fs/autofs4/autofs_i.h autofs4-2.4/fs/autofs4/autofs_i.h
 --- linux-2.4.19/fs/autofs4/autofs_i.h	2002-08-03 08:39:45.000000000 +0800
-+++ autofs4-2.4/fs/autofs4/autofs_i.h	2004-12-27 16:41:33.000000000 +0800
++++ autofs4-2.4/fs/autofs4/autofs_i.h	2004-12-27 21:16:48.000000000 +0800
 @@ -80,7 +80,7 @@
  	char *name;
  	/* This is for status reporting upon return */
@@ -174,7 +174,7 @@ diff -Nur linux-2.4.19/fs/autofs4/autofs_i.h autofs4-2.4/fs/autofs4/autofs_i.h
 +
 diff -Nur linux-2.4.19/fs/autofs4/expire.c autofs4-2.4/fs/autofs4/expire.c
 --- linux-2.4.19/fs/autofs4/expire.c	2001-06-12 10:15:27.000000000 +0800
-+++ autofs4-2.4/fs/autofs4/expire.c	2004-12-27 16:41:33.000000000 +0800
++++ autofs4-2.4/fs/autofs4/expire.c	2004-12-27 21:16:48.000000000 +0800
 @@ -4,6 +4,7 @@
   *
   *  Copyright 1997-1998 Transmeta Corporation -- All Rights Reserved
@@ -637,7 +637,7 @@ diff -Nur linux-2.4.19/fs/autofs4/expire.c autofs4-2.4/fs/autofs4/expire.c
  
 diff -Nur linux-2.4.19/fs/autofs4/inode.c autofs4-2.4/fs/autofs4/inode.c
 --- linux-2.4.19/fs/autofs4/inode.c	2002-08-03 08:39:45.000000000 +0800
-+++ autofs4-2.4/fs/autofs4/inode.c	2004-12-27 16:41:33.000000000 +0800
++++ autofs4-2.4/fs/autofs4/inode.c	2004-12-27 21:16:48.000000000 +0800
 @@ -87,7 +87,7 @@
  
  	kfree(sbi);
@@ -750,7 +750,7 @@ diff -Nur linux-2.4.19/fs/autofs4/inode.c autofs4-2.4/fs/autofs4/inode.c
  		inode->i_op = &autofs4_symlink_inode_operations;
 diff -Nur linux-2.4.19/fs/autofs4/root.c autofs4-2.4/fs/autofs4/root.c
 --- linux-2.4.19/fs/autofs4/root.c	2002-08-03 08:39:45.000000000 +0800
-+++ autofs4-2.4/fs/autofs4/root.c	2004-12-27 16:41:33.000000000 +0800
++++ autofs4-2.4/fs/autofs4/root.c	2004-12-27 21:16:48.000000000 +0800
 @@ -4,6 +4,7 @@
   *
   *  Copyright 1997-1998 Transmeta Corporation -- All Rights Reserved
@@ -1099,7 +1099,7 @@ diff -Nur linux-2.4.19/fs/autofs4/root.c autofs4-2.4/fs/autofs4/root.c
 -	    !d_mountpoint(dentry) && 
 -	    list_empty(&dentry->d_subdirs)) {
 -		DPRINTK(("try_to_fill_entry: mounting existing dir\n"));
-+		spin_locyyk(&dcache_lock);
++		spin_lock(&dcache_lock);
 +		dentry->d_flags |= DCACHE_AUTOFS_PENDING;
  		spin_unlock(&dcache_lock);
 -		return autofs4_wait(sbi, &dentry->d_name, NFY_MOUNT) == 0;
@@ -1449,7 +1449,7 @@ diff -Nur linux-2.4.19/fs/autofs4/root.c autofs4-2.4/fs/autofs4/root.c
  		return autofs4_expire_run(inode->i_sb,filp->f_vfsmnt,sbi,
 diff -Nur linux-2.4.19/fs/autofs4/waitq.c autofs4-2.4/fs/autofs4/waitq.c
 --- linux-2.4.19/fs/autofs4/waitq.c	2001-02-10 03:29:44.000000000 +0800
-+++ autofs4-2.4/fs/autofs4/waitq.c	2004-12-27 16:41:33.000000000 +0800
++++ autofs4-2.4/fs/autofs4/waitq.c	2004-12-27 21:16:49.000000000 +0800
 @@ -3,6 +3,7 @@
   * linux/fs/autofs/waitq.c
   *
@@ -1693,7 +1693,7 @@ diff -Nur linux-2.4.19/fs/autofs4/waitq.c autofs4-2.4/fs/autofs4/waitq.c
  }
 diff -Nur linux-2.4.19/include/linux/auto_fs.h autofs4-2.4/include/linux/auto_fs.h
 --- linux-2.4.19/include/linux/auto_fs.h	2002-08-03 08:39:45.000000000 +0800
-+++ autofs4-2.4/include/linux/auto_fs.h	2004-12-27 16:41:33.000000000 +0800
++++ autofs4-2.4/include/linux/auto_fs.h	2004-12-27 21:16:48.000000000 +0800
 @@ -45,7 +45,7 @@
   * If so, 32-bit user-space code should be backwards compatible.
   */
@@ -1705,7 +1705,7 @@ diff -Nur linux-2.4.19/include/linux/auto_fs.h autofs4-2.4/include/linux/auto_fs
  typedef unsigned long autofs_wqt_t;
 diff -Nur linux-2.4.19/include/linux/auto_fs4.h autofs4-2.4/include/linux/auto_fs4.h
 --- linux-2.4.19/include/linux/auto_fs4.h	2001-11-23 03:46:40.000000000 +0800
-+++ autofs4-2.4/include/linux/auto_fs4.h	2004-12-27 16:41:33.000000000 +0800
++++ autofs4-2.4/include/linux/auto_fs4.h	2004-12-27 21:16:48.000000000 +0800
 @@ -23,6 +23,12 @@
  #define AUTOFS_MIN_PROTO_VERSION	3
  #define AUTOFS_MAX_PROTO_VERSION	4
