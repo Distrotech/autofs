@@ -1,4 +1,4 @@
-#ident "$Id: lock.c,v 1.8 2005/01/10 08:40:37 raven Exp $"
+#ident "$Id: lock.c,v 1.9 2005/01/10 12:02:05 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  lock.c - autofs lockfile management
@@ -43,7 +43,9 @@ static void reset_locksigs(void);
  * If waiting for 30 secs is not enough then there's
  * probably no good the requestor continuing anyway?
  */
-#define LOCK_TIMEOUT    30
+/* LOCK_TIMEOUT = WAIT_INTERVAL/10**9 * WAIT_TRIES */
+#define WAIT_INTERVAL	1000000000
+#define WAIT_TRIES	30
 #define LOCK_RETRIES    3
 #define MAX_PIDSIZE	20
 
@@ -57,7 +59,6 @@ static int signals_have_been_setup = 0;
 
 /* Save previous actions */
 static struct sigaction actions[NSIG];
-static struct itimerval timer = {{0, 0}, {LOCK_TIMEOUT, 0}};
 
 /* Flag to identify we got a TERM signal */
 static int got_term = 0;
@@ -97,7 +98,7 @@ static int lock_is_owned(int fd)
 			sscanf(pidbuf, "%d", &pid);
 			break;
 		} else {
-			struct timespec t = { 0, 1000000 };
+			struct timespec t = { 0, 100000000 };
 			struct timespec r;
 
 			while (nanosleep(&t, &r) == -1 && errno == EINTR) {
@@ -255,7 +256,7 @@ int aquire_lock(void)
 
 			we_created_lockfile = 1;
 		} else {
-			int tries = 3;
+			int tries = WAIT_TRIES;
 
 			/*
 			 * Someone else made the link.
@@ -271,7 +272,7 @@ int aquire_lock(void)
 			}
 
 			while (tries--) {
-				struct timespec t = { 0, 100000000 };
+				struct timespec t = { 0, WAIT_INTERVAL };
 				struct timespec r;
 				int ts_size = sizeof(struct timespec);
 				int status;
@@ -314,7 +315,6 @@ int aquire_lock(void)
 				reset_locksigs();
 			}
 		}
-
 	}
 
 	reset_locksigs();
