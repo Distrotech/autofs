@@ -1,4 +1,4 @@
-#ident "$Id: automount.c,v 1.4 2003/09/10 14:27:41 raven Exp $"
+#ident "$Id: automount.c,v 1.5 2003/09/29 04:50:52 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  automount.c - Linux automounter daemon
@@ -727,6 +727,9 @@ static enum expire expire_proc(int now)
 		close(ap.pipefd);
 		close(ap.state_pipe[0]);
 		close(ap.state_pipe[1]);
+
+		/* Work around O(1) scheduler */
+		nice(-10);
 
 		/* Generate expire messages until there's
 		   nothing more to expire */
