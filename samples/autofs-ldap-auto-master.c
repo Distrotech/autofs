@@ -1,5 +1,5 @@
 /*
- * $id%
+ * ident $id$
  *
  * Dump out the automount map given as an argument on the command line.
  */

@@ -1,5 +1,5 @@
 #
-# $id$
+# ident $Id: ldap-nis-auto.master,v 1.2 2003/12/10 14:54:33 raven Exp $
 #
 dn: nisMapName=auto.master,dc=bogus
 objectClass: top
