@@ -1,4 +1,4 @@
-#ident "$Id: parse_sun.c,v 1.10 2004/05/18 12:22:40 raven Exp $"
+#ident "$Id: parse_sun.c,v 1.11 2004/06/06 03:06:12 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  parse_sun.c - module for Linux automountd to parse a Sun-format
@@ -602,10 +602,8 @@ static int sun_mount(const char *root, const char *name, int namelen,
 			      options);
 	}
 
-	if (nonstrict && rv) {
-		debug("ignoring failure of non-strict mount");
-		return 0;
-	}
+	if (nonstrict && rv)
+		return -rv;
 
 	return rv;
 }
@@ -746,7 +744,11 @@ int parse_mount(const char *root, const char *name,
 			free(loc);
 			free(myoptions);
 
-			if (rv)
+			/* Convert non-strict failure into success */
+			if (rv < 0) {
+				rv = 0;
+				debug("parse_mount: ignoring failure of non-strict mount");
+			} else if (rv > 0)
 				break;
 
 		} while (*p == '/');
@@ -789,6 +791,10 @@ int parse_mount(const char *root, const char *name,
 		      options, loclen, loc);
 
 		rv = sun_mount(root, name, name_len, loc, loclen, options);
+		/* non-strict failure to normal failure for ordinary mount */
+		if (rv < 0)
+			rv = -rv;
+			
 		free(loc);
 		free(options);
 	}
