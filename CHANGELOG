@@ -54,7 +54,8 @@
 - add Gentoo portage ebuild files.
 - review remaining Debian patches
    - all 000 and 001 patches are included in 4.1.4.
-   - 002 log cause of ldap errors applied
+   - 002 log cause of ldap errors applied.
+   - 020 covered by another change.
    - 030 document +map in auto master applied.
    - 031 document -D in automount 8 applied in another diff.
    - 040 init script policy conformance and backwards compatibility
