@@ -1,4 +1,4 @@
-#ident "$Id: automount.c,v 1.33 2005/01/12 04:03:05 raven Exp $"
+#ident "$Id: automount.c,v 1.34 2005/01/12 04:09:45 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  automount.c - Linux automounter daemon
@@ -976,8 +976,6 @@ static int get_pkt(int fd, union autofs_packet_union *pkt)
 					ret = st_readmap();
 					if (!ret)
 						ret = st_prepare_shutdown();
-					else
-						ap.state = ST_READY;
 					break;
 
 				default:
