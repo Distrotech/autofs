@@ -22,6 +22,8 @@ xx/xx/2004 autofs-4.1.4
     - 035 program mount repeated last character of map output.
     - 036 make make fail on failure.
 - fix memory leak in cache_clean function (Jeff Moyer).
+- remove restriction of mounting ncpfs filesystems (Mike Fleetwood).
+    - see README.ncpfs.
 
 19/05/2004 autofs-4.1.3
 -----------------------

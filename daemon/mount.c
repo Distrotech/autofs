@@ -1,4 +1,4 @@
-#ident "$Id: mount.c,v 1.4 2004/01/29 16:01:22 raven Exp $"
+#ident "$Id: mount.c,v 1.5 2004/11/17 14:38:27 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  mount.c - Abstract mount code used by modules for an unexpected
@@ -26,8 +26,8 @@
 
 /* These filesystems are known not to work with the "generic" module */
 /* Note: starting with Samba 2.0.6, smbfs is handled generically.    */
-static char *not_generic[] = { "nfs", "ncpfs", "userfs", "afs",
-	"autofs", "changer", "bind", NULL
+static char *not_generic[] = { "nfs", "userfs", "afs", "autofs",
+			       "changer", "bind", NULL
 };
 
 int do_mount(const char *root, const char *name, int name_len,
