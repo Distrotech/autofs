@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# $Id: rc.autofs.in,v 1.17 2004/11/15 15:09:16 raven Exp $
+# $Id: rc.autofs.in,v 1.18 2004/11/18 13:39:35 raven Exp $
 #
 # rc file for automount using a Sun-style "master map".
 # We first look for a local /etc/auto.master, then a YP
@@ -94,10 +94,19 @@ function catnismap()
 function getfilemounts()
 {
     if [ -f /etc/auto.master ] ; then
-        cat /etc/auto.master | grep -v '^\+' | sed -e '/^#/d' -e '/^$/d'
-        for nismap in `cat /etc/auto.master | grep '^\+' | sed -e '/^#/d' -e '/^$/d'`; do
-            catnismap `echo "$nismap" | sed -e 's/^\+//'`
+        cat /etc/auto.master | sed -e '/^#/d' -e '/^$/d' | (
+        while read auto_master_in
+        do
+            if [ "`echo $auto_master_in | grep '^+'`" = "" ]; then
+                echo $auto_master_in
+            else
+                for nismap in `cat /etc/auto.master | grep '^\+' |
+                        sed -e '/^#/d' -e '/^$/d'`; do
+                    catnismap `echo "$nismap" | sed -e 's/^\+//'`
+                done
+            fi
         done
+        )
     fi
 }
 function getnismounts()
