@@ -1,4 +1,4 @@
-10/2/2005 autofs-4.1.4_beta2
+14/2/2005 autofs-4.1.4_beta2
 ----------------------------
 - add update to -D variable propogation patch (Michael Blanddford).
 - fix rentrancy problem when releasing the cache.
@@ -7,7 +7,7 @@
 - fix handling of missing newline on last file map entry.
 - fix map entry lookup order (second try).
 - fix couple of comiler warnings.
-- fix reload init script option for Gentoo and Debian.
+- fix reload init script option for Gentoo and Debian (nearly).
 
 26/1/2005 autofs-4.1.4_beta1
 ---------------------------
