@@ -1,4 +1,4 @@
-#ident "$Id: lookup_ldap.c,v 1.1 2003/09/09 11:22:05 raven Exp $"
+#ident "$Id: lookup_ldap.c,v 1.2 2003/09/09 13:47:23 raven Exp $"
 /*
  * lookup_ldap.c
  *
@@ -46,6 +46,7 @@ int lookup_init(const char *mapfmt, int argc, const char * const *argv,
   struct lookup_context *ctxt = NULL;
   int rv, l;
   LDAP *ldap;
+  int version;
 
   /* If we can't build a context, bail. */
   ctxt = (struct lookup_context*) malloc(sizeof(struct lookup_context));
@@ -91,9 +92,26 @@ int lookup_init(const char *mapfmt, int argc, const char * const *argv,
     syslog(LOG_CRIT, MODPREFIX "couldn't initialize LDAP");
     return 1;
   }
+  version = 3;
+  /* Use LDAPv3 */
+  if( ldap_set_option(ldap, LDAP_OPT_PROTOCOL_VERSION, &version) !=
+      LDAP_SUCCESS ){
+    /* fall back to LDAPv2 */
+    ldap_unbind(ldap);
+    if( ( ldap = ldap_init(ctxt->server, LDAP_PORT)) == NULL ) {
+      syslog(LOG_CRIT, MODPREFIX "couldn't initialize LDAP");
+      return 1;
+    }else{
+      version=2;
+    }
+  }
 
   /* Connect to the server as an anonymous user. */
-  rv = ldap_simple_bind_s(ldap, ctxt->base, NULL);
+  if( version == 2){
+    rv = ldap_simple_bind_s(ldap, ctxt->base, NULL);
+  }else{
+    rv = ldap_simple_bind_s(ldap, NULL, NULL);
+  }
   if( rv != LDAP_SUCCESS ) {
     syslog(LOG_CRIT, MODPREFIX "couldn't connect to %s", ctxt->server);
     return 1;
@@ -116,6 +134,7 @@ int lookup_mount(const char *root, const char *name, int name_len, void *context
   char **values;
   char *attrs[] = {ATTRIBUTE, NULL};
   LDAP *ldap;
+  int version;
 
   chdir("/");  /* If this is not here the filesystem stays
          busy, for some reason... */
@@ -147,9 +166,26 @@ int lookup_mount(const char *root, const char *name, int name_len, void *context
     free(query);
     return 1;
   }
+  version = 3;
+  /* Use LDAPv3 */
+  if( ldap_set_option(ldap, LDAP_OPT_PROTOCOL_VERSION, &version) !=
+      LDAP_SUCCESS ){
+    /* fall back to LDAPv2 */
+    ldap_unbind(ldap);
+    if( ( ldap = ldap_init(ctxt->server, LDAP_PORT)) == NULL ) {
+      syslog(LOG_CRIT, MODPREFIX "couldn't initialize LDAP");
+      return 1;
+    }else{
+      version=2;
+    }
+  }
 
   /* Connect to the server as an anonymous user. */
-  rv = ldap_simple_bind_s(ldap, ctxt->base, NULL);
+  if( version == 2){
+    rv = ldap_simple_bind_s(ldap, ctxt->base, NULL);
+  }else{
+    rv = ldap_simple_bind_s(ldap, NULL, NULL);
+  }
   if ( rv != LDAP_SUCCESS ) {
     syslog(LOG_CRIT, MODPREFIX "couldn't bind to %s",
            ctxt->server ? ctxt->server : "default server");
