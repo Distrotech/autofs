@@ -1,6 +1,6 @@
 /* ----------------------------------------------------------------------- *
  *   
- *  lookup_utils.c - module for Linux automount lookup utility functions
+ *  cache.c - mount entry cache management routines
  *
  *   Copyright 2002-2003 Ian Kent <raven@themaw.net> - All Rights Reserved
  *
@@ -29,12 +29,6 @@
 #include <sys/stat.h>
 
 #include "automount.h"
-
-#ifdef DEBUG
-#define DB(x)           do { x; } while(0)
-#else
-#define DB(x)           do { } while(0)
-#endif
 
 extern int kproto_version;	/* Kernel protocol major version */
 extern int kproto_sub_version;	/* Kernel protocol minor version */
@@ -348,13 +342,13 @@ int cache_ghost(const char *root, int ghosted,
 			match = ent_check(&gc, &pkey, ghosted);
 
 			if (match == LKP_ERR_FORMAT) {
-				syslog(LOG_ERR,
-				       "cache_ghost: entry in %s not valid map format, key %s",
+				error("cache_ghost: entry in %s not "
+				      "valid map format, key %s",
 				       gc.mapname, gc.key);
 			} else if (match == LKP_WILD) {
 				if (*me->key == '/')
-					syslog(LOG_NOTICE,
-					       "cache_ghost: wildcard map key not valid in direct map");
+					error("cache_ghost: wildcard map "
+					      "key not valid in direct map");
 				me = me->next;
 				continue;;
 			}
@@ -375,18 +369,17 @@ int cache_ghost(const char *root, int ghosted,
 
 				if (stat(fullpath, &st) == -1 && errno == ENOENT) {
 					if (mkdir_path(fullpath, 0555) < 0)
-						syslog(LOG_WARNING,
-						       "cache_ghost: mkdir_path %s failed: %m",
-						       fullpath);
+						warn("cache_ghost: "
+						     "mkdir_path %s failed: %m",
+						      fullpath);
 				}
 				break;
 
 			case LKP_MOUNT:
 				if (!is_mounted(gc.direct_base)) {
-					DB(syslog
-					   (LOG_DEBUG,
-					    "cache_ghost: attempting to mount map, key %s",
-					    gc.direct_base));
+					debug("cache_ghost: attempting to "
+					      "mount map, key %s",
+					      gc.direct_base);
 					parse->parse_mount("", gc.direct_base + 1,
 							   strlen(gc.direct_base) - 1,
 							   gc.mapent, parse->context);
@@ -419,12 +412,10 @@ int is_mounted(const char *path)
 	mtab = setmntent(_PATH_MOUNTED, "r");
 	if (!mtab) {
 		unlink(AUTOFS_LOCK);
-		syslog(LOG_ERR, "is_mounted: setmntent: %m");
+		error("is_mounted: setmntent: %m");
 		return -1;
 	}
 
-	/* Construct a list of eligible dirs ordered longest->shortest
-	   so that umount will work */
 	while ((mnt = getmntent(mtab)) != NULL) {
 		int len = strlen(mnt->mnt_dir);
 

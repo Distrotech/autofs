@@ -1,4 +1,4 @@
-#ident "$Id: automount.h,v 1.2 2003/09/29 08:22:35 raven Exp $"
+#ident "$Id: automount.h,v 1.3 2004/01/29 16:01:22 raven Exp $"
 /*
  * automount.h
  *
@@ -11,6 +11,8 @@
 
 #include <sys/types.h>
 #include <paths.h>
+#include <limits.h>
+#include <time.h>
 #include "config.h"
 
 /* We MUST have the paths to mount(8) and umount(8) */
@@ -58,6 +60,12 @@
 #define LKP_ERR_MOUNT	0x2000
 #define LKP_NOTSUP	0x4000
 
+#ifdef DEBUG
+#define DB(x)           do { x; } while(0)
+#else
+#define DB(x)           do { } while(0)
+#endif
+
 /*
  * State machine for daemon
  * 
@@ -95,8 +103,8 @@ struct autofs_point {
 	dev_t dev;			/* "Device" number assigned by kernel */
 	char *maptype;			/* Type of map "file", "NIS", etc */
 	unsigned int type;		/* Type of map direct ori indirect */
-	unsigned exp_timeout;		/* Timeout for expiring mounts */
-	unsigned exp_runfreq;		/* Frequency for polling for timeouts */
+	time_t exp_timeout;		/* Timeout for expiring mounts */
+	time_t exp_runfreq;		/* Frequency for polling for timeouts */
 	unsigned ghost;			/* Enable/disable gohsted directories */
 	volatile pid_t exp_process;		/* Process that is currently expiring */
 	volatile struct pending_mount *mounts;	/* Pending mount queue */
@@ -224,5 +232,29 @@ void cache_clean(const char *root, time_t age);
 void cache_release(void);
 int cache_ghost(const char *root, int is_ghosted,
 		const char *map, const char *type, struct parse_mod *parse);
+
+/* buffer management */
+
+int _strlen(const char *str, size_t max);
+int cat_path(char *buf, size_t len, const char *dir, const char *base);
+int ncat_path(char *buf, size_t len,
+              const char *dir, const char *base, size_t blen);
+
+/* rpc helper subs */
+int rpc_ping(const char *host, long seconds, long micros);
+int rpc_time(const char *host, int seconds, int micros, double *result);
+
+/* log notification */
+void enable_verbose(void);
+void disable_verbose(void);
+int get_verbose(void);
+void enable_debug(void);
+void disable_debug(void);
+int get_debug(void);
+void info(char *msg, ...);
+void warn(char *msg, ...);
+void error(char *msg, ...);
+void crit(char *msg, ...);
+void debug(char *msg, ...);
 
 #endif				/* AUTOMOUNT_H */

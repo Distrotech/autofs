@@ -1,4 +1,4 @@
-#ident "$Id: mount_ext2.c,v 1.8 2004/01/18 11:49:35 raven Exp $"
+#ident "$Id: mount_ext2.c,v 1.9 2004/01/29 16:01:22 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  mount_ext2.c - module for Linux automountd to mount ext2 filesystems
@@ -29,12 +29,6 @@
 #define MODULE_MOUNT
 #include "automount.h"
 
-#ifdef DEBUG
-#define DB(x)           do { x; } while(0)
-#else
-#define DB(x)           do { } while(0)
-#endif
-
 #define MODPREFIX "mount(ext2): "
 
 int mount_version = AUTOFS_MOUNT_VERSION;	/* Required by protocol */
@@ -58,19 +52,20 @@ int mount_mount(const char *root, const char *name, int name_len,
 
 	fullpath = alloca(strlen(root) + name_len + 2);
 	if (!fullpath) {
-		syslog(LOG_ERR, MODPREFIX "alloca: %m");
+		error(MODPREFIX "alloca: %m");
 		return 1;
 	}
 	sprintf(fullpath, "%s/%s", root, name);
 
-	DB(syslog(LOG_DEBUG, MODPREFIX "calling mkdir_path %s", fullpath));
+	debug(MODPREFIX "calling mkdir_path %s", fullpath);
+
 	if ((status = mkdir_path(fullpath, 0555)) && errno != EEXIST) {
-		syslog(LOG_ERR, MODPREFIX "mkdir_path %s failed: %m", name);
+		error(MODPREFIX "mkdir_path %s failed: %m", name);
 		return 1;
 	}
 
 	if (is_mounted(fullpath)) {
-		syslog(LOG_WARNING, "BUG: %s already mounted", fullpath);
+		error("BUG: %s already mounted", fullpath);
 		return 0;
 	}
 
@@ -91,44 +86,44 @@ int mount_mount(const char *root, const char *name, int name_len,
 	fsck_prog = PATH_E2FSCK;
 #endif
 	if (ro) {
-		DB(syslog(LOG_DEBUG, MODPREFIX "calling %s -n %s", fsck_prog, what));
+		debug(MODPREFIX "calling %s -n %s", fsck_prog, what);
 		err = spawnl(LOG_DEBUG, fsck_prog, fsck_prog, "-n", what, NULL);
 	} else {
-		DB(syslog(LOG_DEBUG, MODPREFIX "calling %s -p %s", fsck_prog, what));
+		debug(MODPREFIX "calling %s -p %s", fsck_prog, what);
 		err = spawnl(LOG_DEBUG, fsck_prog, fsck_prog, "-p", what, NULL);
 	}
 
 	if (err & ~6) {
-		syslog(LOG_ERR, MODPREFIX "%s: filesystem needs repair, won't mount",
-		       what);
+		error(MODPREFIX "%s: filesystem needs repair, won't mount",
+		      what);
 		return 1;
 	}
 
 	wait_for_lock();
 	if (options) {
-		DB(syslog
-		   (LOG_DEBUG, MODPREFIX "calling mount -t %s " SLOPPY "-o %s %s %s",
-		    fstype, options, what, fullpath));
-		err =
-		    spawnl(LOG_NOTICE, MOUNTED_LOCK, PATH_MOUNT, PATH_MOUNT, "-t", fstype,
-			   SLOPPYOPT "-o", options, what, fullpath, NULL);
+		debug(MODPREFIX "calling mount -t %s " SLOPPY "-o %s %s %s",
+		      fstype, options, what, fullpath);
+		err = spawnl(LOG_NOTICE, MOUNTED_LOCK,
+		             PATH_MOUNT, PATH_MOUNT, "-t", fstype,
+			     SLOPPYOPT "-o", options, what, fullpath, NULL);
 	} else {
-		DB(syslog(LOG_DEBUG, MODPREFIX "calling mount -t %s %s %s",
-			  fstype, what, fullpath));
-		err =
-		    spawnl(LOG_NOTICE, MOUNTED_LOCK, PATH_MOUNT, PATH_MOUNT, "-t", fstype,
-			   what, fullpath, NULL);
+		debug(MODPREFIX "calling mount -t %s %s %s",
+		      fstype, what, fullpath);
+		err = spawnl(LOG_NOTICE, MOUNTED_LOCK,
+			     PATH_MOUNT, PATH_MOUNT, "-t", fstype,
+			     what, fullpath, NULL);
 	}
 	unlink(AUTOFS_LOCK);
+
 	if (err) {
 		if (!ap.ghost || (ap.ghost && !status))
 			rmdir_path(fullpath);
-		syslog(LOG_ERR, MODPREFIX "failed to mount %s (type %s) on %s",
-		       what, fstype, fullpath);
+		error(MODPREFIX "failed to mount %s (type %s) on %s",
+		      what, fstype, fullpath);
 		return 1;
 	} else {
-		DB(syslog(LOG_DEBUG, MODPREFIX "mounted %s type %s on %s",
-			  what, fstype, fullpath));
+		debug(MODPREFIX "mounted %s type %s on %s",
+		      what, fstype, fullpath);
 		return 0;
 	}
 }

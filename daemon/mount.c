@@ -1,4 +1,4 @@
-#ident "$Id: mount.c,v 1.3 2003/09/29 08:22:35 raven Exp $"
+#ident "$Id: mount.c,v 1.4 2004/01/29 16:01:22 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  mount.c - Abstract mount code used by modules for an unexpected
@@ -24,12 +24,6 @@
 #include <string.h>
 #include "automount.h"
 
-#ifdef DEBUG
-#define DB(x)           do { x; } while(0)
-#else
-#define DB(x)           do { } while(0)
-#endif
-
 /* These filesystems are known not to work with the "generic" module */
 /* Note: starting with Samba 2.0.6, smbfs is handled generically.    */
 static char *not_generic[] = { "nfs", "ncpfs", "userfs", "afs",
@@ -53,13 +47,14 @@ int do_mount(const char *root, const char *name, int name_len,
 		if (!*ngp)
 			mod = open_mount(modstr = "generic", NULL);
 		if (!mod) {
-			syslog(LOG_ERR, "cannot find mount method for filesystem %s",
+			error("cannot find mount method for filesystem %s",
 			       fstype);
 			return -1;
 		}
 	}
-	DB(syslog(LOG_DEBUG, "do_mount %s %s/%s type %s options %s using module %s",
-		  what, root, name, fstype, options, modstr));
+
+	debug("do_mount %s %s/%s type %s options %s using module %s",
+		  what, root, name, fstype, options, modstr);
 
 	rv = mod->mount_mount(root, name, name_len, what, fstype, options, mod->context);
 	close_mount(mod);

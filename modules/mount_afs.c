@@ -1,4 +1,4 @@
-#ident "$Id: mount_afs.c,v 1.2 2003/09/29 08:22:35 raven Exp $"
+#ident "$Id: mount_afs.c,v 1.3 2004/01/29 16:01:22 raven Exp $"
 /*
  * mount_afs.c
  *
@@ -22,12 +22,6 @@
 #define MODULE_MOUNT
 #include "automount.h"
 
-#ifdef DEBUG
-#define DB(x)           do { x; } while(0)
-#else
-#define DB(x)           do { } while(0)
-#endif
-
 #define MODPREFIX "mount(afs): "
 int mount_version = AUTOFS_MOUNT_VERSION;	/* Required by protocol */
 
@@ -45,11 +39,7 @@ int mount_mount(const char *root, const char *name, int name_len,
 	strncat(dest, "/", sizeof(dest));
 	strncat(dest, name, sizeof(dest));
 
-	/* This was here just so I could figure out how this worked.
-	   syslog(LOG_DEBUG, MODPREFIX "mount_mount called with root=\"%s\", "
-	   "name=\"%s\", namelen=\"%d, what=\"%s\", fstype=\"%s\", options=\"%s\"",+       root, name, name_len, what, fstype, options); */
-
-	DB(syslog(LOG_DEBUG, MODPREFIX "mounting AFS %s -> %s", dest, what));
+	debug(MODPREFIX "mounting AFS %s -> %s", dest, what);
 
 	return symlink(what, dest);	/* Try it.  If it fails, return the error. */
 }

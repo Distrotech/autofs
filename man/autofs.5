@@ -1,5 +1,5 @@
 .\" t
-.\" $Id: autofs.5,v 1.5 2003/12/31 15:44:13 raven Exp $
+.\" $Id: autofs.5,v 1.6 2004/01/29 16:01:22 raven Exp $
 .TH AUTOFS 5 "6 Apr 1998"
 .TH AUTOFS 5 "14 Jan 2000"
 .SH NAME
@@ -181,6 +181,31 @@ can be used to name multiple filesystems to mount.  It takes the form:
 This may extend over multiple lines, quoting the line-breaks with \`\\\'.
 If present, the per-mountpoint mount-options are appended to the
 default mount-options.
+.SS Replicated Server
+.sp
+.RS +.2i
+.ta 1.5i
+.nf
+Multiple replicated hosts, same path:
+<path> host1,host2,hostn:/path/path
+
+Multiple hosts, some with same path, some with another
+<path> host1,host2:/blah host3:/some/other/path
+
+Multiple replicated hosts, different (potentially) paths:
+<path> host1:/path/pathA host2:/path/pathB
+
+Mutliple weighted, replicated hosts same path:
+<path> host1(5),host2(6),host3(1):/path/path
+
+Multiple weighted, replicated hosts different (potentially) paths:
+<path> host1(3):/path/pathA host2(5):/path/pathB
+
+Anything else is questionable and unsupported, but these variations will also work:
+<path> host1(3),host:/blah
+.fi
+.RE
+.sp
 .SH UNSUPPORTED
 This version of the automounter supports direct maps for FILE, NIS and LDAP maps only
 and handles SunOS-style replicated filesystems only to the extent that

@@ -1,4 +1,4 @@
-#ident "$Id: lookup_ldap.c,v 1.4 2004/01/18 11:49:35 raven Exp $"
+#ident "$Id: lookup_ldap.c,v 1.5 2004/01/29 16:01:22 raven Exp $"
 /*
  * lookup_ldap.c
  *
@@ -23,12 +23,6 @@
 
 #define MODULE_LOOKUP
 #include "automount.h"
-
-#ifdef DEBUG
-#define DB(x)           do { x; } while(0)
-#else
-#define DB(x)           do { } while(0)
-#endif
 
 #define MAPFMT_DEFAULT "sun"
 
@@ -58,7 +52,7 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 	ctxt = (struct lookup_context *) malloc(sizeof(struct lookup_context));
 	*context = ctxt;
 	if (ctxt == NULL) {
-		syslog(LOG_CRIT, MODPREFIX "malloc: %m");
+		crit(MODPREFIX "malloc: %m");
 		return 1;
 	}
 	memset(ctxt, 0, sizeof(struct lookup_context));
@@ -108,12 +102,13 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 	memset(ctxt->base, 0, l + 1);
 	memcpy(ctxt->base, ptr, l);
 
-	DB(syslog(LOG_DEBUG, MODPREFIX "server = \"%s\", port = %d, base dn = \"%s\"",
-		  ctxt->server ? ctxt->server : "(default)", ctxt->port, ctxt->base));
+	debug(MODPREFIX "server = \"%s\", port = %d, base dn = \"%s\"",
+		  ctxt->server ? ctxt->server : "(default)",
+		  ctxt->port, ctxt->base);
 
 	/* Initialize the LDAP context. */
 	if ((ldap = ldap_init(ctxt->server, ctxt->port)) == NULL) {
-		syslog(LOG_CRIT, MODPREFIX "couldn't initialize LDAP");
+		crit(MODPREFIX "couldn't initialize LDAP");
 		return 1;
 	}
 
@@ -122,7 +117,7 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 		/* fall back to LDAPv2 */
 		ldap_unbind(ldap);
 		if ((ldap = ldap_init(ctxt->server, ctxt->port)) == NULL) {
-			syslog(LOG_CRIT, MODPREFIX "couldn't initialize LDAP");
+			crit(MODPREFIX "couldn't initialize LDAP");
 			return 1;
 		} else {
 			version = 2;
@@ -136,7 +131,7 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 		rv = ldap_simple_bind_s(ldap, NULL, NULL);
 
 	if (rv != LDAP_SUCCESS) {
-		syslog(LOG_CRIT, MODPREFIX "couldn't connect to %s", ctxt->server);
+		crit(MODPREFIX "couldn't connect to %s", ctxt->server);
 		return 1;
 	}
 
@@ -163,7 +158,7 @@ static int read_one_map(const char *root,
 	int version = 3;
 
 	if (ctxt == NULL) {
-		syslog(LOG_CRIT, MODPREFIX "context was NULL");
+		crit(MODPREFIX "context was NULL");
 		return 0;
 	}
 
@@ -172,20 +167,20 @@ static int read_one_map(const char *root,
 
 	query = alloca(l);
 	if (query == NULL) {
-		syslog(LOG_CRIT, MODPREFIX "malloc: %m");
+		crit(MODPREFIX "malloc: %m");
 		return 0;
 	}
 
 	memset(query, '\0', l);
 	if (sprintf(query, "(&(objectclass=%s))", class) >= l) {
-		syslog(LOG_DEBUG, MODPREFIX "error forming query string");
+		debug(MODPREFIX "error forming query string");
 	}
 	query[l - 1] = '\0';
 
 	/* Initialize the LDAP context. */
 	if ((ldap = ldap_init(ctxt->server, ctxt->port)) == NULL) {
-		syslog(LOG_CRIT, MODPREFIX "couldn't initialize LDAP connection"
-		       " to %s", ctxt->server ? ctxt->server : "default server");
+		crit(MODPREFIX "couldn't initialize LDAP connection"
+		     " to %s", ctxt->server ? ctxt->server : "default server");
 		return 0;
 	}
 
@@ -194,7 +189,7 @@ static int read_one_map(const char *root,
 		/* fall back to LDAPv2 */
 		ldap_unbind(ldap);
 		if ((ldap = ldap_init(ctxt->server, ctxt->port)) == NULL) {
-			syslog(LOG_CRIT, MODPREFIX "couldn't initialize LDAP");
+			crit(MODPREFIX "couldn't initialize LDAP");
 			return 1;
 		} else {
 			version = 2;
@@ -208,31 +203,28 @@ static int read_one_map(const char *root,
 		rv = ldap_simple_bind_s(ldap, NULL, NULL);
 
 	if (rv != LDAP_SUCCESS) {
-		syslog(LOG_CRIT, MODPREFIX "couldn't bind to %s",
-		       ctxt->server ? ctxt->server : "default server");
+		crit(MODPREFIX "couldn't bind to %s",
+		     ctxt->server ? ctxt->server : "default server");
 		return 0;
 	}
 
 	/* Look around. */
-	DB(syslog(LOG_DEBUG, MODPREFIX "searching for \"%s\" under \"%s\"",
-		  query, ctxt->base));
+	debug(MODPREFIX "searching for \"%s\" under \"%s\"", query, ctxt->base);
 
 	rv = ldap_search_s(ldap, ctxt->base, LDAP_SCOPE_SUBTREE,
 			   query, attrs, 0, &result);
 
 	if ((rv != LDAP_SUCCESS) || (result == NULL)) {
-		syslog(LOG_INFO, MODPREFIX "query failed for %s", query);
+		crit(MODPREFIX "query failed for %s", query);
 		return 0;
 	}
 
 	e = ldap_first_entry(ldap, result);
 	if (e == NULL) {
-		DB(syslog
-		   (LOG_INFO, MODPREFIX "query succeeded, no matches for %s", query));
+		debug(MODPREFIX "query succeeded, no matches for %s", query);
 		return 0;
-	} else {
-		DB(syslog(LOG_DEBUG, MODPREFIX "examining first entry"));
-	}
+	} else
+		debug(MODPREFIX "examining first entry");
 
 	while (e != NULL) {
 		keyValue = ldap_get_values(ldap, e, key);
@@ -244,7 +236,7 @@ static int read_one_map(const char *root,
 
 		values = ldap_get_values(ldap, e, type);
 		if (!values) {
-			syslog(LOG_INFO, MODPREFIX "no %s defined for %s", type, query);
+			info(MODPREFIX "no %s defined for %s", type, query);
 			ldap_value_free(keyValue);
 			e = ldap_next_entry(ldap, e);
 			continue;
@@ -315,7 +307,10 @@ int lookup_ghost(const char *root, int ghost, void *context)
 
 	if (*me->key == '/' && *(root + 1) != '-') {
 		me = cache_partial_match(root);
-		/* me NULL => no entries for this direct mount root or indirect map */
+		/* 
+		 * me NULL => no entries for this direct mount
+		 * root or indirect map
+		 */
 		if (me == NULL)
 			return LKP_FAIL | LKP_INDIRECT;
 	}
@@ -343,9 +338,9 @@ static int lookup(const char *root, const char *name, int name_len, void *contex
 		while (me) {
 			sprintf(mapent, me->mapent);
 
-			DB(syslog(LOG_DEBUG, MODPREFIX "%s -> %s", name, mapent));
+			debug(MODPREFIX "%s -> %s", name, mapent);
 			status = ctxt->parse->parse_mount(root, name, name_len,
-							  mapent, ctxt->parse->context);
+						  mapent, ctxt->parse->context);
 			me = cache_lookup_next(me);
 		}
 	} else {
@@ -353,9 +348,9 @@ static int lookup(const char *root, const char *name, int name_len, void *contex
 		me = cache_partial_match(key);
 		if (me) {
 			if (ctxt->server) {
-				mapname =
-				    alloca(strlen(ctxt->server) + strlen(ctxt->base) + 2 +
-					   1 + 1);
+				int len = strlen(ctxt->server) +
+					    strlen(ctxt->base) + 2 + 1 + 1;
+				mapname = alloca(len);
 				sprintf(mapname, "//%s/%s", ctxt->server, ctxt->base);
 			} else {
 				mapname = alloca(strlen(ctxt->base) + 1);
@@ -363,9 +358,9 @@ static int lookup(const char *root, const char *name, int name_len, void *contex
 			}
 			sprintf(mapent, "-fstype=autofs ldap:%s", mapname);
 
-			DB(syslog(LOG_DEBUG, MODPREFIX "%s -> %s", name, mapent));
+			debug(MODPREFIX "%s -> %s", name, mapent);
 			status = ctxt->parse->parse_mount(root, name, name_len,
-							  mapent, ctxt->parse->context);
+						  mapent, ctxt->parse->context);
 		}
 	}
 	return status;

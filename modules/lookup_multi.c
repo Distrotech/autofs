@@ -1,4 +1,4 @@
-#ident "$Id: lookup_multi.c,v 1.2 2003/09/29 08:22:35 raven Exp $"
+#ident "$Id: lookup_multi.c,v 1.3 2004/01/29 16:01:22 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup_multi.c - module for Linux automount to seek multiple lookup
@@ -25,12 +25,6 @@
 
 #define MODULE_LOOKUP
 #include "automount.h"
-
-#ifdef DEBUG
-#define DB(x)           do { x; } while(0)
-#else
-#define DB(x)           do { } while(0)
-#endif
 
 #define MODPREFIX "lookup(multi): "
 
@@ -60,7 +54,7 @@ int lookup_init(const char *my_mapfmt, int argc, const char *const *argv, void *
 	memset(ctxt, 0, sizeof(struct lookup_context));
 
 	if (argc < 1) {
-		syslog(LOG_CRIT, MODPREFIX "No map list");
+		crit(MODPREFIX "No map list");
 		return 1;
 	}
 
@@ -92,7 +86,7 @@ int lookup_init(const char *my_mapfmt, int argc, const char *const *argv, void *
 
 	for (i = 0; i < ctxt->n; i++) {
 		if (!ctxt->m[i].argv[0]) {
-			syslog(LOG_CRIT, MODPREFIX "missing module name");
+			crit(MODPREFIX "missing module name");
 			return 1;
 		}
 		map = strdup(ctxt->m[i].argv[0]);
@@ -113,7 +107,7 @@ int lookup_init(const char *my_mapfmt, int argc, const char *const *argv, void *
 	return 0;
 
       nomem:
-	syslog(LOG_CRIT, MODPREFIX "malloc: %m");
+	crit(MODPREFIX "malloc: %m");
 	return 1;
 }
 

@@ -1,4 +1,4 @@
-#ident "$Id: module.c,v 1.3 2003/12/13 16:37:06 raven Exp $"
+#ident "$Id: module.c,v 1.4 2004/01/29 16:01:22 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  module.c - common module-management functions
@@ -25,27 +25,35 @@ struct lookup_mod *open_lookup(const char *name, const char *err_prefix,
 {
 	struct lookup_mod *mod;
 	char *fnbuf;
+	size_t size_name;
+	size_t size_fnbuf;
 	void *dh;
 	int *ver;
+
+	size_name = _strlen(name, PATH_MAX + 1);
+	if (!size_name)
+		return NULL;
 
 	mod = malloc(sizeof(struct lookup_mod));
 	if (!mod) {
 		if (err_prefix)
-			syslog(LOG_CRIT, "%s%m", err_prefix);
+			crit("%s%m", err_prefix);
 		return NULL;
 	}
-	fnbuf = alloca(strlen(name) + strlen(AUTOFS_LIB_DIR) + 13);
+
+	size_fnbuf = size_name + strlen(AUTOFS_LIB_DIR) + 13;
+	fnbuf = alloca(size_fnbuf);
 	if (!fnbuf) {
 		free(mod);
 		if (err_prefix)
-			syslog(LOG_CRIT, "%s%m", err_prefix);
+			crit("%s%m", err_prefix);
 		return NULL;
 	}
-	sprintf(fnbuf, "%s/lookup_%s.so", AUTOFS_LIB_DIR, name);
+	snprintf(fnbuf, size_fnbuf, "%s/lookup_%s.so", AUTOFS_LIB_DIR, name);
 
 	if (!(dh = dlopen(fnbuf, RTLD_NOW))) {
 		if (err_prefix)
-			syslog(LOG_CRIT, "%scannot open lookup module %s (%s)",
+			crit("%scannot open lookup module %s (%s)",
 			       err_prefix, name, dlerror());
 		free(mod);
 		return NULL;
@@ -54,7 +62,7 @@ struct lookup_mod *open_lookup(const char *name, const char *err_prefix,
 	if (!(ver = (int *) dlsym(dh, "lookup_version"))
 	    || *ver != AUTOFS_LOOKUP_VERSION) {
 		if (err_prefix)
-			syslog(LOG_CRIT, "%slookup module %s version mismatch",
+			crit("%slookup module %s version mismatch",
 			       err_prefix, name);
 		dlclose(dh);
 		free(mod);
@@ -66,7 +74,7 @@ struct lookup_mod *open_lookup(const char *name, const char *err_prefix,
 	    !(mod->lookup_mount = (lookup_mount_t) dlsym(dh, "lookup_mount")) ||
 	    !(mod->lookup_done = (lookup_done_t) dlsym(dh, "lookup_done"))) {
 		if (err_prefix)
-			syslog(LOG_CRIT, "%slookup module %s corrupt", err_prefix, name);
+			crit("%slookup module %s corrupt", err_prefix, name);
 		dlclose(dh);
 		free(mod);
 		return NULL;
@@ -94,27 +102,35 @@ struct parse_mod *open_parse(const char *name, const char *err_prefix,
 {
 	struct parse_mod *mod;
 	char *fnbuf;
+	size_t size_name;
+	size_t size_fnbuf;
 	void *dh;
 	int *ver;
+
+	size_name = _strlen(name, PATH_MAX + 1);
+	if (!size_name)
+		return NULL;
 
 	mod = malloc(sizeof(struct parse_mod));
 	if (!mod) {
 		if (err_prefix)
-			syslog(LOG_CRIT, "%s%m", err_prefix);
+			crit("%s%m", err_prefix);
 		return NULL;
 	}
-	fnbuf = alloca(strlen(name) + strlen(AUTOFS_LIB_DIR) + 12);
+
+	size_fnbuf = size_name + strlen(AUTOFS_LIB_DIR) + 13;
+	fnbuf = alloca(size_fnbuf);
 	if (!fnbuf) {
 		free(mod);
 		if (err_prefix)
-			syslog(LOG_CRIT, "%s%m", err_prefix);
+			crit("%s%m", err_prefix);
 		return NULL;
 	}
-	sprintf(fnbuf, "%s/parse_%s.so", AUTOFS_LIB_DIR, name);
+	snprintf(fnbuf, size_fnbuf, "%s/parse_%s.so", AUTOFS_LIB_DIR, name);
 
 	if (!(dh = dlopen(fnbuf, RTLD_NOW))) {
 		if (err_prefix)
-			syslog(LOG_CRIT, "%scannot open parse module %s (%s)",
+			crit("%scannot open parse module %s (%s)",
 			       err_prefix, name, dlerror());
 		free(mod);
 		return NULL;
@@ -123,8 +139,8 @@ struct parse_mod *open_parse(const char *name, const char *err_prefix,
 	if (!(ver = (int *) dlsym(dh, "parse_version"))
 	    || *ver != AUTOFS_PARSE_VERSION) {
 		if (err_prefix)
-			syslog(LOG_CRIT, "%sparse module %s version mismatch", err_prefix,
-			       name);
+			crit("%sparse module %s version mismatch",
+			     err_prefix, name);
 		dlclose(dh);
 		free(mod);
 		return NULL;
@@ -134,7 +150,7 @@ struct parse_mod *open_parse(const char *name, const char *err_prefix,
 	    !(mod->parse_mount = (parse_mount_t) dlsym(dh, "parse_mount")) ||
 	    !(mod->parse_done = (parse_done_t) dlsym(dh, "parse_done"))) {
 		if (err_prefix)
-			syslog(LOG_CRIT, "%sparse module %s corrupt", err_prefix, name);
+			crit("%sparse module %s corrupt", err_prefix, name);
 		dlclose(dh);
 		free(mod);
 		return NULL;
@@ -161,27 +177,35 @@ struct mount_mod *open_mount(const char *name, const char *err_prefix)
 {
 	struct mount_mod *mod;
 	char *fnbuf;
+	size_t size_name;
+	size_t size_fnbuf;
 	void *dh;
 	int *ver;
+
+	size_name = _strlen(name, PATH_MAX + 1);
+	if (!size_name)
+		return NULL;
 
 	mod = malloc(sizeof(struct mount_mod));
 	if (!mod) {
 		if (err_prefix)
-			syslog(LOG_CRIT, "%s%m", err_prefix);
+			crit("%s%m", err_prefix);
 		return NULL;
 	}
-	fnbuf = alloca(strlen(name) + strlen(AUTOFS_LIB_DIR) + 12);
+
+	size_fnbuf = size_name + strlen(AUTOFS_LIB_DIR) + 13;
+	fnbuf = alloca(size_fnbuf);
 	if (!fnbuf) {
 		free(mod);
 		if (err_prefix)
-			syslog(LOG_CRIT, "%s%m", err_prefix);
+			crit("%s%m", err_prefix);
 		return NULL;
 	}
-	sprintf(fnbuf, "%s/mount_%s.so", AUTOFS_LIB_DIR, name);
+	snprintf(fnbuf, size_fnbuf, "%s/mount_%s.so", AUTOFS_LIB_DIR, name);
 
 	if (!(dh = dlopen(fnbuf, RTLD_NOW))) {
 		if (err_prefix)
-			syslog(LOG_CRIT, "%scannot open mount module %s (%s)",
+			crit("%scannot open mount module %s (%s)",
 			       err_prefix, name, dlerror());
 		free(mod);
 		return NULL;
@@ -190,8 +214,8 @@ struct mount_mod *open_mount(const char *name, const char *err_prefix)
 	if (!(ver = (int *) dlsym(dh, "mount_version"))
 	    || *ver != AUTOFS_MOUNT_VERSION) {
 		if (err_prefix)
-			syslog(LOG_CRIT, "%smount module %s version mismatch", err_prefix,
-			       name);
+			crit("%smount module %s version mismatch",
+			     err_prefix, name);
 		dlclose(dh);
 		free(mod);
 		return NULL;
@@ -201,7 +225,7 @@ struct mount_mod *open_mount(const char *name, const char *err_prefix)
 	    !(mod->mount_mount = (mount_mount_t) dlsym(dh, "mount_mount")) ||
 	    !(mod->mount_done = (mount_done_t) dlsym(dh, "mount_done"))) {
 		if (err_prefix)
-			syslog(LOG_CRIT, "%smount module %s corrupt", err_prefix, name);
+			crit("%smount module %s corrupt", err_prefix, name);
 		dlclose(dh);
 		free(mod);
 		return NULL;

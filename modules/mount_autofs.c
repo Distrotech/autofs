@@ -1,4 +1,4 @@
-#ident "$Id: mount_autofs.c,v 1.7 2003/10/08 13:59:46 raven Exp $"
+#ident "$Id: mount_autofs.c,v 1.8 2004/01/29 16:01:22 raven Exp $"
 /*
  * mount_autofs.c
  *
@@ -24,13 +24,8 @@
 #define MODULE_MOUNT
 #include "automount.h"
 
-#ifdef DEBUG
-#define DB(x)           do { x; } while(0)
-#else
-#define DB(x)           do { } while(0)
-#endif
-
 #define MODPREFIX "mount(autofs): "
+
 int mount_version = AUTOFS_MOUNT_VERSION;	/* Required by protocol */
 
 extern struct autofs_point ap;
@@ -52,7 +47,7 @@ int mount_mount(const char *root, const char *name, int name_len,
 
 	fullpath = alloca(strlen(root) + name_len + 2);
 	if (!fullpath) {
-		syslog(LOG_ERR, MODPREFIX "alloca: %m");
+		error(MODPREFIX "alloca: %m");
 		return 1;
 	}
 	sprintf(fullpath, "%s/%s", root, name);
@@ -60,7 +55,7 @@ int mount_mount(const char *root, const char *name, int name_len,
 	if (c_options) {
 		options = alloca(strlen(c_options) + 1);
 		if (!options) {
-			syslog(LOG_ERR, MODPREFIX "alloca: %m");
+			error(MODPREFIX "alloca: %m");
 			return 1;
 		}
 		strcpy(options, c_options);
@@ -68,18 +63,18 @@ int mount_mount(const char *root, const char *name, int name_len,
 		options = NULL;
 	}
 
-	DB(syslog(LOG_DEBUG, MODPREFIX "calling mkdir_path %s", fullpath));
+	debug(MODPREFIX "calling mkdir_path %s", fullpath);
 
 	if (mkdir_path(fullpath, 0555) && errno != EEXIST) {
-		syslog(LOG_NOTICE, MODPREFIX "mkdir_path %s failed: %m", name);
+		error(MODPREFIX "mkdir_path %s failed: %m", name);
 		return 1;
 	}
 
-	DB(syslog(LOG_DEBUG, MODPREFIX "fullpath=%s what=%s options=%s",
-		  fullpath, what, options));
+	debug(MODPREFIX "fullpath=%s what=%s options=%s",
+		  fullpath, what, options);
 
 	if (is_mounted(fullpath)) {
-		syslog(LOG_WARNING, "BUG: about mount over %s, continuing", fullpath);
+		warn("BUG: about to mount over %s, continuing", fullpath);
 		return 0;
 	}
 
@@ -89,9 +84,12 @@ int mount_mount(const char *root, const char *name, int name_len,
 	if (ap.ghost)
 		argc++;
 
+	if (get_verbose() || get_debug())
+		argc++;
+
 	if (ap.exp_timeout && ap.exp_timeout != DEFAULT_TIMEOUT) {
 		argc++;
-		sprintf(timeout_opt, "--timeout=%d", ap.exp_timeout);
+		sprintf(timeout_opt, "--timeout=%d", (int) ap.exp_timeout);
 	}
 
 	if (options) {
@@ -114,11 +112,16 @@ int mount_mount(const char *root, const char *name, int name_len,
 	if (ap.exp_timeout != DEFAULT_TIMEOUT)
 		argv[argc++] = timeout_opt;
 
+	if (get_debug())
+		argv[argc++] = "--debug";
+	else if (get_verbose())
+		argv[argc++] = "--verbose";
+
 	argv[argc++] = fullpath;
 	argv[argc++] = strcpy(alloca(strlen(what) + 1), what);
 
 	if ((p = strchr(argv[argc - 1], ':')) == NULL) {
-		syslog(LOG_WARNING, MODPREFIX "%s missing script type on %s", name, what);
+		error(MODPREFIX "%s missing script type on %s", name, what);
 		goto error;
 	}
 
@@ -139,12 +142,15 @@ int mount_mount(const char *root, const char *name, int name_len,
 	}
 	argv[argc] = NULL;
 
-	/* Spawn a new daemon.  If initialization is successful, the daemon will send
-	   itself SIGSTOP, which we detect and let it go on its merry way. */
+	/*
+	 * Spawn a new daemon.  If initialization is successful,
+	 * the daemon will send itself SIGSTOP, which we detect
+	 * and let it go on its merry way.
+	 */
 
 	slave = fork();
 	if (slave < 0) {
-		syslog(LOG_ERR, MODPREFIX "fork: %m");
+		error(MODPREFIX "fork: %m");
 		goto error;
 	} else if (slave == 0) {
 		/* Slave process */
@@ -154,25 +160,27 @@ int mount_mount(const char *root, const char *name, int name_len,
 
 	while ((wp = waitpid(slave, &status, WUNTRACED)) == -1 && errno == EINTR);
 	if (wp != slave) {
-		syslog(LOG_NOTICE, MODPREFIX "waitpid: %m");
+		error(MODPREFIX "waitpid: %m");
 		goto error;
 	}
 
 	if (!WIFSTOPPED(status) || WSTOPSIG(status) != SIGSTOP) {
-		syslog(LOG_WARNING, MODPREFIX "sub automount returned status 0x%x",
-		       status);
+		error(MODPREFIX "sub automount returned status 0x%x", status);
 		goto error;
 	}
 
 	kill(slave, SIGCONT);	/* Carry on, private */
 
-	DB(syslog(LOG_DEBUG, MODPREFIX "mounted %s on %s", what, fullpath));
+	debug(MODPREFIX "mounted %s on %s", what, fullpath);
+
 	return 0;
 
       error:
 	if (!ap.ghost)
 		rmdir_path(fullpath);
-	syslog(LOG_ERR, MODPREFIX "failed to mount %s on %s", what, fullpath);
+
+	error(MODPREFIX "failed to mount %s on %s", what, fullpath);
+
 	return 1;
 }
 

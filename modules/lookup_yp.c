@@ -1,4 +1,4 @@
-#ident "$Id: lookup_yp.c,v 1.2 2003/09/29 08:22:35 raven Exp $"
+#ident "$Id: lookup_yp.c,v 1.3 2004/01/29 16:01:22 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup_yp.c - module for Linux automountd to access a YP (NIS)
@@ -32,12 +32,6 @@
 #define MODULE_LOOKUP
 #include "automount.h"
 
-#ifdef DEBUG
-#define DB(x)           do { x; } while(0)
-#else
-#define DB(x)           do { } while(0)
-#endif
-
 #define MAPFMT_DEFAULT "sun"
 
 #define MODPREFIX "lookup(yp): "
@@ -69,12 +63,12 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 	int err;
 
 	if (!(*context = ctxt = malloc(sizeof(struct lookup_context)))) {
-		syslog(LOG_CRIT, MODPREFIX "%m");
+		crit(MODPREFIX "%m");
 		return 1;
 	}
 
 	if (argc < 1) {
-		syslog(LOG_CRIT, MODPREFIX "No map name");
+		crit(MODPREFIX "No map name");
 		return 1;
 	}
 	ctxt->mapname = argv[0];
@@ -82,7 +76,7 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 	/* This should, but doesn't, take a const char ** */
 	err = yp_get_default_domain((char **) &ctxt->domainname);
 	if (err) {
-		syslog(LOG_CRIT, MODPREFIX "map %s: %s\n", ctxt->mapname,
+		crit(MODPREFIX "map %s: %s\n", ctxt->mapname,
 		       yperr_string(err));
 		return 1;
 	}
@@ -131,7 +125,7 @@ static int read_map(const char *root, struct lookup_context *context)
 	err = yp_all((char *) ctxt->domainname, (char *) ctxt->mapname, &ypcb);
 
 	if (err != YPERR_SUCCESS) {
-		syslog(LOG_WARNING, MODPREFIX "lookup_ghost for %s failed: %s",
+		warn(MODPREFIX "lookup_ghost for %s failed: %s",
 		       root, yperr_string(err));
 		return 0;
 	}
@@ -179,7 +173,7 @@ int lookup_mount(const char *root, const char *name, int name_len, void *context
 	int mapent_len;
 	int err, rv;
 
-	DB(syslog(LOG_DEBUG, MODPREFIX "looking up %s", name));
+	debug(MODPREFIX "looking up %s", name);
 
 	me = cache_lookup(name);
 	if (me == NULL)
@@ -214,8 +208,11 @@ int lookup_mount(const char *root, const char *name, int name_len, void *context
 				       key, key_len, &mapent, &mapent_len);
 
 			if (err == YPERR_KEY) {
-				/* Try to get the "*" entry if there is one - note that we *don't*
-				   modify "name" so & -> the name we used, not "*" */
+				/* 
+				 * Try to get the "*" entry if there is one i
+				 * - note that we *don't* modify "name" so
+				 *   & -> the name we used, not "*"
+				 */
 				err =
 				    yp_match((char *) ctxt->domainname,
 					     (char *) ctxt->mapname, "*", 1, &mapent,
@@ -224,9 +221,8 @@ int lookup_mount(const char *root, const char *name, int name_len, void *context
 				cache_update(key, mapent, age);
 
 			if (err) {
-				syslog(LOG_WARNING,
-				       MODPREFIX "lookup for %s failed: %s", name,
-				       yperr_string(err));
+				warn(MODPREFIX "lookup for %s failed: %s", name,
+				     yperr_string(err));
 				if (mapent)
 					free(mapent);
 				return 1;
@@ -237,7 +233,7 @@ int lookup_mount(const char *root, const char *name, int name_len, void *context
 
 	mapent[mapent_len] = '\0';
 
-	DB(syslog(LOG_DEBUG, MODPREFIX "%s -> %s", name, mapent));
+	debug(MODPREFIX "%s -> %s", name, mapent);
 
 	rv = ctxt->parse->parse_mount(root, name, name_len, mapent, ctxt->parse->context);
 	free(mapent);

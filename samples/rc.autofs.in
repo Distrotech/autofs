@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# $Id: rc.autofs.in,v 1.9 2003/12/13 07:50:00 raven Exp $
+# $Id: rc.autofs.in,v 1.10 2004/01/29 16:01:22 raven Exp $
 #
 # rc file for automount using a Sun-style "master map".
 # We first look for a local /etc/auto.master, then a YP
@@ -180,10 +180,18 @@ function getmounts()
 		if echo "$daemonoptions $options" | grep -q -- '-g' ; then
 		    startupoptions="$startupoptions --ghost"
 		fi
+		if echo "$daemonoptions $options" | grep -q -- '-v' ; then
+		    startupoptions="$startupoptions --verbose"
+		fi
+		if echo "$daemonoptions $options" | grep -q -- '-d' ; then
+		    startupoptions="$startupoptions --debug"
+		fi
 		# Other option flags are intended for maps.
 		mapoptions="$(echo "$daemonoptions $options" |\
 		      sed   's/--*t\(imeout\)*[ \t=]*\([0-9][0-9]*\)//g' |
-		      sed   's/--*g\(host\)*//g')"
+		      sed   's/--*g\(host\)*//g' |
+		      sed   's/--*v\(verbose\)*//g' |
+		      sed   's/--*d\(ebug\)*//g')"
 		# Break up the maptype and map, if the map type is specified
 		maptype=`echo $map | cut -f1 -d:`
 		# Handle degenerate map specifiers

@@ -1,4 +1,4 @@
-#ident "$Id: mount_bind.c,v 1.6 2004/01/18 11:49:35 raven Exp $"
+#ident "$Id: mount_bind.c,v 1.7 2004/01/29 16:01:22 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  mount_bind.c      - module to mount a local filesystem if possible;
@@ -29,13 +29,8 @@
 #define MODULE_MOUNT
 #include "automount.h"
 
-#ifdef DEBUG
-#define DB(x)           do { x; } while(0)
-#else
-#define DB(x)           do { } while(0)
-#endif
-
 #define MODPREFIX "mount(bind): "
+
 int mount_version = AUTOFS_MOUNT_VERSION;	/* Required by protocol */
 
 extern struct autofs_point ap;
@@ -66,17 +61,18 @@ int mount_init(void **context)
 	if (lstat(tmp1, &st1) == -1)
 		goto out;
 
-	err =
-	    spawnl(LOG_DEBUG, MOUNTED_LOCK, PATH_MOUNT, PATH_MOUNT, "-n", "--bind", tmp1,
-		   tmp2, NULL);
+	err = spawnl(LOG_DEBUG, MOUNTED_LOCK,
+	    	     PATH_MOUNT, PATH_MOUNT, "-n", "--bind", tmp1, tmp2, NULL);
 
 	if (err == 0 &&
 	    lstat(tmp2, &st2) == 0 &&
 	    st1.st_dev == st2.st_dev && st1.st_ino == st2.st_ino) {
 		bind_works = 1;
 	}
-	DB(syslog(LOG_DEBUG, MODPREFIX "bind_works = %d\n", bind_works));
-	spawnl(LOG_DEBUG, MOUNTED_LOCK, PATH_UMOUNT, PATH_UMOUNT, "-n", tmp2, NULL);
+
+	debug(MODPREFIX "bind_works = %d\n", bind_works);
+	spawnl(LOG_DEBUG, MOUNTED_LOCK,
+	       PATH_UMOUNT, PATH_UMOUNT, "-n", tmp2, NULL);
 
       out:
 	rmdir(tmp2);
@@ -97,7 +93,7 @@ int mount_mount(const char *root, const char *name, int name_len,
 
 	fullpath = alloca(strlen(root) + name_len + 2);
 	if (!fullpath) {
-		syslog(LOG_ERR, MODPREFIX "alloca: %m");
+		error(MODPREFIX "alloca: %m");
 		return 1;
 	}
 	sprintf(fullpath, "%s/%s", root, name);
@@ -108,25 +104,24 @@ int mount_mount(const char *root, const char *name, int name_len,
 	if (bind_works) {
 		int status;
 
-		DB(syslog(LOG_DEBUG, MODPREFIX "calling mkdir_path %s", fullpath));
+		debug(MODPREFIX "calling mkdir_path %s", fullpath);
 
 		if ((status = mkdir_path(fullpath, 0555)) && errno != EEXIST) {
-			syslog(LOG_NOTICE, MODPREFIX "mkdir_path %s failed: %m",
-			       fullpath);
+			error(MODPREFIX "mkdir_path %s failed: %m", fullpath);
 			return 1;
 		}
 
 		if (is_mounted(fullpath)) {
-			syslog(LOG_WARNING, "BUG: %s already mounted", fullpath);
+			warn("BUG: %s already mounted", fullpath);
 			return 0;
 		}
 
-		DB(syslog(LOG_DEBUG, MODPREFIX "calling mount --bind %s %s",
-			  what, fullpath));
+		debug(MODPREFIX "calling mount --bind %s %s", what, fullpath);
+
 		wait_for_lock();
-		err =
-		    spawnl(LOG_NOTICE, MOUNTED_LOCK, PATH_MOUNT, PATH_MOUNT, "--bind",
-			   what, fullpath, NULL);
+		err = spawnl(LOG_NOTICE, MOUNTED_LOCK,
+			     PATH_MOUNT, PATH_MOUNT, "--bind",
+			     what, fullpath, NULL);
 		unlink(AUTOFS_LOCK);
 
 		if (err) {
@@ -134,8 +129,8 @@ int mount_mount(const char *root, const char *name, int name_len,
 				rmdir_path(fullpath);
 			return 1;
 		} else {
-			DB(syslog(LOG_DEBUG, MODPREFIX "mounted %s type %s on %s",
-				  what, fstype, fullpath));
+			debug(MODPREFIX "mounted %s type %s on %s",
+				  what, fstype, fullpath);
 			return 0;
 		}
 	} else {
@@ -154,19 +149,18 @@ int mount_mount(const char *root, const char *name, int name_len,
 			if (S_ISDIR(st.st_mode))
 				rmdir(fullpath);
 		} else {
-			DB(syslog
-			   (LOG_DEBUG, MODPREFIX "calling mkdir_path %s", basepath));
+			debug(MODPREFIX "calling mkdir_path %s", basepath);
 			if (mkdir_path(basepath, 0555) && errno != EEXIST) {
-				syslog(LOG_ERR, MODPREFIX "mkdir_path %s failed: %m",
-				       basepath);
+				error(MODPREFIX "mkdir_path %s failed: %m",
+				      basepath);
 				return 1;
 			}
 		}
 
 		if (symlink(what, fullpath) && errno != EEXIST) {
-			syslog(LOG_WARNING,
-			       MODPREFIX "failed to create local mount %s -> %s",
-			       fullpath, what);
+			error(MODPREFIX
+			      "failed to create local mount %s -> %s",
+			      fullpath, what);
 			if (ap.ghost && !status)
 				mkdir_path(fullpath, 0555);
 			else
@@ -174,8 +168,7 @@ int mount_mount(const char *root, const char *name, int name_len,
 
 			return 1;
 		} else {
-			DB(syslog
-			   (LOG_DEBUG, MODPREFIX "symlinked %s -> %s", fullpath, what));
+			debug(MODPREFIX "symlinked %s -> %s", fullpath, what);
 			return 0;
 		}
 	}

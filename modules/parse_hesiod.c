@@ -1,4 +1,4 @@
-#ident "$Id: parse_hesiod.c,v 1.2 2003/09/29 08:22:35 raven Exp $"
+#ident "$Id: parse_hesiod.c,v 1.3 2004/01/29 16:01:22 raven Exp $"
 /*
  * parse_hesiod.c
  *
@@ -18,13 +18,8 @@
 #define MODULE_PARSE
 #include "automount.h"
 
-#ifdef DEBUG
-#define DB(x)           do { x; } while(0)
-#else
-#define DB(x)           do { } while(0)
-#endif
-
 #define MODPREFIX "parse(hesiod): "
+
 int parse_version = AUTOFS_PARSE_VERSION;	/* Required by protocol */
 
 #define HESIOD_LEN 512
@@ -76,18 +71,20 @@ static int parse_afs(const char *filsysline, const char *name, int name_len,
 	if (!strcmp(options, "w"))
 		strcpy(options, "rw");
 
-	DB(syslog
-	   (LOG_DEBUG,
-	    MODPREFIX "parsing AFS record gives '%s'->'%s' with options" " '%s'", name,
-	    source, options));
+	debug(MODPREFIX
+	      "parsing AFS record gives '%s'->'%s' with options" " '%s'",
+	      name, source, options);
 
 	return 0;
 }
 
-/* Break out the fields in an NFS record of the form:
-   "NFS /export/src nelson.tx.ncsu.edu w /ncsu/tx-src" */
-static int parse_nfs(const char *filsysline, const char *name, int name_len,
-		     char *source, int source_len, char *options, int options_len)
+/*
+ * Break out the fields in an NFS record of the form:
+ * "NFS /export/src nelson.tx.ncsu.edu w /ncsu/tx-src"
+ */
+static int parse_nfs(const char *filsysline, const char *name,
+		     int name_len, char *source, int source_len,
+		     char *options, int options_len)
 {
 	const char *p;
 	char mount[HESIOD_LEN + 1];
@@ -148,9 +145,9 @@ static int parse_nfs(const char *filsysline, const char *name, int name_len,
 	if (!strcmp(options, "w"))
 		strcpy(options, "rw");
 
-	syslog(LOG_DEBUG,
-	       MODPREFIX "parsing NFS record gives '%s'->'%s' with options" "'%s'", name,
-	       source, options);
+	debug(MODPREFIX
+	      "parsing NFS record gives '%s'->'%s' with options" "'%s'",
+	      name, source, options);
 
 	return 0;
 }
@@ -202,8 +199,10 @@ static int parse_generic(const char *filsysline, const char *name, int name_len,
 	if (!strcmp(options, "w"))
 		strcpy(options, "rw");
 
-	DB(syslog(LOG_DEBUG, MODPREFIX "parsing generic record gives '%s'->'%s' "
-		  "with options '%s'", name, source, options));
+	debug(MODPREFIX
+	      "parsing generic record gives '%s'->'%s' with options '%s'",
+	      name, source, options);
+
 	return 0;
 }
 
@@ -220,7 +219,10 @@ int parse_done(void *context)
 int parse_mount(const char *root, const char *name,
 		int name_len, const char *mapent, void *context)
 {
-	char source[HESIOD_LEN + 1], fstype[HESIOD_LEN + 1], options[HESIOD_LEN + 1], *q;
+	char source[HESIOD_LEN + 1];
+	char fstype[HESIOD_LEN + 1];
+	char options[HESIOD_LEN + 1];
+	char *q;
 	const char *p;
 
 	p = mapent;
@@ -238,7 +240,7 @@ int parse_mount(const char *root, const char *name,
 
 	/* If it's an error message... */
 	if (!strcasecmp(fstype, "err")) {
-		syslog(LOG_DEBUG, MODPREFIX "%s", mapent);
+		error(MODPREFIX "%s", mapent);
 		return 1;
 	/* If it's an AFS fs... */
 	} else if (!strcasecmp(fstype, "afs"))
@@ -253,8 +255,7 @@ int parse_mount(const char *root, const char *name,
 		parse_generic(mapent, name, name_len, source, sizeof(source),
 			      options, sizeof(options));
 
-	DB(syslog(LOG_DEBUG, MODPREFIX "mount %s is type %s from %s",
-		  name, fstype, source));
+	debug(MODPREFIX "mount %s is type %s from %s", name, fstype, source);
 
 	return do_mount(root, name, name_len, source, fstype, options);
 }

@@ -6,7 +6,7 @@
 .\"
 .\" This is free documentation.
 .\"
-.\" $Id: automount.8,v 1.4 2003/12/31 15:44:13 raven Exp $
+.\" $Id: automount.8,v 1.5 2004/01/29 16:01:22 raven Exp $
 .\"
 .TH AUTOMOUNT 8 "14 Jan 2000"
 .SH NAME
@@ -30,11 +30,18 @@ Set the minimum timeout, in seconds, until directories are unmounted.
 The default is 5 minutes.  Setting the timeout to zero disables
 unmounts completely.
 .TP
+.I "\-v, \-\-verbose"
+Enables printing of general status and progress messages.
+.TP
+.I "\-d, \-\-debug"
+Enables printing of general status and progress messages as well as
+debuging messages.
+.TP
 .I "\-g, \-\-ghost"
 Request that directories in the automount be shown but not mounted
 until accesssed. The wildcard map is not ghosted.
 .TP
-.I "\-v, \-\-version"
+.I "\-V, \-\-version"
 Display the version number, then exit.
 .SH ARGUMENTS
 \fBautomount\fP takes at least three arguments.  Mandatory arguments 

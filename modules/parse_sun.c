@@ -1,4 +1,4 @@
-#ident "$Id: parse_sun.c,v 1.6 2003/11/22 07:44:44 raven Exp $"
+#ident "$Id: parse_sun.c,v 1.7 2004/01/29 16:01:22 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  parse_sun.c - module for Linux automountd to parse a Sun-format
@@ -36,13 +36,8 @@
 #define MODULE_PARSE
 #include "automount.h"
 
-#ifdef DEBUG
-#define DB(x)           do { x; } while(0)
-#else
-#define DB(x)           do { } while(0)
-#endif
-
 #define MODPREFIX "parse(sun): "
+
 int parse_version = AUTOFS_PARSE_VERSION;	/* Required by protocol */
 
 static struct mount_mod *mount_nfs = NULL;
@@ -100,19 +95,37 @@ static void kill_context(struct parse_context *ctxt)
 	free(ctxt);
 }
 
+/* holds one env var */
+static struct substvar sv_env = { NULL, NULL,  NULL };
+static char *substvar_env;
+
 /* Find the $-variable matching a certain string fragment */
 static const struct substvar *findvar(const struct substvar *sv, const char *str, int len)
 {
+	char etmp[512];
+
 	while (sv) {
 		if (!strncmp(str, sv->def, len) && sv->def[len] == '\0')
 			return sv;
 		sv = sv->next;
 	}
+
+	/* builtin map failed, try the $ENV */
+	memcpy(etmp, str, len);
+	etmp[len]='\0';
+
+	if ((substvar_env=getenv(etmp)) != NULL) {
+		sv_env.val = substvar_env;
+		return(&sv_env);
+	}
+
 	return NULL;
 }
 
-/* $- and &-expand a Sun-style map entry and return the length of the entry.
-   If "dst" is NULL, just count the length. */
+/* 
+ * $- and &-expand a Sun-style map entry and return the length of the entry.
+ * If "dst" is NULL, just count the length.
+ */
 int expandsunent(const char *src, char *dst, const char *key,
 		 const struct substvar *svc, int slashify_colons)
 {
@@ -186,7 +199,8 @@ int expandsunent(const char *src, char *dst, const char *key,
 
 		case ':':
 			if (dst)
-				*(dst++) = (seen_colons && slashify_colons) ? '/' : ':';
+				*(dst++) = 
+				  (seen_colons && slashify_colons) ? '/' : ':';
 			len++;
 			seen_colons = 1;
 			break;
@@ -206,8 +220,10 @@ int expandsunent(const char *src, char *dst, const char *key,
 	return len;
 }
 
-/* Skip whitespace in a string; if we hit a #, consider the rest of the
-   entry a comment */
+/*
+ * Skip whitespace in a string; if we hit a #, consider the rest of the
+ * entry a comment.
+ */
 const char *skipspace(const char *whence)
 {
 	while (1) {
@@ -311,7 +327,7 @@ int parse_init(int argc, const char *const *argv, void **context)
 	/* Set up context and escape chain */
 
 	if (!(ctxt = (struct parse_context *) malloc(sizeof(struct parse_context)))) {
-		syslog(LOG_CRIT, MODPREFIX "malloc: %m");
+		crit(MODPREFIX "malloc: %m");
 		return 1;
 	}
 	*context = (void *) ctxt;
@@ -322,12 +338,13 @@ int parse_init(int argc, const char *const *argv, void **context)
 	/* Look for options and capture, and create new defines if we need to */
 
 	for (i = 0; i < argc; i++) {
-		if (argv[i][0] == '-') {
+		if (argv[i][0] == '-' &&
+		   (argv[i][1] == 'D' || argv[i][1] == '-') ) {
 			switch (argv[i][1]) {
 			case 'D':
 				sv = malloc(sizeof(struct substvar));
 				if (!sv) {
-					syslog(LOG_ERR, MODPREFIX "malloc: %m");
+					error(MODPREFIX "malloc: %m");
 					break;
 				}
 				if (argv[i][2])
@@ -340,7 +357,7 @@ int parse_init(int argc, const char *const *argv, void **context)
 				}
 
 				if (!sv->def) {
-					syslog(LOG_ERR, MODPREFIX "strdup: %m");
+					error(MODPREFIX "strdup: %m");
 					free(sv);
 				} else {
 					sv->val = strchr(sv->def, '=');
@@ -366,39 +383,39 @@ int parse_init(int argc, const char *const *argv, void **context)
 				if (strmcmp(xopt, "slashify-colons", 1))
 					ctxt->slashify_colons = bval;
 				else
-					syslog(LOG_ERR, MODPREFIX "unknown option: %s",
-					       argv[i]);
+					error(MODPREFIX "unknown option: %s",
+					      argv[i]);
 
 				break;
 
 			default:
-				syslog(LOG_ERR, MODPREFIX "unknown option: %s", argv[i]);
+				error(MODPREFIX "unknown option: %s", argv[i]);
 				break;
 			}
 		} else {
-			len = strlen(argv[i]);
+			int offset = (argv[i][0] == '-' ? 1 : 0);
+			len = strlen(argv[i] + offset);
 			if (ctxt->optstr) {
 				noptstr =
 				    (char *) realloc(ctxt->optstr, optlen + len + 2);
 				if (!noptstr)
 					break;
 				noptstr[optlen] = ',';
-				strcpy(noptstr + optlen + 1, argv[i]);
+				strcpy(noptstr + optlen + 1, argv[i] + offset);
 				optlen += len + 1;
 			} else {
 				noptstr = (char *) malloc(len + 1);
-				strcpy(noptstr, argv[i]);
+				strcpy(noptstr, argv[i] + offset);
 				optlen = len;
 			}
 			if (!noptstr) {
 				kill_context(ctxt);
-				syslog(LOG_CRIT, MODPREFIX "%m");
+				crit(MODPREFIX "%m");
 				return 1;
 			}
 			ctxt->optstr = noptstr;
-			DB(syslog
-			   (LOG_DEBUG, MODPREFIX "init gathered options: %s",
-			    ctxt->optstr));
+			debug(MODPREFIX "init gathered options: %s",
+			      ctxt->optstr);
 		}
 	}
 
@@ -434,7 +451,7 @@ static char *dequote(const char *str, int strlen)
 	}
 	*cp = '\0';
 
-	DB(syslog(LOG_DEBUG, MODPREFIX "dequote(\"%.*s\") -> %s", origlen, str, ret));
+	debug(MODPREFIX "dequote(\"%.*s\") -> %s", origlen, str, ret);
 
 	return ret;
 }
@@ -473,7 +490,7 @@ static char *concat_options(char *left, char *right)
 	ret = malloc(strlen(left) + strlen(right) + 2);
 
 	if (ret == NULL) {
-		syslog(LOG_ERR, MODPREFIX "concat_options malloc: %m");
+		error(MODPREFIX "concat_options malloc: %m");
 		return NULL;
 	}
 
@@ -553,10 +570,20 @@ static int sun_mount(const char *root, const char *name, int namelen,
 	memcpy(what, loc, loclen);
 	what[loclen] = '\0';
 
-	DB(syslog(LOG_DEBUG,
-		  MODPREFIX
-		  "mounting root %s, mountpoint %s, what %s, fstype %s, options %s\n",
-		  root, mountpoint, what, fstype, options));
+	if (! strcmp(fstype, "autofs") && strchr(loc, ':') == NULL) {
+		what = alloca(loclen + 3 + 1); /* 1 for '0', 3 for yp: */
+		memcpy(what, "yp:", 3);
+		memcpy(what + 3, loc, loclen);
+		what[loclen + 3] = '\0';
+	} else {
+		what = alloca(loclen + 1);
+		memcpy(what, loc, loclen);
+		what[loclen] = '\0';
+	}
+
+	debug(MODPREFIX
+	    "mounting root %s, mountpoint %s, what %s, fstype %s, options %s\n",
+	    root, mountpoint, what, fstype, options);
 
 	if (!strcmp(fstype, "nfs")) {
 		rv = mount_nfs->mount_mount(root, mountpoint, strlen(mountpoint),
@@ -568,7 +595,7 @@ static int sun_mount(const char *root, const char *name, int namelen,
 	}
 
 	if (nonstrict && rv) {
-		DB(syslog(LOG_DEBUG, "ignoring failure of non-strict mount"));
+		debug("ignoring failure of non-strict mount");
 		return 0;
 	}
 
@@ -592,16 +619,17 @@ int parse_mount(const char *root, const char *name,
 	mapent_len = expandsunent(mapent, NULL, name, ctxt->subst, ctxt->slashify_colons);
 	pmapent = alloca(mapent_len + 1);
 	if (!pmapent) {
-		syslog(LOG_ERR, MODPREFIX "alloca: %m");
+		error(MODPREFIX "alloca: %m");
 		return 1;
 	}
+
 	expandsunent(mapent, pmapent, name, ctxt->subst, ctxt->slashify_colons);
 
-	DB(syslog(LOG_DEBUG, MODPREFIX "expanded entry: %s", pmapent));
+	debug(MODPREFIX "expanded entry: %s", pmapent);
 
 	options = strdup(ctxt->optstr ? ctxt->optstr : "");
 	if (!options) {
-		syslog(LOG_ERR, MODPREFIX "strdup: %m");
+		error(MODPREFIX "strdup: %m");
 		return 1;
 	}
 	optlen = strlen(options);
@@ -617,14 +645,14 @@ int parse_mount(const char *root, const char *name,
 			options = concat_options(options, noptions);
 
 			if (options == NULL) {
-				syslog(LOG_ERR, MODPREFIX "concat_options: %m");
+				error(MODPREFIX "concat_options: %m");
 				return 1;
 			}
 			p = skipspace(p);
 		} while (*p == '-');
 	}
 
-	DB(syslog(LOG_DEBUG, MODPREFIX "gathered options: %s", options));
+	debug(MODPREFIX "gathered options: %s", options);
 
 	if (*p == '/') {
 		int l;
@@ -636,7 +664,7 @@ int parse_mount(const char *root, const char *name,
 			int pathlen, loclen;
 
 			if (myoptions == NULL) {
-				syslog(LOG_ERR, MODPREFIX "multi strdup: %m");
+				error(MODPREFIX "multi strdup: %m");
 				free(options);
 				return 1;
 			}
@@ -656,9 +684,8 @@ int parse_mount(const char *root, const char *name,
 					myoptions = concat_options(myoptions, newopt);
 
 					if (myoptions == NULL) {
-						syslog(LOG_ERR,
-						       MODPREFIX
-						       "multi concat_options: %m");
+						error(MODPREFIX
+						    "multi concat_options: %m");
 						free(options);
 						free(path);
 						return 1;
@@ -667,11 +694,11 @@ int parse_mount(const char *root, const char *name,
 				} while (*p == '-');
 			}
 
-			loc = dequote(p, l = chunklen(p));
+			loc = dequote(p, strlen(p));
 			loclen = strlen(loc);
 
 			if (loc == NULL || path == NULL) {
-				syslog(LOG_ERR, MODPREFIX "out of memory");
+				error(MODPREFIX "out of memory");
 				free(loc);
 				free(path);
 				free(options);
@@ -681,10 +708,9 @@ int parse_mount(const char *root, const char *name,
 			p += l;
 			p = skipspace(p);
 
-			DB(syslog
-			   (LOG_DEBUG,
-			    MODPREFIX "multimount: %.*s on %.*s with options %s", loclen,
-			    loc, pathlen, path, myoptions));
+			debug(MODPREFIX
+			      "multimount: %.*s on %.*s with options %s",
+			      loclen, loc, pathlen, path, myoptions);
 
 			rv = sun_mount(root, name, name_len, path, pathlen, loc, loclen,
 				       myoptions);
@@ -707,24 +733,24 @@ int parse_mount(const char *root, const char *name,
 		if (*p == ':')
 			p++;	/* Sun escape for entries starting with / */
 
-		loc = dequote(p, chunklen(p));
+		loc = dequote(p, strlen(p));
 		loclen = strlen(loc);
 
 		if (loc == NULL) {
-			syslog(LOG_ERR, MODPREFIX "out of memory");
+			error(MODPREFIX "out of memory");
 			free(loc);
 			free(options);
 			return 1;
 		}
 
 		if (loclen == 0) {
-			syslog(LOG_ERR, MODPREFIX "entry %s is empty!", name);
+			error(MODPREFIX "entry %s is empty!", name);
 			free(options);
 			return 1;
 		}
 
-		DB(syslog(LOG_DEBUG, MODPREFIX "core of entry: options=%s, loc=%.*s",
-			  options, loclen, loc));
+		debug(MODPREFIX "core of entry: options=%s, loc=%.*s",
+		      options, loclen, loc);
 
 		rv = sun_mount(root, name, name_len, "/", 1, loc, loclen, options);
 		free(loc);

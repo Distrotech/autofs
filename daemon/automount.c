@@ -1,4 +1,4 @@
-#ident "$Id: automount.c,v 1.9 2003/12/13 16:37:06 raven Exp $"
+#ident "$Id: automount.c,v 1.10 2004/01/29 16:01:22 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  automount.c - Linux automounter daemon
@@ -24,8 +24,6 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <getopt.h>
-#include <limits.h>
-#include <paths.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -33,7 +31,6 @@
 #include <syslog.h>
 #include <unistd.h>
 #include <mntent.h>
-#include <time.h>
 #include <sys/ioctl.h>
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -49,12 +46,6 @@
 #endif
 
 #include "automount.h"
-
-#ifdef DEBUG
-#define DB(x)		do { x; } while(0)
-#else
-#define DB(x)		do { } while(0)
-#endif
 
 const char *program;		/* Initialized with argv[0] */
 const char *version = VERSION_STRING;	/* Program version */
@@ -181,11 +172,22 @@ static int walk_tree(const char *base, int (*fn) (const char *file,
 				return -1;
 
 			while (n--) {
+				int ret, size;
+
 				if (strcmp(de[n]->d_name, ".") == 0 ||
 				    strcmp(de[n]->d_name, "..") == 0)
 					continue;
 
-				sprintf(buf, "%s/%s", base, de[n]->d_name);
+				size = sizeof(buf);
+				ret = cat_path(buf, size, base, de[n]->d_name);
+				if (!ret) {
+					do {
+						free(de[n]);
+					} while (n--);
+					free(de);
+					return -1;
+				}
+
 				walk_tree(buf, fn, 1, arg);
 				free(de[n]);
 			}
@@ -231,22 +233,22 @@ static int umount_multi(const char *path, int incl)
 		const char *path;
 		struct mntlist *next;
 	} *mntlist = NULL, *mptr;
-	int pathlen = strlen(path);
+	size_t pathlen = strlen(path);
 
-	DB(syslog(LOG_INFO, "umount_multi: path=%s incl=%d\n", path, incl));
+	debug("umount_multi: path=%s incl=%d\n", path, incl);
 
 	wait_for_lock();
 	mtab = setmntent(_PATH_MOUNTED, "r");
 	if (!mtab) {
 		unlink(AUTOFS_LOCK);
-		syslog(LOG_ERR, "umount_multi: setmntent: %m");
+		error("umount_multi: setmntent: %m");
 		return -1;
 	}
 
 	/* Construct a list of eligible dirs ordered longest->shortest
 	   so that umount will work */
 	while ((mnt = getmntent(mtab)) != NULL) {
-		int len = strlen(mnt->mnt_dir);
+		size_t len = strlen(mnt->mnt_dir);
 		struct mntlist *m, **prev;
 		char *p;
 
@@ -275,7 +277,7 @@ static int umount_multi(const char *path, int incl)
 
 	left = 0;
 	for (mptr = mntlist; mptr != NULL; mptr = mptr->next) {
-		DB(syslog(LOG_INFO, "umount_multi: unmounting dir=%s\n", mptr->path));
+		debug("umount_multi: unmounting dir=%s\n", mptr->path);
 		if (umount_ent("", mptr->path)) {
 			left++;
 		}
@@ -303,7 +305,7 @@ static int umount_all(int force)
 	left = umount_multi(ap.path, 0);
 
 	if (force && left)
-		syslog(LOG_WARNING, "could not unmount %d dirs under %s", left, ap.path);
+		warn("could not unmount %d dirs under %s", left, ap.path);
 
 	return left;
 }
@@ -327,14 +329,14 @@ static int do_umount_autofs(void)
 		int ret;
 
 		wait_for_lock();
-		rv = spawnl(LOG_DEBUG, MOUNTED_LOCK, PATH_UMOUNT, PATH_UMOUNT, ap.path,
-			    NULL);
+		rv = spawnl(LOG_DEBUG, MOUNTED_LOCK,
+			    PATH_UMOUNT, PATH_UMOUNT, ap.path, NULL);
 		if (rv & MTAB_NOTUPDATED) {
-			syslog(LOG_INFO,
-			       "umount %s succeeded: mtab not updated, retrying to clean\n",
-			       ap.path);
-			rv = spawnl(LOG_DEBUG, MOUNTED_LOCK, PATH_UMOUNT, PATH_UMOUNT,
-				    ap.path, NULL);
+			info("umount %s succeeded: "
+			     "mtab not updated, retrying to clean\n",
+			      ap.path);
+			rv = spawnl(LOG_DEBUG, MOUNTED_LOCK,
+				    PATH_UMOUNT, PATH_UMOUNT, ap.path, NULL);
 		}
 		unlink(AUTOFS_LOCK);
 		ret = stat(ap.path, &st);
@@ -344,16 +346,17 @@ static int do_umount_autofs(void)
 			break;
 		}
 		if (i < retries - 1) {
-			syslog(LOG_INFO, "umount %s failed: retrying...\n", ap.path);
+			info("umount %s failed: retrying...\n", ap.path);
 			sleep(1);
 		}
 	}
 	if (rv != 0 || i == retries) {
-		syslog(LOG_ERR, "can't unmount %s\n", ap.path);
+		error("can't unmount %s\n", ap.path);
 		DB(kill(0, SIGSTOP));
 	} else {
 		if (i != 0)
-			DB(syslog(LOG_INFO, "umount %s succeeded\n", ap.path));
+			info("umount %s succeeded\n", ap.path);
+
 		if (submount)
 			rm_unwanted(ap.path, 1, 1);
 	}
@@ -380,10 +383,11 @@ static int mount_autofs(char *path)
 	char options[128];
 	char our_name[128];
 	struct stat st;
+	int len;
 
 	if (ap.state != ST_INIT) {
 		/* This can't happen */
-		syslog(LOG_ERR, "mount_autofs: already mounted");
+		error("mount_autofs: already mounted");
 		return -1;
 	}
 
@@ -402,35 +406,48 @@ static int mount_autofs(char *path)
 
 	/* In case the directory doesn't exist, try to mkdir it */
 	if (mkdir_path(path, 0555) < 0 && errno != EEXIST && errno != EROFS) {
-		syslog(LOG_CRIT, "failed to create iautofs directory %s", ap.path);
+		crit("failed to create iautofs directory %s", ap.path);
 		return -1;
 	}
 
 	/* Pipe for kernel communications */
 	if (pipe(pipefd) < 0) {
-		syslog(LOG_CRIT, "failed to create commumication pipe for autofs path %s",
-		       ap.path);
+		crit("failed to create commumication pipe for autofs path %s",
+		     ap.path);
 		rmdir_path(ap.path);
 		return -1;
 	}
 
 	/* Pipe state changes from signal handler to main loop */
 	if (pipe(ap.state_pipe) < 0) {
-		syslog(LOG_CRIT, "failed create state pipe for autofs path %s", ap.path);
+		crit("failed create state pipe for autofs path %s", ap.path);
 		rmdir_path(ap.path);
 		close(pipefd[0]);
 		close(pipefd[1]);
 		return -1;
 	}
 
-	sprintf(options, "fd=%d,pgrp=%u,minproto=2,maxproto=%d", pipefd[1],
-		(unsigned) my_pgrp, AUTOFS_MAX_PROTO_VERSION);
-	sprintf(our_name, "automount(pid%u)", (unsigned) my_pid);
+	len = snprintf(options, sizeof(options),
+			"fd=%d,pgrp=%u,minproto=2,maxproto=%d", pipefd[1],
+			(unsigned) my_pgrp, AUTOFS_MAX_PROTO_VERSION);
+	if (len >= sizeof(options)) {
+		crit("buffer to small for options - truncated");
+		len = sizeof(options);
+	}
+	options[len] = '\0';
+
+	len = snprintf(our_name, sizeof(our_name),
+			"automount(pid%u)", (unsigned) my_pid);
+	if (len >= sizeof(our_name)) {
+		crit("buffer to small for our_name - truncated");
+		len = sizeof(our_name);
+	}
+	our_name[len] = '\0';
 
 	wait_for_lock();
 	if (spawnl(LOG_DEBUG, MOUNTED_LOCK, PATH_MOUNT, PATH_MOUNT,
 		   "-t", "autofs", "-o", options, our_name, path, NULL) != 0) {
-		syslog(LOG_CRIT, "failed to mount autofs path %s", ap.path);
+		crit("failed to mount autofs path %s", ap.path);
 		unlink(AUTOFS_LOCK);
 		rmdir_path(ap.path);
 		close(pipefd[0]);
@@ -462,7 +479,7 @@ static int mount_autofs(char *path)
 static void nextstate(enum states next)
 {
 	if (write(ap.state_pipe[1], &next, sizeof(next)) != sizeof(next))
-		syslog(LOG_ERR, "nextstate: write failed %m");
+		error("nextstate: write failed %m");
 }
 
 /* Deal with all the signal-driven events in the state machine */
@@ -473,7 +490,7 @@ static void sig_statemachine(int sig)
 
 	switch (sig) {
 	default:		/* all the "can't happen" signals */
-		syslog(LOG_ERR, "process %d got unexpected signal %d!", getpid(), sig);
+		error("process %d got unexpected signal %d!", getpid(), sig);
 		break;
 		/* don't FALLTHROUGH */
 
@@ -499,7 +516,8 @@ static void sig_statemachine(int sig)
 		break;
 	}
 
-	DB(syslog(LOG_INFO, "sig %d switching from %d to %d", sig, ap.state, next));
+	debug("sig %d switching from %d to %d", sig, ap.state, next);
+
 	errno = save_errno;
 }
 
@@ -507,9 +525,9 @@ static int send_ready(unsigned int wait_queue_token)
 {
 	if (wait_queue_token == 0)
 		return 0;
-	DB(syslog(LOG_NOTICE, "send_ready: token=%d\n", wait_queue_token));
+	debug("send_ready: token=%d\n", wait_queue_token);
 	if (ioctl(ap.ioctlfd, AUTOFS_IOC_READY, wait_queue_token) < 0) {
-		syslog(LOG_ERR, "AUTOFS_IOC_READY: %m");
+		error("AUTOFS_IOC_READY: %m");
 		return 1;
 	}
 	return 0;
@@ -519,7 +537,7 @@ static int send_fail(unsigned int wait_queue_token)
 {
 	if (wait_queue_token == 0)
 		return 0;
-	DB(syslog(LOG_NOTICE, "send_fail: token=%d\n", wait_queue_token));
+	debug("send_fail: token=%d\n", wait_queue_token);
 	if (ioctl(ap.ioctlfd, AUTOFS_IOC_FAIL, wait_queue_token) < 0) {
 		syslog(LOG_ERR, "AUTOFS_IOC_FAIL: %m");
 		return 1;
@@ -539,14 +557,13 @@ static enum states handle_child(int hang)
 	while ((pid = waitpid(-1, &status, hang ? 0 : WNOHANG)) > 0) {
 		struct pending_mount volatile *mt, *volatile *mtp;
 
-		DB(syslog(LOG_INFO,
-			  "handle_child: got pid %d, sig %d (%d), stat %d\n",
-			  pid, WIFSIGNALED(status),
-			  WTERMSIG(status), WEXITSTATUS(status)));
+		debug("handle_child: got pid %d, sig %d (%d), stat %d\n",
+			pid, WIFSIGNALED(status),
+			WTERMSIG(status), WEXITSTATUS(status));
 
 		/* Check to see if expire process finished */
 		if (pid == ap.exp_process) {
-			int success;
+			int success, ret;
 
 			if (!WIFEXITED(status))
 				continue;
@@ -575,25 +592,31 @@ static enum states handle_child(int hang)
 
 			case ST_SHUTDOWN_PENDING:
 				next = ST_SHUTDOWN;
-				/* Failed shutdown returns to ready */
-				if (!success) {
-					syslog(LOG_WARNING,
-					       "shutdown failed: filesystem %s still busy",
-					       ap.path);
-					alarm(ap.exp_runfreq);
-					next = ST_READY;
+				if (success) {
+					ret = ioctl(ap.ioctlfd,
+						AUTOFS_IOC_ASKUMOUNT, &status);
+					if (!ret) {
+						if (status)
+							break;
+					} else
+						break;
 				}
+
+				/* Failed shutdown returns to ready */
+				warn("can't shutdown: filesystem %s still busy",
+				     ap.path);
+				alarm(ap.exp_runfreq);
+				next = ST_READY;
 				break;
 
 			default:
-				syslog(LOG_ERR, "bad state %d", ap.state);
+				error("bad state %d", ap.state);
 			}
 
 			if (next != ST_INVAL)
-				DB(syslog
-				   (LOG_INFO,
-				    "sigchld: exp %d finished, switching from %d to %d",
-				    pid, ap.state, next));
+				debug("sigchld: exp "
+				     "%d finished, switching from %d to %d",
+				     pid, ap.state, next);
 
 			continue;
 		}
@@ -606,10 +629,10 @@ static enum states handle_child(int hang)
 
 			if (!WIFEXITED(status) && !WIFSIGNALED(status))
 				break;
-			DB(syslog(LOG_INFO,
-				  "sig_child: found pending op pid %d: signalled %d (sig %d), exit status %d",
-				  pid, WIFSIGNALED(status),
-				  WTERMSIG(status), WEXITSTATUS(status)));
+			debug("sig_child: found pending iop pid %d: "
+			     "signalled %d (sig %d), exit status %d",
+				pid, WIFSIGNALED(status),
+				WTERMSIG(status), WEXITSTATUS(status));
 
 			if (WIFSIGNALED(status) || WEXITSTATUS(status) != 0)
 				send_fail(mt->wait_queue_token);
@@ -646,7 +669,7 @@ static void sig_child(int sig)
 
 static int st_ready(void)
 {
-	DB(syslog(LOG_INFO, "st_ready(): state = %d\n", ap.state));
+	debug("st_ready(): state = %d\n", ap.state);
 
 	ap.state = ST_READY;
 	sigprocmask(SIG_UNBLOCK, &lock_sigs, NULL);
@@ -738,28 +761,36 @@ static enum expire expire_proc(int now)
 			if (ap.type == LKP_DIRECT)
 				how |= AUTOFS_EXP_LEAVES;
 
-		/* Generate expire messages until there's
-		 * nothing more to expire */
+		/* 
+		 * Generate expire messages until there's nothing more to
+		 * expire.  If a bug prevents unmounting, limit attempts to
+		 * 20/second and a few more than the known number of mounts.
+		 */
 
-		while (ioctl(ap.ioctlfd, AUTOFS_IOC_EXPIRE_MULTI, &how) == 0);
+		count = count_mounts(ap.path) + 3;
+		while (ioctl(ap.ioctlfd, AUTOFS_IOC_EXPIRE_MULTI, &how) == 0
+					&& count--) {
+			struct timespec nap = { 0, 50000000 }; /*5e-2 seconds*/;
+			nanosleep(&nap, NULL);
+		}
 
-		/* EXPIRE_MULTI is synchronous, so we can
-		   be sure the umounts are done by the time we reach
-		   here */
+		/* 
+		 * EXPIRE_MULTI is synchronous, so we can be sure (famous last
+		 * words) the umounts are done by the time we reach here
+		 */
 		if ((count = count_mounts(ap.path))) {
-			DB(syslog(LOG_INFO,
-				  "expire_proc: %d remaining in %s\n", count, ap.path));
+			debug("expire_proc: %d remaining in %s\n", count, ap.path);
 			exit(1);
 		}
 		exit(0);
 
 	case -1:
-		syslog(LOG_ERR, "expire: fork failed: %m");
+		error("expire: fork failed: %m");
 		sigprocmask(SIG_SETMASK, &old, NULL);
 		return EXP_ERROR;
 
 	default:
-		DB(syslog(LOG_INFO, "expire_proc: exp_proc=%d", f));
+		debug("expire_proc: exp_proc=%d", f);
 		ap.exp_process = f;
 		sigprocmask(SIG_SETMASK, &old, NULL);
 		return EXP_STARTED;
@@ -785,7 +816,7 @@ static int st_prepare_shutdown(void)
 	/* Unmount everything */
 	exp = expire_proc(1);
 
-	DB(syslog(LOG_INFO, "prep_shutdown: expire returns %d\n", exp));
+	debug("prep_shutdown: expire returns %d\n", exp);
 
 	switch (exp) {
 	case EXP_ERROR:
@@ -809,7 +840,7 @@ static int st_prepare_shutdown(void)
 
 static int st_prune(void)
 {
-	DB(syslog(LOG_INFO, "st_prune(): state = %d\n", ap.state));
+	debug("st_prune(): state = %d\n", ap.state);
 
 	assert(ap.state == ST_READY);
 
@@ -833,7 +864,7 @@ static int st_prune(void)
 
 static int st_expire(void)
 {
-	DB(syslog(LOG_INFO, "st_expire(): state = %d\n", ap.state));
+	debug("st_expire(): state = %d\n", ap.state);
 
 	assert(ap.state == ST_READY);
 
@@ -862,7 +893,7 @@ static int st_readmap(void)
 
 	status = ap.lookup->lookup_ghost(ap.path, ap.ghost, ap.lookup->context);
 
-	DB(syslog(LOG_INFO, "st_readmap: status %d\n", status));
+	debug("st_readmap: status %d\n", status);
 
 	/* If I don't exist in the map any more then exit */
 	if (status == LKP_FAIL)
@@ -876,7 +907,7 @@ static int fullread(int fd, void *ptr, size_t len)
 	char *buf = (char *) ptr;
 
 	while (len > 0) {
-		size_t r = read(fd, buf, len);
+		ssize_t r = read(fd, buf, len);
 
 		if (r == -1) {
 			if (errno == EINTR)
@@ -919,8 +950,9 @@ static int get_pkt(int fd, union autofs_packet_union *pkt)
 			sigprocmask(SIG_BLOCK, &lock_sigs, &old);
 
 			if (next_state != ap.state) {
-				DB(syslog(LOG_INFO, "get_pkt: state %d, next %d",
-					  ap.state, next_state));
+				debug("get_pkt: state %d, next %d",
+					ap.state, next_state);
+
 				switch (next_state) {
 				case ST_READY:
 					ret = st_ready();
@@ -954,8 +986,8 @@ static int get_pkt(int fd, union autofs_packet_union *pkt)
 					break;
 
 				default:
-					syslog(LOG_ERR, "get_pkt: bad next state %d",
-					       next_state);
+					error("get_pkt: bad next state %d",
+					      next_state);
 				}
 			}
 
@@ -977,8 +1009,8 @@ static int handle_packet_missing(const struct autofs_packet_missing *pkt)
 	sigset_t oldsig;
 	pid_t f;
 
-	DB(syslog(LOG_INFO, "handle_packet_missing: token %ld, name %s\n",
-		  pkt->wait_queue_token, pkt->name));
+	debug("handle_packet_missing: token %ld, name %s\n",
+		(int) pkt->wait_queue_token, pkt->name);
 
 	/* Ignore packet if we're trying to shut down */
 	if (ap.state == ST_SHUTDOWN_PENDING || ap.state == ST_SHUTDOWN) {
@@ -987,9 +1019,12 @@ static int handle_packet_missing(const struct autofs_packet_missing *pkt)
 	}
 
 	chdir(ap.path);
-	if (lstat(pkt->name, &st) == -1 || (S_ISDIR(st.st_mode) && st.st_dev == ap.dev)) {
+	if (lstat(pkt->name, &st) == -1 ||
+	   (S_ISDIR(st.st_mode) && st.st_dev == ap.dev)) {
 		/* Need to mount or symlink */
 		struct pending_mount *mt;
+		char buf[PATH_MAX + 1];
+		int size;
 
 		chdir("/");
 		/* Block SIGCHLD while mucking with linked lists */
@@ -997,41 +1032,51 @@ static int handle_packet_missing(const struct autofs_packet_missing *pkt)
 		if ((mt = (struct pending_mount *) junk_mounts)) {
 			junk_mounts = junk_mounts->next;
 		} else if (!(mt = malloc(sizeof(struct pending_mount)))) {
-			syslog(LOG_ERR, "handle_packet: malloc: %m");
+			error("handle_packet_missing: malloc: %m");
 			send_fail(pkt->wait_queue_token);
 			return 1;
 		}
 		sigprocmask(SIG_UNBLOCK, &sigchld_mask, NULL);
 
-		DB(syslog(LOG_INFO, "mounting %s/%s", ap.path, pkt->name));
+		size = ncat_path(buf, sizeof(buf),
+				 ap.path, pkt->name, pkt->len);
+		if (!size) {
+			crit("handle_packet_missing: "
+			     "path to be mounted is to long");
+			send_fail(pkt->wait_queue_token);
+			return 0;
+		}
+
+		info("attempting to mount entry %s", buf);
 
 		sigprocmask(SIG_BLOCK, &lock_sigs, &oldsig);
 
 		f = fork();
 		if (f == -1) {
 			sigprocmask(SIG_SETMASK, &oldsig, NULL);
-			syslog(LOG_ERR, "handle_packet_missing: fork: %m");
+			error("handle_packet_missing: fork: %m");
 			send_fail(pkt->wait_queue_token);
 			return 1;
 		} else if (!f) {
 			int err;
-			char buf[PATH_MAX + 1];
 
-			ignore_signals();	/* Set up a sensible signal environment */
+			/* Set up a sensible signal environment */
+			ignore_signals();
 			close(ap.pipefd);
 			close(ap.ioctlfd);
 			close(ap.state_pipe[0]);
 			close(ap.state_pipe[1]);
 
-			err = ap.lookup->lookup_mount(ap.path, pkt->name, pkt->len,
+			err = ap.lookup->lookup_mount(ap.path,
+						      pkt->name, pkt->len,
 						      ap.lookup->context);
 
-			sprintf(buf, "%s/%.*s", ap.path, pkt->len, pkt->name);
-
-			/* If at first you don't succeed, hide all evidence you ever tried */
+			/*
+			 * If at first you don't succeed, hide all
+			 * evidence you ever tried
+			 */
 			if (err) {
-				syslog(LOG_ERR, "failed to mount %s/%s", ap.path,
-				       pkt->name);
+				error("failed to mount %s", buf);
 				umount_multi(buf, 1);
 				if ((!ap.ghost) ||
 				    (ap.state == ST_SHUTDOWN_PENDING
@@ -1041,7 +1086,10 @@ static int handle_packet_missing(const struct autofs_packet_missing *pkt)
 
 			_exit(err ? 1 : 0);
 		} else {
-			/* Important: set up data structures while signals still blocked */
+			/*
+			 * Important: set up data structures while signals
+			 * still blocked
+			 */
 			mt->pid = f;
 			mt->wait_queue_token = pkt->wait_queue_token;
 			mt->next = ap.mounts;
@@ -1050,13 +1098,17 @@ static int handle_packet_missing(const struct autofs_packet_missing *pkt)
 			sigprocmask(SIG_SETMASK, &oldsig, NULL);
 		}
 	} else {
-		/* Already there (can happen if a process connects to a
-		   directory while we're still working on it) */
-		/* XXX For v4, this would be the wrong thing to do if it could
-		   happen.  It should add the new wait_queue_token to the pending
-		   mount structure so that it gets sent a ready when its really
-		   done.  In practice, the kernel keeps any other processes
-		   blocked until the initial mount request is done. -JSGF */
+		/*
+		 * Already there (can happen if a process connects to a
+		 * directory while we're still working on it)
+		 */
+		/*
+		 * XXX For v4, this would be the wrong thing to do if it could
+		 * happen. It should add the new wait_queue_token to the pending
+		 * mount structure so that it gets sent a ready when its really
+		 * done.  In practice, the kernel keeps any other processes
+		 * blocked until the initial mount request is done. -JSGF
+		 */
 		send_ready(pkt->wait_queue_token);
 	}
 	chdir("/");
@@ -1065,14 +1117,22 @@ static int handle_packet_missing(const struct autofs_packet_missing *pkt)
 
 static void do_expire(const char *name, int namelen)
 {
-	char buf[PATH_MAX];
+	char buf[PATH_MAX + 1];
+	int len;
 
-	sprintf(buf, "%s/%.*s", ap.path, namelen, name);
-	DB(syslog(LOG_DEBUG, "running expiration on path %s", buf));
+	len = ncat_path(buf, sizeof(buf), ap.path, name, namelen);
+	if (!len) {
+		crit("do_expire: path to long for buffer");
+		return;
+	}
+
+	debug("expiring path %s", buf);
 
 	if (umount_multi(buf, 1) == 0) {
-		DB(syslog(LOG_NOTICE, "expired %s", buf));
+		info("expired %s", buf);
 	} else {
+		int ret;
+
 		/* Oops - umounted some things, but not all; try and
 		   recover before anyone notices by remounting
 		   everything.
@@ -1081,8 +1141,11 @@ static void do_expire(const char *name, int namelen)
 		   whether the umount will work before telling us about
 		   it.
 		 */
-		if (ap.lookup->lookup_mount(ap.path, name, namelen, ap.lookup->context))
-			syslog(LOG_ERR, "failed to recover from partial expiry of %s\n",
+
+		ret = ap.lookup->lookup_mount(ap.path, 
+					name, namelen, ap.lookup->context);
+		if (ret)
+			error("failed to recover from partial expiry of %s\n",
 			       buf);
 	}
 }
@@ -1105,14 +1168,14 @@ static int handle_expire(const char *name, int namelen, autofs_wqt_t token)
 		junk_mounts = junk_mounts->next;
 	} else if (!(mt = malloc(sizeof(struct pending_mount)))) {
 		sigprocmask(SIG_SETMASK, &olds, NULL);
-		syslog(LOG_ERR, "handle_expire: malloc: %m");
+		error("handle_expire: malloc: %m");
 		return 1;
 	}
 
 	f = fork();
 	if (f == -1) {
 		sigprocmask(SIG_SETMASK, &olds, NULL);
-		syslog(LOG_ERR, "handle_expire: fork: %m");
+		error("handle_expire: fork: %m");
 		return 1;
 	}
 	if (f > 0) {
@@ -1147,8 +1210,8 @@ static int handle_packet_expire_multi(const struct autofs_packet_expire_multi *p
 {
 	int ret;
 
-	DB(syslog(LOG_INFO, "handle_packet_expire_multi: token %ld, name %s\n",
-		  pkt->wait_queue_token, pkt->name));
+	debug("handle_packet_expire_multi: token %ld, name %s\n",
+		  (int) pkt->wait_queue_token, pkt->name);
 
 	ret = handle_expire(pkt->name, pkt->len, pkt->wait_queue_token);
 
@@ -1164,7 +1227,8 @@ static int handle_packet(void)
 	if (get_pkt(ap.pipefd, &pkt))
 		return -1;
 
-	DB(syslog(LOG_INFO, "handle_packet: type = %d\n", pkt.hdr.type));
+	debug("handle_packet: type = %d\n", pkt.hdr.type);
+
 	switch (pkt.hdr.type) {
 	case autofs_ptype_missing:
 		return handle_packet_missing(&pkt.missing);
@@ -1175,7 +1239,7 @@ static int handle_packet(void)
 	case autofs_ptype_expire_multi:
 		return handle_packet_expire_multi(&pkt.expire_multi);
 	}
-	syslog(LOG_ERR, "handle_packet: unknown packet type %d\n", pkt.hdr.type);
+	error("handle_packet: unknown packet type %d\n", pkt.hdr.type);
 	return -1;
 }
 
@@ -1194,7 +1258,8 @@ static void become_daemon(void)
 		if (pid > 0)
 			exit(0);
 		else if (pid < 0) {
-			fprintf(stderr, "%s: Could not detach process\n", program);
+			fprintf(stderr, "%s: Could not detach process\n",
+				program);
 			exit(1);
 		}
 	}
@@ -1211,20 +1276,20 @@ static void become_daemon(void)
 	   perform the mount.  A pgrp is also useful for controlling all the
 	   child processes we generate. */
 	if (!submount && setpgrp()) {
-		syslog(LOG_CRIT, "setpgrp: %m");
+		crit("setpgrp: %m");
 		exit(1);
 	}
 	my_pgrp = getpgrp();
 
 	/* Redirect all our file descriptors to /dev/null */
 	if ((nullfd = open("/dev/null", O_RDWR)) < 0) {
-		syslog(LOG_CRIT, "cannot open /dev/null: %m");
+		crit("cannot open /dev/null: %m");
 		exit(1);
 	}
 
 	if (dup2(nullfd, STDIN_FILENO) < 0 ||
 	    dup2(nullfd, STDOUT_FILENO) < 0 || dup2(nullfd, STDERR_FILENO) < 0) {
-		syslog(LOG_CRIT, "redirecting file descriptors failed: %m");
+		crit("redirecting file descriptors failed: %m");
 		exit(1);
 	}
 	close(nullfd);
@@ -1235,8 +1300,7 @@ static void become_daemon(void)
 			fprintf(pidfp, "%lu\n", (unsigned long) my_pid);
 			fclose(pidfp);
 		} else {
-			syslog(LOG_WARNING,
-				"failed to write pid file %s: %m", pid_file);
+			warn("failed to write pid file %s: %m", pid_file);
 			pid_file = NULL;
 		}
 	}
@@ -1258,7 +1322,7 @@ static void cleanup_exit(const char *path, int exit_code)
 
 	if ((!ap.ghost || !submount) && *(path + 1) != '-')
 		if (rmdir(path) == -1)
-			syslog(LOG_WARNING, "failed to remove dir %s: %m", path);
+			warn("failed to remove dir %s: %m", path);
 
 	exit(exit_code);
 }
@@ -1360,15 +1424,16 @@ static void setup_signals(__sighandler_t event_handler, __sighandler_t cld_handl
 #endif				/* DEBUG */
 
 	if (cld_handler != NULL) {
-		/* The SIGCHLD handler causes state transitions as processes exit
-		   (expire and mount) */
+		/* The SIGCHLD handler causes state transitions as
+		 * processes exit (expire and mount) */
 		sa.sa_handler = cld_handler;
 		memcpy(&sa.sa_mask, &lock_sigs, sizeof(sa.sa_mask));
-		sa.sa_flags = SA_NOCLDSTOP;	/* Don't need info about stopped children */
+		/* Don't need info about stopped children */
+		sa.sa_flags = SA_NOCLDSTOP;
 		sigaction(SIGCHLD, &sa, NULL);
 	}
 
-/* The following signals shouldn't occur, and are ignored */
+	/* The following signals shouldn't occur, and are ignored */
 	sa.sa_handler = SIG_IGN;
 	sa.sa_flags = SA_RESTART;
 	sigaction(SIGVTALRM, &sa, NULL);
@@ -1389,7 +1454,7 @@ static void sig_supervisor(int sig)
 
 	switch (sig) {
 	default:		/* all the signals not handled */
-		syslog(LOG_ERR, "process %d got unexpected signal %d!", getpid(), sig);
+		error("process %d got unexpected signal %d!", getpid(), sig);
 		return;
 		/* don't FALLTHROUGH */
 
@@ -1427,11 +1492,10 @@ int supervisor(char *path)
 
 	map = ap.lookup->lookup_ghost(ap.path, ap.ghost, ap.lookup->context);
 	if (map & LKP_FAIL) {
-		syslog(LOG_ERR, "failed to load map exiting");
+		error("failed to load map exiting");
 		cleanup_exit(ap.path, 1);
 	} else if (map & LKP_INDIRECT) {
-		syslog(LOG_INFO,
-		       "bad map format: found indirect, expected direct exiting");
+		error("bad map format: found indirect, expected direct exiting");
 		cleanup_exit(ap.path, 1);
 	}
 
@@ -1449,7 +1513,7 @@ int handle_mounts(char *path)
 	setup_signals(sig_statemachine, sig_child);
 
 	if (mount_autofs(path) < 0) {
-		syslog(LOG_CRIT, "%s: mount failed!", path);
+		crit("%s: mount failed!", path);
 		cleanup_exit(path, 1);
 	}
 
@@ -1457,36 +1521,34 @@ int handle_mounts(char *path)
 	if (!ioctl(ap.ioctlfd, AUTOFS_IOC_PROTOVER, &kproto_version)) {
 		/* If this ioctl() doesn't work, kernel does not support ghosting */
 		if (ioctl(ap.ioctlfd, AUTOFS_IOC_PROTOSUBVER, &kproto_sub_version)) {
-			DB(syslog(LOG_DEBUG, "kproto sub: %m"));
+			debug("kproto sub: %m");
 			kproto_sub_version = 0;
 			if (ap.ghost) {
 				ap.ghost = 0;
-				syslog(LOG_INFO,
-				       "kernel does not support ghosting, disabled");
+				info("kernel does not support ghosting, disabled");
 			}
 		}
 	} else {
-		DB(syslog(LOG_DEBUG, "kproto: %m"));
+		debug("kproto: %m");
 		kproto_version = 2;
 	}
 
-	syslog(LOG_INFO,
-	       "using kernel protocol version %d.%02d",
+	info("using kernel protocol version %d.%02d",
 	       kproto_version, kproto_sub_version);
 
 	if (kproto_version < 3) {
 		ap.exp_timeout = ap.exp_runfreq = 0;
 		ap.ghost = 0;
-		syslog(LOG_INFO, "kernel does not support timeouts");
+		info("kernel does not support timeouts");
 	} else {
-		unsigned long timeout;
+		time_t timeout;
 
 		ap.exp_runfreq = (ap.exp_timeout + CHECK_RATIO - 1) / CHECK_RATIO;
 
 		timeout = ap.exp_timeout;
 
-		syslog(LOG_INFO, "using timeout %d seconds; freq %d secs",
-		       (int) ap.exp_timeout, ap.exp_runfreq);
+		info("using timeout %d seconds; freq %d secs",
+		       (int) ap.exp_timeout, (int) ap.exp_runfreq);
 
 		ioctl(ap.ioctlfd, AUTOFS_IOC_SETTIMEOUT, &timeout);
 
@@ -1499,10 +1561,10 @@ int handle_mounts(char *path)
 	map = ap.lookup->lookup_ghost(ap.path, ap.ghost, ap.lookup->context);
 	if (map & LKP_FAIL) {
 		if (map & LKP_INDIRECT)
-			syslog(LOG_INFO,
-			       "bad map format: found indirect, expected direct exiting");
+			error("bad map format: found indirect, "
+			      "expected direct exiting");
 		else
-			syslog(LOG_INFO, "failed to load map, exiting");
+			error("failed to load map, exiting");
 		rm_unwanted(ap.path, 1, 1);
 		umount_autofs(1);
 		cleanup_exit(path, 1);
@@ -1517,8 +1579,8 @@ int handle_mounts(char *path)
 			if (submount) {
 				submount = 0;
 			} else {
-				syslog(LOG_INFO,
-				       "bad map format: found direct, expected indirect exiting");
+				error("bad map format: found direct, "
+				      "expected indirect exiting");
 				rm_unwanted(ap.path, 1, 1);
 				umount_autofs(1);
 				cleanup_exit(path, 1);
@@ -1528,14 +1590,14 @@ int handle_mounts(char *path)
 	}
 
 	if (map & LKP_WILD) {
-		syslog(LOG_INFO, "cannot ghost wildcard map key");
+		error("cannot ghost wildcard map key");
 	}
 
 	if (map & LKP_NOTSUP)
 		ap.ghost = 0;
 
 	if (ap.ghost)
-		syslog(LOG_INFO, "ghosting enabled");
+		info("ghosting enabled");
 
 	/* Initialization successful.  If we're a submount, send outselves
 	   SIGSTOP to let our parent know that we have grown up and don't
@@ -1566,7 +1628,9 @@ int main(int argc, char *argv[])
 		{"help", 0, 0, 'h'},
 		{"pid-file", 1, 0, 'p'},
 		{"timeout", 1, 0, 't'},
-		{"version", 0, 0, 'v'},
+		{"verbose", 0, 0, 'v'},
+		{"debug", 0, 0, 'd'},
+		{"version", 0, 0, 'V'},
 		{"ghost", 0, 0, 'g'},
 		{"submount", 0, &submount, 1},
 		{0, 0, 0, 0}
@@ -1580,7 +1644,7 @@ int main(int argc, char *argv[])
 	ap.type = LKP_INDIRECT;
 
 	opterr = 0;
-	while ((opt = getopt_long(argc, argv, "+hp:t:vg", long_options, NULL)) != EOF) {
+	while ((opt = getopt_long(argc, argv, "+hp:t:vdVg", long_options, NULL)) != EOF) {
 		switch (opt) {
 		case 'h':
 			usage();
@@ -1595,6 +1659,14 @@ int main(int argc, char *argv[])
 			break;
 
 		case 'v':
+			enable_verbose();
+			break;
+
+		case 'd':
+			enable_debug();
+			break;
+
+		case 'V':
 			printf("Linux automount version %s\n", version);
 			exit(0);
 
@@ -1630,7 +1702,7 @@ int main(int argc, char *argv[])
 	mapargv = (const char **) &argv[2];
 	mapargc = argc - 2;
 
-	syslog(LOG_INFO, "starting automounter version %s, path = %s, "
+	info("starting automounter version %s, path = %s, "
 	       "maptype = %s, mapname = %s", version, path, map,
 	       (mapargc < 1) ? "none" : mapargv[0]);
 
@@ -1656,7 +1728,7 @@ int main(int argc, char *argv[])
 	} else {
 		handle_mounts(path);
 	}
-	syslog(LOG_INFO, "shut down, path = %s", path);
+	info("shut down, path = %s", path);
 	cleanup_exit(path, 0);
 	exit(0);
 }

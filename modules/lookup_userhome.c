@@ -1,4 +1,4 @@
-#ident "$Id: lookup_userhome.c,v 1.2 2003/09/29 08:22:35 raven Exp $"
+#ident "$Id: lookup_userhome.c,v 1.3 2004/01/29 16:01:22 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup_userhome.c - module for Linux automount to generate symlinks
@@ -27,12 +27,6 @@
 #define MODULE_LOOKUP
 #include "automount.h"
 
-#ifdef DEBUG
-#define DB(x)           do { x; } while(0)
-#else
-#define DB(x)           do { } while(0)
-#endif
-
 #define MODPREFIX "lookup(userhome): "
 
 int lookup_version = AUTOFS_LOOKUP_VERSION;	/* Required by protocol */
@@ -51,23 +45,23 @@ int lookup_mount(const char *root, const char *name, int name_len, void *context
 {
 	struct passwd *pw;
 
-	DB(syslog(LOG_DEBUG, MODPREFIX "looking up %s", name));
+	debug(MODPREFIX "looking up %s", name);
 
 	/* Get the equivalent username */
 	pw = getpwnam(name);
 	if (!pw) {
-		syslog(LOG_INFO, MODPREFIX "not found: %s", name);
+		info(MODPREFIX "not found: %s", name);
 		return 1;	/* Unknown user or error */
 	}
 
 	/* Create the appropriate symlink */
 	if (chdir(root)) {
-		syslog(LOG_ERR, MODPREFIX "chdir failed: %m");
+		error(MODPREFIX "chdir failed: %m");
 		return 1;
 	}
 
 	if (symlink(pw->pw_dir, name) && errno != EEXIST) {
-		syslog(LOG_ERR, MODPREFIX "symlink failed: %m");
+		error(MODPREFIX "symlink failed: %m");
 		return 1;
 	}
 

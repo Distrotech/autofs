@@ -1,4 +1,6 @@
 
+nn/nn/2004 autofs-4.1.1
+-----------------------
 - added CHANGELOG.
 - fixed error in some ident tags.
 - merge debian patch 032 document nonstrict special option.
@@ -17,7 +19,14 @@
    - error only if fsck finds uncorrectable errors.
 - fixed lookup problem with wildcard order in map.
 - fixed lookup problem relating to directory tidyup.
-
+- merge Jim Carters' buffer management and expire limit patch.
+- remove make requirement for hesoid and ldap presence.
+- merge Mike Blandfords' replicated server patches.
+- add check for submount point itself busy.
+   - requires autofs4 4.04 kernel module.
+- added --verbode and --debug options to quieten daemon and
+  provide ability to get debug output when needed. Default
+  is produce no output except error messages.
 
 4/12/2003 autofs-4.1.0
 ----------------------

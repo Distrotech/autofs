@@ -1,4 +1,4 @@
-#ident "$Id: lookup_nisplus.c,v 1.2 2003/09/29 08:22:35 raven Exp $"
+#ident "$Id: lookup_nisplus.c,v 1.3 2004/01/29 16:01:22 raven Exp $"
 /*
  * lookup_nisplus.c
  *
@@ -20,12 +20,6 @@
 #define MODULE_LOOKUP
 #include "automount.h"
 
-#ifdef DEBUG
-#define DB(x)           do { x; } while(0)
-#else
-#define DB(x)           do { } while(0)
-#endif
-
 #define MAPFMT_DEFAULT "sun"
 
 #define MODPREFIX "lookup(nisplus): "
@@ -43,18 +37,20 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 	struct lookup_context *ctxt;
 
 	if (!(*context = ctxt = malloc(sizeof(struct lookup_context)))) {
-		syslog(LOG_CRIT, MODPREFIX "%m");
+		crit(MODPREFIX "%m");
 		return 1;
 	}
 
 	if (argc < 1) {
-		syslog(LOG_CRIT, MODPREFIX "No map name");
+		crit(MODPREFIX "No map name");
 		return 1;
 	}
 	ctxt->mapname = argv[0];
 
-	/* nis_local_directory () returns a pointer to a static buffer.
-	   We don't need to copy or free it. */
+	/* 
+	 * nis_local_directory () returns a pointer to a static buffer.
+	 * We don't need to copy or free it.
+	 */
 	ctxt->domainname = nis_local_directory();
 
 	if (!mapfmt)
@@ -76,7 +72,7 @@ int lookup_mount(const char *root, const char *name, int name_len, void *context
 	nis_result *result;
 	int rv;
 
-	DB(syslog(LOG_DEBUG, MODPREFIX "looking up %s", name));
+	debug(MODPREFIX "looking up %s", name);
 
 	sprintf(tablename, "[key=%s],%s.org_dir.%s", name, ctxt->mapname,
 		ctxt->domainname);
@@ -90,12 +86,12 @@ int lookup_mount(const char *root, const char *name, int name_len, void *context
 		result = nis_list(tablename, FOLLOW_PATH | FOLLOW_LINKS, NULL, NULL);
 	}
 	if (result->status != NIS_SUCCESS && result->status != NIS_S_SUCCESS) {
-		syslog(LOG_NOTICE, MODPREFIX "lookup for %s failed: %s", name,
+		crit(MODPREFIX "lookup for %s failed: %s", name,
 		       nis_sperrno(result->status));
 		return 1;
 	}
 
-	syslog(LOG_DEBUG, MODPREFIX "%s -> %s", name,
+	debug(MODPREFIX "%s -> %s", name,
 	       NIS_RES_OBJECT(result)->EN_data.en_cols.en_cols_val[1].ec_value.
 	       ec_value_val);
 

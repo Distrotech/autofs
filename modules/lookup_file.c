@@ -1,4 +1,4 @@
-#ident "$Id: lookup_file.c,v 1.3 2004/01/18 11:49:35 raven Exp $"
+#ident "$Id: lookup_file.c,v 1.4 2004/01/29 16:01:22 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup_file.c - module for Linux automount to query a flat file map
@@ -32,12 +32,6 @@
 #define MODULE_LOOKUP
 #include "automount.h"
 
-#ifdef DEBUG
-#define DB(x)           do { x; } while(0)
-#else
-#define DB(x)           do { } while(0)
-#endif
-
 #define MAPFMT_DEFAULT "sun"
 
 #define MODPREFIX "lookup(file): "
@@ -62,26 +56,27 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 	struct lookup_context *ctxt;
 
 	if (!(*context = ctxt = malloc(sizeof(struct lookup_context)))) {
-		syslog(LOG_CRIT, MODPREFIX "malloc: %m");
+		crit(MODPREFIX "malloc: %m");
 		return 1;
 	}
 
 	if (argc < 1) {
-		syslog(LOG_CRIT, MODPREFIX "No map name");
+		crit(MODPREFIX "No map name");
 		return 1;
 	}
 
 	ctxt->mapname = argv[0];
 
 	if (ctxt->mapname[0] != '/') {
-		syslog(LOG_CRIT, MODPREFIX "file map %s is not an absolute pathname",
+		crit(MODPREFIX "file map %s is not an absolute pathname",
 		       ctxt->mapname);
 		return 1;
 	}
 
 	if (access(ctxt->mapname, R_OK)) {
-		syslog(LOG_WARNING, MODPREFIX "file map %s missing or not readable",
+		crit(MODPREFIX "file map %s missing or not readable",
 		       ctxt->mapname);
+		return 1;
 	}
 
 	if (!mapfmt)
@@ -113,7 +108,7 @@ static int read_map(const char *root, struct lookup_context *ctxt)
 
 	f = fopen(ctxt->mapname, "r");
 	if (!f) {
-		syslog(LOG_ERR, MODPREFIX "could not open map file %s", ctxt->mapname);
+		error(MODPREFIX "could not open map file %s", ctxt->mapname);
 		return 0;
 	}
 
@@ -260,7 +255,10 @@ int lookup_ghost(const char *root, int ghost, void *context)
 
 	if (*me->key == '/' && *(root + 1) != '-') {
 		me = cache_partial_match(root);
-		/* me NULL => no entries for this direct mount root or indirect map */
+		/* 
+		 * me NULL => no entries for this direct mount
+		 * root or indirect map
+		 */
 		if (me == NULL)
 			return LKP_FAIL | LKP_INDIRECT;
 	}
@@ -290,7 +288,7 @@ static int lookup(const char *root, const char *name, int name_len, void *contex
 		sprintf(mapent, me->mapent);
 
 	if (me) {
-		DB(syslog(LOG_DEBUG, MODPREFIX "%s -> %s", name, mapent));
+		debug(MODPREFIX "%s -> %s", name, mapent);
 		status = ctxt->parse->parse_mount(root, name, name_len,
 						  mapent, ctxt->parse->context);
 	}

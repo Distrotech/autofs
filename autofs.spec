@@ -1,9 +1,9 @@
 #
-# $Id: autofs.spec,v 1.13 2004/01/11 12:00:51 raven Exp $
+# $Id: autofs.spec,v 1.14 2004/01/29 16:01:22 raven Exp $
 #
 Summary: A tool from automatically mounting and umounting filesystems.
 Name: autofs
-%define version 4.1.0
+%define version 4.1.1
 %define release 1
 Version: %{version}
 Release: %{release}
@@ -11,7 +11,6 @@ License: GPL
 Group: System Environment/Daemons
 Source: ftp://ftp.kernel.org/pub/linux/daemons/autofs/v4/autofs-%{version}.tar.gz
 Buildroot: %{_tmppath}/%{name}-tmp
-BuildPrereq: hesiod-devel, openldap-devel
 Prereq: chkconfig
 Requires: /bin/bash mktemp sed textutils sh-utils grep /bin/ps
 Summary(de): autofs daemon 
@@ -81,36 +80,24 @@ fi
 
 %files
 %defattr(-,root,root)
-%doc CREDITS COPY* README* TODO multiserver_mount.patch patches/* samples/ldap* samples/autofs.schema
+%doc CREDITS CHANGELOG COPY* README* TODO multiserver_mount.patch patches/* samples/ldap* samples/autofs.schema
 %config /etc/rc.d/init.d/autofs
 %config(noreplace) /etc/auto.master
 %config(noreplace,missingok) /etc/auto.misc
 %config(noreplace,missingok) /etc/auto.net
 %{_sbindir}/automount
 %dir %{_libdir}/autofs
-%{_libdir}/autofs/autofs-ldap-auto-master
-%{_libdir}/autofs/lookup_file.so
-%{_libdir}/autofs/lookup_hesiod.so
-%{_libdir}/autofs/lookup_ldap.so
-%{_libdir}/autofs/lookup_multi.so
-%{_libdir}/autofs/lookup_nisplus.so
-%{_libdir}/autofs/lookup_program.so
-%{_libdir}/autofs/lookup_userhome.so
-%{_libdir}/autofs/lookup_yp.so
-%{_libdir}/autofs/mount_afs.so
-%{_libdir}/autofs/mount_autofs.so
-%{_libdir}/autofs/mount_bind.so
-%{_libdir}/autofs/mount_changer.so
-%{_libdir}/autofs/mount_ext2.so
-%{_libdir}/autofs/mount_generic.so
-%{_libdir}/autofs/mount_nfs.so
-%{_libdir}/autofs/parse_hesiod.so
-%{_libdir}/autofs/parse_sun.so
+%{_libdir}/autofs/*
 %{_mandir}/*/*
 %dir /misc
 %dir /net
 
 %changelog
+* Tue Jan 19 2004 Ian Kent <raven@themaw.net>
+- Update spec file to version 4.1.1.
+- Remove BuildRequires on LDAP and Hesoid as make allows
+  for them to be missing.
+
 * Thu Dec 11 2003 Ian Kent <raven@themaw.net>
 - Updated spec file to standardise paths etc.
 

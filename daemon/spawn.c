@@ -1,4 +1,4 @@
-#ident "$Id: spawn.c,v 1.2 2003/09/29 08:22:35 raven Exp $"
+#ident "$Id: spawn.c,v 1.3 2004/01/29 16:01:22 raven Exp $"
 /* ----------------------------------------------------------------------- *
  * 
  *  spawn.c - run programs synchronously with output redirected to syslog
@@ -28,14 +28,10 @@
 
 #include "automount.h"
 
-#ifdef DEBUG
-#define DB(x)           do { x; } while(0)
-#else
-#define DB(x)           do { } while(0)
-#endif
-
-/* Used by subprocesses which exec to avoid carrying over the main
-   daemon's rather weird signalling environment */
+/*
+ * Used by subprocesses which exec to avoid carrying over the main
+ * daemon's rather weird signalling environment
+ */
 void reset_signals(void)
 {
 	struct sigaction sa;
@@ -68,10 +64,12 @@ void reset_signals(void)
 	sigprocmask(SIG_UNBLOCK, &allsignals, NULL);
 }
 
-/* Used by subprocesses which don't exec to avoid carrying over the
-   main daemon's rather weird signalling environment.  Signals are
-   mostly ignored so that "/bin/kill -x automount" (where x is
-   typically SIGTERM or SIGUSR1) only affects the main process. */
+/*
+ * Used by subprocesses which don't exec to avoid carrying over the
+ * main daemon's rather weird signalling environment.  Signals are
+ * mostly ignored so that "/bin/kill -x automount" (where x is
+ * typically SIGTERM or SIGUSR1) only affects the main process.
+ */
 void ignore_signals(void)
 {
 	struct sigaction sa;
@@ -109,8 +107,10 @@ void discard_pending(int sig)
 	sigaction(sig, &oldsa, NULL);
 }
 
-/* Wait for upto 10 secs for lock file to clear then creat one.
- * Needed to prevent overlapping calls to mount from automount itself */
+/*
+ * Wait for upto 10 secs for lock file to clear then creat one.
+ * Needed to prevent overlapping calls to mount from automount itself
+ */
 void wait_for_lock(void)
 {
 	struct timespec t = { 0, 100000000 };

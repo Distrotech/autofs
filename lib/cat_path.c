@@ -1,6 +1,8 @@
 #include <alloca.h>
 #include <string.h>
 #include <limits.h>
+#include <syslog.h>
+#include <ctype.h>
 
 /*
  * sum = "dir/base" with attention to buffer overflows, and multiple
@@ -13,7 +15,7 @@ int cat_path(char *buf, size_t len, const char *dir, const char *base)
 	char *s = buf;
 	size_t left = len;
 
-	if (*s = *d)
+	if ((*s = *d))
 		while ((*++s = *++d) && --left) ;
 	
 	if (!left) {
@@ -42,18 +44,16 @@ int cat_path(char *buf, size_t len, const char *dir, const char *base)
 	return 1;
 }
 
-static int safe_strlen(const char *str, int max)
+int _strlen(const char *str, int max)
 {
 	char *s = (char *) str;
 
 	while (isprint(*s++) && max--) ;
 
-	if (!max)
+	if (max < 0)
 		return 0;
 	
-	*--s = '\0';
-
-	return s - str;
+	return s - str - 1;
 }
 
 /* 
@@ -65,7 +65,7 @@ int ncat_path(char *buf, size_t len,
 	      const char *dir, const char *base, size_t blen)
 {
 	char name[PATH_MAX+1];
-	int alen = safe_strlen(base, blen);
+	int alen = _strlen(base, blen);
 
 	if (blen > PATH_MAX || !alen)
 		return 0;
