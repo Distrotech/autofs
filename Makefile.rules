@@ -1,12 +1,12 @@
 # -*- makefile -*-
-# $Id: Makefile.rules,v 1.2 2003/09/09 13:41:49 raven Exp $
+# $Id: Makefile.rules,v 1.3 2003/09/10 13:56:35 raven Exp $
 #
 # Makefile rules for autofs project
 #
 
 # Root directory contents
-SUBDIRS = daemon modules man samples
-INCDIRS = include
+SUBDIRS = daemon modules man
+INCDIRS = include samples
 INCFILES = COPYING COPYRIGHT NEWS README* TODO Makefile Makefile.rules \
 	   Makefile.conf.in .version .autofs-* configure.in aclocal.m4 \
 	   configure *.patch autofs.spec
@@ -29,22 +29,6 @@ CXX       = g++
 CXXFLAGS  = $(CFLAGS)
 LD        = ld
 SOLDFLAGS = -shared
-
-# Kernel compilation rules (this is for "make kernel" to work; not needed
-# if you're compiling the autofs kernel code as a part of the kernel itself.
-# For "make kernel" to work you need the kernel code to be in the "kernel"
-# directory; not included with the autofs distribution.)
-
-# 1. Comment this out if your kernel is *not* SMP
-KFLAGS   = -D__SMP__
-# 2. Set this to your kernel include files
-KINCLUDE = /usr/src/linux/include
-# 3. Comment this out if you do *not* use versioned modules
-MODFLAGS = -DMODVERSIONS -include $(KINCLUDE)/linux/modversions.h
-
-# Directory to install modules
-moddir = $(INSTALLROOT)/lib/modules/`uname -r`
-fsmoddir = $(moddir)/fs
 
 # Standard rules
 

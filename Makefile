@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.1 2003/09/09 11:21:22 raven Exp $
+# $Id: Makefile,v 1.2 2003/09/10 13:56:35 raven Exp $
 #
 # Main Makefile for the autofs user-space tools
 #
@@ -26,9 +26,6 @@ clean:
 
 install:
 	for i in $(SUBDIRS); do $(MAKE) -C $$i install; done 	
-
-install_kernel:
-	if [ -d kernel ]; then $(MAKE) -C kernel install; fi
 
 install_samples:
 	if [ -d samples ]; then $(MAKE) -C samples install; fi
