@@ -1,4 +1,4 @@
-#ident "$Id: lookup_ldap.c,v 1.17 2005/01/26 04:02:44 raven Exp $"
+#ident "$Id: lookup_ldap.c,v 1.18 2005/01/26 05:31:38 raven Exp $"
 /*
  * lookup_ldap.c - Module for Linux automountd to access automount
  *		   maps in LDAP directories.
@@ -630,6 +630,9 @@ int lookup_mount(const char *root, const char *name, int name_len, void *context
 					   "cn", "automountInformation", ctxt);
 			wild = (ret & (CHE_MISSING | CHE_FAIL)) &&
 					(ret2 & (CHE_MISSING | CHE_FAIL));
+
+			if (ret & CHE_MISSING || ret2 & CHE_MISSING)
+				cache_delete(root, "*", 0);
 		}
 
 		if (cache_delete(root, key, 0) && wild)

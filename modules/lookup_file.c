@@ -1,4 +1,4 @@
-#ident "$Id: lookup_file.c,v 1.12 2005/01/26 04:02:43 raven Exp $"
+#ident "$Id: lookup_file.c,v 1.13 2005/01/26 05:31:38 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup_file.c - module for Linux automount to query a flat file map
@@ -382,7 +382,7 @@ int lookup_mount(const char *root, const char *name, int name_len, void *context
 	time_t now = time(NULL);
 	time_t t_last_read;
 	int need_hup = 0;
-	int ret = 0;
+	int ret = 1;
 
 	if (stat(ctxt->mapname, &st)) {
 		crit(MODPREFIX "file map %s, could not stat", ctxt->mapname);
@@ -416,8 +416,11 @@ int lookup_mount(const char *root, const char *name, int name_len, void *context
 			int wild = CHE_MISSING;
 
 			/* Maybe update wild card map entry */
-			if (ap.type == LKP_INDIRECT)
+			if (ap.type == LKP_INDIRECT) {
 				wild = lookup_wild(root, ctxt);
+				if (wild == CHE_MISSING)
+					cache_delete(root, "*", 0);
+			}
 
 			if (cache_delete(root, key, 0) &&
 					wild & (CHE_MISSING | CHE_FAIL))

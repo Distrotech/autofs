@@ -1,4 +1,4 @@
-#ident "$Id: lookup_yp.c,v 1.11 2005/01/26 04:18:28 raven Exp $"
+#ident "$Id: lookup_yp.c,v 1.12 2005/01/26 05:31:38 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup_yp.c - module for Linux automountd to access a YP (NIS)
@@ -256,8 +256,11 @@ int lookup_mount(const char *root, const char *name, int name_len, void *context
 		int wild = CHE_MISSING;
 
 		/* Maybe update wild card map entry */
-		if (ap.type == LKP_INDIRECT)
+		if (ap.type == LKP_INDIRECT) {
 			wild = lookup_wild(root, ctxt);
+			if (wild == CHE_MISSING)
+				cache_delete(root, "*", 0);
+		}
 
 		if (cache_delete(root, key, 0) &&
 				wild & (CHE_MISSING | CHE_FAIL))
