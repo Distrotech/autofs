@@ -27,6 +27,8 @@ nn/nn/2004 autofs-4.1.1
   provide ability to get debug output when needed. Default
   is produce no output except error messages.
 - merge Mike Blandfords' replicated server patches.
+- added ability to access external environment var.
+   - set by default, use --disable-ext-env to turn of.
 
 4/12/2003 autofs-4.1.0
 ----------------------

@@ -1,4 +1,4 @@
-#ident "$Id: mount_autofs.c,v 1.8 2004/01/29 16:01:22 raven Exp $"
+#ident "$Id: mount_autofs.c,v 1.9 2004/03/07 12:17:54 raven Exp $"
 /*
  * mount_autofs.c
  *
@@ -84,7 +84,7 @@ int mount_mount(const char *root, const char *name, int name_len,
 	if (ap.ghost)
 		argc++;
 
-	if (get_verbose() || get_debug())
+	if (do_verbose || do_debug)
 		argc++;
 
 	if (ap.exp_timeout && ap.exp_timeout != DEFAULT_TIMEOUT) {
@@ -112,9 +112,9 @@ int mount_mount(const char *root, const char *name, int name_len,
 	if (ap.exp_timeout != DEFAULT_TIMEOUT)
 		argv[argc++] = timeout_opt;
 
-	if (get_debug())
+	if (do_debug)
 		argv[argc++] = "--debug";
-	else if (get_verbose())
+	else if (do_verbose)
 		argv[argc++] = "--verbose";
 
 	argv[argc++] = fullpath;

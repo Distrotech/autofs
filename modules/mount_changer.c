@@ -113,8 +113,8 @@ int mount_mount(const char *root, const char *name, int name_len,
 		      what, fstype, fullpath);
 		return 1;
 	} else {
-		DB(syslog(LOG_DEBUG, MODPREFIX "mounted %s type %s on %s",
-			  what, fstype, fullpath));
+		debug(MODPREFIX "mounted %s type %s on %s",
+			  what, fstype, fullpath);
 		return 0;
 	}
 }

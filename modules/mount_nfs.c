@@ -1,4 +1,4 @@
-#ident "$Id: mount_nfs.c,v 1.8 2004/02/03 15:23:21 raven Exp $"
+#ident "$Id: mount_nfs.c,v 1.9 2004/03/07 12:17:54 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  * mount_nfs.c - Module for Linux automountd to mount an NFS filesystem,
@@ -75,7 +75,7 @@ int is_local_addr(const char *host, const char *host_addr, int addr_len)
 
 	sock = socket(AF_INET, SOCK_DGRAM, udpproto);
 	if (sock < 0) {
-		error(MODPREFIX "socket creation failed: %m", host);
+		error(MODPREFIX "socket creation failed: %m");
 		return -1;
 	}
 
@@ -92,7 +92,7 @@ int is_local_addr(const char *host, const char *host_addr, int addr_len)
 
 	ret = getsockname(sock, (struct sockaddr *) &local_addr, &local_len);
 	if (ret < 0) {
-		error(MODPREFIX "getsockname failed: %m", host);
+		error(MODPREFIX "getsockname failed: %m");
 		close(sock);
 		return 0;
 	}

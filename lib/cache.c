@@ -342,13 +342,13 @@ int cache_ghost(const char *root, int ghosted,
 			match = ent_check(&gc, &pkey, ghosted);
 
 			if (match == LKP_ERR_FORMAT) {
-				error("cache_ghost: entry in %s not "
-				      "valid map format, key %s",
+				error("cache_ghost: entry in %s not valid map "
+				      "format, key %s",
 				       gc.mapname, gc.key);
 			} else if (match == LKP_WILD) {
 				if (*me->key == '/')
-					error("cache_ghost: wildcard map "
-					      "key not valid in direct map");
+					error("cache_ghost: wildcard map key "
+					      "not valid in direct map");
 				me = me->next;
 				continue;;
 			}
@@ -369,16 +369,16 @@ int cache_ghost(const char *root, int ghosted,
 
 				if (stat(fullpath, &st) == -1 && errno == ENOENT) {
 					if (mkdir_path(fullpath, 0555) < 0)
-						warn("cache_ghost: "
-						     "mkdir_path %s failed: %m",
+						warn("cache_ghost: mkdir_path %s "
+						     "failed: %m",
 						      fullpath);
 				}
 				break;
 
 			case LKP_MOUNT:
 				if (!is_mounted(gc.direct_base)) {
-					debug("cache_ghost: attempting to "
-					      "mount map, key %s",
+					debug("cache_ghost: attempting to mount map, "
+					      "key %s",
 					      gc.direct_base);
 					parse->parse_mount("", gc.direct_base + 1,
 							   strlen(gc.direct_base) - 1,

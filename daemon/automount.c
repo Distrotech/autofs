@@ -1,4 +1,4 @@
-#ident "$Id: automount.c,v 1.10 2004/01/29 16:01:22 raven Exp $"
+#ident "$Id: automount.c,v 1.11 2004/03/07 12:17:54 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  automount.c - Linux automounter daemon
@@ -58,6 +58,9 @@ int kproto_version;		/* Kernel protocol version used */
 int kproto_sub_version = 0;	/* Kernel protocol version used */
 
 static int submount = 0;
+
+int do_verbose = 0;		/* Verbose feedback option */
+int do_debug = 0;		/* Enable full debug output */
 
 sigset_t ready_sigs;		/* signals only accepted in ST_READY */
 sigset_t lock_sigs;		/* signals blocked for locking */
@@ -1010,7 +1013,7 @@ static int handle_packet_missing(const struct autofs_packet_missing *pkt)
 	pid_t f;
 
 	debug("handle_packet_missing: token %ld, name %s\n",
-		(int) pkt->wait_queue_token, pkt->name);
+		pkt->wait_queue_token, pkt->name);
 
 	/* Ignore packet if we're trying to shut down */
 	if (ap.state == ST_SHUTDOWN_PENDING || ap.state == ST_SHUTDOWN) {
@@ -1211,7 +1214,7 @@ static int handle_packet_expire_multi(const struct autofs_packet_expire_multi *p
 	int ret;
 
 	debug("handle_packet_expire_multi: token %ld, name %s\n",
-		  (int) pkt->wait_queue_token, pkt->name);
+		  pkt->wait_queue_token, pkt->name);
 
 	ret = handle_expire(pkt->name, pkt->len, pkt->wait_queue_token);
 
@@ -1560,11 +1563,12 @@ int handle_mounts(char *path)
 
 	map = ap.lookup->lookup_ghost(ap.path, ap.ghost, ap.lookup->context);
 	if (map & LKP_FAIL) {
-		if (map & LKP_INDIRECT)
+		if (map & LKP_INDIRECT) {
 			error("bad map format: found indirect, "
 			      "expected direct exiting");
-		else
+		} else {
 			error("failed to load map, exiting");
+		}
 		rm_unwanted(ap.path, 1, 1);
 		umount_autofs(1);
 		cleanup_exit(path, 1);
@@ -1659,11 +1663,11 @@ int main(int argc, char *argv[])
 			break;
 
 		case 'v':
-			enable_verbose();
+			do_verbose = 1;
 			break;
 
 		case 'd':
-			enable_debug();
+			do_debug = 1;
 			break;
 
 		case 'V':

@@ -1,5 +1,5 @@
 #
-#ident $Id: configure.in,v 1.5 2004/02/03 15:23:21 raven Exp $
+#ident $Id: configure.in,v 1.6 2004/03/07 12:17:54 raven Exp $
 #
 # configure.in for the autofs daemon
 
@@ -135,9 +135,11 @@ AC_SUBST(initdir)
 # Enable ability to access value in external env variable
 #
 AC_ARG_ENABLE(ext-env,
---enable-ext-env          enable search in environment for substitution variable,
+--disable-ext-env          disable search in environment for substitution variable,,
+	enableval=yes)
+if test x$enable_ext_env = xyes; then
 	AC_DEFINE(ENABLE_EXT_ENV, 1)
-)
+fi
 
 #
 # Write Makefile.conf and include/config.h

@@ -1,4 +1,4 @@
-#ident "$Id: automount.h,v 1.3 2004/01/29 16:01:22 raven Exp $"
+#ident "$Id: automount.h,v 1.4 2004/03/07 12:17:54 raven Exp $"
 /*
  * automount.h
  *
@@ -245,16 +245,23 @@ int rpc_ping(const char *host, long seconds, long micros);
 int rpc_time(const char *host, int seconds, int micros, double *result);
 
 /* log notification */
-void enable_verbose(void);
-void disable_verbose(void);
-int get_verbose(void);
-void enable_debug(void);
-void disable_debug(void);
-int get_debug(void);
-void info(char *msg, ...);
-void warn(char *msg, ...);
-void error(char *msg, ...);
-void crit(char *msg, ...);
-void debug(char *msg, ...);
+extern int do_verbose;
+extern int do_debug;
 
-#endif				/* AUTOMOUNT_H */
+#define info(msg, args...) 		\
+if (do_verbose || do_debug) 		\
+	syslog(LOG_INFO, msg, ##args);
+
+#define warn(msg, args...) 			\
+if (do_verbose || do_debug) 		\
+	syslog(LOG_WARNING, msg, ##args);
+
+#define error(msg, args...)	syslog(LOG_ERR, msg, ##args);
+
+#define crit(msg, args...)	syslog(LOG_CRIT, msg, ##args);
+
+#define debug(msg, args...) 		\
+if (do_debug) 				\
+	syslog(LOG_DEBUG, msg, ##args);
+
+#endif
