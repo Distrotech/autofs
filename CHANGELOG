@@ -1,4 +1,4 @@
-3/1/2005 autofs-4.1.4_beta1
+4/1/2005 autofs-4.1.4_beta1
 ---------------------------
 - fix error in define of mtab lock file.
 - fix mischief caused by change in default strict -> nonstrict.
@@ -66,6 +66,9 @@
    - 049 parse_sun to be merged in another diff.
    - 050 disable_direct_maps.diff applied.
 - update spec file to use autofs sysconfig.
+- update auto.net to search for showmount and use lang variable.
+- allow for ":" escape in multi mount parse (Elmar Pruesse).
+- add auto.smb example program map (Elmar Pruesse).
 
 19/05/2004 autofs-4.1.3
 -----------------------

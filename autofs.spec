@@ -1,5 +1,5 @@
 #
-# $Id: autofs.spec,v 1.22 2005/01/03 02:31:23 raven Exp $
+# $Id: autofs.spec,v 1.23 2005/01/04 14:36:54 raven Exp $
 #
 Summary: A tool from automatically mounting and umounting filesystems.
 Name: autofs
@@ -64,6 +64,7 @@ mkdir -p -m755 $RPM_BUILD_ROOT/etc/sysconfig
 make install mandir=%{_mandir} initdir=/etc/rc.d/init.d INSTALLROOT=$RPM_BUILD_ROOT
 install -m 755 -d $RPM_BUILD_ROOT/misc
 install -m 755 -d $RPM_BUILD_ROOT/net
+install -m 755 -d $RPM_BUILD_ROOT/smb
 install -m 644 redhat/autofs.sysconfig $RPM_BUILD_ROOT/etc/sysconfig/autofs
 
 %clean
@@ -90,6 +91,7 @@ fi
 %config(noreplace) /etc/auto.master
 %config(noreplace,missingok) /etc/auto.misc
 %config(noreplace,missingok) /etc/auto.net
+%config(noreplace,missingok) /etc/auto.smb
 %config(noreplace) /etc/sysconfig/autofs
 %{_sbindir}/automount
 %dir %{_libdir}/autofs
@@ -97,8 +99,12 @@ fi
 %{_mandir}/*/*
 %dir /misc
 %dir /net
+%dir /smb
 
 %changelog
+* Mon Jan 4 2005 Ian Kent <raven@themaw.net>
+- Update package spec file to add auto.smb program map example.
+
 * Mon Jan 3 2005 Ian Kent <raven@themaw.net>
 - Update package spec file to use autofs.sysconfig.
 

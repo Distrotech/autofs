@@ -1,6 +1,8 @@
 #!/bin/sh
 
-# $Id: auto.net,v 1.5 2003/09/29 08:22:35 raven Exp $
+# $Id: auto.net,v 1.6 2005/01/04 14:36:54 raven Exp $
+
+# This file must be executable to work! chmod 755!
 
 # Look at what a host is exporting to determine what we can mount.
 # This is very simple, but it appears to work surprisingly well
@@ -16,14 +18,27 @@ opts="-fstype=nfs,hard,intr,nodev,nosuid"
 # but ignores it.  "kshowmount" is the newer version installed with knfsd,
 # which both accepts and acts on the '--no-headers' flag.
 #SHOWMOUNT="kshowmount --no-headers -e $key"
-#SHOWMOUNT="showmount -e $key | tail +2"
+#SHOWMOUNT="showmount -e $key | tail -n +2"
+
+# I've wanted to do this for ages.
+# Taken from a script contributed by Elmar Pruesse for
+# mounting smb mounts.
+for SMNT in /{,usr/}{,s}bin/{,k}showmount
+do
+	if [ -x $SMNT ]
+	then
+		break
+	fi
+done
+
+[ -x $SMNT ] || exit 1
 
 # Newer distributions get this right
-SHOWMOUNT="/usr/sbin/showmount --no-headers -e $key"
+SHOWMOUNT="$SMNT --no-headers -e $key"
 
-$SHOWMOUNT | sort +0 | \
+$SHOWMOUNT | LC_ALL=C sort +0 | \
 	awk -v key="$key" -v opts="$opts" -- '
-	BEGIN		{ ORS=""; first=1 }
-			{ if (first) { print opts; first=0 }; print " \\\n\t" $1, key ":" $1 }
-	END		{ if (!first) print "\n"; else exit 1 }
+	BEGIN	{ ORS=""; first=1 }
+		{ if (first) { print opts; first=0 }; print " \\\n\t" $1, key ":" $1 }
+	END	{ if (!first) print "\n"; else exit 1 }
 	'

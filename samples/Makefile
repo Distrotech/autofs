@@ -1,5 +1,5 @@
 #
-# $Id: Makefile,v 1.6 2005/01/02 05:01:41 raven Exp $
+# $Id: Makefile,v 1.7 2005/01/04 14:36:54 raven Exp $
 #
 -include ../Makefile.conf
 include ../Makefile.rules
@@ -30,7 +30,10 @@ install: all
 	install -c auto.master -m 644 $(INSTALLROOT)/etc
 	-mv -f $(INSTALLROOT)/etc/auto.misc $(INSTALLROOT)/etc/auto.misc.old
 	install -c auto.misc   -m 644 $(INSTALLROOT)/etc
+	-mv -f $(INSTALLROOT)/etc/auto.net $(INSTALLROOT)/etc/auto.net.old
 	install -c auto.net    -m 755 $(INSTALLROOT)/etc
+	-mv -f $(INSTALLROOT)/etc/auto.smb $(INSTALLROOT)/etc/auto.smb.old
+	install -c auto.smb    -m 755 $(INSTALLROOT)/etc
 	install -d -m 755 $(INSTALLROOT)$(initdir)
 	install -c rc.autofs   -m 755 $(INSTALLROOT)$(initdir)/autofs
 	install -d -m 755 $(INSTALLROOT)$(autofslibdir)
