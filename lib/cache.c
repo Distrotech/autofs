@@ -293,8 +293,10 @@ void cache_clean(const char *root, time_t age)
 			if (!path)
 				return;
 
-			if (is_mounted(_PATH_MOUNTED, path))
+			if (is_mounted(_PATH_MOUNTED, path)) {
+				free(path);
 				continue;
+			}
 
 			if (me->age < age) {
 				pred->next = me->next;
