@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# $Id: rc.autofs.in,v 1.46 2005/02/10 12:58:47 raven Exp $
+# $Id: rc.autofs.in,v 1.47 2005/02/10 14:30:07 raven Exp $
 #
 # rc file for automount using a Sun-style "master map".
 # We first look for a local /etc/auto.master, then a YP
@@ -647,7 +647,7 @@ stop)
 	umount_loopback
 	
 	any=0
-	for file in /var/run/autofs/*.pid
+	for file in `ls /var/run/autofs/*.pid 2>/dev/null`
 	do
 		if [ -e "$file" ]
 		then
@@ -691,7 +691,7 @@ reload)
 
 	getmounts >$TMP1
 
-	for i in /var/run/autofs/*.pid
+	for i in `ls /var/run/autofs/*.pid 2>/dev/null`
 	do
 		pid=`head -n 1 $i 2>/dev/null`
 		[ "$pid" = "" ] && continue
@@ -724,6 +724,8 @@ reload)
 			if [ $? -ne 0 ]; then
 				echo
 				echo " failed to start automount point $mnt"
+			else
+				echo "Started automounter: $mnt"
 			fi
 			done
 		fi
