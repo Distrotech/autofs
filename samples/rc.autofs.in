@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# $Id: rc.autofs.in,v 1.4 2003/09/29 08:22:35 raven Exp $
+# $Id: rc.autofs.in,v 1.5 2003/09/29 09:41:02 raven Exp $
 #
 # rc file for automount using a Sun-style "master map".
 # We first look for a local /etc/auto.master, then a YP
@@ -71,7 +71,7 @@ localoptions=''
 
 #
 # Daemon options
-# e.g. --timeout 60
+# e.g. --timeout=60
 #
 daemonoptions=''
 
