@@ -1,4 +1,4 @@
-#ident "$Id: automount.c,v 1.8 2003/11/10 12:10:21 raven Exp $"
+#ident "$Id: automount.c,v 1.9 2003/12/13 16:37:06 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  automount.c - Linux automounter daemon
@@ -1505,7 +1505,7 @@ int handle_mounts(char *path)
 			syslog(LOG_INFO, "failed to load map, exiting");
 		rm_unwanted(ap.path, 1, 1);
 		umount_autofs(1);
-		cleanup_exit(ap.path, 1);
+		cleanup_exit(path, 1);
 	}
 
 	if (map & LKP_DIRECT) {
@@ -1521,7 +1521,7 @@ int handle_mounts(char *path)
 				       "bad map format: found direct, expected indirect exiting");
 				rm_unwanted(ap.path, 1, 1);
 				umount_autofs(1);
-				cleanup_exit(ap.path, 1);
+				cleanup_exit(path, 1);
 			}
 		}
 		ap.type = LKP_DIRECT;

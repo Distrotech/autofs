@@ -1,4 +1,4 @@
-#ident "$Id: module.c,v 1.2 2003/09/29 08:22:35 raven Exp $"
+#ident "$Id: module.c,v 1.3 2003/12/13 16:37:06 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  module.c - common module-management functions
@@ -177,7 +177,7 @@ struct mount_mod *open_mount(const char *name, const char *err_prefix)
 			syslog(LOG_CRIT, "%s%m", err_prefix);
 		return NULL;
 	}
-	sprintf(fnbuf, "%s//mount_%s.so", AUTOFS_LIB_DIR, name);
+	sprintf(fnbuf, "%s/mount_%s.so", AUTOFS_LIB_DIR, name);
 
 	if (!(dh = dlopen(fnbuf, RTLD_NOW))) {
 		if (err_prefix)
