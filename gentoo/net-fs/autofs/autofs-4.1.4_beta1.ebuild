@@ -1,6 +1,6 @@
 # Copyright 1999-2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Header: /home/cvs/root/autofs/gentoo/net-fs/autofs/Attic/autofs-4.1.4_beta1.ebuild,v 1.2 2005/01/04 14:42:57 raven Exp $
+# $Header: /home/cvs/root/autofs/gentoo/net-fs/autofs/Attic/autofs-4.1.4_beta1.ebuild,v 1.3 2005/01/26 09:39:49 raven Exp $
 
 inherit eutils
 
@@ -57,9 +57,11 @@ src_install() {
 	doman auto.master.5 autofs.5 autofs.8 automount.8
 
 	dodir /etc/autofs /etc/init.d /etc/conf.d /var/run/autofs
+	insopts -m 644
 	insinto /etc/autofs ; doins ${FILESDIR}/auto.master
 	insinto /etc/autofs ; doins ${FILESDIR}/auto.home
 	insinto /etc/autofs ; doins ${FILESDIR}/auto.misc
+	insopts -m 755
 	insinto /etc/autofs ; doins ${FILESDIR}/auto.smb
 	exeinto /etc/autofs ; doexe ${FILESDIR}/auto.net # chmod 755 is important!
 

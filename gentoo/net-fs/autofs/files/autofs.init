@@ -1,7 +1,7 @@
 #!/sbin/runscript
 # Copyright 1999-2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Header: /home/cvs/root/autofs/gentoo/net-fs/autofs/files/autofs.init,v 1.5 2005/01/20 11:00:24 raven Exp $
+# $Header: /home/cvs/root/autofs/gentoo/net-fs/autofs/files/autofs.init,v 1.6 2005/01/26 09:39:49 raven Exp $
 
 # rc file for automount using a Sun-style "master map".
 # We first look for a local /etc/autofs/auto.master, then a YP
@@ -396,7 +396,7 @@ reload() {
 	TMP=`mktemp -t autofs.XXXXXX`
 	getmounts >$TMP
 
-	for i in /var/run/autofs.*.pid
+	for i in /var/run/autofs/*.pid
 	do
 		pid=`head -n 1 $i 2>/dev/null`
 		[ "$pid" = "" ] && continue
@@ -413,8 +413,28 @@ reload() {
 			kill -HUP $pid 2> /dev/null
 		fi
 	done
+
+	getmounts | while read cmd rest
+	do
+		mnt=`echo $rest | sed 's/^.* \(\/[^ ]*\) [A-Za-z].*$/\1/'`
+		pidfile=/var/run/autofs/`echo $mnt | sed 's,/,_,g'`.pid
+
+		start-stop-daemon --start --pidfile $pidfile --quiet \
+			--exec $DAEMON -- --pid-file=$pidfile $rest
+
+		ret=$?
+		if [ $ret -eq 1 ]
+		then
+			continue
+		elif [ $ret -eq 0 ]
+		then
+			echo "Started automounter: $mnt"
+		else
+			echo "Could not start automount for $mnt"	
+		fi
+	done
+
 	rm -f $TMP
-	svc_start
 }
 
 restart() {

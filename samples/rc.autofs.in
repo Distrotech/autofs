@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# $Id: rc.autofs.in,v 1.41 2005/01/19 15:48:30 raven Exp $
+# $Id: rc.autofs.in,v 1.42 2005/01/26 09:39:49 raven Exp $
 #
 # rc file for automount using a Sun-style "master map".
 # We first look for a local /etc/auto.master, then a YP
@@ -359,20 +359,6 @@ function status()
 	)
 }
 
-function get_command_from_pid()
-{
-    ps ax | grep "[0-9]:[0-9][0-9] $DAEMON " | (
-        while read pid tt stat time command; do
-            if [ "$pid" = "$1" ] ; then
-                echo `echo "$command" | sed 's/--pid-file.*\.pid/ /'`
-                return 0
-            fi
-        done
-    )
-
-    return 0
-}
-
 # return true if at least one pid is alive
 function alive()
 {
@@ -696,20 +682,40 @@ reload)
 		pid=`head -n 1 $i 2>/dev/null`
 		[ "$pid" = "" ] && continue
 		
-		command=`ps -wwo 'cmd=' $pid | sed -e \
+		mnt=`ps -wwo 'cmd=' $pid | sed -e \
 		 's,.* --pid-file=/var/run/autofs/\([^ ]*\)\.pid.*,\1,; s,_,/,g'`
 
-		if ! grep -q " $command " $TMP
+		if ! grep -q " $mnt " $TMP
 		then
-			echo "Stopping automounter: $pid"
+			echo "Stopping automounter for: $mnt"
 			kill -USR2 $pid 2> /dev/null
 		else
-			echo "Reloading automounter map: $pid"
+			echo "Reloading automounter map for: $mnt"
 			kill -HUP $pid 2> /dev/null
 		fi
 	done
+
+	cat $TMP | while read cmd rest
+	do
+		mnt=`echo $rest | sed 's/^.* \(\/[^ ]*\) [A-Za-z].*$/\1/'`
+		pidfile=/var/run/autofs/`echo $mnt | sed 's,/,_,g'`.pid
+
+		start-stop-daemon --start --pidfile $pidfile --quiet \
+	  		--exec $DAEMON -- --pid-file=$pidfile $rest
+
+		ret=$?
+		if [ $ret -eq 1]
+		then
+			continue
+		elif [ $ret -eq 0 ]
+		then
+			echo "Started automounter for: $mnt"
+		else
+			echo "Failed to start automount for $mnt"
+		fi
+	done
+
 	rm -f $TMP
-	debian start
 	;;
 force-reload|restart)
 	debian stop
