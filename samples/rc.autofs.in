@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# $Id: rc.autofs.in,v 1.40 2005/01/19 15:03:34 raven Exp $
+# $Id: rc.autofs.in,v 1.41 2005/01/19 15:48:30 raven Exp $
 #
 # rc file for automount using a Sun-style "master map".
 # We first look for a local /etc/auto.master, then a YP
@@ -83,7 +83,7 @@ if [ "$system" = "redhat" ]; then
 	DAEMONOPTIONS=""
 	UNDERSCORETODOT=1
 	DISABLE_DIRECT=1
-	DAEMON_EXIT_WAIT=10
+	DAEMON_EXIT_WAIT=20
 
 	[ -f /etc/sysconfig/autofs ] && . /etc/sysconfig/autofs
 
@@ -94,7 +94,7 @@ if [ "$system" = "redhat" ]; then
 elif [ "$system" = "debian" ]; then
 	TIMEOUT=300
 	DISABLE_DIRECT=1
-	DAEMON_EXIT_WAIT=10
+	DAEMON_EXIT_WAIT=20
 
 	[ -f /etc/default/autofs ] && . /etc/default/autofs
 
@@ -614,7 +614,7 @@ start)
 	fi
 
 	# Check that maps exist
-	if [ -z "$(getmounts)" ]
+	if [ -z "$(getrawmounts)" ]
 	then
 		echo " no automount maps defined."
 		exit 0
