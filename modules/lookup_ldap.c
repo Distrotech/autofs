@@ -1,4 +1,4 @@
-#ident "$Id: lookup_ldap.c,v 1.20 2005/02/20 09:49:33 raven Exp $"
+#ident "$Id: lookup_ldap.c,v 1.21 2005/02/27 05:37:14 raven Exp $"
 /*
  * lookup_ldap.c - Module for Linux automountd to access automount
  *		   maps in LDAP directories.
@@ -589,6 +589,7 @@ static int lookup_wild(const char *root,
 
 	return ret;
 }
+
 int lookup_mount(const char *root, const char *name, int name_len, void *context)
 {
 	struct lookup_context *ctxt = (struct lookup_context *) context;
