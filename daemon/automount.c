@@ -1,4 +1,4 @@
-#ident "$Id: automount.c,v 1.37 2005/02/10 12:56:53 raven Exp $"
+#ident "$Id: automount.c,v 1.38 2005/03/06 09:43:55 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  automount.c - Linux automounter daemon
@@ -1299,13 +1299,19 @@ static void become_daemon(void)
 	/* Initialize global data */
 	my_pid = getpid();
 
-	/* Make our own process group for "magic" reason: processes that share
-	   our pgrp see the raw filesystem behine the magic.  So if we are a 
-	   submount, don't change -- otherwise we won't be able to actually
-	   perform the mount.  A pgrp is also useful for controlling all the
-	   child processes we generate. */
-	if (!submount && setpgrp()) {
-		crit("setpgrp: %m");
+	/*
+	 * Make our own process group for "magic" reason: processes that share
+	 * our pgrp see the raw filesystem behind the magic.  So if we are a 
+	 * submount, don't change -- otherwise we won't be able to actually
+	 * perform the mount.  A pgrp is also useful for controlling all the
+	 * child processes we generate. 
+	 *
+	 * IMK: we now use setsid instead of setpgrp so that we also disassociate
+	 * ouselves from the controling tty. This ensures we don't get unexpected
+	 * signals. This call also sets us as the process group leader.
+	 */
+	if (!submount && (setsid() == -1)) {
+		crit("setsid: %m");
 		exit(1);
 	}
 	my_pgrp = getpgrp();
