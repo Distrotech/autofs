@@ -1,4 +1,4 @@
-1/1/2005 autofs-4.1.4_beta1
+2/1/2005 autofs-4.1.4_beta1
 ---------------------------
 - fix error in define of mtab lock file.
 - fix mischief caused by change in default strict -> nonstrict.
@@ -50,7 +50,7 @@
 - bump version to 4.1.4 beta1 and start testing.
 - fix spec file to build the beta.
 - fix compile warning in lookup_yp.c.
-
+- more work on Debian part of init script (wip).
 
 19/05/2004 autofs-4.1.3
 -----------------------

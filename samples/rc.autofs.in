@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# $Id: rc.autofs.in,v 1.25 2005/01/01 09:18:55 raven Exp $
+# $Id: rc.autofs.in,v 1.26 2005/01/02 05:01:41 raven Exp $
 #
 # rc file for automount using a Sun-style "master map".
 # We first look for a local /etc/auto.master, then a YP
@@ -40,24 +40,24 @@ test -e $DAEMON || exit 0
 #
 system=unknown
 if [ -f /etc/debian_version ]; then
-    system=debian
+	system=debian
 elif [ -f /etc/redhat-release ]; then
-    system=redhat
+	system=redhat
 else
-    echo "$0: Unknown system, please port and contact autofs@linux.kernel.org" 1>&2
-    exit 1
+	echo "$0: Unknown system, please port and contact autofs@linux.kernel.org" 1>&2
+	exit 1
 fi
 
 if [ $system = redhat ]; then
-    . $initdir/functions
+	. $initdir/functions
 fi
 
 if [ $system = debian ]; then
-    thisscript="$0"
-    if [ ! -f "$thisscript" ]; then
-        echo "$0: Cannot find myself" 1>&2
-        exit 1
-    fi
+	thisscript="$0"
+	if [ ! -f "$thisscript" ]; then
+		echo "$0: Cannot find myself" 1>&2
+		exit 1
+	fi
 fi
 
 PATH=/sbin:/usr/sbin:/bin:/usr/bin
@@ -371,12 +371,12 @@ function alive()
 #
 function get_deepest_submount()
 {
-	ps axw|grep $DAEMON|\
+	ps -eo pid,pgrp,cmd|grep $1|\
 	   grep submount|\
-	   sed -e 's/--timeout[ =][0-9]*//g'|\
-	   awk '{print $7,$1}'|\
+	   sed -e 's/--timeout[ =][0-9]*//g; s/--[a-z]*//g'|\
+	   awk '{print $1,$4}'|\
 	   sort -r|\
-	   awk 'BEGIN {ORS=" "} {print $2}'|\
+	   awk 'BEGIN {ORS=" "} {print $1}'|\
 	   awk '{print $1}'
 }
 
@@ -386,21 +386,20 @@ function get_deepest_submount()
 function signal_submounts()
 {
 	tries=0
-	pid=`get_deepest_submount`
+	pid=`get_deepest_submount $1`
 	while [ -n "$pid" -a $tries -lt 8 ]; do
 		oldpid=$pid
 		kill -USR2 $pid 2 > /dev/null
 		usleep 300000
-		pid=`get_deepest_submount`
+		pid=`get_deepest_submount $1`
 		if [ "$oldpid" = "$pid" ]; then
 			tries=`expr $tries + 1`
 		else
 			tries=0
 		fi
 	done
-	echo $pid
+	echo -n $pid
 }
-
 
 #
 # Signal each automount
@@ -408,7 +407,7 @@ function signal_submounts()
 function signal_automounts()
 {
 	RETVAL=0
-	if [ -z "`signal_submounts`" ]; then
+	if [ -z "`signal_submounts $DAEMON`" ]; then
 		pids="`/sbin/pidof $DAEMON`"
 		for one_pid in $pids ; do
 			kill -USR2 $one_pid 2 > /dev/null
@@ -474,10 +473,10 @@ function umount_loopback()
 		fi
 	    fi
 	done
-
     done
 }
 
+#
 # Redhat start/stop function.
 #
 function redhat()
@@ -593,24 +592,42 @@ function debian()
 case "$1" in
 start)
 	echo -n 'Starting automounter:'
+
+	# ensure autofs support is loaded
+	grep -q autofs /proc/filesystems || modprobe -k autofs4 ||  modprobe -k autofs 2>/dev/null
+	if [ $? -ne 0 ]
+	then
+		echo "No autofs support available"
+		exit 1
+	fi
+
+	# Check that maps exist
+	if [ -z "$(getmounts)" ]
+	then
+		echo "No automount maps defined"
+		exit 1
+	fi
+
 	getmounts | while read cmd rest
 	do
 		mnt=`echo $rest | sed 's/^.* \(\/[^ ]*\) [A-Za-z].*$/\1/'`
 		pidfile=/var/run/autofs/`echo $mnt | sed 's,/,_,g'`.pid
 
-		echo -n " $mnt"
-
-		if [ ! -d /var/run/autofs ]; then
-			mkdir /var/run/autofs
-		fi
-
 		start-stop-daemon --start --pidfile $pidfile --quiet \
 	  		--exec $DAEMON -- --pid-file=$pidfile $rest
+
+		if [ $? -eq 0 ]
+		then
+			# Mmmm ... this could be a bug report later.
+			# What if we have 50+ entries in our master map.
+			echo -n " $mnt"
+		fi
 	done
+
 	echo "."
 	;;
 stop)
-	echo 'Stopping automounter:'
+	echo -n 'Stopping automounter:'
 
 	umount_loopback
 	
@@ -620,24 +637,38 @@ stop)
 		if [ -e "$file" ]
 		then
 			any=1
-			pid=`head -1 $file`
+			pid=`head -n 1 $file`
+			mnt=`ps -wwo 'cmd=' $pid | sed -e \
+			  's,.* --pid-file=/var/run/autofs/\([^ ]*\)\.pid.*,\1,; s,_,/,g'`
 
-			set +e
+			# Signal any submounts to exit otherwise just signal process
+			if [ -n "$(get_deepest_submount $pid)" ]
+			then
+				if [ -n "$(signal_submounts $pid)" ]
+				then
+					ret=2
+				else
+					start-stop-daemon --stop --quiet --retry USR2/5 \
+						--oknodo --pidfile $file --exec $DAEMON
+					ret = $?
+				fi
+			else
+				start-stop-daemon --stop --quiet --retry USR2/5 \
+					--pidfile $file --exec $DAEMON
+				ret = $?
+			fi
 
-			start-stop-daemon --stop --quiet --retry USR2/5 \
-				--pidfile $file --exec $DAEMON
-
-			case $? in
+			case $ret in
 			0)
-				echo -n -e "\n  Stopped $pid"
+				echo -n -e " $mnt"
 				rm -f $file
 				;;
 			1)
-				echo -n -e "\n No process for $pid"
+				echo -n -e "\n No process for automount $mnt"
 				rm -f $file
 				;;
 			2)
-				echo -n -e "\n  Couldn't stop $pid"
+				echo -n -e "\n  Couldn't stop automount for $mnt"
 				;;
 			*)
 				echo -n -e \
@@ -677,11 +708,11 @@ reload)
 		fi
 	done
 	rm -f $TMP
-	$0 start
+	$debian start
 	;;
 force-reload|restart)
-        $0 stop
-	$0 start
+        $debian stop
+	$debian start
 	;;
 status)
 	status
@@ -690,7 +721,7 @@ getmounts)
     	getmounts
 	;;
 active)
-    	active
+    	alive
 	;;
 *)
 	echo "Usage: $initdir/autofs {start|stop|restart|reload|status|getmounts|active}" >&2
