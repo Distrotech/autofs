@@ -1,6 +1,6 @@
 # Copyright 1999-2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Header: /home/cvs/root/autofs/gentoo/net-fs/autofs/Attic/autofs-4.1.4_beta1.ebuild,v 1.1 2005/01/02 06:01:46 raven Exp $
+# $Header: /home/cvs/root/autofs/gentoo/net-fs/autofs/Attic/autofs-4.1.4_beta1.ebuild,v 1.2 2005/01/04 14:42:57 raven Exp $
 
 inherit eutils
 
@@ -49,7 +49,7 @@ src_install() {
 
 	dodoc COPYING COPYRIGHT README* CHANGELOG CREDITS
 	cd ${S}/samples
-	docinto samples ; dodoc auto.misc auto.master
+	docinto samples ; dodoc auto.misc auto.net auto.smb auto.master
 	cd ${S}/patches
 	docinto patches ; dodoc *.patch
 	cd ${S}/man
@@ -60,6 +60,7 @@ src_install() {
 	insinto /etc/autofs ; doins ${FILESDIR}/auto.master
 	insinto /etc/autofs ; doins ${FILESDIR}/auto.home
 	insinto /etc/autofs ; doins ${FILESDIR}/auto.misc
+	insinto /etc/autofs ; doins ${FILESDIR}/auto.smb
 	exeinto /etc/autofs ; doexe ${FILESDIR}/auto.net # chmod 755 is important!
 
 	exeinto /etc/init.d ; newexe ${FILESDIR}/autofs.init autofs
