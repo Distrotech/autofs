@@ -1,4 +1,4 @@
-#ident "$Id: parse_sun.c,v 1.21 2005/01/17 10:30:01 raven Exp $"
+#ident "$Id: parse_sun.c,v 1.22 2005/01/17 15:09:28 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  parse_sun.c - module for Linux automountd to parse a Sun-format
@@ -929,7 +929,7 @@ int parse_mount(const char *root, const char *name,
 			if (rv < 0) {
 				rv = 0;
 				debug("parse_mount: ignoring failure of non-strict mount");
-			 else if (rv > 0)
+			} else if (rv > 0)
 				break;
 
 			list = list->next;

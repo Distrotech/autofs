@@ -1,4 +1,4 @@
-#ident "$Id: spawn.c,v 1.7 2005/01/16 15:23:58 raven Exp $"
+#ident "$Id: spawn.c,v 1.8 2005/01/17 15:09:28 raven Exp $"
 /* ----------------------------------------------------------------------- *
  * 
  *  spawn.c - run programs synchronously with output redirected to syslog
@@ -22,6 +22,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <syslog.h>
+#include <sys/types.h>
 #include <unistd.h>
 #include <time.h>
 #include <sys/wait.h>

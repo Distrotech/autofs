@@ -1,4 +1,4 @@
-#ident "$Id: lock.c,v 1.14 2005/01/16 15:23:58 raven Exp $"
+#ident "$Id: lock.c,v 1.15 2005/01/17 15:09:28 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  lock.c - autofs lockfile management
@@ -167,7 +167,6 @@ static void setup_locksigs(void)
 static void reset_locksigs(void)
 {
 	int sig = 0;
-	struct sigaction sa;
 	sigset_t fullset;
 	
 	sigfillset(&fullset);

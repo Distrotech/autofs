@@ -1,4 +1,4 @@
-#ident "$Id: mounts.c,v 1.8 2005/01/16 15:23:58 raven Exp $"
+#ident "$Id: mounts.c,v 1.9 2005/01/17 15:09:28 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  mounts.c - module for Linux automount mount table lookup functions
@@ -21,6 +21,7 @@
 #include <limits.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <stdio.h>
 
 #include "automount.h"
 
