@@ -1,4 +1,4 @@
-#ident "$Id: lookup_multi.c,v 1.6 2005/02/10 10:59:59 raven Exp $"
+#ident "$Id: lookup_multi.c,v 1.7 2005/02/10 12:31:29 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup_multi.c - module for Linux automount to seek multiple lookup
@@ -117,7 +117,7 @@ int lookup_ghost(const char *root, int ghost, time_t now, void *context)
 	int i, ret, at_least_1 = 0;
 
 	for (i = 0; i < ctxt->n; i++) {
-		ret = ctxt->m[i].mod->lookup_ghost(root, ghost,
+		ret = ctxt->m[i].mod->lookup_ghost(root, ghost, now,
 						   ctxt->m[i].mod->context);
 		if (ret & LKP_FAIL)
 			continue;
