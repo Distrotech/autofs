@@ -1,31 +1,31 @@
 
-ident $Id: README.patches,v 1.6 2004/04/07 14:04:25 raven Exp $
+ident $Id: README.patches,v 1.7 2004/12/27 12:01:12 raven Exp $
 
 The patches located in the patches directory are:
 
 autofs4-2.2.17-20001023.diff
 	original autofs4 patch for kernel 2.2
 
-autofs4-2.4.18-20040404.patch
+autofs4-2.4.18-2001227.patch
 	current autofs4 patch for kernel 2.4.18 and below
 
-autofs4-2.4.20-20040404.patch
-	current autofs4 patch for kernel 2.4.19 through 2.4.21
+autofs4-2.4.19-20041227.patch
+	 current autofs4 patch for kernel 2.4.19
 
-autofs4-2.4.20-27.9-20040404.patch
-	current autofs4 patch for RedHat kernel 2.4.20-27.9.
-	As far as I can tell this RedHat kernel series has a
-	patch which changes the task structure which is not
-	present in other RedHat kernels. If you get compile
-	errors in waitq.c try the other 2.4.20 patch.
+autofs4-2.4.20-20041227.patch
+	current autofs4 patch for kernel 2.4.20
 
-autofs4-2.4.22-20040404.patch
-	current autofs4 patch for kernel 2.4.22 and above
+autofs4-2.4.20-redhat9-20041227.patch
+	current autofs4 patch for RedHat 9 with RedHat kernel 2.4.20.
 
-autofs4-2.4.22-1.2174.nptl-20040404.patch
-	current autofs4 patch for Fedora 1 kernels. If there
-	are problems with earlier kernel versions please let
-	me know.
+autofs4-2.4.21-20041227.patch
+	current autofs4 patch for kernel 2.4.21
+
+autofs4-2.4.22-20041227.patch
+	current autofs4 patch for kernel 2.4.22 to 2.4.26
+
+autofs4-2.4.22-fc1-20041227.patch
+	current autofs4 patch for Fedora Core 1
 
 If you are after kernel 2.6 patches please try the autofs mailing
 list or contact me.

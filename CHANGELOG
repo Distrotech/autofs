@@ -35,12 +35,13 @@ xx/xx/2004 autofs-4.1.4
 - allow for LDAP maps that have greater than the LDAP result count limit (Chris Feist).
 - allow for program maps returning larger than 4kb (Jeff Moyer and Chris Feist?).
 - fix some potential buffer overflows (Steve Grubb).
-- carry -D variable definitions to submounts (Michael Blandforf).
-- merge Debian patch 044 044 update reference to mailing list (Arthur Korn).
+- carry -D variable definitions to submounts (Michael Blandford).
+- merge Debian patch 044 update reference to mailing list (Arthur Korn).
 - provide ability to convert read-only NFS mounts to read-only bind mounts (Thorild Selen).
 - fix incorrect direct map entry lookup in yp module. 
 - merge most of RedHat init patch and the browse and umount loopback patches (Jeff Moyer).
 - fix file handle being left open in lookup_file.c.
+- update 2.4 kernel module patches.
 
 19/05/2004 autofs-4.1.3
 -----------------------
