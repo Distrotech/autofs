@@ -1,4 +1,4 @@
-#ident "$Id: mount_generic.c,v 1.9 2004/08/29 12:04:27 raven Exp $"
+#ident "$Id: mount_generic.c,v 1.10 2004/11/15 14:42:47 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  mount_generic.c - module for Linux automountd to mount filesystems
@@ -32,8 +32,6 @@
 #define MODPREFIX "mount(generic): "
 
 int mount_version = AUTOFS_MOUNT_VERSION;	/* Required by protocol */
-
-extern struct autofs_point ap;
 
 int mount_init(void **context)
 {

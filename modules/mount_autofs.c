@@ -1,4 +1,4 @@
-#ident "$Id: mount_autofs.c,v 1.9 2004/03/07 12:17:54 raven Exp $"
+#ident "$Id: mount_autofs.c,v 1.10 2004/11/15 14:42:47 raven Exp $"
 /*
  * mount_autofs.c
  *
@@ -27,8 +27,6 @@
 #define MODPREFIX "mount(autofs): "
 
 int mount_version = AUTOFS_MOUNT_VERSION;	/* Required by protocol */
-
-extern struct autofs_point ap;
 
 int mount_init(void **context)
 {

@@ -38,8 +38,6 @@
 
 int mount_version = AUTOFS_MOUNT_VERSION;	/* Required by protocol */
 
-extern struct autofs_point ap;
-
 int swapCD(const char *device, const char *slotName);
 
 int mount_init(void **context)

@@ -1,4 +1,4 @@
-#ident "$Id: mount_bind.c,v 1.9 2004/08/29 12:04:26 raven Exp $"
+#ident "$Id: mount_bind.c,v 1.10 2004/11/15 14:42:47 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  mount_bind.c      - module to mount a local filesystem if possible;
@@ -32,8 +32,6 @@
 #define MODPREFIX "mount(bind): "
 
 int mount_version = AUTOFS_MOUNT_VERSION;	/* Required by protocol */
-
-extern struct autofs_point ap;
 
 static int bind_works = 0;
 

@@ -47,6 +47,28 @@ static struct mapent_cache *mapent_hash[HASHSIZE];
 
 static unsigned long ent_check(struct ghost_context *gc, char **key, int ghost);
 
+static char *cache_fullpath(const char *root, const char *key)
+{
+	int l;
+	char *path;
+
+	if (*key == '/') {
+		l = strlen(key) + 1;
+		if (l > KEY_MAX_LEN)
+			return NULL;
+		path = malloc(l);
+		strcpy(path, key);
+	} else {
+		l = strlen(key) + 1 + strlen(root) + 1; 
+		if (l > KEY_MAX_LEN)
+			return NULL;
+		path = malloc(l);
+		sprintf(path, "%s/%s", root, key);
+	}
+
+	return path;
+}
+
 static unsigned int hash(const char *key)
 {
 	unsigned long hashval;
@@ -125,6 +147,7 @@ struct mapent_cache *cache_partial_match(const char *prefix)
 		me = mapent_hash[i];
 		if (me == NULL)
 			continue;
+
 		if (len < strlen(me->key) &&
 		    (strncmp(prefix, me->key, len) == 0) && me->key[len] == '/')
 			return me;
@@ -140,138 +163,159 @@ struct mapent_cache *cache_partial_match(const char *prefix)
 	return NULL;
 }
 
-int cache_update(const char *key, const char *mapent, time_t age)
+int cache_add(const char *root, const char *key, const char *mapent, time_t age)
+{
+	struct mapent_cache *me = NULL;
+	char *pkey, *pent;
+	unsigned int hashval = hash(key);
+	char *path;
+
+	me = (struct mapent_cache *) malloc(sizeof(struct mapent_cache));
+	if (!me)
+		return CHE_FAIL;
+
+	pkey = malloc(strlen(key) + 1);
+	if (!pkey) {
+		free(me);
+		return CHE_FAIL;
+	}
+
+	pent = malloc(strlen(mapent) + 1);
+	if (!pent) {
+		free(me);
+		free(pkey);
+		return CHE_FAIL;
+	}
+
+	me->key = strcpy(pkey, key);
+	me->mapent = strcpy(pent, mapent);
+	me->age = age;
+
+	me->next = mapent_hash[hashval];
+	mapent_hash[hashval] = me;
+
+	return CHE_OK;
+}
+
+int cache_update(const char *root, const char *key, const char *mapent, time_t age)
 {
 	struct mapent_cache *s, *me = NULL;
-	char *pkey, *pent;
-	unsigned int hashval;
+	char *pent;
+	int ret = CHE_OK;
 
 	for (s = mapent_hash[hash(key)]; s != NULL; s = s->next)
 		if (strcmp(key, s->key) == 0)
 			me = s;
 
-	if (me == NULL) {
-		me = (struct mapent_cache *) malloc(sizeof(struct mapent_cache));
-		if (me == NULL) {
-			return 0;
+	if (!me) {
+		ret = cache_add(root, key, mapent, age);
+		if (!ret) {
+			debug("cache_add: failed for %s", key);
+			return CHE_FAIL;
 		}
-
-		pkey = malloc(strlen(key) + 1);
-		if (pkey == NULL) {
-			free(me);
-			return 0;
-		}
-
-		pent = malloc(strlen(mapent) + 1);
-		if (pent == NULL) {
-			free(me);
-			free(pkey);
-			return 0;
-		}
-
-		me->key = strcpy(pkey, key);
-		me->mapent = strcpy(pent, mapent);
-		me->age = age;
-
-		hashval = hash(pkey);
-		me->next = mapent_hash[hashval];
-		mapent_hash[hashval] = me;
+		ret = CHE_UPDATED;
 	} else {
 		if (strcmp(me->mapent, mapent) != 0) {
 			pent = malloc(strlen(mapent) + 1);
 			if (pent == NULL) {
-				return 0;
+				return CHE_FAIL;
 			}
 			free(me->mapent);
 			me->mapent = strcpy(pent, mapent);
+			ret = CHE_UPDATED;
 		}
 		me->age = age;
 	}
-	return 1;
+
+	return ret;
 }
 
-int cache_delete(const char *root, const char *key)
+int cache_delete(const char *root, const char *key, int rmpath)
 {
 	struct mapent_cache *me = NULL, *pred;
-	char path[KEY_MAX_LEN + 1];
+	char *path;
 	unsigned int hashval = hash(key);
-
-	if (*key == '/')
-		strcpy(path, key);
-	else
-		sprintf(path, "%s/%s", root, me->key);
 
 	me = mapent_hash[hashval];
 	if (me == NULL)
-		return 0;
+		return CHE_FAIL;
 
-	if (strcmp(key, me->key) == 0) {
-		if (is_mounted(path))
-			return 0;
-		mapent_hash[hashval] = me->next;
-		goto found;
+	path = cache_fullpath(root, key);
+	if (!path)
+		return CHE_FAIL;
+
+	if (is_mounted(path)) {
+		free(path);
+		return CHE_FAIL;
 	}
 
 	while (me->next != NULL) {
 		pred = me;
 		me = me->next;
 		if (strcmp(key, me->key) == 0) {
-			if (is_mounted(path))
-				return 0;
-
 			pred->next = me->next;
-			goto found;
+			free(me->key);
+			free(me->mapent);
+			free(me);
+			me = pred;
 		}
 	}
-	return 0;
 
-      found:
-	rmdir_path(path);
-	free(me->key);
-	free(me->mapent);
-	free(me);
-	return 1;
+	me = mapent_hash[hashval];
+	if (strcmp(key, me->key) == 0) {
+		mapent_hash[hashval] = me->next;
+		free(me->key);
+		free(me->mapent);
+		free(me);
+	}
+done:
+	if (rmpath)
+		rmdir_path(path);
+	free(path);
+	return CHE_OK;
 }
 
 void cache_clean(const char *root, time_t age)
 {
 	struct mapent_cache *me, *pred;
-	char path[KEY_MAX_LEN + 1];
+	char *path;
 	int i;
 
 	for (i = 0; i < HASHSIZE; i++) {
 		me = mapent_hash[i];
-		if (me == NULL)
+		if (!me)
 			continue;
 
 		while (me->next != NULL) {
 			pred = me;
 			me = me->next;
-			if (*me->key == '/') {
-				strcpy(path, me->key);
-			} else {
-				sprintf(path, "%s/%s", root, me->key);
-			}
+
+			path = cache_fullpath(root, me->key);
+			if (!path)
+				return;
 
 			if (is_mounted(path))
 				continue;
 
 			if (me->age < age) {
 				pred->next = me->next;
-				rmdir_path(path);
 				free(me->key);
 				free(me->mapent);
 				free(me);
 				me = pred;
+				rmdir_path(path);
 			}
+
+			free(path);
 		}
 
 		me = mapent_hash[i];
-		if (*me->key == '/') {
-			strcpy(path, me->key);
-		} else {
-			sprintf(path, "%s/%s", root, me->key);
-		}
+		if (!me)
+			continue;
+
+		path = cache_fullpath(root, me->key);
+		if (!path)
+			return;
 
 		if (is_mounted(path))
 			continue;
@@ -283,6 +327,8 @@ void cache_clean(const char *root, time_t age)
 			free(me->mapent);
 			free(me);
 		}
+
+		free(path);
 	}
 }
 

@@ -1,4 +1,4 @@
-#ident "$Id: automount.h,v 1.6 2004/06/06 03:03:50 raven Exp $"
+#ident "$Id: automount.h,v 1.7 2004/11/15 14:42:47 raven Exp $"
 /*
  * automount.h
  *
@@ -102,7 +102,7 @@ struct autofs_point {
 	int ioctlfd;			/* File descriptor for ioctls */
 	dev_t dev;			/* "Device" number assigned by kernel */
 	char *maptype;			/* Type of map "file", "NIS", etc */
-	unsigned int type;		/* Type of map direct ori indirect */
+	unsigned int type;		/* Type of map direct or indirect */
 	time_t exp_timeout;		/* Timeout for expiring mounts */
 	time_t exp_runfreq;		/* Frequency for polling for timeouts */
 	unsigned ghost;			/* Enable/disable gohsted directories */
@@ -112,6 +112,8 @@ struct autofs_point {
 	enum states state;
 	int state_pipe[2];
 };
+
+extern struct autofs_point ap; 
 
 /* Standard function used by daemon or modules */
 
@@ -214,6 +216,12 @@ int close_mount(struct mount_mod *);
 
 /* mapent cache definition */
 
+#define CHE_FAIL	0x0000
+#define CHE_OK		0x0001
+#define CHE_UPDATED	0x0002
+#define CHE_RMPATH	0x0004
+#define CHE_MISSING	0x0008
+
 struct mapent_cache {
 	struct mapent_cache *next;
 	char *key;
@@ -226,8 +234,9 @@ struct mapent_cache *cache_lookup(const char *key);
 struct mapent_cache *cache_lookup_next(struct mapent_cache *me);
 struct mapent_cache *cache_lookup_first(void);
 struct mapent_cache *cache_partial_match(const char *prefix);
-int cache_update(const char *key, const char *mapent, time_t age);
-int cache_delete(const char *root, const char *key);
+int cache_add(const char *root, const char *key, const char *mapent, time_t age);
+int cache_update(const char *root, const char *key, const char *mapent, time_t age);
+int cache_delete(const char *root, const char *key, int rmpath);
 void cache_clean(const char *root, time_t age);
 void cache_release(void);
 int cache_ghost(const char *root, int is_ghosted,

@@ -1,4 +1,4 @@
-#ident "$Id: automount.c,v 1.17 2004/08/29 12:15:19 raven Exp $"
+#ident "$Id: automount.c,v 1.18 2004/11/15 14:42:47 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  automount.c - Linux automounter daemon
@@ -821,6 +821,21 @@ static enum expire expire_proc(int now)
 	}
 }
 
+static int st_readmap(void)
+{
+	int status;
+
+	status = ap.lookup->lookup_ghost(ap.path, ap.ghost, ap.lookup->context);
+
+	debug("st_readmap: status %d\n", status);
+
+	/* If I don't exist in the map any more then exit */
+	if (status == LKP_FAIL)
+		return 0;
+
+	return 1;
+}
+
 static int st_prepare_shutdown(void)
 {
 	int exp;
@@ -908,21 +923,6 @@ static int st_expire(void)
 		ap.state = ST_EXPIRE;
 		return 0;
 	}
-	return 1;
-}
-
-static int st_readmap(void)
-{
-	int status;
-
-	status = ap.lookup->lookup_ghost(ap.path, ap.ghost, ap.lookup->context);
-
-	debug("st_readmap: status %d\n", status);
-
-	/* If I don't exist in the map any more then exit */
-	if (status == LKP_FAIL)
-		return 0;
-
 	return 1;
 }
 

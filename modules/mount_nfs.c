@@ -1,4 +1,4 @@
-#ident "$Id: mount_nfs.c,v 1.14 2004/10/24 13:14:02 raven Exp $"
+#ident "$Id: mount_nfs.c,v 1.15 2004/11/15 14:42:47 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  * mount_nfs.c - Module for Linux automountd to mount an NFS filesystem,
@@ -38,8 +38,6 @@
 #define MODPREFIX "mount(nfs): "
 
 int mount_version = AUTOFS_MOUNT_VERSION;	/* Required by protocol */
-
-extern struct autofs_point ap;
 
 static int udpproto;
 static short port_discard;

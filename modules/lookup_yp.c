@@ -1,4 +1,4 @@
-#ident "$Id: lookup_yp.c,v 1.4 2004/05/10 12:44:30 raven Exp $"
+#ident "$Id: lookup_yp.c,v 1.5 2004/11/15 14:42:47 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup_yp.c - module for Linux automountd to access a YP (NIS)
@@ -21,6 +21,7 @@
 #include <unistd.h>
 #include <syslog.h>
 #include <time.h>
+#include <signal.h>
 #include <sys/param.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -92,7 +93,8 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 int yp_all_callback(int status, char *ypkey, int ypkeylen,
 		    char *val, int vallen, char *ypcb_data)
 {
-	time_t *age = (time_t *) ypcb_data;
+	time_t age = time(NULL);
+	char *root = ypcb_data;
 	char *key;
 	char *mapent;
 
@@ -107,7 +109,7 @@ int yp_all_callback(int status, char *ypkey, int ypkeylen,
 	strncpy(mapent, val, vallen);
 	*(mapent + vallen) = '\0';
 
-	cache_update(key, mapent, *age);
+	cache_update(root, key, mapent, age);
 
 	return 0;
 }
@@ -120,7 +122,7 @@ static int read_map(const char *root, struct lookup_context *context)
 	int err;
 
 	ypcb.foreach = yp_all_callback;
-	ypcb.data = (char *) &age;
+	ypcb.data = (char *) root;
 
 	err = yp_all((char *) ctxt->domainname, (char *) ctxt->mapname, &ypcb);
 
@@ -162,90 +164,134 @@ int lookup_ghost(const char *root, int ghost, void *context)
 	return status;
 }
 
+static int lookup_one(const char *root,
+		      const char *key, int key_len,
+		      struct lookup_context *ctxt)
+{
+	char *mapent;
+	int mapent_len;
+	time_t age = time(NULL);
+	int err;
+
+	/*
+	 * For reasons unknown, the standard YP definitions doesn't
+	 * define input strings as const char *.  However, my
+	 * understanding is that they will not be modified by the
+	 * library.
+	 */
+	err = yp_match((char *) ctxt->domainname, (char *) ctxt->mapname,
+		       (char *) key, key_len, &mapent, &mapent_len);
+
+	if (err != YPERR_SUCCESS) {
+		if (err == YPERR_KEY)
+			return CHE_MISSING;
+
+		return -err;
+	}
+
+	return cache_update(root, key, mapent, age);
+}
+
+static int lookup_wild(const char *root, struct lookup_context *ctxt)
+{
+	char *mapent;
+	int mapent_len;
+	time_t age = time(NULL);
+	int err;
+
+	mapent = alloca(MAPENT_MAX_LEN + 1);
+	if (!mapent)
+		return 0;
+
+	err = yp_match((char *) ctxt->domainname,
+		       (char *) ctxt->mapname, "*", 1, &mapent, &mapent_len);
+
+	if (err == YPERR_SUCCESS)
+		return cache_update(root, "*", mapent, age);
+	
+	return -err;
+}
+
 int lookup_mount(const char *root, const char *name, int name_len, void *context)
 {
 	struct lookup_context *ctxt = (struct lookup_context *) context;
 	char key[KEY_MAX_LEN + 1];
 	int key_len;
-	char *mapent = NULL;
-	struct mapent_cache *me = NULL;
-	time_t age = time(NULL);
+	char *mapent;
 	int mapent_len;
-	int err, rv;
+	struct mapent_cache *me;
+	int ret;
+	time_t now = time(NULL);
+	time_t t_last_read;
 
 	debug(MODPREFIX "looking up %s", name);
 
-	me = cache_lookup(name);
-	if (me == NULL)
-		if (sprintf(key, "%s/%s", root, name))
-			me = cache_lookup(key);
+	if (ap.type == LKP_DIRECT)
+		key_len = snprintf(key, KEY_MAX_LEN, "%s/%s", root, name);
+	else
+		key_len = snprintf(key, KEY_MAX_LEN, "%s", name);
 
-	if (me == NULL) {
+	if (key_len > KEY_MAX_LEN)
+		return 1;
+
+	/* check map and if change is detected re-read map */
+	ret = lookup_one(root, name, name_len, ctxt);
+
+	debug("ret = %d", ret);
+
+	if (!ret)
+		return 1;
+
+	if (ret < 0) {
+		warn(MODPREFIX 
+		     "lookup for %s failed: %s", name, yperr_string(-ret));
+		return 1;
+	}
+
+	me = cache_lookup_first();
+	t_last_read = me ? now - me->age : ap.exp_runfreq + 1;
+
+	if (ret == CHE_UPDATED) {
+		/* Have parent update its map */
+		if (t_last_read > ap.exp_runfreq)
+			kill(getppid(), SIGHUP);
+	} else if (ret == CHE_MISSING) {
+		if (!cache_delete(root, key, CHE_RMPATH)) {
+			rmdir_path(key);
+		}
+
+		/* Maybe update wild card map entry */
+		if (!ret && ap.type == LKP_INDIRECT)
+			lookup_wild(root, ctxt);
+
+		/* Have parent update its map */
+		if (t_last_read > ap.exp_runfreq)
+			kill(getppid(), SIGHUP);
+	}
+
+
+	me = cache_lookup(key);
+	if (me) {
+		mapent = alloca(strlen(me->mapent) + 1);
+		mapent_len = sprintf(mapent, "%s", me->mapent);
+	} else {
 		/* path component, do submount */
 		me = cache_partial_match(key);
-
 		if (me) {
-			mapent = malloc(strlen(ctxt->mapname) + 20);
+			mapent = alloca(strlen(ctxt->mapname) + 20);
 			mapent_len =
 			    sprintf(mapent, "-fstype=autofs yp:%s", ctxt->mapname);
 		}
-	} else {
-		mapent = malloc(strlen(me->mapent) + 1);
-		mapent_len = sprintf(mapent, me->mapent);
 	}
 
-	if (!me) {
-		/* For reasons unknown, the standard YP definitions doesn't
-		   define input strings as const char *.  However, my
-		   understanding is that they will not be modified by the
-		   library. */
-		err = yp_match((char *) ctxt->domainname, (char *) ctxt->mapname,
-			       (char *) name, name_len, &mapent, &mapent_len);
-
-		if (err != YPERR_SUCCESS) {
-			if (err != YPERR_KEY)
-				goto out_err;
-
-			/* See if there is an entry "root/name" */
-			key_len = sprintf(key, "%s/%s", root, name);
-			err = yp_match((char *) ctxt->domainname, 
-				       (char *) ctxt->mapname,
-				       key, key_len, &mapent, &mapent_len);
-
-			if (err != YPERR_SUCCESS) {
-				if (err != YPERR_KEY)
-					goto out_err;
-				/* 
-				 * Try to get the "*" entry if there is one i
-				 * - note that we *don't* modify "name" so
-				 *   & -> the name we used, not "*"
-				 */
-				err =
-				    yp_match((char *) ctxt->domainname,
-					     (char *) ctxt->mapname, "*", 1, 
-					     &mapent, &mapent_len);
-			} else
-				cache_update(key, mapent, age);
-
-			if (err)
-				goto out_err;
-		} else
-			cache_update(name, mapent, age);
-	}
+	if (!me)
+		return 1;
 
 	mapent[mapent_len] = '\0';
 
-	debug(MODPREFIX "%s -> %s", name, mapent);
+	debug(MODPREFIX "%s -> %s", key, mapent);
 
-	rv = ctxt->parse->parse_mount(root, name, name_len, mapent, ctxt->parse->context);
-	free(mapent);
-	return rv;
-
-out_err:
-	warn(MODPREFIX "lookup for %s failed: %s", name, yperr_string(err));
-	if (mapent)
-		free(mapent);
-	return 1;
+	return ctxt->parse->parse_mount(root, name, name_len, mapent, ctxt->parse->context);
 }
 
 int lookup_done(void *context)
