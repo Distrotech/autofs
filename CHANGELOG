@@ -7,6 +7,7 @@
 - reintroduced some 4.0.0 init script code to help serialise
   shutdown signaling and umount of submounts. This is an attempt
   to alieviate some of the contention for umount.
+- fix invalid path reference on error exit.
 
 
 autofs-4.1.0
