@@ -1,4 +1,4 @@
-# $Id: autofs.spec,v 1.4 2003/09/28 11:37:56 raven Exp $
+# $Id: autofs.spec,v 1.5 2003/09/28 11:48:37 raven Exp $
 Summary: autofs daemon
 Name: autofs
 %define version 4.0.0
@@ -56,8 +56,8 @@ mkdir -p $RPM_BUILD_ROOT/usr/lib/autofs
 mkdir -p $RPM_BUILD_ROOT/usr/man/man5
 mkdir -p $RPM_BUILD_ROOT/usr/man/man8
 
-make install initdir=/etc/init.d INSTALLROOT=$RPM_BUILD_ROOT
-make install_samples initdir=/etc/init.d INSTALLROOT=$RPM_BUILD_ROOT
+make install initdir=/etc/rc.d/init.d INSTALLROOT=$RPM_BUILD_ROOT
+make install_samples initdir=/etc/rc.d/init.d INSTALLROOT=$RPM_BUILD_ROOT
 install -m 755 -d $RPM_BUILD_ROOT/misc
 install -m 755 -d $RPM_BUILD_ROOT/net
 
@@ -87,6 +87,9 @@ fi
 
 %changelog
 # $Log: autofs.spec,v $
+# Revision 1.5  2003/09/28 11:48:37  raven
+# Fix autofs.spec again.
+#
 # Revision 1.4  2003/09/28 11:37:56  raven
 # Fix typo in autofs.spec
 #
