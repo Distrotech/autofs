@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# $Id: rc.autofs.in,v 1.11 2004/04/03 07:14:33 raven Exp $
+# $Id: rc.autofs.in,v 1.12 2004/04/18 02:10:09 raven Exp $
 #
 # rc file for automount using a Sun-style "master map".
 # We first look for a local /etc/auto.master, then a YP
@@ -190,7 +190,7 @@ function getmounts()
 		mapoptions="$(echo "$daemonoptions $options" |\
 		      sed   's/--*t\(imeout\)*[ \t=]*\([0-9][0-9]*\)//g' |
 		      sed   's/--*g\(host\)*//g' |
-		      sed   's/--*v\(verbose\)*//g' |
+		      sed   's/--*v\(erbose\)*//g' |
 		      sed   's/--*d\(ebug\)*//g')"
 		# Break up the maptype and map, if the map type is specified
 		maptype=`echo $map | cut -f1 -d:`
