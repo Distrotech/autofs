@@ -1,4 +1,4 @@
-#ident "$Id: lookup_yp.c,v 1.10 2005/01/26 04:02:44 raven Exp $"
+#ident "$Id: lookup_yp.c,v 1.11 2005/01/26 04:18:28 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup_yp.c - module for Linux automountd to access a YP (NIS)
@@ -289,6 +289,8 @@ int lookup_mount(const char *root, const char *name, int name_len, void *context
 	/* Have parent update its map */
 	if (need_hup)
 		kill(getppid(), SIGHUP);
+
+	return ret;
 }
 
 int lookup_done(void *context)
