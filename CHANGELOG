@@ -71,6 +71,7 @@
 - add auto.smb example program map (Elmar Pruesse).
 - apply slashify-colons patch to enable it work (Timo Felbinger).
 - fix for ldap_search when multiple cn's are in one LDAP entry (Chris Feist).
+- fix alarm not being reset during prune signal event.
 
 19/05/2004 autofs-4.1.3
 -----------------------

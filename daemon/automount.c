@@ -1,4 +1,4 @@
-#ident "$Id: automount.c,v 1.29 2005/01/08 11:05:09 raven Exp $"
+#ident "$Id: automount.c,v 1.30 2005/01/08 13:16:49 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  automount.c - Linux automounter daemon
@@ -575,7 +575,6 @@ static enum states handle_child(int hang)
 
 			switch (ap.state) {
 			case ST_EXPIRE:
-				alarm(ap.exp_runfreq);
 				/* FALLTHROUGH */
 			case ST_PRUNE:
 				/* If we're a submount and we've just
@@ -585,6 +584,7 @@ static enum states handle_child(int hang)
 					next = ST_SHUTDOWN_PENDING;
 					break;
 				}
+				alarm(ap.exp_runfreq);
 				/* FALLTHROUGH */
 
 			case ST_READY:
@@ -869,6 +869,7 @@ static int st_prune(void)
 
 	case EXP_ERROR:
 	case EXP_PARTIAL:
+		alarm(ap.exp_runfreq);
 		return 1;
 
 	case EXP_STARTED:
