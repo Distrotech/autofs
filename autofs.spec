@@ -1,10 +1,10 @@
 #
-# $Id: autofs.spec,v 1.9 2003/09/29 11:57:30 raven Exp $
+# $Id: autofs.spec,v 1.10 2003/10/04 13:11:23 raven Exp $
 #
 Summary: autofs daemon
 Name: autofs
 %define version 4.1.0
-%define release beta1
+%define release beta2
 Version: %{version}
 Release: %{release}
 Copyright: GPL

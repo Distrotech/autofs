@@ -1,4 +1,4 @@
-#ident "$Id: mount_ext2.c,v 1.4 2003/09/29 08:22:35 raven Exp $"
+#ident "$Id: mount_ext2.c,v 1.5 2003/10/04 13:11:23 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  mount_ext2.c - module for Linux automountd to mount ext2 filesystems
@@ -66,6 +66,11 @@ int mount_mount(const char *root, const char *name, int name_len,
 	if (mkdir_path(fullpath, 0555) && errno != EEXIST) {
 		syslog(LOG_ERR, MODPREFIX "mkdir_path %s failed: %m", name);
 		return 1;
+	}
+
+	if (is_mounted(fullpath)) {
+		syslog(LOG_WARN, "BUG: %s already mounted", fullpath);
+		return 0;
 	}
 
 	if (options) {

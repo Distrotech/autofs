@@ -1,4 +1,4 @@
-#ident "$Id: mount_bind.c,v 1.3 2003/09/29 08:22:35 raven Exp $"
+#ident "$Id: mount_bind.c,v 1.4 2003/10/04 13:11:23 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  mount_bind.c      - module to mount a local filesystem if possible;
@@ -112,6 +112,11 @@ int mount_mount(const char *root, const char *name, int name_len,
 			syslog(LOG_NOTICE, MODPREFIX "mkdir_path %s failed: %m",
 			       fullpath);
 			return 1;
+		}
+
+		if (is_mounted(fullpath)) {
+			syslog(LOG_WARN, "BUG: %s already mounted", fullpath);
+			return 0;
 		}
 
 		DB(syslog(LOG_DEBUG, MODPREFIX "calling mount --bind %s %s",

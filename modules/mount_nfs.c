@@ -1,4 +1,4 @@
-#ident "$Id: mount_nfs.c,v 1.3 2003/09/29 08:22:35 raven Exp $"
+#ident "$Id: mount_nfs.c,v 1.4 2003/10/04 13:11:23 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  * mount_nfs.c - Module for Linux automountd to mount an NFS filesystem,
@@ -239,6 +239,11 @@ int mount_mount(const char *root, const char *name, int name_len,
 			return 1;
 		}
 		save_errno = errno;
+
+		if (is_mounted(fullpath)) {
+			syslog(LOG_WARN, "BUG: %s already mounted", fullpath);
+			return 0;
+		}
 
 		wait_for_lock();
 		if (nfsoptions && *nfsoptions) {

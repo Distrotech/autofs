@@ -1,4 +1,4 @@
-#ident "$Id: mount_generic.c,v 1.3 2003/09/29 08:22:35 raven Exp $"
+#ident "$Id: mount_generic.c,v 1.4 2003/10/04 13:11:23 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  mount_generic.c - module for Linux automountd to mount filesystems
@@ -63,8 +63,13 @@ int mount_mount(const char *root, const char *name, int name_len,
 		syslog(LOG_NOTICE, MODPREFIX "mkdir_path %s failed: %m", name);
 		return 1;
 	}
-	wait_for_lock();
 
+	if (is_mounted(fullpath)) {
+		syslog(LOG_WARN, "BUG: %s already mounted", fullpath);
+		return 0;
+	}
+
+	wait_for_lock();
 	if (options) {
 		DB(syslog
 		   (LOG_DEBUG, MODPREFIX "calling mount -t %s " SLOPPY "-o %s %s %s",
