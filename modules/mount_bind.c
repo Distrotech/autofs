@@ -1,4 +1,4 @@
-#ident "$Id: mount_bind.c,v 1.11 2004/11/15 14:47:13 raven Exp $"
+#ident "$Id: mount_bind.c,v 1.12 2004/11/20 14:30:42 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  mount_bind.c      - module to mount a local filesystem if possible;
@@ -104,6 +104,9 @@ int mount_mount(const char *root, const char *name, int name_len,
 	while (--i > 0 && fullpath[i] == '/')
 		fullpath[i] = '\0';
 
+	if (options == NULL || *options == '\0')
+		options = "defaults";
+
 	if (bind_works) {
 		int status, existed = 1;
 
@@ -123,11 +126,14 @@ int mount_mount(const char *root, const char *name, int name_len,
 			return 0;
 		}
 
-		debug(MODPREFIX "calling mount --bind %s %s", what, fullpath);
+		debug(MODPREFIX
+		      "calling mount --bind " SLOPPY " -o %s %s %s",
+		      options, what, fullpath);
 
 		wait_for_lock();
 		err = spawnl(LOG_NOTICE, MOUNTED_LOCK,
 			     PATH_MOUNT, PATH_MOUNT, "--bind",
+			     SLOPPYOPT "-o", options,
 			     what, fullpath, NULL);
 		unlink(AUTOFS_LOCK);
 

@@ -1,4 +1,4 @@
-#ident "$Id: mount_nfs.c,v 1.17 2004/11/15 14:47:13 raven Exp $"
+#ident "$Id: mount_nfs.c,v 1.18 2004/11/20 14:30:42 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  * mount_nfs.c - Module for Linux automountd to mount an NFS filesystem,
@@ -328,6 +328,7 @@ int mount_mount(const char *root, const char *name, int name_len,
 	char *nfsoptions = NULL;
 	int local, err;
 	int nosymlink = 0;
+	int ro = 0;            /* Set if mount bind should be read-only */
 
 	debug(MODPREFIX "root=%s name=%s what=%s, fstype=%s, options=%s",
 	      root, name, what, fstype, options);
@@ -382,14 +383,18 @@ int mount_mount(const char *root, const char *name, int name_len,
 			if (strncmp("nosymlink", cp, end - cp + 1) == 0)
 				nosymlink = 1;
 			else {
+				/* Check for options that also make sense
+				   with bind mounts */
+				if (strncmp("ro", cp, end - cp + 1) == 0)
+					ro = 1;
 				/* and jump over trailing white space */
 				memcpy(nfsp, cp, comma - cp + 1);
 				nfsp += comma - cp + 1;
 			}
 		}
 
-		debug(MODPREFIX "nfs options=\"%s\", nosymlink=%d",
-		      nfsoptions, nosymlink);
+		debug(MODPREFIX "nfs options=\"%s\", nosymlink=%d, ro=%d",
+		      nfsoptions, nosymlink, ro);
 	}
 
 	local = 0;
@@ -421,10 +426,13 @@ int mount_mount(const char *root, const char *name, int name_len,
 	if (local) {
 		/* Local host -- do a "bind" */
 
+		const char *bind_options = ro ? "ro" : "";
+
 		debug(MODPREFIX "%s is local, doing bind", name);
 
 		return mount_bind->mount_mount(root, name, name_len,
-			       whatstr, "bind", NULL, mount_bind->context);
+					       whatstr, "bind", bind_options,
+					       mount_bind->context);
 	} else {
 		/* Not a local host - do an NFS mount */
 		int status, existed = 1;
