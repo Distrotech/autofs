@@ -1,5 +1,5 @@
 #
-# $Id: autofs.spec,v 1.6 2003/09/29 08:22:35 raven Exp $
+# $Id: autofs.spec,v 1.7 2003/09/29 09:34:10 raven Exp $
 #
 Summary: autofs daemon
 Name: autofs
@@ -59,7 +59,6 @@ mkdir -p -m755 $RPM_BUILD_ROOT/usr/man/man5
 mkdir -p -m755 $RPM_BUILD_ROOT/usr/man/man8
 
 make install initdir=/etc/rc.d/init.d INSTALLROOT=$RPM_BUILD_ROOT
-make install_samples initdir=/etc/rc.d/init.d INSTALLROOT=$RPM_BUILD_ROOT
 install -m 755 -d $RPM_BUILD_ROOT/misc
 install -m 755 -d $RPM_BUILD_ROOT/net
 
