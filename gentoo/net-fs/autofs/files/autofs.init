@@ -1,7 +1,7 @@
 #!/sbin/runscript
 # Copyright 1999-2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Header: /home/cvs/root/autofs/gentoo/net-fs/autofs/files/autofs.init,v 1.6 2005/01/26 09:39:49 raven Exp $
+# $Header: /home/cvs/root/autofs/gentoo/net-fs/autofs/files/autofs.init,v 1.7 2005/02/10 12:58:47 raven Exp $
 
 # rc file for automount using a Sun-style "master map".
 # We first look for a local /etc/autofs/auto.master, then a YP
@@ -242,6 +242,20 @@ function getmounts()
     )
 }
 
+function get_command_from_pid()
+{
+	ps ax | grep "[0-9]:[0-9][0-9] $DAEMON " | (
+		while read pid tt stat time command; do
+			if [ "$pid" = "$1" ] ; then
+				echo `echo "$command" | \
+					sed 's/--pid-file.*\.pid/ /'`
+				return 0
+			fi
+		done
+	)
+	return 0
+}
+
 function umount_loopback()
 {
     loops=`LC_ALL=C awk '!/^#/ && $1 ~ /^\/dev\/loop/ && $2 != "/" {print $2}' /proc/mounts`
@@ -393,18 +407,24 @@ stats() {
 reload() {
 	echo "Reloading automounter: checking for changes ... "
 
-	TMP=`mktemp -t autofs.XXXXXX`
-	getmounts >$TMP
+	TMP1=`mktemp -t autofs.XXXXXX`
+	TMP2=`mktemp -t autofs.XXXXXX`
+
+	getmounts >$TMP1
+
 
 	for i in /var/run/autofs/*.pid
 	do
 		pid=`head -n 1 $i 2>/dev/null`
 		[ "$pid" = "" ] && continue
 
+		cmd=`get_command_from_pid $pid`
+		echo $mnt >>$TMP2
+
 		mnt=`ps -wwo 'cmd=' $pid | sed -e \
 		 's,.* --pid-file=/var/run/autofs/\([^ ]*\)\.pid.*,\1,; s,_,/,g'`
 
-		if ! grep -q " $mnt " $TMP
+		if ! grep -q "$cmd" $TMP1
 		then
 			echo "Stopping automounter: $mnt"
 			kill -USR2 $pid 2>/dev/null
@@ -414,27 +434,26 @@ reload() {
 		fi
 	done
 
-	getmounts | while read cmd rest
-	do
-		mnt=`echo $rest | sed 's/^.* \(\/[^ ]*\) [A-Za-z].*$/\1/'`
-		pidfile=/var/run/autofs/`echo $mnt | sed 's,/,_,g'`.pid
+	cat $TMP1 | (while read x; do
+		if ! grep -q "^$x" $TMP2; then
+			echo $x | while read cmd rest; do
 
-		start-stop-daemon --start --pidfile $pidfile --quiet \
-			--exec $DAEMON -- --pid-file=$pidfile $rest
+			mnt=`echo $rest | sed 's/^.* \(\/[^ ]*\) [A-Za-z].*$/\1/'`
+			pidfile=/var/run/autofs/`echo $mnt | sed 's,/,_,g'`.pid
 
-		ret=$?
-		if [ $ret -eq 1 ]
-		then
-			continue
-		elif [ $ret -eq 0 ]
-		then
-			echo "Started automounter: $mnt"
-		else
-			echo "Could not start automount for $mnt"	
+			start-stop-daemon --start --pidfile $pidfile --quiet \
+				--exec $DAEMON -- --pid-file=$pidfile $rest
+
+			if [ $? -ne 0 ]; then
+				echo "Could not start automount for $mnt"	
+			else
+				echo "Started automounter: $mnt"
+			fi
+			done
 		fi
-	done
+	done)
 
-	rm -f $TMP
+	rm -f $TMP1 $TMP2
 }
 
 restart() {

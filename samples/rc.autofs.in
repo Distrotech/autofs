@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# $Id: rc.autofs.in,v 1.45 2005/02/06 07:44:55 raven Exp $
+# $Id: rc.autofs.in,v 1.46 2005/02/10 12:58:47 raven Exp $
 #
 # rc file for automount using a Sun-style "master map".
 # We first look for a local /etc/auto.master, then a YP
@@ -359,6 +359,20 @@ function status()
 	)
 }
 
+function get_command_from_pid()
+{
+	ps ax | grep "[0-9]:[0-9][0-9] $DAEMON " | (
+		while read pid tt stat time command; do
+			if [ "$pid" = "$1" ] ; then
+				echo `echo "$command" | \
+					sed 's/--pid-file.*\.pid/ /'`
+				return 0
+			fi
+		done
+	)
+	return 0
+}
+
 # return true if at least one pid is alive
 function alive()
 {
@@ -672,19 +686,23 @@ stop)
 reload)
 	echo "Reloading automounter: checking for changes ... "
 
-	TMP=`mktemp -t autofs.XXXXXX`
-	getmounts >$TMP
+	TMP1=`mktemp -t autofs.XXXXXX`
+	TMP2=`mktemp -t autofs.XXXXXX`
+
+	getmounts >$TMP1
 
 	for i in /var/run/autofs/*.pid
 	do
 		pid=`head -n 1 $i 2>/dev/null`
 		[ "$pid" = "" ] && continue
 		
+		cmd=`get_command_from_pid $pid`
+		echo $cmd >>$TMP2
+
 		mnt=`ps -wwo 'cmd=' $pid | sed -e \
 		 's,.* --pid-file=/var/run/autofs/\([^ ]*\)\.pid.*,\1,; s,_,/,g'`
 
-		if ! grep -q " $mnt " $TMP
-		then
+		if ! grep -q "$cmd" $TMP1; then
 			echo "Stopping automounter for: $mnt"
 			kill -USR2 $pid 2> /dev/null
 		else
@@ -693,27 +711,25 @@ reload)
 		fi
 	done
 
-	cat $TMP | while read cmd rest
-	do
-		mnt=`echo $rest | sed 's/^.* \(\/[^ ]*\) [A-Za-z].*$/\1/'`
-		pidfile=/var/run/autofs/`echo $mnt | sed 's,/,_,g'`.pid
+	cat $TMP1 | (while read x; do
+		if ! grep -q "^$x" $TMP2; then
+			echo $x | while read cmd rest; do
 
-		start-stop-daemon --start --pidfile $pidfile --quiet \
-	  		--exec $DAEMON -- --pid-file=$pidfile $rest
+			mnt=`echo $rest | sed 's/^.* \(\/[^ ]*\) [A-Za-z].*$/\1/'`
+			pidfile=/var/run/autofs/`echo $mnt | sed 's,/,_,g'`.pid
 
-		ret=$?
-		if [ $ret -eq 1 ]
-		then
-			continue
-		elif [ $ret -eq 0 ]
-		then
-			echo "Started automounter for: $mnt"
-		else
-			echo "Failed to start automount for $mnt"
+			start-stop-daemon --start --pidfile $pidfile --quiet \
+				--exec $DAEMON -- --pid-file=$pidfile $rest
+			
+			if [ $? -ne 0 ]; then
+				echo
+				echo " failed to start automount point $mnt"
+			fi
+			done
 		fi
-	done
+	done)
 
-	rm -f $TMP
+	rm -f $TMP1 $TMP2
 	;;
 force-reload|restart)
 	debian stop
