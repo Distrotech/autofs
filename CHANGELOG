@@ -51,6 +51,7 @@
 - fix spec file to build the beta.
 - fix compile warning in lookup_yp.c.
 - more work on Debian part of init script (wip).
+- add Gentoo portage ebuild files.
 
 19/05/2004 autofs-4.1.3
 -----------------------

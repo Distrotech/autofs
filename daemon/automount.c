@@ -1,4 +1,4 @@
-#ident "$Id: automount.c,v 1.25 2004/12/31 06:30:08 raven Exp $"
+#ident "$Id: automount.c,v 1.26 2005/01/02 06:01:46 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  automount.c - Linux automounter daemon
@@ -238,6 +238,16 @@ static void rm_unwanted(const char *path, int incl, int rmsymlink)
 	walk_tree(path, rm_unwanted_fn, incl, &rmsymlink);
 }
 
+static void check_rm_dirs(const char *path, int incl)
+{
+	if ((!ap.ghost) ||
+	    (ap.state == ST_SHUTDOWN_PENDING ||
+	     ap.state == ST_SHUTDOWN))
+		rm_unwanted(path, incl, 1);
+	else if (ap.ghost && (ap.type == LKP_INDIRECT))
+		rm_unwanted(path, 0, 1);
+}
+
 /* umount all filesystems mounted under path.  If incl is true, then
    it also tries to umount path itself */
 static int umount_multi(const char *path, int incl)
@@ -253,9 +263,11 @@ static int umount_multi(const char *path, int incl)
 	if (!mntlist) {
 		if (!incl) {
 			warn("umount_multi: no mounts found under %s", path);
+			check_rm_dirs(path, incl);
 			return 0;
 		}
 		error("umount_multi: no mount found for %s", path);
+		check_rm_dirs(path, incl);
 		return -1;
 	}
 
@@ -270,14 +282,8 @@ static int umount_multi(const char *path, int incl)
 	free_mnt_list(mntlist);
 
 	/* Delete detritus like unwanted mountpoints and symlinks */
-	if (left == 0) {
-		if ((!ap.ghost) ||
-		    (ap.state == ST_SHUTDOWN_PENDING ||
-		     ap.state == ST_SHUTDOWN))
-			rm_unwanted(path, incl, 1);
-		else if (ap.ghost && (ap.type == LKP_INDIRECT))
-			rm_unwanted(path, 0, 1);
-	}
+	if (left == 0)
+		check_rm_dirs(path, incl);
 
 	return left;
 }
