@@ -1,4 +1,4 @@
-#ident "$Id: lookup_program.c,v 1.4 2004/11/17 13:39:12 raven Exp $"
+#ident "$Id: lookup_program.c,v 1.5 2004/11/20 10:37:43 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup_program.c - module for Linux automount to access an
@@ -84,7 +84,7 @@ int lookup_ghost(const char *root, int ghost, void *context)
 int lookup_mount(const char *root, const char *name, int name_len, void *context)
 {
 	struct lookup_context *ctxt = (struct lookup_context *) context;
-	char mapent[MAPENT_MAX_LEN + 1], *mapp;
+	char *mapent, *mapp, *tmp;
 	char errbuf[1024], *errp;
 	char ch;
 	int pipefd[2], epipefd[2];
@@ -94,10 +94,18 @@ int lookup_mount(const char *root, const char *name, int name_len, void *context
 	fd_set readfds, ourfds;
 	enum state { st_space, st_map, st_done } state;
 	int quoted = 0;
-	int ret;
+	int ret = 1;
 	int max_fd;
+	int distance;
+	int alloci = 1;
 
 	debug(MODPREFIX "looking up %s", name);
+
+	mapent = (char *)malloc(MAPENT_MAX_LEN + 1);
+	if (!mapent) {
+		error(MODPREFIX "malloc: %s\n", strerror(errno));
+		return 1;
+	}
 
 	/*
 	 * We don't use popen because we don't want to run /bin/sh plus we
@@ -107,12 +115,12 @@ int lookup_mount(const char *root, const char *name, int name_len, void *context
 
 	if (pipe(pipefd)) {
 		error(MODPREFIX "pipe: %m");
-		return 1;
+		goto out_free;
 	}
 	if (pipe(epipefd)) {
 		close(pipefd[0]);
 		close(pipefd[1]);
-		return 1;
+		goto out_free;
 	}
 
 	f = fork();
@@ -122,7 +130,7 @@ int lookup_mount(const char *root, const char *name, int name_len, void *context
 		close(epipefd[0]);
 		close(epipefd[1]);
 		error(MODPREFIX "fork: %m");
-		return 1;
+		goto out_free;
 	} else if (f == 0) {
 		reset_signals();
 		close(pipefd[0]);
@@ -178,21 +186,40 @@ int lookup_mount(const char *root, const char *name, int name_len, void *context
 				if (!quoted && ch == '\n') {
 					*mapp = '\0';
 					state = st_done;
-				} else if (mapp - mapent < MAPENT_MAX_LEN - 1) {
-					/* 
-					 * Eat \ quoting \n, otherwise pass it
-					 * through for the parser
+				/* We overwrite up to 3 characters, so we
+				 * need to make sure we have enough room
+				 * in the buffer for this. */
+				} else if (mapp - mapent > 
+					   ((MAPENT_MAX_LEN+1) * alloci) - 3) {
+					/*
+					 * Alloc another page for map entries.
 					 */
-					if (quoted) {
-						if (ch == '\n')
-							*mapp++ = ' ';
-						else {
-							*mapp++ = '\\';
-							*mapp++ = ch;
-						}
-					} else
-						*mapp++ = ch;
+					distance = mapp - mapent;
+					tmp = realloc(mapent,
+						      ((MAPENT_MAX_LEN + 1) * 
+						       ++alloci));
+					if (!tmp) {
+						alloci--;
+						error(MODPREFIX "realloc: %s\n",
+						      strerror(errno));
+						break;
+					}
+					mapent = tmp;
+					mapp = tmp + distance;
 				}
+				/* 
+				 * Eat \ quoting \n, otherwise pass it
+				 * through for the parser
+				 */
+				if (quoted) {
+					if (ch == '\n')
+						*mapp++ = ' ';
+					else {
+						*mapp++ = '\\';
+						*mapp++ = ch;
+					}
+				} else
+					*mapp++ = ch;
 				break;
 			case st_done:
 				/* Eat characters till there's no more output */
@@ -234,18 +261,20 @@ int lookup_mount(const char *root, const char *name, int name_len, void *context
 
 	if (waitpid(f, &status, 0) != f) {
 		error(MODPREFIX "waitpid: %m");
-		return 1;
+		goto out_free;
 	}
 
 	if (mapp == mapent || !WIFEXITED(status) || WEXITSTATUS(status) != 0) {
 		error(MODPREFIX "lookup for %s failed", name);
-		return 1;
+		goto out_free;
 	}
 
 	debug(MODPREFIX "%s -> %s", name, mapent);
 
 	ret = ctxt->parse->parse_mount(root, name, name_len,
 				       mapent, ctxt->parse->context);
+out_free:
+	free(mapent);
 	return ret;
 }
 

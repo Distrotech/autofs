@@ -33,6 +33,7 @@ xx/xx/2004 autofs-4.1.4
 - fix duplicate map handling in init script (Chris Feist).
 - force local map paths to begin with / (Chris Feist).
 - allow for LDAP maps that have greater than the LDAP result count limit (Chris Feist).
+- allow for program maps returning larger than 4kb (Jeff Moyer and Chris Feist?).
 
 19/05/2004 autofs-4.1.3
 -----------------------
