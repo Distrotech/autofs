@@ -1,4 +1,4 @@
-#ident "$Id: parse_sun.c,v 1.26 2005/02/20 05:40:41 raven Exp $"
+#ident "$Id: parse_sun.c,v 1.27 2005/04/05 12:40:07 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  parse_sun.c - module for Linux automountd to parse a Sun-format
@@ -606,10 +606,11 @@ static int sun_mount(const char *root, const char *name, int namelen,
 			}
 		}
 
-		if (np > noptions) {
+		if (np > noptions + len) {
 			warn(MODPREFIX "options string truncated");
 			np[len] = '\0';
-		}
+		} else
+			*(np - 1) = '\0';
 
 		options = noptions;
 	}

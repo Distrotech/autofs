@@ -1,7 +1,7 @@
 #!/sbin/runscript
 # Copyright 1999-2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Header: /home/cvs/root/autofs/gentoo/net-fs/autofs/files/autofs.init,v 1.14 2005/03/27 06:29:44 raven Exp $
+# $Header: /home/cvs/root/autofs/gentoo/net-fs/autofs/files/autofs.init,v 1.15 2005/04/05 12:40:07 raven Exp $
 
 # rc file for automount using a Sun-style "master map".
 # We first look for a local /etc/autofs/auto.master, then a YP
@@ -22,7 +22,7 @@ opts="start stop status stats reload restart"
 #
 function getschemes()
 {
-	SOURCES=`grep ^automount: nsswitch.conf | \
+	SOURCES=`grep ^automount: /etc/nsswitch.conf | \
 		sed -e 's/^.*://' -e 's/\[.*\]/ /g'`
 	
 	if [ `echo $SOURCES | awk '{print NF}'` -gt 0 ]
@@ -275,11 +275,11 @@ function umount_loopback()
 		echo ""
 		echo -n $"Unmounting loopback filesystem $match:  "
 		loopdev=`LC_ALL=C grep $l /proc/mounts | awk '{print $1}'`
-		umount -d $match || ret=$?
-		if [ $ret -eq 0 ]; then
+		umount -d $match
+		if [ $? -eq 0 ]; then
 		    echo "done"
 		else
-		    echo "failed ($ret)"
+		    echo "failed ($?)"
 		fi
 	    fi
 	done
@@ -297,11 +297,11 @@ function umount_loopback()
 	    if [ -n "$match" ]; then
 		echo ""
 		echo -n $"Unmounting loopback filesystem $match:  "
-		umount -d $match || ret=$?
-		if [ $ret -eq 0 ]; then
+		umount -d $match
+		if [ $? -eq 0 ]; then
 		    echo "done"
 		else
-		    echo "failed ($ret)"
+		    echo "failed ($?)"
 		fi
 	    fi
 	done
@@ -339,8 +339,8 @@ start() {
 		pidfile=/var/run/autofs/`echo $mnt | sed 's,/,_,g'`.pid
 
 		start-stop-daemon --start --pidfile $pidfile --quiet \
-			--exec $DAEMON -- --pid-file=$pidfile $rest ||
-			ret=$?
+			--exec $DAEMON -- --pid-file=$pidfile $rest
+		ret=$?
 
 		if [ $ret -ne 0 ]
 		then
@@ -368,8 +368,8 @@ stop() {
 
 			start-stop-daemon --stop --quiet \
 					--retry USR2/${daemon_exit_wait} \
-					--pidfile $file --exec $DAEMON ||
-				ret=$?
+					--pidfile $file --exec $DAEMON
+			ret=$?
 
 			case $ret in
 			0)
@@ -446,8 +446,8 @@ reload() {
 			pidfile=/var/run/autofs/`echo $mnt | sed 's,/,_,g'`.pid
 
 			start-stop-daemon --start --pidfile $pidfile --quiet \
-				--exec $DAEMON -- --pid-file=$pidfile $rest ||
-				ret=$?
+				--exec $DAEMON -- --pid-file=$pidfile $rest
+			ret=$?
 
 			if [ $ret -ne 0 ]; then
 				echo "Could not start automount for $mnt"	
