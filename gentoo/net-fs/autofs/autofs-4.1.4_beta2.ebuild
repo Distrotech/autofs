@@ -1,6 +1,6 @@
 # Copyright 1999-2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Header: /home/cvs/root/autofs/gentoo/net-fs/autofs/Attic/autofs-4.1.4_beta1.ebuild,v 1.3 2005/01/26 09:39:49 raven Exp $
+# $Header: /home/cvs/root/autofs/gentoo/net-fs/autofs/Attic/autofs-4.1.4_beta2.ebuild,v 1.1 2005/02/10 13:14:50 raven Exp $
 
 inherit eutils
 
