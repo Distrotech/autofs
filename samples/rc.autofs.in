@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# $Id: rc.autofs.in,v 1.20 2004/11/20 08:32:55 raven Exp $
+# $Id: rc.autofs.in,v 1.21 2004/11/20 08:50:15 raven Exp $
 #
 # rc file for automount using a Sun-style "master map".
 # We first look for a local /etc/auto.master, then a YP
@@ -180,12 +180,28 @@ function getmounts()
 	    # These checks screen out duplicates and skip over directories
 	    # where the map is '-'.
 	    # We can't do empty or direct host maps, so don't bother trying.
+
+	    # Strip trailing slashes from the dir line if it exists to aid
+	    # in checking for duplicate maps
+	    dir=`echo "$dir" | sed -e "s/\/*$//"`
+
 	    if [ ! -z "$map" -a "$map" = "-hosts" ] ; then
 		continue
 	    fi
+
+	    # Do not include a map if it is a duplicate, maps on top of
+	    # another map or another map, maps on top of it.
+	    for knownmap in $knownmaps
+	    do	
+		if [ "`echo $dir/ | grep ^$knownmap`" != "" \
+			-o "`echo $knownmap | grep ^$dir/`" != "" \]
+		then 
+		    continue 2
+		fi	
+	    done
+
 	    if [ ! -z "$dir" -a ! -z "$map" \
-			-a x`echo "$map" | cut -c1` != 'x-' \
-			-a "`echo "$knownmaps" | grep '\<'$dir/`" = "" ]
+			-a x`echo "$map" | cut -c1` != 'x-' ]
 	    then
 		# If the options include a -t or --timeout, a -g or --ghost,
 		# a -v or --verbose or a -d or --debug paramter, then pull
@@ -257,8 +273,8 @@ function getmounts()
 		echo "$DAEMON $startupoptions $dir $maptype $map $mapoptions $localoptions" | sed -e 's/	/ /g' -e 's/  */ /g'
 
 		: echo ------------------------
-	    fi
 	    knownmaps=" $dir/ $knownmaps"
+	    fi
 	done
     )
 }
