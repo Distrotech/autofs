@@ -1,4 +1,4 @@
-#ident "$Id: automount.c,v 1.12 2004/04/03 07:14:33 raven Exp $"
+#ident "$Id: automount.c,v 1.13 2004/04/03 11:52:15 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  automount.c - Linux automounter daemon
@@ -210,7 +210,7 @@ static int rm_unwanted_fn(const char *file, const struct stat *st, int when, voi
 		if (st->st_dev != ap.dev)
 			return 0;
 	} else {
-		DB(syslog(LOG_INFO, "rm_unwanted: %s\n", file));
+		info("rm_unwanted: %s\n", file);
 		if (S_ISDIR(st->st_mode))
 			rmdir(file);
 		else if (!S_ISLNK(st->st_mode) || rmsymlink)
