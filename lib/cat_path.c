@@ -1,4 +1,4 @@
-#ident "$Id: cat_path.c,v 1.3 2004/11/20 15:08:38 raven Exp $"
+#ident "$Id: cat_path.c,v 1.4 2005/04/06 15:14:23 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  cat_path.c - boundary aware buffer management routines
@@ -63,7 +63,7 @@ int _strlen(const char *str, int max)
 {
 	char *s = (char *) str;
 
-	while (isprint(*s++) && max--) ;
+	while (*s++ && max--) ;
 
 	if (max < 0)
 		return 0;

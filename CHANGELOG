@@ -23,6 +23,7 @@
 - more work on replicated server code - fix occasional mount fail.
 - revert some Debian init script changes in favour of Debian maintainer patches.
 - update kernel patches.
+- remove isprint calls as it breaks 8-bit characters.
 
 14/2/2005 autofs-4.1.4_beta2
 ----------------------------
