@@ -1,4 +1,4 @@
-#ident "$Id: mounts.c,v 1.3 2004/11/20 14:52:59 raven Exp $"
+#ident "$Id: mounts.c,v 1.4 2004/11/21 05:35:06 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  mounts.c - module for Linux automount mount table lookup functions
@@ -133,7 +133,6 @@ struct mnt_list *reverse_mnt_list(struct mnt_list *list)
 static struct mnt_list *copy_mnt_list_ent(struct mnt_list *ent)
 {
 	struct mnt_list *new;
-	int len;
 
 	if (!ent)
 		return NULL;

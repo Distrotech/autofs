@@ -1,4 +1,4 @@
-#ident "$Id: lookup_ldap.c,v 1.9 2004/11/20 15:08:38 raven Exp $"
+#ident "$Id: lookup_ldap.c,v 1.10 2004/11/21 05:35:06 raven Exp $"
 /*
  * lookup_ldap.c - Module for Linux automountd to access automount
  *		   maps in LDAP directories.
@@ -372,7 +372,7 @@ static int lookup_one(const char *root, const char *qKey,
 	char **values = NULL;
 	char *attrs[] = { key, type, NULL };
 	LDAP *ldap;
-	struct mapent_cache *me;
+	struct mapent_cache *me = NULL;
 	int ret = CHE_OK;
 
 	if (ctxt == NULL) {
@@ -476,7 +476,7 @@ static int lookup_wild(const char *root,
 	char **values = NULL;
 	char *attrs[] = { key, type, NULL };
 	LDAP *ldap;
-	struct mapent_cache *me;
+	struct mapent_cache *me = NULL;
 	int ret = CHE_OK;
 	char qKey[KEY_MAX_LEN + 1];
 	int qKey_len;

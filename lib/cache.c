@@ -1,4 +1,4 @@
-#ident "$Id: cache.c,v 1.8 2004/11/20 15:08:38 raven Exp $"
+#ident "$Id: cache.c,v 1.9 2004/11/21 05:35:06 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  cache.c - mount entry cache management routines
@@ -168,7 +168,6 @@ int cache_add(const char *root, const char *key, const char *mapent, time_t age)
 	struct mapent_cache *me = NULL;
 	char *pkey, *pent;
 	unsigned int hashval = hash(key);
-	char *path;
 
 	me = (struct mapent_cache *) malloc(sizeof(struct mapent_cache));
 	if (!me)
@@ -268,7 +267,7 @@ int cache_delete(const char *root, const char *key, int rmpath)
 		free(me->mapent);
 		free(me);
 	}
-done:
+
 	if (rmpath)
 		rmdir_path(path);
 	free(path);

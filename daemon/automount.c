@@ -1,4 +1,4 @@
-#ident "$Id: automount.c,v 1.21 2004/11/20 11:19:12 raven Exp $"
+#ident "$Id: automount.c,v 1.22 2004/11/21 05:35:06 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  automount.c - Linux automounter daemon
@@ -243,11 +243,8 @@ static void rm_unwanted(const char *path, int incl, int rmsymlink)
 static int umount_multi(const char *path, int incl)
 {
 	int left;
-	struct mntent *mnt;
-	FILE *mtab;
 	struct mnt_list *mntlist = NULL;
 	struct mnt_list *mptr;
-	size_t pathlen = strlen(path);
 
 	debug("umount_multi: path=%s incl=%d\n", path, incl);
 

@@ -1,4 +1,4 @@
-#ident "$Id: parse_sun.c,v 1.14 2004/11/20 13:51:08 raven Exp $"
+#ident "$Id: parse_sun.c,v 1.15 2004/11/21 05:35:06 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  parse_sun.c - module for Linux automountd to parse a Sun-format
@@ -830,7 +830,7 @@ int parse_mount(const char *root, const char *name,
 	} else {
 		/* Normal (non-multi) entries */
 		char *loc;
-		int loclen, l;
+		int loclen;
 
 		if (*p == ':')
 			p++;	/* Sun escape for entries starting with / */
