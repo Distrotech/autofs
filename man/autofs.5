@@ -1,5 +1,5 @@
 .\" t
-.\" $Id: autofs.5,v 1.4 2003/12/11 15:22:50 raven Exp $
+.\" $Id: autofs.5,v 1.5 2003/12/31 15:44:13 raven Exp $
 .TH AUTOFS 5 "6 Apr 1998"
 .TH AUTOFS 5 "14 Jan 2000"
 .SH NAME
@@ -85,6 +85,23 @@ local ide drive.  The third makes a share exported from a Windows
 machine available for automounting.  The rest should be fairly
 self-explanatory. The last entry (the last three lines) is an example
 of a multi-map (see below).
+
+If you use the automounter for a filesystem without access permissions
+(like \fBvfat\fP), users usually can't write on such a filesystem
+because it is mounted as user \fBroot\fP.
+You can solve this problem by passing the option \fIgid=<gid>\fP,
+e. g. \fIgid=floppy\fP. The filesystem is then mounted as group
+\fBfloppy\fP instead of \fBroot\fP. Then you can add the users
+to this group, and they can write to the filesystem. Here's an
+example entry for an autofs map:
+.sp
+.RS +.2i
+.ta 1.0i 3.0i
+.nf
+floppy-vfat  -fstype=vfat,sync,gid=floppy,umask=002  :/dev/fd0
+.fi
+.RE
+.sp
 .SH FEATURES
 .SS Map Key Substitution
 An & character in the
@@ -126,7 +143,7 @@ OSVERS	Version of OS (uname -v)
 .fi
 .RE
 .sp
-Additional entries can be defined with the -Dvariable=Value option to
+Additional entries can be defined with the -Dvariable=Value map-option to
 .BR automount (8).
 .SS Executable Maps
 A map can be marked as executable.  The init script that parses the

@@ -6,7 +6,7 @@
 .\"
 .\" This is free documentation.
 .\"
-.\" $Id: automount.8,v 1.3 2003/09/29 08:22:35 raven Exp $
+.\" $Id: automount.8,v 1.4 2003/12/31 15:44:13 raven Exp $
 .\"
 .TH AUTOMOUNT 8 "14 Jan 2000"
 .SH NAME
@@ -21,9 +21,6 @@ taking a base \fImount-point\fP and \fImap\fP file, and using these
 within the base \fImount-point\fP when they are accessed in any way.
 The filesystems are then autounmounted after a period of inactivity.
 .SH OPTIONS
-.TP
-.I "\-Dvariable=value"
-Replace \fIvariable\fP with \fIvalue\fP in map substitutions.
 .TP
 .I "\-p, \-\-pid-file"
 Write the pid of the daemon to the specified file.
@@ -82,7 +79,7 @@ the specified subtree, where the \fBcn\fP attribute is the key (the wildcard
 key is "/"), and the \fBautomountInformation\fP attribute contains the
 information used by the automounter.  Documentation on the schema
 used by this module is available online at
-\fIhttp://docs.iplanet.com/docs/manuals/directory/411ext/nis/mapping.htm\fP.
+\fIhttp://docs.sun.com/source/806-4251-10/mapping.htm\fP.
 .P
 RFC 2307 schema entries are \fBnisObject\fB objects and use the \fBcn\fB
 attribute as the key and the \fBnisMapEntry\fB contains information used
@@ -104,6 +101,13 @@ in the case for maps of type \fByp\fP, \fBnisplus\fP, or \fBhesiod\fP.
 Any remaining command line arguments without leading dashes (\-) are
 taken as options (\fI\-o\fP) to \fBmount\fP.  Arguments with leading
 dashes are considered options for the maps.
+.sp
+The \fBsun\fP format supports the following options:
+.RS
+.TP
+.I "\-Dvariable=value"
+Replace \fIvariable\fP with \fIvalue\fP in map substitutions.
+.RE
 .SH NOTES
 If the \fBautomount\fP daemon catches signal USR1, it will unmount all
 currently unused autofs-mounted filesystems and continue running
