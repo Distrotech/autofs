@@ -1,4 +1,4 @@
-#ident "$Id: lookup_ldap.c,v 1.14 2005/01/06 15:07:54 raven Exp $"
+#ident "$Id: lookup_ldap.c,v 1.15 2005/01/20 14:37:43 raven Exp $"
 /*
  * lookup_ldap.c - Module for Linux automountd to access automount
  *		   maps in LDAP directories.
@@ -295,20 +295,26 @@ static int read_one_map(const char *root,
 static int read_map(const char *root, struct lookup_context *ctxt,
 		    const char *key, int keyvallen, time_t age, int *result_ldap)
 {
-	int rv = LDAP_SUCCESS;
+	int rv1 = LDAP_SUCCESS, rv2 = LDAP_SUCCESS;
+	int ret;
 
 	/* all else fails read entire map */
-	if (!read_one_map(root, "nisObject", "cn", 
-			  key, keyvallen, "nisMapEntry", ctxt, age, &rv)) {
-		if ((rv != LDAP_SUCCESS) || 
-		    !read_one_map(root, "automount", "cn", key, keyvallen, 
-				  "automountInformation", ctxt, age, &rv)) {
-			if (result_ldap != NULL)
-				*result_ldap = rv;
-			return 0;
-		}
-	}
+	ret = read_one_map(root, "nisObject", "cn", 
+			  key, keyvallen, "nisMapEntry", ctxt, age, &rv1);
+	if (ret) {
+		goto ret_ok;
 
+	ret = read_one_map(root, "automount", "cn", key, keyvallen, 
+			  "automountInformation", ctxt, age, &rv2);
+	if (ret)
+		goto ret_ok;
+
+	if (result_ldap != NULL)
+		*result_ldap = (rv1 == LDAP_SUCCESS ? rv2 : rv1);
+
+	return 0;
+
+ret_ok:
 	/* Clean stale entries from the cache */
 	cache_clean(root, age);
 
