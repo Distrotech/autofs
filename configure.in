@@ -1,5 +1,5 @@
 #
-#ident $Id: configure.in,v 1.7 2004/04/03 07:14:33 raven Exp $
+#ident $Id: configure.in,v 1.8 2004/04/03 07:18:21 raven Exp $
 #
 # configure.in for the autofs daemon
 
@@ -9,7 +9,7 @@
 #
 define([AC_CACHE_LOAD], )dnl
 define([AC_CACHE_SAVE], )dnl
-AC_INIT(.autofs-4.1.1)
+AC_INIT(.autofs-4.1.2)
 
 #
 # autofs installs by default in /usr
