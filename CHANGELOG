@@ -3,6 +3,10 @@
 - added CHANGELOG.
 - documented nonstrict special option (Debian patch).
 - updated spec file to standardise paths etc.
+- reintroduced some 4.0.0 init script code to help serialise
+  shutdown signaling and umount of submounts. This is an attempt
+  to alieviate some of the contention for umount.
+
 
 autofs-4.1.0
 ------------

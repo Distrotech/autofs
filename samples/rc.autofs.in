@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# $Id: rc.autofs.in,v 1.8 2003/11/24 14:36:51 raven Exp $
+# $Id: rc.autofs.in,v 1.9 2003/12/13 07:50:00 raven Exp $
 #
 # rc file for automount using a Sun-style "master map".
 # We first look for a local /etc/auto.master, then a YP
@@ -258,6 +258,67 @@ function alive()
 }
 
 #
+# Find pid of deepest nested submount
+#
+function get_deepest_submount()
+{
+	ps axw|grep $DAEMON|\
+	   grep submount|\
+	   sed -e 's/--timeout[ =][0-9]*//g'|\
+	   awk '{print $7,$1}'|\
+	   sort -r|\
+	   awk 'BEGIN {ORS=" "} {print $2}'|\
+	   awk '{print $1}'
+}
+
+#
+# Signal each nested submount
+#
+function signal_submounts()
+{
+	tries=0
+	pid=`get_deepest_submount`
+	while [ -n "$pid" -a $tries -lt 8 ]; do
+		oldpid=$pid
+		kill -USR2 $pid 2 > /dev/null
+		usleep 300000
+		pid=`get_deepest_submount`
+		if [ "$oldpid" = "$pid" ]; then
+			tries=`expr $tries + 1`
+		else
+			tries=0
+		fi
+	done
+	echo $pid
+}
+
+
+#
+# Signal each automount
+#
+function signal_automounts()
+{
+	RETVAL=0
+	if [ -z "`signal_submounts`" ]; then
+		pids="`/sbin/pidof $DAEMON`"
+		for one_pid in $pids ; do
+			kill -USR2 $one_pid 2 > /dev/null
+			count=0
+			while ps ax|grep -v grep|grep $one_pid >/dev/null; do
+				usleep 200000 
+				count=$(expr $count + 1)
+				if [ $count -gt 20 ]; then
+					break;
+				fi
+			done
+		done
+	fi
+	if [ -n "`/sbin/pidof $DAEMON`" ] ; then
+		RETVAL=1
+	fi
+	return $RETVAL
+}
+
 # Redhat start/stop function.
 #
 function redhat()
@@ -290,8 +351,9 @@ case "$1" in
 		success $"$prog shutdown"
 		RETVAL=0
 	else
-		killproc $DAEMON -USR2 2> /dev/null
+		signal_automounts
 		RETVAL=$?
+		success "$prog shutdown" || failure "$prog shutdown"
 	fi
 	count=0
 	while [ -n "`/sbin/pidof $DAEMON`" -a $count -lt 10 ] ; do
