@@ -1,4 +1,4 @@
-#ident "$Id: spawn.c,v 1.4 2005/01/09 09:16:43 raven Exp $"
+#ident "$Id: spawn.c,v 1.5 2005/01/09 09:29:16 raven Exp $"
 /* ----------------------------------------------------------------------- *
  * 
  *  spawn.c - run programs synchronously with output redirected to syslog
@@ -118,7 +118,7 @@ static int do_spawn(int logpri, int use_lock, const char *prog, const char *cons
 	sigset_t allsignals, tmpsig, oldsig;
 
 	if (use_lock)
-		if (!aquire_lock()1)
+		if (!aquire_lock())
 			return -1;
 
 	sigfillset(&allsignals);
@@ -211,7 +211,7 @@ int spawnv(int logpri, int use_lock, const char *prog, const char *const *argv)
 	return do_spawn(logpri, 0, prog, argv);
 }
 
-int spawnl(int logpri, int use_lock, const char *prog, ...)
+int spawnl(int logpri, const char *prog, ...)
 {
 	va_list arg;
 	int argc;
