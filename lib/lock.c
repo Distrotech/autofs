@@ -1,4 +1,4 @@
-#ident "$Id: lock.c,v 1.2 2005/01/09 11:51:36 raven Exp $"
+#ident "$Id: lock.c,v 1.3 2005/01/09 12:48:45 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  lock.c - autofs lockfile management
@@ -116,8 +116,8 @@ static void setup_locksigs(void)
 	sa.sa_flags = 0;
 	sigfillset(&sa.sa_mask);
 
-	sigprocmask(SIG_BLOCK, &sa.sa_mask, NULL);
 	alarm_remaining = alarm(0);
+	sigprocmask(SIG_BLOCK, &sa.sa_mask, NULL);
 
 	while (sigismember(&sa.sa_mask, ++sig) != -1
 			&& sig != SIGCHLD) {
@@ -152,8 +152,8 @@ static void reset_locksigs(void)
 	sigaction(SIGVTALRM, &actions[SIGVTALRM], NULL);
 	
 	signals_have_been_setup = 0;
-	alarm(alarm_remaining);
 	sigprocmask(SIG_UNBLOCK, &fullset, NULL);
+	alarm(alarm_remaining);
 }
 
 /* Remove lock file. */
@@ -209,16 +209,15 @@ int aquire_lock(void)
 		}
 
 		/* Maybe someone has this open from last time */
-		if (fd < 0)
-			fd = open(LOCK_FILE, O_RDWR);
-
 		if (fd < 0) {
-			int errsv = errno;
-			/* Maybe the file was just deleted? */
-			if (errno == ENOENT && tries-- > 0)
-				continue;
-			release_lock();
-			return 0;
+			fd = open(LOCK_FILE, O_RDWR);
+			if (fd < 0) {
+				/* Maybe the file was just deleted? */
+				if (errno == ENOENT && tries-- > 0)
+					continue;
+				release_lock();
+				return 0;
+			}
 		}
 
 		flock.l_type = F_WRLCK;
@@ -271,6 +270,7 @@ int aquire_lock(void)
 
 					close(fd);
 					fd = -1;
+					reset_locksigs();
 					return 0;
 				}
 
@@ -284,6 +284,7 @@ int aquire_lock(void)
 			else {
 				close(fd);
 				fd = -1;
+				reset_locksigs();
 			}
 			return(0);
 		}
