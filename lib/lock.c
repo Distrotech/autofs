@@ -1,4 +1,4 @@
-#ident "$Id: lock.c,v 1.12 2005/01/10 15:50:24 raven Exp $"
+#ident "$Id: lock.c,v 1.13 2005/01/11 12:15:28 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  lock.c - autofs lockfile management
@@ -194,17 +194,49 @@ static void reset_locksigs(void)
 /* Remove lock file. */
 void release_lock(void)
 {
+	if (fd > 0) {
+		close(fd);
+		fd = -1;
+	}
+
 	if (we_created_lockfile) {
-		if (fd > 0) {
-			close(fd);
-			fd = -1;
-		}
 		unlink (LOCK_FILE);
 		we_created_lockfile = 0;
 	}
 
 	if (signals_have_been_setup)
 		reset_locksigs();
+}
+
+/*
+ * Wait for a lock file to be removed.
+ * Return -1 for a timeout, 0 if a termination signal
+ * is received or 1 for success.
+ */
+static int wait_for_lockf(const char *lockf)
+{
+	struct timespec t = { 0, WAIT_INTERVAL };
+	struct timespec r;
+	int ts_size = sizeof(struct timespec);
+	int tries = WAIT_TRIES;
+	int status = 0;
+	struct stat st;
+
+	while (tries-- && !status) {
+		status = stat(lockf, &st);
+		if (!status) {
+			while (nanosleep(&t, &r) == -1 && errno == EINTR) {
+				if (got_term)
+					return 0;
+				memcpy(&t, &r, ts_size);
+			}
+		}
+	}
+
+	if (tries < 0)
+		return tries;
+
+	return 1;
 }
 
 /*
@@ -262,8 +294,9 @@ int aquire_lock(void)
 
 			we_created_lockfile = 1;
 		} else {
-			int tries = WAIT_TRIES;
-			int status = 0;
+			int status;
+			char mess[128] =
+				"aquire_lock: can't lock lock file %s: %s";
 
 			/*
 			 * Someone else made the link.
@@ -278,48 +311,21 @@ int aquire_lock(void)
 				continue;
 			}
 
-			while (tries-- && !status) {
-				struct timespec t = { 0, WAIT_INTERVAL };
-				struct timespec r;
-				int ts_size = sizeof(struct timespec);
-				struct stat st;
-
-				status = stat(LOCK_FILE, &st);
-				if (!status) {
-					while (nanosleep(&t, &r) == -1 && errno == EINTR) {
-						if (got_term) {
-							close(fd);
-							fd = -1;
-							reset_locksigs();
-							crit("aquire_lock: can't "
-							  "lock lock file %s: interrupted",
-							  LOCK_FILE);
-							return 0;
-						}
-						memcpy(&t, &r, ts_size);
-					}
-				}
-			}
-
-			if (tries < 0) {
-				close(fd);
-				fd = -1;
-				reset_locksigs();
-				crit("aquire_lock: can't "
-				  "lock lock file %s: timed out", LOCK_FILE);
+			status = wait_for_lockf(LOCK_FILE);
+			if (status < 0) {
+				release_lock();
+				crit(mess, "timed out", LOCK_FILE);
+				return 0;
+			} else if (!status) {
+				release_lock();
+				crit(mess, "interrupted", LOCK_FILE);
 				return 0;
 			}
 		}
 
 		if (got_term) {
 			got_term = 0;
-			if (we_created_lockfile)
-				release_lock();
-			else {
-				close(fd);
-				fd = -1;
-				reset_locksigs();
-			}
+			release_lock();
 			return 0;
 		}
 		close(fd);
