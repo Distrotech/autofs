@@ -1,5 +1,5 @@
 #
-#ident $Id: configure.in,v 1.4 2004/01/29 16:01:22 raven Exp $
+#ident $Id: configure.in,v 1.5 2004/02/03 15:23:21 raven Exp $
 #
 # configure.in for the autofs daemon
 
@@ -130,6 +130,14 @@ LDFLAGS="${AF_tmp_ldflags}"
 #
 AF_INIT_D()
 AC_SUBST(initdir)
+
+#
+# Enable ability to access value in external env variable
+#
+AC_ARG_ENABLE(ext-env,
+--enable-ext-env          enable search in environment for substitution variable,
+	AC_DEFINE(ENABLE_EXT_ENV, 1)
+)
 
 #
 # Write Makefile.conf and include/config.h

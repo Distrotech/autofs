@@ -1,4 +1,4 @@
-#ident "$Id: parse_sun.c,v 1.7 2004/01/29 16:01:22 raven Exp $"
+#ident "$Id: parse_sun.c,v 1.8 2004/02/03 15:23:21 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  parse_sun.c - module for Linux automountd to parse a Sun-format
@@ -95,14 +95,16 @@ static void kill_context(struct parse_context *ctxt)
 	free(ctxt);
 }
 
-/* holds one env var */
-static struct substvar sv_env = { NULL, NULL,  NULL };
-static char *substvar_env;
 
 /* Find the $-variable matching a certain string fragment */
 static const struct substvar *findvar(const struct substvar *sv, const char *str, int len)
 {
+#ifdef ENABLE_EXT_ENV
+	/* holds one env var */
+	static struct substvar sv_env = { NULL, NULL,  NULL };
+	static char *substvar_env;
 	char etmp[512];
+#endif
 
 	while (sv) {
 		if (!strncmp(str, sv->def, len) && sv->def[len] == '\0')
@@ -110,6 +112,7 @@ static const struct substvar *findvar(const struct substvar *sv, const char *str
 		sv = sv->next;
 	}
 
+#ifdef ENABLE_EXT_ENV
 	/* builtin map failed, try the $ENV */
 	memcpy(etmp, str, len);
 	etmp[len]='\0';
@@ -118,6 +121,7 @@ static const struct substvar *findvar(const struct substvar *sv, const char *str
 		sv_env.val = substvar_env;
 		return(&sv_env);
 	}
+#endif
 
 	return NULL;
 }
@@ -249,7 +253,7 @@ const char *skipspace(const char *whence)
 }
 
 /* Get the length of a chunk delimitered by whitespace */
-int chunklen(const char *whence)
+int chunklen(const char *whence, int expect_colon)
 {
 	int n = 0;
 	int quote = 0;
@@ -260,9 +264,16 @@ int chunklen(const char *whence)
 			quote = 1;
 			continue;
 
+		case ':':
+			if (expect_colon)
+				expect_colon = 0;
+			continue;
 		case ' ':
-		case '\b':
 		case '\t':
+			/* Skip space or tab if we expect a colon */
+			if (expect_colon)
+				continue;
+		case '\b':
 		case '\n':
 		case '\v':
 		case '\f':
@@ -467,7 +478,7 @@ static const char *parse_options(const char *str, char **ret)
 	if (*ret != NULL)
 		free(*ret);
 
-	*ret = dequote(cp, len = chunklen(cp));
+	*ret = dequote(cp, len = chunklen(cp, 0));
 
 	return cp + len;
 }
@@ -669,7 +680,7 @@ int parse_mount(const char *root, const char *name,
 				return 1;
 			}
 
-			path = dequote(p, l = chunklen(p));
+			path = dequote(p, l = chunklen(p, 0));
 			pathlen = strlen(path);
 
 			p += l;
@@ -694,7 +705,7 @@ int parse_mount(const char *root, const char *name,
 				} while (*p == '-');
 			}
 
-			loc = dequote(p, strlen(p));
+			loc = dequote(p, l = chunklen(p, 1));
 			loclen = strlen(loc);
 
 			if (loc == NULL || path == NULL) {
@@ -733,7 +744,7 @@ int parse_mount(const char *root, const char *name,
 		if (*p == ':')
 			p++;	/* Sun escape for entries starting with / */
 
-		loc = dequote(p, strlen(p));
+		loc = dequote(p, chunklen(p, 1));
 		loclen = strlen(loc);
 
 		if (loc == NULL) {

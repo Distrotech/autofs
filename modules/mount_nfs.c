@@ -1,4 +1,4 @@
-#ident "$Id: mount_nfs.c,v 1.7 2004/01/29 16:01:22 raven Exp $"
+#ident "$Id: mount_nfs.c,v 1.8 2004/02/03 15:23:21 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  * mount_nfs.c - Module for Linux automountd to mount an NFS filesystem,
@@ -358,8 +358,7 @@ int mount_mount(const char *root, const char *name, int name_len,
 			      nfsoptions, nfsp, nfsoptions + len,
 			      nfsp - nfsoptions, len);
 #endif
-
-			if (strncmp("nosymlink", cp, end - cp - 1) == 0)
+			if (strncmp("nosymlink", cp, end - cp + 1) == 0)
 				nosymlink = 1;
 			else {
 				/* and jump over trailing white space */
