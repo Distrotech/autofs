@@ -1,4 +1,4 @@
-#ident "$Id: spawn.c,v 1.9 2005/01/17 15:22:28 raven Exp $"
+#ident "$Id: spawn.c,v 1.10 2005/02/10 12:56:53 raven Exp $"
 /* ----------------------------------------------------------------------- *
  * 
  *  spawn.c - run programs synchronously with output redirected to syslog
@@ -29,6 +29,9 @@
 #include <sys/stat.h>
 
 #include "automount.h"
+
+/* Make gcc happy */
+pid_t getpgid(pid_t);
 
 /*
  * Used by subprocesses which exec to avoid carrying over the main

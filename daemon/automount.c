@@ -1,4 +1,4 @@
-#ident "$Id: automount.c,v 1.36 2005/01/26 13:03:02 raven Exp $"
+#ident "$Id: automount.c,v 1.37 2005/02/10 12:56:53 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  automount.c - Linux automounter daemon
@@ -1020,7 +1020,7 @@ static int handle_packet_missing(const struct autofs_packet_missing *pkt)
 	struct pending_mount *mt = NULL;
 
 	debug("handle_packet_missing: token %ld, name %s\n",
-		pkt->wait_queue_token, pkt->name);
+		(unsigned long) pkt->wait_queue_token, pkt->name);
 
 	/* Ignore packet if we're trying to shut down */
 	if (ap.state == ST_SHUTDOWN_PENDING || ap.state == ST_SHUTDOWN) {
@@ -1240,7 +1240,7 @@ static int handle_packet_expire_multi(const struct autofs_packet_expire_multi *p
 	int ret;
 
 	debug("handle_packet_expire_multi: token %ld, name %s\n",
-		  pkt->wait_queue_token, pkt->name);
+		  (unsigned long) pkt->wait_queue_token, pkt->name);
 
 	ret = handle_expire(pkt->name, pkt->len, pkt->wait_queue_token);
 
