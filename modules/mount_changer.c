@@ -1,4 +1,4 @@
-#ident "$Id: mount_changer.c,v 1.12 2004/11/20 15:08:38 raven Exp $"
+#ident "$Id: mount_changer.c,v 1.13 2005/01/09 09:16:43 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  mount_changer.c - module for Linux automountd to mount filesystems
@@ -68,10 +68,8 @@ int mount_mount(const char *root, const char *name, int name_len,
 
 	debug(MODPREFIX "calling umount %s", what);
 
-	wait_for_lock();
-	err = spawnl(LOG_DEBUG, MOUNTED_LOCK,
+	err = spawnll(LOG_DEBUG,
 		     PATH_UMOUNT, PATH_UMOUNT, what, NULL);
-	unlink(AUTOFS_LOCK);
 	if (err) {
 		error(MODPREFIX "umount of %s failed (all may be unmounted)",
 		      what);
@@ -96,22 +94,20 @@ int mount_mount(const char *root, const char *name, int name_len,
 		return 1;
 	}
 
-	wait_for_lock();
 	if (options && options[0]) {
 		debug(MODPREFIX "calling mount -t %s " SLOPPY "-o %s %s %s",
 		    fstype, options, what, fullpath);
 
-		err = spawnl(LOG_DEBUG, MOUNTED_LOCK,
+		err = spawnll(LOG_DEBUG,
 			     PATH_MOUNT, PATH_MOUNT, "-t", fstype,
 			     SLOPPYOPT "-o", options, what, fullpath, NULL);
 	} else {
 		debug(MODPREFIX "calling mount -t %s %s %s",
 			  fstype, what, fullpath);
 
-		err = spawnl(LOG_DEBUG, MOUNTED_LOCK, PATH_MOUNT, PATH_MOUNT,
+		err = spawnll(LOG_DEBUG, PATH_MOUNT, PATH_MOUNT,
 			     "-t", fstype, what, fullpath, NULL);
 	}
-	unlink(AUTOFS_LOCK);
 
 	if (err) {
 		if ((!ap.ghost && name_len) || !existed)

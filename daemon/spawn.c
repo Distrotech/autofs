@@ -1,4 +1,4 @@
-#ident "$Id: spawn.c,v 1.3 2004/01/29 16:01:22 raven Exp $"
+#ident "$Id: spawn.c,v 1.4 2005/01/09 09:16:43 raven Exp $"
 /* ----------------------------------------------------------------------- *
  * 
  *  spawn.c - run programs synchronously with output redirected to syslog
@@ -107,36 +107,19 @@ void discard_pending(int sig)
 	sigaction(sig, &oldsa, NULL);
 }
 
-/*
- * Wait for upto 10 secs for lock file to clear then creat one.
- * Needed to prevent overlapping calls to mount from automount itself
- */
-void wait_for_lock(void)
-{
-	struct timespec t = { 0, 100000000 };
-	struct timespec r;
-	struct stat buf;
-	int retries = 100;
-	int fd;
-
-	while ((stat(AUTOFS_LOCK, &buf)) == 0 && retries) {
-		while (nanosleep(&t, &r) == -1 && errno == EINTR)
-			memcpy(&t, &r, sizeof(struct timespec));
-		retries--;
-	}
-	fd = creat(AUTOFS_LOCK, 0775);
-	close(fd);
-}
-
 #define ERRBUFSIZ 2047		/* Max length of error string excl \0 */
 
-int spawnv(int logpri, const char *lockf, const char *prog, const char *const *argv)
+static int do_spawn(int logpri, int use_lock, const char *prog, const char *const *argv)
 {
 	pid_t f;
 	int status, pipefd[2];
 	char errbuf[ERRBUFSIZ + 1], *p, *sp;
 	int errp, errn;
 	sigset_t allsignals, tmpsig, oldsig;
+
+	if (use_lock)
+		if (!aquire_lock()1)
+			return -1;
 
 	sigfillset(&allsignals);
 	sigprocmask(SIG_BLOCK, &allsignals, &oldsig);
@@ -155,20 +138,6 @@ int spawnv(int logpri, const char *lockf, const char *prog, const char *const *a
 		dup2(pipefd[1], STDERR_FILENO);
 		close(pipefd[1]);
 
-		/* Feeble attempt to cope with race for mount */
-		if (lockf != NULL) {
-			struct stat buff;
-			struct timespec t = { 0, 100000000 };
-			struct timespec r;
-			int retries = 100;
-
-			/* Wait up to about 10 seconds for a lock file if given */
-			while (stat(lockf, &buff) != -1 && retries) {
-				while (nanosleep(&t, &r) == -1 && errno == EINTR)
-					memcpy(&t, &r, sizeof(struct timespec));
-				retries--;
-			}
-		}
 		execv(prog, (char *const *) argv);
 		_exit(255);	/* execv() failed */
 	} else {
@@ -230,11 +199,19 @@ int spawnv(int logpri, const char *lockf, const char *prog, const char *const *a
 
 		sigprocmask(SIG_SETMASK, &oldsig, NULL);
 
+		if (use_lock)
+			release_lock();
+
 		return status;
 	}
 }
 
-int spawnl(int logpri, const char *lockf, const char *prog, ...)
+int spawnv(int logpri, int use_lock, const char *prog, const char *const *argv)
+{
+	return do_spawn(logpri, 0, prog, argv);
+}
+
+int spawnl(int logpri, int use_lock, const char *prog, ...)
 {
 	va_list arg;
 	int argc;
@@ -252,5 +229,26 @@ int spawnl(int logpri, const char *lockf, const char *prog, ...)
 	while ((*p++ = va_arg(arg, char *)));
 	va_end(arg);
 
-	return spawnv(logpri, lockf, prog, (const char **) argv);
+	return do_spawn(logpri, 0, prog, (const char **) argv);
+}
+
+int spawnll(int logpri, const char *prog, ...)
+{
+	va_list arg;
+	int argc;
+	char **argv, **p;
+
+	va_start(arg, prog);
+	for (argc = 1; va_arg(arg, char *); argc++);
+	va_end(arg);
+
+	if (!(argv = alloca(sizeof(char *) * argc)))
+		return -1;
+
+	va_start(arg, prog);
+	p = argv;
+	while ((*p++ = va_arg(arg, char *)));
+	va_end(arg);
+
+	return do_spawn(logpri, 1, prog, (const char **) argv);
 }

@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.5 2004/11/15 14:47:13 raven Exp $
+# $Id: Makefile,v 1.6 2005/01/09 09:16:43 raven Exp $
 #
 # Makefile for autofs utility library
 #
@@ -9,10 +9,10 @@ include ../Makefile.rules
 RPCGEN = /usr/bin/rpcgen
 RANLIB = /usr/bin/ranlib
 
-SRCS = cache.c listmount.c cat_path.c rpc_subs.c mounts.c
+SRCS = cache.c listmount.c cat_path.c rpc_subs.c mounts.c lock.c
 RPCS = mount.h mount_clnt.c mount_xdr.c
 OBJS = cache.o mount_clnt.o mount_xdr.o listmount.o \
-	cat_path.o rpc_subs.o mounts.o
+	cat_path.o rpc_subs.o mounts.o lock.o
 
 LIB = autofs.a
 

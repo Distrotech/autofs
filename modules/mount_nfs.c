@@ -1,4 +1,4 @@
-#ident "$Id: mount_nfs.c,v 1.19 2005/01/03 03:00:44 raven Exp $"
+#ident "$Id: mount_nfs.c,v 1.20 2005/01/09 09:16:43 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  * mount_nfs.c - Module for Linux automountd to mount an NFS filesystem,
@@ -454,23 +454,21 @@ int mount_mount(const char *root, const char *name, int name_len,
 			return 0;
 		}
 
-		wait_for_lock();
 		if (nfsoptions && *nfsoptions) {
 			debug(MODPREFIX "calling mount -t nfs " SLOPPY 
 			      " -o %s %s %s", nfsoptions, whatstr, fullpath);
 
-			err = spawnl(LOG_NOTICE, MOUNTED_LOCK,
+			err = spawnll(LOG_NOTICE,
 				     PATH_MOUNT, PATH_MOUNT, "-t",
 				     "nfs", SLOPPYOPT "-o", nfsoptions,
 				     whatstr, fullpath, NULL);
 		} else {
 			debug(MODPREFIX "calling mount -t nfs %s %s",
 			      whatstr, fullpath);
-			err = spawnl(LOG_NOTICE, MOUNTED_LOCK,
+			err = spawnll(LOG_NOTICE,
 				     PATH_MOUNT, PATH_MOUNT, "-t",
 				     "nfs", whatstr, fullpath, NULL);
 		}
-		unlink(AUTOFS_LOCK);
 
 		if (err) {
 			if ((!ap.ghost && name_len) || !existed)

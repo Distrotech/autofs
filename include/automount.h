@@ -1,4 +1,4 @@
-#ident "$Id: automount.h,v 1.11 2004/12/31 06:30:08 raven Exp $"
+#ident "$Id: automount.h,v 1.12 2005/01/09 09:16:43 raven Exp $"
 /*
  * automount.h
  *
@@ -117,9 +117,11 @@ extern struct autofs_point ap;
 
 /* Standard function used by daemon or modules */
 
-void wait_for_lock(void);
-int spawnl(int logpri, const char *lockf, const char *prog, ...);
-int spawnv(int logpri, const char *lockf, const char *prog, const char *const *argv);
+int aquire_lock(void);
+void release_lock(void);
+int spawnll(int logpri, const char *prog, ...);
+int spawnl(int logpri, const char *prog, ...);
+int spawnv(int logpri, const char *prog, const char *const *argv);
 void reset_signals(void);
 void ignore_signals(void);
 void discard_pending(int sig);

@@ -1,4 +1,4 @@
-#ident "$Id: automount.c,v 1.30 2005/01/08 13:16:49 raven Exp $"
+#ident "$Id: automount.c,v 1.31 2005/01/09 09:16:43 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  automount.c - Linux automounter daemon
@@ -159,10 +159,8 @@ static int umount_ent(const char *root, const char *name, const char *type)
 			umount_ok = 1;
 
 		if (umount_ok || is_smbfs) {
-			wait_for_lock();
-			rv = spawnl(LOG_DEBUG, MOUNTED_LOCK,
+			rv = spawnll(LOG_DEBUG, 
 				    PATH_UMOUNT, PATH_UMOUNT, path_buf, NULL);
-			unlink(AUTOFS_LOCK);
 		}
 	}
 	return rv;
@@ -315,17 +313,16 @@ static int do_umount_autofs(void)
 		struct stat st;
 		int ret;
 
-		wait_for_lock();
-		rv = spawnl(LOG_DEBUG, MOUNTED_LOCK,
+		/* We need to continue here even if we don't get the lock */
+		rv = spawnll(LOG_DEBUG,
 			    PATH_UMOUNT, PATH_UMOUNT, ap.path, NULL);
 		if (rv & MTAB_NOTUPDATED) {
 			info("umount %s succeeded: "
 			     "mtab not updated, retrying to clean\n",
 			      ap.path);
-			rv = spawnl(LOG_DEBUG, MOUNTED_LOCK,
+			rv = spawnll(LOG_DEBUG,
 				    PATH_UMOUNT, PATH_UMOUNT, ap.path, NULL);
 		}
-		unlink(AUTOFS_LOCK);
 		ret = stat(ap.path, &st);
 		if (rv == 0 || (ret == -1 && errno == ENOENT) ||
 		    (ret == 0 && (!S_ISDIR(st.st_mode) || st.st_dev != ap.dev))) {
@@ -445,11 +442,9 @@ static int mount_autofs(char *path)
         }
 	our_name[len] = '\0';
 
-	wait_for_lock();
-	if (spawnl(LOG_DEBUG, MOUNTED_LOCK, PATH_MOUNT, PATH_MOUNT,
+	if (spawnll(LOG_DEBUG, PATH_MOUNT, PATH_MOUNT,
 		   "-t", "autofs", "-o", options, our_name, path, NULL) != 0) {
 		crit("failed to mount autofs path %s", ap.path);
-		unlink(AUTOFS_LOCK);
 		rmdir_path(ap.path);
 		close(pipefd[0]);
 		close(pipefd[1]);
@@ -457,7 +452,6 @@ static int mount_autofs(char *path)
 		close(ap.state_pipe[1]);
 		return -1;
 	}
-	unlink(AUTOFS_LOCK);
 
 	close(pipefd[1]);	/* Close kernel pipe end */
 	ap.pipefd = pipefd[0];
