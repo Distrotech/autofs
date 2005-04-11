@@ -1,7 +1,7 @@
 #!/sbin/runscript
 # Copyright 1999-2004 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Header: /home/cvs/root/autofs/gentoo/net-fs/autofs/files/autofs.init,v 1.15 2005/04/05 12:40:07 raven Exp $
+# $Header: /home/cvs/root/autofs/gentoo/net-fs/autofs/files/autofs.init,v 1.16 2005/04/11 13:21:16 raven Exp $
 
 # rc file for automount using a Sun-style "master map".
 # We first look for a local /etc/autofs/auto.master, then a YP
@@ -365,10 +365,11 @@ stop() {
 			pid=`head -n 1 $file`
 			mnt=`ps -wwo 'cmd=' $pid | sed -e \
 			  's,.* --pid-file=/var/run/autofs/\([^ ]*\)\.pid.*,\1,; s,_,/,g'`
+			dname=`basename $DAEMON`
 
 			start-stop-daemon --stop --quiet \
 					--retry USR2/${daemon_exit_wait} \
-					--pidfile $file --exec $DAEMON
+					--pidfile $file --name $dname
 			ret=$?
 
 			case $ret in
