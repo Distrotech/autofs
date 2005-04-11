@@ -21,7 +21,7 @@ diff -Nurp linux-2.6.9.orig/fs/autofs4/autofs_i.h linux-2.6.9/fs/autofs4/autofs_
  static inline int autofs4_ispending(struct dentry *dentry)
  {
  	struct autofs_info *inf = autofs4_dentry_ino(dentry);
-+	int pending;
++	int pending = 0;
  
 -	return (dentry->d_flags & DCACHE_AUTOFS_PENDING) ||
 -		(inf != NULL && inf->flags & AUTOFS_INF_EXPIRING);
@@ -46,7 +46,7 @@ diff -Nurp linux-2.6.9.orig/fs/autofs4/expire.c linux-2.6.9/fs/autofs4/expire.c
  		return 0;
  
 +	/* Is someone visiting anywhere in the tree ? */
-+	if (autofs4_may_umount(mnt))
++	if (may_umount_tree(mnt))
 +		return 0;
 +
  	spin_lock(&dcache_lock);
