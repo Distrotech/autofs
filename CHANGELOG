@@ -1,4 +1,4 @@
-??/4/2005 autofs-4.1.4
+11/4/2005 autofs-4.1.4
 ----------------------
 - add /proc/modules check to Debian init script.
 - fix typo in Gentoo init script reload function.
@@ -22,6 +22,7 @@
 - fix end of string handling at end of parsing options string.
 - more work on replicated server code - fix occasional mount fail.
 - revert some Debian init script changes in favour of Debian maintainer patches.
+  - and fix the fix.
 - update kernel patches.
 - remove isprint calls as it breaks 8-bit characters.
 
