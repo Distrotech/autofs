@@ -1,4 +1,4 @@
-#ident "$Id: mount_ext2.c,v 1.18 2005/01/10 13:28:29 raven Exp $"
+#ident "$Id: mount_ext2.c,v 1.19 2005/04/24 15:04:51 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  mount_ext2.c - module for Linux automountd to mount ext2 filesystems
@@ -20,7 +20,6 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <syslog.h>
-#include <string.h>
 #include <stdlib.h>
 #include <sys/param.h>
 #include <sys/types.h>

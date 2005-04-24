@@ -1,4 +1,4 @@
-#ident "$Id: mount_nfs.c,v 1.26 2005/04/24 11:57:41 raven Exp $"
+#ident "$Id: mount_nfs.c,v 1.27 2005/04/24 15:04:51 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  * mount_nfs.c - Module for Linux automountd to mount an NFS filesystem,
@@ -23,7 +23,6 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <syslog.h>
-#include <string.h>
 #include <sys/param.h>
 #include <sys/socket.h>
 #include <sys/types.h>
@@ -105,21 +104,6 @@ int is_local_addr(const char *host, const char *host_addr, int addr_len)
 		return 0;
 	
 	return 1;
-}
-
-/*
- * If the map doesn't contain a ',' or doesn't contain more than
- * one ':' then @what is not a multimount entry.
- */
-static int is_multimount_entry(char *what)
-{
-	int ret;
-
-	ret = (*what == '/') ||
-		strchr(what, ',') ||
-		(strchr(what, ':') != strrchr(what, ':'));
-
-	return ret;
 }
 
 /*

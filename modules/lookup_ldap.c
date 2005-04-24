@@ -1,4 +1,4 @@
-#ident "$Id: lookup_ldap.c,v 1.21 2005/02/27 05:37:14 raven Exp $"
+#ident "$Id: lookup_ldap.c,v 1.22 2005/04/24 15:04:51 raven Exp $"
 /*
  * lookup_ldap.c - Module for Linux automountd to access automount
  *		   maps in LDAP directories.
@@ -20,7 +20,6 @@
 
 #include <sys/types.h>
 #include <ctype.h>
-#include <string.h>
 #include <syslog.h>
 #include <unistd.h>
 #include <stdlib.h>

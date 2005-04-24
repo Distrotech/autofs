@@ -1,4 +1,4 @@
-#ident "$Id: lock.c,v 1.15 2005/01/17 15:09:28 raven Exp $"
+#ident "$Id: lock.c,v 1.16 2005/04/24 15:04:51 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  lock.c - autofs lockfile management
@@ -26,7 +26,6 @@
 #include <sys/stat.h>
 #include <time.h>
 #include <unistd.h>
-#include <string.h>
 #include <fcntl.h>
 #include <alloca.h>
 #include <stdio.h>

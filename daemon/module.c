@@ -1,4 +1,4 @@
-#ident "$Id: module.c,v 1.4 2004/01/29 16:01:22 raven Exp $"
+#ident "$Id: module.c,v 1.5 2005/04/24 15:04:51 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  module.c - common module-management functions
@@ -16,7 +16,6 @@
 #include <stdio.h>
 #include <syslog.h>
 #include <dlfcn.h>
-#include <string.h>
 #include <stdlib.h>
 #include "automount.h"
 

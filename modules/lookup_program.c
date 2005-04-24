@@ -1,4 +1,4 @@
-#ident "$Id: lookup_program.c,v 1.7 2004/12/31 06:30:09 raven Exp $"
+#ident "$Id: lookup_program.c,v 1.8 2005/04/24 15:04:51 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup_program.c - module for Linux automount to access an
@@ -19,7 +19,6 @@
 #include <errno.h>
 #include <malloc.h>
 #include <stdio.h>
-#include <string.h>
 #include <syslog.h>
 #include <unistd.h>
 #include <signal.h>

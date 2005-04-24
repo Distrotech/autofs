@@ -1,4 +1,4 @@
-#ident "$Id: parse_sun.c,v 1.28 2005/04/05 12:42:42 raven Exp $"
+#ident "$Id: parse_sun.c,v 1.29 2005/04/24 15:04:51 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  parse_sun.c - module for Linux automountd to parse a Sun-format
@@ -24,7 +24,6 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <syslog.h>
-#include <string.h>
 #include <syslog.h>
 #include <ctype.h>
 #include <sys/param.h>
@@ -759,50 +758,6 @@ void multi_free_list(struct multi_mnt *list)
 }
 
 /*
- * Scan map entry looking for evidence it has multiple key/mapent
- * pairs.
- */
-static int check_is_multi(const char *mapent)
-{
-	const char *p = (char *) mapent;
-	int multi = 0;
-	int first_chunk = 0;
-
-	while (*p) {
-		p = skipspace(p);
-
-		/*
-		 * After the first chunk there can be additional
-		 * locations (possibly not multi) or possibly an
-		 * options string if the first entry includes the
-		 * optional '/' (is multi). Following this any
-		 * path that begins with '/' indicates a mutil-mount
-		 * entry.
-		 */
-		if (first_chunk) {
-			if (*p == '/' || *p == '-') {
-				multi = 1;
-				break;
-			}
-		}
-
-		while (*p == '-') {
-			p += chunklen(p, 0);
-			p = skipspace(p);
-		}
-
-		/*
-		 * Expect either a path or location
-		 * after which it's a multi mount.
-		 */
-		p += chunklen(p, check_colon(p));
-		first_chunk++;
-	}
-
-	return multi;
-}
-
-/*
  * syntax is:
  *	[-options] location [location] ...
  *	[-options] [mountpoint [-options] location [location] ... ]...
@@ -855,7 +810,7 @@ int parse_mount(const char *root, const char *name,
 
 	debug(MODPREFIX "gathered options: %s", options);
 
-	if (check_is_multi(p)) {
+	if (is_multimount_entry(p)) {
 		struct multi_mnt *list, *head = NULL;
 		char *multi_root;
 		int l;

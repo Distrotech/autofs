@@ -1,4 +1,4 @@
-#ident "$Id: mount.c,v 1.5 2004/11/17 14:38:27 raven Exp $"
+#ident "$Id: mount.c,v 1.6 2005/04/24 15:04:51 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  mount.c - Abstract mount code used by modules for an unexpected
@@ -21,7 +21,6 @@
 
 #include <syslog.h>
 #include <stdlib.h>
-#include <string.h>
 #include "automount.h"
 
 /* These filesystems are known not to work with the "generic" module */

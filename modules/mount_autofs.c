@@ -1,4 +1,4 @@
-#ident "$Id: mount_autofs.c,v 1.14 2005/01/10 13:28:29 raven Exp $"
+#ident "$Id: mount_autofs.c,v 1.15 2005/04/24 15:04:51 raven Exp $"
 /*
  * mount_autofs.c
  *
@@ -13,7 +13,6 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <syslog.h>
-#include <string.h>
 #include <signal.h>
 #include <alloca.h>
 #include <sys/param.h>

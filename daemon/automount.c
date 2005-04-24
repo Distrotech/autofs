@@ -1,4 +1,4 @@
-#ident "$Id: automount.c,v 1.38 2005/03/06 09:43:55 raven Exp $"
+#ident "$Id: automount.c,v 1.39 2005/04/24 15:04:51 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  automount.c - Linux automounter daemon
@@ -27,7 +27,6 @@
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <syslog.h>
 #include <unistd.h>
 #include <sys/ioctl.h>

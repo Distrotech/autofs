@@ -1,4 +1,4 @@
-#ident "$Id: automount.h,v 1.15 2005/01/26 13:03:02 raven Exp $"
+#ident "$Id: automount.h,v 1.16 2005/04/24 15:04:51 raven Exp $"
 /*
  * automount.h
  *
@@ -9,6 +9,7 @@
 #ifndef AUTOMOUNT_H
 #define AUTOMOUNT_H
 
+#include <string.h>
 #include <sys/types.h>
 #include <paths.h>
 #include <limits.h>
@@ -132,6 +133,21 @@ int do_mount(const char *root, const char *name, int name_len,
 	     const char *what, const char *fstype, const char *options);
 int mkdir_path(const char *path, mode_t mode);
 int rmdir_path(const char *path);
+
+/*
+ *  If the map doesn't contain a ',' or doesn't contain more than
+ *  one ':' then @what is not a multimount entry.
+ */
+static int inline is_multimount_entry(char *what)
+{
+	int ret;
+
+	ret = (*what == '/') ||
+		strchr(what, ',') ||
+		(strchr(what, ':') != strrchr(what, ':'));
+
+	return ret;
+}
 
 /* Prototype for module functions */
 

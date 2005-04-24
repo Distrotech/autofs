@@ -1,4 +1,4 @@
-#ident "$Id: mount_changer.c,v 1.13 2005/01/09 09:16:43 raven Exp $"
+#ident "$Id: mount_changer.c,v 1.14 2005/04/24 15:04:51 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  mount_changer.c - module for Linux automountd to mount filesystems
@@ -24,7 +24,6 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <syslog.h>
-#include <string.h>
 #include <sys/param.h>
 #include <sys/types.h>
 #include <sys/stat.h>
