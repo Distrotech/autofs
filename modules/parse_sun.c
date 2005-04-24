@@ -1,4 +1,4 @@
-#ident "$Id: parse_sun.c,v 1.29 2005/04/24 15:04:51 raven Exp $"
+#ident "$Id: parse_sun.c,v 1.30 2005/04/24 15:06:35 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  parse_sun.c - module for Linux automountd to parse a Sun-format
@@ -838,7 +838,11 @@ int parse_mount(const char *root, const char *name,
 				return 1;
 			}
 
-			path = dequote(p, l = chunklen(p, 0));
+			if (*p != '/') {
+				l = 0;
+				path = dequote("/", 1);
+			else
+				path = dequote(p, l = chunklen(p, 0));
 			if (!path) {
 				error(MODPREFIX "out of memory");
 				free(myoptions);
