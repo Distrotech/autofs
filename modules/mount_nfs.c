@@ -1,4 +1,4 @@
-#ident "$Id: mount_nfs.c,v 1.27 2005/04/24 15:04:51 raven Exp $"
+#ident "$Id: mount_nfs.c,v 1.28 2005/04/25 03:42:08 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  * mount_nfs.c - Module for Linux automountd to mount an NFS filesystem,
@@ -23,6 +23,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <syslog.h>
+#include <string.h>
 #include <sys/param.h>
 #include <sys/socket.h>
 #include <sys/types.h>
@@ -107,6 +108,16 @@ int is_local_addr(const char *host, const char *host_addr, int addr_len)
 }
 
 /*
+ * If the entry doesn't contain a ',' or doesn't contain more than
+ * one ':' then @what is not a replicated server entry.
+ */
+static int inline is_replicated_entry(char *what)
+{
+	return strchr(what, ',') ||
+		(strchr(what, ':') != strrchr(what, ':'));
+}
+
+/*
  *  Check to see if the 'host:path' or 'host' is on the local machine
  *  Returns < 0 if there is a host lookup problem, otherwise returns 0
  *  if it's not a local mount, and returns > 0 if it is a local mount.
@@ -129,7 +140,7 @@ int is_local_mount(const char *hostpath)
 		hostnamelen = strlen(hostpath);
 
 	hostname = malloc(hostnamelen+1);
-	strncpy(hostname,hostpath,hostnamelen);
+	strncpy(hostname, hostpath, hostnamelen);
 	hostname[hostnamelen] = '\0';
 	he = gethostbyname(hostname);
 	if (!he) {
@@ -185,13 +196,13 @@ int get_best_mount(char *what, const char *original, int longtimeout)
 	 *  If only one mountpoint has been passed in, we don't need to
 	 *  do anything except strip whitespace from the end of the string.
 	 */
-	if (!is_multimount_entry(p)) {
+	if (!is_replicated_entry(p)) {
 		for (pstrip = p+strlen(p) - 1; pstrip >= p; pstrip--) 
 			if (isspace(*pstrip))
 				*pstrip = '\0';
 
 		/* Check if the host is the localhost */
-		if (is_local_mount(p)) {
+		if (is_local_mount(p) > 0) {
 			debug(MODPREFIX "host %s: is localhost", p);
 
 			/* Strip off hostname and ':' */
@@ -273,6 +284,7 @@ int get_best_mount(char *what, const char *original, int longtimeout)
 		/* First unweighted or only host is alive so set winner */
 		if (!winner) {
 			winner = p;
+			winner_time = 1;
 			/* No more to check, return it */
 			if (!next || !*next)
 				break;

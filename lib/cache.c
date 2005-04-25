@@ -1,4 +1,4 @@
-#ident "$Id: cache.c,v 1.13 2005/04/24 15:04:51 raven Exp $"
+#ident "$Id: cache.c,v 1.14 2005/04/25 03:42:08 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  cache.c - mount entry cache management routines
@@ -18,6 +18,7 @@
 #include <malloc.h>
 #include <errno.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 #include <ctype.h>
 #include <syslog.h>

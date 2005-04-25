@@ -1,4 +1,4 @@
-#ident "$Id: lookup_hesiod.c,v 1.6 2005/04/24 15:04:51 raven Exp $"
+#ident "$Id: lookup_hesiod.c,v 1.7 2005/04/25 03:42:08 raven Exp $"
 /*
  * lookup_hesiod.c
  *
@@ -10,6 +10,7 @@
 #include <sys/types.h>
 #include <ctype.h>
 #include <limits.h>
+#include <string.h>
 #include <syslog.h>
 #include <unistd.h>
 #include <stdlib.h>

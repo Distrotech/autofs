@@ -1,4 +1,4 @@
-#ident "$Id: parse_sun.c,v 1.30 2005/04/24 15:06:35 raven Exp $"
+#ident "$Id: parse_sun.c,v 1.31 2005/04/25 03:42:08 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  parse_sun.c - module for Linux automountd to parse a Sun-format
@@ -24,6 +24,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <syslog.h>
+#include <string.h>
 #include <syslog.h>
 #include <ctype.h>
 #include <sys/param.h>
@@ -758,6 +759,59 @@ void multi_free_list(struct multi_mnt *list)
 }
 
 /*
+ * Scan map entry looking for evidence it has multiple key/mapent
+ * pairs.
+ */
+static int check_is_multi(const char *mapent)
+{
+	const char *p = (char *) mapent;
+	int multi = 0;
+	int not_first_chunk = 0;
+
+	if (!p) {
+		crit("check_is_multi: unexpected NULL map entry pointer");
+		return 0;
+	}
+	
+	/* If first character is "/" it's a multi-mount */
+	if (*p == '/')
+		return 1;
+
+	while (*p) {
+		p = skipspace(p);
+
+		/*
+		 * After the first chunk there can be additional
+		 * locations (possibly not multi) or possibly an
+		 * options string if the first entry includes the
+		 * optional '/' (is multi). Following this any
+		 * path that begins with '/' indicates a mutil-mount
+		 * entry.
+		 */
+		if (not_first_chunk) {
+			if (*p == '/' || *p == '-') {
+				multi = 1;
+				break;
+			}
+		}
+
+		while (*p == '-') {
+			p += chunklen(p, 0);
+			p = skipspace(p);
+		}
+
+		/*
+		 * Expect either a path or location
+		 * after which it's a multi mount.
+		 */
+		p += chunklen(p, check_colon(p));
+		not_first_chunk++;
+	}
+
+	return multi;
+}
+
+/*
  * syntax is:
  *	[-options] location [location] ...
  *	[-options] [mountpoint [-options] location [location] ... ]...
@@ -810,7 +864,7 @@ int parse_mount(const char *root, const char *name,
 
 	debug(MODPREFIX "gathered options: %s", options);
 
-	if (is_multimount_entry(p)) {
+	if (check_is_multi(p)) {
 		struct multi_mnt *list, *head = NULL;
 		char *multi_root;
 		int l;
@@ -841,8 +895,9 @@ int parse_mount(const char *root, const char *name,
 			if (*p != '/') {
 				l = 0;
 				path = dequote("/", 1);
-			else
-				path = dequote(p, l = chunklen(p, 0));
+			} else
+				 path = dequote(p, l = chunklen(p, 0));
+
 			if (!path) {
 				error(MODPREFIX "out of memory");
 				free(myoptions);

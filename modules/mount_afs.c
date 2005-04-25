@@ -1,4 +1,4 @@
-#ident "$Id: mount_afs.c,v 1.5 2005/04/24 15:04:51 raven Exp $"
+#ident "$Id: mount_afs.c,v 1.6 2005/04/25 03:42:08 raven Exp $"
 /*
  * mount_afs.c
  *
@@ -14,6 +14,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <syslog.h>
+#include <string.h>
 #include <sys/param.h>
 #include <sys/types.h>
 #include <sys/stat.h>

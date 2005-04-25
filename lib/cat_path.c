@@ -1,4 +1,4 @@
-#ident "$Id: cat_path.c,v 1.5 2005/04/24 15:04:51 raven Exp $"
+#ident "$Id: cat_path.c,v 1.6 2005/04/25 03:42:08 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  cat_path.c - boundary aware buffer management routines
@@ -14,6 +14,7 @@
  * ----------------------------------------------------------------------- */
 
 #include <alloca.h>
+#include <string.h>
 #include <limits.h>
 #include <syslog.h>
 #include <ctype.h>
