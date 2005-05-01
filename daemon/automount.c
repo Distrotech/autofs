@@ -1,11 +1,11 @@
-#ident "$Id: automount.c,v 1.40 2005/04/25 03:42:08 raven Exp $"
+#ident "$Id: automount.c,v 1.41 2005/05/01 09:38:05 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  automount.c - Linux automounter daemon
  *   
  *   Copyright 1997 Transmeta Corporation - All Rights Reserved
  *   Copyright 1999-2000 Jeremy Fitzhardinge <jeremy@goop.org>
- *   Copyright 2001-2003 Ian Kent <raven@themaw.net>
+ *   Copyright 2001-2005 Ian Kent <raven@themaw.net>
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -28,7 +28,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <syslog.h>
 #include <unistd.h>
 #include <sys/ioctl.h>
 #include <sys/types.h>
@@ -38,13 +37,32 @@
 #include <sys/poll.h>
 #include <linux/auto_fs4.h>
 
+#include "automount.h"
+
 #ifndef NDEBUG
-#define assert(x)	do { if (!(x)) { syslog(LOG_CRIT, __FILE__ ":%d: assertion failed: " #x, __LINE__); } } while(0)
+#define assert(x) 						    \
+	do { 							    \
+		if (!(x)) {					    \
+			crit(__FILE__ ":%d: assertion failed: " #x, \
+				__LINE__);			    \
+		}						    \
+	} while(0)
 #else
 #define assert(x)	do { } while(0)
 #endif
 
-#include "automount.h"
+#ifndef NDEBUG
+#define assert_r(context, x) 					   \
+	do { 							   \
+		if (!(x)) {					   \
+			crit_r(context,				   \
+				__FILE__ ":%d: assertion failed: ",\
+				__LINE__);			   \
+		}						   \
+	} while(0)
+#else
+#define assert_r(context, x)	do { } while(0)
+#endif
 
 const char *program;		/* Initialized with argv[0] */
 const char *version = VERSION_STRING;	/* Program version */
@@ -57,7 +75,7 @@ int kproto_version;		/* Kernel protocol version used */
 int kproto_sub_version = 0;	/* Kernel protocol version used */
 
 static int submount = 0;
-
+ 
 int do_verbose = 0;		/* Verbose feedback option */
 int do_debug = 0;		/* Enable full debug output */
 
@@ -66,6 +84,9 @@ sigset_t lock_sigs;		/* signals blocked for locking */
 sigset_t sigchld_mask;
 
 struct autofs_point ap;
+ 
+/* re-entrant syslog default context data */
+#define AUTOFS_SYSLOG_CONTEXT {-1, 0, 0, LOG_PID, (const char *)0, LOG_DAEMON, 0xff};
 
 volatile struct pending_mount *junk_mounts = NULL;
 
@@ -480,19 +501,25 @@ static int mount_autofs(char *path)
 
 static void nextstate(enum states next)
 {
+	static struct syslog_data syslog_context = AUTOFS_SYSLOG_CONTEXT;
+	static struct syslog_data *slc = &syslog_context;
+
 	if (write(ap.state_pipe[1], &next, sizeof(next)) != sizeof(next))
-		error("nextstate: write failed %m");
+		error_r(slc, "nextstate: write failed %m");
 }
 
 /* Deal with all the signal-driven events in the state machine */
 static void sig_statemachine(int sig)
 {
+	static struct syslog_data syslog_context = AUTOFS_SYSLOG_CONTEXT;
+	static struct syslog_data *slc = &syslog_context;
 	int save_errno = errno;
 	enum states next = ap.state;
 
 	switch (sig) {
 	default:		/* all the "can't happen" signals */
-		error("process %d got unexpected signal %d!", getpid(), sig);
+		error_r(slc, "process %d got unexpected signal %d!",
+			getpid(), sig);
 		break;
 		/* don't FALLTHROUGH */
 
@@ -503,33 +530,36 @@ static void sig_statemachine(int sig)
 		break;
 
 	case SIGUSR1:
-		assert(ap.state == ST_READY);
+		assert_r(slc, ap.state == ST_READY);
 		nextstate(next = ST_PRUNE);
 		break;
 
 	case SIGALRM:
-		assert(ap.state == ST_READY);
+		assert_r(slc, ap.state == ST_READY);
 		nextstate(next = ST_EXPIRE);
 		break;
 
 	case SIGHUP:
-		assert(ap.state == ST_READY);
+		assert_r(slc, ap.state == ST_READY);
 		nextstate(next = ST_READMAP);
 		break;
 	}
 
-	debug("sig %d switching from %d to %d", sig, ap.state, next);
+	debug_r(slc, "sig %d switching from %d to %d", sig, ap.state, next);
 
 	errno = save_errno;
 }
 
 static int send_ready(unsigned int wait_queue_token)
 {
+	static struct syslog_data syslog_context = AUTOFS_SYSLOG_CONTEXT;
+	static struct syslog_data *slc = &syslog_context;
+
 	if (wait_queue_token == 0)
 		return 0;
-	debug("send_ready: token=%d\n", wait_queue_token);
+	debug_r(slc, "send_ready: token=%d\n", wait_queue_token);
 	if (ioctl(ap.ioctlfd, AUTOFS_IOC_READY, wait_queue_token) < 0) {
-		error("AUTOFS_IOC_READY: %m");
+		error_r(slc, "AUTOFS_IOC_READY: %m");
 		return 1;
 	}
 	return 0;
@@ -537,11 +567,14 @@ static int send_ready(unsigned int wait_queue_token)
 
 static int send_fail(unsigned int wait_queue_token)
 {
+	static struct syslog_data syslog_context = AUTOFS_SYSLOG_CONTEXT;
+	static struct syslog_data *slc = &syslog_context;
+
 	if (wait_queue_token == 0)
 		return 0;
-	debug("send_fail: token=%d\n", wait_queue_token);
+	debug_r(slc, "send_fail: token=%d\n", wait_queue_token);
 	if (ioctl(ap.ioctlfd, AUTOFS_IOC_FAIL, wait_queue_token) < 0) {
-		syslog(LOG_ERR, "AUTOFS_IOC_FAIL: %m");
+		error_r(slc, "AUTOFS_IOC_FAIL: %m");
 		return 1;
 	}
 	return 0;
@@ -552,6 +585,8 @@ static int send_fail(unsigned int wait_queue_token)
    result.  */
 static enum states handle_child(int hang)
 {
+	static struct syslog_data syslog_context = AUTOFS_SYSLOG_CONTEXT;
+	static struct syslog_data *slc = &syslog_context;
 	pid_t pid;
 	int status;
 	enum states next = ST_INVAL;
@@ -559,13 +594,13 @@ static enum states handle_child(int hang)
 	while ((pid = waitpid(-1, &status, hang ? 0 : WNOHANG)) > 0) {
 		struct pending_mount volatile *mt, *volatile *mtp;
 
-		debug("handle_child: got pid %d, sig %d (%d), stat %d\n",
+		debug_r(slc, "handle_child: got pid %d, sig %d (%d), stat %d",
 			pid, WIFSIGNALED(status),
 			WTERMSIG(status), WEXITSTATUS(status));
 
 		/* Check to see if expire process finished */
 		if (pid == ap.exp_process) {
-			int success, ret;
+			int success;
 
 			if (!WIFEXITED(status))
 				continue;
@@ -594,29 +629,23 @@ static enum states handle_child(int hang)
 
 			case ST_SHUTDOWN_PENDING:
 				next = ST_SHUTDOWN;
-				if (success) {
-					ret = ioctl(ap.ioctlfd,
-						AUTOFS_IOC_ASKUMOUNT, &status);
-					if (!ret) {
-						if (status)
-							break;
-					} else
-						break;
-				}
+				if (success)
+					break;
 
 				/* Failed shutdown returns to ready */
-				warn("can't shutdown: filesystem %s still busy",
-				     ap.path);
+				warn_r(slc,
+			           "can't shutdown: filesystem %s still busy",
+				   ap.path);
 				alarm(ap.exp_runfreq);
 				next = ST_READY;
 				break;
 
 			default:
-				error("bad state %d", ap.state);
+				error_r(slc, "bad state %d", ap.state);
 			}
 
 			if (next != ST_INVAL)
-				debug("sigchld: exp "
+				debug_r(slc, "sigchld: exp "
 				     "%d finished, switching from %d to %d",
 				     pid, ap.state, next);
 
@@ -632,7 +661,7 @@ static enum states handle_child(int hang)
 			if (!WIFEXITED(status) && !WIFSIGNALED(status))
 				break;
 
-			debug("sig_child: found pending iop pid %d: "
+			debug_r(slc, "sig_child: found pending iop pid %d: "
 			     "signalled %d (sig %d), exit status %d",
 				pid, WIFSIGNALED(status),
 				WTERMSIG(status), WEXITSTATUS(status));
@@ -673,10 +702,9 @@ static void sig_child(int sig)
 
 static int st_ready(void)
 {
-	debug("st_ready(): state = %d\n", ap.state);
+	debug("st_ready(): state = %d", ap.state);
 
 	ap.state = ST_READY;
-	sigprocmask(SIG_UNBLOCK, &lock_sigs, NULL);
 
 	return 0;
 }
@@ -796,6 +824,7 @@ static enum expire expire_proc(int now)
 	default:
 		debug("expire_proc: exp_proc=%d", f);
 		ap.exp_process = f;
+		sigprocmask(SIG_SETMASK, &old, NULL);
 		return EXP_STARTED;
 	}
 }
@@ -804,9 +833,14 @@ static int st_readmap(void)
 {
 	int status;
 
+	assert(ap.state == ST_READY);
+	ap.state = ST_READMAP;
+
 	status = ap.lookup->lookup_ghost(ap.path, ap.ghost, 0, ap.lookup->context);
 
 	debug("st_readmap: status %d\n", status);
+
+	ap.state = ST_READY;
 
 	/* If I don't exist in the map any more then exit */
 	if (status == LKP_FAIL)
@@ -822,14 +856,10 @@ static int st_prepare_shutdown(void)
 	info("prep_shutdown: state = %d\n", ap.state);
 
 	assert(ap.state == ST_READY || ap.state == ST_EXPIRE);
+	ap.state = ST_SHUTDOWN_PENDING;
 
 	/* Turn off timeouts */
 	alarm(0);
-
-	/* Prevent any new mounts */
-	sigprocmask(SIG_SETMASK, &lock_sigs, NULL);
-
-	ap.state = ST_SHUTDOWN_PENDING;
 
 	/* Where're the boss, tell everyone to finish up */
 	if (getpid() == getpgrp()) 
@@ -844,8 +874,9 @@ static int st_prepare_shutdown(void)
 	case EXP_ERROR:
 	case EXP_PARTIAL:
 		/* It didn't work: return to ready */
+		ap.state = ST_READY;
 		alarm(ap.exp_runfreq);
-		return st_ready();
+		return 0;
 
 	case EXP_DONE:
 		/* All expired: go straight to exit */
@@ -853,8 +884,6 @@ static int st_prepare_shutdown(void)
 		return 1;
 
 	case EXP_STARTED:
-		/* Wait until expiry process finishes */
-		sigprocmask(SIG_SETMASK, &ready_sigs, NULL);
 		return 0;
 	}
 	return 1;
@@ -865,6 +894,7 @@ static int st_prune(void)
 	debug("st_prune(): state = %d\n", ap.state);
 
 	assert(ap.state == ST_READY);
+	ap.state = ST_PRUNE;
 
 	/* We're the boss, pass on the prune event */
 	if (getpid() == getpgrp()) 
@@ -878,11 +908,10 @@ static int st_prune(void)
 
 	case EXP_ERROR:
 	case EXP_PARTIAL:
+		ap.state = ST_READY;
 		return 1;
 
 	case EXP_STARTED:
-		ap.state = ST_PRUNE;
-		sigprocmask(SIG_SETMASK, &ready_sigs, NULL);
 		return 0;
 	}
 	return 1;
@@ -893,6 +922,7 @@ static int st_expire(void)
 	debug("st_expire(): state = %d\n", ap.state);
 
 	assert(ap.state == ST_READY);
+	ap.state = ST_EXPIRE;
 
 	switch (expire_proc(0)) {
 	case EXP_DONE:
@@ -902,12 +932,11 @@ static int st_expire(void)
 
 	case EXP_ERROR:
 	case EXP_PARTIAL:
+		ap.state = ST_READY;
 		alarm(ap.exp_runfreq);
 		return 1;
 
 	case EXP_STARTED:
-		ap.state = ST_EXPIRE;
-		sigprocmask(SIG_SETMASK, &ready_sigs, NULL);
 		return 0;
 	}
 	return 1;
@@ -947,7 +976,7 @@ static int get_pkt(int fd, union autofs_packet_union *pkt)
 		if (poll(fds, 2, -1) == -1) {
 			if (errno == EINTR)
 				continue;
-			syslog(LOG_ERR, "get_pkt: poll failed: %m");
+			error("get_pkt: poll failed: %m");
 			return -1;
 		}
 
@@ -958,8 +987,7 @@ static int get_pkt(int fd, union autofs_packet_union *pkt)
 			if (fullread(ap.state_pipe[0], &next_state, sizeof(next_state)))
 				continue;
 
-			sigprocmask(SIG_BLOCK, &lock_sigs, &old);
-
+			sigprocmask(SIG_BLOCK, &ready_sigs, &old);
 			if (next_state != ap.state) {
 				debug("get_pkt: state %d, next %d",
 					ap.state, next_state);
@@ -999,9 +1027,7 @@ static int get_pkt(int fd, union autofs_packet_union *pkt)
 					      next_state);
 				}
 			}
-
-			if (ret)
-				sigprocmask(SIG_SETMASK, &old, NULL);
+			sigprocmask(SIG_SETMASK, &old, NULL);
 
 			if (ap.state == ST_SHUTDOWN)
 				return -1;
@@ -1484,24 +1510,25 @@ static void setup_signals(__sighandler_t event_handler, __sighandler_t cld_handl
 
 /* Deal with the signals recieved by direct mount supervisor */
 static void sig_supervisor(int sig)
-{
+{ 
+	static struct syslog_data syslog_context = AUTOFS_SYSLOG_CONTEXT;
+	static struct syslog_data *slc = &syslog_context;
 	int save_errno = errno;
 
 	switch (sig) {
 	default:		/* all the signals not handled */
-		error("process %d got unexpected signal %d!", getpid(), sig);
+		error_r(slc, "process %d got unexpected signal %d!",
+			getpid(), sig);
 		return;
 		/* don't FALLTHROUGH */
 
 	case SIGTERM:
 	case SIGUSR2:
-		/* Tell everyone to finish up */
-		signal_children(sig);
+		ap.state = ST_SHUTDOWN_PENDING;
 		break;
 
 	case SIGUSR1:
-		/* Pass on the prune event and ignore self signal */
-		signal_children(sig);
+		ap.state = ST_PRUNE;
 		break;
 
 	case SIGCHLD:
@@ -1509,12 +1536,8 @@ static void sig_supervisor(int sig)
 		break;
 
 	case SIGHUP:
-		ap.lookup->lookup_ghost(ap.path, ap.ghost, 0, ap.lookup->context);
-
 		/* Pass on the reread event and ignore self signal */
-		kill(0, SIGHUP);
-		discard_pending(SIGHUP);
-
+		ap.state = ST_READMAP;
 		break;
 	}
 	errno = save_errno;
@@ -1522,7 +1545,9 @@ static void sig_supervisor(int sig)
 
 int supervisor(char *path)
 {
+	sigset_t olds;
 	unsigned int map = 0;
+	int ret;
 
 	ap.path = alloca(strlen(path) + 1);
 	strcpy(ap.path, path);
@@ -1536,8 +1561,46 @@ int supervisor(char *path)
 		cleanup_exit(ap.path, 1);
 	}
 
+	ap.state = ST_READY;
 	setup_signals(sig_supervisor, sig_supervisor);
 
+	sigprocmask(SIG_BLOCK, &ready_sigs, &olds);
+	while (ap.state != ST_SHUTDOWN) {
+		switch (ap.state) {
+		case ST_READMAP:
+			ret = st_readmap();
+			if (!ret)
+				/* Warn but try to continue anyway */
+				warn("failed to read map");
+			signal_children(SIGHUP);
+			ap.state = ST_READY;
+			break;
+		case ST_SHUTDOWN_PENDING:
+			ret = signal_children(SIGUSR2);
+			if (!ret) {
+				ap.state = ST_SHUTDOWN;
+				sigprocmask(SIG_SETMASK, &olds, NULL);
+				continue;
+			}
+
+			/* Failed shutdown returns to ready */
+			warn("can't shutdown: filesystem %s still busy",
+				     ap.path);
+			ap.state = ST_READY;
+			break;
+		case ST_PRUNE:
+			/* Pass on the prune event and ignore self signal */
+			signal_children(SIGUSR1);
+			ap.state = ST_READY;
+			break;
+		default:
+			ap.state = ST_READY;
+			break;
+		}
+		sigsuspend(&olds);
+	}
+	sigprocmask(SIG_UNBLOCK, &ready_sigs, NULL);
+	
 	while (waitpid(0, NULL, 0) > 0);
 
 	return 0;
@@ -1644,8 +1707,32 @@ int handle_mounts(char *path)
 		kill(my_pid, SIGSTOP);
 
 	while (ap.state != ST_SHUTDOWN) {
-		if (handle_packet() && errno != EINTR)
-			break;
+		if (handle_packet()) {
+			sigset_t olds;
+			int ret, status = 0;
+
+			sigprocmask(SIG_BLOCK, &lock_sigs, &olds);
+			ret = ioctl(ap.ioctlfd, AUTOFS_IOC_ASKUMOUNT, &status);
+			/*
+			 * If the ioctl fails assume the kernel doesn't have
+			 * AUTOFS_IOC_ASKUMOUNT and just continue.
+			 */
+			if (ret) {
+				sigprocmask(SIG_SETMASK, &olds, NULL);
+				break;
+			}
+			if (status) {
+				sigprocmask(SIG_SETMASK, &olds, NULL);
+				break;
+			}
+
+			/* Failed shutdown returns to ready */
+			warn("can't shutdown: filesystem %s still busy",
+					ap.path);
+			alarm(ap.exp_runfreq);
+			ap.state = ST_READY;
+			sigprocmask(SIG_SETMASK, &olds, NULL);
+		}
 	}
 
 	/* Mop up remaining kids */

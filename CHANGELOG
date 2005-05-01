@@ -3,6 +3,7 @@
 - merge patch for intermitent mount failures (Chris Feist).
 - fix detection of multi-mount map entry.
 - fix parsing of multi-mount map entry when initial "/" is missing.
+- fix hang of syslog during signal handling - reentrant syslog.
 
 11/4/2005 autofs-4.1.4
 ----------------------

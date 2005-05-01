@@ -1,4 +1,4 @@
-#ident "$Id: automount.h,v 1.17 2005/04/25 03:42:08 raven Exp $"
+#ident "$Id: automount.h,v 1.18 2005/05/01 09:38:05 raven Exp $"
 /*
  * automount.h
  *
@@ -14,6 +14,9 @@
 #include <limits.h>
 #include <time.h>
 #include "config.h"
+
+/* OpenBSD re-entrant syslog */
+#include "syslog.h"
 
 /* We MUST have the paths to mount(8) and umount(8) */
 #ifndef HAVE_MOUNT
@@ -283,24 +286,78 @@ int has_fstab_option(const char *path, const char *opt);
 int allow_owner_mount(const char *);
 
 /* log notification */
-extern int do_verbose;
-extern int do_debug;
+extern int do_verbose;		/* Verbose feedback option */
+extern int do_debug;		/* Enable full debug output */
 
-#define info(msg, args...) 		\
-if (do_verbose || do_debug) 		\
-	syslog(LOG_INFO, msg, ##args);
+/* Define non-reentrant logging macros */
 
-#define warn(msg, args...) 			\
-if (do_verbose || do_debug) 		\
-	syslog(LOG_WARNING, msg, ##args);
+#define debug(msg, args...)				\
+do {							\
+	if (do_debug)					\
+		syslog(LOG_DEBUG, msg, ##args);		\
+} while (0)
 
-#define error(msg, args...)	syslog(LOG_ERR, msg, ##args);
+#define info(msg, args...)				\
+do {							\
+	if (do_verbose || do_debug)			\
+		syslog(LOG_INFO, msg, ##args);		\
+} while (0)
 
-#define crit(msg, args...)	syslog(LOG_CRIT, msg, ##args);
+#define notice(msg, args...)				\
+do {							\
+	if (do_verbose || do_debug)			\
+		syslog(LOG_NOTICE, msg, ##args);	\
+} while (0)
 
-#define debug(msg, args...) 		\
-if (do_debug) 				\
-	syslog(LOG_DEBUG, msg, ##args);
+#define warn(msg, args...)				\
+do {							\
+	if (do_verbose || do_debug)			\
+		syslog(LOG_WARNING, msg, ##args);	\
+} while (0)
+
+#define error(msg, args...)				\
+do {							\
+	syslog(LOG_ERR, msg, ##args);			\
+} while (0)
+
+#define crit(msg, args...)				\
+do {							\
+	syslog(LOG_CRIT, msg, ##args);			\
+} while (0)
+
+#define alert(msg, args...)				\
+do {							\
+	syslog(LOG_ALERT, msg, ##args);			\
+} while (0)
+
+#define emerg(msg, args...)				\
+do {							\
+	syslog(LOG_EMERG, msg, ##args);			\
+} while (0)
+
+/* Define reentrant logging macros for signal handlers */
+
+#define debug_r(context, msg, args...)				\
+do {								\
+	if (do_debug)						\
+		syslog_r(LOG_DEBUG, context, msg, ##args);	\
+} while (0)
+
+#define warn_r(context, msg, args...)				\
+do {								\
+	if (do_verbose || do_debug)				\
+		syslog_r(LOG_WARNING, context, msg, ##args);	\
+} while (0)
+
+#define error_r(context, msg, args...)			\
+do {							\
+	syslog_r(LOG_ERR, context, msg, ##args);	\
+} while (0)
+
+#define crit_r(context, msg, args...)			\
+do {							\
+	syslog_r(LOG_CRIT, context, msg, ##args);	\
+} while (0)
 
 #endif
 

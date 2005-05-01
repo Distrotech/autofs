@@ -1,4 +1,4 @@
-#ident "$Id: module.c,v 1.6 2005/04/25 03:42:08 raven Exp $"
+#ident "$Id: module.c,v 1.7 2005/05/01 09:38:05 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  module.c - common module-management functions
@@ -14,7 +14,6 @@
  * ----------------------------------------------------------------------- */
 
 #include <stdio.h>
-#include <syslog.h>
 #include <dlfcn.h>
 #include <string.h>
 #include <stdlib.h>
