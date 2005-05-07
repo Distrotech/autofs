@@ -1,4 +1,4 @@
-#ident "$Id: lookup_file.c,v 1.18 2005/04/25 03:42:08 raven Exp $"
+#ident "$Id: lookup_file.c,v 1.19 2005/05/07 10:05:02 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup_file.c - module for Linux automount to query a flat file map
@@ -157,6 +157,10 @@ static int read_one(FILE *f, char *key, char *mapent)
 			break;
 
 		case st_compare:
+			if (kptr - key > KEY_MAX_LEN) {
+				state = st_badent;
+				break;
+			}
 			if (ch == '\n')
 				state = st_begin;
 			else if (isspace(ch) && !escape) {

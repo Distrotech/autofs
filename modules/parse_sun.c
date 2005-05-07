@@ -1,4 +1,4 @@
-#ident "$Id: parse_sun.c,v 1.31 2005/04/25 03:42:08 raven Exp $"
+#ident "$Id: parse_sun.c,v 1.32 2005/05/07 10:05:02 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  parse_sun.c - module for Linux automountd to parse a Sun-format
@@ -680,6 +680,10 @@ static int sun_mount(const char *root, const char *name, int namelen,
 	    "mounting root %s, mountpoint %s, what %s, fstype %s, options %s\n",
 	    root, mountpoint, what, fstype, options);
 
+	/* A malformed entry of the form key /xyz will trigger this case */
+	if (!what || *what == '\0')
+		return 1;
+
 	if (!strcmp(fstype, "nfs")) {
 		rv = mount_nfs->mount_mount(root, mountpoint, strlen(mountpoint),
 					    what, fstype, options, mount_nfs->context);
@@ -693,6 +697,18 @@ static int sun_mount(const char *root, const char *name, int namelen,
 		return -rv;
 
 	return rv;
+}
+
+static int key_exists(struct multi_mnt *list, char *path, int pathlen)
+{
+	struct multi_mnt *mmptr = list;
+
+	while (mmptr && pathlen == strlen(mmptr->path)) {
+		if (!strncmp(mmptr->path, path, pathlen))
+			return 1;
+		mmptr = mmptr->next;
+	}
+	return 0;
 }
 
 /*
@@ -723,6 +739,12 @@ struct multi_mnt *multi_add_list(struct multi_mnt *list,
 			break;
 		old = mmptr;
 		mmptr = mmptr->next;
+	}
+
+	/* if a multimount entry has duplicate keys, it is invalid */
+	if (key_exists(mmptr, path, plen)) {
+		free(new);
+		return NULL;
 	}
 
 	if (old)

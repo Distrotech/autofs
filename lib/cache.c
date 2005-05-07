@@ -1,4 +1,4 @@
-#ident "$Id: cache.c,v 1.15 2005/05/01 09:38:05 raven Exp $"
+#ident "$Id: cache.c,v 1.16 2005/05/07 10:05:02 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  cache.c - mount entry cache management routines
@@ -336,8 +336,10 @@ void cache_clean(const char *root, time_t age)
 		if (!path)
 			return;
 
-		if (is_mounted(_PATH_MOUNTED, path))
+		if (is_mounted(_PATH_MOUNTED, path)) {
+			free(path);
 			continue;
+		}
 
 		if (me->age < age) {
 			mapent_hash[i] = me->next;
