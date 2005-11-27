@@ -1,5 +1,5 @@
 #
-# $Id: Makefile,v 1.7 2005/01/04 14:36:54 raven Exp $
+# $Id: Makefile,v 1.8 2005/11/27 04:55:15 raven Exp $
 #
 -include ../Makefile.conf
 include ../Makefile.rules
@@ -42,6 +42,6 @@ ifeq ($(LDAP), 1)
 	install -c autofs-ldap-auto-master -m 755 $(INSTALLROOT)$(autofslibdir)
 endif
 
-clean):
+clean:
 	rm -f *.o *.s autofs-ldap-auto-master rc.autofs
 

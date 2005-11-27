@@ -1,5 +1,5 @@
 #
-# $Id: Makefile,v 1.4 2004/11/17 13:39:12 raven Exp $
+# $Id: Makefile,v 1.5 2005/11/27 04:55:15 raven Exp $
 #
 # Main Makefile for the autofs user-space tools
 #
@@ -7,7 +7,7 @@
 -include Makefile.conf
 include Makefile.rules
 
-.PHONY: daemon all kernel clean samples install install_kernel install_samples
+.PHONY: daemon all clean samples install install_samples
 .PHONY: mrproper distclean backup
 
 all:	daemon samples
@@ -22,7 +22,7 @@ samples:
 	set -e; if [ -d samples ]; then $(MAKE) -C samples all; fi
 
 clean:
-	for i in $(SUBDIRS) samples kernel; do \
+	for i in $(SUBDIRS) samples; do \
 		if [ -d $$i ]; then $(MAKE) -C $$i clean; fi; done 	
 
 install:
