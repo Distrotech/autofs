@@ -1,4 +1,4 @@
-#ident "$Id: lookup_yp.c,v 1.14 2005/02/10 10:59:59 raven Exp $"
+#ident "$Id: lookup_yp.c,v 1.15 2005/11/27 04:08:54 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup_yp.c - module for Linux automountd to access a YP (NIS)
@@ -46,6 +46,7 @@ struct lookup_context {
 struct callback_data {
 	const char *root;
 	time_t age;
+	struct lookup_context *ctxt;
 };
 
 int lookup_version = AUTOFS_LOOKUP_VERSION;	/* Required by protocol */
@@ -86,10 +87,12 @@ int yp_all_callback(int status, char *ypkey, int ypkeylen,
 		    char *val, int vallen, char *ypcb_data)
 {
 	struct callback_data *cbdata = (struct callback_data *) ypcb_data;
+	struct lookup_context *ctxt = cbdata->ctxt;
 	const char *root = cbdata->root;
 	time_t age = cbdata->age;
 	char *key;
 	char *mapent;
+	int ret;
 
 	if (status != YP_TRUE)
 		return status;
@@ -102,7 +105,10 @@ int yp_all_callback(int status, char *ypkey, int ypkeylen,
 	strncpy(mapent, val, vallen);
 	*(mapent + vallen) = '\0';
 
-	cache_add(root, key, mapent, age);
+	cache_add(key, mapent, age);
+	/* need to handle this return later */
+	ret = ctxt->parse->parse_mount(root, key, ypkeylen,
+				       mapent, 1, ctxt->parse->context);
 
 	return 0;
 }
@@ -116,6 +122,7 @@ static int read_map(const char *root, time_t age, struct lookup_context *context
 
 	ypcb_data.root = root;
 	ypcb_data.age = age;
+	ypcb_data.ctxt = ctxt;
 
 	ypcb.foreach = yp_all_callback;
 	ypcb.data = (char *) &ypcb_data;
@@ -128,10 +135,30 @@ static int read_map(const char *root, time_t age, struct lookup_context *context
 		return 0;
 	}
 
-	/* Clean stale entries from the cache */
-	cache_clean(root, age);
-
 	return 1;
+}
+
+int lookup_enumerate(const char *root, int (*fn)(struct mapent_cache *me, int), time_t now, void *context)
+{
+	struct lookup_context *ctxt = (struct lookup_context *) context;
+	time_t age = now ? now : time(NULL);
+	struct mapent_cache *me;
+	int status = LKP_INDIRECT;
+
+	if (!read_map(root, age, ctxt))
+		return LKP_FAIL;
+
+	me = cache_lookup_first();
+	/* me NULL => empty map */
+	if (!me)
+		return LKP_EMPTY;
+
+	if (*me->key != '/')
+		return LKP_FAIL | LKP_INDIRECT;
+
+	cache_enumerate(fn, 0);
+
+	return status;
 }
 
 int lookup_ghost(const char *root, int ghost, time_t now, void *context)
@@ -139,24 +166,23 @@ int lookup_ghost(const char *root, int ghost, time_t now, void *context)
 	struct lookup_context *ctxt = (struct lookup_context *) context;
 	time_t age = now ? now : time(NULL);
 	struct mapent_cache *me;
-	int status = 1;
+	int status = LKP_INDIRECT;
 
 	if (!read_map(root, age, ctxt))
 		return LKP_FAIL;
 
-	status = cache_ghost(root, ghost, ctxt->mapname, "yp", ctxt->parse);
+	/* Clean stale entries from the cache */
+	cache_clean(_PATH_MOUNTED, root, age);
 
 	me = cache_lookup_first();
 	/* me NULL => empty map */
-	if (me == NULL)
-		return LKP_FAIL;
+	if (!me)
+		return LKP_EMPTY;
 
-	if (*me->key == '/' && *(root + 1) != '-') {
-		me = cache_partial_match(root);
-		/* me NULL => no entries for this direct mount root or indirect map */
-		if (me == NULL)
-			return LKP_FAIL | LKP_INDIRECT;
-	}
+	if (*me->key == '/')
+		return LKP_FAIL | LKP_DIRECT;
+
+	cache_ghost(root, ghost);
 
 	return status;
 }
@@ -186,7 +212,7 @@ static int lookup_one(const char *root,
 		return -err;
 	}
 
-	return cache_update(root, key, mapent, age);
+	return cache_update(key, mapent, age);
 }
 
 static int lookup_wild(const char *root, struct lookup_context *ctxt)
@@ -210,31 +236,18 @@ static int lookup_wild(const char *root, struct lookup_context *ctxt)
 		return -err;
 	}
 
-	return cache_update(root, "*", mapent, age);
+	return cache_update("*", mapent, age);
 }
 
-int lookup_mount(const char *root, const char *name, int name_len, void *context)
+static int check_map_indirect(const char *root,
+			      char *key, int key_len,
+			      struct lookup_context *ctxt)
 {
-	struct lookup_context *ctxt = (struct lookup_context *) context;
-	char key[KEY_MAX_LEN + 1];
-	int key_len;
-	char *mapent;
-	int mapent_len;
 	struct mapent_cache *me;
 	time_t now = time(NULL);
 	time_t t_last_read;
 	int need_hup = 0;
-	int ret;
-
-	debug(MODPREFIX "looking up %s", name);
-
-	if (ap.type == LKP_DIRECT)
-		key_len = snprintf(key, KEY_MAX_LEN, "%s/%s", root, name);
-	else
-		key_len = snprintf(key, KEY_MAX_LEN, "%s", name);
-
-	if (key_len > KEY_MAX_LEN)
-		return 1;
+	int ret = 0;
 
 	/* check map and if change is detected re-read map */
 	ret = lookup_one(root, key, key_len, ctxt);
@@ -245,7 +258,7 @@ int lookup_mount(const char *root, const char *name, int name_len, void *context
 
 	if (ret < 0) {
 		warn(MODPREFIX 
-		     "lookup for %s failed: %s", name, yperr_string(-ret));
+		     "lookup for %s failed: %s", key, yperr_string(-ret));
 		return 1;
 	}
 
@@ -259,43 +272,61 @@ int lookup_mount(const char *root, const char *name, int name_len, void *context
 	if (ret == CHE_MISSING) {
 		int wild = CHE_MISSING;
 
-		/* Maybe update wild card map entry */
-		if (ap.type == LKP_INDIRECT) {
-			wild = lookup_wild(root, ctxt);
-			if (wild == CHE_MISSING)
-				cache_delete(root, "*", 0);
-		}
+		wild = lookup_wild(root, ctxt);
+		if (wild == CHE_MISSING)
+			cache_delete(_PATH_MOUNTED, root, "*", 0);
 
-		if (cache_delete(root, key, 0) &&
+		if (cache_delete(_PATH_MOUNTED, root, key, 0) &&
 				wild & (CHE_MISSING | CHE_FAIL))
 			rmdir_path(key);
-	}
-
-
-	me = cache_lookup(key);
-	if (me) {
-		mapent = alloca(strlen(me->mapent) + 1);
-		mapent_len = sprintf(mapent, "%s", me->mapent);
-	} else {
-		/* path component, do submount */
-		me = cache_partial_match(key);
-		if (me) {
-			mapent = alloca(strlen(ctxt->mapname) + 20);
-			mapent_len =
-			    sprintf(mapent, "-fstype=autofs yp:%s", ctxt->mapname);
-		}
-	}
-
-	if (me) {
-		mapent[mapent_len] = '\0';
-		debug(MODPREFIX "%s -> %s", key, mapent);
-		ret = ctxt->parse->parse_mount(root, name, name_len,
-						mapent, ctxt->parse->context);
 	}
 
 	/* Have parent update its map */
 	if (need_hup)
 		kill(getppid(), SIGHUP);
+
+	return ret;
+}
+
+int lookup_mount(const char *root, const char *name, int name_len, void *context)
+{
+	struct lookup_context *ctxt = (struct lookup_context *) context;
+	char key[KEY_MAX_LEN + 1];
+	int key_len;
+	char *mapent;
+	int mapent_len;
+	struct mapent_cache *me;
+	int status = 0;
+	int ret = 1;
+
+	debug(MODPREFIX "looking up %s", name);
+
+	key_len = snprintf(key, KEY_MAX_LEN, "%s", name);
+	if (key_len > KEY_MAX_LEN)
+		return 1;
+
+	 /*
+	  * We can't check the direct mount map as if it's not in
+	  * the map cache already we never get a mount lookup, so
+	  * we never know about it.
+	  */
+        if (ap.type == LKP_INDIRECT) {
+		status = check_map_indirect(root, key, key_len, ctxt);
+		if (status) {
+			debug(MODPREFIX "check indirect map failure");
+			return 1;
+		}
+	}
+
+	me = cache_lookup(key);
+	if (me) {
+		mapent = alloca(strlen(me->mapent) + 1);
+		mapent_len = sprintf(mapent, "%s", me->mapent);
+		mapent[mapent_len] = '\0';
+		debug(MODPREFIX "%s -> %s", key, mapent);
+		ret = ctxt->parse->parse_mount(root, key, key_len,
+					       mapent, 0, ctxt->parse->context);
+	}
 
 	return ret;
 }

@@ -3,12 +3,6 @@
 - merge patch for intermitent mount failures (Chris Feist).
 - fix detection of multi-mount map entry.
 - fix parsing of multi-mount map entry when initial "/" is missing.
-- fix hang of syslog during signal handling - reentrant syslog.
-- miscellaneous fixes from Jeff Moyer
-  - buffer overflow with large key lengths in file maps.
-  - catch malformed entries in parse_sun.
-  - memory leak in cache_clean.
-  - treat multimount entries with duplicate keys as invalid.
 
 11/4/2005 autofs-4.1.4
 ----------------------

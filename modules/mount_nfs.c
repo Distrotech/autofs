@@ -1,4 +1,4 @@
-#ident "$Id: mount_nfs.c,v 1.28 2005/04/25 03:42:08 raven Exp $"
+#ident "$Id: mount_nfs.c,v 1.29 2005/11/27 04:08:54 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  * mount_nfs.c - Module for Linux automountd to mount an NFS filesystem,
@@ -197,12 +197,14 @@ int get_best_mount(char *what, const char *original, int longtimeout)
 	 *  do anything except strip whitespace from the end of the string.
 	 */
 	if (!is_replicated_entry(p)) {
+		int ret;
 		for (pstrip = p+strlen(p) - 1; pstrip >= p; pstrip--) 
 			if (isspace(*pstrip))
 				*pstrip = '\0';
 
 		/* Check if the host is the localhost */
-		if (is_local_mount(p) > 0) {
+		ret = is_local_mount(p);
+		if (ret > 0) {
 			debug(MODPREFIX "host %s: is localhost", p);
 
 			/* Strip off hostname and ':' */
@@ -213,7 +215,9 @@ int get_best_mount(char *what, const char *original, int longtimeout)
 				what++;
 			}
 			return 1;
-		}
+		} else if (ret < 0)
+			*what = '\0';
+
 		return 0;
 	}
 
@@ -344,8 +348,14 @@ int get_best_mount(char *what, const char *original, int longtimeout)
 	}
 
 	/* No winner found so return first */
-	if (!winner)
-		winner = what;
+	/* No - this will lead to mount hanging if the first host
+	 *	is not available. Since we tried to ping it and
+	 *	failed that's likely the case.
+	 */
+	if (!winner) {
+		*what = '\0';
+		return 0;
+	}
 
 	/*
 	 * We now have our winner, copy it to the front of the string,
@@ -388,6 +398,7 @@ int mount_mount(const char *root, const char *name, int name_len,
 	char *nfsoptions = NULL;
 	int local, err;
 	int nosymlink = 0;
+	int len;
 	int ro = 0;            /* Set if mount bind should be read-only */
 
 	debug(MODPREFIX "root=%s name=%s what=%s, fstype=%s, options=%s",
@@ -472,17 +483,6 @@ int mount_mount(const char *root, const char *name, int name_len,
 		debug(MODPREFIX "from %s elected %s", what, whatstr);
 	}
 
-	fullpath = alloca(strlen(root) + name_len + 2);
-	if (!fullpath) {
-		error(MODPREFIX "alloca: %m");
-		return 1;
-	}
-
-	if (name_len)
-		sprintf(fullpath, "%s/%s", root, name);
-	else
-		sprintf(fullpath, "%s", root);
-
 	if (local) {
 		/* Local host -- do a "bind" */
 
@@ -495,7 +495,23 @@ int mount_mount(const char *root, const char *name, int name_len,
 					       mount_bind->context);
 	} else {
 		/* Not a local host - do an NFS mount */
-		int status, existed = 1;
+		int len, rlen, status, existed = 1;
+
+		rlen = root ? strlen(root) : 0;
+		fullpath = alloca(rlen + name_len + 2);
+		if (!fullpath) {
+			error(MODPREFIX "alloca: %m");
+			return 1;
+		}
+
+		if (name_len) {
+			if (rlen)
+				len = sprintf(fullpath, "%s/%s", root, name);
+			else
+				len = sprintf(fullpath, "%s", name);
+		} else
+			len = sprintf(fullpath, "%s", root);
+		fullpath[len] = '\0';
 
 		debug(MODPREFIX "calling mkdir_path %s", fullpath);
 
@@ -516,7 +532,7 @@ int mount_mount(const char *root, const char *name, int name_len,
 
 		if (nfsoptions && *nfsoptions) {
 			debug(MODPREFIX "calling mount -t nfs " SLOPPY 
-			      " -o %s %s %s", nfsoptions, whatstr, fullpath);
+			      "-o %s %s %s", nfsoptions, whatstr, fullpath);
 
 			err = spawnll(LOG_NOTICE,
 				     PATH_MOUNT, PATH_MOUNT, "-t",

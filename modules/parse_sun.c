@@ -1,4 +1,4 @@
-#ident "$Id: parse_sun.c,v 1.32 2005/05/07 10:05:02 raven Exp $"
+#ident "$Id: parse_sun.c,v 1.33 2005/11/27 04:08:54 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  parse_sun.c - module for Linux automountd to parse a Sun-format
@@ -27,10 +27,12 @@
 #include <string.h>
 #include <syslog.h>
 #include <ctype.h>
+#include <limits.h>
 #include <sys/param.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/vfs.h>
 #include <sys/utsname.h>
 #include <netinet/in.h>
 
@@ -104,6 +106,94 @@ static void kill_context(struct parse_context *ctxt)
 	free(ctxt);
 }
 
+static int is_systemvar(const char *str, int len)
+{
+	struct substvar *sv = &sv_osvers;
+	int found = 0;
+
+	while (sv) {
+		if (!strncmp(str, sv->def, len) && sv->def[len] == '\0') {
+			found = 1;
+			break;
+		}
+		sv = sv->next;
+	}
+	return found;
+}
+
+static struct substvar *addvar(struct substvar *sv,
+			       const char *str, int len, const char *value)
+{
+	struct substvar *list = sv;
+
+	if (is_systemvar(str, len))
+		return NULL;
+
+	while (sv) {
+		if (!strncmp(str, sv->def, len) && sv->def[len] == '\0')
+			break;
+		sv = sv->next;
+	}
+
+	if (sv) {
+		char *this = realloc(sv->val, len + 1);
+		if (!this)
+			return NULL;
+		strcat(this, value);
+		sv->val = this;
+	} else {
+		struct substvar *new;
+		char *def, *val;
+
+		def = strdup(str);
+		if (!def)
+			return NULL;
+		val = strdup(value);
+		if (!val) {
+			free(def);
+			return NULL;
+		}
+
+		new = malloc(sizeof(struct substvar));
+		if (!new) {
+			free(def);
+			free(val);
+			return NULL;
+		}
+		new->def = def;
+		new->val = val;
+		new->next = list;
+		list = new;
+	}
+	return list;
+}
+
+static struct substvar *removevar(struct substvar *sv, const char *str, int len)
+{
+	struct substvar *list = sv;
+	struct substvar *last = NULL;
+
+	if (is_systemvar(str, len))
+		return NULL;
+
+	while (sv) {
+		if (!strncmp(str, sv->def, len) && sv->def[len] == '\0')
+			break;
+		last = sv;
+		sv = sv->next;
+	}
+
+	if (sv) {
+		if (last)
+			last->next = sv->next;
+		else
+			list = sv->next;
+		free(sv->def);
+		free(sv->val);
+		free(sv);
+	}
+	return list;
+}
 
 /* Find the $-variable matching a certain string fragment */
 static const struct substvar *findvar(const struct substvar *sv, const char *str, int len)
@@ -133,6 +223,69 @@ static const struct substvar *findvar(const struct substvar *sv, const char *str
 #endif
 
 	return NULL;
+}
+
+static struct substvar *addstdenv(struct substvar *sv)
+{
+	char *val;
+	struct substvar *list = sv;
+	struct substvar *this;
+
+	if (val = getenv("UID")) {
+		this = addvar(list, "UID", 3, val);
+		if (this)
+			list = this;
+	}
+
+	if (val = getenv("USER")) {
+		this = addvar(list, "USER", 4, val);
+		if (this)
+			list = this;
+	}
+
+	if (val = getenv("HOME")) {
+		this = addvar(list, "HOME", 4, val);
+		if (this)
+			list = this;
+	}
+
+	if (val = getenv("GID")) {
+		this = addvar(list, "GID", 3, val);
+		if (this)
+			list = this;
+	}
+
+	if (val = getenv("GROUP")) {
+		this = addvar(list, "GROUP", 4, val);
+		if (this)
+			list = this;
+	}
+
+	return list;
+}
+
+static struct substvar *removestdenv(struct substvar *sv)
+{
+	struct substvar *list = sv;
+	struct substvar *this;
+
+	this = removevar(list, "UID", 3);
+	if (this)
+		list = this;
+	this = removevar(list, "USER", 4);
+	if (this)
+		list = this;
+	this = removevar(list, "HOME", 4);
+	if (this)
+		list = this;
+	this = removevar(list, "GID", 3);
+	if (this)
+		list = this;
+	this = removevar(list, "GROUP", 4);
+	if (this)
+		list = this;
+
+	return list;
 }
 
 /* 
@@ -400,18 +553,21 @@ int parse_init(int argc, const char *const *argv, void **context)
 					error(MODPREFIX "strdup: %m");
 					free(sv);
 				} else {
+					int len = strlen(sv->def) + strlen(sv->val);
+					int clen = len + strlen(child_args);
+
 					sv->val = strchr(sv->def, '=');
 					if (sv->val)
 						*(sv->val++) = '\0';
 					else
 						sv->val = "";
+
 					/* we use 5 for the "-D", the "=", and the null */
 					if (child_args) {
-						child_args = realloc(child_args, strlen(child_args) + strlen(sv->def) + strlen(sv->val) + 5);
+						child_args = realloc(child_args, clen + 5);
 						strcat(child_args, ",");
-					}
-					else { /* No comma, so only +4 */
-						child_args = malloc(strlen(sv->def) + strlen(sv->val) + 4);
+					} else { /* No comma, so only +4 */
+						child_args = malloc(len + 4);
 						*child_args = '\0';
 					}
 					strcat(child_args, "-D");
@@ -639,9 +795,11 @@ static int sun_mount(const char *root, const char *name, int namelen,
 		}
 	}
 
-	while (*name == '/') {
-		name++;
-		namelen--;
+	if (root) {
+		while (*name == '/') {
+			name++;
+			namelen--;
+		}
 	}
 
 	mountpoint = alloca(namelen + 1);
@@ -680,10 +838,6 @@ static int sun_mount(const char *root, const char *name, int namelen,
 	    "mounting root %s, mountpoint %s, what %s, fstype %s, options %s\n",
 	    root, mountpoint, what, fstype, options);
 
-	/* A malformed entry of the form key /xyz will trigger this case */
-	if (!what || *what == '\0')
-		return 1;
-
 	if (!strcmp(fstype, "nfs")) {
 		rv = mount_nfs->mount_mount(root, mountpoint, strlen(mountpoint),
 					    what, fstype, options, mount_nfs->context);
@@ -697,87 +851,6 @@ static int sun_mount(const char *root, const char *name, int namelen,
 		return -rv;
 
 	return rv;
-}
-
-static int key_exists(struct multi_mnt *list, char *path, int pathlen)
-{
-	struct multi_mnt *mmptr = list;
-
-	while (mmptr && pathlen == strlen(mmptr->path)) {
-		if (!strncmp(mmptr->path, path, pathlen))
-			return 1;
-		mmptr = mmptr->next;
-	}
-	return 0;
-}
-
-/*
- * Build list of mounts in shortest -> longest order.
- * Pass in list head and return list head.
- */
-struct multi_mnt *multi_add_list(struct multi_mnt *list,
-				 char *path, char *options, char *location)
-{
-	struct multi_mnt *mmptr, *new, *old = NULL;
-	int plen;
-
-	if (!path || !options || !location)
-		return NULL;
-
-	new = malloc(sizeof(struct multi_mnt));
-	if (!new)
-		return NULL;
-
-	new->path = path;
-	new->options = options;
-	new->location = location;
-
-	plen = strlen(path);
-	mmptr = list;
-	while (mmptr) {
-		if (plen <= strlen(mmptr->path))
-			break;
-		old = mmptr;
-		mmptr = mmptr->next;
-	}
-
-	/* if a multimount entry has duplicate keys, it is invalid */
-	if (key_exists(mmptr, path, plen)) {
-		free(new);
-		return NULL;
-	}
-
-	if (old)
-		old->next = new;
-	new->next = mmptr;
-
-	return old ? list : new;
-}
-
-void multi_free_list(struct multi_mnt *list)
-{
-	struct multi_mnt *next;
-
-	if (!list)
-		return;
-
-	next = list;
-	while (next) {
-		struct multi_mnt *this = next;
-
-		next = this->next;
-
-		if (this->path)
-			free(this->path);
-
-		if (this->options)
-			free(this->options);
-
-		if (this->location)
-			free(this->location);
-
-		free(this);
-	}
 }
 
 /*
@@ -833,21 +906,127 @@ static int check_is_multi(const char *mapent)
 	return multi;
 }
 
+static int
+add_offset_entry(const char *name, const char *m_root, int m_root_len,
+		const char *path, const char *myoptions, const char *loc,
+		time_t age)
+{
+	char m_key[PATH_MAX + 1];
+	char m_mapent[MAPENT_MAX_LEN + 1];
+	int m_key_len, m_mapent_len;
+
+	m_key_len = m_root_len + strlen(path) + 1;
+	if (m_key_len > PATH_MAX) {
+		error(MODPREFIX "multi mount key too long - ignored");
+		return CHE_FAIL;
+	}
+	strcpy(m_key, m_root);
+	strcat(m_key, path);
+
+	m_mapent_len = strlen(myoptions) + strlen(loc) + 3;
+	if (m_mapent_len > MAPENT_MAX_LEN) {
+		error(MODPREFIX "multi mount mapent too long - ignored");
+		return CHE_FAIL;
+	}
+	strcpy(m_mapent, "-");
+	strcat(m_mapent, myoptions);
+	strcpy(m_mapent, " ");
+	strcat(m_mapent, loc);
+
+	debug("adding multi-mount offset %s", path);
+
+	return cache_add_offset(name, m_key, m_mapent, age);
+}
+
+#define AUTOFS_SUPER_MAGIC 0x0187L
+
+static int mount_multi_triggers(char *root, struct mapent_cache *me, const char *base)
+{
+	char path[PATH_MAX + 1];
+	char *offset = path;
+	struct mapent_cache *oe;
+	struct list_head *pos = NULL;
+	unsigned int fs_path_len;
+	struct statfs fs;
+	struct stat st;
+	unsigned int is_autofs_fs;
+	int ret, start;
+
+	fs_path_len = strlen(root) + strlen(base);
+	if (fs_path_len > PATH_MAX)
+		return -1;
+
+	strcpy(path, root);
+	strcat(path, base);
+	ret = statfs(path, &fs);
+	if (ret == -1)
+		return -1;
+
+	is_autofs_fs = fs.f_type == AUTOFS_SUPER_MAGIC ? 1 : 0;
+
+	start = strlen(root);
+	offset = cache_get_offset(base, offset, start, &me->multi_list, &pos);
+	while (offset) {
+		int plen = fs_path_len + strlen(offset);
+
+		if (plen > PATH_MAX) {
+			warn("path loo long");
+			goto cont;
+		}
+
+		oe = cache_lookup_offset(base, offset, start, &me->multi_list);
+		if (!oe)
+			goto cont;
+
+		/*
+		 * If the host filesystem is not an autofs fs
+		 * we require the mount point directory exist
+		 * and that permissions are OK.
+		 */
+		if (!is_autofs_fs) {
+			ret = stat(oe->key, &st);
+			if (ret == -1)
+				goto cont;
+		}
+
+		debug("mount offset %s", oe->key);
+
+		if (mount_autofs_offset(oe, is_autofs_fs) < 0)
+			return -1;
+cont:
+		offset = cache_get_offset(base,
+				offset, start, &me->multi_list, &pos);
+	}
+
+	return 0;
+}
+
 /*
  * syntax is:
  *	[-options] location [location] ...
  *	[-options] [mountpoint [-options] location [location] ... ]...
+ *
+ * There are three ways this routine can be called. One where we parse
+ * offsets in a multi-mount entry adding them to the cache for later lookups.
+ * Another where we parse a multi-mount entry looking for a root offset mount
+ * and mount it if it exists and also mount its offsets down to the first
+ * level nexting point. Finally to mount non multi-mounts and to mount a
+ * lower level multi-mount nesting point and its offsets.
  */
 int parse_mount(const char *root, const char *name,
-		int name_len, const char *mapent, void *context)
+		int name_len, const char *mapent, int parse_context,
+		void *context)
 {
 	struct parse_context *ctxt = (struct parse_context *) context;
+	struct mapent_cache *me;
 	char *pmapent, *options;
 	const char *p;
 	int mapent_len, rv;
 	int optlen;
+	int slashify = ctxt->slashify_colons;
 
-	mapent_len = expandsunent(mapent, NULL, name, ctxt->subst, ctxt->slashify_colons);
+	ctxt->subst = addstdenv(ctxt->subst);
+	mapent_len = expandsunent(mapent, NULL, name, ctxt->subst, slashify);
 	pmapent = alloca(mapent_len + 1);
 	if (!pmapent) {
 		error(MODPREFIX "alloca: %m");
@@ -855,7 +1034,8 @@ int parse_mount(const char *root, const char *name,
 	}
 	pmapent[mapent_len] = '\0';
 
-	expandsunent(mapent, pmapent, name, ctxt->subst, ctxt->slashify_colons);
+	expandsunent(mapent, pmapent, name, ctxt->subst, slashify);
+	ctxt->subst = removestdenv(ctxt->subst);
 
 	debug(MODPREFIX "expanded entry: %s", pmapent);
 
@@ -887,30 +1067,56 @@ int parse_mount(const char *root, const char *name,
 	debug(MODPREFIX "gathered options: %s", options);
 
 	if (check_is_multi(p)) {
-		struct multi_mnt *list, *head = NULL;
-		char *multi_root;
+		char *m_root = NULL;
+		int m_root_len;
+		char *root_path = NULL, *root_loc, *root_options;
+		time_t age = time(NULL);
 		int l;
 
-		multi_root = alloca(strlen(root) + name_len + 2);
-		if (!multi_root) {
-			error(MODPREFIX "alloca: %m");
+		/* If name starts with "/" it's a direct mount */
+		if (*name == '/') {
+			m_root_len = name_len;
+			m_root = alloca(m_root_len + 1);
+			if (!m_root) {
+				error(MODPREFIX "alloca: %m");
+				free(options);
+				return 1;
+			}
+			strcpy(m_root, name);
+		} else {
+			m_root_len = strlen(root) + name_len + 1;
+			m_root = alloca(m_root_len + 1);
+			if (!m_root) {
+				error(MODPREFIX "alloca: %m");
+				free(options);
+				return 1;
+			}
+			strcpy(m_root, root);
+			strcat(m_root, "/");
+			strcat(m_root, name);
+		}
+
+		debug("m_root = %s", m_root);
+
+		me = cache_lookup(name);
+		if (!me) {
+			error(MODPREFIX "can't find multi root");
 			free(options);
 			return 1;
 		}
-
-		strcpy(multi_root, root);
-		strcat(multi_root, "/");
-		strcat(multi_root, name);
+		/* So we know we're the multi-mount root */
+		if (!me->multi)
+			me->multi = me;
 
 		/* It's a multi-mount; deal with it */
 		do {
 			char *myoptions = strdup(options);
 			char *path, *loc;
+			int status;
 
 			if (myoptions == NULL) {
 				error(MODPREFIX "multi strdup: %m");
 				free(options);
-				multi_free_list(head);
 				return 1;
 			}
 
@@ -918,13 +1124,12 @@ int parse_mount(const char *root, const char *name,
 				l = 0;
 				path = dequote("/", 1);
 			} else
-				 path = dequote(p, l = chunklen(p, 0));
+				path = dequote(p, l = chunklen(p, 0));
 
 			if (!path) {
 				error(MODPREFIX "out of memory");
 				free(myoptions);
 				free(options);
-				multi_free_list(head);
 				return 1;
 			}
 
@@ -944,7 +1149,6 @@ int parse_mount(const char *root, const char *name,
 						    "multi concat_options: %m");
 						free(options);
 						free(path);
-						multi_free_list(head);
 						return 1;
 					}
 					p = skipspace(p);
@@ -961,7 +1165,6 @@ int parse_mount(const char *root, const char *name,
 				free(path);
 				free(myoptions);
 				free(options);
-				multi_free_list(head);
 				return 1;
 			}
 
@@ -977,7 +1180,6 @@ int parse_mount(const char *root, const char *name,
 					free(path);
 					free(myoptions);
 					free(options);
-					multi_free_list(head);
 					return 1;
 				}
 
@@ -988,7 +1190,6 @@ int parse_mount(const char *root, const char *name,
 					free(path);
 					free(myoptions);
 					free(options);
-					multi_free_list(head);
 					return 1;
 				}
 
@@ -1001,49 +1202,70 @@ int parse_mount(const char *root, const char *name,
 				p = skipspace(p);
 			}
 
-			list = head;
-			head = multi_add_list(list, path, myoptions, loc);
-			if (!head) {
+			/*
+			 * In mount context we only need to find and
+			 * mount "/", if any, and mount its offset
+			 * triggers.
+			 */
+			if (!parse_context)
+				goto skip_add;
+
+			/*
+			 * In parse context we only add the key/value
+			 * pairs to the cache for lookups later on.
+			 */
+			status = add_offset_entry(name,
+					m_root, m_root_len,
+					path, myoptions, loc, age);
+skip_add:
+			if (!parse_context && !strcmp(path, "/")) {
+				root_path = path;
+				root_loc = loc;
+				root_options = myoptions;
+				break;
+			} else {
 				free(loc);
 				free(path);
-				free(options);
 				free(myoptions);
-				multi_free_list(list);
-				return 1;
 			}
 		} while (*p == '/');
 
-		list = head;
-		while (list) {
-			debug(MODPREFIX
-			      "multimount: %.*s on %.*s with options %s",
-			      strlen(list->location), list->location,
-			      strlen(list->path), list->path, list->options);
-
-			rv = sun_mount(multi_root,
-				       list->path, strlen(list->path),
-				       list->location, strlen(list->location),
-				       list->options);
-
-			/* Convert non-strict failure into success */
-			if (rv < 0) {
-				rv = 0;
-				debug("parse_mount: ignoring failure of non-strict mount");
-			} else if (rv > 0)
-				break;
-
-			list = list->next;
+		if (parse_context) {
+			free(options);
+			return 0;
 		}
 
-		multi_free_list(head);
+		if (root_path) {
+			rv = sun_mount(m_root, root_path, strlen(root_path),
+				root_loc, strlen(root_loc), root_options);
+
+			free(root_path);
+			free(root_loc);
+			free(root_options);
+
+			if (rv < 0) {
+				error("mount multi-mount root %s failed", me->key);
+				return rv;
+			}
+		}
+
+		if (mount_multi_triggers(m_root, me, "/") < 0) {
+			error("failed to mount offset triggers");
+			rv = 1;
+		}
 
 		free(options);
+
 		return rv;
 	} else {
-		/* Normal (non-multi) entries */
+		/* Normal (and non-root multi-mount) entries */
 		char *loc;
 		int loclen;
 		int l;
+
+		/* Do nothing in parse context if its not a multi-mount */
+		if (parse_context)
+			return 0;
 
 		if (*p == ':')
 			p++;	/* Sun escape for entries starting with / */
@@ -1103,6 +1325,40 @@ int parse_mount(const char *root, const char *name,
 			
 		free(loc);
 		free(options);
+
+		/*
+		 * If it's a multi-mount insert the triggers
+		 * These are always direct mount triggers so root = ""
+		 */
+		debug("insert multi triggers");
+		me = cache_lookup(name);
+		if (me && me->multi) {
+			char *m_key = me->multi->key;
+			int start;
+			char *base, *m_root;
+
+			if (*m_key == '/') {
+				m_root = m_key;
+				start = strlen(m_key);
+			} else {
+				start = strlen(ap.path) + strlen(m_key) + 1;
+				m_root = alloca(start);
+				if (!m_root) {
+					error(MODPREFIX "alloca: %m");
+					return 1;
+				}
+				strcpy(m_root, ap.path);
+				strcat(m_root, "/");
+				strcat(m_root, m_key);
+			}
+
+			base = &me->key[start];
+
+			debug("insert multi triggers %s %d", me->key, start);
+			debug("m_root %s base %s", m_root, base);
+
+			mount_multi_triggers(m_root, me->multi, base);
+		}
 	}
 
 	return rv;

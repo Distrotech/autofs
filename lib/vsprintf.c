@@ -1,4 +1,4 @@
-#ident "$Id: vsprintf.c,v 1.1 2005/05/01 09:48:34 raven Exp $"
+#ident "$Id: vsprintf.c,v 1.2 2005/11/27 04:08:54 raven Exp $"
 /*
  *  Stolen from the linux kernel.
  *

@@ -1,0 +1,11 @@
+Source: autofs4
+Section: misc
+Priority: optional
+Maintainer: #MAINT#
+Build-Depends: debhelper (>> 4.0.0)
+Standards-Version: 3.6.0
+
+Package: autofs4-source
+Provides: autofs4-source-#AUTOFS4_VERSION#
+Architecture: any
+Description: autofs4 kernel module source for #KVERS#.

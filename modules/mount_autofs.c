@@ -1,4 +1,4 @@
-#ident "$Id: mount_autofs.c,v 1.16 2005/04/25 03:42:08 raven Exp $"
+#ident "$Id: mount_autofs.c,v 1.17 2005/11/27 04:08:54 raven Exp $"
 /*
  * mount_autofs.c
  *
@@ -42,13 +42,19 @@ int mount_mount(const char *root, const char *name, int name_len,
 	char *options, *p;
 	pid_t slave, wp;
 	char timeout_opt[30];
+	int rlen;
 
-	fullpath = alloca(strlen(root) + name_len + 2);
+	rlen = root ? strlen(root) : 0;
+	fullpath = alloca(rlen + name_len + 2);
 	if (!fullpath) {
 		error(MODPREFIX "alloca: %m");
 		return 1;
 	}
-	sprintf(fullpath, "%s/%s", root, name);
+
+	if (rlen)
+		sprintf(fullpath, "%s/%s", root, name);
+	else
+		sprintf(fullpath, "%s", name);
 
 	if (c_options) {
 		options = alloca(strlen(c_options) + 1);

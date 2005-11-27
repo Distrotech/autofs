@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.7 2005/05/01 09:38:05 raven Exp $
+# $Id: Makefile,v 1.8 2005/11/27 04:08:54 raven Exp $
 #
 # Makefile for autofs utility library
 #

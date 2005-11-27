@@ -1,4 +1,4 @@
-#ident "$Id: syslog.c,v 1.1 2005/05/01 09:48:34 raven Exp $"
+#ident "$Id: syslog.c,v 1.2 2005/11/27 04:08:54 raven Exp $"
 /*
  * Copyright (c) 1983, 1988, 1993
  *	The Regents of the University of California.  All rights reserved.

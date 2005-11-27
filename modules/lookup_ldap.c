@@ -1,4 +1,4 @@
-#ident "$Id: lookup_ldap.c,v 1.23 2005/04/25 03:42:08 raven Exp $"
+#ident "$Id: lookup_ldap.c,v 1.24 2005/11/27 04:08:54 raven Exp $"
 /*
  * lookup_ldap.c - Module for Linux automountd to access automount
  *		   maps in LDAP directories.
@@ -194,7 +194,7 @@ static int read_one_map(const char *root,
 			struct lookup_context *ctxt,
 			time_t age, int *result_ldap)
 {
-	int rv, i, j, l, count, keycount;
+	int rv, i, j, l, count, keycount, ret;
 	char *query;
 	LDAPMessage *result, *e;
 	char **keyValue = NULL;
@@ -269,12 +269,13 @@ static int read_one_map(const char *root,
 
 		values = ldap_get_values(ldap, e, type);
 		if (!values) {
-			info(MODPREFIX "no %s defined for %s", type, query);
+			debug(MODPREFIX "no %s defined for %s", type, query);
 			ldap_value_free(keyValue);
 			e = ldap_next_entry(ldap, e);
 			continue;
 		}
 
+		/* Need to fix this - should be a single entry */
 		count = ldap_count_values(values);
 		keycount = ldap_count_values(keyValue);
 		for (i = 0; i < count; i++) {
@@ -282,11 +283,14 @@ static int read_one_map(const char *root,
 				if (*(keyValue[j]) == '/' &&
 				    strlen(keyValue[j]) == 1)
 					*(keyValue[j]) = '*';
-				cache_add(root, keyValue[j], values[i], age);
+				cache_add(keyValue[j], values[i], age);
+				/* need to handle this return later */
+				ret = ctxt->parse->parse_mount(root,
+						keyValue[i], strlen(keyValue[i]),
+						values[i], 1, ctxt->parse->context);
 			}
 		}
 		ldap_value_free(values);
-
 		ldap_value_free(keyValue);
 		e = ldap_next_entry(ldap, e);
 	}
@@ -323,21 +327,17 @@ static int read_map(const char *root, struct lookup_context *ctxt,
 	return 0;
 
 ret_ok:
-	/* Clean stale entries from the cache */
-	cache_clean(root, age);
-
 	return 1;
 }
 
-int lookup_ghost(const char *root, int ghost, time_t now, void *context)
+int lookup_enumerate(const char *root, int (*fn)(struct mapent_cache *, int), time_t now, void *context)
 {
 	struct lookup_context *ctxt = (struct lookup_context *) context;
 	struct mapent_cache *me;
-	int status = 1, rv = LDAP_SUCCESS;
+	int status = LKP_INDIRECT;
+	int rv = LDAP_SUCCESS;
 	char *mapname;
 	time_t age = now ? now : time(NULL);
-
-	chdir("/");
 
 	if (!read_map(root, ctxt, NULL, 0, age, &rv))
 		switch (rv) {
@@ -358,22 +358,59 @@ int lookup_ghost(const char *root, int ghost, time_t now, void *context)
 		sprintf(mapname, "%s", ctxt->base);
 	}
 
-	status = cache_ghost(root, ghost, mapname, "ldap", ctxt->parse);
+	me = cache_lookup_first();
+	/* me NULL => empty map */
+	if (!me)
+		return LKP_EMPTY;
+
+	if (*me->key != '/')
+		return LKP_FAIL | LKP_INDIRECT;
+
+	cache_enumerate(fn, 0);
+
+	return status;
+}
+
+int lookup_ghost(const char *root, int ghost, time_t now, void *context)
+{
+	struct lookup_context *ctxt = (struct lookup_context *) context;
+	struct mapent_cache *me;
+	int status = LKP_INDIRECT;
+	int rv = LDAP_SUCCESS;
+	char *mapname;
+	time_t age = now ? now : time(NULL);
+
+	if (!read_map(root, ctxt, NULL, 0, age, &rv))
+		switch (rv) {
+		case LDAP_SIZELIMIT_EXCEEDED:
+		case LDAP_UNWILLING_TO_PERFORM:
+			return LKP_NOTSUP;
+		default:
+			return LKP_FAIL;
+		}
+
+	/* Clean stale entries from the cache */
+	cache_clean(_PATH_MOUNTED, root, age);
+
+	if (ctxt->server) {
+		int len = strlen(ctxt->server) + strlen(ctxt->base) + 4;
+
+		mapname = alloca(len);
+		sprintf(mapname, "//%s/%s", ctxt->server, ctxt->base);
+	} else {
+		mapname = alloca(strlen(ctxt->base) + 1);
+		sprintf(mapname, "%s", ctxt->base);
+	}
 
 	me = cache_lookup_first();
 	/* me NULL => empty map */
 	if (me == NULL)
-		return LKP_FAIL;
+		return LKP_EMPTY;
 
-	if (*me->key == '/' && *(root + 1) != '-') {
-		me = cache_partial_match(root);
-		/* 
-		 * me NULL => no entries for this direct mount
-		 * root or indirect map
-		 */
-		if (me == NULL)
-			return LKP_FAIL | LKP_INDIRECT;
-	}
+	if (*me->key == '/')
+		return LKP_FAIL | LKP_DIRECT;
+
+	cache_ghost(root, ghost);
 
 	return status;
 }
@@ -463,10 +500,10 @@ static int lookup_one(const char *root, const char *qKey,
 	}
 
 	if (!me) {
-		cache_delete(root, qKey, 0);
+		cache_delete(_PATH_MOUNTED, root, qKey, 0);
 
 		for (i = 0; values[i]; i++) {	
-			rv = cache_add(root, qKey, values[i], age);
+			rv = cache_add(qKey, values[i], age);
 			if (!rv)
 				return 0;
 		}
@@ -571,10 +608,10 @@ static int lookup_wild(const char *root,
 	}
 
 	if (!me) {
-		cache_delete(root, "*", 0);
+		cache_delete(_PATH_MOUNTED, root, "*", 0);
 
 		for (i = 0; values[i]; i++) {	
-			rv = cache_add(root, "*", values[i], age);
+			rv = cache_add("*", values[i], age);
 			if (!rv)
 				return 0;
 		}
@@ -590,26 +627,15 @@ static int lookup_wild(const char *root,
 	return ret;
 }
 
-int lookup_mount(const char *root, const char *name, int name_len, void *context)
+static int check_map_indirect(const char *root,
+			      char *key, int key_len,
+			      struct lookup_context *ctxt)
 {
-	struct lookup_context *ctxt = (struct lookup_context *) context;
 	int ret, ret2;
-	char key[KEY_MAX_LEN + 1];
-	int key_len;
-	char mapent[MAPENT_MAX_LEN + 1];
-	char *mapname;
 	struct mapent_cache *me;
 	time_t now = time(NULL);
 	time_t t_last_read;
 	int need_hup = 0;
-
-	if (ap.type == LKP_DIRECT)
-		key_len = snprintf(key, KEY_MAX_LEN, "%s/%s", root, name);
-	else
-		key_len = snprintf(key, KEY_MAX_LEN, "%s", name);
-
-	if (key_len > KEY_MAX_LEN)
-		return 1;
 
 	ret = lookup_one(root, key, "nisObject", "cn", "nisMapEntry", ctxt);
 	ret2 = lookup_one(root, key,
@@ -631,58 +657,69 @@ int lookup_mount(const char *root, const char *name, int name_len, void *context
 	if (ret == CHE_MISSING && ret2 == CHE_MISSING) {
 		int wild = CHE_MISSING;
 
-		/* Maybe update wild card map entry */
-		if (ap.type == LKP_INDIRECT) {
-			ret = lookup_wild(root, "nisObject",
-					  "cn", "nisMapEntry", ctxt);
-			ret2 = lookup_wild(root, "automount",
-					   "cn", "automountInformation", ctxt);
-			wild = (ret & (CHE_MISSING | CHE_FAIL)) &&
-					(ret2 & (CHE_MISSING | CHE_FAIL));
+		ret = lookup_wild(root, "nisObject",
+				  "cn", "nisMapEntry", ctxt);
+		ret2 = lookup_wild(root, "automount",
+				   "cn", "automountInformation", ctxt);
+		wild = (ret & (CHE_MISSING | CHE_FAIL)) &&
+				(ret2 & (CHE_MISSING | CHE_FAIL));
 
-			if (ret & CHE_MISSING && ret2 & CHE_MISSING)
-				cache_delete(root, "*", 0);
-		}
+		if (ret & CHE_MISSING && ret2 & CHE_MISSING)
+				cache_delete(_PATH_MOUNTED, root, "*", 0);
 
-		if (cache_delete(root, key, 0) && wild)
+		if (cache_delete(_PATH_MOUNTED, root, key, 0) && wild)
 			rmdir_path(key);
+	}
+
+	/* Have parent update its map */
+	if (need_hup)
+		kill(getppid(), SIGHUP);
+
+	return 0;
+}
+
+int lookup_mount(const char *root, const char *name, int name_len, void *context)
+{
+	struct lookup_context *ctxt = (struct lookup_context *) context;
+	struct mapent_cache *me;
+	char key[KEY_MAX_LEN + 1];
+	int key_len;
+	char mapent[MAPENT_MAX_LEN + 1];
+	int mapent_len;
+	int status = 0;
+	int ret = 1;
+
+	debug(MODPREFIX "looking up %s", name);
+
+	key_len = snprintf(key, KEY_MAX_LEN, "%s", name);
+	if (key_len > KEY_MAX_LEN)
+		return 1;
+
+        /*
+	 * We can't check the direct mount map as if it's not in
+	 * the map cache already we never get a mount lookup, so
+	 * we never know about it.
+	 */
+	if (ap.type == LKP_INDIRECT) {
+		status = check_map_indirect(root, key, key_len, ctxt);
+		if (status) {
+			debug(MODPREFIX "check indirect map failure");
+			return 1;
+		}
 	}
 
 	me = cache_lookup(key);
 	if (me) {
 		/* Try each of the LDAP entries in sucession. */
 		while (me) {
-			sprintf(mapent, me->mapent);
-
+			mapent_len= sprintf(mapent, me->mapent);
+			mapent[mapent_len] = '\0';
 			debug(MODPREFIX "%s -> %s", key, mapent);
-			ret = ctxt->parse->parse_mount(root, name, name_len,
-						  mapent, ctxt->parse->context);
+			ret = ctxt->parse->parse_mount(root, key, key_len,
+						  mapent, 0, ctxt->parse->context);
 			me = cache_lookup_next(me);
 		}
-	} else {
-		/* path component, do submount */
-		me = cache_partial_match(key);
-		if (me) {
-			if (ctxt->server) {
-				int len = strlen(ctxt->server) +
-					    strlen(ctxt->base) + 2 + 1 + 1;
-				mapname = alloca(len);
-				sprintf(mapname, "//%s/%s", ctxt->server, ctxt->base);
-			} else {
-				mapname = alloca(strlen(ctxt->base) + 1);
-				sprintf(mapname, "%s", ctxt->base);
-			}
-			sprintf(mapent, "-fstype=autofs ldap:%s", mapname);
-
-			debug(MODPREFIX "%s -> %s", key, mapent);
-			ret = ctxt->parse->parse_mount(root, name, name_len,
-						  mapent, ctxt->parse->context);
-		}
 	}
-
-	/* Have parent update its map */
-	if (need_hup)
-		kill(getppid(), SIGHUP);
 
 	return ret;
 }

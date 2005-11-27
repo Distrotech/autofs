@@ -1,4 +1,4 @@
-#ident "$Id: lookup_nisplus.c,v 1.4 2004/12/31 06:30:08 raven Exp $"
+#ident "$Id: lookup_nisplus.c,v 1.5 2005/11/27 04:08:54 raven Exp $"
 /*
  * lookup_nisplus.c
  *
@@ -59,6 +59,11 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 	return !(ctxt->parse = open_parse(mapfmt, MODPREFIX, argc - 1, argv + 1));
 }
 
+int lookup_enumerate(const char *root, int (*fn)(struct mapent_cache *, int), time_t now, void *context)
+{
+	return LKP_NOTSUP;
+}
+
 int lookup_ghost(const char *root, int ghost, time_t now, void *context)
 {
 	return LKP_NOTSUP;
@@ -98,7 +103,7 @@ int lookup_mount(const char *root, const char *name, int name_len, void *context
 	rv = ctxt->parse->parse_mount(root, name, name_len,
 				      NIS_RES_OBJECT(result)->EN_data.en_cols.
 				      en_cols_val[1].ec_value.ec_value_val,
-				      ctxt->parse->context);
+				      0, ctxt->parse->context);
 	return rv;
 }
 

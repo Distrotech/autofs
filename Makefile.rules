@@ -1,5 +1,5 @@
 #
-# $Id: Makefile.rules,v 1.5 2004/01/29 16:01:22 raven Exp $
+# $Id: Makefile.rules,v 1.6 2005/11/27 04:08:54 raven Exp $
 #
 # Makefile rules for autofs project
 #
@@ -18,11 +18,11 @@ AUTOFS_LIB = ../lib/autofs.a
 # The STRIP defined here *must not* remove any dynamic-loading symbols
 
 ifdef DEBUG
-CFLAGS    = -O2 -g -DDEBUG
+CFLAGS    ?= -O2 -g -Wall -DDEBUG
 LDFLAGS   = -g
 STRIP     = :
 else
-CFLAGS    = -O3 -fomit-frame-pointer -Wall
+CFLAGS    ?= -O2 -Wall
 LDFLAGS   = -s
 STRIP     = strip --strip-debug
 endif

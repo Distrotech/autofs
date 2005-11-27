@@ -1,9 +1,9 @@
-#ident "$Id: cache.c,v 1.16 2005/05/07 10:05:02 raven Exp $"
+#ident "$Id: cache.c,v 1.17 2005/11/27 04:08:54 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  cache.c - mount entry cache management routines
  *
- *   Copyright 2002-2003 Ian Kent <raven@themaw.net> - All Rights Reserved
+ *   Copyright 2002-2005 Ian Kent <raven@themaw.net> - All Rights Reserved
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -32,19 +32,21 @@
 extern int kproto_version;	/* Kernel protocol major version */
 extern int kproto_sub_version;	/* Kernel protocol minor version */
 
-#define HASHSIZE      27
-
-struct ghost_context {
-	const char *root;
-	char *mapname;
-	char direct_base[KEY_MAX_LEN + 1];
-	char key[KEY_MAX_LEN + 1];
-	char mapent[MAPENT_MAX_LEN + 1];
-};
+#define HASHSIZE      77
 
 static struct mapent_cache *mapent_hash[HASHSIZE];
+static unsigned long cache_ino_index[HASHSIZE];
 
-static unsigned long ent_check(struct ghost_context *gc, char **key, int ghost);
+void cache_dump_multi(struct list_head *list)
+{
+	struct list_head *p;
+	struct mapent_cache *me;
+
+	list_for_each(p, list) {
+		me = list_entry(p, struct mapent_cache, multi_list);
+		info("key = %s", me->key);
+	}
+}
 
 static char *cache_fullpath(const char *root, const char *key)
 {
@@ -68,6 +70,18 @@ static char *cache_fullpath(const char *root, const char *key)
 	return path;
 }
 
+void cache_init(void)
+{
+	int i;
+
+	cache_release();
+
+	for (i = 0; i < HASHSIZE; i++) {
+		mapent_hash[i] = NULL;
+		cache_ino_index[i] = -1;
+	}
+}
+
 static unsigned int hash(const char *key)
 {
 	unsigned long hashval;
@@ -79,14 +93,43 @@ static unsigned int hash(const char *key)
 	return hashval % HASHSIZE;
 }
 
-void cache_init(void)
+static unsigned int ino_hash(dev_t dev, ino_t ino)
 {
-	int i;
+	unsigned long hashval;
 
-	cache_release();
+	hashval = dev + ino;
 
-	for (i = 0; i < HASHSIZE; i++)
-		mapent_hash[i] = NULL;
+	return hashval % HASHSIZE;
+}
+
+void cache_set_ino_index(const char *key, dev_t dev, ino_t ino)
+{
+	unsigned int ino_index = ino_hash(dev, ino);
+	unsigned int key_hash = hash(key);
+
+	cache_ino_index[ino_index] = key_hash;
+
+	return;
+}
+
+struct mapent_cache *cache_lookup_ino(dev_t dev, ino_t ino)
+{
+	struct mapent_cache *me = NULL;
+	unsigned int ino_index;
+	unsigned int index;
+
+	ino_index = ino_hash(dev, ino);
+	index = cache_ino_index[ino_index];
+	if (index == -1)
+		return NULL;
+
+	for (me = mapent_hash[index]; me != NULL; me = me->next) {
+		if (me->dev != dev || me->ino != ino)
+			continue;
+
+		return me;
+	}
+	return NULL;
 }
 
 struct mapent_cache *cache_lookup_first(void)
@@ -136,6 +179,32 @@ struct mapent_cache *cache_lookup_next(struct mapent_cache *me)
 	return NULL;
 }
 
+/* Lookup an offset within a multi-mount entry */
+struct mapent_cache *cache_lookup_offset(const char *prefix, const char *offset, int start, struct list_head *head)
+{
+	struct list_head *p;
+	struct mapent_cache *this;
+	int plen = strlen(prefix);
+	char *o_key;
+
+	/* root offset duplicates "/" */
+	if (plen > 1) {
+		o_key = alloca(plen + strlen(offset) + 1);
+		strcpy(o_key, prefix);
+		strcat(o_key, offset);
+	} else {
+		o_key = alloca(strlen(offset) + 1);
+		strcpy(o_key, offset);
+	}
+
+	list_for_each(p, head) {
+		this = list_entry(p, struct mapent_cache, multi_list);
+		if (!strcmp(&this->key[start], o_key))
+			return this;
+	}
+	return NULL;
+}
+
 struct mapent_cache *cache_partial_match(const char *prefix)
 {
 	struct mapent_cache *me = NULL;
@@ -162,7 +231,7 @@ struct mapent_cache *cache_partial_match(const char *prefix)
 	return NULL;
 }
 
-int cache_add(const char *root, const char *key, const char *mapent, time_t age)
+int cache_add(const char *key, const char *mapent, time_t age)
 {
 	struct mapent_cache *me = NULL, *existing = NULL;
 	char *pkey, *pent;
@@ -188,6 +257,11 @@ int cache_add(const char *root, const char *key, const char *mapent, time_t age)
 	me->key = strcpy(pkey, key);
 	me->mapent = strcpy(pent, mapent);
 	me->age = age;
+	INIT_LIST_HEAD(&me->multi_list);
+	me->multi = NULL;
+	me->ioctlfd = -1;
+	me->dev = -1;
+	me->ino = -1;
 
 	/* 
 	 * We need to add to the end if values exist in order to
@@ -214,7 +288,51 @@ int cache_add(const char *root, const char *key, const char *mapent, time_t age)
 	return CHE_OK;
 }
 
-int cache_update(const char *root, const char *key, const char *mapent, time_t age)
+static void cache_add_ordered_offset(struct mapent_cache *me, struct list_head *head)
+{
+	struct list_head *p;
+	struct mapent_cache *this;
+
+	list_for_each(p, head) {
+		int eq, tlen;
+
+		this = list_entry(p, struct mapent_cache, multi_list);
+		tlen = strlen(this->key);
+
+		eq = strncmp(this->key, me->key, tlen);
+		if (!eq && tlen == strlen(me->key))
+			return;
+
+		if (eq > 0) {
+			list_add_tail(&me->multi_list, p);
+			return;
+		}
+	}
+	list_add_tail(&me->multi_list, p);
+
+	return;
+}
+
+int cache_add_offset(const char *mkey, const char *key, const char *mapent, time_t age)
+{
+	struct mapent_cache *me, *owner;
+
+	owner = cache_lookup(mkey);
+	if (!owner)
+		return CHE_FAIL;
+
+	cache_add(key, mapent, age);
+	me = cache_lookup(key);
+	if (me) {
+		cache_add_ordered_offset(me, &owner->multi_list);
+		me->multi = owner;
+		return CHE_OK;
+	}
+
+	return CHE_FAIL; 
+}
+
+int cache_update(const char *key, const char *mapent, time_t age)
 {
 	struct mapent_cache *s, *me = NULL;
 	char *pent;
@@ -225,9 +343,9 @@ int cache_update(const char *root, const char *key, const char *mapent, time_t a
 			me = s;
 
 	if (!me) {
-		ret = cache_add(root, key, mapent, age);
+		ret = cache_add(key, mapent, age);
 		if (!ret) {
-			debug("cache_add: failed for %s", key);
+			debug("failed for %s", key);
 			return CHE_FAIL;
 		}
 		ret = CHE_UPDATED;
@@ -247,7 +365,7 @@ int cache_update(const char *root, const char *key, const char *mapent, time_t a
 	return ret;
 }
 
-int cache_delete(const char *root, const char *key, int rmpath)
+int cache_delete(const char *table, const char *root, const char *key, int rmpath)
 {
 	struct mapent_cache *me = NULL, *pred;
 	char *path;
@@ -261,7 +379,7 @@ int cache_delete(const char *root, const char *key, int rmpath)
 	if (!path)
 		return CHE_FAIL;
 
-	if (is_mounted(_PATH_MOUNTED, path)) {
+	if (table && is_mounted(table, path)) {
 		free(path);
 		return CHE_FAIL;
 	}
@@ -271,6 +389,8 @@ int cache_delete(const char *root, const char *key, int rmpath)
 		me = me->next;
 		if (strcmp(key, me->key) == 0) {
 			pred->next = me->next;
+			if (me->multi && !list_empty(&me->multi_list))
+				return CHE_FAIL;
 			free(me->key);
 			free(me->mapent);
 			free(me);
@@ -281,6 +401,8 @@ int cache_delete(const char *root, const char *key, int rmpath)
 	me = mapent_hash[hashval];
 	if (strcmp(key, me->key) == 0) {
 		mapent_hash[hashval] = me->next;
+		if (me->multi && !list_empty(&me->multi_list))
+			return CHE_FAIL;
 		free(me->key);
 		free(me->mapent);
 		free(me);
@@ -292,7 +414,31 @@ int cache_delete(const char *root, const char *key, int rmpath)
 	return CHE_OK;
 }
 
-void cache_clean(const char *root, time_t age)
+int cache_delete_offset_list(const char *table, const char *root, const char *key)
+{
+	struct mapent_cache *me = cache_lookup(key);
+	struct mapent_cache *this;
+	struct list_head *head, *next;
+	int remain = 0;
+	int status;
+
+	if (!me)
+		return CHE_FAIL;
+
+	head = &me->multi_list;
+	next = head->next;
+	while (next != head) {
+		this = list_entry(next, struct mapent_cache, multi_list);
+		next = next->next;
+		list_del_init(&me->multi_list);
+		status = cache_delete(table, root, this->key, 0);
+		if (status == CHE_FAIL)
+			remain++;
+	}
+	return remain;
+}
+
+void cache_clean(const char *table, const char *root, time_t age)
 {
 	struct mapent_cache *me, *pred;
 	char *path;
@@ -307,11 +453,15 @@ void cache_clean(const char *root, time_t age)
 			pred = me;
 			me = me->next;
 
+			/* We treat multi-mount offsets seperatetly */
+			if (me->multi && !list_empty(&me->multi_list))
+				continue;
+
 			path = cache_fullpath(root, me->key);
 			if (!path)
 				return;
 
-			if (is_mounted(_PATH_MOUNTED, path)) {
+			if (table && is_mounted(table, path)) {
 				free(path);
 				continue;
 			}
@@ -332,14 +482,16 @@ void cache_clean(const char *root, time_t age)
 		if (!me)
 			continue;
 
+		/* We treat multi-mount offsets seperatetly */
+		if (me->multi && !list_empty(&me->multi_list))
+			continue;
+
 		path = cache_fullpath(root, me->key);
 		if (!path)
 			return;
 
-		if (is_mounted(_PATH_MOUNTED, path)) {
-			free(path);
+		if (is_mounted(table, path))
 			continue;
-		}
 
 		if (me->age < age) {
 			mapent_hash[i] = me->next;
@@ -359,6 +511,7 @@ void cache_release(void)
 	int i;
 
 	for (i = 0; i < HASHSIZE; i++) {
+		cache_ino_index[i] = -1;
 		me = mapent_hash[i];
 		if (me == NULL)
 			continue;
@@ -378,24 +531,12 @@ void cache_release(void)
 	}
 }
 
-int cache_ghost(const char *root, int ghosted,
-		const char *mapname, const char *type, struct parse_mod *parse)
+int cache_enumerate(int (*fn)(struct mapent_cache *, int), int arg)
 {
 	struct mapent_cache *me;
-	struct ghost_context gc;
-	char *pkey = NULL;
-	char *fullpath;
-	struct stat st;
-	unsigned long match = 0;
-	unsigned long map = LKP_INDIRECT;
+	int status;
+	int at_least_one = 0;
 	int i;
-
-	chdir("/");
-
-	memset(&gc, 0, sizeof(struct ghost_context));
-	gc.root = root;
-	gc.mapname = alloca(strlen(mapname) + 6);
-	sprintf(gc.mapname, "%s:%s", type, mapname);
 
 	for (i = 0; i < HASHSIZE; i++) {
 		me = mapent_hash[i];
@@ -403,124 +544,146 @@ int cache_ghost(const char *root, int ghosted,
 		if (me == NULL)
 			continue;
 
-		while (me != NULL) {
-			strcpy(gc.key, me->key);
-			strcpy(gc.mapent, me->mapent);
-
-			match = ent_check(&gc, &pkey, ghosted);
-
-			if (match == LKP_ERR_FORMAT) {
-				error("cache_ghost: entry in %s not valid map "
-				      "format, key %s",
-				       gc.mapname, gc.key);
-			} else if (match == LKP_WILD) {
-				if (*me->key == '/')
-					error("cache_ghost: wildcard map key "
-					      "not valid in direct map");
-				me = me->next;
-				continue;;
-			}
-
-			switch (match) {
-			case LKP_MATCH:
-				if (!ghosted)
-					break;
-
-				if (*gc.key == '/') {
-					fullpath = alloca(strlen(gc.key) + 2);
-					sprintf(fullpath, "%s", gc.key);
-				} else {
-					fullpath =
-					    alloca(strlen(gc.key) + strlen(gc.root) + 3);
-					sprintf(fullpath, "%s/%s", gc.root, gc.key);
-				}
-
-				if (stat(fullpath, &st) == -1 && errno == ENOENT) {
-					if (mkdir_path(fullpath, 0555) < 0)
-						warn("cache_ghost: mkdir_path %s "
-						     "failed: %m",
-						      fullpath);
-				}
-				break;
-
-			case LKP_MOUNT:
-				if (!is_mounted(_PATH_MOUNTED, gc.direct_base)) {
-					debug("cache_ghost: attempting to mount map, "
-					      "key %s",
-					      gc.direct_base);
-					parse->parse_mount("", gc.direct_base + 1,
-							   strlen(gc.direct_base) - 1,
-							   gc.mapent, parse->context);
-				}
-				break;
-			}
+		while (me) {
+			/* Skip over multi-mount offsets */
+			if (me->multi && me->multi != me)
+				goto cont;
+			status = fn(me, arg);
+			if (status)
+				at_least_one = 1;
+		cont:
 			me = me->next;
 		}
 	}
-
-	me = cache_lookup_first();
-	if (!me)
-		return LKP_FAIL;
-	if (*me->key == '/')
-		map = LKP_DIRECT;
-	return map;
+	return at_least_one;
 }
 
-static unsigned long ent_check(struct ghost_context *gc, char **pkey, int ghosted)
+int cache_ghost(const char *root, int ghosted)
 {
-	char *proot = (char *) gc->root;
-	char *slash, *pk;
-	size_t len;
+	struct mapent_cache *me;
+	char *fullpath;
+	struct stat st;
+	int i;
 
-	*pkey = gc->key;
+	if (!ghosted)
+		return -1;
 
-	if (*gc->key == '*') {
-		return LKP_WILD;
-	}
+	for (i = 0; i < HASHSIZE; i++) {
+		me = mapent_hash[i];
 
-	/* Indirect map ghost, return key */
-	if (*gc->key != '/')
-		return LKP_MATCH;
+		if (me == NULL)
+			continue;
 
-	/* Base path of direct map, each new dir needs to be mounted */
-	if (!strncmp(gc->root, "/-", 2)) {
-		slash = strchr(gc->key + 1, '/');
+		while (me) {
+			struct mapent_cache *this = me;
 
-		if (*gc->key != '/' || !slash) {
-			return LKP_ERR_FORMAT;
-		}
+			me = me->next;
 
-		*slash = '\0';
-		len = strlen(gc->key);
-		if (strncmp(gc->direct_base, gc->key, len)) {
-			strncpy(gc->direct_base, gc->key, len);
-			*(gc->direct_base + len) = '\0';
-			sprintf(gc->mapent, "-fstype=autofs %s", gc->mapname);
-			return LKP_MOUNT;
-		}
-		return LKP_NEXT;
-	}
+			/* only consider the top of the multi-mount */
+			if (this->multi && this->multi != this)
+				continue;
 
-	/* Direct map entry, pick out component of path */
-	if (*gc->key == '/') {
-		pk = gc->key;
-		len = strlen(gc->root);
-		if (!strncmp(gc->root, gc->key, len)) {
-			len--;
-			while ((*proot++ == *pk++) && len)
-				len--;
-			if (len || *pk++ != '/')
-				return LKP_NOMATCH;
-			slash = strchr(pk, '/');
-			*pkey = pk;
-			/* Path component, internal mount for lookup_mount */
-			if (slash && (!ghosted ||
-				      (kproto_version >= 4 && kproto_sub_version < 2))) {
-				*slash = '\0';
-				sprintf(gc->mapent, "-fstype=autofs %s", gc->mapname);
+			if (*this->key == '*')
+				continue;
+			
+			if (*this->key == '/') {
+				error("invalid key %s", this->key);
+				continue;
 			}
-			return LKP_MATCH;
+
+			fullpath = alloca(strlen(this->key) + strlen(root) + 3);
+			sprintf(fullpath, "%s/%s", root, this->key);
+
+			if (stat(fullpath, &st) == -1 && errno == ENOENT) {
+				if (mkdir_path(fullpath, 0555) < 0) {
+					warn("mkdir_path %s failed: %m", fullpath);
+					continue;
+				}
+			}
+
+			if (stat(fullpath, &st) != -1) {
+				this->dev = st.st_dev;
+				this->ino = st.st_ino;
+			}
 		}
 	}
-	return LKP_NOMATCH;
+	return 0;
 }
+
+char *cache_get_offset(const char *prefix, char *offset, int start,
+			struct list_head *head, struct list_head **pos)
+{
+	struct list_head *next;
+	struct mapent_cache *this;
+	int plen = strlen(prefix);
+	int len = 0;
+
+	if (*pos == head)
+		return NULL;
+
+	/* Find an offset */
+	*offset = '\0';
+	next = *pos ? (*pos)->next : head->next;
+	while (next != head) {
+		char *offset_start, *pstart, *pend;
+
+		this = list_entry(next, struct mapent_cache, multi_list);
+		*pos = next;
+		next = next->next;
+
+		offset_start = &this->key[start];
+		if (strlen(offset_start) <= plen)
+			continue;
+
+		if (!strncmp(prefix, offset_start, plen)) {
+			/* "/" doesn't count for root offset */
+			if (plen == 1)
+				pstart = &offset_start[plen - 1];
+			else
+				pstart = &offset_start[plen];
+
+			/* not part of this sub-tree */
+			if (*pstart != '/')
+				continue;
+
+			/* get next offset */
+			pend = pstart;
+			while (*pend++) ;
+			len = pend - pstart - 1;
+			strncpy(offset, pstart, len);
+			offset[len] ='\0';
+			break;
+		}
+	}
+
+	/* Check next offset */
+	while (next != head) {
+		char *offset_start, *pstart;
+
+		this = list_entry(next, struct mapent_cache, multi_list);
+
+		offset_start = &this->key[start];
+		if (strlen(offset_start) <= plen + len)
+			break;
+
+		pstart = &offset_start[plen];
+
+		/* not part of this sub-tree */
+		if (*pstart != '/')
+			break;
+
+		/* new offset */
+		if (!*(pstart + len + 1))
+			break;
+
+		/* compare offset */
+		if (pstart[len] != '/' || strncmp(offset, pstart, len))
+			break;
+
+		*pos = next;
+		next = next->next;
+	}
+
+	return *offset ? offset : NULL;
+}
+

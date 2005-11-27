@@ -1,4 +1,4 @@
-#ident "$Id: lookup_hesiod.c,v 1.7 2005/04/25 03:42:08 raven Exp $"
+#ident "$Id: lookup_hesiod.c,v 1.8 2005/11/27 04:08:54 raven Exp $"
 /*
  * lookup_hesiod.c
  *
@@ -57,6 +57,11 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 	return !(ctxt->parser = open_parse(mapfmt, MODPREFIX, argc - 1, argv + 1));
 }
 
+int lookup_enumerate(const char *root, int (*fn)(struct mapent_cache *, int), time_t now, void *context)
+{
+	return LKP_NOTSUP;
+}
+
 int lookup_ghost(const char *root, int ghost, time_t now, void *context)
 {
 	return LKP_NOTSUP;
@@ -105,7 +110,7 @@ int lookup_mount(const char *root, const char *name, int name_len, void *context
 	debug(MODPREFIX "lookup for \"%s\" gave \"%s\"", name, best_record);
 
 	rv = ctxt->parser->parse_mount(root, name, name_len, best_record,
-				       ctxt->parser->context);
+				       0, ctxt->parser->context);
 	free(hes_result);
 	return rv;
 }

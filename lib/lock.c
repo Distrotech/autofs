@@ -1,4 +1,4 @@
-#ident "$Id: lock.c,v 1.17 2005/04/25 03:42:08 raven Exp $"
+#ident "$Id: lock.c,v 1.18 2005/11/27 04:08:54 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  lock.c - autofs lockfile management
@@ -288,8 +288,6 @@ int aquire_lock(void)
 			we_created_lockfile = 1;
 		} else {
 			int status;
-			char mess[128] =
-				"aquire_lock: can't lock lock file %s: %s";
 
 			/*
 			 * Someone else made the link.
@@ -307,11 +305,11 @@ int aquire_lock(void)
 			status = wait_for_lockf(LOCK_FILE);
 			if (status < 0) {
 				release_lock();
-				crit(mess, "timed out", LOCK_FILE);
+				crit("can't lock lock file %s: timed out", LOCK_FILE);
 				return 0;
 			} else if (!status) {
 				release_lock();
-				crit(mess, "interrupted", LOCK_FILE);
+				crit("can't lock lock file %s: interrupted", LOCK_FILE);
 				return 0;
 			}
 		}

@@ -1,4 +1,4 @@
-#ident "$Id: mount_generic.c,v 1.17 2005/04/25 03:42:08 raven Exp $"
+#ident "$Id: mount_generic.c,v 1.18 2005/11/27 04:08:54 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  mount_generic.c - module for Linux automountd to mount filesystems
@@ -44,17 +44,21 @@ int mount_mount(const char *root, const char *name, int name_len,
 {
 	char *fullpath;
 	int err;
-	int status, existed = 1;
+	int rlen, status, existed = 1;
 
-	fullpath = alloca(strlen(root) + name_len + 2);
+	rlen = root ? strlen(root) : 0;
+	fullpath = alloca(rlen + name_len + 2);
 	if (!fullpath) {
 		error(MODPREFIX "alloca: %m");
 		return 1;
 	}
 
-	if (name_len)
-		sprintf(fullpath, "%s/%s", root, name);
-	else
+	if (name_len) {
+		if (rlen)
+			sprintf(fullpath, "%s/%s", root, name);
+		else
+			sprintf(fullpath, "%s", name);
+	} else
 		sprintf(fullpath, "%s", root);
 
 	debug(MODPREFIX "calling mkdir_path %s", fullpath);

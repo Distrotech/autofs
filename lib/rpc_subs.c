@@ -1,4 +1,4 @@
-#ident "$Id: rpc_subs.c,v 1.7 2004/11/20 15:08:38 raven Exp $"
+#ident "$Id: rpc_subs.c,v 1.8 2005/11/27 04:08:54 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  rpc_subs.c - routines for rpc discovery
@@ -222,6 +222,10 @@ static unsigned short portmap_getport(struct conn_info *info)
 	CLIENT *client;
 	enum clnt_stat stat;
 	struct pmap parms;
+	struct linger lin = { 1, 0 };
+	int lin_len = sizeof(struct linger);
+	int fd;
+	int proto = info->proto->p_proto;
 
 	pmap_info.host = info->host;
 	pmap_info.port = PMAPPORT;
@@ -233,7 +237,7 @@ static unsigned short portmap_getport(struct conn_info *info)
 	pmap_info.timeout.tv_sec = PMAP_TOUT_UDP;
 	pmap_info.timeout.tv_usec = 0;
 
-	if (info->proto->p_proto == IPPROTO_TCP) {
+	if (proto == IPPROTO_TCP) {
 		pmap_info.timeout.tv_sec = PMAP_TOUT_TCP;
 		client = create_tcp_client(&pmap_info);
 	} else
@@ -252,6 +256,11 @@ static unsigned short portmap_getport(struct conn_info *info)
 			 (xdrproc_t) xdr_u_short, (caddr_t) &port,
 			 pmap_info.timeout);
 
+	if (proto == IPPROTO_TCP && stat == RPC_SUCCESS) {
+		if (clnt_control(client, CLGET_FD, (char *) &fd)) {
+			setsockopt(fd, SOL_SOCKET, SO_LINGER, &lin, lin_len);
+		}
+	}
 	clnt_destroy(client);
 
 	if (stat != RPC_SUCCESS)
@@ -269,6 +278,9 @@ static int rpc_ping_proto(const char *host,
 	CLIENT *client;
 	enum clnt_stat stat;
 	struct protoent *prot;
+	struct linger lin = { 1, 0 };
+	int lin_len = sizeof(struct linger);
+	int fd;
 
 	prot = getprotobyname(proto);
 	if (!prot)
@@ -304,6 +316,11 @@ static int rpc_ping_proto(const char *host,
 			 (xdrproc_t) xdr_void, 0, (xdrproc_t) xdr_void, 0,
 			 info.timeout);
 
+	if (prot->p_proto == IPPROTO_TCP && stat == RPC_SUCCESS) {
+		if (clnt_control(client, CLGET_FD, (char *) &fd)) {
+			setsockopt(fd, SOL_SOCKET, SO_LINGER, &lin, lin_len);
+		}
+	}
 	clnt_destroy(client);
 
 	if (stat != RPC_SUCCESS)

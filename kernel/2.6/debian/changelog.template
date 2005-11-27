@@ -1,0 +1,6 @@
+autofs4 (#AUTOFS4_VERSION#-1) unstable; urgency=low
+
+  * Built for kernel #KVERS#.
+
+ -- #MAINT#  #DATE#
+

@@ -1,4 +1,4 @@
-#ident "$Id: lookup_multi.c,v 1.9 2005/04/25 03:42:08 raven Exp $"
+#ident "$Id: lookup_multi.c,v 1.10 2005/11/27 04:08:54 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup_multi.c - module for Linux automount to seek multiple lookup
@@ -109,6 +109,26 @@ int lookup_init(const char *my_mapfmt, int argc, const char *const *argv, void *
       nomem:
 	crit(MODPREFIX "malloc: %m");
 	return 1;
+}
+
+int lookup_enumerate(const char *root, int (*fn)(struct mapent_cache *, int), time_t now, void *context)
+{
+	struct lookup_context *ctxt = (struct lookup_context *) context;
+	int i, ret, at_least_1 = 0;
+
+	for (i = 0; i < ctxt->n; i++) {
+		ret = ctxt->m[i].mod->lookup_enumerate(root, fn, now,
+						ctxt->m[i].mod->context);
+		if (ret & LKP_FAIL || ret == LKP_NOTSUP)
+			continue;
+
+		at_least_1 = 1;	
+	}
+
+	if (!at_least_1)
+		return LKP_FAIL;
+
+	return LKP_DIRECT;
 }
 
 int lookup_ghost(const char *root, int ghost, time_t now, void *context)

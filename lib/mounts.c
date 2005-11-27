@@ -1,9 +1,9 @@
-#ident "$Id: mounts.c,v 1.12 2005/05/01 09:38:05 raven Exp $"
+#ident "$Id: mounts.c,v 1.13 2005/11/27 04:08:54 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  mounts.c - module for Linux automount mount table lookup functions
  *
- *   Copyright 2002-2004 Ian Kent <raven@themaw.net> - All Rights Reserved
+ *   Copyright 2002-2005 Ian Kent <raven@themaw.net> - All Rights Reserved
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -25,6 +25,38 @@
 #include "automount.h"
 
 /*
+ * Make common autofs mount options string
+ */
+int make_options_string(char *options, int options_len, int pipefd, char *extra)
+{
+	int len;
+
+	if (extra) 
+		len = snprintf(options, options_len,
+				"fd=%d,pgrp=%u,minproto=2,maxproto=%d,%s",
+				pipefd, (unsigned) getpgrp(),
+				AUTOFS_MAX_PROTO_VERSION, extra);
+	else
+		len = snprintf(options, options_len,
+			"fd=%d,pgrp=%u,minproto=2,maxproto=%d",
+			pipefd, (unsigned) getpgrp(),
+			AUTOFS_MAX_PROTO_VERSION);
+
+	if (len >= options_len) {
+		crit("buffer to small for options - truncated");
+		len = options_len - 1;
+	}
+
+	if (len < 0) {
+		crit("failed setting up autofs mount options");
+		return 0;
+	}
+	options[len] = '\0';
+
+	return 1;
+}
+
+/*
  * Get list of mounts under path in longest->shortest order
  */
 struct mnt_list *get_mnt_list(const char *table, const char *path, int include)
@@ -42,7 +74,7 @@ struct mnt_list *get_mnt_list(const char *table, const char *path, int include)
 
 	tab = setmntent(table, "r");
 	if (!tab) {
-		error("get_mntlist: setmntent: %m");
+		error("setmntent: %m");
 		return NULL;
 	}
 
@@ -117,6 +149,7 @@ struct mnt_list *get_mnt_list(const char *table, const char *path, int include)
 	return list;
 }
 
+
 /*
  * Reverse a list of mounts
  */
@@ -183,17 +216,17 @@ static struct mnt_list *copy_mnt_list_ent(struct mnt_list *ent)
  * system boundary). Assumes mount list with
  * shortest -> longest paths.
  */
-struct mnt_list *get_base_mnt_list(struct mnt_list *list)
+struct mnt_list *get_base_mnt_list(struct mnt_list *head)
 {
-	struct mnt_list *next, *ret = NULL;
+	struct mnt_list *next, *list = NULL;
 	char *base;
 
-	if (!list)
+	if (!head)
 		return NULL;
 
-	next = list;
+	next = head;
 	base = next->path;
-	ret = copy_mnt_list_ent(next);
+	list = copy_mnt_list_ent(next);
 	while (next) {
 		struct mnt_list *this = next;
 		struct mnt_list *new;
@@ -204,7 +237,6 @@ struct mnt_list *get_base_mnt_list(struct mnt_list *list)
 		if (!next)
 			break;
 		nlen = strlen(next->path);
-
 
 		eq = strncmp(this->path, base, blen);
 		if (!eq)
@@ -218,11 +250,11 @@ struct mnt_list *get_base_mnt_list(struct mnt_list *list)
 		base = this->path;
 
 		new = copy_mnt_list_ent(this);
-		new->next = ret;
-		ret = new;
+		new->next = list;
+		list = new;
 	}
 
-	return ret;
+	return list;
 }
 
 void free_mnt_list(struct mnt_list *list)
@@ -260,7 +292,7 @@ static int find_mntent(const char *table, const char *path, struct mntent *ent)
 
 	tab = setmntent(table, "r");
 	if (!tab) {
-		error("find_mntent: setmntent: %m");
+		error("setmntent: %m");
 		return 0;
 	}
 
@@ -330,5 +362,138 @@ int allow_owner_mount(const char *path)
 	}
 
 	return ret;
+}
+
+char *find_mnt_ino(const char *table, dev_t dev, ino_t ino)
+{
+	struct mntent *mnt;
+	char *path = NULL;
+	unsigned long l_dev = dev;
+	unsigned long l_ino = ino;
+	FILE *tab;
+
+	tab = setmntent(table, "r");
+	if (!tab) {
+		error("setmntent: %m");
+		return 0;
+	}
+
+	while ((mnt = getmntent(tab)) != NULL) {
+		char *p_dev, *p_ino;
+		unsigned long m_dev, m_ino;
+
+		if (strcmp(mnt->mnt_type, "autofs"))
+			continue;
+
+		p_dev = strstr(mnt->mnt_opts, "dev=");
+		if (!p_dev)
+			continue;
+		sscanf(p_dev, "dev=%ld", &m_dev);
+		if (m_dev != l_dev)
+			continue;
+
+		p_ino = strstr(mnt->mnt_opts, "ino=");
+		if (!p_ino)
+			continue;
+		sscanf(p_ino, "ino=%ld", &m_ino);
+		if (m_ino == l_ino) {
+			path = strdup(mnt->mnt_dir);
+			break;
+		}
+	}
+	endmntent(tab);
+
+	return path;
+}
+
+char *get_offset(const char *prefix, char *offset,
+		 struct list_head *head, struct list_head **pos)
+{
+	struct list_head *next;
+	struct mnt_list *this;
+	int plen = strlen(prefix);
+	int len = 0;
+
+	*offset = '\0';
+	next = *pos ? (*pos)->next : head->next;
+	while (next != head) {
+		char *pstart, *pend;
+
+		this = list_entry(next, struct mnt_list, list);
+		*pos = next;
+		next = next->next;
+
+		if (strlen(this->path) <= plen)
+			continue;
+
+		if (!strncmp(prefix, this->path, plen)) {
+			pstart = &this->path[plen];
+
+			/* not part of this sub-tree */
+			if (*pstart != '/')
+				continue;
+
+			/* get next offset */
+			pend = pstart;
+			while (*pend++) ;
+			len = pend - pstart - 1;
+			strncpy(offset, pstart, len);
+			offset[len] ='\0';
+			break;
+		}
+	}
+
+	while (next != head) {
+		char *pstart;
+
+		this = list_entry(next, struct mnt_list, list);
+
+		if (strlen(this->path) <= plen + len)
+			break;
+
+		pstart = &this->path[plen];
+
+		/* not part of this sub-tree */
+		if (*pstart != '/')
+			break;
+
+		/* new offset */
+		if (!*(pstart + len + 1))
+			break;
+
+		/* compare next offset */
+		if (pstart[len] != '/' || strncmp(offset, pstart, len))
+			break;
+
+		*pos = next;
+		next = next->next;
+	}
+
+	return *offset ? offset : NULL;
+}
+
+void add_ordered_list(struct mnt_list *ent, struct list_head *head)
+{
+	struct list_head *p;
+	struct mnt_list *this;
+
+	list_for_each(p, head) {
+		int eq, tlen;
+
+		this = list_entry(p, struct mnt_list, list);
+		tlen = strlen(this->path);
+
+		eq = strncmp(this->path, ent->path, tlen);
+		if (!eq && tlen == strlen(ent->path))
+			return;
+
+		if (eq > 0) {
+			list_add_tail(&ent->list, p);
+			return;
+		}
+	}
+	list_add_tail(&ent->list, p);
+
+	return;
 }
 

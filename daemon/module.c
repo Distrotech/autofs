@@ -1,4 +1,4 @@
-#ident "$Id: module.c,v 1.7 2005/05/01 09:38:05 raven Exp $"
+#ident "$Id: module.c,v 1.8 2005/11/27 04:08:54 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  module.c - common module-management functions
@@ -69,6 +69,7 @@ struct lookup_mod *open_lookup(const char *name, const char *err_prefix,
 	}
 
 	if (!(mod->lookup_init = (lookup_init_t) dlsym(dh, "lookup_init")) ||
+	    !(mod->lookup_enumerate = (lookup_enumerate_t) dlsym(dh, "lookup_enumerate")) ||
 	    !(mod->lookup_ghost = (lookup_ghost_t) dlsym(dh, "lookup_ghost")) ||
 	    !(mod->lookup_mount = (lookup_mount_t) dlsym(dh, "lookup_mount")) ||
 	    !(mod->lookup_done = (lookup_done_t) dlsym(dh, "lookup_done"))) {

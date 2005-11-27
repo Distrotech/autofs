@@ -1,4 +1,4 @@
-#ident "$Id: spawn.c,v 1.13 2005/05/01 09:38:05 raven Exp $"
+#ident "$Id: spawn.c,v 1.14 2005/11/27 04:08:54 raven Exp $"
 /* ----------------------------------------------------------------------- *
  * 
  *  spawn.c - run programs synchronously with output redirected to syslog
@@ -30,6 +30,8 @@
 #include "automount.h"
 
 /* Make gcc happy */
+pid_t getpgid(pid_t);
+
 pid_t getpgid(pid_t);
 
 /*
@@ -118,7 +120,7 @@ void discard_pending(int sig)
  */
 int signal_children(int sig)
 {
-	struct mnt_list *mnts = get_mnt_list(_PATH_MOUNTED, "/", 0);
+	struct mnt_list *mnts = get_mnt_list(_PROC_MOUNTS, "/", 0);
 	struct mnt_list *next;
 	pid_t pgrp = getpgrp();
 	int ret = -1;
@@ -128,7 +130,7 @@ int signal_children(int sig)
 		goto out;
 	}
 
-	info("signal_children: send %d to process group %d", sig, pgrp);
+	debug("signal_children: send %d to process group %d", sig, pgrp);
 
 	next = mnts;
 	while (next) {
