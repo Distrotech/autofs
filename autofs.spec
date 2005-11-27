@@ -1,5 +1,5 @@
 #
-# $Id: autofs.spec,v 1.26 2005/11/27 04:08:54 raven Exp $
+# $Id: autofs.spec,v 1.27 2005/11/27 05:13:16 raven Exp $
 #
 Summary: A tool from automatically mounting and umounting filesystems.
 Name: autofs
@@ -86,7 +86,7 @@ fi
 
 %files
 %defattr(-,root,root)
-%doc CREDITS CHANGELOG COPY* README* patches/* samples/ldap* samples/autofs.schema
+%doc CREDITS CHANGELOG COPY* README* samples/ldap* samples/autofs.schema
 %config /etc/rc.d/init.d/autofs
 %config(noreplace) /etc/auto.master
 %config(noreplace,missingok) /etc/auto.misc
@@ -102,6 +102,9 @@ fi
 %dir /smb
 
 %changelog
+* Sat Nov 26 2005 Ian Kent <raven@themaw.net>
+- Update package to version 5.0.0_alpha1.
+
 * Wed Apr 6 2005 Ian Kent <raven@themaw.net>
 - Update package to version 4.1.4.
 
