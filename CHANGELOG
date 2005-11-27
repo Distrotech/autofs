@@ -1,8 +1,9 @@
-??/?/2005 autofs-4.1.5
-----------------------
-- merge patch for intermitent mount failures (Chris Feist).
-- fix detection of multi-mount map entry.
-- fix parsing of multi-mount map entry when initial "/" is missing.
+??/??/2005 autofs-5.0.0_alpha1
+------------------------------
+- Initial update.
+  - direct mounts.
+  - lazy multi-mounts.
+  - added kernel module to source tree.
 
 11/4/2005 autofs-4.1.4
 ----------------------
