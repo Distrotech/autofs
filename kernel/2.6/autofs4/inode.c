@@ -27,10 +27,8 @@ static struct dentry_operations autofs4_sb_dentry_operations = {
 
 static void ino_lnkfree(struct autofs_info *ino)
 {
-	if (ino->u.symlink) {
-		kfree(ino->u.symlink);
-		ino->u.symlink = NULL;
-	}
+	kfree(ino->u.symlink);
+	ino->u.symlink = NULL;
 }
 
 struct autofs_info *autofs4_init_ino(struct autofs_info *ino,
@@ -387,7 +385,6 @@ int autofs4_fill_super(struct super_block *s, void *data, int silent)
 	sbi->sub_version = AUTOFS_PROTO_SUBVERSION;
 
 	DPRINTK("pipe fd = %d, pgrp = %u", pipefd, sbi->oz_pgrp);
-	sbi->pipefd = pipefd;
 	pipe = fget(pipefd);
 	
 	if ( !pipe ) {
@@ -397,6 +394,7 @@ int autofs4_fill_super(struct super_block *s, void *data, int silent)
 	if ( !pipe->f_op || !pipe->f_op->write )
 		goto fail_fput;
 	sbi->pipe = pipe;
+	sbi->pipefd = pipefd;
 
 	/*
 	 * Take a reference to the root dentry so we get a chance to

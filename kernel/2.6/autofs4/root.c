@@ -206,7 +206,8 @@ out:
 	return status;
 
 
-static autofs4_readdir_cb {
+struct autofs4_readdir_cb {
+	struct dentry *dentry;
 	void *dirent;
 	filldir_t filldir;
 	struct autofs_sb_info *sbi;
@@ -217,9 +218,11 @@ static int autofs4_filldir(void *dirent,
 			   loff_t offset, ino_t ino, unsigned int d_type)
 {
 	struct autofs4_readdir_cb *buf = (struct autofs4_readdir_cb *) dirent;
-	int browsable = sbi->browse || (sbi->type | AUTOFS_TYP_OFFSET);
+	struct autofs_sb_info *sbi = buf->sbi;
+	unsigned int browsable;
 
-	if (!browsable)
+	browsable = sbi->browse || (sbi->type | AUTOFS_TYP_OFFSET);
+	if (!(browsable || d_mountpoint(buf->dentry)))
 		return 0;
 
 	return buf->filldir(buf->dirent, name, namelen, offset, ino, d_type);

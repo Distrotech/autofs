@@ -204,7 +204,6 @@ static struct dentry *autofs4_check_leaves(struct vfsmount *mnt,
 			/* Can we umount this guy */
 			if (autofs4_check_mount(mnt, p))
 				return p;
-
 		}
 cont:
 		dput(p);

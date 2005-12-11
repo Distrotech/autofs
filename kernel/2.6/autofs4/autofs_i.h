@@ -111,8 +111,8 @@ struct autofs_sb_info {
 	int version;
 	int sub_version;
 	unsigned long exp_timeout;
-	int type;
-	int browse;
+	unsigned int type;
+	unsigned int browse;
 	int reghost_enabled;
 	int needs_reghost;
 	struct super_block *sb;
