@@ -289,7 +289,7 @@ static struct dentry *autofs4_expire_indirect(struct super_block *sb,
 		/* 
 		 * Case 1: (i) indirect mount or top level psuedo direct mount
 		 *	   (autofs-4.1).
-		 *	   (ii) indiect mount with offset mount, check the "/"
+		 *	   (ii) indirect mount with offset mount, check the "/"
 		 *	   offset (autofs-5.0+).
 		 */
 		if (d_mountpoint(dentry)) {

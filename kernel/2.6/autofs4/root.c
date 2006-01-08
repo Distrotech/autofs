@@ -126,8 +126,10 @@ static int autofs4_dir_open(struct inode *inode, struct file *file)
 	DPRINTK("file=%p dentry=%p %.*s",
 		file, dentry, dentry->d_name.len, dentry->d_name.name);
 
-	if (autofs4_oz_mode(sbi))
+	if (autofs4_oz_mode(sbi)) {
+		dcache_dir_close(inode, file);
 		goto out;
+	}
 
 	if (autofs4_ispending(dentry)) {
 		DPRINTK("dentry busy");
