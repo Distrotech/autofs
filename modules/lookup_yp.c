@@ -1,4 +1,4 @@
-#ident "$Id: lookup_yp.c,v 1.15 2005/11/27 04:08:54 raven Exp $"
+#ident "$Id: lookup_yp.c,v 1.16 2006/02/08 16:49:21 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup_yp.c - module for Linux automountd to access a YP (NIS)
@@ -17,7 +17,6 @@
 
 #include <stdio.h>
 #include <malloc.h>
-#include <errno.h>
 #include <unistd.h>
 #include <syslog.h>
 #include <time.h>
@@ -54,10 +53,13 @@ int lookup_version = AUTOFS_LOOKUP_VERSION;	/* Required by protocol */
 int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **context)
 {
 	struct lookup_context *ctxt;
+	char buf[MAX_ERR_BUF];
 	int err;
 
 	if (!(*context = ctxt = malloc(sizeof(struct lookup_context)))) {
-		crit(MODPREFIX "%m");
+		if (strerror_r(errno, buf, MAX_ERR_BUF))
+			strcpy(buf, "strerror_r failed");
+		crit(MODPREFIX "%s", buf);
 		return 1;
 	}
 
@@ -87,12 +89,9 @@ int yp_all_callback(int status, char *ypkey, int ypkeylen,
 		    char *val, int vallen, char *ypcb_data)
 {
 	struct callback_data *cbdata = (struct callback_data *) ypcb_data;
-	struct lookup_context *ctxt = cbdata->ctxt;
-	const char *root = cbdata->root;
 	time_t age = cbdata->age;
 	char *key;
 	char *mapent;
-	int ret;
 
 	if (status != YP_TRUE)
 		return status;
@@ -106,9 +105,6 @@ int yp_all_callback(int status, char *ypkey, int ypkeylen,
 	*(mapent + vallen) = '\0';
 
 	cache_add(key, mapent, age);
-	/* need to handle this return later */
-	ret = ctxt->parse->parse_mount(root, key, ypkeylen,
-				       mapent, 1, ctxt->parse->context);
 
 	return 0;
 }
@@ -134,6 +130,9 @@ static int read_map(const char *root, time_t age, struct lookup_context *context
 		       root, yperr_string(err));
 		return 0;
 	}
+
+	/* Clean stale entries from the cache */
+	cache_clean(_PATH_MOUNTED, root, age);
 
 	return 1;
 }
@@ -325,9 +324,8 @@ int lookup_mount(const char *root, const char *name, int name_len, void *context
 		mapent[mapent_len] = '\0';
 		debug(MODPREFIX "%s -> %s", key, mapent);
 		ret = ctxt->parse->parse_mount(root, key, key_len,
-					       mapent, 0, ctxt->parse->context);
+					       mapent, ctxt->parse->context);
 	}
-
 	return ret;
 }
 

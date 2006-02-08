@@ -21,7 +21,6 @@
  * ----------------------------------------------------------------------- */
 
 #include <dirent.h>
-#include <errno.h>
 #include <fcntl.h>
 #include <signal.h>
 #include <stdio.h>
@@ -48,11 +47,8 @@ static int kernel_pipefd = -1;           kernel pipe fd for use in direct mounts
 */
 extern int submount;
 
-extern sigset_t ready_sigs;		/* signals only accepted in ST_READY */
-extern sigset_t lock_sigs;		/* signals blocked for locking */
-extern sigset_t sigchld_mask;
-
-extern volatile struct pending_mount *junk_mounts;
+extern pthread_mutex_t pending_mutex;
+extern struct pending_mount *pending;
 
 static int autofs_init_indirect(char *path)
 {
@@ -233,7 +229,6 @@ int mount_autofs_indirect(char *path)
 		return -1;
 	}
 
-	ap.type = LKP_INDIRECT;
 	status = do_mount_autofs_indirect(path);
 	if (status < 0)
 		return -1;
@@ -252,9 +247,6 @@ int mount_autofs_indirect(char *path)
 
 	if (map & LKP_NOTSUP)
 		ap.ghost = 0;
-
-	ap.mounts = NULL;	/* No pending mounts */
-	ap.state = ST_READY;
 
 	return 0;
 }
@@ -313,114 +305,212 @@ force_umount:
 	return rv;
 }
 
-int expire_proc_indirect(int now)
+void *expire_proc_indirect(void *arg)
 {
-	int count;
-	int status = 1;
+	struct mnt_list *mnts, *next;
+	struct mapent_cache *me;
+	unsigned int now;
+	int count, ret;
+	int ioctlfd;
+	int status;
 
-	/* make a pass over the map to try to expire any offsets */
-	cache_enumerate(expire_offsets_direct, now);
+	pthread_cleanup_push(handle_cleanup, &status);
 
-	/* 
-	 * Generate expire messages until there's nothing more to
-	 * expire.  If a bug prevents unmounting, limit attempts to
-	 * 20/second and a few more than the known number of mounts.
-	 */
-
-	count = count_mounts(ap.path) + 3;
-	while (ioctl(ap.ioctlfd, AUTOFS_IOC_EXPIRE_MULTI, &now) == 0
-				&& count--) {
-		struct timespec nap = { 0, 50000000 }; /*5e-2 seconds*/;
-		nanosleep(&nap, NULL);
+	status = pthread_cond_wait(&ec.cond, &ec.mutex);
+	if (status) {
+		error("expire condition wait failed");
+		pthread_exit(NULL);
 	}
+
+	now = ec.when;
+
+	status = pthread_mutex_unlock(&ec.mutex);
+	if (status) {
+		error("failed to unlock expire cond mutex");
+		pthread_exit(NULL);
+	}
+
+	/* Get a list of real mounts and expire them if possible */
+	mnts = get_mnt_list(_PROC_MOUNTS, ap.path, 0);
+	for (next = mnts; next; next = next->next) {
+		if (!strcmp(next->fs_type, "autofs"))
+			continue;
+
+		debug("expire %s", next->path);
+
+		/*
+		 * If me->key starts with a '/' and it's not an autofs
+		 * filesystem it's a nested mount and we need to use
+		 * the ioctlfd of the mount to send the expire.
+		 * Otherwise it's a top level indirect mount (possibly
+		 * with offsets in it) and we use the usual ioctlfd.
+		 * The next->path is the full path so an indirect mount
+		 * won't be found by a cache_lookup, never the less it's
+		 * a mount under ap.path.
+		 */
+		me = cache_lookup(next->path);
+		if (!me)
+			ioctlfd = ap.ioctlfd;
+		else if (*me->key == '/')
+			ioctlfd = me->ioctlfd;
+		else
+			continue;
+
+		ret = ioctl(ioctlfd, AUTOFS_IOC_EXPIRE_MULTI, &now);
+		if (ret < 0 && errno != EAGAIN) {
+			debug("failed to expire mount %s", me->key);
+			status = 1;
+			goto done;
+		}
+	}
+done:
+	free_mnt_list(mnts);
+
+	count = 0;
+	mnts = get_mnt_list(_PROC_MOUNTS, ap.path, 0);
+	/* Are there any real mounts left */
+	for (next = mnts; next; next = next->next) {
+		if (strcmp(next->fs_type, "autofs"))
+			count++;
+	}
+
+	/*
+ 	* If there are no more real mounts left the we could still
+ 	* have some offset mounts with no '/' offset so we need to
+ 	* umount them here.
+ 	*/
+	if (mnts && !status && !count) {
+		int limit = count_mounts(ap.path);
+		int ret;
+
+		while (limit--) {
+			ret = ioctl(ap.ioctlfd, AUTOFS_IOC_EXPIRE_MULTI, &now);
+			if (ret < 0 && errno != EAGAIN) {
+				debug("failed to expire ofsets %s", ap.path);
+				status = 1;
+				break;
+			}
+		}
+	}
+	free_mnt_list(mnts);
 
 	/* 
 	 * EXPIRE_MULTI is synchronous, so we can be sure (famous last
 	 * words) the umounts are done by the time we reach here
 	 */
-	if ((count = count_mounts(ap.path))) {
+	if (count) {
 		debug("%d remaining in %s\n", count, ap.path);
-		exit(1);
+		status = 1;
+		pthread_exit(NULL);
 	}
 
 	/* If we are trying to shutdown make sure we can umount */
 	if (ap.state == ST_SHUTDOWN_PENDING) {
-		if (!ioctl(ap.ioctlfd, AUTOFS_IOC_ASKUMOUNT, &status))
-			if (!status)
-				exit(1);
+		if (!ioctl(ap.ioctlfd, AUTOFS_IOC_ASKUMOUNT, &ret)) {
+			if (!ret) {
+				debug("mount still busy %s", ap.path);
+				status = 1;
+				pthread_exit(NULL);
+			}
+		}
 	}
 
-	exit(0);
+	pthread_cleanup_pop(1);
+	return NULL;
 }
 
-int handle_packet_expire_indirect(const struct autofs_packet_expire_indirect *pkt)
+static void *do_expire_indirect(void *arg)
 {
-	int ret;
+	struct autofs_packet_expire_indirect *pkt =
+			(struct autofs_packet_expire_indirect *) arg; 
+	int status = 0;
+
+	pthread_cleanup_push(handle_cleanup, &status);
+
+	status = do_expire(pkt->name, pkt->len);
+
+	pthread_cleanup_pop(1);
+	return NULL;
+}
+
+int handle_packet_expire_indirect(struct autofs_packet_expire_indirect *pkt)
+{
+	struct pending_mount *mt;
+	char buf[MAX_ERR_BUF];
+	pthread_t thid;
+	int status;
 
 	debug("token %ld, name %s\n",
 		  (unsigned long) pkt->wait_queue_token, pkt->name);
 
-	ret = handle_expire(pkt->name, pkt->len, ap.ioctlfd, pkt->wait_queue_token);
-
-	if (ret != 0)
+	status = pthread_mutex_lock(&pending_mutex);
+	if (status) {
+		error("pending mutex lock failed");
 		send_fail(ap.ioctlfd, pkt->wait_queue_token);
+		return 1;
+	}
 
-	return ret;
+	if ((mt = (struct pending_mount *) pending)) {
+		pending = pending->next;
+	} else if (!(mt = malloc(sizeof(struct pending_mount)))) {
+		if (strerror_r(errno, buf, MAX_ERR_BUF))
+			strcpy(buf, "strerror_r failed");
+		error("malloc: %s", buf);
+		send_fail(ap.ioctlfd, pkt->wait_queue_token);
+		return 1;
+	}
+
+	status = pthread_create(&thid, NULL, do_expire_indirect, pkt);
+	if (status) {
+		error("expire thread create failed");
+		status = pthread_mutex_unlock(&pending_mutex);
+		if (status)
+			error("pending mutex unlock failed");	
+		free(mt);
+		send_fail(ap.ioctlfd, pkt->wait_queue_token);
+		return 1;
+	}
+
+	mt->thid = thid;
+	mt->me = cache_lookup(pkt->name);
+	mt->ioctlfd = ap.ioctlfd;
+	mt->type = NFY_EXPIRE;
+	mt->wait_queue_token = pkt->wait_queue_token;
+	mt->next = ap.mounts;
+	ap.mounts = mt;
+
+	status = pthread_mutex_unlock(&pending_mutex);
+	if (status) {
+		error("pending mutex unlock failed");
+		send_fail(ap.ioctlfd, pkt->wait_queue_token);
+		return 1;
+	}
+	return 0;
 }
 
-static int do_mount_indirect(const struct autofs_packet_missing_indirect *pkt)
+static void *do_mount_indirect(void *packet)
 {
-	sigset_t oldsig;
-	pid_t f;
-	struct pending_mount *mt = NULL;
 	char buf[PATH_MAX + 1];
-	int size;
+	char env_buf[12];
+	int err, len;
+	struct stat st;
+	struct passwd *u_pwd;
+	struct group *u_grp;
+	struct autofs_packet_missing_indirect *pkt =
+			(struct autofs_packet_missing_indirect *) packet; 
+	int status = 1;
 
-	/* Block SIGCHLD while mucking with linked lists */
-	sigprocmask(SIG_BLOCK, &sigchld_mask, NULL);
-	if ((mt = (struct pending_mount *) junk_mounts)) {
-		junk_mounts = junk_mounts->next;
-	} else {
-		if (!(mt = malloc(sizeof(struct pending_mount)))) {
-			error("malloc: %m");
-			send_fail(ap.ioctlfd, pkt->wait_queue_token);
-			return 1;
-		}
-	}
-	sigprocmask(SIG_UNBLOCK, &sigchld_mask, NULL);
+	pthread_cleanup_push(handle_cleanup, &status);
 
-	size = ncat_path(buf, sizeof(buf), ap.path, pkt->name, pkt->len);
-	if (!size) {
+	len = ncat_path(buf, sizeof(buf), ap.path, pkt->name, pkt->len);
+	if (!len) {
 		crit("path to be mounted is to long");
-		send_fail(ap.ioctlfd, pkt->wait_queue_token);
-		free(mt);
-		return 0;
+		goto done;
 	}
 
-	msg("attempting to mount entry %s", buf);
-
-	sigprocmask(SIG_BLOCK, &lock_sigs, &oldsig);
-
-	f = fork();
-	if (f == -1) {
-		sigprocmask(SIG_SETMASK, &oldsig, NULL);
-		error("fork: %m");
-		send_fail(ap.ioctlfd, pkt->wait_queue_token);
-		free(mt);
-		return 1;
-	} else if (!f) {
-		int err;
-		struct passwd *u_pwd;
-		struct group *u_grp;
-		char env_buf[12];
-
-		/* Set up a sensible signal environment */
-		ignore_signals();
-		/* close(ap.pipefd); */
-		/* close(ap.kpipefd); */
-		close(ap.ioctlfd);
-		close(ap.state_pipe[0]);
-		close(ap.state_pipe[1]);
+	if (lstat(buf, &st) == -1 ||
+	   (S_ISDIR(st.st_mode) && st.st_dev == ap.dev)) {
+		msg("attempting to mount entry %s", buf);
 
 		if (ap.kver.major > 4) {
 			/*
@@ -446,48 +536,12 @@ static int do_mount_indirect(const struct autofs_packet_missing_indirect *pkt)
 					      pkt->name, pkt->len,
 					      ap.lookup->context);
 
-		if (err) {
+		if (err)
 			error("failed to mount %s", buf);
-		} else
+		else
 			msg("mounted %s", buf);
 
-		_exit(err ? 1 : 0);
-	} else {
-		/*
-		 * Important: set up data structures while signals
-		 * still blocked
-		 */
-		mt->pid = f;
-		mt->me = NULL;
-		mt->ioctlfd = ap.ioctlfd;
-		mt->wait_queue_token = pkt->wait_queue_token;
-		mt->next = ap.mounts;
-		ap.mounts = mt;
-
-		sigprocmask(SIG_SETMASK, &oldsig, NULL);
-	}
-
-	return 0;
-}
-
-int handle_packet_missing_indirect(const struct autofs_packet_missing_indirect *pkt)
-{
-	struct stat st;
-
-	debug("token %ld, name %s\n",
-		(unsigned long) pkt->wait_queue_token, pkt->name);
-
-	/* Ignore packet if we're trying to shut down */
-	if (ap.state == ST_SHUTDOWN_PENDING || ap.state == ST_SHUTDOWN) {
-		send_fail(ap.ioctlfd, pkt->wait_queue_token);
-		return 0;
-	}
-
-	chdir(ap.path);
-	if (lstat(pkt->name, &st) == -1 ||
-	   (S_ISDIR(st.st_mode) && st.st_dev == ap.dev)) {
-		/* Need to mount or symlink */
-		do_mount_indirect(pkt);
+		status = err;
 	} else {
 		/*
 		 * Already there (can happen if a process connects to a
@@ -500,10 +554,76 @@ int handle_packet_missing_indirect(const struct autofs_packet_missing_indirect *
 		 * done.  In practice, the kernel keeps any other processes
 		 * blocked until the initial mount request is done. -JSGF
 		 */
-		send_ready(ap.ioctlfd, pkt->wait_queue_token);
+		/* Use the thread cleanup to take care of busines */
+		status = 0;
 	}
-	chdir("/");
+done:
+	pthread_cleanup_pop(1);
+	return NULL;
+}
 
+int handle_packet_missing_indirect(struct autofs_packet_missing_indirect *pkt)
+{
+	pthread_t thid;
+	char buf[MAX_ERR_BUF];
+	struct pending_mount *mt;
+	int status;
+
+	debug("token %ld, name %s\n",
+		(unsigned long) pkt->wait_queue_token, pkt->name);
+
+	/* Ignore packet if we're trying to shut down */
+	if (ap.state == ST_SHUTDOWN_PENDING || ap.state == ST_SHUTDOWN) {
+		send_fail(ap.ioctlfd, pkt->wait_queue_token);
+		return 0;
+	}
+
+	status = pthread_mutex_lock(&pending_mutex);
+	if (status) {
+		error("pending mutex lock failed");
+		send_fail(ap.ioctlfd, pkt->wait_queue_token);
+		return 1;
+	}
+
+	if ((mt = (struct pending_mount *) pending)) {
+		pending = pending->next;
+	} else {
+		if (!(mt = malloc(sizeof(struct pending_mount)))) {
+			if (strerror_r(errno, buf, MAX_ERR_BUF))
+				strcpy(buf, "strerror_r failed");
+			error("malloc: %s", buf);
+			status = pthread_mutex_unlock(&pending_mutex);
+			if (status)
+				error("pending mutex unlock failed");
+			send_fail(ap.ioctlfd, pkt->wait_queue_token);
+			return 1;
+		}
+	}
+
+	status = pthread_create(&thid, NULL, do_mount_indirect, pkt);
+	if (status) {
+		error("expire thread create failed");
+		status = pthread_mutex_unlock(&pending_mutex);
+		if (status)
+			error("pending mutex unlock failed");
+		free(mt);
+		send_fail(ap.ioctlfd, pkt->wait_queue_token);
+		return 1;
+	}
+
+	mt->thid = thid;
+	mt->me = NULL;
+	mt->ioctlfd = ap.ioctlfd;
+	mt->wait_queue_token = pkt->wait_queue_token;
+	mt->next = ap.mounts;
+	ap.mounts = mt;
+
+	status = pthread_mutex_unlock(&pending_mutex);
+	if (status) {
+		error("pending mutex unlock failed");
+/*		send_fail(ap.ioctlfd, pkt->wait_queue_token); */
+		return 1;
+	}
 	return 0;
 }
 

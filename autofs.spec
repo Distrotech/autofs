@@ -1,5 +1,5 @@
 #
-# $Id: autofs.spec,v 1.27 2005/11/27 05:13:16 raven Exp $
+# $Id: autofs.spec,v 1.28 2006/02/08 16:49:20 raven Exp $
 #
 Summary: A tool from automatically mounting and umounting filesystems.
 Name: autofs
@@ -7,7 +7,7 @@ Name: autofs
 %define release 1
 Version: %{version}
 Release: %{release}
-Copyright: GPL
+License: GPL
 Group: System Environment/Daemons
 Source: ftp://ftp.kernel.org/pub/linux/daemons/autofs/v4/autofs-%{version}.tar.gz
 Buildroot: %{_tmppath}/%{name}-tmp

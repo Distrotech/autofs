@@ -1,4 +1,4 @@
-#ident "$Id: rpc_subs.c,v 1.8 2005/11/27 04:08:54 raven Exp $"
+#ident "$Id: rpc_subs.c,v 1.9 2006/02/08 16:49:21 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  rpc_subs.c - routines for rpc discovery
@@ -26,9 +26,9 @@
 #include <netdb.h>
 #include <netinet/in.h>
 #include <sys/fcntl.h>
-#include <errno.h>
 
 #include "automount.h"
+#include "mount.h"
 
 #define PMAP_TOUT_UDP	2
 #define PMAP_TOUT_TCP	3
@@ -42,6 +42,7 @@ struct conn_info {
 	unsigned int send_sz;
 	unsigned int recv_sz;
 	struct timeval timeout;
+	unsigned int close_option;
 };
 
 /*
@@ -91,6 +92,7 @@ static CLIENT* create_udp_client(struct conn_info *info)
 				   info->program, info->version,
 				   info->timeout, &fd,
 				   info->send_sz, info->recv_sz);
+
 	if (client)
 		clnt_control(client, CLSET_FD_CLOSE, NULL);
 
@@ -105,7 +107,8 @@ static CLIENT* create_udp_client(struct conn_info *info)
  */
 static int connect_nb(int fd, struct sockaddr_in *addr, struct timeval *tout)
 {
-	int flags, ret, len;
+	int flags, ret;
+	socklen_t len;
 	fd_set wset, rset;
 
 	flags = fcntl(fd, F_GETFL, 0);
@@ -222,10 +225,8 @@ static unsigned short portmap_getport(struct conn_info *info)
 	CLIENT *client;
 	enum clnt_stat stat;
 	struct pmap parms;
-	struct linger lin = { 1, 0 };
-	int lin_len = sizeof(struct linger);
-	int fd;
 	int proto = info->proto->p_proto;
+	unsigned int option = info->close_option;
 
 	pmap_info.host = info->host;
 	pmap_info.port = PMAPPORT;
@@ -256,9 +257,21 @@ static unsigned short portmap_getport(struct conn_info *info)
 			 (xdrproc_t) xdr_u_short, (caddr_t) &port,
 			 pmap_info.timeout);
 
+	/* Only play with the close options if we think it completed OK */
 	if (proto == IPPROTO_TCP && stat == RPC_SUCCESS) {
-		if (clnt_control(client, CLGET_FD, (char *) &fd)) {
-			setsockopt(fd, SOL_SOCKET, SO_LINGER, &lin, lin_len);
+		struct linger lin = { 1, 0 };
+		socklen_t lin_len = sizeof(struct linger);
+		int fd;
+		char buf;
+
+		if (!clnt_control(client, CLGET_FD, (char *) &fd))
+			fd = -1;
+
+		switch (option) {
+		case RPC_CLOSE_NOLINGER:
+			if (fd >= 0)
+				setsockopt(fd, SOL_SOCKET, SO_LINGER, &lin, lin_len);
+			break;
 		}
 	}
 	clnt_destroy(client);
@@ -269,56 +282,45 @@ static unsigned short portmap_getport(struct conn_info *info)
 	return port;
 }
 
-static int rpc_ping_proto(const char *host,
-			  unsigned long nfs_version,
-			  const char *proto,
-			  long seconds, long micros)
+static int rpc_ping_proto(struct conn_info *info)
 {
-	struct conn_info info;
 	CLIENT *client;
 	enum clnt_stat stat;
-	struct protoent *prot;
-	struct linger lin = { 1, 0 };
-	int lin_len = sizeof(struct linger);
-	int fd;
+	int proto = info->proto->p_proto;
+	unsigned int option = info->close_option;
 
-	prot = getprotobyname(proto);
-	if (!prot)
-		return 1;
-
-	info.host = host;
-	info.program = NFS_PROGRAM;
-	info.version = nfs_version;
-	info.proto = prot;
-	info.send_sz = 0;
-	info.recv_sz = 0;
-	info.timeout.tv_sec = seconds;
-	info.timeout.tv_usec = micros;
-
-	info.port = portmap_getport(&info);
-	if (!info.port)
-		return 0;
-
-	if (prot->p_proto == IPPROTO_UDP) {
-		info.send_sz = UDPMSGSIZE;
-		info.recv_sz = UDPMSGSIZE;
-		client = create_udp_client(&info);
+	if (info->proto->p_proto == IPPROTO_UDP) {
+		info->send_sz = UDPMSGSIZE;
+		info->recv_sz = UDPMSGSIZE;
+		client = create_udp_client(info);
 	} else
-		client = create_tcp_client(&info);
+		client = create_tcp_client(info);
 
 	if (!client)
 		return 0;
 
-	clnt_control(client, CLSET_TIMEOUT, (char *) &info.timeout);
-	clnt_control(client, CLSET_RETRY_TIMEOUT, (char *) &info.timeout);
+	clnt_control(client, CLSET_TIMEOUT, (char *) &info->timeout);
+	clnt_control(client, CLSET_RETRY_TIMEOUT, (char *) &info->timeout);
 
 	stat = clnt_call(client, NFSPROC_NULL,
 			 (xdrproc_t) xdr_void, 0, (xdrproc_t) xdr_void, 0,
-			 info.timeout);
+			 info->timeout);
 
-	if (prot->p_proto == IPPROTO_TCP && stat == RPC_SUCCESS) {
-		if (clnt_control(client, CLGET_FD, (char *) &fd)) {
-			setsockopt(fd, SOL_SOCKET, SO_LINGER, &lin, lin_len);
+	/* Only play with the close options if we think it completed OK */
+	if (proto == IPPROTO_TCP && stat == RPC_SUCCESS) {
+		struct linger lin = { 1, 0 };
+		socklen_t lin_len = sizeof(struct linger);
+		int fd;
+		char buf;
+
+		if (!clnt_control(client, CLGET_FD, (char *) &fd))
+			fd = -1;
+
+		switch (option) {
+		case RPC_CLOSE_NOLINGER:
+			if (fd >= 0)
+				setsockopt(fd, SOL_SOCKET, SO_LINGER, &lin, lin_len);
+			break;
 		}
 	}
 	clnt_destroy(client);
@@ -329,46 +331,60 @@ static int rpc_ping_proto(const char *host,
 	return 1;
 }
 
-static unsigned int rpc_ping_v2(const char *host, long seconds, long micros)
+static unsigned int __rpc_ping(const char *host,
+				unsigned long version,
+				char *proto,
+				long seconds, long micros,
+				unsigned int option)
 {
-	unsigned int status = RPC_PING_FAIL;
+	unsigned int status;
+	struct conn_info info;
+	struct protoent *prot;
 
-	status = rpc_ping_proto(host, NFS2_VERSION, "udp", seconds, micros);
-	if (status)
-		return RPC_PING_V2 | RPC_PING_UDP;
+	info.host = host;
+	info.program = NFS_PROGRAM;
+	info.version = version;
+	info.send_sz = 0;
+	info.recv_sz = 0;
+	info.timeout.tv_sec = seconds;
+	info.timeout.tv_usec = micros;
+	info.close_option = option;
 
-	status = rpc_ping_proto(host, NFS2_VERSION, "tcp", seconds, micros);
-	if (status)
-		return RPC_PING_V2 | RPC_PING_TCP;
+	status = RPC_PING_FAIL;
+
+	info.proto = getprotobyname(proto);
+	if (!info.proto)
+		return status;
+
+	info.port = portmap_getport(&info);
+	if (!info.port)
+		return status;
+
+	status = rpc_ping_proto(&info);
 
 	return status;
 }
 
-static unsigned int rpc_ping_v3(const char *host, long seconds, long micros)
-{
-	unsigned int status = RPC_PING_FAIL;
-
-	status = rpc_ping_proto(host, NFS3_VERSION, "udp", seconds, micros);
-	if (status)
-		return RPC_PING_V3 | RPC_PING_UDP;
-
-	status = rpc_ping_proto(host, NFS3_VERSION, "tcp", seconds, micros);
-	if (status)
-		return RPC_PING_V3 | RPC_PING_TCP;
-
-	return status;
-}
-
-unsigned int rpc_ping(const char *host, long seconds, long micros)
+unsigned int rpc_ping(const char *host, long seconds, long micros, unsigned int option)
 {
 	unsigned int status;
 
-	status = rpc_ping_v2(host, seconds, micros);
+	status = __rpc_ping(host, NFS2_VERSION, "udp", seconds, micros, option);
 	if (status)
-		return status;
+		return RPC_PING_V2 | RPC_PING_UDP;
 
-	status = rpc_ping_v3(host, seconds, micros);
-	
+	status = __rpc_ping(host, NFS3_VERSION, "udp", seconds, micros, option);
+	if (status)
+		return RPC_PING_V3 | RPC_PING_UDP;
+
+	status = __rpc_ping(host, NFS2_VERSION, "tcp", seconds, micros, option);
+	if (status)
+		return RPC_PING_V2 | RPC_PING_TCP;
+
+	status = __rpc_ping(host, NFS3_VERSION, "tcp", seconds, micros, option);
+	if (status)
+		return RPC_PING_V3 | RPC_PING_TCP;
+
 	return status;
 }
 
@@ -382,7 +398,7 @@ static double elapsed(struct timeval start, struct timeval end)
 
 int rpc_time(const char *host,
 	     unsigned int ping_vers, unsigned int ping_proto,
-	     long seconds, long micros, double *result)
+	     long seconds, long micros, unsigned int option, double *result)
 {
 	int status;
 	double taken;
@@ -391,7 +407,7 @@ int rpc_time(const char *host,
 	char *proto = (ping_proto & RPC_PING_UDP) ? "udp" : "tcp";
 
 	gettimeofday(&start, &tz);
-	status = rpc_ping_proto(host, ping_vers, proto, seconds, micros);
+	status = __rpc_ping(host, ping_vers, proto, seconds, micros, option);
 	gettimeofday(&end, &tz);
 
 	if (!status) {
@@ -406,6 +422,192 @@ int rpc_time(const char *host,
 	return status;
 }
 
+static int rpc_get_exports_proto(struct conn_info *info, exports *exp)
+{
+	CLIENT *client;
+	enum clnt_stat stat;
+	int proto = info->proto->p_proto;
+	unsigned int option = info->close_option;
+
+	if (info->proto->p_proto == IPPROTO_UDP) {
+		info->send_sz = UDPMSGSIZE;
+		info->recv_sz = UDPMSGSIZE;
+		client = create_udp_client(info);
+	} else
+		client = create_tcp_client(info);
+
+	if (!client)
+		return 0;
+
+	clnt_control(client, CLSET_TIMEOUT, (char *) &info->timeout);
+	clnt_control(client, CLSET_RETRY_TIMEOUT, (char *) &info->timeout);
+
+	client->cl_auth = authunix_create_default();
+
+	stat = clnt_call(client, MOUNTPROC_EXPORT,
+			 (xdrproc_t) xdr_void, NULL,
+			 (xdrproc_t) xdr_exports, (caddr_t) exp,
+			 info->timeout);
+
+	/* Only play with the close options if we think it completed OK */
+	if (proto == IPPROTO_TCP && stat == RPC_SUCCESS) {
+		struct linger lin = { 1, 0 };
+		socklen_t lin_len = sizeof(struct linger);
+		int fd;
+		char buf;
+
+		if (!clnt_control(client, CLGET_FD, (char *) &fd))
+			fd = -1;
+
+		switch (option) {
+		case RPC_CLOSE_NOLINGER:
+			if (fd >= 0)
+				setsockopt(fd, SOL_SOCKET, SO_LINGER, &lin, lin_len);
+			break;
+		}
+	}
+	clnt_destroy(client);
+
+	if (stat != RPC_SUCCESS)
+		return 0;
+
+	return 1;
+}
+
+static void rpc_export_free(exports item)
+{
+	groups grp;
+	groups tmp;
+
+	if (item->ex_dir)
+		free(item->ex_dir);
+
+	grp = item->ex_groups;
+	while (grp) {
+		if (grp->gr_name)
+			free(grp->gr_name);
+		tmp = grp;
+		grp = grp->gr_next;
+		free(tmp);
+	}
+	free(item);
+}
+
+void rpc_exports_free(exports list)
+{
+	exports tmp;
+
+	while (list) {
+		tmp = list;
+		list = list->ex_next;
+		rpc_export_free(tmp);
+	}
+	return;
+}
+
+static int rpc_export_allowed(groups grouplist)
+{
+	groups grp = grouplist;
+	struct hostent *he;
+	char myname[31];
+
+	/* NULL group list => everyone */
+	if (!grp)
+		return 1;
+
+	if (gethostname(myname, 30))
+		return 0;
+
+	while (grp) {
+		if (*grp->gr_name == '*')
+			return 1;
+		he = gethostbyname(grp->gr_name);
+		if (he) {
+			if (!strcmp(myname, he->h_name))
+				return 1;
+		}
+		grp = grp->gr_next;
+	}
+	return 0;
+}
+
+exports rpc_exports_prune(exports list)
+{
+	exports head = list;
+	exports exp;
+	exports last;
+	int res;
+
+	exp = list;
+	last = NULL;
+	while (exp) {
+		res = rpc_export_allowed(exp->ex_groups);
+		if (!res) {
+			if (last == NULL) {
+				head = exp->ex_next;
+				rpc_export_free(exp);
+				exp = head;
+			} else {
+				last->ex_next = exp->ex_next;
+				rpc_export_free(exp);
+				exp = last->ex_next;
+			}
+			continue;
+		}
+		last = exp;
+		exp = exp->ex_next;
+	}
+	return head;
+}
+
+exports rpc_get_exports(const char *host, long seconds, long micros, unsigned int option)
+{
+	struct conn_info info;
+	exports exportlist;
+	int status;
+
+	info.host = host;
+	info.program = MOUNTPROG;
+	info.version = MOUNTVERS;
+	info.send_sz = 0;
+	info.recv_sz = 0;
+	info.timeout.tv_sec = seconds;
+	info.timeout.tv_usec = micros;
+	info.close_option = option;
+
+	/* Try UDP first */
+	info.proto = getprotobyname("tcp");
+	if (!info.proto)
+		goto try_udp;
+
+	info.port = portmap_getport(&info);
+	if (!info.port)
+		goto try_udp;
+
+	memset(&exportlist, '\0', sizeof(exportlist));
+
+	status = rpc_get_exports_proto(&info, &exportlist);
+	if (status)
+		return exportlist;
+
+try_udp:
+	info.proto = getprotobyname("udp");
+	if (!info.proto)
+		return NULL;
+
+	info.port = portmap_getport(&info);
+	if (!info.port)
+		return NULL;
+
+	memset(&exportlist, '\0', sizeof(exportlist));
+
+	status = rpc_get_exports_proto(&info, &exportlist);
+	if (!status)
+		return NULL;
+
+	return exportlist;
+}
+
 #if 0
 #include <stdio.h>
 
@@ -413,25 +615,55 @@ int main(int argc, char **argv)
 {
 	int ret;
 	double res = 0.0;
+	exports exportlist, tmp;
+	groups grouplist;
+	int n, maxlen;
 
-	ret = rpc_ping("budgie", 10, 0);
+/*
+	ret = rpc_ping("budgie", 10, 0, RPC_CLOSE_DEFAULT);
 	printf("ret = %d\n", ret);
 
 	res = 0.0;
-	ret = rpc_time("raven", NFS2_VERSION, RPC_PING_TCP, 10, 0, &res);
+	ret = rpc_time("budgie", NFS2_VERSION, RPC_PING_TCP, 10, 0, RPC_CLOSE_DEFAULT, &res);
 	printf("v2 tcp ret = %d, res = %f\n", ret, res);
 
 	res = 0.0;
-	ret = rpc_time("raven", NFS3_VERSION, RPC_PING_TCP, 10, 0, &res);
+	ret = rpc_time("budgie", NFS3_VERSION, RPC_PING_TCP, 10, 0, RPC_CLOSE_DEFAULT, &res);
 	printf("v3 tcp ret = %d, res = %f\n", ret, res);
 
 	res = 0.0;
-	ret = rpc_time("raven", NFS2_VERSION, RPC_PING_UDP, 10, 0, &res);
+	ret = rpc_time("budgie", NFS2_VERSION, RPC_PING_UDP, 10, 0, RPC_CLOSE_DEFAULT, &res);
 	printf("v2 udp ret = %d, res = %f\n", ret, res);
 
 	res = 0.0;
-	ret = rpc_time("raven", NFS3_VERSION, RPC_PING_UDP, 10, 0, &res);
+	ret = rpc_time("budgie", NFS3_VERSION, RPC_PING_UDP, 10, 0, RPC_CLOSE_DEFAULT, &res);
 	printf("v3 udp ret = %d, res = %f\n", ret, res);
+*/
+	exportlist = rpc_get_exports("budgie", 10, 0, RPC_CLOSE_NOLINGER);
+	exportlist = rpc_exports_prune(exportlist);
+
+	maxlen = 0;
+	for (tmp = exportlist; tmp; tmp = tmp->ex_next) {
+		if ((n = strlen(tmp->ex_dir)) > maxlen)
+			maxlen = n;
+	}
+
+	if (exportlist) {
+		while (exportlist) {
+			printf("%-*s ", maxlen, exportlist->ex_dir);
+			grouplist = exportlist->ex_groups;
+			if (grouplist) {
+				while (grouplist) {
+					printf("%s%s", grouplist->gr_name,
+						grouplist->gr_next ? "," : "");
+					grouplist = grouplist->gr_next;
+				}
+			}
+			printf("\n");
+			exportlist = exportlist->ex_next;
+		}
+	}
+	rpc_exports_free(exportlist);
 
 	exit(0);
 }

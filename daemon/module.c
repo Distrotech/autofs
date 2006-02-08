@@ -1,4 +1,4 @@
-#ident "$Id: module.c,v 1.8 2005/11/27 04:08:54 raven Exp $"
+#ident "$Id: module.c,v 1.9 2006/02/08 16:49:20 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  module.c - common module-management functions
@@ -23,6 +23,7 @@ struct lookup_mod *open_lookup(const char *name, const char *err_prefix,
 			       const char *mapfmt, int argc, const char *const *argv)
 {
 	struct lookup_mod *mod;
+	char buf[MAX_ERR_BUF];
 	char *fnbuf;
 	size_t size_name;
 	size_t size_fnbuf;
@@ -35,8 +36,11 @@ struct lookup_mod *open_lookup(const char *name, const char *err_prefix,
 
 	mod = malloc(sizeof(struct lookup_mod));
 	if (!mod) {
-		if (err_prefix)
-			crit("%s%m", err_prefix);
+		if (err_prefix) {
+			if (strerror_r(errno, buf, MAX_ERR_BUF))
+				strcpy(buf, "strerror_r failed");
+			crit("%s%s", err_prefix, buf);
+		}
 		return NULL;
 	}
 
@@ -44,8 +48,11 @@ struct lookup_mod *open_lookup(const char *name, const char *err_prefix,
 	fnbuf = alloca(size_fnbuf);
 	if (!fnbuf) {
 		free(mod);
-		if (err_prefix)
-			crit("%s%m", err_prefix);
+		if (err_prefix) {
+			if (strerror_r(errno, buf, MAX_ERR_BUF))
+				strcpy(buf, "strerror_r failed");
+			crit("%s%s", err_prefix, buf);
+		}
 		return NULL;
 	}
 	snprintf(fnbuf, size_fnbuf, "%s/lookup_%s.so", AUTOFS_LIB_DIR, name);
@@ -101,6 +108,7 @@ struct parse_mod *open_parse(const char *name, const char *err_prefix,
 			     int argc, const char *const *argv)
 {
 	struct parse_mod *mod;
+	char buf[MAX_ERR_BUF];
 	char *fnbuf;
 	size_t size_name;
 	size_t size_fnbuf;
@@ -113,8 +121,11 @@ struct parse_mod *open_parse(const char *name, const char *err_prefix,
 
 	mod = malloc(sizeof(struct parse_mod));
 	if (!mod) {
-		if (err_prefix)
-			crit("%s%m", err_prefix);
+		if (err_prefix) {
+			if (strerror_r(errno, buf, MAX_ERR_BUF))
+				strcpy(buf, "strerror_r failed");
+			crit("%s%s", err_prefix, buf);
+		}
 		return NULL;
 	}
 
@@ -122,8 +133,11 @@ struct parse_mod *open_parse(const char *name, const char *err_prefix,
 	fnbuf = alloca(size_fnbuf);
 	if (!fnbuf) {
 		free(mod);
-		if (err_prefix)
-			crit("%s%m", err_prefix);
+		if (err_prefix) {
+			if (strerror_r(errno, buf, MAX_ERR_BUF))
+				strcpy(buf, "strerror_r failed");
+			crit("%s%s", err_prefix, buf);
+		}
 		return NULL;
 	}
 	snprintf(fnbuf, size_fnbuf, "%s/parse_%s.so", AUTOFS_LIB_DIR, name);
@@ -176,6 +190,7 @@ int close_parse(struct parse_mod *mod)
 struct mount_mod *open_mount(const char *name, const char *err_prefix)
 {
 	struct mount_mod *mod;
+	char buf[MAX_ERR_BUF];
 	char *fnbuf;
 	size_t size_name;
 	size_t size_fnbuf;
@@ -188,8 +203,11 @@ struct mount_mod *open_mount(const char *name, const char *err_prefix)
 
 	mod = malloc(sizeof(struct mount_mod));
 	if (!mod) {
-		if (err_prefix)
-			crit("%s%m", err_prefix);
+		if (err_prefix) {
+			if (strerror_r(errno, buf, MAX_ERR_BUF))
+				strcpy(buf, "strerror_r failed");
+			crit("%s%s", err_prefix, buf);
+		}
 		return NULL;
 	}
 
@@ -197,8 +215,11 @@ struct mount_mod *open_mount(const char *name, const char *err_prefix)
 	fnbuf = alloca(size_fnbuf);
 	if (!fnbuf) {
 		free(mod);
-		if (err_prefix)
-			crit("%s%m", err_prefix);
+		if (err_prefix) {
+			if (strerror_r(errno, buf, MAX_ERR_BUF))
+				strcpy(buf, "strerror_r failed");
+			crit("%s%s", err_prefix, buf);
+		}
 		return NULL;
 	}
 	snprintf(fnbuf, size_fnbuf, "%s/mount_%s.so", AUTOFS_LIB_DIR, name);

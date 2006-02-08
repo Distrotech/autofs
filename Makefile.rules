@@ -1,5 +1,5 @@
 #
-# $Id: Makefile.rules,v 1.6 2005/11/27 04:08:54 raven Exp $
+# $Id: Makefile.rules,v 1.7 2006/02/08 16:49:20 raven Exp $
 #
 # Makefile rules for autofs project
 #
@@ -19,7 +19,7 @@ AUTOFS_LIB = ../lib/autofs.a
 
 ifdef DEBUG
 CFLAGS    ?= -O2 -g -Wall -DDEBUG
-LDFLAGS   = -g
+LDFLAGS   = -g -lpthread
 STRIP     = :
 else
 CFLAGS    ?= -O2 -Wall
@@ -32,6 +32,9 @@ CXX       = g++
 CXXFLAGS  = $(CFLAGS)
 LD        = ld
 SOLDFLAGS = -shared -Xlinker -rpath -Xlinker $(autofslibdir)
+
+CFLAGS += -D_REENTRANT
+LDFLAGS += -lpthread
 
 # Standard rules
 

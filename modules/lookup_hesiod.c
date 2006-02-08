@@ -1,4 +1,4 @@
-#ident "$Id: lookup_hesiod.c,v 1.8 2005/11/27 04:08:54 raven Exp $"
+#ident "$Id: lookup_hesiod.c,v 1.9 2006/02/08 16:49:21 raven Exp $"
 /*
  * lookup_hesiod.c
  *
@@ -38,11 +38,14 @@ int lookup_version = AUTOFS_LOOKUP_VERSION;	/* Required by protocol */
 int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **context)
 {
 	struct lookup_context *ctxt = NULL;
+	char buf[MAX_ERR_BUF];
 
 	/* If we can't build a context, bail. */
 	if ((*context = ctxt = (struct lookup_context *)
 	     malloc(sizeof(struct lookup_context))) == NULL) {
-		crit(MODPREFIX "malloc: %m");
+		if (strerror_r(errno, buf, MAX_ERR_BUF))
+			strcpy(buf, "strerror_r failed");
+		crit(MODPREFIX "malloc: %s", buf);
 		return 1;
 	}
 
@@ -110,7 +113,7 @@ int lookup_mount(const char *root, const char *name, int name_len, void *context
 	debug(MODPREFIX "lookup for \"%s\" gave \"%s\"", name, best_record);
 
 	rv = ctxt->parser->parse_mount(root, name, name_len, best_record,
-				       0, ctxt->parser->context);
+				       ctxt->parser->context);
 	free(hes_result);
 	return rv;
 }

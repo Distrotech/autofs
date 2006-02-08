@@ -1,4 +1,4 @@
-#ident "$Id: parse_hesiod.c,v 1.6 2005/11/27 04:08:54 raven Exp $"
+#ident "$Id: parse_hesiod.c,v 1.7 2006/02/08 16:49:21 raven Exp $"
 /*
  * parse_hesiod.c
  *
@@ -217,8 +217,7 @@ int parse_done(void *context)
 }
 
 int parse_mount(const char *root, const char *name,
-		int name_len, const char *mapent, int parse_context,
-		void *context)
+		int name_len, const char *mapent, void *context)
 {
 	char source[HESIOD_LEN + 1];
 	char fstype[HESIOD_LEN + 1];

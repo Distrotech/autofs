@@ -1,4 +1,4 @@
-#ident "$Id: lookup_userhome.c,v 1.5 2005/11/27 04:08:54 raven Exp $"
+#ident "$Id: lookup_userhome.c,v 1.6 2006/02/08 16:49:21 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup_userhome.c - module for Linux automount to generate symlinks
@@ -16,10 +16,10 @@
 
 #include <stdio.h>
 #include <malloc.h>
-#include <errno.h>
 #include <pwd.h>
 #include <unistd.h>
 #include <syslog.h>
+#include <string.h>
 #include <sys/param.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -49,6 +49,7 @@ int lookup_ghost(const char *root, int ghost, time_t now, void *context)
 int lookup_mount(const char *root, const char *name, int name_len, void *context)
 {
 	struct passwd *pw;
+	char buf[MAX_ERR_BUF];
 
 	debug(MODPREFIX "looking up %s", name);
 
@@ -61,12 +62,16 @@ int lookup_mount(const char *root, const char *name, int name_len, void *context
 
 	/* Create the appropriate symlink */
 	if (chdir(root)) {
-		error(MODPREFIX "chdir failed: %m");
+		if (strerror_r(errno, buf, MAX_ERR_BUF))
+			strcpy(buf, "strerror_r failed");
+		error(MODPREFIX "chdir failed: %s", buf);
 		return 1;
 	}
 
 	if (symlink(pw->pw_dir, name) && errno != EEXIST) {
-		error(MODPREFIX "symlink failed: %m");
+		if (strerror_r(errno, buf, MAX_ERR_BUF))
+			strcpy(buf, "strerror_r failed");
+		error(MODPREFIX "symlink failed: %s", buf);
 		return 1;
 	}
 

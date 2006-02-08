@@ -1,4 +1,4 @@
-#ident "$Id: automount.h,v 1.19 2005/11/27 04:08:54 raven Exp $"
+#ident "$Id: automount.h,v 1.20 2006/02/08 16:49:20 raven Exp $"
 /*
  * automount.h
  *
@@ -14,6 +14,8 @@
 #include <limits.h>
 #include <time.h>
 #include <linux/types.h>
+#include <pthread.h>
+#include <errno.h>
 #include "config.h"
 #include "list.h"
 
@@ -68,6 +70,8 @@
 #define LKP_ERR_MOUNT	0x2000
 #define LKP_NOTSUP	0x4000
 
+#define MAX_ERR_BUF	128
+
 #ifdef DEBUG
 #define DB(x)           do { x; } while(0)
 #else
@@ -108,6 +112,8 @@ enum states {
 
 struct mapent_cache {
 	struct mapent_cache *next;
+	pthread_mutex_t mutex;
+	unsigned int count;
 	struct list_head multi_list;
 	/* Need to know owner if we're a multi mount */
 	struct mapent_cache *multi;
@@ -123,16 +129,18 @@ struct mapent_cache {
 
 void cache_init(void);
 void cache_set_ino_index(const char *key, dev_t dev, ino_t ino);
+void cache_set_ino(struct mapent_cache *me, dev_t dev, ino_t ino);
 struct mapent_cache *cache_lookup_ino(dev_t dev, ino_t ino);
 struct mapent_cache *cache_lookup(const char *key);
-struct mapent_cache *cache_lookup_next(struct mapent_cache *me);
 struct mapent_cache *cache_lookup_first(void);
+struct mapent_cache *cache_lookup_next(struct mapent_cache *me);
 struct mapent_cache *cache_lookup_offset(const char *prefix, const char *offset, int start, struct list_head *head);
 struct mapent_cache *cache_partial_match(const char *prefix);
 int cache_add(const char *key, const char *mapent, time_t age);
 int cache_add_offset(const char *mkey, const char *key, const char *mapent, time_t age);
 int cache_update(const char *key, const char *mapent, time_t age);
 int cache_delete(const char *table, const char *root, const char *key, int rmpath);
+int cache_delete_offset_list(const char *table, const char *root, const char *key);
 int cache_delete_offset(const char *table, const char *root, const char *key);
 void cache_clean(const char *table, const char *root, time_t age);
 void cache_release(void);
@@ -142,6 +150,9 @@ char *cache_get_offset(const char *prefix, char *offset, int start, struct list_
 
 /* Utility functions */
 
+int sigchld_start_handler(void);
+int sigchld_block(void);
+int sigchld_unblock(void);
 int aquire_lock(void);
 void release_lock(void);
 int spawnll(int logpri, const char *prog, ...);
@@ -199,12 +210,11 @@ int close_lookup(struct lookup_mod *);
 #ifdef MODULE_PARSE
 int parse_init(int argc, const char *const *argv, void **context);
 int parse_mount(const char *root, const char *name,
-		int name_len, const char *mapent, int parse_context,
-		void *context);
+		int name_len, const char *mapent, void *context);
 int parse_done(void *);
 #endif
 typedef int (*parse_init_t) (int, const char *const *, void **);
-typedef int (*parse_mount_t) (const char *, const char *, int, const char *, int, void *);
+typedef int (*parse_mount_t) (const char *, const char *, int, const char *, void *);
 typedef int (*parse_done_t) (void *);
 
 struct parse_mod {
@@ -258,11 +268,20 @@ int ncat_path(char *buf, size_t len,
 #define RPC_PING_V3             NFS3_VERSION
 #define RPC_PING_UDP            0x0100
 #define RPC_PING_TCP            0x0200
+/*
+ * Close options to allow some choice in how and where the TIMED_WAIT
+ *  happens.
+ */
+#define RPC_CLOSE_DEFAULT	0x0000
+#define RPC_CLOSE_ACTIVE	RPC_CLOSE_DEFAULT
+#define RPC_CLOSE_NOLINGER	0x0001
+#
 
-unsigned int rpc_ping(const char *host, long seconds, long micros);
+unsigned int rpc_ping(const char *host,
+		      long seconds, long micros, unsigned int option);
 int rpc_time(const char *host, 
 	     unsigned int ping_vers, unsigned int ping_proto,
-	     long seconds, long micros, double *result);
+	     long seconds, long micros, unsigned int option, double *result);
 
 /* mount table utilities */
 struct mnt_list {
@@ -294,12 +313,12 @@ int xopen(const char *path, int flags);
 /* Core automount definitions */
 
 struct pending_mount {
-	pid_t pid;			/* Which process is mounting for us */
+	pthread_t thid;			/* Which thread is mounting for us */
 	struct mapent_cache *me;	/* Map entry descriptor */
 	int ioctlfd;			/* fd to send ioctls to kernel */
 	int type;			/* Type of packet */
 	unsigned long wait_queue_token;	/* Associated kernel wait token */
-	volatile struct pending_mount *next;
+	struct pending_mount *next;
 };
 
 struct kernel_mod_version {
@@ -319,9 +338,9 @@ struct autofs_point {
 	time_t exp_runfreq;		/* Frequency for polling for timeouts */
 	unsigned ghost;			/* Enable/disable gohsted directories */
 	struct kernel_mod_version kver;		/* autofs kernel module version */
-	volatile pid_t exp_process;		/* Process that is currently expiring */
-	volatile struct pending_mount *mounts;	/* Pending mount queue */
-	struct lookup_mod *lookup;		/* Lookup module */
+	pthread_t exp_thread;		/* Process that is currently expiring */
+	struct pending_mount *mounts;	/* Pending mount queue */
+	struct lookup_mod *lookup;	/* Lookup module */
 	enum states state;
 	int state_pipe[2];
 	unsigned dir_created;		/* Was a directory created for this
@@ -330,15 +349,30 @@ struct autofs_point {
 
 extern struct autofs_point ap; 
 
-/* Standard function used by daemon or modules */
+/* Standard functions used by daemon or modules */
+
+/*
+ * Passing stack variables in the arg to a thread at
+ * create time have a nasty habit of going away so
+ * we use a condition variable to pass the parameter.
+ */
+struct expire_cond {
+	 pthread_mutex_t mutex;
+	pthread_cond_t  cond;
+	unsigned int    when;
+};
+
+extern struct expire_cond ec;
 
 int umount_multi(const char *path, int incl);
 int send_ready(int ioctlfd, unsigned int wait_queue_token);
 int send_fail(int ioctlfd, unsigned int wait_queue_token);
-int handle_expire(const char *name, int namelen,
-			int ioctlfd, autofs_wqt_t token);
-int expire_proc_indirect(int now);
-int expire_proc_direct(struct mapent_cache *me, int now);
+/*int handle_expire(const char *name, int namelen,
+			int ioctlfd, autofs_wqt_t token); */
+int umount_offsets(const char *path);
+int do_expire(const char *name, int namelen);
+void *expire_proc_indirect(void *);
+void *expire_proc_direct(void *);
 int expire_offsets_direct(struct mapent_cache *me, int now);
 int mount_autofs_indirect(char *path);
 int mount_autofs_direct(char *path);
@@ -347,19 +381,52 @@ int umount_autofs(int force);
 int umount_autofs_indirect(void);
 int umount_autofs_direct(void);
 int umount_autofs_offset(struct mapent_cache *me);
-int handle_packet_expire_indirect(const struct autofs_packet_expire_indirect *pkt);
-int handle_packet_expire_direct(const struct autofs_packet_expire_direct *pkt);
-int handle_packet_missing_indirect(const struct autofs_packet_missing_indirect *pkt);
-int handle_packet_missing_direct(const struct autofs_packet_missing_direct *pkt);
+int handle_packet_expire_indirect(struct autofs_packet_expire_indirect *pkt);
+int handle_packet_expire_direct(struct autofs_packet_expire_direct *pkt);
+int handle_packet_missing_indirect(struct autofs_packet_missing_indirect *pkt);
+int handle_packet_missing_direct(struct autofs_packet_missing_direct *pkt);
 void rm_unwanted(const char *path, int incl, int rmsymlink);
 int count_mounts(const char *path);
+void handle_cleanup(void *ret);
 void cleanup_exit(const char *path, int exit_code);
 
-/* log notification */
-extern int do_verbose;		/* Verbose feedback option */
-extern int do_debug;		/* Enable full debug output */
+/* Define logging functions */
 
-/* Define non-reentrant logging macros */
+extern void set_log_norm(void);
+extern void set_log_verbose(void);
+extern unsigned int is_log_verbose(void);
+extern void set_log_debug(void);
+extern unsigned int is_log_debug(void);
+
+extern void log_to_syslog(void);
+ 
+extern void (*log_info)(const char* msg, ...);
+extern void (*log_notice)(const char* msg, ...);
+extern void (*log_warn)(const char* msg, ...);
+extern void (*log_error)(const char* msg, ...);
+extern void (*log_crit)(const char* msg, ...);
+extern void (*log_debug)(const char* msg, ...);
+
+#define msg(msg, args...)	\
+	do { log_info(msg, ##args); } while (0)
+
+#define debug(msg, args...)	\
+	do { log_debug("%s: " msg,  __FUNCTION__, ##args); } while (0)
+
+#define info(msg, args...)	\
+	do { log_info("%s: " msg,  __FUNCTION__, ##args); } while (0)
+
+#define notice(msg, args...)	\
+	do { log_notice("%s: " msg,  __FUNCTION__, ##args); } while (0)
+
+#define warn(msg, args...)	\
+	do { log_warn("%s: " msg,  __FUNCTION__, ##args); } while (0)
+
+#define error(msg, args...)	\
+	do { log_error("%s: " msg,  __FUNCTION__, ##args); } while (0)
+
+#define crit(msg, args...)	\
+	do { log_crit("%s: " msg,  __FUNCTION__, ##args); } while (0)
 
 #ifndef NDEBUG
 #define assert(x)							\
@@ -371,104 +438,6 @@ do {									\
 #else
 #define assert(x)	do { } while(0)
 #endif
- 
-#define msg(msg, args...)			\
-do {						\
-	if (do_verbose || do_debug)		\
-		syslog(LOG_INFO, msg, ##args);	\
-} while (0)
-
-#define debug(msg, args...)			\
-do {						\
-	if (do_debug)				\
-		syslog(LOG_DEBUG, "%s: " msg,	\
-			__FUNCTION__ , ##args);	\
-} while (0)
-
-#define info(msg, args...)			\
-do {						\
-	if (do_verbose || do_debug)		\
-		syslog(LOG_INFO, "%s: " msg,	\
-			__FUNCTION__ , ##args);	\
-} while (0)
-
-#define notice(msg, args...)			\
-do {						\
-	if (do_verbose || do_debug)		\
-		syslog(LOG_NOTICE, "%s: " msg,	\
-			__FUNCTION__ , ##args);	\
-} while (0)
-
-#define warn(msg, args...)			\
-do {						\
-	if (do_verbose || do_debug)		\
-		syslog(LOG_WARNING, "%s: " msg,	\
-			__FUNCTION__ , ##args);	\
-} while (0)
-
-#define error(msg, args...)			\
-do {						\
-	syslog(LOG_ERR, "%s: " msg,		\
-			__FUNCTION__ , ##args);	\
-} while (0)
-
-#define crit(msg, args...)			\
-do {						\
-	syslog(LOG_CRIT, "%s: " msg,		\
-		__FUNCTION__ , ##args);		\
-} while (0)
-
-#define alert(msg, args...)			\
-do {						\
-	syslog(LOG_ALERT, "%s: " msg,		\
-		__FUNCTION__ , ##args);		\
-} while (0)
-
-#define emerg(msg, args...)			\
-do {						\
-	syslog(LOG_EMERG, "%s: " msg,		\
-		__FUNCTION__ , ##args);		\
-} while (0)
-
-/* Define reentrant logging macros for signal handlers */
-
-#ifndef NDEBUG
-#define assert_r(context, x)						\
-do {									\
-	if (!(x)) {							\
-		 crit_r(context,					\
-			__FILE__ ":%d: assertion failed: ", __LINE__);	\
-	}								\
-} while(0)
-#else
-#define assert_r(context, x)	do { } while(0)
-#endif
-
-#define debug_r(context, msg, args...)				\
-do {								\
-	if (do_debug)						\
-		syslog_r(LOG_DEBUG, context, "%s: " msg,	\
-			 __FUNCTION__ , ##args);		\
-} while (0)
-
-#define warn_r(context, msg, args...)			  \
-do {							  \
-	if (do_verbose || do_debug)			  \
-		syslog_r(LOG_WARNING, context, "%s: " msg, \
-			 __FUNCTION__ , ##args);	  \
-} while (0)
-
-#define error_r(context, msg, args...)			\
-do {							\
-	syslog_r(LOG_ERR, context, "%s: " msg,		\
-		 __FUNCTION__ , ##args);		\
-} while (0)
-
-#define crit_r(context, msg, args...)			\
-do {							\
-	syslog_r(LOG_CRIT, context, "%s: " msg, 	\
-		__FUNCTION__ , ##args);			\
-} while (0)
 
 #endif
 

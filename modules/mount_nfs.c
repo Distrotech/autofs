@@ -1,4 +1,4 @@
-#ident "$Id: mount_nfs.c,v 1.29 2005/11/27 04:08:54 raven Exp $"
+#ident "$Id: mount_nfs.c,v 1.30 2006/02/08 16:49:21 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  * mount_nfs.c - Module for Linux automountd to mount an NFS filesystem,
@@ -17,7 +17,6 @@
 
 #include <stdio.h>
 #include <malloc.h>
-#include <errno.h>
 #include <netdb.h>
 #include <fcntl.h>
 #include <unistd.h>
@@ -71,12 +70,15 @@ int is_local_addr(const char *host, const char *host_addr, int addr_len)
 {
 	struct sockaddr_in src_addr, local_addr;
 	int src_len = sizeof(src_addr);
-	int local_len = sizeof(local_addr);
+	socklen_t local_len = sizeof(local_addr);
+	char buf[MAX_ERR_BUF];
 	int sock, ret;
 
 	sock = socket(AF_INET, SOCK_DGRAM, udpproto);
 	if (sock < 0) {
-		error(MODPREFIX "socket creation failed: %m");
+		if (strerror_r(errno, buf, MAX_ERR_BUF))
+			strcpy(buf, "strerror_r failed");
+		error(MODPREFIX "socket creation failed: %s", buf);
 		return -1;
 	}
 
@@ -86,14 +88,18 @@ int is_local_addr(const char *host, const char *host_addr, int addr_len)
 
 	ret = connect(sock, (struct sockaddr *) &src_addr, src_len);
 	if (ret < 0 ) {
-		error(MODPREFIX "connect failed for %s: %m", host);
+		if (strerror_r(errno, buf, MAX_ERR_BUF))
+			strcpy(buf, "strerror_r failed");
+		error(MODPREFIX "connect failed for %s: %s", host, buf);
 		close(sock);
 		return 0;
 	}
 
 	ret = getsockname(sock, (struct sockaddr *) &local_addr, &local_len);
 	if (ret < 0) {
-		error(MODPREFIX "getsockname failed: %m");
+		if (strerror_r(errno, buf, MAX_ERR_BUF))
+			strcpy(buf, "strerror_r failed");
+		error(MODPREFIX "getsockname failed: %s", buf);
 		close(sock);
 		return 0;
 	}
@@ -244,7 +250,7 @@ int get_best_mount(char *what, const char *original, int longtimeout)
 				*delim = '\0';
 				w = atoi(weight);
 
-				alive = rpc_ping(p, sec, micros);
+				alive = rpc_ping(p, sec, micros, RPC_CLOSE_DEFAULT);
 				if (w < winner_weight && alive) {
 					winner_weight = w;
 					winner = p;
@@ -279,7 +285,7 @@ int get_best_mount(char *what, const char *original, int longtimeout)
 		}
 
 		/* ping each (or the) entry to see if it's alive. */
-		ping_stat = rpc_ping(p, sec, micros);
+		ping_stat = rpc_ping(p, sec, micros, RPC_CLOSE_DEFAULT);
 		if (!ping_stat) {
 			p = next;
 			continue;
@@ -306,7 +312,8 @@ int get_best_mount(char *what, const char *original, int longtimeout)
 				proto = ping_stat & 0xff00;
 			}
 
-			status = rpc_time(p, vers, proto, sec, micros, &resp_time);
+			status = rpc_time(p, vers, proto, sec, micros,
+					  RPC_CLOSE_DEFAULT, &resp_time);
 			/* did we time the first winner? */
 			if (winner_time == 0) {
 				if (status) {
@@ -394,6 +401,7 @@ int mount_mount(const char *root, const char *name, int name_len,
 		void *context)
 {
 	char *colon, *fullpath;
+	char buf[MAX_ERR_BUF];
 	char *whatstr;
 	char *nfsoptions = NULL;
 	int local, err;
@@ -406,7 +414,9 @@ int mount_mount(const char *root, const char *name, int name_len,
 
 	whatstr = alloca(strlen(what) + 1);
 	if (!whatstr) {
-		error(MODPREFIX "alloca: %m");
+		if (strerror_r(errno, buf, MAX_ERR_BUF))
+			strcpy(buf, "strerror_r failed");
+		error(MODPREFIX "alloca: %s", buf);
 		return 1;
 	}
 	strcpy(whatstr, what);
@@ -500,7 +510,9 @@ int mount_mount(const char *root, const char *name, int name_len,
 		rlen = root ? strlen(root) : 0;
 		fullpath = alloca(rlen + name_len + 2);
 		if (!fullpath) {
-			error(MODPREFIX "alloca: %m");
+			if (strerror_r(errno, buf, MAX_ERR_BUF))
+				strcpy(buf, "strerror_r failed");
+			error(MODPREFIX "alloca: %s", buf);
 			return 1;
 		}
 
@@ -517,7 +529,9 @@ int mount_mount(const char *root, const char *name, int name_len,
 
 		status = mkdir_path(fullpath, 0555);
 		if (status && errno != EEXIST) {
-			error(MODPREFIX "mkdir_path %s failed: %m", fullpath);
+			if (strerror_r(errno, buf, MAX_ERR_BUF))
+				strcpy(buf, "strerror_r failed");
+			error(MODPREFIX "mkdir_path %s failed: %s", fullpath, buf);
 			return 1;
 		}
 

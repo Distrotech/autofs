@@ -1,15 +1,12 @@
-#ident "$Id: mount_autofs.c,v 1.17 2005/11/27 04:08:54 raven Exp $"
+#ident "$Id: mount_autofs.c,v 1.18 2006/02/08 16:49:21 raven Exp $"
 /*
- * mount_autofs.c
- *
- * Module for recursive autofs mounts.
+ * mount_autofs.c - Module for recursive autofs mounts.
  *
  */
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <malloc.h>
-#include <errno.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <syslog.h>
@@ -38,6 +35,7 @@ int mount_mount(const char *root, const char *name, int name_len,
 		void *context)
 {
 	char *fullpath, **argv;
+	char buf[MAX_ERR_BUF];
 	int argc, status, ghost = ap.ghost;
 	char *options, *p;
 	pid_t slave, wp;
@@ -47,7 +45,9 @@ int mount_mount(const char *root, const char *name, int name_len,
 	rlen = root ? strlen(root) : 0;
 	fullpath = alloca(rlen + name_len + 2);
 	if (!fullpath) {
-		error(MODPREFIX "alloca: %m");
+		if (strerror_r(errno, buf, MAX_ERR_BUF))
+			strcpy(buf, "strerror_r failed");
+		error(MODPREFIX "alloca: %s", buf);
 		return 1;
 	}
 
@@ -59,7 +59,9 @@ int mount_mount(const char *root, const char *name, int name_len,
 	if (c_options) {
 		options = alloca(strlen(c_options) + 1);
 		if (!options) {
-			error(MODPREFIX "alloca: %m");
+			if (strerror_r(errno, buf, MAX_ERR_BUF))
+				strcpy(buf, "strerror_r failed");
+			error(MODPREFIX "alloca: %s", buf);
 			return 1;
 		}
 		strcpy(options, c_options);
@@ -70,7 +72,9 @@ int mount_mount(const char *root, const char *name, int name_len,
 	debug(MODPREFIX "calling mkdir_path %s", fullpath);
 
 	if (mkdir_path(fullpath, 0555) && errno != EEXIST) {
-		error(MODPREFIX "mkdir_path %s failed: %m", name);
+		if (strerror_r(errno, buf, MAX_ERR_BUF))
+			strcpy(buf, "strerror_r failed");
+		error(MODPREFIX "mkdir_path %s failed: %s", name, buf);
 		return 1;
 	}
 
@@ -95,7 +99,7 @@ int mount_mount(const char *root, const char *name, int name_len,
 	if (ghost)
 		argc++;
 
-	if (do_verbose || do_debug)
+	if (is_log_verbose() || is_log_debug())
 		argc++;
 
 	if (ap.exp_timeout && ap.exp_timeout != DEFAULT_TIMEOUT) {
@@ -123,9 +127,9 @@ int mount_mount(const char *root, const char *name, int name_len,
 	if (ap.exp_timeout != DEFAULT_TIMEOUT)
 		argv[argc++] = timeout_opt;
 
-	if (do_debug)
+	if (is_log_debug())
 		argv[argc++] = "--debug";
-	else if (do_verbose)
+	else if (is_log_verbose())
 		argv[argc++] = "--verbose";
 
 	argv[argc++] = fullpath;
@@ -159,9 +163,13 @@ int mount_mount(const char *root, const char *name, int name_len,
 	 * and let it go on its merry way.
 	 */
 
+	sigchld_block();
+
 	slave = fork();
 	if (slave < 0) {
-		error(MODPREFIX "fork: %m");
+		if (strerror_r(errno, buf, MAX_ERR_BUF))
+			strcpy(buf, "strerror_r failed");
+		error(MODPREFIX "fork: %s", buf);
 		goto error;
 	} else if (slave == 0) {
 		/* Slave process */
@@ -171,7 +179,9 @@ int mount_mount(const char *root, const char *name, int name_len,
 
 	while ((wp = waitpid(slave, &status, WUNTRACED)) == -1 && errno == EINTR);
 	if (wp != slave) {
-		error(MODPREFIX "waitpid: %m");
+		if (strerror_r(errno, buf, MAX_ERR_BUF))
+			strcpy(buf, "strerror_r failed");
+		error(MODPREFIX "waitpid: %s", buf);
 		goto error;
 	}
 
@@ -180,13 +190,16 @@ int mount_mount(const char *root, const char *name, int name_len,
 		goto error;
 	}
 
+	sigchld_unblock();
+
 	kill(slave, SIGCONT);	/* Carry on, private */
 
 	debug(MODPREFIX "mounted %s on %s", what, fullpath);
 
 	return 0;
 
-      error:
+error:
+	sigchld_unblock();
 	if (!ap.ghost)
 		rmdir_path(fullpath);
 

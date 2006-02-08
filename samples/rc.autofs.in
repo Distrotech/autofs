@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# $Id: rc.autofs.in,v 1.58 2005/04/11 11:30:54 raven Exp $
+# $Id: rc.autofs.in,v 1.59 2006/02/08 16:49:21 raven Exp $
 #
 # rc file for automount using a Sun-style "master map".
 # We first look for a local /etc/auto.master, then a YP
@@ -219,10 +219,6 @@ function getmounts()
 	    # in checking for duplicate maps
 	    dir=`echo "$dir" | sed -e "s/\/*$//"`
 
-	    if [ ! -z "$map" -a "$map" = "-hosts" ] ; then
-		continue
-	    fi
-
 	    if [ $DISABLE_DIRECT -eq 1 \
 			-a x`echo $dir | grep -E "^/-"` != 'x' ]
 	    then
@@ -239,6 +235,10 @@ function getmounts()
 		    continue 2
 		fi	
 	    done
+
+	    if [ ! -z "$map" -a "$map" = "-hosts" ] ; then
+		map="hosts"
+	    fi
 
 	    if [ ! -z "$dir" -a ! -z "$map" \
 			-a x`echo "$map" | cut -c1` != 'x-' ]
@@ -293,8 +293,13 @@ function getmounts()
 		      sed   's/-\(d\b\|-debug\b\)//g' |
 		      sed   's/-\b\(no\)\?browse\b//g')"
 
+		if [ ! -z "$map" -a "$map" = "hosts" ] ; then
+			maptype="hosts"
+			map=
+		else
+			maptype=`echo $map | cut -f1 -d:`
+		fi
 		# Break up the maptype and map, if the map type is specified
-		maptype=`echo $map | cut -f1 -d:`
 		# Handle degenerate map specifiers
 		if [ "$maptype" = "$map" ] ; then
 		    if [ "$map" = "hesiod" -o "$map" = "userhome" ] ; then

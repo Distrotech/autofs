@@ -1,4 +1,4 @@
-#ident "$Id: parse_sun.c,v 1.33 2005/11/27 04:08:54 raven Exp $"
+#ident "$Id: parse_sun.c,v 1.34 2006/02/08 16:49:21 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  parse_sun.c - module for Linux automountd to parse a Sun-format
@@ -18,7 +18,6 @@
 
 #include <stdio.h>
 #include <malloc.h>
-#include <errno.h>
 #include <netdb.h>
 #include <fcntl.h>
 #include <unistd.h>
@@ -231,31 +230,31 @@ static struct substvar *addstdenv(struct substvar *sv)
 	struct substvar *list = sv;
 	struct substvar *this;
 
-	if (val = getenv("UID")) {
+	if ((val = getenv("UID"))) {
 		this = addvar(list, "UID", 3, val);
 		if (this)
 			list = this;
 	}
 
-	if (val = getenv("USER")) {
+	if ((val = getenv("USER"))) {
 		this = addvar(list, "USER", 4, val);
 		if (this)
 			list = this;
 	}
 
-	if (val = getenv("HOME")) {
+	if ((val = getenv("HOME"))) {
 		this = addvar(list, "HOME", 4, val);
 		if (this)
 			list = this;
 	}
 
-	if (val = getenv("GID")) {
+	if ((val = getenv("GID"))) {
 		this = addvar(list, "GID", 3, val);
 		if (this)
 			list = this;
 	}
 
-	if (val = getenv("GROUP")) {
+	if ((val = getenv("GROUP"))) {
 		this = addvar(list, "GROUP", 4, val);
 		if (this)
 			list = this;
@@ -499,6 +498,7 @@ int strmcmp(const char *str, const char *pat, int mchr)
 int parse_init(int argc, const char *const *argv, void **context)
 {
 	struct parse_context *ctxt;
+	char buf[MAX_ERR_BUF];
 	struct substvar *sv;
 	char *noptstr;
 	const char *xopt;
@@ -520,7 +520,9 @@ int parse_init(int argc, const char *const *argv, void **context)
 	/* Set up context and escape chain */
 
 	if (!(ctxt = (struct parse_context *) malloc(sizeof(struct parse_context)))) {
-		crit(MODPREFIX "malloc: %m");
+		if (strerror_r(errno, buf, MAX_ERR_BUF))
+			strcpy(buf, "strerror_r failed");
+		crit(MODPREFIX "malloc: %s", buf);
 		return 1;
 	}
 	*context = (void *) ctxt;
@@ -537,7 +539,9 @@ int parse_init(int argc, const char *const *argv, void **context)
 			case 'D':
 				sv = malloc(sizeof(struct substvar));
 				if (!sv) {
-					error(MODPREFIX "malloc: %m");
+					if (strerror_r(errno, buf, MAX_ERR_BUF))
+						strcpy(buf, "strerror_r failed");
+					error(MODPREFIX "malloc: %s", buf);
 					break;
 				}
 				if (argv[i][2])
@@ -550,7 +554,9 @@ int parse_init(int argc, const char *const *argv, void **context)
 				}
 
 				if (!sv->def) {
-					error(MODPREFIX "strdup: %m");
+					if (strerror_r(errno, buf, MAX_ERR_BUF))
+						strcpy(buf, "strerror_r failed");
+					error(MODPREFIX "strdup: %s", buf);
 					free(sv);
 				} else {
 					int len = strlen(sv->def) + strlen(sv->val);
@@ -618,7 +624,9 @@ int parse_init(int argc, const char *const *argv, void **context)
 			}
 			if (!noptstr) {
 				kill_context(ctxt);
-				crit(MODPREFIX "%m");
+				if (strerror_r(errno, buf, MAX_ERR_BUF))
+					strcpy(buf, "strerror_r failed");
+				crit(MODPREFIX "%s", buf);
 				return 1;
 			}
 			ctxt->optstr = noptstr;
@@ -686,6 +694,7 @@ static const char *parse_options(const char *str, char **ret)
 
 static char *concat_options(char *left, char *right)
 {
+	char buf[MAX_ERR_BUF];
 	char *ret;
 
 	if (left == NULL || *left == '\0') {
@@ -702,7 +711,9 @@ static char *concat_options(char *left, char *right)
 	ret = malloc(strlen(left) + strlen(right) + 2);
 
 	if (ret == NULL) {
-		error(MODPREFIX "concat_options malloc: %m");
+		if (strerror_r(errno, buf, MAX_ERR_BUF))
+			strcpy(buf, "strerror_r failed");
+		error(MODPREFIX "concat_options malloc: %s", buf);
 		return NULL;
 	}
 
@@ -933,7 +944,7 @@ add_offset_entry(const char *name, const char *m_root, int m_root_len,
 	strcpy(m_mapent, " ");
 	strcat(m_mapent, loc);
 
-	debug("adding multi-mount offset %s", path);
+	debug("adding multi-mount offset %s -> %s", path, m_mapent);
 
 	return cache_add_offset(name, m_key, m_mapent, age);
 }
@@ -950,7 +961,7 @@ static int mount_multi_triggers(char *root, struct mapent_cache *me, const char 
 	struct statfs fs;
 	struct stat st;
 	unsigned int is_autofs_fs;
-	int ret, start;
+	int ret, start, status;
 
 	fs_path_len = strlen(root) + strlen(base);
 	if (fs_path_len > PATH_MAX)
@@ -963,6 +974,12 @@ static int mount_multi_triggers(char *root, struct mapent_cache *me, const char 
 		return -1;
 
 	is_autofs_fs = fs.f_type == AUTOFS_SUPER_MAGIC ? 1 : 0;
+
+	status = pthread_mutex_lock(&me->mutex);
+	if (status) {
+		error("mapent cache entry lock failed");
+		return -1;
+	}
 
 	start = strlen(root);
 	offset = cache_get_offset(base, offset, start, &me->multi_list, &pos);
@@ -992,13 +1009,33 @@ static int mount_multi_triggers(char *root, struct mapent_cache *me, const char 
 		debug("mount offset %s", oe->key);
 
 		if (mount_autofs_offset(oe, is_autofs_fs) < 0)
-			return -1;
+			warn("failed to mount offset");
 cont:
 		offset = cache_get_offset(base,
 				offset, start, &me->multi_list, &pos);
 	}
 
+	status = pthread_mutex_unlock(&me->mutex);
+	if (status)
+		error("mapent cache entry lock failed");
+
 	return 0;
+}
+
+static void parse_sun_cleanup(struct mapent_cache *me, const char *root,
+			 char *options, char *path, char *myoptions)
+{
+	if (me)
+		cache_delete_offset_list(_PROC_MOUNTS, root, me->key);
+
+	if (options)
+		free(options);
+
+	if (path)
+		free(path);
+
+	if (myoptions)
+		free(myoptions);
 }
 
 /*
@@ -1014,10 +1051,10 @@ cont:
  * lower level multi-mount nesting point and its offsets.
  */
 int parse_mount(const char *root, const char *name,
-		int name_len, const char *mapent, int parse_context,
-		void *context)
+		int name_len, const char *mapent, void *context)
 {
 	struct parse_context *ctxt = (struct parse_context *) context;
+	char buf[MAX_ERR_BUF];
 	struct mapent_cache *me;
 	char *pmapent, *options;
 	const char *p;
@@ -1025,11 +1062,18 @@ int parse_mount(const char *root, const char *name,
 	int optlen;
 	int slashify = ctxt->slashify_colons;
 
+	if (!mapent) {
+		error(MODPREFIX "error: empty map entry");
+		return 1;
+	}
+
 	ctxt->subst = addstdenv(ctxt->subst);
 	mapent_len = expandsunent(mapent, NULL, name, ctxt->subst, slashify);
 	pmapent = alloca(mapent_len + 1);
-	if (!pmapent) {
-		error(MODPREFIX "alloca: %m");
+	if (!pmapent) {	
+		if (strerror_r(errno, buf, MAX_ERR_BUF))
+			strcpy(buf, "strerror_r failed");
+		error(MODPREFIX "alloca: %s", buf);
 		return 1;
 	}
 	pmapent[mapent_len] = '\0';
@@ -1041,7 +1085,9 @@ int parse_mount(const char *root, const char *name,
 
 	options = strdup(ctxt->optstr ? ctxt->optstr : "");
 	if (!options) {
-		error(MODPREFIX "strdup: %m");
+		if (strerror_r(errno, buf, MAX_ERR_BUF))
+			strcpy(buf, "strerror_r failed");
+		error(MODPREFIX "strdup: %s", buf);
 		return 1;
 	}
 	optlen = strlen(options);
@@ -1057,7 +1103,9 @@ int parse_mount(const char *root, const char *name,
 			options = concat_options(options, noptions);
 
 			if (options == NULL) {
-				error(MODPREFIX "concat_options: %m");
+				if (strerror_r(errno, buf, MAX_ERR_BUF))
+					strcpy(buf, "strerror_r failed");
+				error(MODPREFIX "concat_options: %s", buf);
 				return 1;
 			}
 			p = skipspace(p);
@@ -1069,7 +1117,9 @@ int parse_mount(const char *root, const char *name,
 	if (check_is_multi(p)) {
 		char *m_root = NULL;
 		int m_root_len;
-		char *root_path = NULL, *root_loc, *root_options;
+		char *root_path = NULL;
+		char *root_loc = NULL;
+		char *root_options = NULL;
 		time_t age = time(NULL);
 		int l;
 
@@ -1078,7 +1128,9 @@ int parse_mount(const char *root, const char *name,
 			m_root_len = name_len;
 			m_root = alloca(m_root_len + 1);
 			if (!m_root) {
-				error(MODPREFIX "alloca: %m");
+				if (strerror_r(errno, buf, MAX_ERR_BUF))
+					strcpy(buf, "strerror_r failed");
+				error(MODPREFIX "alloca: %s", buf);
 				free(options);
 				return 1;
 			}
@@ -1087,7 +1139,9 @@ int parse_mount(const char *root, const char *name,
 			m_root_len = strlen(root) + name_len + 1;
 			m_root = alloca(m_root_len + 1);
 			if (!m_root) {
-				error(MODPREFIX "alloca: %m");
+				if (strerror_r(errno, buf, MAX_ERR_BUF))
+					strcpy(buf, "strerror_r failed");
+				error(MODPREFIX "alloca: %s", buf);
 				free(options);
 				return 1;
 			}
@@ -1115,8 +1169,11 @@ int parse_mount(const char *root, const char *name,
 			int status;
 
 			if (myoptions == NULL) {
-				error(MODPREFIX "multi strdup: %m");
-				free(options);
+				if (strerror_r(errno, buf, MAX_ERR_BUF))
+					strcpy(buf, "strerror_r failed");
+				error(MODPREFIX "multi strdup: %s", buf);
+				parse_sun_cleanup(me, root,
+						  options, NULL, NULL);
 				return 1;
 			}
 
@@ -1128,8 +1185,8 @@ int parse_mount(const char *root, const char *name,
 
 			if (!path) {
 				error(MODPREFIX "out of memory");
-				free(myoptions);
-				free(options);
+				parse_sun_cleanup(me, root,
+						options, NULL, myoptions);
 				return 1;
 			}
 
@@ -1145,10 +1202,12 @@ int parse_mount(const char *root, const char *name,
 					myoptions = concat_options(myoptions, newopt);
 
 					if (myoptions == NULL) {
+						if (strerror_r(errno, buf, MAX_ERR_BUF))
+							strcpy(buf, "strerror_r failed");
 						error(MODPREFIX
-						    "multi concat_options: %m");
-						free(options);
-						free(path);
+						    "multi concat_options: %s", buf);
+						parse_sun_cleanup(me, root,
+							options, NULL, NULL);
 						return 1;
 					}
 					p = skipspace(p);
@@ -1162,9 +1221,8 @@ int parse_mount(const char *root, const char *name,
 			loc = dequote(p, l = chunklen(p, check_colon(p)));
 			if (!loc) {
 				error(MODPREFIX "out of memory");
-				free(path);
-				free(myoptions);
-				free(options);
+				parse_sun_cleanup(me, root,
+					options, path, myoptions);
 				return 1;
 			}
 
@@ -1177,19 +1235,17 @@ int parse_mount(const char *root, const char *name,
 				ent = dequote(p, l = chunklen(p, check_colon(p)));
 				if (!ent) {
 					error(MODPREFIX "out of memory");
-					free(path);
-					free(myoptions);
-					free(options);
+					parse_sun_cleanup(me, root,
+						options, path, myoptions);
 					return 1;
 				}
 
 				loc = realloc(loc, strlen(loc) + l + 2);
 				if (!loc) {
 					error(MODPREFIX "out of memory");
+					parse_sun_cleanup(me, root,
+						options, path, myoptions);
 					free(ent);
-					free(path);
-					free(myoptions);
-					free(options);
 					return 1;
 				}
 
@@ -1202,38 +1258,40 @@ int parse_mount(const char *root, const char *name,
 				p = skipspace(p);
 			}
 
-			/*
-			 * In mount context we only need to find and
-			 * mount "/", if any, and mount its offset
-			 * triggers.
-			 */
-			if (!parse_context)
-				goto skip_add;
-
-			/*
-			 * In parse context we only add the key/value
-			 * pairs to the cache for lookups later on.
-			 */
 			status = add_offset_entry(name,
 					m_root, m_root_len,
 					path, myoptions, loc, age);
-skip_add:
-			if (!parse_context && !strcmp(path, "/")) {
-				root_path = path;
-				root_loc = loc;
-				root_options = myoptions;
-				break;
-			} else {
-				free(loc);
-				free(path);
-				free(myoptions);
-			}
-		} while (*p == '/');
 
-		if (parse_context) {
-			free(options);
-			return 0;
-		}
+			if (!strcmp(path, "/")) {
+				root_path = strdup(path);
+				if (!root_path) {
+					error(MODPREFIX "out of memory");
+					parse_sun_cleanup(me, root,
+						options, path, myoptions);
+					return 1;
+				}
+				root_loc = strdup(loc);
+				if (!root_loc) {
+					error(MODPREFIX "out of memory");
+					parse_sun_cleanup(me, root,
+						options, path, myoptions);
+					free(root_path);
+					return 1;
+				}
+				root_options = strdup(myoptions);
+				if (!root_options) {
+					error(MODPREFIX "out of memory");
+					parse_sun_cleanup(me, root,
+						options, path, myoptions);
+					free(root_loc);
+					free(root_path);
+					return 1;
+				}
+			}
+			free(loc);
+			free(path);
+			free(myoptions);
+		} while (*p == '/');
 
 		if (root_path) {
 			rv = sun_mount(m_root, root_path, strlen(root_path),
@@ -1245,6 +1303,7 @@ skip_add:
 
 			if (rv < 0) {
 				error("mount multi-mount root %s failed", me->key);
+				cache_delete_offset_list(_PROC_MOUNTS, root, me->key);
 				return rv;
 			}
 		}
@@ -1262,10 +1321,6 @@ skip_add:
 		char *loc;
 		int loclen;
 		int l;
-
-		/* Do nothing in parse context if its not a multi-mount */
-		if (parse_context)
-			return 0;
 
 		if (*p == ':')
 			p++;	/* Sun escape for entries starting with / */
@@ -1319,6 +1374,7 @@ skip_add:
 		      options, loclen, loc);
 
 		rv = sun_mount(root, name, name_len, loc, loclen, options);
+
 		/* non-strict failure to normal failure for ordinary mount */
 		if (rv < 0)
 			rv = -rv;
@@ -1330,7 +1386,6 @@ skip_add:
 		 * If it's a multi-mount insert the triggers
 		 * These are always direct mount triggers so root = ""
 		 */
-		debug("insert multi triggers");
 		me = cache_lookup(name);
 		if (me && me->multi) {
 			char *m_key = me->multi->key;
@@ -1342,9 +1397,11 @@ skip_add:
 				start = strlen(m_key);
 			} else {
 				start = strlen(ap.path) + strlen(m_key) + 1;
-				m_root = alloca(start);
+				m_root = alloca(start + 1);
 				if (!m_root) {
-					error(MODPREFIX "alloca: %m");
+					if (strerror_r(errno, buf, MAX_ERR_BUF))
+						strcpy(buf, "strerror_r failed");
+					error(MODPREFIX "alloca: %s", buf);
 					return 1;
 				}
 				strcpy(m_root, ap.path);
@@ -1354,13 +1411,12 @@ skip_add:
 
 			base = &me->key[start];
 
-			debug("insert multi triggers %s %d", me->key, start);
-			debug("m_root %s base %s", m_root, base);
-
-			mount_multi_triggers(m_root, me->multi, base);
+			if (mount_multi_triggers(m_root, me->multi, base) < 0) {
+				error("failed to mount offset triggers");
+				rv = 1;
+			}
 		}
 	}
-
 	return rv;
 }
 

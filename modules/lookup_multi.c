@@ -1,4 +1,4 @@
-#ident "$Id: lookup_multi.c,v 1.10 2005/11/27 04:08:54 raven Exp $"
+#ident "$Id: lookup_multi.c,v 1.11 2006/02/08 16:49:21 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup_multi.c - module for Linux automount to seek multiple lookup
@@ -15,7 +15,6 @@
  * ----------------------------------------------------------------------- */
 
 #include <ctype.h>
-#include <errno.h>
 #include <limits.h>
 #include <malloc.h>
 #include <stdio.h>
@@ -45,6 +44,7 @@ int lookup_version = AUTOFS_LOOKUP_VERSION;	/* Required by protocol */
 int lookup_init(const char *my_mapfmt, int argc, const char *const *argv, void **context)
 {
 	struct lookup_context *ctxt;
+	char buf[MAX_ERR_BUF];
 	char *map, *mapfmt;
 	int i, j, an;
 
@@ -107,7 +107,9 @@ int lookup_init(const char *my_mapfmt, int argc, const char *const *argv, void *
 	return 0;
 
       nomem:
-	crit(MODPREFIX "malloc: %m");
+	if (strerror_r(errno, buf, MAX_ERR_BUF))
+		strcpy(buf, "strerror_r failed");
+	crit(MODPREFIX "malloc: %s", buf);
 	return 1;
 }
 

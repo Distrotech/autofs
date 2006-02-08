@@ -1,4 +1,4 @@
-#ident "$Id: lookup_ldap.c,v 1.24 2005/11/27 04:08:54 raven Exp $"
+#ident "$Id: lookup_ldap.c,v 1.25 2006/02/08 16:49:21 raven Exp $"
 /*
  * lookup_ldap.c - Module for Linux automountd to access automount
  *		   maps in LDAP directories.
@@ -106,6 +106,7 @@ static LDAP *do_connect(struct lookup_context *ctxt, int *result_ldap)
 int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **context)
 {
 	struct lookup_context *ctxt = NULL;
+	char buf[MAX_ERR_BUF];
 	int l, rv;
 	LDAP *ldap;
 	char *ptr = NULL;
@@ -114,7 +115,9 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 	ctxt = (struct lookup_context *) malloc(sizeof(struct lookup_context));
 	*context = ctxt;
 	if (ctxt == NULL) {
-		crit(MODPREFIX "malloc: %m");
+		if (strerror_r(errno, buf, MAX_ERR_BUF))
+			strcpy(buf, "strerror_r failed");
+		crit(MODPREFIX "malloc: %s", buf);
 		return 1;
 	}
 	memset(ctxt, 0, sizeof(struct lookup_context));
@@ -195,6 +198,7 @@ static int read_one_map(const char *root,
 			time_t age, int *result_ldap)
 {
 	int rv, i, j, l, count, keycount, ret;
+	char buf[MAX_ERR_BUF];
 	char *query;
 	LDAPMessage *result, *e;
 	char **keyValue = NULL;
@@ -215,7 +219,9 @@ static int read_one_map(const char *root,
 
 	query = alloca(l);
 	if (query == NULL) {
-		crit(MODPREFIX "malloc: %m");
+		if (strerror_r(errno, buf, MAX_ERR_BUF))
+			strcpy(buf, "strerror_r failed");
+		crit(MODPREFIX "malloc: %s", buf);
 		return 0;
 	}
 
@@ -287,7 +293,7 @@ static int read_one_map(const char *root,
 				/* need to handle this return later */
 				ret = ctxt->parse->parse_mount(root,
 						keyValue[i], strlen(keyValue[i]),
-						values[i], 1, ctxt->parse->context);
+						values[i], ctxt->parse->context);
 			}
 		}
 		ldap_value_free(values);
@@ -404,7 +410,7 @@ int lookup_ghost(const char *root, int ghost, time_t now, void *context)
 
 	me = cache_lookup_first();
 	/* me NULL => empty map */
-	if (me == NULL)
+	if (!me)
 		return LKP_EMPTY;
 
 	if (*me->key == '/')
@@ -420,6 +426,7 @@ static int lookup_one(const char *root, const char *qKey,
 		      struct lookup_context *ctxt)
 {
 	int rv, i, l, ql;
+	char buf[MAX_ERR_BUF];
 	time_t age = time(NULL);
 	char *query;
 	LDAPMessage *result, *e;
@@ -441,7 +448,9 @@ static int lookup_one(const char *root, const char *qKey,
 
 	query = alloca(l);
 	if (query == NULL) {
-		crit(MODPREFIX "malloc: %m");
+		if (strerror_r(errno, buf, MAX_ERR_BUF))
+			strcpy(buf, "strerror_r failed");
+		crit(MODPREFIX "malloc: %s", buf);
 		return 0;
 	}
 
@@ -511,6 +520,7 @@ static int lookup_one(const char *root, const char *qKey,
 		ret = CHE_UPDATED;
 	}
 
+
 	/* Clean up. */
 	ldap_value_free(values);
 	ldap_msgfree(result);
@@ -524,6 +534,7 @@ static int lookup_wild(const char *root,
 		      struct lookup_context *ctxt)
 {
 	int rv, i, l, ql;
+	char buf[MAX_ERR_BUF];
 	time_t age = time(NULL);
 	char *query;
 	LDAPMessage *result, *e;
@@ -549,7 +560,9 @@ static int lookup_wild(const char *root,
 
 	query = alloca(l);
 	if (query == NULL) {
-		crit(MODPREFIX "malloc: %m");
+		if (strerror_r(errno, buf, MAX_ERR_BUF))
+			strcpy(buf, "strerror_r failed");
+		crit(MODPREFIX "malloc: %s", buf);
 		return 0;
 	}
 
@@ -716,7 +729,7 @@ int lookup_mount(const char *root, const char *name, int name_len, void *context
 			mapent[mapent_len] = '\0';
 			debug(MODPREFIX "%s -> %s", key, mapent);
 			ret = ctxt->parse->parse_mount(root, key, key_len,
-						  mapent, 0, ctxt->parse->context);
+						  mapent, ctxt->parse->context);
 			me = cache_lookup_next(me);
 		}
 	}

@@ -1,4 +1,4 @@
-#ident "$Id: mount_bind.c,v 1.18 2005/11/27 04:08:54 raven Exp $"
+#ident "$Id: mount_bind.c,v 1.19 2006/02/08 16:49:21 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  mount_bind.c      - module to mount a local filesystem if possible;
@@ -16,7 +16,6 @@
 
 #include <stdio.h>
 #include <malloc.h>
-#include <errno.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <syslog.h>
@@ -86,13 +85,16 @@ int mount_mount(const char *root, const char *name, int name_len,
 		const char *what, const char *fstype, const char *options, void *context)
 {
 	char *fullpath;
+	char buf[MAX_ERR_BUF];
 	int err;
 	int i, rlen;
 
 	rlen = root ? strlen(root) : 0;
 	fullpath = alloca(rlen + name_len + 2);
 	if (!fullpath) {
-		error(MODPREFIX "alloca: %m");
+		if (strerror_r(errno, buf, MAX_ERR_BUF))
+			strcpy(buf, "strerror_r failed");
+		error(MODPREFIX "alloca: %s", buf);
 		return 1;
 	}
 
@@ -118,7 +120,9 @@ int mount_mount(const char *root, const char *name, int name_len,
 
 		status = mkdir_path(fullpath, 0555);
 		if (status && errno != EEXIST) {
-			error(MODPREFIX "mkdir_path %s failed: %m", fullpath);
+			if (strerror_r(errno, buf, MAX_ERR_BUF))
+				strcpy(buf, "strerror_r failed");
+			error(MODPREFIX "mkdir_path %s failed: %s", fullpath, buf);
 			return 1;
 		}
 
@@ -167,8 +171,10 @@ int mount_mount(const char *root, const char *name, int name_len,
 		} else {
 			debug(MODPREFIX "calling mkdir_path %s", basepath);
 			if (mkdir_path(basepath, 0555) && errno != EEXIST) {
-				error(MODPREFIX "mkdir_path %s failed: %m",
-				      basepath);
+				if (strerror_r(errno, buf, MAX_ERR_BUF))
+					strcpy(buf, "strerror_r failed");
+				error(MODPREFIX "mkdir_path %s failed: %s",
+				      basepath, buf);
 				return 1;
 			}
 		}

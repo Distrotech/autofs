@@ -1,4 +1,4 @@
-#ident "$Id: lookup_program.c,v 1.10 2005/11/27 04:08:54 raven Exp $"
+#ident "$Id: lookup_program.c,v 1.11 2006/02/08 16:49:21 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup_program.c - module for Linux automount to access an
@@ -16,7 +16,6 @@
  * ----------------------------------------------------------------------- */
 
 #include <ctype.h>
-#include <errno.h>
 #include <malloc.h>
 #include <stdio.h>
 #include <string.h>
@@ -46,9 +45,12 @@ int lookup_version = AUTOFS_LOOKUP_VERSION;	/* Required by protocol */
 int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **context)
 {
 	struct lookup_context *ctxt;
+	char buf[MAX_ERR_BUF];
 
 	if (!(*context = ctxt = malloc(sizeof(struct lookup_context)))) {
-		crit(MODPREFIX "malloc: %m");
+		if (strerror_r(errno, buf, MAX_ERR_BUF))
+			strcpy(buf, "strerror_r failed");
+		crit(MODPREFIX "malloc: %s", buf);
 		return 1;
 	}
 
@@ -90,6 +92,7 @@ int lookup_mount(const char *root, const char *name, int name_len, void *context
 {
 	struct lookup_context *ctxt = (struct lookup_context *) context;
 	char *mapent, *mapp, *tmp;
+	char buf[MAX_ERR_BUF];
 	char errbuf[1024], *errp;
 	char ch;
 	int pipefd[2], epipefd[2];
@@ -106,9 +109,11 @@ int lookup_mount(const char *root, const char *name, int name_len, void *context
 
 	debug(MODPREFIX "looking up %s", name);
 
-	mapent = (char *)malloc(MAPENT_MAX_LEN + 1);
+	mapent = (char *) malloc(MAPENT_MAX_LEN + 1);
 	if (!mapent) {
-		error(MODPREFIX "malloc: %s\n", strerror(errno));
+		if (strerror_r(errno, buf, MAX_ERR_BUF))
+			strcpy(buf, "strerror_r failed");
+		error(MODPREFIX "malloc: %s", buf);
 		return 1;
 	}
 
@@ -118,13 +123,19 @@ int lookup_mount(const char *root, const char *name, int name_len, void *context
 	 * because we need the pipe hooks
 	 */
 
+	sigchld_block();
+
 	if (pipe(pipefd)) {
-		error(MODPREFIX "pipe: %m");
+		if (strerror_r(errno, buf, MAX_ERR_BUF))
+			strcpy(buf, "strerror_r failed");
+		error(MODPREFIX "pipe: %s", buf);
+		sigchld_unblock();
 		goto out_free;
 	}
 	if (pipe(epipefd)) {
 		close(pipefd[0]);
 		close(pipefd[1]);
+		sigchld_unblock();
 		goto out_free;
 	}
 
@@ -134,7 +145,10 @@ int lookup_mount(const char *root, const char *name, int name_len, void *context
 		close(pipefd[1]);
 		close(epipefd[0]);
 		close(epipefd[1]);
-		error(MODPREFIX "fork: %m");
+		sigchld_unblock();
+		if (strerror_r(errno, buf, MAX_ERR_BUF))
+			strcpy(buf, "strerror_r failed");
+		error(MODPREFIX "fork: %s", buf);
 		goto out_free;
 	} else if (f == 0) {
 		reset_signals();
@@ -269,9 +283,13 @@ int lookup_mount(const char *root, const char *name, int name_len, void *context
 	close(epipefd[0]);
 
 	if (waitpid(f, &status, 0) != f) {
-		error(MODPREFIX "waitpid: %m");
+		if (strerror_r(errno, buf, MAX_ERR_BUF))
+			strcpy(buf, "strerror_r failed");
+		error(MODPREFIX "waitpid: %s", buf);
 		goto out_free;
 	}
+
+	sigchld_unblock();
 
 	if (mapp == mapent || !WIFEXITED(status) || WEXITSTATUS(status) != 0) {
 		error(MODPREFIX "lookup for %s failed", name);
@@ -281,7 +299,7 @@ int lookup_mount(const char *root, const char *name, int name_len, void *context
 	debug(MODPREFIX "%s -> %s", name, mapent);
 
 	ret = ctxt->parse->parse_mount(root, name, name_len,
-				       mapent, 0,  ctxt->parse->context);
+				       mapent, ctxt->parse->context);
 out_free:
 	free(mapent);
 	return ret;

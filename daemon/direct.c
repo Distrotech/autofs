@@ -1,4 +1,4 @@
-#ident "$Id: direct.c,v 1.1 2005/11/27 04:08:54 raven Exp $"
+#ident "$Id: direct.c,v 1.2 2006/02/08 16:49:20 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  direct.c - Linux automounter direct mount handling
@@ -21,7 +21,6 @@
  * ----------------------------------------------------------------------- */
 
 #include <dirent.h>
-#include <errno.h>
 #include <fcntl.h>
 #include <signal.h>
 #include <stdio.h>
@@ -35,6 +34,7 @@
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/poll.h>
+#include <sys/mount.h>
 #include <pwd.h>
 #include <grp.h>
 
@@ -51,11 +51,8 @@ static int kernel_pipefd = -1;		kernel pipe fd for use in direct mounts
 
 extern int submount;
 
-extern sigset_t ready_sigs;		/* signals only accepted in ST_READY */
-extern sigset_t lock_sigs;		/* signals blocked for locking */
-extern sigset_t sigchld_mask;
-
-extern volatile struct pending_mount *junk_mounts;
+extern pthread_mutex_t pending_mutex;
+extern struct pending_mount *pending;
 
 static int autofs_init_direct(char *path)
 {
@@ -106,6 +103,7 @@ static int autofs_init_direct(char *path)
 
 static int do_umount_autofs_direct(struct mapent_cache *me, int dummy)
 {
+	char buf[MAX_ERR_BUF];
 	int rv, left, ret;
 	int status = 1;
 	struct stat st;
@@ -116,10 +114,8 @@ static int do_umount_autofs_direct(struct mapent_cache *me, int dummy)
 		return -1;
 	}
 
-	if (me->ioctlfd < 0) {
-		warn("ioctlfd not set at umount for %s", me->key);
+	if (me->ioctlfd < 0)
 		me->ioctlfd = open(me->key, O_RDONLY);
-	}
 
 	if (me->ioctlfd >= 0) {
 		ioctl(me->ioctlfd, AUTOFS_IOC_ASKUMOUNT, &status);
@@ -151,13 +147,16 @@ force_umount:
 	if (rv != 0) {
 		rv = spawnl(LOG_DEBUG,
 			    PATH_UMOUNT, PATH_UMOUNT, "-n", "-l", me->key, NULL);
-		msg("forcing unmount of %s\n", me->key);
+		msg("forcing unmount of %s", me->key);
 	} else
 		msg("umounted %s", me->key);
 
 	if (!rv && me->dir_created) {
-		if  (rmdir(me->key) == -1)
-			warn("failed to remove dir %s: %m", me->key);
+		if  (rmdir(me->key) == -1) {
+			if (strerror_r(errno, buf, MAX_ERR_BUF))
+				strcpy(buf, "strerror_r failed");
+			warn("failed to remove dir %s: %s", me->key, buf);
+		}
 	}
 	return rv;
 }
@@ -185,14 +184,15 @@ int do_mount_autofs_direct(struct mapent_cache *me, int now)
 	time_t timeout = ap.exp_timeout;
 	char our_name[MAX_MNT_NAME_LEN];
 	int name_len = MAX_MNT_NAME_LEN;
-	int len;
+	struct stat st;
+	int len, ret;
 
 	/* Handle cleanup for HUP signal */
 	if (me->age < now) {
 		/* Silently fail */
-		if (do_umount_autofs_direct(me, 0))
+/*		if (do_umount_autofs_direct(me, 0)) 
 			return 0;
-
+*/
 		if (cache_delete(_PROC_MOUNTS, NULL, me->key, 1))
 			return -1;
 
@@ -236,6 +236,13 @@ int do_mount_autofs_direct(struct mapent_cache *me, int now)
 		crit("failed to mount autofs path %s", me->key);
 		goto out_err;
 	}
+/*
+	ret = mount(our_name, me->key, "autofs", MS_MGC_VAL, options);
+	if (ret) {
+		crit("failed to mount autofs path %s", me->key);
+		goto out_err;
+	}
+*/
 
 	/* Root directory for ioctl()'s */
 	me->ioctlfd = open(me->key, O_RDONLY);
@@ -280,6 +287,14 @@ int do_mount_autofs_direct(struct mapent_cache *me, int now)
 got_version:
 	ioctl(me->ioctlfd, AUTOFS_IOC_SETTIMEOUT, &timeout);
 
+	ret = fstat(me->ioctlfd, &st);
+	if (ret == -1) {
+		error("failed to stat direct mount trigger %s", me->key);
+		goto out_umount;
+	}
+	cache_set_ino(me, st.st_dev, st.st_ino);
+	cache_set_ino_index(me->key, st.st_dev, st.st_ino);
+
 	close(me->ioctlfd);
 	me->ioctlfd = -1;
 
@@ -292,7 +307,7 @@ out_close:
 	me->ioctlfd = -1;
 out_umount:
 	/* TODO: maybe force umount (-l) */
-	spawnl(LOG_DEBUG, PATH_UMOUNT, PATH_UMOUNT, "-n", me->key, NULL);
+/*	spawnl(LOG_DEBUG, PATH_UMOUNT, PATH_UMOUNT, "-n", me->key, NULL); */
 out_err:
 	if (me->dir_created)
 		rmdir(me->key);
@@ -317,8 +332,6 @@ int mount_autofs_direct(char *path)
 		return -1;
 	}
 
-	ap.type = LKP_DIRECT;
-
 	map = ap.lookup->lookup_enumerate(path,
 			do_mount_autofs_direct, now, ap.lookup->context);
 	if (map & LKP_FAIL) {
@@ -334,6 +347,7 @@ int mount_autofs_direct(char *path)
 
 int umount_autofs_offset(struct mapent_cache *me)
 {
+	char buf[MAX_ERR_BUF];
 	int rv, ret;
 	struct stat st;
 
@@ -376,13 +390,16 @@ force_umount:
 	if (rv != 0) {
 		rv = spawnl(LOG_DEBUG,
 			    PATH_UMOUNT, PATH_UMOUNT, "-n", "-l", me->key, NULL);
-		msg("forcing unmount of %s\n", me->key);
+		msg("forcing unmount of %s", me->key);
 	} else
 		msg("umounted %s", me->key);
 
 	if (!rv && me->dir_created) {
-		if  (rmdir(me->key) == -1)
-			warn("failed to remove dir %s: %m", me->key);
+		if  (rmdir(me->key) == -1) {
+			if (strerror_r(errno, buf, MAX_ERR_BUF))
+				strcpy(buf, "strerror_r failed");
+			warn("failed to remove dir %s: %s", me->key, buf);
+		}
 	}
 	return rv;
 }
@@ -466,6 +483,14 @@ int mount_autofs_offset(struct mapent_cache *me, int is_autofs_fs)
 
 	ioctl(me->ioctlfd, AUTOFS_IOC_SETTIMEOUT, &timeout);
 
+	ret = fstat(me->ioctlfd, &st);
+	if (ret == -1) {
+		error("failed to stat direct mount trigger %s", me->key);
+		goto out_umount;
+	}
+	cache_set_ino(me, st.st_dev, st.st_ino);
+	cache_set_ino_index(me->key, st.st_dev, st.st_ino);
+
 	close(me->ioctlfd);
 	me->ioctlfd = -1;
 
@@ -482,77 +507,87 @@ out_err:
 	return -1;
 }
 
-int expire_offsets_direct(struct mapent_cache *me, int now)
+void *expire_proc_direct(void *arg)
 {
-	struct list_head *p;
-	struct mapent_cache *ee;
-	int status, ret = 0;
+	struct mnt_list *mnts, *next;
+	struct mapent_cache *me;
+	unsigned int now;
+	int ret, status = 0;
 
-	/* If it's not a top level multi-mount return success */
-	if (!me->multi || me->multi != me)
-		return 0;
+	pthread_cleanup_push(handle_cleanup, &status);
 
-	list_for_each_prev(p, &me->multi_list) {
-		ee = list_entry(p, struct mapent_cache, multi_list);
+	status = pthread_cond_wait(&ec.cond, &ec.mutex);
+	if (status) {
+		error("expire condition wait failed");
+		pthread_exit(NULL);
+	}
 
-		/* Leave the root entry for the normal expire */ 
-		if (ee == me || ee->key[strlen(ee->key) - 1] == '/')
+	now = ec.when;
+
+	status = pthread_mutex_unlock(&ec.mutex);
+	if (status) {
+		error("failed to unlock expire cond mutex");
+		pthread_exit(NULL);
+	}
+
+	/* Get a list of real mounts and expire them if possible */
+	mnts = get_mnt_list(_PROC_MOUNTS, "/", 0);
+	for (next = mnts; next; next = next->next) {
+		if (!strcmp(next->fs_type, "autofs"))
 			continue;
-
-		/* No mount => no expire needed */
-		if (ee->ioctlfd < 0)
-			continue;
-
-		debug("check expiry of %s", ee->key);
 
 		/*
-		 * expire the direct offset
-		 * the expire umounts offsets prior to umounting the entry
+		 * All direct mounts must be present in the map
+		 * entry cache.
 		 */
-		status = ioctl(ee->ioctlfd, AUTOFS_IOC_EXPIRE_DIRECT, &now);
-		if (status < 0 && errno != EAGAIN) {
-			debug("failed sending expire to mount %s", ee->key);
-			ret++;
+		me = cache_lookup(next->path);
+		if (!me)
+			continue;
+
+		debug("send expire to trigger %s", me->key);
+
+		/* Finally generate an expire message for the direct mount. */
+		ret = ioctl(me->ioctlfd, AUTOFS_IOC_EXPIRE_DIRECT, &now);
+		if (ret < 0 && errno != EAGAIN) {
+			debug("failed to expire mount %s", me->key);
+			status = 1;
+			goto done;
 		}
 	}
+done:
+	free_mnt_list(mnts);
 
-	return ret;
+	pthread_cleanup_pop(1);
+	return NULL;
 }
 
-int expire_proc_direct(struct mapent_cache *me, int now)
+static void *do_expire_direct(void *arg)
 {
-	int status;
+	struct mapent_cache *me = (struct mapent_cache *) arg;
+	int len;
+	int status = 0;
 
-	/* If there's not mount we don't need to send an expire */
-	if (me->ioctlfd < 0)
-		return 0;
+	pthread_cleanup_push(handle_cleanup, &status);
 
-	debug("attempting to expire offset mounts %s", me->key);
-
-	/* attempt to expire away multi-mount entries below */
-	status = expire_offsets_direct(me, now);
-	if (status) {
-		debug("multi-mount %s is busy", me->key);
-		return 1;
+	len = _strlen(me->key, PATH_MAX);
+	if (!len) {
+		warn("direct key path too long %s", me->key);
+		pthread_exit(NULL);
 	}
 
-	/* Generate an expire message for the direct mount. */
+	status = do_expire(me->key, len);
 
-	debug("sending expire to trigger %s", me->key);
-
-	status = ioctl(me->ioctlfd, AUTOFS_IOC_EXPIRE_DIRECT, &now);
-	if (status < 0 && errno != EAGAIN) {
-		debug("failed sending expire to mount %s", me->key);
-		return 1;
-	}
-	return 0;
+	pthread_cleanup_pop(1);
+	return NULL;
 }
 
-int handle_packet_expire_direct(const struct autofs_packet_expire_direct *pkt)
+int handle_packet_expire_direct(struct autofs_packet_expire_direct *pkt)
 {
-	int ret;
 	struct mapent_cache *me;
-	char *path;
+	struct pending_mount *mt;
+	char buf[MAX_ERR_BUF];
+	pthread_t thid;
+	int status;
 
 	/*
 	 * This is a bit of a big deal.
@@ -564,185 +599,224 @@ int handle_packet_expire_direct(const struct autofs_packet_expire_direct *pkt)
 	 * and since it got mounted we have to trust that
 	 * there is an entry in the cache.
 	 */
-	path = find_mnt_ino(_PROC_MOUNTS, pkt->dev, pkt->ino);
-	if (!path) {
-		/*
-		 * Shouldn't happen as the kernel is telling there
-		 * is something to expire.
-		 */
-		crit("can't find path for mount to expire");
-		return 1;
-	}
-
-	me = cache_lookup(path);
+	me = cache_lookup_ino(pkt->dev, pkt->ino);
 	if (!me) {
-		crit("entry cache corrupt - can't find map entry for %s", path);
-		free(path);
-		/* TODO:  umount to as it's not in map ?? */
-		return 1;
+		/*
+		 * Shouldn't happen as we have been sent this following
+		 * successful thread creation and lookup.
+		 */
+		crit("can't find map entry for (%lu,%lu)",
+		    (unsigned long) pkt->dev, (unsigned long) pkt->ino);
+		pthread_exit(NULL);
 	}
-	free(path);
 
 	debug("token %ld, name %s\n",
 		  (unsigned long) pkt->wait_queue_token, me->key);
 
-	ret = handle_expire(me->key, strlen(me->key),
-			    me->ioctlfd, pkt->wait_queue_token);
+	status = pthread_mutex_lock(&pending_mutex);
+	if (status) {
+		error("pending mutex lock failed");
+		goto out_error;
+	}
 
-	if (ret != 0)
-		send_fail(me->ioctlfd, pkt->wait_queue_token);
+	if ((mt = (struct pending_mount *) pending)) {
+		pending = pending->next;
+	} else if (!(mt = malloc(sizeof(struct pending_mount)))) {
+		if (strerror_r(errno, buf, MAX_ERR_BUF))
+			strcpy(buf, "strerror_r failed");
+		error("malloc: %s", buf);
+		goto out_error;
+	}
 
-	return ret;
+	status = pthread_create(&thid, NULL, do_expire_direct, me);
+	if (status) {
+		error("expire thread create failed");
+		status = pthread_mutex_unlock(&pending_mutex);
+		if (status)
+			error("pending mutex unlock failed");
+		free(mt);
+		goto out_error;
+	}
+
+	mt->thid = thid;
+	mt->me = me;
+	mt->ioctlfd = me->ioctlfd;
+	mt->type = NFY_EXPIRE;
+	mt->wait_queue_token = pkt->wait_queue_token;
+	mt->next = ap.mounts;
+	ap.mounts = mt;
+
+	status = pthread_mutex_unlock(&pending_mutex);
+	if (status) {
+		error("pending mutex unlock failed");
+	/*	send_fail(me->ioctlfd, pkt->wait_queue_token); */
+		return 1;
+	}
+	return 0;
+
+out_error:
+	send_fail(me->ioctlfd, pkt->wait_queue_token);
+	return 1;
 }
 
-int handle_packet_missing_direct(const struct autofs_packet_missing_direct *pkt)
+static void *do_mount_direct(void *arg)
 {
-	struct stat st;
-	sigset_t oldsig;
-	pid_t f;
-	struct pending_mount *mt = NULL;
+	int err, status = 1;
+	struct passwd *u_pwd;
+	struct group *u_grp;
+	char env_buf[30];
+	struct autofs_packet_missing_direct *pkt;
 	struct mapent_cache *me;
-	int status = 0;
-	int ioctlfd;
-	char *path;
+	struct stat st;
 
-	path = find_mnt_ino(_PROC_MOUNTS, pkt->dev, pkt->ino);
-	if (!path) {
+	pthread_cleanup_push(handle_cleanup, &status);
+
+	pkt = (struct autofs_packet_missing_direct *) arg;
+	me = cache_lookup_ino(pkt->dev, pkt->ino);
+	if (!me) {
 		/*
 		 * Shouldn't happen as the kernel is telling us
 		 * someone has walked on our mount point.
 		 */
-		crit("can't find path for mount to expire");
-		return 1;
+		crit("can't find map entry for (%lu,%lu)",
+		    (unsigned long) pkt->dev, (unsigned long) pkt->ino);
+		pthread_exit(NULL);
 	}
 
-	ioctlfd = open(path, O_RDONLY);
-	if (ioctlfd < 0) {
-		crit("failed to create ioctl fd for %s", path);
-		/* TODO:  umount to clear wait q in kernel ?? */
-		free(path);
-		return 1;
+	err = fstat(me->ioctlfd, &st);
+	if (err == -1) {
+		error("can't stat direct mount trigger %s", me->key);
+		pthread_exit(NULL);
+	}
+	if (!S_ISDIR(st.st_mode) || st.st_dev != pkt->dev) {
+		error("direct mount trigger is not valid mount point %s", me->key);
+		pthread_exit(NULL);
 	}
 
-	me = cache_lookup(path);
+	msg("attempting to mount entry %s", me->key);
+
+	/*
+	 * Setup ENV for mount.
+	 * Best effort only as it must go ahead.
+	 */
+
+	sprintf(env_buf, "%lu", (unsigned long) pkt->uid);
+	setenv("UID", env_buf, 1);
+	u_pwd = getpwuid(pkt->uid);
+	if (u_pwd) {
+		setenv("USER", u_pwd->pw_name, 1);
+		setenv("HOME", u_pwd->pw_dir, 1);
+	}
+
+	sprintf(env_buf, "%lu", (unsigned long) pkt->gid);
+	setenv("GID", env_buf, 1);
+	u_grp = getgrgid(pkt->gid);
+	if (u_grp)
+		setenv("GROUP", u_grp->gr_name, 1);
+
+	status = ap.lookup->lookup_mount(NULL, me->key, strlen(me->key),
+				      ap.lookup->context);
+	/*
+	 * Direct mounts are always a single mount. If it fails there's
+	 * nothing to undo so just complain
+	 */
+	if (status)
+		error("failed to mount %s", me->key);
+	else
+		msg("mounted %s", me->key);
+
+	pthread_cleanup_pop(1);
+	return NULL;
+}
+
+int handle_packet_missing_direct(struct autofs_packet_missing_direct *pkt)
+{
+	pthread_t thid;
+	struct pending_mount *mt = NULL;
+	struct mapent_cache *me;
+	char buf[MAX_ERR_BUF];
+	int status = 0;
+	int ioctlfd;
+
+	me = cache_lookup_ino(pkt->dev, pkt->ino);
 	if (!me) {
-		crit("can't find map entry for %s", path);
-		send_fail(ioctlfd, pkt->wait_queue_token);
-		free(path);
-		close(ioctlfd);
-		/* TODO:  umount to as it's not in map ?? */
+		/*
+		 * Shouldn't happen as the kernel is telling us
+		 * someone has walked on our mount point.
+		 */
+		crit("can't find map entry for (%lu,%lu)",
+		    (unsigned long) pkt->dev, (unsigned long) pkt->ino);
 		return 1;
 	}
-	free(path);
+
+	ioctlfd = open(me->key, O_RDONLY);
+	if (ioctlfd < 0) {
+		crit("failed to create ioctl fd for %s", me->key);
+		/* TODO:  how do we clear wait q in kernel ?? */
+		return 1;
+	}
 	me->ioctlfd = ioctlfd;
 
 	debug("token %ld, name %s\n",
 		  (unsigned long) pkt->wait_queue_token, me->key);
 
 	/* Ignore packet if we're trying to shut down */
-	if (ap.state == ST_SHUTDOWN_PENDING || ap.state == ST_SHUTDOWN) {
-		send_fail(me->ioctlfd, pkt->wait_queue_token);
+	if (ap.state == ST_SHUTDOWN_PENDING || ap.state == ST_SHUTDOWN)
+		goto out_close;
+
+	status = pthread_mutex_lock(&pending_mutex);
+	if (status) {
+		error("pending mutex lock failed");
+		status = 1;
 		goto out_close;
 	}
 
-	/* TODO: check out "dev" */
-	if (fstat(me->ioctlfd, &st) == -1 ||
-	   (S_ISDIR(st.st_mode) && st.st_dev == pkt->dev)) {
-		/* Block SIGCHLD while mucking with linked lists */
-		sigprocmask(SIG_BLOCK, &sigchld_mask, NULL);
-		if ((mt = (struct pending_mount *) junk_mounts)) {
-			junk_mounts = junk_mounts->next;
-		} else {
-			if (!(mt = malloc(sizeof(struct pending_mount)))) {
-				error("malloc: %m");
-				send_fail(me->ioctlfd, pkt->wait_queue_token);
-				status = 1;
-				goto out_close;
-			}
-		}
-		sigprocmask(SIG_UNBLOCK, &sigchld_mask, NULL);
 
-		msg("attempting to mount entry %s", me->key);
-
-		sigprocmask(SIG_BLOCK, &lock_sigs, &oldsig);
-
-		f = fork();
-		if (f == -1) {
-			sigprocmask(SIG_SETMASK, &oldsig, NULL);
-			error("fork: %m");
-			send_fail(me->ioctlfd, pkt->wait_queue_token);
-			free(mt);
+	if ((mt = (struct pending_mount *) pending)) {
+		pending = pending->next;
+	} else {
+		if (!(mt = malloc(sizeof(struct pending_mount)))) {
+			if (strerror_r(errno, buf, MAX_ERR_BUF))
+				strcpy(buf, "strerror_r failed");
+			error("malloc: %s", buf);
 			status = 1;
-			goto out_close;
-		} else if (!f) {
-			int err;
-			struct passwd *u_pwd;
-			struct group *u_grp;
-			char env_buf[12];
-
-			/* Set up a sensible signal environment */
-			ignore_signals();
-			/* close(ap.pipefd); */
-			/* close(ap.kpipefd); */
-			close(ap.state_pipe[0]);
-			close(ap.state_pipe[1]);
-			close(me->ioctlfd);
-
-			/*
-			 * Setup ENV for mount.
-			 * Best effort only as it must go ahead.
-			 */
-			sprintf(env_buf, "%lu", (unsigned long) pkt->uid);
-			setenv("UID", env_buf, 1);
-			u_pwd = getpwuid(pkt->uid);
-			if (u_pwd) {
-				setenv("USER", u_pwd->pw_name, 1);
-				setenv("HOME", u_pwd->pw_dir, 1);
-			}
-
-			sprintf(env_buf, "%lu", (unsigned long) pkt->gid);
-			setenv("GID", env_buf, 1);
-			u_grp = getgrgid(pkt->gid);
-			if (u_grp)
-				setenv("GROUP", u_grp->gr_name, 1);
-
-			err = ap.lookup->lookup_mount(NULL,
-					      me->key, strlen(me->key),
-					      ap.lookup->context);
-			/*
-			 * Direct mounts are always a single mount.
-			 * If it fails there's nothing to undo so
-			 * just complain
-			 */
-			if (err)
-				error("failed to mount %s", me->key);
-			else
-				msg("mounted %s", me->key);
-
-			_exit(err ? 1 : 0);
-		} else {
-			/*
-			 * Important: set up data structures while signals
-			 * still blocked
-			 */
-			mt->pid = f;
-			mt->me = me;
-			mt->ioctlfd = me->ioctlfd;
-			mt->type = NFY_MOUNT;
-			mt->wait_queue_token = pkt->wait_queue_token;
-			mt->next = ap.mounts;
-			ap.mounts = mt;
-
-			sigprocmask(SIG_SETMASK, &oldsig, NULL);
+			goto out_unlock;
 		}
+	}
+
+	status = pthread_create(&thid, NULL, do_mount_direct, pkt);
+	if (status) {
+		error("missing mount thread create failed");
+		free(mt);
+		status = 1;
+		goto out_unlock;
+	}
+
+	mt->thid = thid;
+	mt->me = me;
+	mt->ioctlfd = me->ioctlfd;
+	mt->type = NFY_MOUNT;
+	mt->wait_queue_token = pkt->wait_queue_token;
+	mt->next = ap.mounts;
+	ap.mounts = mt;
+
+	status = pthread_mutex_unlock(&pending_mutex);
+	if (status) {
+		error("pending mutex unlock failed");
+/*		send_fail(me->ioctlfd, pkt->wait_queue_token); */
+		status = 1;
 	}
 	return 0;
 
+out_unlock:
+	status = pthread_mutex_unlock(&pending_mutex);
+	if (status)
+		error("pending mutex unlock failed");
 out_close:
+	send_fail(me->ioctlfd, pkt->wait_queue_token);
 	close(me->ioctlfd);
 	me->ioctlfd = -1;
-	spawnl(LOG_DEBUG, PATH_UMOUNT, PATH_UMOUNT, "-n", me->key, NULL);
-
+/*	spawnl(LOG_DEBUG, PATH_UMOUNT, PATH_UMOUNT, "-n", me->key, NULL); */
 	return status;
 }
 

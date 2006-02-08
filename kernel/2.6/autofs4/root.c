@@ -30,7 +30,8 @@ static int autofs4_dir_close(struct inode *inode, struct file *file);
 static int autofs4_dir_readdir(struct file * filp, void * dirent, filldir_t filldir);
 static int autofs4_root_readdir(struct file * filp, void * dirent, filldir_t filldir);
 static struct dentry *autofs4_lookup(struct inode *,struct dentry *, struct nameidata *);
-static int autofs4_follow_link(struct dentry *, struct nameidata *);
+/*static int autofs4_follow_link(struct dentry *, struct nameidata *); */
+static void *autofs4_follow_link(struct dentry *, struct nameidata *);
 
 struct file_operations autofs4_root_operations = {
 	.open		= dcache_dir_open,
@@ -204,7 +205,7 @@ static int autofs4_dir_close(struct inode *inode, struct file *file)
 out:
 	dcache_dir_close(inode, file);
 	return status;
-
+}
 
 struct autofs4_readdir_cb {
 	struct dentry *dentry;
@@ -392,28 +393,29 @@ static struct vfsmount *autofs4_get_vfsmount(struct nameidata *nd, struct dentry
 }
 
 /* For autofs direct mounts the follow link triggers the mount */
-static int autofs4_follow_link(struct dentry *dentry, struct nameidata *nd)
+/*static int autofs4_follow_link(struct dentry *dentry, struct nameidata *nd)*/
+static void *autofs4_follow_link(struct dentry *dentry, struct nameidata *nd)
 {
 	struct autofs_sb_info *sbi = autofs4_sbi(dentry->d_sb);
 	int oz_mode = autofs4_oz_mode(sbi);
-	struct autofs_info *ino;
-	struct vfsmount *mnt;
+/*	struct autofs_info *ino;
+	struct vfsmount *mnt; */
 	unsigned int lookup_type;
-	int error, status;
+	int status;
 
 	DPRINTK("dentry=%p %.*s oz_mode=%d nd->flags=%d nd->last_type=%x",
 		 dentry, dentry->d_name.len, dentry->d_name.name, oz_mode,
 		 nd->flags, nd->last_type);
-
+/*
 	dget(dentry);
-	error = -ENOENT;
+	error = -ENOENT; */
 	/* Update nameidata with vfsmount followed into prior to call */
-	mnt = autofs4_get_vfsmount(nd, dentry);
+/*	mnt = autofs4_get_vfsmount(nd, dentry);
 	if (!mnt) {
 		DPRINTK("fatal: couldn't find direct mount trigger");
 		goto out_error;
 	}
-
+*/
 	/* If it's our master or we shouldn't trigger a mount we're done */
 	lookup_type = nd->flags & (LOOKUP_CONTINUE | LOOKUP_DIRECTORY);
 	if (oz_mode || !lookup_type)
@@ -422,7 +424,7 @@ static int autofs4_follow_link(struct dentry *dentry, struct nameidata *nd)
 	status = try_to_fill_dentry(dentry, dentry->d_sb, sbi, 0);
 	if (!status)
 		goto out_error;
-
+/*
 	ino = autofs4_dentry_ino(dentry);
 	if (ino) {
 		update_atime(dentry->d_inode);
@@ -431,20 +433,27 @@ static int autofs4_follow_link(struct dentry *dentry, struct nameidata *nd)
 
 	if (!autofs4_follow_mount(&mnt, &dentry))
 		goto out_error;
+*/
+	if (!autofs4_follow_mount(&nd->mnt, &nd->dentry)) {
+		status = -ENOENT;
+		goto out_error;
+	}
 
 done:
 /*	nd->last_type = LAST_BIND; */
-	dput(nd->dentry);
+/*	dput(nd->dentry);
 	nd->mnt = mnt;
 	nd->dentry = dentry;
-	return 0;
+	return 0; */
+	return ERR_PTR(0);
 
 out_error:
-	dput(dentry);
+/*	dput(dentry);
 	if (mnt && mnt != nd->mnt)
-		mntput(mnt);
+		mntput(mnt); */
 	path_release(nd);
-	return error;
+/*	return error; */
+	return ERR_PTR(status);
 }
 
 /*

@@ -1,4 +1,4 @@
-#ident "$Id: spawn.c,v 1.14 2005/11/27 04:08:54 raven Exp $"
+#ident "$Id: spawn.c,v 1.15 2006/02/08 16:49:20 raven Exp $"
 /* ----------------------------------------------------------------------- *
  * 
  *  spawn.c - run programs synchronously with output redirected to syslog
@@ -14,7 +14,6 @@
  *
  * ----------------------------------------------------------------------- */
 
-#include <errno.h>
 #include <fcntl.h>
 #include <signal.h>
 #include <stdarg.h>
@@ -32,7 +31,157 @@
 /* Make gcc happy */
 pid_t getpgid(pid_t);
 
-pid_t getpgid(pid_t);
+/*
+ * SIGCHLD handling.
+ *
+ * We need to manage SIGCHLD process wide so that when we fork
+ * programs we can reap the exit status in the calling thread by
+ * blocking the signal. There is also the need to be able to reap
+ * the exit status for child processes that are asynchronous to
+ * the main program such as submount processes.
+ * 
+ * The method used to achieve this in our threaded environment
+ * is to define a signal handler thread for SIGCHLD (and SIGCONT)
+ * and, before we fork, tell it not to wait for signals so that
+ * the waitpid in the subroutine that forks and execs can reap the
+ * exit status.
+ *
+ * An added complication is that more than one thread at a time
+ * may be forking program execution so we can't just simply tell
+ * the handler to start listening for the signal again when done.
+ * To deal with this a usage counter is used to identify when
+ * there are no more threads that need to obtain an exit status
+ * and we can tell the handler to start listening for the signal
+ * again.
+ */
+struct sigchld_mutex {
+	pthread_mutex_t mutex;
+	pthread_cond_t ready;
+	pthread_t thid;
+	unsigned int catch;
+	unsigned int count;
+};
+
+/* Start out catching SIGCHLD signals */
+static struct sigchld_mutex sm = {PTHREAD_MUTEX_INITIALIZER,
+				  PTHREAD_COND_INITIALIZER,
+				  0, 1, 0};
+
+void *sigchld(void *dummy)
+{
+	pid_t pid;
+	sigset_t sigchld;
+	int sig;
+	int status;
+
+	sigemptyset(&sigchld);
+	sigaddset(&sigchld, SIGCHLD);
+	sigaddset(&sigchld, SIGCONT);
+
+	while (1) {
+		sigwait(&sigchld, &sig);
+
+		status = pthread_mutex_lock(&sm.mutex);
+		if (status) {
+			error("failed to lock SIGCHLD handler mutex");
+			continue;
+		}
+
+		/*
+		 * We could receive SIGCONT from two sources at the same
+		 * time. For example if we are a submount process whose startup
+		 * up is now complete and from a thread performing a fork and
+		 * exec (via sigchld_block below). So we are being told to
+		 * continue at the same time as we are bieng told to wait on
+		 * the condition. In this case catching the signal is enough
+		 * for us to continue and we also wait on the condition
+		 * (sm.catch == 0).
+		 */
+		if (!sm.catch) {
+			status = pthread_cond_wait(&sm.ready, &sm.mutex);
+			if (status)
+				error("SIGCHLD condition wait failed");
+		}
+
+		if (sig != SIGCONT)
+			while ((pid = waitpid(-1, NULL, WNOHANG)) > 0)
+				debug("received SIGCHLD from %d", pid);
+
+		status = pthread_mutex_unlock(&sm.mutex);
+		if (status)
+			error("failed to unlock SIGCHLD handler mutex");
+	}
+}
+
+int sigchld_start_handler(void)
+{
+	int status;
+
+	status = pthread_create(&sm.thid, NULL, sigchld, NULL);
+	if (status) {
+		error("failed to create SIGCHLD handler thread");
+		return 0;
+	}
+	return 1;
+}
+
+int sigchld_block(void)
+{
+	int status;
+
+	status = pthread_mutex_lock(&sm.mutex);
+	if (status) {
+		error("failed to lock SIGCHLD mutex");
+		return 0;
+	}
+
+	/*
+	 * If this is the first request to block then disable
+	 * signal catching and tell the handler.
+	 */
+	if (sm.count == 0) {
+		sm.catch = 0;
+		pthread_kill(sm.thid, SIGCONT);
+	}
+
+	sm.count++;
+
+	status = pthread_mutex_unlock(&sm.mutex);
+	if (status)
+		error("failed to unlock SIGCHLD mutex");
+
+	return 1;
+}
+
+int sigchld_unblock(void)
+{
+	int status;
+
+	status = pthread_mutex_lock(&sm.mutex);
+	if (status) {
+		error("failed to lock SIGCHLD mutex");
+		return 0;
+	}
+
+	sm.count--;
+
+	/*
+	 * If this is the last request for blocking then enable
+	 * signal catching and tell the handler.
+	 */
+	if (sm.count == 0) {
+		sm.catch = 1;
+		status = pthread_cond_signal(&sm.ready);
+		if (status)
+			error("SIGCHLD condition signal failed");
+	}
+
+	status = pthread_mutex_unlock(&sm.mutex);
+	if (status)
+		error("failed to unlock SIGCHLD mutex");
+	
+	return 1;
+}
 
 /*
  * Used by subprocesses which exec to avoid carrying over the main
@@ -126,11 +275,11 @@ int signal_children(int sig)
 	int ret = -1;
 
 	if (!mnts) {
-		warn("signal_children: no mounts found");
+		warn("no mounts found");
 		goto out;
 	}
 
-	debug("signal_children: send %d to process group %d", sig, pgrp);
+	debug("send sig %d to process group %d", sig, pgrp);
 
 	next = mnts;
 	while (next) {
@@ -160,7 +309,7 @@ int signal_children(int sig)
 		if (kill(pid, SIGCONT) == -1 && errno == ESRCH)
 			continue;
 
-		debug("signal_children: signal %s %d", this->path, pid);
+		debug("signal %s %d", this->path, pid);
 
 		status = kill(pid, sig);
 		if (status)
@@ -187,8 +336,7 @@ int signal_children(int sig)
 		}
 
 		if (sig != SIGUSR1 && tries < 0) {
-			warn("signal_children: "
-			      "%d did nor exit - giving up.", pid);
+			warn("%d did nor exit - giving up.", pid);
 			goto out;
 		}
 	}
@@ -207,22 +355,19 @@ static int do_spawn(int logpri, int use_lock, const char *prog, const char *cons
 	char errbuf[ERRBUFSIZ + 1], *p, *sp;
 	int errp, errn;
 	sigset_t allsignals, tmpsig, oldsig;
+	int sig;
 
 	if (use_lock)
 		if (!aquire_lock())
 			return -1;
 
-	sigfillset(&allsignals);
-	sigprocmask(SIG_BLOCK, &allsignals, &oldsig);
+	sigchld_block();
 
 	if (pipe(pipefd))
 		return -1;
 
 	f = fork();
-	if (f < 0) {
-		sigprocmask(SIG_SETMASK, &oldsig, NULL);
-		return -1;
-	} else if (f == 0) {
+	if (f == 0) {
 		reset_signals();
 		close(pipefd[0]);
 		dup2(pipefd[1], STDOUT_FILENO);
@@ -232,19 +377,11 @@ static int do_spawn(int logpri, int use_lock, const char *prog, const char *cons
 		execv(prog, (char *const *) argv);
 		_exit(255);	/* execv() failed */
 	} else {
-		/* Careful here -- if we enable SIGCHLD yet we may not receive the
-		   waitpid() at the end */
-
-		tmpsig = oldsig;
-
-		sigaddset(&tmpsig, SIGCHLD);
-		sigprocmask(SIG_SETMASK, &tmpsig, NULL);
-
 		close(pipefd[1]);
 
 		if (f < 0) {
 			close(pipefd[0]);
-			sigprocmask(SIG_SETMASK, &oldsig, NULL);
+			sigchld_unblock();
 			return -1;
 		}
 
@@ -277,6 +414,7 @@ static int do_spawn(int logpri, int use_lock, const char *prog, const char *cons
 				}
 			}
 		} while (errn > 0);
+
 		close(pipefd[0]);
 
 		if (errp > 0) {
@@ -288,7 +426,7 @@ static int do_spawn(int logpri, int use_lock, const char *prog, const char *cons
 		if (waitpid(f, &status, 0) != f)
 			status = -1;	/* waitpid() failed */
 
-		sigprocmask(SIG_SETMASK, &oldsig, NULL);
+		sigchld_unblock();
 
 		if (use_lock)
 			release_lock();

@@ -1,4 +1,4 @@
-#ident "$Id: mount_ext2.c,v 1.21 2005/11/27 04:08:54 raven Exp $"
+#ident "$Id: mount_ext2.c,v 1.22 2006/02/08 16:49:21 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  mount_ext2.c - module for Linux automountd to mount ext2 filesystems
@@ -16,7 +16,6 @@
 
 #include <stdio.h>
 #include <malloc.h>
-#include <errno.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <syslog.h>
@@ -42,6 +41,7 @@ int mount_mount(const char *root, const char *name, int name_len,
 		const char *what, const char *fstype, const char *options, void *context)
 {
 	char *fullpath;
+	char buf[MAX_ERR_BUF];
 	const char *p, *p1;
 	int err, ro = 0;
 	const char *fsck_prog;
@@ -50,7 +50,9 @@ int mount_mount(const char *root, const char *name, int name_len,
 	rlen = root ? strlen(root) : 0;
 	fullpath = alloca(rlen + name_len + 2);
 	if (!fullpath) {
-		error(MODPREFIX "alloca: %m");
+		if (strerror_r(errno, buf, MAX_ERR_BUF))
+			strcpy(buf, "strerror_r failed");
+		error(MODPREFIX "alloca: %s", buf);
 		return 1;
 	}
 
@@ -66,7 +68,9 @@ int mount_mount(const char *root, const char *name, int name_len,
 
 	status = mkdir_path(fullpath, 0555);
 	if (status && errno != EEXIST) {
-		error(MODPREFIX "mkdir_path %s failed: %m", fullpath);
+		if (strerror_r(errno, buf, MAX_ERR_BUF))
+			strcpy(buf, "strerror_r failed");
+		error(MODPREFIX "mkdir_path %s failed: %s", fullpath, buf);
 		return 1;
 	}
 
