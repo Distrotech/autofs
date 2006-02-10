@@ -323,7 +323,7 @@ static int try_to_fill_dentry(struct dentry *dentry, int flags)
 	return status;
 }
 
-#if 1
+#if 0
 /* For autofs direct mounts the follow link triggers the mount */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,13)
 static void *autofs4_follow_link(struct dentry *dentry, struct nameidata *nd)
@@ -366,7 +366,7 @@ out_error:
 }
 #endif
 
-#if 0
+#if 1
 static struct vfsmount *autofs4_get_vfsmount(struct nameidata *nd, struct dentry *dentry)
 {
 	struct vfsmount *this;
