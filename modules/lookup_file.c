@@ -1,4 +1,4 @@
-#ident "$Id: lookup_file.c,v 1.21 2006/02/08 16:49:21 raven Exp $"
+#ident "$Id: lookup_file.c,v 1.22 2006/02/10 00:50:42 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup_file.c - module for Linux automount to query a flat file map
@@ -283,17 +283,17 @@ int lookup_enumerate(const char *root, int (*fn)(struct mapent_cache *, int), ti
 
 	ctxt->mtime = st.st_mtime;
 
-	me = cache_lookup_first();
-	/* me NULL => empty map */
-	if (!me)
-		return LKP_EMPTY;
+	me = cache_enumerate(NULL);
+	while (me) {
+		/* TODO: check return */
+		fn(me, now);
+		me = cache_enumerate(me);
+	}
 
 	/* TODO: need new test ??
 	if (*me->key != '/')
 		return LKP_FAIL | LKP_INDIRECT;
 	*/
-
-	cache_enumerate(fn, now);
 
 	return status;
 }

@@ -1,4 +1,4 @@
-#ident "$Id"
+#ident "$Id: indirect.c,v 1.3 2006/02/10 00:50:42 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  indirect.c - Linux automounter indirect mount handling
@@ -421,8 +421,8 @@ done:
 
 static void *do_expire_indirect(void *arg)
 {
-	struct autofs_packet_expire_indirect *pkt =
-			(struct autofs_packet_expire_indirect *) arg; 
+	autofs_packet_expire_indirect_t *pkt =
+			(autofs_packet_expire_indirect_t *) arg; 
 	int status = 0;
 
 	pthread_cleanup_push(handle_cleanup, &status);
@@ -433,7 +433,7 @@ static void *do_expire_indirect(void *arg)
 	return NULL;
 }
 
-int handle_packet_expire_indirect(struct autofs_packet_expire_indirect *pkt)
+int handle_packet_expire_indirect(autofs_packet_expire_indirect_t *pkt)
 {
 	struct pending_mount *mt;
 	char buf[MAX_ERR_BUF];
@@ -496,8 +496,8 @@ static void *do_mount_indirect(void *packet)
 	struct stat st;
 	struct passwd *u_pwd;
 	struct group *u_grp;
-	struct autofs_packet_missing_indirect *pkt =
-			(struct autofs_packet_missing_indirect *) packet; 
+	autofs_packet_missing_indirect_t *pkt =
+			(autofs_packet_missing_indirect_t *) packet; 
 	int status = 1;
 
 	pthread_cleanup_push(handle_cleanup, &status);
@@ -512,25 +512,23 @@ static void *do_mount_indirect(void *packet)
 	   (S_ISDIR(st.st_mode) && st.st_dev == ap.dev)) {
 		msg("attempting to mount entry %s", buf);
 
-		if (ap.kver.major > 4) {
-			/*
-			 * Setup ENV for mount.
-			 * Best effort only as it must go ahead.
-			 */
-			sprintf(env_buf, "%lu", (unsigned long) pkt->uid);
-			setenv("UID", env_buf, 1);
-			u_pwd = getpwuid(pkt->uid);
-			if (u_pwd) {
-				setenv("USER", u_pwd->pw_name, 1);
-				setenv("HOME", u_pwd->pw_dir, 1);
-			}
-
-			sprintf(env_buf, "%lu", (unsigned long) pkt->gid);
-			setenv("GID", env_buf, 1);
-			u_grp = getgrgid(pkt->gid);
-			if (u_grp)
-				setenv("GROUP", u_grp->gr_name, 1);
+		/*
+		 * Setup ENV for mount.
+		 * Best effort only as it must go ahead.
+		 */
+		sprintf(env_buf, "%lu", (unsigned long) pkt->uid);
+		setenv("UID", env_buf, 1);
+		u_pwd = getpwuid(pkt->uid);
+		if (u_pwd) {
+			setenv("USER", u_pwd->pw_name, 1);
+			setenv("HOME", u_pwd->pw_dir, 1);
 		}
+
+		sprintf(env_buf, "%lu", (unsigned long) pkt->gid);
+		setenv("GID", env_buf, 1);
+		u_grp = getgrgid(pkt->gid);
+		if (u_grp)
+			setenv("GROUP", u_grp->gr_name, 1);
 
 		err = ap.lookup->lookup_mount(ap.path,
 					      pkt->name, pkt->len,
@@ -562,7 +560,7 @@ done:
 	return NULL;
 }
 
-int handle_packet_missing_indirect(struct autofs_packet_missing_indirect *pkt)
+int handle_packet_missing_indirect(autofs_packet_missing_indirect_t *pkt)
 {
 	pthread_t thid;
 	char buf[MAX_ERR_BUF];

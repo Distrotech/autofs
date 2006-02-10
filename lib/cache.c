@@ -1,4 +1,4 @@
-#ident "$Id: cache.c,v 1.18 2006/02/08 16:49:20 raven Exp $"
+#ident "$Id: cache.c,v 1.19 2006/02/10 00:50:42 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  cache.c - mount entry cache management routines
@@ -739,49 +739,42 @@ void cache_release(void)
 		error("mapent cache rwlock destroy failed");
 }
 
-int cache_enumerate(int (*fn)(struct mapent_cache *, int), int arg)
+struct mapent_cache *cache_enumerate(struct mapent_cache *me)
 {
-	struct mapent_cache *me;
-	int status;
-	int at_least_one = 0;
-	int ret;
-	int i;
+	struct mapent_cache *this = NULL;
+	unsigned long hashval;
+	int status, i;
 
 	status = pthread_rwlock_rdlock(&cache_rwlock);
 	if (status) {
 		error("mapent cache rwlock lock failed");
-		return 0;
+		return NULL;
 	}
 
-	for (i = 0; i < HASHSIZE; i++) {
-		me = mapent_hash[i];
+	if (!me) {
+		this = __cache_lookup_first();
+		goto done;
+	}
 
-		if (me == NULL)
-			continue;
+	this =  __cache_lookup_next(me);
+	if (this)
+		goto done;
 
-		while (me) {
-			/* Skip over multi-mount offsets */
-			if (me->multi && me->multi != me)
-				goto cont;
-			status = pthread_rwlock_unlock(&cache_rwlock);
-			if (status)
-				error("mapent cache rwlock unlock failed");
-			ret = fn(me, arg);
-			status = pthread_rwlock_rdlock(&cache_rwlock);
-			if (status)
-				error("mapent cache rwlock lock failed");
-			if (ret)
-				at_least_one++;
-		cont:
-			me = me->next;
+	hashval = hash(me->key) + 1;
+	if (hashval < HASHSIZE) {
+		for (i = hashval; i < HASHSIZE; i++) {
+			this = mapent_hash[i];
+			if (this)
+				goto done;
 		}
 	}
-
+done:
+	/* TOTO: maybe take entry lock? */
 	status = pthread_rwlock_unlock(&cache_rwlock);
 	if (status)
 		error("mapent cache rwlock unlock failed");
 
-	return at_least_one;
+	return this;
 }
 
 int cache_ghost(const char *root, int ghosted)

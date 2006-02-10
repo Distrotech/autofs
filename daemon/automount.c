@@ -1,4 +1,4 @@
-#ident "$Id: automount.c,v 1.43 2006/02/08 16:49:20 raven Exp $"
+#ident "$Id: automount.c,v 1.44 2006/02/10 00:50:42 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  automount.c - Linux automounter daemon
@@ -886,11 +886,7 @@ static int get_pkt(int fd, union autofs_packet_union *pkt)
 		}
 
 		if (fds[0].revents & POLLIN) {
-			int len;
-			if (ap.type == LKP_INDIRECT)
-				len = sizeof(pkt->missing_indirect);
-			else
-				len = sizeof(pkt->missing_direct);
+			int len = sizeof(pkt->v5_packet);
 			return fullread(fd, pkt, len);
 		}
 	}
@@ -962,16 +958,16 @@ static int handle_packet(void)
 
 	switch (pkt.hdr.type) {
 	case autofs_ptype_missing_indirect:
-		return handle_packet_missing_indirect(&pkt.missing_indirect);
+		return handle_packet_missing_indirect(&pkt.v5_packet);
 
 	case autofs_ptype_missing_direct:
-		return handle_packet_missing_direct(&pkt.missing_direct);
+		return handle_packet_missing_direct(&pkt.v5_packet);
 
 	case autofs_ptype_expire_indirect:
-		return handle_packet_expire_indirect(&pkt.expire_indirect);
+		return handle_packet_expire_indirect(&pkt.v5_packet);
 
 	case autofs_ptype_expire_direct:
-		return handle_packet_expire_direct(&pkt.expire_direct);
+		return handle_packet_expire_direct(&pkt.v5_packet);
 	}
 	error("unknown packet type %d\n", pkt.hdr.type);
 	return -1;

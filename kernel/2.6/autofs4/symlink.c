@@ -12,7 +12,11 @@
 
 #include "autofs_i.h"
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,13)
+static void *autofs4_follow_link(struct dentry *dentry, struct nameidata *nd)
+#else
 static int autofs4_follow_link(struct dentry *dentry, struct nameidata *nd)
+#endif
 {
 	struct autofs_info *ino = autofs4_dentry_ino(dentry);
 	nd_set_link(nd, (char *)ino->u.symlink);

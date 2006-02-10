@@ -1,4 +1,4 @@
-#ident "$Id: lookup_ldap.c,v 1.25 2006/02/08 16:49:21 raven Exp $"
+#ident "$Id: lookup_ldap.c,v 1.26 2006/02/10 00:50:42 raven Exp $"
 /*
  * lookup_ldap.c - Module for Linux automountd to access automount
  *		   maps in LDAP directories.
@@ -364,15 +364,17 @@ int lookup_enumerate(const char *root, int (*fn)(struct mapent_cache *, int), ti
 		sprintf(mapname, "%s", ctxt->base);
 	}
 
-	me = cache_lookup_first();
-	/* me NULL => empty map */
-	if (!me)
-		return LKP_EMPTY;
+	me = cache_enumerate(NULL);
+	while (me) {
+		/* TODO: check return */
+		fn(me, now);
+		me = cache_enumerate(me);
+	}
 
+	/*  TODO: need new test ??
 	if (*me->key != '/')
 		return LKP_FAIL | LKP_INDIRECT;
-
-	cache_enumerate(fn, 0);
+	*/
 
 	return status;
 }

@@ -1,4 +1,4 @@
-#ident "$Id: automount.h,v 1.20 2006/02/08 16:49:20 raven Exp $"
+#ident "$Id: automount.h,v 1.21 2006/02/10 00:50:42 raven Exp $"
 /*
  * automount.h
  *
@@ -144,7 +144,7 @@ int cache_delete_offset_list(const char *table, const char *root, const char *ke
 int cache_delete_offset(const char *table, const char *root, const char *key);
 void cache_clean(const char *table, const char *root, time_t age);
 void cache_release(void);
-int cache_enumerate(int (*fn)(struct mapent_cache *, int), int arg);
+struct mapent_cache *cache_enumerate(struct mapent_cache *me);
 int cache_ghost(const char *root, int is_ghosted);
 char *cache_get_offset(const char *prefix, char *offset, int start, struct list_head *head, struct list_head **pos);
 
@@ -381,10 +381,10 @@ int umount_autofs(int force);
 int umount_autofs_indirect(void);
 int umount_autofs_direct(void);
 int umount_autofs_offset(struct mapent_cache *me);
-int handle_packet_expire_indirect(struct autofs_packet_expire_indirect *pkt);
-int handle_packet_expire_direct(struct autofs_packet_expire_direct *pkt);
-int handle_packet_missing_indirect(struct autofs_packet_missing_indirect *pkt);
-int handle_packet_missing_direct(struct autofs_packet_missing_direct *pkt);
+int handle_packet_expire_indirect(autofs_packet_expire_indirect_t *pkt);
+int handle_packet_expire_direct(autofs_packet_expire_direct_t *pkt);
+int handle_packet_missing_indirect(autofs_packet_missing_indirect_t *pkt);
+int handle_packet_missing_direct(autofs_packet_missing_direct_t *pkt);
 void rm_unwanted(const char *path, int incl, int rmsymlink);
 int count_mounts(const char *path);
 void handle_cleanup(void *ret);

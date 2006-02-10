@@ -1,4 +1,4 @@
-#ident "$Id: direct.c,v 1.2 2006/02/08 16:49:20 raven Exp $"
+#ident "$Id: direct.c,v 1.3 2006/02/10 00:50:42 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  direct.c - Linux automounter direct mount handling
@@ -101,7 +101,7 @@ static int autofs_init_direct(char *path)
 	return 0;
 }
 
-static int do_umount_autofs_direct(struct mapent_cache *me, int dummy)
+static int do_umount_autofs_direct(struct mapent_cache *me)
 {
 	char buf[MAX_ERR_BUF];
 	int rv, left, ret;
@@ -163,6 +163,8 @@ force_umount:
 
 int umount_autofs_direct(void)
 {
+	struct mapent_cache *me;
+
 	close(ap.state_pipe[0]);
 	close(ap.state_pipe[1]);
 	if (ap.pipefd >= 0)
@@ -172,8 +174,11 @@ int umount_autofs_direct(void)
 		ap.kpipefd = -1;
 	}
 
-	cache_enumerate(do_umount_autofs_direct, 0);
-
+	me = cache_enumerate(NULL);
+	while (me) {
+		do_umount_autofs_direct(me);
+		me = cache_enumerate(me);
+	}
 	free(ap.path);
 
 	return 0;
@@ -581,7 +586,7 @@ static void *do_expire_direct(void *arg)
 	return NULL;
 }
 
-int handle_packet_expire_direct(struct autofs_packet_expire_direct *pkt)
+int handle_packet_expire_direct(autofs_packet_expire_direct_t *pkt)
 {
 	struct mapent_cache *me;
 	struct pending_mount *mt;
@@ -665,13 +670,13 @@ static void *do_mount_direct(void *arg)
 	struct passwd *u_pwd;
 	struct group *u_grp;
 	char env_buf[30];
-	struct autofs_packet_missing_direct *pkt;
+	autofs_packet_missing_direct_t *pkt;
 	struct mapent_cache *me;
 	struct stat st;
 
 	pthread_cleanup_push(handle_cleanup, &status);
 
-	pkt = (struct autofs_packet_missing_direct *) arg;
+	pkt = (autofs_packet_missing_direct_t *) arg;
 	me = cache_lookup_ino(pkt->dev, pkt->ino);
 	if (!me) {
 		/*
@@ -729,7 +734,7 @@ static void *do_mount_direct(void *arg)
 	return NULL;
 }
 
-int handle_packet_missing_direct(struct autofs_packet_missing_direct *pkt)
+int handle_packet_missing_direct(autofs_packet_missing_direct_t *pkt)
 {
 	pthread_t thid;
 	struct pending_mount *mt = NULL;

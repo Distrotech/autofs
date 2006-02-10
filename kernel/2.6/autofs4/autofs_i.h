@@ -19,6 +19,7 @@
 #define AUTOFS_IOC_FIRST     AUTOFS_IOC_READY
 #define AUTOFS_IOC_COUNT     32
 
+#include <linux/version.h>
 #include <linux/kernel.h>
 #include <linux/slab.h>
 #include <linux/time.h>
@@ -27,11 +28,10 @@
 #include <linux/sched.h>
 #include <linux/mount.h>
 #include <linux/namei.h>
-#include <linux/file.h>
 #include <asm/current.h>
 #include <asm/uaccess.h>
 
-#define DEBUG
+/* #define DEBUG */
 
 #ifdef DEBUG
 #define DPRINTK(fmt,args...) do { printk(KERN_DEBUG "pid %d: %s: " fmt "\n" , current->pid , __FUNCTION__ , ##args); } while(0)
@@ -40,14 +40,6 @@
 #endif
 
 #define AUTOFS_SUPER_MAGIC 0x0187
-
-/*
- * If the daemon returns a negative response (AUTOFS_IOC_FAIL) then the
- * kernel will keep the negative response cached for up to the time given
- * here, although the time can be shorter if the kernel throws the dcache
- * entry away.  This probably should be settable from user space.
- */
-#define AUTOFS_NEGATIVE_TIMEOUT (60*HZ)	/* 1 minute */
 
 /* Unified info structure.  This is pointed to by both the dentry and
    inode structures.  Each file in the filesystem has an instance of this
@@ -63,6 +55,7 @@ struct autofs_info {
 
 	struct autofs_sb_info *sbi;
 	unsigned long last_used;
+	atomic_t count;
 
 	mode_t	mode;
 	size_t	size;
@@ -84,7 +77,7 @@ struct autofs_wait_queue {
 	int len;
 	char *name;
 	u32 dev;
-	u32 ino;
+	u64 ino;
 	uid_t uid;
 	gid_t gid;
 	pid_t pid;
@@ -97,9 +90,9 @@ struct autofs_wait_queue {
 
 #define AUTOFS_SBI_MAGIC 0x6d4a556d
 
-#define AUTOFS_TYP_INDIRECT	0x0001
-#define AUTOFS_TYP_DIRECT	0x0002
-#define AUTOFS_TYP_OFFSET	0x0004
+#define AUTOFS_TYP_INDIRECT     0x0001
+#define AUTOFS_TYP_DIRECT       0x0002
+#define AUTOFS_TYP_OFFSET       0x0004
 
 struct autofs_sb_info {
 	u32 magic;
@@ -110,9 +103,10 @@ struct autofs_sb_info {
 	int catatonic;
 	int version;
 	int sub_version;
+	int min_proto;
+	int max_proto;
 	unsigned long exp_timeout;
 	unsigned int type;
-	unsigned int browse;
 	int reghost_enabled;
 	int needs_reghost;
 	struct super_block *sb;
@@ -123,7 +117,10 @@ struct autofs_sb_info {
 
 static inline struct autofs_sb_info *autofs4_sbi(struct super_block *sb)
 {
-	return (struct autofs_sb_info *)(sb->s_fs_info);
+	if (sb)
+		return (struct autofs_sb_info *)(sb->s_fs_info);
+	else
+		return NULL;
 }
 
 static inline struct autofs_info *autofs4_dentry_ino(struct dentry *dentry)
@@ -212,7 +209,7 @@ static inline u32 autofs4_get_dev(struct autofs_sb_info *sbi)
 	return new_encode_dev(sbi->sb->s_dev);
 }
 
-static inline u32 autofs4_get_ino(struct autofs_sb_info *sbi)
+static inline u64 autofs4_get_ino(struct autofs_sb_info *sbi)
 {
 	return sbi->sb->s_root->d_inode->i_ino;
 }
@@ -222,7 +219,7 @@ static inline int simple_positive(struct dentry *dentry)
 	return dentry->d_inode && !d_unhashed(dentry);
 }
 
-static inline int simple_empty_nolock(struct dentry *dentry)
+static inline int __simple_empty(struct dentry *dentry)
 {
 	struct dentry *child;
 	int ret = 0;
