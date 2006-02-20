@@ -1,4 +1,4 @@
-#ident "$Id: spawn.c,v 1.15 2006/02/08 16:49:20 raven Exp $"
+#ident "$Id: spawn.c,v 1.16 2006/02/20 01:05:32 raven Exp $"
 /* ----------------------------------------------------------------------- *
  * 
  *  spawn.c - run programs synchronously with output redirected to syslog
@@ -67,6 +67,8 @@ static struct sigchld_mutex sm = {PTHREAD_MUTEX_INITIALIZER,
 				  PTHREAD_COND_INITIALIZER,
 				  0, 1, 0};
 
+extern pthread_attr_t detach_attr;
+
 void *sigchld(void *dummy)
 {
 	pid_t pid;
@@ -117,7 +119,7 @@ int sigchld_start_handler(void)
 {
 	int status;
 
-	status = pthread_create(&sm.thid, NULL, sigchld, NULL);
+	status = pthread_create(&sm.thid, &detach_attr, sigchld, NULL);
 	if (status) {
 		error("failed to create SIGCHLD handler thread");
 		return 0;
@@ -354,8 +356,6 @@ static int do_spawn(int logpri, int use_lock, const char *prog, const char *cons
 	int status, pipefd[2];
 	char errbuf[ERRBUFSIZ + 1], *p, *sp;
 	int errp, errn;
-	sigset_t allsignals, tmpsig, oldsig;
-	int sig;
 
 	if (use_lock)
 		if (!aquire_lock())
@@ -461,6 +461,7 @@ int spawnl(int logpri, const char *prog, ...)
 	return do_spawn(logpri, 0, prog, (const char **) argv);
 }
 
+#ifdef ENABLE_MOUNT_LOCKING
 int spawnll(int logpri, const char *prog, ...)
 {
 	va_list arg;
@@ -481,3 +482,4 @@ int spawnll(int logpri, const char *prog, ...)
 
 	return do_spawn(logpri, 1, prog, (const char **) argv);
 }
+#endif

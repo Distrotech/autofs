@@ -1,4 +1,4 @@
-#ident "$Id: rpc_subs.c,v 1.9 2006/02/08 16:49:21 raven Exp $"
+#ident "$Id: rpc_subs.c,v 1.10 2006/02/20 01:05:32 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  rpc_subs.c - routines for rpc discovery
@@ -262,7 +262,6 @@ static unsigned short portmap_getport(struct conn_info *info)
 		struct linger lin = { 1, 0 };
 		socklen_t lin_len = sizeof(struct linger);
 		int fd;
-		char buf;
 
 		if (!clnt_control(client, CLGET_FD, (char *) &fd))
 			fd = -1;
@@ -311,7 +310,6 @@ static int rpc_ping_proto(struct conn_info *info)
 		struct linger lin = { 1, 0 };
 		socklen_t lin_len = sizeof(struct linger);
 		int fd;
-		char buf;
 
 		if (!clnt_control(client, CLGET_FD, (char *) &fd))
 			fd = -1;
@@ -339,7 +337,6 @@ static unsigned int __rpc_ping(const char *host,
 {
 	unsigned int status;
 	struct conn_info info;
-	struct protoent *prot;
 
 	info.host = host;
 	info.program = NFS_PROGRAM;
@@ -454,7 +451,6 @@ static int rpc_get_exports_proto(struct conn_info *info, exports *exp)
 		struct linger lin = { 1, 0 };
 		socklen_t lin_len = sizeof(struct linger);
 		int fd;
-		char buf;
 
 		if (!clnt_control(client, CLGET_FD, (char *) &fd))
 			fd = -1;

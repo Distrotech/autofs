@@ -78,10 +78,10 @@ struct autofs_wait_queue {
 	char *name;
 	u32 dev;
 	u64 ino;
-	uid_t uid;
-	gid_t gid;
-	pid_t pid;
-	pid_t tgid;
+	u64 uid;
+	u64 gid;
+	u64 pid;
+	u64 tgid;
 	/* This is for status reporting upon return */
 	int status;
 	atomic_t notified;
@@ -90,9 +90,9 @@ struct autofs_wait_queue {
 
 #define AUTOFS_SBI_MAGIC 0x6d4a556d
 
-#define AUTOFS_TYP_INDIRECT     0x0001
-#define AUTOFS_TYP_DIRECT       0x0002
-#define AUTOFS_TYP_OFFSET       0x0004
+#define AUTOFS_TYPE_INDIRECT     0x0001
+#define AUTOFS_TYPE_DIRECT       0x0002
+#define AUTOFS_TYPE_OFFSET       0x0004
 
 struct autofs_sb_info {
 	u32 magic;

@@ -65,10 +65,10 @@ struct autofs_v5_packet {
 	autofs_wqt_t wait_queue_token;
 	__u32 dev;
 	__u64 ino;
-	uid_t uid;
-	gid_t gid;
-	pid_t pid;
-	pid_t tgid;
+	__u64 uid;
+	__u64 gid;
+	__u64 pid;
+	__u64 tgid;
 	int len;
 	char name[NAME_MAX+1];
 };
@@ -88,7 +88,7 @@ union autofs_packet_union {
 
 #define AUTOFS_IOC_EXPIRE_MULTI		_IOW(0x93,0x66,int)
 #define AUTOFS_IOC_EXPIRE_INDIRECT	AUTOFS_IOC_EXPIRE_MULTI
-#define AUTOFS_IOC_EXPIRE_DIRECTi	AUTOFS_IOC_EXPIRE_MULTI
+#define AUTOFS_IOC_EXPIRE_DIRECT	AUTOFS_IOC_EXPIRE_MULTI
 #define AUTOFS_IOC_PROTOSUBVER		_IOR(0x93,0x67,int)
 #define AUTOFS_IOC_ASKREGHOST           _IOR(0x93,0x68,int)
 #define AUTOFS_IOC_TOGGLEREGHOST        _IOR(0x93,0x69,int)

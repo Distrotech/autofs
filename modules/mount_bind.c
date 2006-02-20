@@ -1,4 +1,4 @@
-#ident "$Id: mount_bind.c,v 1.19 2006/02/08 16:49:21 raven Exp $"
+#ident "$Id: mount_bind.c,v 1.20 2006/02/20 01:05:33 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  mount_bind.c      - module to mount a local filesystem if possible;
@@ -81,7 +81,7 @@ int mount_init(void **context)
 	return 0;
 }
 
-int mount_mount(const char *root, const char *name, int name_len,
+int mount_mount(struct autofs_point *ap, const char *root, const char *name, int name_len,
 		const char *what, const char *fstype, const char *options, void *context)
 {
 	char *fullpath;
@@ -89,12 +89,20 @@ int mount_mount(const char *root, const char *name, int name_len,
 	int err;
 	int i, rlen;
 
-	rlen = root ? strlen(root) : 0;
+	/* Root offset of multi-mount */
+	if (*name == '/' && name_len == 1) {
+		rlen = strlen(root);
+		name_len = 0;
+	/* Direct mount name is absolute path so don't use root */
+	} else if (*name == '/')
+		rlen = 0;
+	else
+		rlen = strlen(root);
+
 	fullpath = alloca(rlen + name_len + 2);
 	if (!fullpath) {
-		if (strerror_r(errno, buf, MAX_ERR_BUF))
-			strcpy(buf, "strerror_r failed");
-		error(MODPREFIX "alloca: %s", buf);
+		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+		error(MODPREFIX "alloca: %s", estr);
 		return 1;
 	}
 
@@ -120,9 +128,8 @@ int mount_mount(const char *root, const char *name, int name_len,
 
 		status = mkdir_path(fullpath, 0555);
 		if (status && errno != EEXIST) {
-			if (strerror_r(errno, buf, MAX_ERR_BUF))
-				strcpy(buf, "strerror_r failed");
-			error(MODPREFIX "mkdir_path %s failed: %s", fullpath, buf);
+			char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+			error(MODPREFIX "mkdir_path %s failed: %s", fullpath, estr);
 			return 1;
 		}
 
@@ -145,7 +152,7 @@ int mount_mount(const char *root, const char *name, int name_len,
 			     what, fullpath, NULL);
 
 		if (err) {
-			if ((!ap.ghost && name_len) || !existed)
+			if ((!ap->ghost && name_len) || !existed)
 				rmdir_path(name);
 			return 1;
 		} else {
@@ -171,10 +178,10 @@ int mount_mount(const char *root, const char *name, int name_len,
 		} else {
 			debug(MODPREFIX "calling mkdir_path %s", basepath);
 			if (mkdir_path(basepath, 0555) && errno != EEXIST) {
-				if (strerror_r(errno, buf, MAX_ERR_BUF))
-					strcpy(buf, "strerror_r failed");
+				char *estr;
+				estr = strerror_r(errno, buf, MAX_ERR_BUF);
 				error(MODPREFIX "mkdir_path %s failed: %s",
-				      basepath, buf);
+				      basepath, estr);
 				return 1;
 			}
 		}
@@ -183,7 +190,7 @@ int mount_mount(const char *root, const char *name, int name_len,
 			error(MODPREFIX
 			      "failed to create local mount %s -> %s",
 			      fullpath, what);
-			if (ap.ghost && !status)
+			if (ap->ghost && !status)
 				mkdir_path(fullpath, 0555);
 			else
 				rmdir_path(fullpath);

@@ -1,4 +1,4 @@
-#ident "$Id: cache.c,v 1.19 2006/02/10 00:50:42 raven Exp $"
+#ident "$Id: cache.c,v 1.20 2006/02/20 01:05:32 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  cache.c - mount entry cache management routines
@@ -27,9 +27,6 @@
 #include <sys/stat.h>
 
 #include "automount.h"
-
-extern int kproto_version;	/* Kernel protocol major version */
-extern int kproto_sub_version;	/* Kernel protocol minor version */
 
 #define HASHSIZE      77
 
@@ -173,6 +170,11 @@ static struct mapent_cache *__cache_lookup_first(void)
 
 	for (i = 0; i < HASHSIZE; i++) {
 		me = mapent_hash[i];
+		if (!me)
+			continue;
+		/* Multi mount entries are not primary */
+		if (me->multi && me->multi != me)
+			continue;
 		if (me != NULL)
 			break;
 	}
@@ -195,6 +197,77 @@ struct mapent_cache *cache_lookup_first(void)
 		error("mapent cache rwlock unlock failed");
 
 	return me;
+}
+
+static struct mapent_cache *__cache_lookup_next(struct mapent_cache *me)
+{
+	struct mapent_cache *next;
+
+	if (!me)
+		return NULL;
+
+	next = me->next;
+	while (next) {
+		/* Multi mount entries are not primary */
+		if (me->multi && me->multi != me) {
+			next = next->next;
+			continue;
+		}
+		if (next)
+			return next;
+		next = next->next;
+	}
+	return NULL;
+}
+
+struct mapent_cache *cache_lookup_next(struct mapent_cache *me)
+{
+	struct mapent_cache *ne;
+	int status;
+
+	status = pthread_rwlock_rdlock(&cache_rwlock);
+	if (status)
+		error("mapent cache rwlock lock failed");
+
+	ne = __cache_lookup_next(me);
+
+	status = pthread_rwlock_unlock(&cache_rwlock);
+	if (status)
+		error("mapent cache rwlock unlock failed");
+
+	return ne;
+}
+
+/*
+ * This badness must go when the LDAP module is fixed.
+ */
+struct mapent_cache *cache_lookup_key_next(struct mapent_cache *me)
+{
+	struct mapent_cache *next;
+	int status;
+
+	if (!me)
+		return NULL;
+
+	status = pthread_rwlock_rdlock(&cache_rwlock);
+	if (status)
+		error("mapent cache rwlock lock failed");
+
+	next = me->next;
+	while (next) {
+		/* Multi mount entries are not primary */
+		if (me->multi && me->multi != me)
+			continue;
+		if (!strcmp(me->key, next->key))
+			return next;
+		next = next->next;
+	}
+
+	status = pthread_rwlock_unlock(&cache_rwlock);
+	if (status)
+		error("mapent cache rwlock unlock failed");
+
+	return NULL;
 }
 
 static struct mapent_cache *__cache_lookup(const char *key)
@@ -238,36 +311,6 @@ struct mapent_cache *cache_lookup(const char *key)
 		error("mapent cache rwlock unlock failed");
 
 	return me;
-}
-
-static struct mapent_cache *__cache_lookup_next(struct mapent_cache *me)
-{
-	struct mapent_cache *next = me->next;
-
-	while (next != NULL) {
-		if (!strcmp(me->key, next->key))
-			return next;
-		next = next->next;
-	}
-	return NULL;
-}
-
-struct mapent_cache *cache_lookup_next(struct mapent_cache *me)
-{
-	struct mapent_cache *ne;
-	int status;
-
-	status = pthread_rwlock_rdlock(&cache_rwlock);
-	if (status)
-		error("mapent cache rwlock lock failed");
-
-	ne = __cache_lookup_next(me);
-
-	status = pthread_rwlock_unlock(&cache_rwlock);
-	if (status)
-		error("mapent cache rwlock unlock failed");
-
-	return ne;
 }
 
 /* Lookup an offset within a multi-mount entry */
@@ -490,6 +533,10 @@ int cache_update(const char *key, const char *mapent, time_t age)
 		}
 		ret = CHE_UPDATED;
 	} else {
+		/* Already seen one of these */
+		if (me->age == age)
+			return CHE_OK;
+
 		if (!me->mapent || strcmp(me->mapent, mapent) != 0) {
 			pent = malloc(strlen(mapent) + 1);
 			if (pent == NULL) {
@@ -505,17 +552,12 @@ int cache_update(const char *key, const char *mapent, time_t age)
 	return ret;
 }
 
-int cache_delete(const char *table, const char *root, const char *key, int rmpath)
+int cache_delete(const char *key)
 {
 	struct mapent_cache *me = NULL, *pred;
 	unsigned int hashval = hash(key);
 	int ret = CHE_OK;
-	char *path;
 	int status;
-
-	path = cache_fullpath(root, key);
-	if (!path)
-		return CHE_FAIL;
 
 	status = pthread_rwlock_wrlock(&cache_rwlock);
 	if (status) {
@@ -563,18 +605,14 @@ int cache_delete(const char *table, const char *root, const char *key, int rmpat
 		pthread_mutex_destroy(&me->mutex);
 		free(me);
 	}
-
-	if (rmpath)
-		rmdir_path(path);
 done:
 	status = pthread_rwlock_unlock(&cache_rwlock);
 	if (status)
 		error("mapent cache rwlock unlock failed");
-	free(path);
 	return ret;
 }
 
-int cache_delete_offset_list(const char *table, const char *root, const char *key)
+int cache_delete_offset_list(const char *key)
 {
 	struct mapent_cache *me;
 	struct mapent_cache *this;
@@ -602,7 +640,7 @@ int cache_delete_offset_list(const char *table, const char *root, const char *ke
 		this = list_entry(next, struct mapent_cache, multi_list);
 		next = next->next;
 		list_del_init(&this->multi_list);
-		status = cache_delete(table, root, this->key, 0);
+		status = cache_delete(this->key);
 		if (status == CHE_FAIL)
 			remain++;
 	}
@@ -619,7 +657,7 @@ int cache_delete_offset_list(const char *table, const char *root, const char *ke
 	return remain;
 }
 
-void cache_clean(const char *table, const char *root, time_t age)
+void cache_clean(const char *root, time_t age)
 {
 	struct mapent_cache *me, *pred;
 	char *path;
@@ -739,110 +777,74 @@ void cache_release(void)
 		error("mapent cache rwlock destroy failed");
 }
 
-struct mapent_cache *cache_enumerate(struct mapent_cache *me)
+int cache_enumerate_readlock(void)
 {
-	struct mapent_cache *this = NULL;
-	unsigned long hashval;
-	int status, i;
+	int status;
 
 	status = pthread_rwlock_rdlock(&cache_rwlock);
 	if (status) {
 		error("mapent cache rwlock lock failed");
-		return NULL;
+		return 0;
 	}
+	return 1;
+}
+
+int cache_enumerate_writelock(void)
+{
+	int status;
+
+	status = pthread_rwlock_wrlock(&cache_rwlock);
+	if (status) {
+		error("mapent cache rwlock lock failed");
+		return 0;
+	}
+	return 1;
+}
+
+int cache_enumerate_unlock(void)
+{
+	int status;
+
+	status = pthread_rwlock_unlock(&cache_rwlock);
+	if (status) {
+		error("mapent cache rwlock unlock failed");
+		return 0;
+	}
+	return 1;
+}
+
+struct mapent_cache *cache_enumerate(struct mapent_cache *me)
+{
+	struct mapent_cache *this = NULL;
+	unsigned long hashval;
+	int i;
 
 	if (!me) {
 		this = __cache_lookup_first();
-		goto done;
+		if (this)
+			return this;
+		return NULL;
 	}
 
 	this =  __cache_lookup_next(me);
 	if (this)
-		goto done;
+		return this;
 
 	hashval = hash(me->key) + 1;
 	if (hashval < HASHSIZE) {
 		for (i = hashval; i < HASHSIZE; i++) {
 			this = mapent_hash[i];
-			if (this)
-				goto done;
-		}
-	}
-done:
-	/* TOTO: maybe take entry lock? */
-	status = pthread_rwlock_unlock(&cache_rwlock);
-	if (status)
-		error("mapent cache rwlock unlock failed");
-
-	return this;
-}
-
-int cache_ghost(const char *root, int ghosted)
-{
-	struct mapent_cache *me;
-	char buf[MAX_ERR_BUF];
-	char *fullpath;
-	struct stat st;
-	int status;
-	int i;
-
-	if (!ghosted)
-		return -1;
-
-	status = pthread_rwlock_rdlock(&cache_rwlock);
-	if (status) {
-		error("mapent cache rdlock lock failed");
-		return 0;
-	}
-
-	for (i = 0; i < HASHSIZE; i++) {
-		me = mapent_hash[i];
-
-		if (me == NULL)
-			continue;
-
-		while (me) {
-			struct mapent_cache *this = me;
-
-			me = me->next;
-
-			/* only consider the top of the multi-mount */
-			if (this->multi && this->multi != this)
-				continue;
-
-			if (*this->key == '*')
-				continue;
-			
-			if (*this->key == '/') {
-				error("invalid key %s", this->key);
-				continue;
-			}
-
-			fullpath = alloca(strlen(this->key) + strlen(root) + 3);
-			sprintf(fullpath, "%s/%s", root, this->key);
-
-			if (stat(fullpath, &st) == -1 && errno == ENOENT) {
-				if (mkdir_path(fullpath, 0555) < 0) {
-					if (strerror_r(errno, buf, MAX_ERR_BUF))
-						strcpy(buf, "strerror_r failed");
-					warn("mkdir_path %s failed: %s",
-					     fullpath, buf);
+			if (this) {
+				if (this->multi && this->multi != me) {
+					this = NULL;
 					continue;
 				}
-			}
-
-			if (stat(fullpath, &st) != -1) {
-				this->dev = st.st_dev;
-				this->ino = st.st_ino;
+				return this;
 			}
 		}
 	}
 
-	status = pthread_rwlock_unlock(&cache_rwlock);
-	if (status)
-		error("mapent cache rdlock unlock failed");
-
-	return 0;
+	return this;
 }
 
 /*

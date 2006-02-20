@@ -1,4 +1,4 @@
-#ident "$Id: parse_hesiod.c,v 1.7 2006/02/08 16:49:21 raven Exp $"
+#ident "$Id: parse_hesiod.c,v 1.8 2006/02/20 01:05:33 raven Exp $"
 /*
  * parse_hesiod.c
  *
@@ -216,7 +216,7 @@ int parse_done(void *context)
 	return 0;
 }
 
-int parse_mount(const char *root, const char *name,
+int parse_mount(struct autofs_point *ap, const char *name,
 		int name_len, const char *mapent, void *context)
 {
 	char source[HESIOD_LEN + 1];
@@ -257,5 +257,5 @@ int parse_mount(const char *root, const char *name,
 
 	debug(MODPREFIX "mount %s is type %s from %s", name, fstype, source);
 
-	return do_mount(root, name, name_len, source, fstype, options);
+	return do_mount(ap, ap->path, name, name_len, source, fstype, options);
 }

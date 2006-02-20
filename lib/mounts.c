@@ -1,4 +1,4 @@
-#ident "$Id: mounts.c,v 1.14 2006/02/08 16:49:21 raven Exp $"
+#ident "$Id: mounts.c,v 1.15 2006/02/20 01:05:32 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  mounts.c - module for Linux automount mount table lookup functions
@@ -75,9 +75,8 @@ struct mnt_list *get_mnt_list(const char *table, const char *path, int include)
 
 	tab = setmntent(table, "r");
 	if (!tab) {
-		if (strerror_r(errno, buf, MAX_ERR_BUF))
-			strcpy(buf, "strerror_r failed");
-		error("setmntent: %s", buf);
+		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+		error("setmntent: %s", estr);
 		return NULL;
 	}
 
@@ -296,9 +295,8 @@ static int find_mntent(const char *table, const char *path, struct mntent *ent)
 
 	tab = setmntent(table, "r");
 	if (!tab) {
-		if (strerror_r(errno, buf, MAX_ERR_BUF))
-			strcpy(buf, "strerror_r failed");
-		error("setmntent: %s", buf);
+		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+		error("setmntent: %s", estr);
 		return 0;
 	}
 
@@ -381,9 +379,8 @@ char *find_mnt_ino(const char *table, dev_t dev, ino_t ino)
 
 	tab = setmntent(table, "r");
 	if (!tab) {
-		if (strerror_r(errno, buf, MAX_ERR_BUF))
-			strcpy(buf, "strerror_r failed");
-		error("setmntent: %s", buf);
+		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+		error("setmntent: %s", estr);
 		return 0;
 	}
 

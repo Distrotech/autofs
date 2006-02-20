@@ -4,6 +4,10 @@
   - direct mounts.
   - lazy multi-mounts.
   - added kernel module to source tree.
+- merged depricated LDAP patch.
+- merged configurable locking patch.
+- implemented nsswitch lookup for client maps.
+- sync kernel module source.
 
 11/4/2005 autofs-4.1.4
 ----------------------

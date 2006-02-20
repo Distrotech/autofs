@@ -1,4 +1,4 @@
-#ident "$Id: automount.c,v 1.44 2006/02/10 00:50:42 raven Exp $"
+#ident "$Id: automount.c,v 1.45 2006/02/20 01:05:32 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  automount.c - Linux automounter daemon
@@ -47,12 +47,12 @@ static char *pid_file = NULL;	/* File in which to keep pid */
 
 int submount = 0;
 
-/* Pending mount/umount list */
-pthread_mutex_t pending_mutex = PTHREAD_MUTEX_INITIALIZER;
-struct pending_mount *pending = NULL;
+/* Attribute to create detached thread */
+pthread_attr_t detach_attr;
 
 /* Serialize state transitions */
 pthread_mutex_t state_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 struct autofs_point ap;
 
 struct expire_cond ec = {
@@ -68,9 +68,9 @@ struct expire_cond ec = {
 
 #define MAX_OPEN_FILES  10240
 
-int do_mount_autofs_direct(struct mapent_cache *me, int now);
+int do_mount_autofs_direct(struct autofs_point *ap, struct mapent_cache *me, int now);
 
-static int umount_all(int force);
+static int umount_all(struct autofs_point *ap, int force);
 
 int mkdir_path(const char *path, mode_t mode)
 {
@@ -185,7 +185,7 @@ cont:
 
 	me = cache_lookup(base);
 	if (!ret && me && me->multi == me) {
-		status = cache_delete_offset_list(_PROC_MOUNTS, ap.path, me->key);
+		status = cache_delete_offset_list(me->key);
 		if (status)
 			warn("couldn't delete offset list");
 	}
@@ -193,7 +193,7 @@ cont:
 	return ret;
 }
 
-static int umount_ent(const char *path, const char *type)
+static int umount_ent(struct autofs_point *ap, const char *path, const char *type)
 {
 	struct stat st;
 	int sav_errno;
@@ -209,7 +209,7 @@ static int umount_ent(const char *path, const char *type)
 	    (is_smbfs && (sav_errno == EIO || sav_errno == EBADSLT))) {
 		int umount_ok = 0;
 
-		if (!status && (S_ISDIR(st.st_mode) && (st.st_dev != ap.dev)))
+		if (!status && (S_ISDIR(st.st_mode) && (st.st_dev != ap->dev)))
 			umount_ok = 1;
 
 		if (umount_ok || is_smbfs) {
@@ -322,7 +322,7 @@ static void check_rm_dirs(const char *path, int incl)
 
 /* umount all filesystems mounted under path.  If incl is true, then
    it also tries to umount path itself */
-int umount_multi(const char *path, int incl)
+int umount_multi(struct autofs_point *ap, const char *path, int incl)
 {
 	int left;
 	struct mnt_list *mnts = NULL;
@@ -345,7 +345,7 @@ int umount_multi(const char *path, int incl)
 	left = 0;
 	for (mptr = mnts; mptr != NULL; mptr = mptr->next) {
 		debug("unmounting dir=%s\n", mptr->path);
-		if (umount_ent(mptr->path, mptr->fs_type)) {
+		if (umount_ent(ap, mptr->path, mptr->fs_type)) {
 			left++;
 		}
 	}
@@ -358,31 +358,31 @@ int umount_multi(const char *path, int incl)
 	return left;
 }
 
-static int umount_all(int force)
+static int umount_all(struct autofs_point *ap, int force)
 {
 	int left;
 
-	left = umount_multi(ap.path, 0);
+	left = umount_multi(ap, ap->path, 0);
 	if (force && left)
-		warn("could not unmount %d dirs under %s", left, ap.path);
+		warn("could not unmount %d dirs under %s", left, ap->path);
 
 	return left;
 }
 
-int umount_autofs(int force)
+int umount_autofs(struct autofs_point *ap, int force)
 {
 	int status = 0;
 
-	if (ap.state == ST_INIT)
+	if (ap->state == ST_INIT)
 		return -1;
 
-	if (ap.type == LKP_INDIRECT) {
-		if (umount_all(force) && !force)
+	if (ap->type == LKP_INDIRECT) {
+		if (umount_all(ap, force) && !force)
 			return -1;
 
-		status = umount_autofs_indirect();
+		status = umount_autofs_indirect(ap);
 	} else {
-		status = umount_autofs_direct();
+		status = umount_autofs_direct(ap);
 	}
 
 	return status;
@@ -393,9 +393,8 @@ static void nextstate(enum states next)
 	char buf[MAX_ERR_BUF];
 
 	if (write(ap.state_pipe[1], &next, sizeof(next)) != sizeof(next)) {
-		if (strerror_r(errno, buf, MAX_ERR_BUF))
-			strcpy(buf, "strerror_r failed");
-		error("write failed %s", buf);
+		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+		error("write failed %s", estr);
 	}
 }
 
@@ -409,9 +408,8 @@ int send_ready(int ioctlfd, unsigned int wait_queue_token)
 	debug("token=%d", wait_queue_token);
 
 	if (ioctl(ioctlfd, AUTOFS_IOC_READY, wait_queue_token) < 0) {
-		if (strerror_r(errno, buf, MAX_ERR_BUF))
-			strcpy(buf, "strerror_r failed");
-		error("AUTOFS_IOC_READY: error %s", buf);
+		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+		error("AUTOFS_IOC_READY: error %s", estr);
 		return 1;
 	}
 	return 0;
@@ -427,9 +425,8 @@ int send_fail(int ioctlfd, unsigned int wait_queue_token)
 	debug("token=%d\n", wait_queue_token);
 
 	if (ioctl(ioctlfd, AUTOFS_IOC_FAIL, wait_queue_token) < 0) {
-		if (strerror_r(errno, buf, MAX_ERR_BUF))
-			strcpy(buf, "strerror_r failed");
-		error("AUTOFS_IOC_FAIL: error %s", buf);
+		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+		error("AUTOFS_IOC_FAIL: error %s", estr);
 		return 1;
 	}
 	return 0;
@@ -441,7 +438,6 @@ int send_fail(int ioctlfd, unsigned int wait_queue_token)
  */
 void handle_cleanup(void *ret)
 {
-	struct pending_mount *mt = NULL, **mtp;
 	pthread_t thid = pthread_self();
 	enum states next = ST_INVAL;
 	int *success = (int *) ret;
@@ -452,7 +448,7 @@ void handle_cleanup(void *ret)
 	status = pthread_mutex_lock(&state_mutex);
 	if (status) {
 		error("state mutex lock failed");
-		goto pending;
+		return;
 	}
 
 	/* Check to see if expire process finished */
@@ -500,48 +496,6 @@ void handle_cleanup(void *ret)
 		}
 	}
 
-pending:
-	status = pthread_mutex_lock(&pending_mutex);
-	if (status) {
-		error("pending mutex lock failed");
-		goto done;
-	}
-
-	/*
-	 * Run through pending mount/unmounts and see what (if
-	 * any) has finished, and tell the kernel about it
-	 */
-	for (mtp = &ap.mounts; (mt = *mtp); mtp = &mt->next) {
-		if (mt->thid != thid)
-			continue;
-
-		debug("found pending op thid %lu: exit status %d",
-			(unsigned long) thid, *success);
-
-		if (*success != 0)
-			send_fail(mt->ioctlfd, mt->wait_queue_token);
-		else
-			send_ready(mt->ioctlfd, mt->wait_queue_token);
-
-		if (mt->me && mt->type == NFY_EXPIRE) {
-			if (*mt->me->key == '/') {
-				close(mt->ioctlfd);
-				mt->ioctlfd = -1;
-				mt->me->ioctlfd = -1;
-			}
-			mt->me = NULL;
-		}
-
-		/* Delete from list and add to freelist. */
-		*mtp = mt->next;
-		mt->next = pending;
-		pending = mt;
-	}
-
-	status = pthread_mutex_unlock(&pending_mutex);
-	if (status)
-		error("pending mutex unlock failed");
-done:
 	if (next != ST_INVAL)
 		nextstate(next);
 
@@ -550,11 +504,11 @@ done:
 		error("state mutex unlock failed");
 }
 
-static int st_ready(void)
+static int st_ready(struct autofs_point *ap)
 {
-	debug("st_ready(): state = %d", ap.state);
+	debug("st_ready(): state = %d", ap->state);
 
-	ap.state = ST_READY;
+	ap->state = ST_READY;
 
 	return 0;
 }
@@ -598,7 +552,7 @@ enum expire {
  *          DONE	- nothing to expire
  *          PARTIAL	- partial expire
  */
-static enum expire expire_proc(int now)
+static enum expire expire_proc(struct autofs_point *ap, int now)
 {
 	pthread_t thid;
 	void *(*expire)(void *);
@@ -620,7 +574,7 @@ static enum expire expire_proc(int now)
 		return EXP_DONE;
 	}
 */
-	assert(ap.exp_thread == 0);
+	assert(ap->exp_thread == 0);
 
 	status = pthread_mutex_lock(&ec.mutex);
 	if (status) {
@@ -628,13 +582,16 @@ static enum expire expire_proc(int now)
 		return EXP_ERROR;
 	}
 
-	if (ap.type == LKP_INDIRECT)
+	if (ap->type == LKP_INDIRECT)
 		expire = expire_proc_indirect;
 	else
 		expire = expire_proc_direct;
 
-	status = pthread_create(&thid, NULL, expire, NULL);
+	status = pthread_create(&thid, &detach_attr, expire, NULL);
 	if (status) {
+		status = pthread_mutex_unlock(&ec.mutex);
+		if (status)
+			error("failed to unlock expire cond mutex");
 		error("expire_proc thread create failed");
 		return EXP_ERROR;
 	}
@@ -647,11 +604,15 @@ static enum expire expire_proc(int now)
 
 	debug("exp_proc = %lu", (unsigned long) thid);
 
-	ap.exp_thread = thid;
+	ap->exp_thread = thid;
+	ec.ap = ap;
 	ec.when = now;
 
 	status = pthread_cond_signal(&ec.cond);
 	if (status) {
+		status = pthread_mutex_unlock(&ec.mutex);
+		if (status)
+			error("failed to unlock expire cond mutex");
 		error("failed to signal expire cond");
 		return EXP_ERROR;
 	}
@@ -665,40 +626,42 @@ static enum expire expire_proc(int now)
 	return EXP_STARTED;
 }
 
-static int st_readmap(void)
+static int st_readmap(struct autofs_point *ap)
 {
 	int status;
 	int now = time(NULL);
 
-	assert(ap.state == ST_READY);
-	ap.state = ST_READMAP;
+	assert(ap->state == ST_READY);
+	ap->state = ST_READMAP;
 
-	if (ap.type == LKP_INDIRECT)
-		status = ap.lookup->lookup_ghost(ap.path,
-				ap.ghost, 0, ap.lookup->context);
+	status = lookup_nss_read_map(ap, now);
+	if (!status)
+		return 0;
+
+	/* TODO: spawn thread ? */
+	if (ap->type == LKP_INDIRECT)
+		status = lookup_ghost(ap);
 	else
-		status = ap.lookup->lookup_enumerate(ap.path,
-				do_mount_autofs_direct, now, ap.lookup->context);
+		status = lookup_enumerate(ap, do_mount_autofs_direct, now);
 
 	debug("status %d", status);
 
-	ap.state = ST_READY;
-
-	/* If I don't exist in the map any more then exit */
 	if (status == LKP_FAIL)
 		return 0;
+
+	ap->state = ST_READY;
 
 	return 1;
 }
 
-static int st_prepare_shutdown(void)
+static int st_prepare_shutdown(struct autofs_point *ap)
 {
 	int exp;
 
-	debug("state = %d\n", ap.state);
+	debug("state = %d\n", ap->state);
 
-	assert(ap.state == ST_READY || ap.state == ST_EXPIRE);
-	ap.state = ST_SHUTDOWN_PENDING;
+	assert(ap->state == ST_READY || ap->state == ST_EXPIRE);
+	ap->state = ST_SHUTDOWN_PENDING;
 
 	/* Turn off timeouts */
 	alarm(0);
@@ -708,7 +671,7 @@ static int st_prepare_shutdown(void)
 		signal_children(SIGUSR2);
 
 	/* Unmount everything */
-	exp = expire_proc(1);
+	exp = expire_proc(ap, 1);
 
 	debug("expire returns %d\n", exp);
 
@@ -716,13 +679,13 @@ static int st_prepare_shutdown(void)
 	case EXP_ERROR:
 	case EXP_PARTIAL:
 		/* It didn't work: return to ready */
-		ap.state = ST_READY;
-		alarm(ap.exp_runfreq);
+		ap->state = ST_READY;
+		alarm(ap->exp_runfreq);
 		return 0;
 
 	case EXP_DONE:
 		/* All expired: go straight to exit */
-		ap.state = ST_SHUTDOWN;
+		ap->state = ST_SHUTDOWN;
 		return 1;
 
 	case EXP_STARTED:
@@ -731,26 +694,26 @@ static int st_prepare_shutdown(void)
 	return 1;
 }
 
-static int st_prune(void)
+static int st_prune(struct autofs_point *ap)
 {
-	debug("state = %d\n", ap.state);
+	debug("state = %d\n", ap->state);
 
-	assert(ap.state == ST_READY);
-	ap.state = ST_PRUNE;
+	assert(ap->state == ST_READY);
+	ap->state = ST_PRUNE;
 
 	/* We're the boss, pass on the prune event */
 	if (getpid() == getpgrp()) 
 		signal_children(SIGUSR1);
 
-	switch (expire_proc(1)) {
+	switch (expire_proc(ap, 1)) {
 	case EXP_DONE:
 		if (submount)
-			return st_prepare_shutdown();
+			return st_prepare_shutdown(ap);
 		/* FALLTHROUGH */
 
 	case EXP_ERROR:
 	case EXP_PARTIAL:
-		ap.state = ST_READY;
+		ap->state = ST_READY;
 		return 1;
 
 	case EXP_STARTED:
@@ -759,23 +722,23 @@ static int st_prune(void)
 	return 1;
 }
 
-static int st_expire(void)
+static int st_expire(struct autofs_point *ap)
 {
-	debug("state = %d\n", ap.state);
+	debug("state = %d\n", ap->state);
 
-	assert(ap.state == ST_READY);
-	ap.state = ST_EXPIRE;
+	assert(ap->state == ST_READY);
+	ap->state = ST_EXPIRE;
 
-	switch (expire_proc(0)) {
+	switch (expire_proc(ap, 0)) {
 	case EXP_DONE:
 		if (submount)
-			return st_prepare_shutdown();
+			return st_prepare_shutdown(ap);
 		/* FALLTHROUGH */
 
 	case EXP_ERROR:
 	case EXP_PARTIAL:
-		ap.state = ST_READY;
-		alarm(ap.exp_runfreq);
+		ap->state = ST_READY;
+		alarm(ap->exp_runfreq);
 		return 1;
 
 	case EXP_STARTED:
@@ -804,23 +767,23 @@ static int fullread(int fd, void *ptr, size_t len)
 	return len;
 }
 
-static int get_pkt(int fd, union autofs_packet_union *pkt)
+static int get_pkt(struct autofs_point *ap, union autofs_packet_union *pkt)
 {
 	struct pollfd fds[2];
 	char buf[MAX_ERR_BUF];
 
-	fds[0].fd = fd;
+	fds[0].fd = ap->pipefd;
 	fds[0].events = POLLIN;
-	fds[1].fd = ap.state_pipe[0];
+	fds[1].fd = ap->state_pipe[0];
 	fds[1].events = POLLIN;
 
 	for (;;) {
 		if (poll(fds, 2, -1) == -1) {
+			char *estr;
 			if (errno == EINTR)
 				continue;
-			if (strerror_r(errno, buf, MAX_ERR_BUF))
-				strcpy(buf, "strerror_r failed");
-			error("poll failed: %s", buf);
+			estr = strerror_r(errno, buf, MAX_ERR_BUF);
+			error("poll failed: %s", estr);
 			return -1;
 		}
 
@@ -829,7 +792,7 @@ static int get_pkt(int fd, union autofs_packet_union *pkt)
 			int status;
 			int ret = 1;
 
-			if (fullread(ap.state_pipe[0], &next_state, sizeof(next_state)))
+			if (fullread(ap->state_pipe[0], &next_state, sizeof(next_state)))
 				continue;
 
 			status = pthread_mutex_lock(&state_mutex);
@@ -838,38 +801,38 @@ static int get_pkt(int fd, union autofs_packet_union *pkt)
 				continue;
 			}
 
-			if (next_state != ap.state) {
+			if (next_state != ap->state) {
 				debug("state %d, next %d",
-					ap.state, next_state);
+					ap->state, next_state);
 
 				switch (next_state) {
 				case ST_READY:
-					ret = st_ready();
+					ret = st_ready(ap);
 					break;
 
 				case ST_PRUNE:
-					ret = st_prune();
+					ret = st_prune(ap);
 					break;
 
 				case ST_EXPIRE:
-					ret = st_expire();
+					ret = st_expire(ap);
 					break;
 
 				case ST_SHUTDOWN_PENDING:
-					ret = st_prepare_shutdown();
+					ret = st_prepare_shutdown(ap);
 					break;
 
 				case ST_SHUTDOWN:
-					assert(ap.state == ST_SHUTDOWN ||
-					       ap.state == ST_SHUTDOWN_PENDING);
-					ap.state = ST_SHUTDOWN;
+					assert(ap->state == ST_SHUTDOWN ||
+					       ap->state == ST_SHUTDOWN_PENDING);
+					ap->state = ST_SHUTDOWN;
 					break;
 
 				case ST_READMAP:
 					/* Syncronous reread of map */
-					ret = st_readmap();
+					ret = st_readmap(ap);
 					if (!ret)
-						ret = st_prepare_shutdown();
+						ret = st_prepare_shutdown(ap);
 					break;
 
 				default:
@@ -881,25 +844,24 @@ static int get_pkt(int fd, union autofs_packet_union *pkt)
 			if (status)
 				error("state mutex unlock failed");
 
-			if (ap.state == ST_SHUTDOWN)
+			if (ap->state == ST_SHUTDOWN)
 				return -1;
 		}
 
 		if (fds[0].revents & POLLIN) {
 			int len = sizeof(pkt->v5_packet);
-			return fullread(fd, pkt, len);
+			return fullread(ap->pipefd, pkt, len);
 		}
 	}
 }
 
-int do_expire(const char *name, int namelen)
+int do_expire(struct autofs_point *ap, const char *name, int namelen)
 {
 	char buf[PATH_MAX + 1];
-	struct mapent_cache *me;
-	int len, ret, status;
+	int len, ret;
 
 	if (*name != '/') {
-		len = ncat_path(buf, sizeof(buf), ap.path, name, namelen);
+		len = ncat_path(buf, sizeof(buf), ap->path, name, namelen);
 	} else {
 		len = snprintf(buf, PATH_MAX, "%s", name);
 		if (len > PATH_MAX)
@@ -913,12 +875,8 @@ int do_expire(const char *name, int namelen)
 
 	msg("expiring path %s", buf);
 
-	ret = umount_multi(buf, 1);
+	ret = umount_multi(ap, buf, 1);
 	if (ret == 0) {
-	/*	int status;
-		status = cache_delete_offset_list(_PROC_MOUNTS, ap.path, name);
-		if (status)
-			warn("couldn't delete offset list"); */
 		msg("expired %s", buf);
 	} else {
 		error("error while expiring %s", buf);
@@ -926,48 +884,47 @@ int do_expire(const char *name, int namelen)
 	return ret;
 }
 
-static int mount_autofs(char *path)
+static int mount_autofs(struct autofs_point *ap, char *path)
 {
 	int status = 0;
 
-	if (path[0] == '/' && path[1] == '-') {
-		ap.type = LKP_DIRECT;
-		status = mount_autofs_direct(path);
+	if (!strcmp(path, "/-")) {
+		ap->type = LKP_DIRECT;
+		status = mount_autofs_direct(ap, path);
 	} else {
-		ap.type = LKP_INDIRECT;
-		status = mount_autofs_indirect(path);
+		ap->type = LKP_INDIRECT;
+		status = mount_autofs_indirect(ap, path);
 	}
 
 	if (status < 0)
 		return -1;
 
-	ap.mounts = NULL;       /* No pending mounts */
-	ap.state = ST_READY;
+	ap->state = ST_READY;
 
 	return 0;
 }
 
-static int handle_packet(void)
+static int handle_packet(struct autofs_point *ap)
 {
 	union autofs_packet_union pkt;
 
-	if (get_pkt(ap.pipefd, &pkt))
+	if (get_pkt(ap, &pkt))
 		return -1;
 
 	debug("type = %d\n", pkt.hdr.type);
 
 	switch (pkt.hdr.type) {
 	case autofs_ptype_missing_indirect:
-		return handle_packet_missing_indirect(&pkt.v5_packet);
+		return handle_packet_missing_indirect(ap, &pkt.v5_packet);
 
 	case autofs_ptype_missing_direct:
-		return handle_packet_missing_direct(&pkt.v5_packet);
+		return handle_packet_missing_direct(ap, &pkt.v5_packet);
 
 	case autofs_ptype_expire_indirect:
-		return handle_packet_expire_indirect(&pkt.v5_packet);
+		return handle_packet_expire_indirect(ap, &pkt.v5_packet);
 
 	case autofs_ptype_expire_direct:
-		return handle_packet_expire_direct(&pkt.v5_packet);
+		return handle_packet_expire_direct(ap, &pkt.v5_packet);
 	}
 	error("unknown packet type %d\n", pkt.hdr.type);
 	return -1;
@@ -1013,27 +970,24 @@ static void become_daemon(void)
 	 * signals. This call also sets us as the process group leader.
 	 */
 	if (!submount && (setsid() == -1)) {
-		if (strerror_r(errno, buf, MAX_ERR_BUF))
-			strcpy(buf, "strerror_r failed");
-		crit("setsid: %s", buf);
+		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+		crit("setsid: %s", estr);
 		exit(1);
 	}
 	my_pgrp = getpgrp();
 
 	/* Redirect all our file descriptors to /dev/null */
 	if ((nullfd = open("/dev/null", O_RDWR)) < 0) {
-		if (strerror_r(errno, buf, MAX_ERR_BUF))
-			strcpy(buf, "strerror_r failed");
-		crit("cannot open /dev/null: %s", buf);
+		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+		crit("cannot open /dev/null: %s", estr);
 		exit(1);
 	}
 
 	if (dup2(nullfd, STDIN_FILENO) < 0 ||
 	    dup2(nullfd, STDOUT_FILENO) < 0 ||
 	    dup2(nullfd, STDERR_FILENO) < 0) {
-		if (strerror_r(errno, buf, MAX_ERR_BUF))
-			strcpy(buf, "strerror_r failed");
-		crit("redirecting file descriptors failed: %s", buf);
+		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+		crit("redirecting file descriptors failed: %s", estr);
 		exit(1);
 	}
 	close(nullfd);
@@ -1044,9 +998,8 @@ static void become_daemon(void)
 			fprintf(pidfp, "%lu\n", (unsigned long) my_pid);
 			fclose(pidfp);
 		} else {
-			if (strerror_r(errno, buf, MAX_ERR_BUF))
-				strcpy(buf, "strerror_r failed");
-			warn("failed to write pid file %s: %s", pid_file, buf);
+			char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+			warn("failed to write pid file %s: %s", pid_file, estr);
 			pid_file = NULL;
 		}
 	}
@@ -1060,9 +1013,6 @@ void cleanup_exit(const char *path, int exit_code)
 {
 	char buf[MAX_ERR_BUF];
 
-	if (ap.lookup)
-		close_lookup(ap.lookup);
-
 	if (pid_file)
 		unlink(pid_file);
 
@@ -1070,11 +1020,11 @@ void cleanup_exit(const char *path, int exit_code)
 
 	if ((!ap.ghost || !submount) && (*(path + 1) != '-') && ap.dir_created)
 		if (rmdir(path) == -1) {
-			if (strerror_r(errno, buf, MAX_ERR_BUF))
-				strcpy(buf, "strerror_r failed");
-			warn("failed to remove dir %s: %s", path, buf);
+			char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+			warn("failed to remove dir %s: %s", path, estr);
 		}
 
+	cache_release();
 	exit(exit_code);
 }
 
@@ -1156,17 +1106,17 @@ done:
 	}
 }
 
-int handle_mounts(char *path)
+int handle_mounts(struct autofs_point *ap, char *path)
 {
 	int status = 0;
 
-	if (mount_autofs(path) < 0) {
+	if (mount_autofs(ap, path) < 0) {
 		crit("%s: mount failed!", path);
-		umount_autofs(1);
+		umount_autofs(ap, 1);
 		cleanup_exit(path, 1);
 	}
 
-	if (ap.ghost && ap.type != LKP_DIRECT)
+	if (ap->ghost && ap->type != LKP_DIRECT)
 		msg("ghosting enabled");
 
 	/* Initialization successful.  If we're a submount, send outselves
@@ -1177,23 +1127,23 @@ int handle_mounts(char *path)
 
 	/* We often start several automounters at the same time.  Add some
 	   randomness so we don't all expire at the same time. */
-	if (ap.exp_timeout)
-		alarm(ap.exp_runfreq + my_pid % ap.exp_runfreq);
+	if (ap->exp_timeout)
+		alarm(ap->exp_runfreq + my_pid % ap->exp_runfreq);
 
-	while (ap.state != ST_SHUTDOWN) {
-		if (handle_packet()) {
+	while (ap->state != ST_SHUTDOWN) {
+		if (handle_packet(ap)) {
 			int ret;
 
 			/*
 			 * For a direct mount map all mounts have already gone
 			 * by the time we get here.
 			 */
-			if (ap.type == LKP_DIRECT) {
+			if (ap->type == LKP_DIRECT) {
 				status = 1;
 				break;
 			}
 
-			ret = ioctl(ap.ioctlfd, AUTOFS_IOC_ASKUMOUNT, &status);
+			ret = ioctl(ap->ioctlfd, AUTOFS_IOC_ASKUMOUNT, &status);
 			/*
 			 * If the ioctl fails assume the kernel doesn't have
 			 * AUTOFS_IOC_ASKUMOUNT and just continue.
@@ -1208,9 +1158,9 @@ int handle_mounts(char *path)
 
 			/* Failed shutdown returns to ready */
 			warn("can't shutdown: filesystem %s still busy",
-					ap.path);
-			alarm(ap.exp_runfreq);
-			ap.state = ST_READY;
+					ap->path);
+			alarm(ap->exp_runfreq);
+			ap->state = ST_READY;
 		}
 	}
 
@@ -1218,14 +1168,14 @@ int handle_mounts(char *path)
 	handle_cleanup(&status);
 
 	/* Close down */
-	umount_autofs(1);
+	umount_autofs(ap, 1);
 
 	return 0;
 }
 
 int main(int argc, char *argv[])
 {
-	char *path, *map, *mapfmt;
+	char *path, *map, *mapfmt = NULL;
 	const char **mapargv;
 	int mapargc, opt, res;
 	pthread_t thid;
@@ -1252,6 +1202,7 @@ int main(int argc, char *argv[])
 	ap.ghost = DEFAULT_GHOST_MODE;
 	ap.type = LKP_INDIRECT;
 	ap.dir_created = 0; /* We haven't created the main directory yet */
+	cache_init();
 
 	opterr = 0;
 	while ((opt = getopt_long(argc, argv, "+hp:t:vdVg", long_options, NULL)) != EOF) {
@@ -1309,7 +1260,10 @@ int main(int argc, char *argv[])
 	become_daemon();
 
 	path = argv[0];
-	map = argv[1];
+	if (argv[1][0] == '\0')
+		map = NULL;
+	else
+		map = argv[1];
 	mapargv = (const char **) &argv[2];
 	mapargc = argc - 2;
 
@@ -1326,6 +1280,17 @@ int main(int argc, char *argv[])
 	}
 #endif
 
+	if (pthread_attr_init(&detach_attr)) {
+		crit("failed to init thread attribute struct!");
+		cleanup_exit(path, 1);
+	}
+
+	if (pthread_attr_setdetachstate(
+			&detach_attr, PTHREAD_CREATE_DETACHED)) {
+		crit("failed to set detached thread attribute!");
+		cleanup_exit(path, 1);
+	}
+
 	sigfillset(&allsigs);
 	pthread_sigmask(SIG_BLOCK, &allsigs, NULL);
 
@@ -1334,15 +1299,18 @@ int main(int argc, char *argv[])
 		cleanup_exit(path, 1);
 	}
 
-	if (pthread_create(&thid, NULL, statemachine, NULL)) {
+	if (pthread_create(&thid, &detach_attr, statemachine, NULL)) {
 		crit("failed to create signal handler thread!");
 		cleanup_exit(path, 1);
 	}
 
-	if ((mapfmt = strchr(map, ',')))
+	if (map && (mapfmt = strchr(map, ',')))
 		*(mapfmt++) = '\0';
 
 	ap.maptype = map;
+	ap.mapfmt = mapfmt;
+	ap.mapargc = mapargc;
+	ap.mapargv = mapargv;
 
 	rlim.rlim_cur = MAX_OPEN_FILES;
 	rlim.rlim_max = MAX_OPEN_FILES;
@@ -1350,10 +1318,7 @@ int main(int argc, char *argv[])
 	if (res)
 		warn("can't increase open file limit - continuing");
 
-	if (!(ap.lookup = open_lookup(map, "", mapfmt, mapargc, mapargv)))
-		cleanup_exit(path, 1);
-
-	handle_mounts(path);
+	handle_mounts(&ap, path);
 
 	msg("shut down, path = %s", path);
 

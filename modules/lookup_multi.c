@@ -1,4 +1,4 @@
-#ident "$Id: lookup_multi.c,v 1.11 2006/02/08 16:49:21 raven Exp $"
+#ident "$Id: lookup_multi.c,v 1.12 2006/02/20 01:05:32 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup_multi.c - module for Linux automount to seek multiple lookup
@@ -24,6 +24,7 @@
 
 #define MODULE_LOOKUP
 #include "automount.h"
+#include "nsswitch.h"
 
 #define MODPREFIX "lookup(multi): "
 
@@ -47,6 +48,7 @@ int lookup_init(const char *my_mapfmt, int argc, const char *const *argv, void *
 	char buf[MAX_ERR_BUF];
 	char *map, *mapfmt;
 	int i, j, an;
+	char *estr;
 
 	if (!(*context = ctxt = malloc(sizeof(struct lookup_context))))
 		goto nomem;
@@ -106,20 +108,19 @@ int lookup_init(const char *my_mapfmt, int argc, const char *const *argv, void *
 	*context = ctxt;
 	return 0;
 
-      nomem:
-	if (strerror_r(errno, buf, MAX_ERR_BUF))
-		strcpy(buf, "strerror_r failed");
-	crit(MODPREFIX "malloc: %s", buf);
+nomem:
+	estr = strerror_r(errno, buf, MAX_ERR_BUF);
+	crit(MODPREFIX "malloc: %s", estr);
 	return 1;
 }
 
-int lookup_enumerate(const char *root, int (*fn)(struct mapent_cache *, int), time_t now, void *context)
+int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 {
 	struct lookup_context *ctxt = (struct lookup_context *) context;
 	int i, ret, at_least_1 = 0;
 
 	for (i = 0; i < ctxt->n; i++) {
-		ret = ctxt->m[i].mod->lookup_enumerate(root, fn, now,
+		ret = ctxt->m[i].mod->lookup_read_map(ap, age,
 						ctxt->m[i].mod->context);
 		if (ret & LKP_FAIL || ret == LKP_NOTSUP)
 			continue;
@@ -128,42 +129,22 @@ int lookup_enumerate(const char *root, int (*fn)(struct mapent_cache *, int), ti
 	}
 
 	if (!at_least_1)
-		return LKP_FAIL;
+		return NSS_STATUS_NOTFOUND;
 
-	return LKP_DIRECT;
+	return NSS_STATUS_SUCCESS;
 }
 
-int lookup_ghost(const char *root, int ghost, time_t now, void *context)
-{
-	struct lookup_context *ctxt = (struct lookup_context *) context;
-	int i, ret, at_least_1 = 0;
-
-	for (i = 0; i < ctxt->n; i++) {
-		ret = ctxt->m[i].mod->lookup_ghost(root, ghost, now,
-						   ctxt->m[i].mod->context);
-		if (ret & LKP_FAIL)
-			continue;
-
-		at_least_1 = 1;	
-	}
-
-	if (!at_least_1)
-		return LKP_FAIL;
-
-	return LKP_INDIRECT;
-}
-
-int lookup_mount(const char *root, const char *name, int name_len, void *context)
+int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *context)
 {
 	struct lookup_context *ctxt = (struct lookup_context *) context;
 	int i;
 
 	for (i = 0; i < ctxt->n; i++) {
-		if (ctxt->m[i].mod->lookup_mount(root, name, name_len,
+		if (ctxt->m[i].mod->lookup_mount(ap, name, name_len,
 						 ctxt->m[i].mod->context) == 0)
-			return 0;
+			return NSS_STATUS_SUCCESS;
 	}
-	return 1;		/* No module succeeded */
+	return NSS_STATUS_NOTFOUND;		/* No module succeeded */
 }
 
 int lookup_done(void *context)

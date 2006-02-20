@@ -1,4 +1,4 @@
-#ident "$Id: mount.c,v 1.9 2005/11/27 04:08:54 raven Exp $"
+#ident "$Id: mount.c,v 1.10 2006/02/20 01:05:32 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  mount.c - Abstract mount code used by modules for an unexpected
@@ -29,7 +29,7 @@ static char *not_generic[] = { "nfs", "userfs", "afs", "autofs",
 			       "changer", "bind", NULL
 };
 
-int do_mount(const char *root, const char *name, int name_len,
+int do_mount(struct autofs_point *ap, const char *root, const char *name, int name_len,
 	     const char *what, const char *fstype, const char *options)
 {
 	struct mount_mod *mod;
@@ -55,7 +55,7 @@ int do_mount(const char *root, const char *name, int name_len,
 	debug("do_mount %s %s/%s type %s options %s using module %s",
 		  what, root, name, fstype, options, modstr);
 
-	rv = mod->mount_mount(root, name, name_len, what, fstype, options, mod->context);
+	rv = mod->mount_mount(ap, root, name, name_len, what, fstype, options, mod->context);
 	close_mount(mod);
 
 	return rv;

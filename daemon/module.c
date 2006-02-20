@@ -1,4 +1,4 @@
-#ident "$Id: module.c,v 1.9 2006/02/08 16:49:20 raven Exp $"
+#ident "$Id: module.c,v 1.10 2006/02/20 01:05:32 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  module.c - common module-management functions
@@ -37,9 +37,8 @@ struct lookup_mod *open_lookup(const char *name, const char *err_prefix,
 	mod = malloc(sizeof(struct lookup_mod));
 	if (!mod) {
 		if (err_prefix) {
-			if (strerror_r(errno, buf, MAX_ERR_BUF))
-				strcpy(buf, "strerror_r failed");
-			crit("%s%s", err_prefix, buf);
+			char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+			crit("%s%s", err_prefix, estr);
 		}
 		return NULL;
 	}
@@ -49,9 +48,8 @@ struct lookup_mod *open_lookup(const char *name, const char *err_prefix,
 	if (!fnbuf) {
 		free(mod);
 		if (err_prefix) {
-			if (strerror_r(errno, buf, MAX_ERR_BUF))
-				strcpy(buf, "strerror_r failed");
-			crit("%s%s", err_prefix, buf);
+			char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+			crit("%s%s", err_prefix, estr);
 		}
 		return NULL;
 	}
@@ -76,8 +74,7 @@ struct lookup_mod *open_lookup(const char *name, const char *err_prefix,
 	}
 
 	if (!(mod->lookup_init = (lookup_init_t) dlsym(dh, "lookup_init")) ||
-	    !(mod->lookup_enumerate = (lookup_enumerate_t) dlsym(dh, "lookup_enumerate")) ||
-	    !(mod->lookup_ghost = (lookup_ghost_t) dlsym(dh, "lookup_ghost")) ||
+	    !(mod->lookup_read_map = (lookup_read_map_t) dlsym(dh, "lookup_read_map")) ||
 	    !(mod->lookup_mount = (lookup_mount_t) dlsym(dh, "lookup_mount")) ||
 	    !(mod->lookup_done = (lookup_done_t) dlsym(dh, "lookup_done"))) {
 		if (err_prefix)
@@ -122,9 +119,8 @@ struct parse_mod *open_parse(const char *name, const char *err_prefix,
 	mod = malloc(sizeof(struct parse_mod));
 	if (!mod) {
 		if (err_prefix) {
-			if (strerror_r(errno, buf, MAX_ERR_BUF))
-				strcpy(buf, "strerror_r failed");
-			crit("%s%s", err_prefix, buf);
+			char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+			crit("%s%s", err_prefix, estr);
 		}
 		return NULL;
 	}
@@ -134,9 +130,8 @@ struct parse_mod *open_parse(const char *name, const char *err_prefix,
 	if (!fnbuf) {
 		free(mod);
 		if (err_prefix) {
-			if (strerror_r(errno, buf, MAX_ERR_BUF))
-				strcpy(buf, "strerror_r failed");
-			crit("%s%s", err_prefix, buf);
+			char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+			crit("%s%s", err_prefix, estr);
 		}
 		return NULL;
 	}
@@ -204,9 +199,8 @@ struct mount_mod *open_mount(const char *name, const char *err_prefix)
 	mod = malloc(sizeof(struct mount_mod));
 	if (!mod) {
 		if (err_prefix) {
-			if (strerror_r(errno, buf, MAX_ERR_BUF))
-				strcpy(buf, "strerror_r failed");
-			crit("%s%s", err_prefix, buf);
+			char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+			crit("%s%s", err_prefix, estr);
 		}
 		return NULL;
 	}
@@ -216,9 +210,8 @@ struct mount_mod *open_mount(const char *name, const char *err_prefix)
 	if (!fnbuf) {
 		free(mod);
 		if (err_prefix) {
-			if (strerror_r(errno, buf, MAX_ERR_BUF))
-				strcpy(buf, "strerror_r failed");
-			crit("%s%s", err_prefix, buf);
+			char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+			crit("%s%s", err_prefix, estr);
 		}
 		return NULL;
 	}

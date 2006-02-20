@@ -261,7 +261,7 @@ static int try_to_fill_dentry(struct dentry *dentry, int flags)
 		 */
 		status = d_invalidate(dentry);
 		if (status != -EBUSY)
-			return 0;
+			return -ENOENT;
 	}
 
 	DPRINTK("dentry=%p %.*s ino=%p",
@@ -280,7 +280,7 @@ static int try_to_fill_dentry(struct dentry *dentry, int flags)
 		DPRINTK("mount done status=%d", status);
 
 		if (status && dentry->d_inode)
-			return 0; /* Try to get the kernel to invalidate this dentry */
+			return status; /* Try to get the kernel to invalidate this dentry */
 
 		/* Turn this into a real negative dentry? */
 		if (status == -ENOENT) {
@@ -354,7 +354,7 @@ static int autofs4_follow_link(struct dentry *dentry, struct nameidata *nd)
 		goto out_error;
 	}
 done:
-	return 0;
+	return NULL;
 
 out_error:
 	path_release(nd);
@@ -419,7 +419,7 @@ static int autofs4_follow_link(struct dentry *dentry, struct nameidata *nd)
 		goto done;
 
 	status = try_to_fill_dentry(dentry, 0);
-	if (!status)
+	if (status)
 		goto out_error;
 
 	if (!autofs4_follow_mount(&mnt, &dentry)) {
@@ -458,13 +458,13 @@ static int autofs4_revalidate(struct dentry *dentry, struct nameidata *nd)
 	struct autofs_sb_info *sbi = autofs4_sbi(dir->i_sb);
 	int oz_mode = autofs4_oz_mode(sbi);
 	int flags = nd ? nd->flags : 0;
-	int status = 1;
+	int status = 0;
 
 	/* Pending dentry */
 	if (autofs4_ispending(dentry)) {
 		if (!oz_mode)
 			status = try_to_fill_dentry(dentry, flags);
-		return (status == 0);
+		return !status;
 	}
 
 	/* Negative dentry.. invalidate if "old" */
@@ -481,7 +481,7 @@ static int autofs4_revalidate(struct dentry *dentry, struct nameidata *nd)
 		spin_unlock(&dcache_lock);
 		if (!oz_mode)
 			status = try_to_fill_dentry(dentry, flags);
-		return (status == 0);
+		return !status;
 	}
 	spin_unlock(&dcache_lock);
 

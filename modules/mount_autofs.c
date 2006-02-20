@@ -1,4 +1,4 @@
-#ident "$Id: mount_autofs.c,v 1.18 2006/02/08 16:49:21 raven Exp $"
+#ident "$Id: mount_autofs.c,v 1.19 2006/02/20 01:05:33 raven Exp $"
 /*
  * mount_autofs.c - Module for recursive autofs mounts.
  *
@@ -30,24 +30,31 @@ int mount_init(void **context)
 	return 0;
 }
 
-int mount_mount(const char *root, const char *name, int name_len,
-		const char *what, const char *fstype, const char *c_options,
-		void *context)
+int mount_mount(struct autofs_point *ap, const char *root, const char *name,
+		int name_len, const char *what, const char *fstype,
+		const char *c_options, void *context)
 {
 	char *fullpath, **argv;
 	char buf[MAX_ERR_BUF];
-	int argc, status, ghost = ap.ghost;
+	int argc, status, ghost = ap->ghost;
 	char *options, *p;
 	pid_t slave, wp;
 	char timeout_opt[30];
 	int rlen;
 
-	rlen = root ? strlen(root) : 0;
+	/* Root offset of multi-mount */
+	if (*name == '/' && name_len == 1) {
+		rlen = strlen(root);
+		name_len = 0;
+	} else if (*name == '/')
+		rlen = 0;
+	else
+		rlen = strlen(root);
+
 	fullpath = alloca(rlen + name_len + 2);
 	if (!fullpath) {
-		if (strerror_r(errno, buf, MAX_ERR_BUF))
-			strcpy(buf, "strerror_r failed");
-		error(MODPREFIX "alloca: %s", buf);
+		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+		error(MODPREFIX "alloca: %s", estr);
 		return 1;
 	}
 
@@ -59,9 +66,8 @@ int mount_mount(const char *root, const char *name, int name_len,
 	if (c_options) {
 		options = alloca(strlen(c_options) + 1);
 		if (!options) {
-			if (strerror_r(errno, buf, MAX_ERR_BUF))
-				strcpy(buf, "strerror_r failed");
-			error(MODPREFIX "alloca: %s", buf);
+			char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+			error(MODPREFIX "alloca: %s", estr);
 			return 1;
 		}
 		strcpy(options, c_options);
@@ -72,9 +78,8 @@ int mount_mount(const char *root, const char *name, int name_len,
 	debug(MODPREFIX "calling mkdir_path %s", fullpath);
 
 	if (mkdir_path(fullpath, 0555) && errno != EEXIST) {
-		if (strerror_r(errno, buf, MAX_ERR_BUF))
-			strcpy(buf, "strerror_r failed");
-		error(MODPREFIX "mkdir_path %s failed: %s", name, buf);
+		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+		error(MODPREFIX "mkdir_path %s failed: %s", name, estr);
 		return 1;
 	}
 
@@ -102,9 +107,9 @@ int mount_mount(const char *root, const char *name, int name_len,
 	if (is_log_verbose() || is_log_debug())
 		argc++;
 
-	if (ap.exp_timeout && ap.exp_timeout != DEFAULT_TIMEOUT) {
+	if (ap->exp_timeout && ap->exp_timeout != DEFAULT_TIMEOUT) {
 		argc++;
-		sprintf(timeout_opt, "--timeout=%d", (int) ap.exp_timeout);
+		sprintf(timeout_opt, "--timeout=%d", (int) ap->exp_timeout);
 	}
 
 	if (options) {
@@ -124,7 +129,7 @@ int mount_mount(const char *root, const char *name, int name_len,
 	if (ghost)
 		argv[argc++] = "--ghost";
 
-	if (ap.exp_timeout != DEFAULT_TIMEOUT)
+	if (ap->exp_timeout != DEFAULT_TIMEOUT)
 		argv[argc++] = timeout_opt;
 
 	if (is_log_debug())
@@ -167,9 +172,8 @@ int mount_mount(const char *root, const char *name, int name_len,
 
 	slave = fork();
 	if (slave < 0) {
-		if (strerror_r(errno, buf, MAX_ERR_BUF))
-			strcpy(buf, "strerror_r failed");
-		error(MODPREFIX "fork: %s", buf);
+		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+		error(MODPREFIX "fork: %s", estr);
 		goto error;
 	} else if (slave == 0) {
 		/* Slave process */
@@ -179,9 +183,8 @@ int mount_mount(const char *root, const char *name, int name_len,
 
 	while ((wp = waitpid(slave, &status, WUNTRACED)) == -1 && errno == EINTR);
 	if (wp != slave) {
-		if (strerror_r(errno, buf, MAX_ERR_BUF))
-			strcpy(buf, "strerror_r failed");
-		error(MODPREFIX "waitpid: %s", buf);
+		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+		error(MODPREFIX "waitpid: %s", estr);
 		goto error;
 	}
 
@@ -200,7 +203,7 @@ int mount_mount(const char *root, const char *name, int name_len,
 
 error:
 	sigchld_unblock();
-	if (!ap.ghost)
+	if (!ap->ghost)
 		rmdir_path(fullpath);
 
 	error(MODPREFIX "failed to mount %s on %s", what, fullpath);

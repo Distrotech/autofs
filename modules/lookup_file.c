@@ -1,4 +1,4 @@
-#ident "$Id: lookup_file.c,v 1.22 2006/02/10 00:50:42 raven Exp $"
+#ident "$Id: lookup_file.c,v 1.23 2006/02/20 01:05:32 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup_file.c - module for Linux automount to query a flat file map
@@ -29,6 +29,7 @@
 
 #define MODULE_LOOKUP
 #include "automount.h"
+#include "nsswitch.h"
 
 #define MAPFMT_DEFAULT "sun"
 
@@ -57,9 +58,8 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 	struct stat st;
 
 	if (!(*context = ctxt = malloc(sizeof(struct lookup_context)))) {
-		if (strerror_r(errno, buf, MAX_ERR_BUF))
-			strcpy(buf, "strerror_r failed");
-		crit(MODPREFIX "malloc: %s", buf);
+		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+		crit(MODPREFIX "malloc: %s", estr);
 		return 1;
 	}
 
@@ -93,7 +93,7 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 	if (!mapfmt)
 		mapfmt = MAPFMT_DEFAULT;
 
-	cache_init();
+/*	cache_init(); */
 
 	return !(ctxt->parse = open_parse(mapfmt, MODPREFIX, argc - 1, argv + 1));
 }
@@ -233,106 +233,87 @@ static int read_one(FILE *f, char *key, char *mapent)
 	return 0;
 }
 
-static int read_map(const char *root, time_t age, struct lookup_context *ctxt)
+/*
+static int do_plus_include(struct autofs_point *ap, char *key)
 {
-	char key[KEY_MAX_LEN + 1];
-	char mapent[MAPENT_MAX_LEN + 1];
-	char *mapname;
+	char *map = key;
+	struct autofs_point *iap;
+
+	iap = malloc(sizeof(struct autofs_point));
+	if (!iap) {
+		error(MODPREFIX "could not malloc storage for included map");
+		return NSS_STATUS_UNAVAIL;
+	}
+	memcpy(iap, ap, sizeof(struct autofs_point));
+
+	*
+	 * TODO:
+	 * Initially just consider the passed in key to be a simple map
+	 * name (and possible source) and use the global map options in
+	 * the passed in autofs_point.
+	 * Later we might parse this and fill in the autofs_point fields.
+	 *
+
+	map++;
+
+
+}
+*/
+
+int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
+{
+	struct lookup_context *ctxt = (struct lookup_context *) context;
+	char *key;
+	char *mapent;
+	struct stat st;
 	FILE *f;
 	int entry;
 
-	mapname = alloca(strlen(ctxt->mapname) + 6);
-	sprintf(mapname, "file:%s", ctxt->mapname);
+	key = malloc(KEY_MAX_LEN + 1);
+	if (!key) {
+		error(MODPREFIX "could not malloc storage for key");
+		return NSS_STATUS_UNAVAIL;
+	}
+
+	mapent = malloc(MAPENT_MAX_LEN + 1);
+	if (!mapent) {
+		error(MODPREFIX "could not malloc storage for mapent");
+		free(key);
+		return NSS_STATUS_UNAVAIL;
+	}
 
 	f = fopen(ctxt->mapname, "r");
 	if (!f) {
 		error(MODPREFIX "could not open map file %s", ctxt->mapname);
-		return 0;
+		free(key);
+		free(mapent);
+		return NSS_STATUS_UNAVAIL;
 	}
 
 	while(1) {
 		entry = read_one(f, key, mapent);
 		if (entry)
-			cache_add(key, mapent, age);
+			cache_update(key, mapent, age);
 
 		if (feof(f))
 			break;
 	}
 
+	if (fstat(fileno(f), &st)) {
+		crit(MODPREFIX "file map %s, could not stat",
+		       ctxt->mapname);
+		free(key);
+		free(mapent);
+		return NSS_STATUS_UNAVAIL;
+	}
+	ctxt->mtime = st.st_mtime;
+
 	fclose(f);
 
-	return 1;
-}
+	free(key);
+	free(mapent);
 
-int lookup_enumerate(const char *root, int (*fn)(struct mapent_cache *, int), time_t now, void *context)
-{
-	struct lookup_context *ctxt = (struct lookup_context *) context;
-	struct mapent_cache *me;
-	struct stat st;
-	int status = LKP_DIRECT;
-	time_t age = now ? now : time(NULL);
-
-	if (!read_map(root, age, ctxt))
-		return LKP_FAIL;
-
-	if (stat(ctxt->mapname, &st)) {
-		crit(MODPREFIX "file map %s, could not stat",
-		       ctxt->mapname);
-		return LKP_FAIL;
-	}
-
-	ctxt->mtime = st.st_mtime;
-
-	me = cache_enumerate(NULL);
-	while (me) {
-		/* TODO: check return */
-		fn(me, now);
-		me = cache_enumerate(me);
-	}
-
-	/* TODO: need new test ??
-	if (*me->key != '/')
-		return LKP_FAIL | LKP_INDIRECT;
-	*/
-
-	return status;
-}
-
-int lookup_ghost(const char *root, int ghost, time_t now, void *context)
-{
-	struct lookup_context *ctxt = (struct lookup_context *) context;
-	struct mapent_cache *me;
-	struct stat st;
-	int status = LKP_INDIRECT;
-	time_t age = now ? now : time(NULL);
-
-	if (!read_map(root, age, ctxt))
-		return LKP_FAIL;
-
-	/* Clean stale entries from the cache */
-	cache_clean(_PATH_MOUNTED, root, age);
-
-	if (stat(ctxt->mapname, &st)) {
-		crit(MODPREFIX "file map %s, could not stat",
-		       ctxt->mapname);
-		return 1;
-	}
-		
-	ctxt->mtime = st.st_mtime;
-
-	me = cache_lookup_first();
-	/* me NULL => empty map */
-	if (!me)
-		return LKP_EMPTY;
-
-	/* TODO: Need new test 
-	if (*me->key == '/')
-		return LKP_FAIL | LKP_DIRECT;
-	*/
-
-	cache_ghost(root, ghost);
-
-	return status;
+	return NSS_STATUS_SUCCESS;
 }
 
 static int lookup_one(const char *root,
@@ -341,18 +322,14 @@ static int lookup_one(const char *root,
 {
 	char mkey[KEY_MAX_LEN + 1];
 	char mapent[MAPENT_MAX_LEN + 1];
-	char *mapname;
 	FILE *f;
 	int entry;
 	time_t age = time(NULL);
 
-	mapname = alloca(strlen(ctxt->mapname) + 6);
-	sprintf(mapname, "file:%s", ctxt->mapname);
-
 	f = fopen(ctxt->mapname, "r");
 	if (!f) {
 		error(MODPREFIX "could not open map file %s", ctxt->mapname);
-		return 0;
+		return CHE_FAIL;
 	}
 
 	while(1) {
@@ -387,7 +364,7 @@ static int lookup_wild(const char *root, struct lookup_context *ctxt)
 	f = fopen(ctxt->mapname, "r");
 	if (!f) {
 		error(MODPREFIX "could not open map file %s", ctxt->mapname);
-		return 0;
+		return CHE_FAIL;
 	}
 
 	while(1) {
@@ -407,12 +384,12 @@ static int lookup_wild(const char *root, struct lookup_context *ctxt)
 	return CHE_MISSING;
 }
 
-static int check_map_indirect(const char *root,
+static int check_map_indirect(struct autofs_point *ap,
 			      char *key, int key_len,
 			      struct lookup_context *ctxt)
 {
 	struct stat st;
-	struct mapent_cache *me;
+	struct mapent_cache *me, *exists;
 	time_t now = time(NULL);
 	time_t t_last_read;
 	int need_hup = 0;
@@ -420,30 +397,33 @@ static int check_map_indirect(const char *root,
 
 	if (stat(ctxt->mapname, &st)) {
 		crit(MODPREFIX "file map %s, could not stat", ctxt->mapname);
-		return 1;
+		return NSS_STATUS_TRYAGAIN;
 	}
 
 	me = cache_lookup_first();
-	t_last_read = me ? now - me->age : ap.exp_runfreq + 1;
+	t_last_read = me ? now - me->age : ap->exp_runfreq + 1;
 
 	/* only if it has been modified */
 	if (st.st_mtime > ctxt->mtime) {
-		ret = lookup_one(root, key, key_len, ctxt);
-		if (!ret)
-			return 1;
+		exists = cache_lookup(key);
 
-		if (t_last_read > ap.exp_runfreq)
-			if (ret & (CHE_UPDATED | CHE_MISSING))
+		ret = lookup_one(ap->path, key, key_len, ctxt);
+		if (ret == CHE_FAIL)
+			return NSS_STATUS_UNAVAIL;
+
+		if (t_last_read > ap->exp_runfreq)
+			if ((ret & CHE_UPDATED) ||
+			    (exists && (ret & CHE_MISSING)))
 				need_hup = 1;
 
 		if (ret == CHE_MISSING) {
 			int wild = CHE_MISSING;
 
-			wild = lookup_wild(root, ctxt);
+			wild = lookup_wild(ap->path, ctxt);
 			if (wild == CHE_MISSING)
-				cache_delete(_PATH_MOUNTED, root, "*", 0);
+				cache_delete("*");
 
-			if (cache_delete(_PATH_MOUNTED, root, key, 0) &&
+			if (cache_delete(key) &&
 					wild & (CHE_MISSING | CHE_FAIL))
 				rmdir_path(key);
 		}
@@ -453,10 +433,13 @@ static int check_map_indirect(const char *root,
 	if (need_hup)
 		kill(getppid(), SIGHUP);
 
-	return ret;
+	if (ret == CHE_MISSING)
+		return NSS_STATUS_NOTFOUND;
+
+	return NSS_STATUS_SUCCESS;
 }
 
-int lookup_mount(const char *root, const char *name, int name_len, void *context)
+int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *context)
 {
 	struct lookup_context *ctxt = (struct lookup_context *) context;
 	struct mapent_cache *me;
@@ -471,18 +454,18 @@ int lookup_mount(const char *root, const char *name, int name_len, void *context
 
 	key_len = snprintf(key, KEY_MAX_LEN, "%s", name);
 	if (key_len > KEY_MAX_LEN)
-		return 1;
+		return NSS_STATUS_NOTFOUND;
 
 	/*
 	 * We can't check the direct mount map as if it's not in
 	 * the map cache already we never get a mount lookup, so
 	 * we never know about it.
 	 */
-	if (ap.type == LKP_INDIRECT) {
-		status = check_map_indirect(root, key, key_len, ctxt);
+	if (ap->type == LKP_INDIRECT) {
+		status = check_map_indirect(ap, key, key_len, ctxt);
 		if (status) {
 			debug(MODPREFIX "check indirect map failure");
-			return 1;
+			return status;
 		}
 	}
 
@@ -491,11 +474,14 @@ int lookup_mount(const char *root, const char *name, int name_len, void *context
 		mapent_len = sprintf(mapent, me->mapent);
 		mapent[mapent_len] = '\0';
 		debug(MODPREFIX "%s -> %s", key, mapent);
-		ret = ctxt->parse->parse_mount(root, key, key_len,
+		ret = ctxt->parse->parse_mount(ap, key, key_len,
 					mapent, ctxt->parse->context);
 	}
 
-	return ret;
+	if (ret)
+		return NSS_STATUS_TRYAGAIN;
+
+	return NSS_STATUS_SUCCESS;
 }
 
 int lookup_done(void *context)
@@ -503,6 +489,6 @@ int lookup_done(void *context)
 	struct lookup_context *ctxt = (struct lookup_context *) context;
 	int rv = close_parse(ctxt->parse);
 	free(ctxt);
-	cache_release();
+/*	cache_release(); */
 	return rv;
 }

@@ -1,4 +1,4 @@
-#ident "$Id: lookup_hesiod.c,v 1.9 2006/02/08 16:49:21 raven Exp $"
+#ident "$Id: lookup_hesiod.c,v 1.10 2006/02/20 01:05:32 raven Exp $"
 /*
  * lookup_hesiod.c
  *
@@ -21,6 +21,7 @@
 
 #define MODULE_LOOKUP
 #include "automount.h"
+#include "nsswitch.h"
 
 #define MAPFMT_DEFAULT "hesiod"
 
@@ -43,9 +44,8 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 	/* If we can't build a context, bail. */
 	if ((*context = ctxt = (struct lookup_context *)
 	     malloc(sizeof(struct lookup_context))) == NULL) {
-		if (strerror_r(errno, buf, MAX_ERR_BUF))
-			strcpy(buf, "strerror_r failed");
-		crit(MODPREFIX "malloc: %s", buf);
+		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+		crit(MODPREFIX "malloc: %s", estr);
 		return 1;
 	}
 
@@ -60,21 +60,16 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 	return !(ctxt->parser = open_parse(mapfmt, MODPREFIX, argc - 1, argv + 1));
 }
 
-int lookup_enumerate(const char *root, int (*fn)(struct mapent_cache *, int), time_t now, void *context)
+int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 {
-	return LKP_NOTSUP;
-}
-
-int lookup_ghost(const char *root, int ghost, time_t now, void *context)
-{
-	return LKP_NOTSUP;
+	return NSS_STATUS_UNAVAIL;
 }
 
 /* Lookup and act on a filesystem name.  In this case, lookup the "filsys"
    record in hesiod.  If it's an AFS or NFS filesyste, parse it out.  If
    it's an ERR filesystem, it's an error message we should log.  Otherwise,
    assume it's something we know how to deal with already (generic). */
-int lookup_mount(const char *root, const char *name, int name_len, void *context)
+int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *context)
 {
 	char **hes_result;
 	struct lookup_context *ctxt = (struct lookup_context *) context;
@@ -82,7 +77,7 @@ int lookup_mount(const char *root, const char *name, int name_len, void *context
 	char **record, *best_record = NULL, *p;
 	int priority, lowest_priority = INT_MAX;	
 
-	debug(MODPREFIX "looking up root=\"%s\", name=\"%s\"", root, name);
+	debug(MODPREFIX "looking up root=\"%s\", name=\"%s\"", ap->path, name);
 
 	chdir("/");		/* If this is not here the filesystem stays
 				   busy, for some reason... */
@@ -91,7 +86,7 @@ int lookup_mount(const char *root, const char *name, int name_len, void *context
 
 	if (!hes_result || !hes_result[0]) {
 		warn(MODPREFIX "entry \"%s\" not found in map\n", name);
-		return 1;
+		return NSS_STATUS_UNAVAIL;
 	}
 
 	/* autofs doesn't support falling back to alternate records, so just
@@ -112,7 +107,7 @@ int lookup_mount(const char *root, const char *name, int name_len, void *context
 
 	debug(MODPREFIX "lookup for \"%s\" gave \"%s\"", name, best_record);
 
-	rv = ctxt->parser->parse_mount(root, name, name_len, best_record,
+	rv = ctxt->parser->parse_mount(ap, name, name_len, best_record,
 				       ctxt->parser->context);
 	free(hes_result);
 	return rv;

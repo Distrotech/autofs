@@ -1,4 +1,4 @@
-#ident "$Id: lookup_hosts.c,v 1.1 2006/02/08 16:50:32 raven Exp $"
+#ident "$Id: lookup_hosts.c,v 1.2 2006/02/20 01:05:32 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup_hosts.c - module for Linux automount to mount the exports
@@ -25,10 +25,13 @@
 
 #define MODULE_LOOKUP
 #include "automount.h"
+#include "nsswitch.h"
 #include "mount.h"
 
 #define MAPFMT_DEFAULT "sun"
 #define MODPREFIX "lookup(hosts): "
+
+pthread_mutex_t hostent_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 struct lookup_context {
 	struct parse_mod *parse;
@@ -46,40 +49,41 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 	char buf[MAX_ERR_BUF];
 
 	if (!(*context = ctxt = malloc(sizeof(struct lookup_context)))) {
-		if (strerror_r(errno, buf, MAX_ERR_BUF))
-			strcpy(buf, "strerror_r failed");
-		crit(MODPREFIX "malloc: %s", buf);
+		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+		crit(MODPREFIX "malloc: %s", estr);
 		return 1;
 	}
 
 	mapfmt = MAPFMT_DEFAULT;
-	cache_init();
+/*	cache_init(); */
 
 	return !(ctxt->parse = open_parse(mapfmt, MODPREFIX, argc - 1, argv + 1));
 }
 
-/* host maps are always indirect maps */
-int lookup_enumerate(const char *root, int (*fn)(struct mapent_cache *, int), time_t now, void *context)
-{
-	return LKP_NOTSUP;
-}
-
-int lookup_ghost(const char *root, int ghost, time_t now, void *context)
+int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 {
 	struct hostent *host;
-	time_t age = now ? now : time(NULL);
+	int status;
+
+	status = pthread_mutex_lock(&hostent_mutex);
+	if (status) {
+		error("failed to lock hostent mutex");
+		return NSS_STATUS_UNAVAIL;
+	}
 
 	sethostent(0);
 	while ((host = gethostent()) != NULL)
 		cache_update(host->h_name, NULL, age);
 	endhostent();
 
-	cache_ghost(root, ghost);
+	status = pthread_mutex_unlock(&hostent_mutex);
+	if (status)
+		error("failed to unlock hostent mutex");
 
-	return LKP_INDIRECT;
+	return NSS_STATUS_SUCCESS;
 }
 
-int lookup_mount(const char *root, const char *name, int name_len, void *context)
+int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *context)
 {
 	struct lookup_context *ctxt = (struct lookup_context *) context;
 	struct mapent_cache *me;
@@ -97,8 +101,8 @@ int lookup_mount(const char *root, const char *name, int name_len, void *context
 		else
 			error(MODPREFIX
 			      "can't find path in hosts map %s/%s",
-			      root, name);
-		return 1;
+			      ap->path, name);
+		return NSS_STATUS_NOTFOUND;
 	}
 
 	/*
@@ -108,9 +112,13 @@ int lookup_mount(const char *root, const char *name, int name_len, void *context
 	 */
 	if (*name == '/') {
 		debug(MODPREFIX "%s -> %s", name, me->mapent);
-		ret = ctxt->parse->parse_mount(root, name, name_len,
+		ret = ctxt->parse->parse_mount(ap, name, name_len,
 				 me->mapent, ctxt->parse->context);
-		return ret;
+
+		if (ret)
+			return NSS_STATUS_TRYAGAIN;
+
+		return NSS_STATUS_SUCCESS;
 	}
 
 	/*
@@ -131,10 +139,11 @@ int lookup_mount(const char *root, const char *name, int name_len, void *context
 			len += strlen(name) + 2*strlen(exp->ex_dir) + 3;
 			mapent = realloc(mapent, len);
 			if (!mapent) {
-				if (strerror_r(errno, buf, MAX_ERR_BUF))
-					strcpy(buf, "strerror_r failed");
-				crit(MODPREFIX "malloc: %s", buf);
-				return 1;
+				char *estr;
+				estr = strerror_r(errno, buf, MAX_ERR_BUF);
+				crit(MODPREFIX "malloc: %s", estr);
+				rpc_exports_free(exp);
+				return NSS_STATUS_UNAVAIL;
 			}
 			strcat(mapent, " ");
 			strcat(mapent, exp->ex_dir);
@@ -143,10 +152,11 @@ int lookup_mount(const char *root, const char *name, int name_len, void *context
 
 			mapent = malloc(len);
 			if (!mapent) {
-				if (strerror_r(errno, buf, MAX_ERR_BUF))
-					strcpy(buf, "strerror_r failed");
-				crit(MODPREFIX "malloc: %s", buf);
-				return 1;
+				char *estr;
+				estr = strerror_r(errno, buf, MAX_ERR_BUF);
+				crit(MODPREFIX "malloc: %s", estr);
+				rpc_exports_free(exp);
+				return NSS_STATUS_UNAVAIL;
 			}
 			strcpy(mapent, exp->ex_dir);
 		}
@@ -157,22 +167,26 @@ int lookup_mount(const char *root, const char *name, int name_len, void *context
 
 		exp = exp->ex_next;
 	}
+	rpc_exports_free(exp);
 
 	/* Exports lookup failed so we're outa here */
 	if (!mapent) {
 		error("exports lookup failed for %s", name);
-		return 1;
+		return NSS_STATUS_UNAVAIL;
 	}
 
 	debug(MODPREFIX "%s -> %s", name, mapent);
 
 	cache_update(name, mapent, now);
 
-	ret = ctxt->parse->parse_mount(root, name, name_len,
+	ret = ctxt->parse->parse_mount(ap, name, name_len,
 				 mapent, ctxt->parse->context);
 	free(mapent);
 
-	return ret;
+	if (ret)
+		return NSS_STATUS_TRYAGAIN;
+
+	return NSS_STATUS_SUCCESS;
 }
 
 int lookup_done(void *context)
@@ -180,6 +194,6 @@ int lookup_done(void *context)
 	struct lookup_context *ctxt = (struct lookup_context *) context;
 	int rv = close_parse(ctxt->parse);
 	free(ctxt);
-	cache_release();
+/*	cache_release(); */
 	return rv;
 }

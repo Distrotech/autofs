@@ -1,4 +1,4 @@
-#ident "$Id: automount.h,v 1.21 2006/02/10 00:50:42 raven Exp $"
+#ident "$Id: automount.h,v 1.22 2006/02/20 01:05:32 raven Exp $"
 /*
  * automount.h
  *
@@ -78,6 +78,9 @@
 #define DB(x)           do { } while(0)
 #endif
 
+/* Forward declaraion */
+struct autofs_point; 
+
 /*
  * State machine for daemon
  * 
@@ -134,18 +137,20 @@ struct mapent_cache *cache_lookup_ino(dev_t dev, ino_t ino);
 struct mapent_cache *cache_lookup(const char *key);
 struct mapent_cache *cache_lookup_first(void);
 struct mapent_cache *cache_lookup_next(struct mapent_cache *me);
+struct mapent_cache *cache_lookup_key_next(struct mapent_cache *me);
 struct mapent_cache *cache_lookup_offset(const char *prefix, const char *offset, int start, struct list_head *head);
 struct mapent_cache *cache_partial_match(const char *prefix);
 int cache_add(const char *key, const char *mapent, time_t age);
 int cache_add_offset(const char *mkey, const char *key, const char *mapent, time_t age);
 int cache_update(const char *key, const char *mapent, time_t age);
-int cache_delete(const char *table, const char *root, const char *key, int rmpath);
-int cache_delete_offset_list(const char *table, const char *root, const char *key);
-int cache_delete_offset(const char *table, const char *root, const char *key);
-void cache_clean(const char *table, const char *root, time_t age);
+int cache_delete(const char *key);
+int cache_delete_offset_list(const char *key);
+void cache_clean(const char *root, time_t age);
 void cache_release(void);
+int cache_enumerate_readlock(void);
+int cache_enumerate_writelock(void);
+int cache_enumerate_unlock(void);
 struct mapent_cache *cache_enumerate(struct mapent_cache *me);
-int cache_ghost(const char *root, int is_ghosted);
 char *cache_get_offset(const char *prefix, char *offset, int start, struct list_head *head, struct list_head **pos);
 
 /* Utility functions */
@@ -155,15 +160,20 @@ int sigchld_block(void);
 int sigchld_unblock(void);
 int aquire_lock(void);
 void release_lock(void);
-int spawnll(int logpri, const char *prog, ...);
 int spawnl(int logpri, const char *prog, ...);
-int spawnv(int logpri, const char *prog, const char *const *argv);
+#ifdef ENABLE_MOUNT_LOCKING
+int spawnll(int logpri, const char *prog, ...);
+#else
+#define spawnll	spawnl
+#endif
+int spawnv(int ogpri, const char *prog, const char *const *argv);
 void reset_signals(void);
 void ignore_signals(void);
 void discard_pending(int sig);
 int signal_children(int sig);
-int do_mount(const char *root, const char *name, int name_len,
-	     const char *what, const char *fstype, const char *options);
+int do_mount(struct autofs_point *ap, const char *root, const char *name,
+	     int name_len, const char *what, const char *fstype,
+	     const char *options);
 int mkdir_path(const char *path, mode_t mode);
 int rmdir_path(const char *path);
 
@@ -171,28 +181,31 @@ int rmdir_path(const char *path);
 
 /* lookup module */
 
-#define AUTOFS_LOOKUP_VERSION 4
+#define AUTOFS_LOOKUP_VERSION 5
 
 #define KEY_MAX_LEN    NAME_MAX
 #define MAPENT_MAX_LEN 4095
 
+int lookup_nss_read_map(struct autofs_point *ap, time_t age);
+int lookup_enumerate(struct autofs_point *ap,
+	int (*fn)(struct autofs_point *,struct mapent_cache *, int), time_t now);
+int lookup_ghost(struct autofs_point *ap);
+int lookup_nss_mount(struct autofs_point *ap, const char *name, int name_len);
+
 #ifdef MODULE_LOOKUP
 int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **context);
-int lookup_enumerate(const char *, int (*fn)(struct mapent_cache *, int), time_t, void *);
-int lookup_ghost(const char *, int, time_t, void *);
-int lookup_mount(const char *, const char *, int, void *);
+int lookup_read_map(struct autofs_point *, time_t, void *context);
+int lookup_mount(struct autofs_point *, const char *, int, void *);
 int lookup_done(void *);
 #endif
 typedef int (*lookup_init_t) (const char *, int, const char *const *, void **);
-typedef int (*lookup_enumerate_t) (const char *, int (*fn)(struct mapent_cache *, int), time_t, void *);
-typedef int (*lookup_ghost_t) (const char *, int, time_t, void *);
-typedef int (*lookup_mount_t) (const char *, const char *, int, void *);
+typedef int (*lookup_read_map_t) (struct autofs_point *, time_t, void *context);
+typedef int (*lookup_mount_t) (struct autofs_point *, const char *, int, void *);
 typedef int (*lookup_done_t) (void *);
 
 struct lookup_mod {
 	lookup_init_t lookup_init;
-	lookup_enumerate_t lookup_enumerate;
-	lookup_ghost_t lookup_ghost;
+	lookup_read_map_t lookup_read_map;
 	lookup_mount_t lookup_mount;
 	lookup_done_t lookup_done;
 	void *dlhandle;
@@ -205,16 +218,16 @@ int close_lookup(struct lookup_mod *);
 
 /* parse module */
 
-#define AUTOFS_PARSE_VERSION 3
+#define AUTOFS_PARSE_VERSION 5
 
 #ifdef MODULE_PARSE
 int parse_init(int argc, const char *const *argv, void **context);
-int parse_mount(const char *root, const char *name,
+int parse_mount(struct autofs_point *ap, const char *name,
 		int name_len, const char *mapent, void *context);
 int parse_done(void *);
 #endif
 typedef int (*parse_init_t) (int, const char *const *, void **);
-typedef int (*parse_mount_t) (const char *, const char *, int, const char *, void *);
+typedef int (*parse_mount_t) (struct autofs_point *, const char *, int, const char *, void *);
 typedef int (*parse_done_t) (void *);
 
 struct parse_mod {
@@ -235,13 +248,13 @@ int close_parse(struct parse_mod *);
 
 #ifdef MODULE_MOUNT
 int mount_init(void **context);
-int mount_mount(const char *root, const char *name, int name_len,
+int mount_mount(struct autofs_point *ap, const char *root, const char *name, int name_len,
 		const char *what, const char *fstype, const char *options, void *context);
 int mount_done(void *context);
 #endif
 typedef int (*mount_init_t) (void **);
-typedef int (*mount_mount_t) (const char *, const char *, int, const char *, const char *,
-			      const char *, void *);
+typedef int (*mount_mount_t) (struct autofs_point *, const char *, const char *, int,
+				const char *, const char *, const char *, void *);
 typedef int (*mount_done_t) (void *);
 
 struct mount_mod {
@@ -312,13 +325,16 @@ int xopen(const char *path, int flags);
 
 /* Core automount definitions */
 
-struct pending_mount {
-	pthread_t thid;			/* Which thread is mounting for us */
+struct pending {
 	struct mapent_cache *me;	/* Map entry descriptor */
-	int ioctlfd;			/* fd to send ioctls to kernel */
+	struct autofs_point *ap;	/* autofs mount we are working on */
+	int status;			/* Return status */
 	int type;			/* Type of packet */
+	char name[KEY_MAX_LEN];		/* Name field of the request */
+	unsigned int len;		/* Name field len */
+	uid_t uid;			/* uid of requestor */
+	gid_t gid;			/* gid of requestor */
 	unsigned long wait_queue_token;	/* Associated kernel wait token */
-	struct pending_mount *next;
 };
 
 struct kernel_mod_version {
@@ -333,13 +349,15 @@ struct autofs_point {
 	int ioctlfd;			/* File descriptor for ioctls */
 	dev_t dev;			/* "Device" number assigned by kernel */
 	char *maptype;			/* Type of map "file", "NIS", etc */
+	char *mapfmt;			/* Format of map default "Sun" */
+	int mapargc;			/* Map options arg count */
+	const char **mapargv;			/* Map options args */
 	unsigned int type;		/* Type of map direct or indirect */
 	time_t exp_timeout;		/* Timeout for expiring mounts */
 	time_t exp_runfreq;		/* Frequency for polling for timeouts */
 	unsigned ghost;			/* Enable/disable gohsted directories */
-	struct kernel_mod_version kver;		/* autofs kernel module version */
+	struct kernel_mod_version kver;	/* autofs kernel module version */
 	pthread_t exp_thread;		/* Process that is currently expiring */
-	struct pending_mount *mounts;	/* Pending mount queue */
 	struct lookup_mod *lookup;	/* Lookup module */
 	enum states state;
 	int state_pipe[2];
@@ -347,44 +365,43 @@ struct autofs_point {
 					   mount? */
 };
 
-extern struct autofs_point ap; 
-
 /* Standard functions used by daemon or modules */
 
 /*
  * Passing stack variables in the arg to a thread at
  * create time have a nasty habit of going away so
- * we use a condition variable to pass the parameter.
+ * we use a condition variables to pass this info.
  */
 struct expire_cond {
-	 pthread_mutex_t mutex;
+	pthread_mutex_t mutex;
 	pthread_cond_t  cond;
+	struct autofs_point *ap;
 	unsigned int    when;
 };
 
 extern struct expire_cond ec;
 
-int umount_multi(const char *path, int incl);
+int umount_multi(struct autofs_point *ap, const char *path, int incl);
 int send_ready(int ioctlfd, unsigned int wait_queue_token);
 int send_fail(int ioctlfd, unsigned int wait_queue_token);
 /*int handle_expire(const char *name, int namelen,
 			int ioctlfd, autofs_wqt_t token); */
 int umount_offsets(const char *path);
-int do_expire(const char *name, int namelen);
+int do_expire(struct autofs_point *ap, const char *name, int namelen);
 void *expire_proc_indirect(void *);
 void *expire_proc_direct(void *);
-int expire_offsets_direct(struct mapent_cache *me, int now);
-int mount_autofs_indirect(char *path);
-int mount_autofs_direct(char *path);
-int mount_autofs_offset(struct mapent_cache *me, int is_autofs_fs);
-int umount_autofs(int force);
-int umount_autofs_indirect(void);
-int umount_autofs_direct(void);
+int expire_offsets_direct(struct autofs_point *ap, struct mapent_cache *me, int now);
+int mount_autofs_indirect(struct autofs_point *ap, char *path);
+int mount_autofs_direct(struct autofs_point *ap, char *path);
+int mount_autofs_offset(struct autofs_point *ap, struct mapent_cache *me, int is_autofs_fs);
+int umount_autofs(struct autofs_point *ap, int force);
+int umount_autofs_indirect(struct autofs_point *ap);
+int umount_autofs_direct(struct autofs_point *ap);
 int umount_autofs_offset(struct mapent_cache *me);
-int handle_packet_expire_indirect(autofs_packet_expire_indirect_t *pkt);
-int handle_packet_expire_direct(autofs_packet_expire_direct_t *pkt);
-int handle_packet_missing_indirect(autofs_packet_missing_indirect_t *pkt);
-int handle_packet_missing_direct(autofs_packet_missing_direct_t *pkt);
+int handle_packet_expire_indirect(struct autofs_point *ap, autofs_packet_expire_indirect_t *pkt);
+int handle_packet_expire_direct(struct autofs_point *ap, autofs_packet_expire_direct_t *pkt);
+int handle_packet_missing_indirect(struct autofs_point *ap, autofs_packet_missing_indirect_t *pkt);
+int handle_packet_missing_direct(struct autofs_point *ap, autofs_packet_missing_direct_t *pkt);
 void rm_unwanted(const char *path, int incl, int rmsymlink);
 int count_mounts(const char *path);
 void handle_cleanup(void *ret);

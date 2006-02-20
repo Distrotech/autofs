@@ -1,4 +1,4 @@
-#ident "$Id: lookup_program.c,v 1.11 2006/02/08 16:49:21 raven Exp $"
+#ident "$Id: lookup_program.c,v 1.12 2006/02/20 01:05:32 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup_program.c - module for Linux automount to access an
@@ -30,6 +30,7 @@
 
 #define MODULE_LOOKUP
 #include "automount.h"
+#include "nsswitch.h"
 
 #define MAPFMT_DEFAULT "sun"
 
@@ -48,9 +49,8 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 	char buf[MAX_ERR_BUF];
 
 	if (!(*context = ctxt = malloc(sizeof(struct lookup_context)))) {
-		if (strerror_r(errno, buf, MAX_ERR_BUF))
-			strcpy(buf, "strerror_r failed");
-		crit(MODPREFIX "malloc: %s", buf);
+		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+		crit(MODPREFIX "malloc: %s", estr);
 		return 1;
 	}
 
@@ -78,17 +78,12 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 	return !(ctxt->parse = open_parse(mapfmt, MODPREFIX, argc - 1, argv + 1));
 }
 
-int lookup_enumerate(const char *root, int (*fn)(struct mapent_cache *, int), time_t now, void *context)
+int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 {
-	return LKP_NOTSUP;
+	return NSS_STATUS_UNAVAIL;
 }
 
-int lookup_ghost(const char *root, int ghost, time_t now, void *context)
-{
-	return LKP_NOTSUP;
-}
-
-int lookup_mount(const char *root, const char *name, int name_len, void *context)
+int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *context)
 {
 	struct lookup_context *ctxt = (struct lookup_context *) context;
 	char *mapent, *mapp, *tmp;
@@ -111,10 +106,9 @@ int lookup_mount(const char *root, const char *name, int name_len, void *context
 
 	mapent = (char *) malloc(MAPENT_MAX_LEN + 1);
 	if (!mapent) {
-		if (strerror_r(errno, buf, MAX_ERR_BUF))
-			strcpy(buf, "strerror_r failed");
-		error(MODPREFIX "malloc: %s", buf);
-		return 1;
+		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+		error(MODPREFIX "malloc: %s", estr);
+		return NSS_STATUS_UNAVAIL;
 	}
 
 	/*
@@ -126,9 +120,8 @@ int lookup_mount(const char *root, const char *name, int name_len, void *context
 	sigchld_block();
 
 	if (pipe(pipefd)) {
-		if (strerror_r(errno, buf, MAX_ERR_BUF))
-			strcpy(buf, "strerror_r failed");
-		error(MODPREFIX "pipe: %s", buf);
+		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+		error(MODPREFIX "pipe: %s", estr);
 		sigchld_unblock();
 		goto out_free;
 	}
@@ -141,14 +134,13 @@ int lookup_mount(const char *root, const char *name, int name_len, void *context
 
 	f = fork();
 	if (f < 0) {
+		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+		error(MODPREFIX "fork: %s", estr);
 		close(pipefd[0]);
 		close(pipefd[1]);
 		close(epipefd[0]);
 		close(epipefd[1]);
 		sigchld_unblock();
-		if (strerror_r(errno, buf, MAX_ERR_BUF))
-			strcpy(buf, "strerror_r failed");
-		error(MODPREFIX "fork: %s", buf);
 		goto out_free;
 	} else if (f == 0) {
 		reset_signals();
@@ -283,9 +275,8 @@ int lookup_mount(const char *root, const char *name, int name_len, void *context
 	close(epipefd[0]);
 
 	if (waitpid(f, &status, 0) != f) {
-		if (strerror_r(errno, buf, MAX_ERR_BUF))
-			strcpy(buf, "strerror_r failed");
-		error(MODPREFIX "waitpid: %s", buf);
+		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+		error(MODPREFIX "waitpid: %s", estr);
 		goto out_free;
 	}
 
@@ -298,11 +289,15 @@ int lookup_mount(const char *root, const char *name, int name_len, void *context
 
 	debug(MODPREFIX "%s -> %s", name, mapent);
 
-	ret = ctxt->parse->parse_mount(root, name, name_len,
+	ret = ctxt->parse->parse_mount(ap, name, name_len,
 				       mapent, ctxt->parse->context);
 out_free:
 	free(mapent);
-	return ret;
+
+	if (ret)
+		return NSS_STATUS_UNAVAIL;
+
+	return NSS_STATUS_SUCCESS;
 }
 
 int lookup_done(void *context)

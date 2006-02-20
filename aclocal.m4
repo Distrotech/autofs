@@ -1,5 +1,5 @@
 dnl
-dnl $Id: aclocal.m4,v 1.2 2003/09/29 08:22:35 raven Exp $
+dnl $Id: aclocal.m4,v 1.3 2006/02/20 01:05:32 raven Exp $
 dnl
 dnl --------------------------------------------------------------------------
 dnl AF_PATH_INCLUDE:
@@ -9,8 +9,8 @@ dnl --------------------------------------------------------------------------
 AC_DEFUN(AF_PATH_INCLUDE,
 [AC_PATH_PROGS($1,$2,$3,$4)
 if test -n "$$1"; then
-  AC_DEFINE(HAVE_$1)
-  AC_DEFINE_UNQUOTED(PATH_$1, "$$1")
+  AC_DEFINE(HAVE_$1,1,[define if you have $1])
+  AC_DEFINE_UNQUOTED(PATH_$1, "$$1", [define if you have $1])
   HAVE_$1=1
 else
   HAVE_$1=0
@@ -28,7 +28,7 @@ AC_DEFUN(AF_SLOPPY_MOUNT,
 [if test -n "$MOUNT" ; then
   AC_MSG_CHECKING([if mount accepts the -s option])
   if "$MOUNT" -s > /dev/null 2>&1 ; then
-    AC_DEFINE(HAVE_SLOPPY_MOUNT)
+    AC_DEFINE(HAVE_SLOPPY_MOUNT, 1, [define if the mount command supports the -s option])
     AC_MSG_RESULT(yes)
   else
     AC_MSG_RESULT(no)

@@ -1,4 +1,4 @@
-#ident "$Id: mount_afs.c,v 1.7 2006/02/08 16:49:21 raven Exp $"
+#ident "$Id: mount_afs.c,v 1.8 2006/02/20 01:05:33 raven Exp $"
 /*
  * mount_afs.c
  *
@@ -29,7 +29,7 @@ int mount_init(void **context)
 	return 0;
 }
 
-int mount_mount(const char *root, const char *name, int name_len,
+int mount_mount(struct autofs_point *ap, const char *root, const char *name, int name_len,
 		const char *what, const char *fstype, const char *options, void *context)
 {
 	char dest[PATH_MAX * 2];
