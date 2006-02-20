@@ -64,7 +64,11 @@ static int autofs4_mount_busy(struct vfsmount *mnt, struct dentry *dentry)
 		goto done;
 
 	/* Update the expiry counter if fs is busy */
+#if LINUX_VERSION_CODE > KERNEL_VERSION(2,6,16)
 	if (!may_umount_tree(mnt)) {
+#else
+	if (may_umount_tree(mnt)) {
+#endif
 		struct autofs_info *ino = autofs4_dentry_ino(top);
 		ino->last_used = jiffies;
 		goto done;
@@ -120,7 +124,11 @@ static int autofs4_direct_busy(struct vfsmount *mnt,
 		goto done;
 
 	/* If it's busy update the expiry counters */
+#if LINUX_VERSION_CODE > KERNEL_VERSION(2,6,16)
 	if (!may_umount_tree(mnt)) {
+#else
+	if (may_umount_tree(mnt)) {
+#endif
 		struct autofs_info *ino = autofs4_dentry_ino(top);
 		if (ino)
 			ino->last_used = jiffies;

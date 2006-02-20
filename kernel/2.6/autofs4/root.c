@@ -831,7 +831,11 @@ static inline int autofs4_ask_umount(struct vfsmount *mnt, int __user *p)
 {
 	int status = 0;
 
+#if LINUX_VERSION_CODE > KERNEL_VERSION(2,6,16)
 	if (may_umount(mnt))
+#else
+	if (may_umount(mnt) == 0)
+#endif
 		status = 1;
 
 	DPRINTK("returning %d", status);
