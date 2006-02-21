@@ -1,4 +1,4 @@
-#ident "$Id: cache.c,v 1.20 2006/02/20 01:05:32 raven Exp $"
+#ident "$Id: cache.c,v 1.21 2006/02/21 18:48:11 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  cache.c - mount entry cache management routines
@@ -67,6 +67,47 @@ static char *cache_fullpath(const char *root, const char *key)
 	return path;
 }
 
+int cache_readlock(void)
+{
+	int status;
+
+	status = pthread_rwlock_rdlock(&cache_rwlock);
+	if (status) {
+		error("mapent cache rwlock lock failed");
+		return 0;
+	}
+	return 1;
+}
+
+int cache_writelock(void)
+{
+	int status;
+
+	status = pthread_rwlock_wrlock(&cache_rwlock);
+	if (status) {
+		error("mapent cache rwlock lock failed");
+		return 0;
+	}
+	return 1;
+}
+
+int cache_unlock(void)
+{
+	int status;
+
+	status = pthread_rwlock_unlock(&cache_rwlock);
+	if (status) {
+		error("mapent cache rwlock unlock failed");
+		return 0;
+	}
+	return 1;
+}
+
+void cache_lock_cleanup(void *arg)
+{
+	cache_unlock();
+}
+
 void cache_init(void)
 {
 	int i, status;
@@ -77,18 +118,14 @@ void cache_init(void)
 	if (status)
 		error("mapent cache init rwlock lock failed");
 
-	status = pthread_rwlock_wrlock(&cache_rwlock);
-	if (status)
-		error("mapent cache init rwlock lock failed");
+	cache_writelock();
 
 	for (i = 0; i < HASHSIZE; i++) {
 		mapent_hash[i] = NULL;
 		cache_ino_index[i] = -1;
 	}
 
-	status = pthread_rwlock_unlock(&cache_rwlock);
-	if (status)
-		error("mapent cache rwlock unlock failed");
+	cache_unlock();
 }
 
 static unsigned int hash(const char *key)
@@ -121,6 +158,7 @@ void cache_set_ino_index(const char *key, dev_t dev, ino_t ino)
 	return;
 }
 
+/* cache must be write locked by caller */
 void cache_set_ino(struct mapent_cache *me, dev_t dev, ino_t ino)
 {
 	if (!me) {
@@ -132,38 +170,28 @@ void cache_set_ino(struct mapent_cache *me, dev_t dev, ino_t ino)
 	me->ino = ino;
 }
 
+/* cache must be read locked by caller */
 struct mapent_cache *cache_lookup_ino(dev_t dev, ino_t ino)
 {
 	struct mapent_cache *me = NULL;
 	unsigned int ino_index;
 	unsigned int index;
-	int status;
-
-	status = pthread_rwlock_rdlock(&cache_rwlock);
-	if (status) {
-		error("mapent cache rwlock lock failed");
-		return NULL;
-	}
 
 	ino_index = ino_hash(dev, ino);
 	index = cache_ino_index[ino_index];
 	if (index == -1)
-		goto done;
+		return NULL;
 
 	for (me = mapent_hash[index]; me != NULL; me = me->next) {
 		if (me->dev != dev || me->ino != ino)
 			continue;
-		goto done;
+		return me;
 	}
-done:
-	status = pthread_rwlock_unlock(&cache_rwlock);
-	if (status)
-		error("mapent cache rwlock unlock failed");
-
-	return me;
+	return NULL;
 }
 
-static struct mapent_cache *__cache_lookup_first(void)
+/* cache must be read locked by caller */
+struct mapent_cache *cache_lookup_first(void)
 {
 	struct mapent_cache *me = NULL;
 	int i;
@@ -181,25 +209,8 @@ static struct mapent_cache *__cache_lookup_first(void)
 	return me;
 }
 
-struct mapent_cache *cache_lookup_first(void)
-{
-	struct mapent_cache *me = NULL;
-	int status;
-
-	status = pthread_rwlock_rdlock(&cache_rwlock);
-	if (status)
-		error("mapent cache rwlock lock failed");
-
-	me = __cache_lookup_first();
-
-	status = pthread_rwlock_unlock(&cache_rwlock);
-	if (status)
-		error("mapent cache rwlock unlock failed");
-
-	return me;
-}
-
-static struct mapent_cache *__cache_lookup_next(struct mapent_cache *me)
+/* cache must be read locked by caller */
+struct mapent_cache *cache_lookup_next(struct mapent_cache *me)
 {
 	struct mapent_cache *next;
 
@@ -220,38 +231,16 @@ static struct mapent_cache *__cache_lookup_next(struct mapent_cache *me)
 	return NULL;
 }
 
-struct mapent_cache *cache_lookup_next(struct mapent_cache *me)
-{
-	struct mapent_cache *ne;
-	int status;
-
-	status = pthread_rwlock_rdlock(&cache_rwlock);
-	if (status)
-		error("mapent cache rwlock lock failed");
-
-	ne = __cache_lookup_next(me);
-
-	status = pthread_rwlock_unlock(&cache_rwlock);
-	if (status)
-		error("mapent cache rwlock unlock failed");
-
-	return ne;
-}
-
 /*
  * This badness must go when the LDAP module is fixed.
  */
+/* cache must be read locked by caller */
 struct mapent_cache *cache_lookup_key_next(struct mapent_cache *me)
 {
 	struct mapent_cache *next;
-	int status;
 
 	if (!me)
 		return NULL;
-
-	status = pthread_rwlock_rdlock(&cache_rwlock);
-	if (status)
-		error("mapent cache rwlock lock failed");
 
 	next = me->next;
 	while (next) {
@@ -263,14 +252,11 @@ struct mapent_cache *cache_lookup_key_next(struct mapent_cache *me)
 		next = next->next;
 	}
 
-	status = pthread_rwlock_unlock(&cache_rwlock);
-	if (status)
-		error("mapent cache rwlock unlock failed");
-
 	return NULL;
 }
 
-static struct mapent_cache *__cache_lookup(const char *key)
+/* cache must be read locked by caller */
+struct mapent_cache *cache_lookup(const char *key)
 {
 	struct mapent_cache *me = NULL;
 
@@ -279,7 +265,7 @@ static struct mapent_cache *__cache_lookup(const char *key)
 			goto done;
 	}
 
-	me = __cache_lookup_first();
+	me = cache_lookup_first();
 	if (me != NULL) {
 		/* Can't have wildcard in direct map */
 		if (*me->key == '/') {
@@ -295,29 +281,11 @@ done:
 	return me;
 }
 
-struct mapent_cache *cache_lookup(const char *key)
-{
-	struct mapent_cache *me = NULL;
-	int status;
-
-	status = pthread_rwlock_rdlock(&cache_rwlock);
-	if (status)
-		error("mapent cache rwlock lock failed");
-
-	me = __cache_lookup(key);
-
-	status = pthread_rwlock_unlock(&cache_rwlock);
-	if (status)
-		error("mapent cache rwlock unlock failed");
-
-	return me;
-}
-
 /* Lookup an offset within a multi-mount entry */
 struct mapent_cache *cache_lookup_offset(const char *prefix, const char *offset, int start, struct list_head *head)
 {
 	struct list_head *p;
-	struct mapent_cache *this = NULL;
+	struct mapent_cache *this;
 	int plen = strlen(prefix);
 	char *o_key;
 
@@ -334,23 +302,19 @@ struct mapent_cache *cache_lookup_offset(const char *prefix, const char *offset,
 	list_for_each(p, head) {
 		this = list_entry(p, struct mapent_cache, multi_list);
 		if (!strcmp(&this->key[start], o_key))
-			return this;
+			goto done;
 	}
-	return NULL;
+	this = NULL;
+done:
+	return this;
 }
 
+/* cache must be read locked by caller */
 struct mapent_cache *cache_partial_match(const char *prefix)
 {
 	struct mapent_cache *me = NULL;
 	int len = strlen(prefix);
-	int status;
 	int i;
-
-	status = pthread_rwlock_rdlock(&cache_rwlock);
-	if (status) {
-		error("mapent cache rwlock lock failed");
-		return NULL;
-	}
 
 	for (i = 0; i < HASHSIZE; i++) {
 		me = mapent_hash[i];
@@ -359,30 +323,25 @@ struct mapent_cache *cache_partial_match(const char *prefix)
 
 		if (len < strlen(me->key) &&
 		    (strncmp(prefix, me->key, len) == 0) && me->key[len] == '/')
-			goto done;
+			return me;
 
 		me = me->next;
 		while (me != NULL) {
 			if (len < strlen(me->key) &&
 			    strncmp(prefix, me->key, len) == 0 && me->key[len] == '/')
-				goto done;
+				return me;
 			me = me->next;
 		}
 	}
-done:
-	status = pthread_rwlock_unlock(&cache_rwlock);
-	if (status)
-		error("mapent cache rwlock unlock failed");
-
-	return me;
+	return NULL;
 }
 
+/* cache must be write locked by caller */
 int cache_add(const char *key, const char *mapent, time_t age)
 {
 	struct mapent_cache *me, *existing = NULL;
 	char *pkey, *pent;
 	unsigned int hashval = hash(key);
-	int status;
 
 	me = (struct mapent_cache *) malloc(sizeof(struct mapent_cache));
 	if (!me)
@@ -406,15 +365,6 @@ int cache_add(const char *key, const char *mapent, time_t age)
 	} else
 		pent = NULL;
 
-	status = pthread_mutex_init(&me->mutex, NULL);
-	if (status) {
-		error("mapent entry mutex init failed");
-		free(me);
-		free(pkey);
-		if (pent)
-			free(pent);
-		return CHE_FAIL;
-	}
 	me->age = age;
 	INIT_LIST_HEAD(&me->multi_list);
 	me->multi = NULL;
@@ -426,17 +376,7 @@ int cache_add(const char *key, const char *mapent, time_t age)
 	 * We need to add to the end if values exist in order to
 	 * preserve the order in which the map was read on lookup.
 	 */
-	status = pthread_rwlock_wrlock(&cache_rwlock);
-	if (status) {
-		error("mapent cache rwlock lock failed");
-		free(me);
-		free(pkey);
-		if (pent)
-			free(pent);
-		return CHE_FAIL;
-	}
-
-	existing = __cache_lookup(key);
+	existing = cache_lookup(key);
 	if (!existing || *existing->key == '*') {
 		me->next = mapent_hash[hashval];
 		mapent_hash[hashval] = me;
@@ -444,7 +384,7 @@ int cache_add(const char *key, const char *mapent, time_t age)
 		while (1) {
 			struct mapent_cache *next;
 		
-			next = __cache_lookup_next(existing);
+			next = cache_lookup_next(existing);
 			if (!next)
 				break;
 
@@ -453,25 +393,14 @@ int cache_add(const char *key, const char *mapent, time_t age)
 		me->next = existing->next;
 		existing->next = me;
 	}
-
-	status = pthread_rwlock_unlock(&cache_rwlock);
-	if (status)
-		error("mapent cache rwlock unlock failed");
-
 	return CHE_OK;
 }
 
+/* cache must be write locked by caller */
 static void cache_add_ordered_offset(struct mapent_cache *me, struct list_head *head)
 {
 	struct list_head *p;
 	struct mapent_cache *this;
-	int status;
-
-	status = pthread_mutex_lock(&me->mutex);
-	if (status) {
-		error("mapent cache entry lock failed");
-		return;
-	}
 
 	list_for_each(p, head) {
 		int eq, tlen;
@@ -490,13 +419,10 @@ static void cache_add_ordered_offset(struct mapent_cache *me, struct list_head *
 	}
 	list_add_tail(&me->multi_list, p);
 done:
-	status = pthread_mutex_unlock(&me->mutex);
-	if (status)
-		error("mapent cache entry lock failed");
-
 	return;
 }
 
+/* cache must be write locked by caller */
 int cache_add_offset(const char *mkey, const char *key, const char *mapent, time_t age)
 {
 	struct mapent_cache *me, *owner;
@@ -506,7 +432,17 @@ int cache_add_offset(const char *mkey, const char *key, const char *mapent, time
 	if (!owner)
 		return CHE_FAIL;
 
-	cache_add(key, mapent, age);
+	if (cache_add(key, mapent, age) != CHE_OK) {
+		warn("failed to add key %s to cache", key);
+		return CHE_FAIL;
+	}
+
+	owner = cache_lookup(mkey);
+	if (!owner) {
+		cache_delete(key);
+		warn("owner disappeared during update");
+		return CHE_FAIL;
+	}
 	me = cache_lookup(key);
 	if (me) {
 		cache_add_ordered_offset(me, &owner->multi_list);
@@ -518,6 +454,7 @@ done:
 	return ret; 
 }
 
+/* cache must be write locked by caller */
 int cache_update(const char *key, const char *mapent, time_t age)
 {
 	struct mapent_cache *me = NULL;
@@ -539,9 +476,8 @@ int cache_update(const char *key, const char *mapent, time_t age)
 
 		if (!me->mapent || strcmp(me->mapent, mapent) != 0) {
 			pent = malloc(strlen(mapent) + 1);
-			if (pent == NULL) {
+			if (pent == NULL)
 				return CHE_FAIL;
-			}
 			if (me->mapent)
 				free(me->mapent);
 			me->mapent = strcpy(pent, mapent);
@@ -552,18 +488,12 @@ int cache_update(const char *key, const char *mapent, time_t age)
 	return ret;
 }
 
+/* cache must be write locked by caller */
 int cache_delete(const char *key)
 {
 	struct mapent_cache *me = NULL, *pred;
 	unsigned int hashval = hash(key);
 	int ret = CHE_OK;
-	int status;
-
-	status = pthread_rwlock_wrlock(&cache_rwlock);
-	if (status) {
-		error("mapent cache rwlock lock failed");
-		return CHE_FAIL;
-	}
 
 	me = mapent_hash[hashval];
 	if (!me) {
@@ -583,7 +513,6 @@ int cache_delete(const char *key)
 			free(me->key);
 			if (me->mapent)
 				free(me->mapent);
-			pthread_mutex_destroy(&me->mutex);
 			free(me);
 			me = pred;
 		}
@@ -602,16 +531,13 @@ int cache_delete(const char *key)
 		free(me->key);
 		if (me->mapent)
 			free(me->mapent);
-		pthread_mutex_destroy(&me->mutex);
 		free(me);
 	}
 done:
-	status = pthread_rwlock_unlock(&cache_rwlock);
-	if (status)
-		error("mapent cache rwlock unlock failed");
 	return ret;
 }
 
+/* cache must be write locked by caller */
 int cache_delete_offset_list(const char *key)
 {
 	struct mapent_cache *me;
@@ -627,12 +553,6 @@ int cache_delete_offset_list(const char *key)
 	/* Not offset list owner */
 	if (me->multi != me)
 		return CHE_OK;
-
-	status = pthread_mutex_lock(&me->mutex);
-	if (status) {
-		error("mapent cache entry lock failed");
-		return CHE_FAIL;
-	}
 
 	head = &me->multi_list;
 	next = head->next;
@@ -650,10 +570,6 @@ int cache_delete_offset_list(const char *key)
 		me->multi = NULL;
 	}
 
-	status = pthread_mutex_unlock(&me->mutex);
-	if (status)
-		error("mapent cache entry lock failed");
-
 	return remain;
 }
 
@@ -661,14 +577,9 @@ void cache_clean(const char *root, time_t age)
 {
 	struct mapent_cache *me, *pred;
 	char *path;
-	int status;
 	int i;
 
-	status = pthread_rwlock_wrlock(&cache_rwlock);
-	if (status) {
-		error("mapent cache rwlock lock failed");
-		return;
-	}
+	cache_writelock();
 
 	for (i = 0; i < HASHSIZE; i++) {
 		me = mapent_hash[i];
@@ -692,7 +603,6 @@ void cache_clean(const char *root, time_t age)
 				free(me->key);
 				if (me->mapent)
 					free(me->mapent);
-				pthread_mutex_destroy(&me->mutex);
 				free(me);
 				me = pred;
 				rmdir_path(path);
@@ -719,7 +629,6 @@ void cache_clean(const char *root, time_t age)
 			free(me->key);
 			if (me->mapent)
 				free(me->mapent);
-			pthread_mutex_destroy(&me->mutex);
 			free(me);
 			rmdir_path(path);
 		}
@@ -727,9 +636,7 @@ void cache_clean(const char *root, time_t age)
 		free(path);
 	}
 done:
-	status = pthread_rwlock_unlock(&cache_rwlock);
-	if (status)
-		error("mapent cache rwlock unlock failed");
+	cache_unlock();
 }
 
 void cache_release(void)
@@ -738,11 +645,7 @@ void cache_release(void)
 	int status;
 	int i;
 
-	status = pthread_rwlock_wrlock(&cache_rwlock);
-	if (status) {
-		error("mapent cache rwlock lock failed");
-		return;
-	}
+	cache_writelock();
 
 	for (i = 0; i < HASHSIZE; i++) {
 		cache_ino_index[i] = -1;
@@ -763,56 +666,19 @@ void cache_release(void)
 			free(me->key);
 			if (me->mapent)
 				free(me->mapent);
-			pthread_mutex_destroy(&me->mutex);
 			free(me);
 		}
 	}
 
-	status = pthread_rwlock_unlock(&cache_rwlock);
-	if (status)
-		error("mapent cache rwlock unlock failed");
+	cache_unlock();
 
 	status = pthread_rwlock_destroy(&cache_rwlock);
 	if (status)
 		error("mapent cache rwlock destroy failed");
 }
 
-int cache_enumerate_readlock(void)
-{
-	int status;
 
-	status = pthread_rwlock_rdlock(&cache_rwlock);
-	if (status) {
-		error("mapent cache rwlock lock failed");
-		return 0;
-	}
-	return 1;
-}
-
-int cache_enumerate_writelock(void)
-{
-	int status;
-
-	status = pthread_rwlock_wrlock(&cache_rwlock);
-	if (status) {
-		error("mapent cache rwlock lock failed");
-		return 0;
-	}
-	return 1;
-}
-
-int cache_enumerate_unlock(void)
-{
-	int status;
-
-	status = pthread_rwlock_unlock(&cache_rwlock);
-	if (status) {
-		error("mapent cache rwlock unlock failed");
-		return 0;
-	}
-	return 1;
-}
-
+/* cache must be read locked by caller */
 struct mapent_cache *cache_enumerate(struct mapent_cache *me)
 {
 	struct mapent_cache *this = NULL;
@@ -820,13 +686,13 @@ struct mapent_cache *cache_enumerate(struct mapent_cache *me)
 	int i;
 
 	if (!me) {
-		this = __cache_lookup_first();
+		this = cache_lookup_first();
 		if (this)
 			return this;
 		return NULL;
 	}
 
-	this =  __cache_lookup_next(me);
+	this =  cache_lookup_next(me);
 	if (this)
 		return this;
 
@@ -853,6 +719,7 @@ struct mapent_cache *cache_enumerate(struct mapent_cache *me)
  * Return each offset into offset.
  * TODO: length check on offset.
  */
+/* cache must be read locked by caller */
 char *cache_get_offset(const char *prefix, char *offset, int start,
 			struct list_head *head, struct list_head **pos)
 {

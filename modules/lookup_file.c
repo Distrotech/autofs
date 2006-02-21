@@ -1,4 +1,4 @@
-#ident "$Id: lookup_file.c,v 1.23 2006/02/20 01:05:32 raven Exp $"
+#ident "$Id: lookup_file.c,v 1.24 2006/02/21 18:48:11 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup_file.c - module for Linux automount to query a flat file map
@@ -92,8 +92,6 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 
 	if (!mapfmt)
 		mapfmt = MAPFMT_DEFAULT;
-
-/*	cache_init(); */
 
 	return !(ctxt->parse = open_parse(mapfmt, MODPREFIX, argc - 1, argv + 1));
 }
@@ -292,8 +290,11 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 
 	while(1) {
 		entry = read_one(f, key, mapent);
-		if (entry)
+		if (entry) {
+			cache_writelock();
 			cache_update(key, mapent, age);
+			cache_unlock();
+		}
 
 		if (feof(f))
 			break;
@@ -322,9 +323,9 @@ static int lookup_one(const char *root,
 {
 	char mkey[KEY_MAX_LEN + 1];
 	char mapent[MAPENT_MAX_LEN + 1];
-	FILE *f;
-	int entry;
 	time_t age = time(NULL);
+	FILE *f;
+	int entry, ret;
 
 	f = fopen(ctxt->mapname, "r");
 	if (!f) {
@@ -337,7 +338,10 @@ static int lookup_one(const char *root,
 		if (entry)
 			if (strncmp(mkey, key, key_len) == 0) {
 				fclose(f);
-				return cache_update(key, mapent, age);
+				cache_writelock();
+				ret = cache_update(key, mapent, age);
+				cache_unlock();
+				return ret;
 			}
 
 		if (feof(f))
@@ -353,10 +357,10 @@ static int lookup_wild(const char *root, struct lookup_context *ctxt)
 {
 	char mkey[KEY_MAX_LEN + 1];
 	char mapent[MAPENT_MAX_LEN + 1];
+	time_t age = time(NULL);
 	char *mapname;
 	FILE *f;
-	int entry;
-	time_t age = time(NULL);
+	int entry, ret;
 
 	mapname = alloca(strlen(ctxt->mapname) + 6);
 	sprintf(mapname, "file:%s", ctxt->mapname);
@@ -372,7 +376,10 @@ static int lookup_wild(const char *root, struct lookup_context *ctxt)
 		if (entry)
 			if (strncmp(mkey, "*", 1) == 0) {
 				fclose(f);
-				return cache_update("*", mapent, age);
+				cache_writelock();
+				ret = cache_update("*", mapent, age);
+				cache_unlock();
+				return ret;
 			}
 
 		if (feof(f))
@@ -400,12 +407,16 @@ static int check_map_indirect(struct autofs_point *ap,
 		return NSS_STATUS_TRYAGAIN;
 	}
 
+	cache_readlock();
 	me = cache_lookup_first();
 	t_last_read = me ? now - me->age : ap->exp_runfreq + 1;
+	cache_unlock();
 
 	/* only if it has been modified */
 	if (st.st_mtime > ctxt->mtime) {
+		cache_readlock();
 		exists = cache_lookup(key);
+		cache_unlock();
 
 		ret = lookup_one(ap->path, key, key_len, ctxt);
 		if (ret == CHE_FAIL)
@@ -420,12 +431,14 @@ static int check_map_indirect(struct autofs_point *ap,
 			int wild = CHE_MISSING;
 
 			wild = lookup_wild(ap->path, ctxt);
+			cache_writelock();
 			if (wild == CHE_MISSING)
 				cache_delete("*");
 
 			if (cache_delete(key) &&
 					wild & (CHE_MISSING | CHE_FAIL))
 				rmdir_path(key);
+			cache_unlock();
 		}
 	}
 
@@ -445,7 +458,7 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 	struct mapent_cache *me;
 	char key[KEY_MAX_LEN + 1];
 	int key_len;
-	char mapent[MAPENT_MAX_LEN + 1];
+	char *mapent = NULL;
 	int mapent_len;
 	int status = 0;
 	int ret = 1;
@@ -469,10 +482,18 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 		}
 	}
 
+	cache_readlock();
 	me = cache_lookup(key);
 	if (me) {
+		pthread_cleanup_push(cache_lock_cleanup, NULL);
+		mapent = alloca(strlen(me->mapent) + 1);
 		mapent_len = sprintf(mapent, me->mapent);
+		pthread_cleanup_pop(0);
 		mapent[mapent_len] = '\0';
+	}
+	cache_unlock();
+
+	if (mapent) {
 		debug(MODPREFIX "%s -> %s", key, mapent);
 		ret = ctxt->parse->parse_mount(ap, key, key_len,
 					mapent, ctxt->parse->context);
@@ -489,6 +510,5 @@ int lookup_done(void *context)
 	struct lookup_context *ctxt = (struct lookup_context *) context;
 	int rv = close_parse(ctxt->parse);
 	free(ctxt);
-/*	cache_release(); */
 	return rv;
 }

@@ -1,4 +1,4 @@
-#ident "$Id: automount.c,v 1.45 2006/02/20 01:05:32 raven Exp $"
+#ident "$Id: automount.c,v 1.46 2006/02/21 18:48:11 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  automount.c - Linux automounter daemon
@@ -53,10 +53,10 @@ pthread_attr_t detach_attr;
 /* Serialize state transitions */
 pthread_mutex_t state_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-struct autofs_point ap;
-
 struct expire_cond ec = {
-	PTHREAD_MUTEX_INITIALIZER, PTHREAD_COND_INITIALIZER, 0};
+	PTHREAD_MUTEX_INITIALIZER, PTHREAD_COND_INITIALIZER, NULL, 0, 0};
+
+struct autofs_point ap;
 
 /* re-entrant syslog default context data */
 #define AUTOFS_SYSLOG_CONTEXT {-1, 0, 0, LOG_PID, (const char *)0, LOG_DAEMON, 0xff};
@@ -142,7 +142,10 @@ int umount_offsets(const char *base)
 
 	INIT_LIST_HEAD(&head);
 
+	cache_readlock();
+	pthread_cleanup_push(cache_lock_cleanup, NULL);
 	mnts = get_mnt_list(_PROC_MOUNTS, base, 0);
+	pthread_cleanup_pop(0);
 	for (next = mnts; next; next = next->next) {
 		if (strcmp(next->fs_type, "autofs"))
 			continue;
@@ -182,13 +185,16 @@ cont:
 		offset = get_offset(base, offset, &head, &pos);
 	}
 	free_mnt_list(mnts);
+	cache_unlock();
 
+	cache_writelock();
 	me = cache_lookup(base);
 	if (!ret && me && me->multi == me) {
 		status = cache_delete_offset_list(me->key);
 		if (status)
 			warn("couldn't delete offset list");
 	}
+	cache_unlock();
 
 	return ret;
 }
@@ -388,11 +394,11 @@ int umount_autofs(struct autofs_point *ap, int force)
 	return status;
 }
 
-static void nextstate(enum states next)
+static void nextstate(int statefd, enum states next)
 {
 	char buf[MAX_ERR_BUF];
 
-	if (write(ap.state_pipe[1], &next, sizeof(next)) != sizeof(next)) {
+	if (write(statefd, &next, sizeof(next)) != sizeof(next)) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
 		error("write failed %s", estr);
 	}
@@ -433,17 +439,26 @@ int send_fail(int ioctlfd, unsigned int wait_queue_token)
 }
 
 /*
- * Handle thread cleanup and return the next state the system
+ * Handle expire thread cleanup and return the next state the system
  * should enter as a result.
  */
-void handle_cleanup(void *ret)
+void expire_cleanup(void *arg)
 {
 	pthread_t thid = pthread_self();
+	struct expire_args *ex;
+	struct autofs_point *ap;
+	int statefd;
 	enum states next = ST_INVAL;
-	int *success = (int *) ret;
+	int success;
 	int status;
 
-	debug("got thid %lu, stat %d\n", (unsigned long) thid, *success);
+	ex = (struct expire_args *) arg;
+	ap = ex->ap;
+	success = ex->status;
+
+	statefd = ap->state_pipe[1];
+
+	debug("got thid %lu, stat %d\n", (unsigned long) thid, success);
 
 	status = pthread_mutex_lock(&state_mutex);
 	if (status) {
@@ -452,18 +467,18 @@ void handle_cleanup(void *ret)
 	}
 
 	/* Check to see if expire process finished */
-	if (thid == ap.exp_thread) {
-		ap.exp_thread = 0;
+	if (thid == ap->exp_thread) {
+		ap->exp_thread = 0;
 
-		switch (ap.state) {
+		switch (ap->state) {
 		case ST_EXPIRE:
-			alarm(ap.exp_runfreq);
+			alarm(ap->exp_runfreq);
 			/* FALLTHROUGH */
 		case ST_PRUNE:
 			/* If we're a submount and we've just
 			   pruned or expired everything away,
 			   try to shut down */
-			if (submount && success && ap.state != ST_SHUTDOWN) {
+			if (submount && success && ap->state != ST_SHUTDOWN) {
 				next = ST_SHUTDOWN_PENDING;
 				break;
 			}
@@ -475,29 +490,29 @@ void handle_cleanup(void *ret)
 
 		case ST_SHUTDOWN_PENDING:
 			next = ST_SHUTDOWN;
-			if (*success == 0)
+			if (success == 0)
 				break;
 
 			/* Failed shutdown returns to ready */
 			warn("can't shutdown: filesystem %s still busy",
-			     ap.path);
-			alarm(ap.exp_runfreq);
+			     ap->path);
+			alarm(ap->exp_runfreq);
 			next = ST_READY;
 			break;
 
 		default:
-			error("bad state %d", ap.state);
+			error("bad state %d", ap->state);
 		}
 
 		if (next != ST_INVAL) {
 			debug("sigchld: exp "
 				"%lu finished, switching from %d to %d",
-				(unsigned long) thid, ap.state, next);
+				(unsigned long) thid, ap->state, next);
 		}
 	}
 
 	if (next != ST_INVAL)
-		nextstate(next);
+		nextstate(statefd, next);
 
 	status = pthread_mutex_unlock(&state_mutex);
 	if (status)
@@ -555,25 +570,10 @@ enum expire {
 static enum expire expire_proc(struct autofs_point *ap, int now)
 {
 	pthread_t thid;
+	char buf[MAX_ERR_BUF];
 	void *(*expire)(void *);
 	int status;
-/*
-	if (ap.kver.major < 4) {
-		if (now)
-			umount_all(0);
-		else {
-			struct autofs_packet_expire pkt;
 
-			while (ioctl(ap.ioctlfd, AUTOFS_IOC_EXPIRE, &pkt) == 0)
-				handle_packet_expire(&pkt);
-		}
-
-		if (count_mounts(ap.path) != 0)
-			return EXP_PARTIAL;
-
-		return EXP_DONE;
-	}
-*/
 	assert(ap->exp_thread == 0);
 
 	status = pthread_mutex_lock(&ec.mutex);
@@ -596,17 +596,12 @@ static enum expire expire_proc(struct autofs_point *ap, int now)
 		return EXP_ERROR;
 	}
 
-	status = pthread_mutex_lock(&ec.mutex);
-	if (status) {
-		error("failed to lock expire cond mutex");
-		return EXP_ERROR;
-	}
-
 	debug("exp_proc = %lu", (unsigned long) thid);
 
 	ap->exp_thread = thid;
 	ec.ap = ap;
 	ec.when = now;
+	ec.signaled = 1;
 
 	status = pthread_cond_signal(&ec.cond);
 	if (status) {
@@ -626,29 +621,80 @@ static enum expire expire_proc(struct autofs_point *ap, int now)
 	return EXP_STARTED;
 }
 
-static int st_readmap(struct autofs_point *ap)
+static void *do_readmap(void *arg)
 {
+	struct readmap_args *rm;
+	struct autofs_point *ap;
 	int status;
-	int now = time(NULL);
+	time_t now;
 
-	assert(ap->state == ST_READY);
-	ap->state = ST_READMAP;
+	rm = (struct readmap_args *) arg;
+	ap = rm->ap;
+	now = rm->now;
 
 	status = lookup_nss_read_map(ap, now);
 	if (!status)
-		return 0;
+		return NULL;
+	cache_clean(ap->path, now);
 
-	/* TODO: spawn thread ? */
+	cache_readlock();
+	pthread_cleanup_push(cache_lock_cleanup, NULL);
 	if (ap->type == LKP_INDIRECT)
 		status = lookup_ghost(ap);
 	else
 		status = lookup_enumerate(ap, do_mount_autofs_direct, now);
+	pthread_cleanup_pop(0);
+	cache_unlock();
 
 	debug("status %d", status);
 
-	if (status == LKP_FAIL)
-		return 0;
+	free(rm);
 
+	status = pthread_mutex_lock(&state_mutex);
+	if (status)
+		error("state mutex lock failed");
+
+	return NULL;
+}
+
+static int st_readmap(struct autofs_point *ap)
+{
+	struct readmap_args *rm;
+	pthread_t thid;
+	char buf[MAX_ERR_BUF];
+	int status;
+	int now = time(NULL);
+
+	if (ap->state == ST_READMAP) {
+		debug("already reading map, ignored");
+		return 1;
+	}
+
+	assert(ap->state == ST_READY);
+	ap->state = ST_READMAP;
+
+	rm = malloc(sizeof(struct readmap_args));
+	if (!rm) {
+		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+		error("malloc: %s", estr);
+		return 0;
+	}
+
+	rm->ap = ap;
+	rm->now = now;
+
+	status = pthread_create(&thid, &detach_attr, do_readmap, rm);
+	if (status) {
+		error("readmap thread create failed");
+		free(rm);
+		return 0;
+	}
+
+	/*
+	 * The goal is that map refresh should procceed in parallel
+	 * instead of synchronously as they are in 4.1. There's a
+	 * way to go yet though.
+	 */
 	ap->state = ST_READY;
 
 	return 1;
@@ -1054,6 +1100,7 @@ static void *statemachine(void *dummy)
 	enum states next = ST_INVAL;
 	sigset_t sigset;
 	int sig, status;
+	int state_pipe;
 
 	sigfillset(&sigset);
 	sigdelset(&sigset, SIGCHLD);
@@ -1069,27 +1116,28 @@ static void *statemachine(void *dummy)
 		}
 
 		next = ap.state;
+		state_pipe = ap.state_pipe[1];
 
 		switch (sig) {
 		case SIGTERM:
 		case SIGUSR2:
 			if (ap.state != ST_SHUTDOWN)
-				nextstate(next = ST_SHUTDOWN_PENDING);
+				nextstate(state_pipe, next = ST_SHUTDOWN_PENDING);
 			break;
 
 		case SIGUSR1:
 			assert(ap.state == ST_READY);
-			nextstate(next = ST_PRUNE);
+			nextstate(state_pipe, next = ST_PRUNE);
 			break;
 
 		case SIGALRM:
 			assert(ap.state == ST_READY);
-			nextstate(next = ST_EXPIRE);
+			nextstate(state_pipe, next = ST_EXPIRE);
 			break;
 
 		case SIGHUP:
 			assert(ap.state == ST_READY);
-			nextstate(next = ST_READMAP);
+			nextstate(state_pipe, next = ST_READMAP);
 			break;
 
 		default:
@@ -1108,6 +1156,7 @@ done:
 
 int handle_mounts(struct autofs_point *ap, char *path)
 {
+	struct expire_args *ex;
 	int status = 0;
 
 	if (mount_autofs(ap, path) < 0) {
@@ -1164,8 +1213,12 @@ int handle_mounts(struct autofs_point *ap, char *path)
 		}
 	}
 
-	/* Mop up remaining kids */
-	handle_cleanup(&status);
+
+	/* Mop up remaining kids - expire_cleanup frees ex */
+	ex = malloc(sizeof(struct expire_args));
+	ex->ap = ap;
+	ex->status = status;
+	expire_cleanup(ex);
 
 	/* Close down */
 	umount_autofs(ap, 1);

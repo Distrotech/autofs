@@ -1,4 +1,4 @@
-#ident "$Id: lookup_ldap.c,v 1.27 2006/02/20 01:05:32 raven Exp $"
+#ident "$Id: lookup_ldap.c,v 1.28 2006/02/21 18:48:11 raven Exp $"
 /*
  * lookup_ldap.c - Module for Linux automountd to access automount
  *		   maps in LDAP directories.
@@ -191,8 +191,6 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 	/* Okay, we're done here. */
 	ldap_unbind(ldap);
 
-/*	cache_init(); */
-
 	/* Open the parser, if we can. */
 	return !(ctxt->parse = open_parse(mapfmt, MODPREFIX, argc - 1, argv + 1));
 }
@@ -301,7 +299,9 @@ static int read_one_map(const char *root,
 				if (*(keyValue[j]) == '/' &&
 				    strlen(keyValue[j]) == 1)
 					*(keyValue[j]) = '*';
+				cache_writelock();
 				cache_add(keyValue[j], values[i], age);
+				cache_unlock();
 			}
 		}
 		ldap_value_free(values);
@@ -356,7 +356,7 @@ static int lookup_one(const char *root, const char *qKey,
 		      const char *class, char *key, char *type,
 		      struct lookup_context *ctxt)
 {
-	int rv, i, l, ql;
+	int rv = 1, i, l, ql;
 	char buf[MAX_ERR_BUF];
 	time_t age = time(NULL);
 	char *query;
@@ -429,6 +429,7 @@ static int lookup_one(const char *root, const char *qKey,
 		return CHE_MISSING;
 	}
 
+	cache_readlock();
 	/* Compare cache entry against LDAP */
 	for (i = 0; values[i]; i++) {
 		me = cache_lookup(qKey);
@@ -439,21 +440,27 @@ static int lookup_one(const char *root, const char *qKey,
 	}
 
 	if (!me) {
+		cache_unlock();
+		cache_writelock();
 		cache_delete(qKey);
 
 		for (i = 0; values[i]; i++) {	
 			rv = cache_add(qKey, values[i], age);
 			if (!rv)
-				return 0;
+				goto done;
 		}
 		ret = CHE_UPDATED;
 	}
-
+done:
+	cache_unlock();
 
 	/* Clean up. */
 	ldap_value_free(values);
 	ldap_msgfree(result);
 	ldap_unbind(ldap);
+
+	if (!rv)
+		return 0;
 
 	return ret;
 }
@@ -462,7 +469,7 @@ static int lookup_wild(const char *root,
 		      const char *class, char *key, char *type,
 		      struct lookup_context *ctxt)
 {
-	int rv, i, l, ql;
+	int rv = 1, i, l, ql;
 	char buf[MAX_ERR_BUF];
 	time_t age = time(NULL);
 	char *query;
@@ -539,6 +546,7 @@ static int lookup_wild(const char *root,
 		return CHE_MISSING;
 	}
 
+	cache_readlock();
 	/* Compare cache entry against LDAP */
 	for (i = 0; values[i]; i++) {
 		me = cache_lookup("*");
@@ -549,21 +557,27 @@ static int lookup_wild(const char *root,
 	}
 
 	if (!me) {
+		cache_unlock();
+		cache_writelock();
 		cache_delete("*");
 
 		for (i = 0; values[i]; i++) {	
 			rv = cache_add("*", values[i], age);
 			if (!rv)
-				return 0;
+				goto done;
 		}
-
 		ret = CHE_UPDATED;
 	}
+done:
+	cache_unlock();
 
 	/* Clean up. */
 	ldap_value_free(values);
 	ldap_msgfree(result);
 	ldap_unbind(ldap);
+
+	if (!rv)
+		return 0;
 
 	return ret;
 }
@@ -578,7 +592,9 @@ static int check_map_indirect(struct autofs_point *ap,
 	time_t t_last_read;
 	int need_hup = 0;
 
+	cache_readlock();
 	exists = cache_lookup(key);
+	cache_unlock();
 
 	ret = lookup_one(ap->path, key, "nisObject", "cn", "nisMapEntry", ctxt);
 	ret2 = lookup_one(ap->path, key,
@@ -587,8 +603,10 @@ static int check_map_indirect(struct autofs_point *ap,
 	if (ret == CHE_FAIL && ret2 == CHE_FAIL)
 		return NSS_STATUS_UNAVAIL;
 
+	cache_readlock();
 	me = cache_lookup_first();
 	t_last_read = me ? now - me->age : ap->exp_runfreq + 1;
+	cache_unlock();
 
 	if (t_last_read > ap->exp_runfreq) {
 		if ((ret & CHE_UPDATED) ||
@@ -609,11 +627,13 @@ static int check_map_indirect(struct autofs_point *ap,
 		wild = (ret & (CHE_MISSING | CHE_FAIL)) &&
 				(ret2 & (CHE_MISSING | CHE_FAIL));
 
+		cache_writelock();
 		if (ret & CHE_MISSING && ret2 & CHE_MISSING)
 				cache_delete("*");
 
 		if (cache_delete(key) && wild)
 			rmdir_path(key);
+		cache_unlock();
 	}
 
 	/* Have parent update its map */
@@ -632,7 +652,7 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 	struct mapent_cache *me;
 	char key[KEY_MAX_LEN + 1];
 	int key_len;
-	char mapent[MAPENT_MAX_LEN + 1];
+	char *mapent = NULL;
 	int mapent_len;
 	int status = 0;
 	int ret = 1;
@@ -656,18 +676,25 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 		}
 	}
 
+	cache_readlock();
 	me = cache_lookup(key);
 	if (me) {
 		/* Try each of the LDAP entries in sucession. */
 		while (me) {
+			pthread_cleanup_push(cache_lock_cleanup, NULL);
+			mapent = alloca(strlen(me->mapent) + 1);
 			mapent_len= sprintf(mapent, me->mapent);
 			mapent[mapent_len] = '\0';
+			pthread_cleanup_pop(0);
+			cache_unlock();
 			debug(MODPREFIX "%s -> %s", key, mapent);
 			ret = ctxt->parse->parse_mount(ap, key, key_len,
 						  mapent, ctxt->parse->context);
+			cache_readlock();
 			me = cache_lookup_key_next(me);
 		}
 	}
+	cache_unlock();
 
 	if (ret)
 		return NSS_STATUS_TRYAGAIN;
@@ -686,6 +713,5 @@ int lookup_done(void *context)
 	free(ctxt->server);
 	free(ctxt->base);
 	free(ctxt);
-/*	cache_release(); */
 	return rv;
 }

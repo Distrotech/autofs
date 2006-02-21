@@ -1,4 +1,4 @@
-#ident "$Id: lookup.c,v 1.1 2006/02/20 01:05:32 raven Exp $"
+#ident "$Id: lookup.c,v 1.2 2006/02/21 18:48:11 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup.c - API layer to implement nsswitch semantics for map reading
@@ -53,7 +53,6 @@ int lookup_nss_read_map(struct autofs_point *ap, time_t age)
 
 	if (ap->maptype) {
 		ret = do_read_map(ap, ap->maptype, age);
-		cache_clean(ap->path, age);
 		return !ret;
 	}
 
@@ -65,7 +64,6 @@ int lookup_nss_read_map(struct autofs_point *ap, time_t age)
 		memcpy(&tmp, ap, sizeof(struct autofs_point));
 
 		ret = do_read_map(&tmp, source, age);
-		cache_clean(ap->path, age);
 		return !ret;
 	}
 
@@ -161,7 +159,6 @@ int lookup_nss_read_map(struct autofs_point *ap, time_t age)
 
 	if (!list_empty(&nsslist)) {
 		free_sources(&nsslist);
-		cache_clean(ap->path, age);
 		return 1;
 	}
 
@@ -179,17 +176,12 @@ int lookup_enumerate(struct autofs_point *ap,
 	if (strcmp(ap->path, "/-"))
 		return LKP_FAIL | LKP_INDIRECT;
 
-	if (!cache_enumerate_readlock())
-		return LKP_FAIL;
-
 	me = cache_enumerate(NULL);
 	while (me) {
 		/* TODO: check return */
 		fn(ap, me, now);
 		me = cache_enumerate(me);
 	}
-
-	cache_enumerate_unlock();
 
 	return LKP_DIRECT;
 }
@@ -207,9 +199,6 @@ int lookup_ghost(struct autofs_point *ap)
 
 	if (!ap->ghost)
 		return LKP_INDIRECT;
-
-	if (!cache_enumerate_readlock())
-		return LKP_FAIL;
 
 	me = cache_enumerate(NULL);
 	while (me) {
@@ -248,8 +237,6 @@ int lookup_ghost(struct autofs_point *ap)
 next:
 		me = cache_enumerate(me);
 	}
-
-	cache_enumerate_unlock();
 
 	return LKP_INDIRECT;
 }

@@ -63,13 +63,13 @@ struct autofs_packet_expire_multi {
 struct autofs_v5_packet {
 	struct autofs_packet_hdr hdr;
 	autofs_wqt_t wait_queue_token;
-	__u32 dev;
+	__u64 dev;
 	__u64 ino;
-	__u64 uid;
-	__u64 gid;
-	__u64 pid;
-	__u64 tgid;
-	int len;
+	__u32 uid;
+	__u32 gid;
+	__u32 pid;
+	__u32 tgid;
+	__u32 len;
 	char name[NAME_MAX+1];
 };
 

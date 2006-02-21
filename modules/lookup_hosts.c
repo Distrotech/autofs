@@ -1,4 +1,4 @@
-#ident "$Id: lookup_hosts.c,v 1.2 2006/02/20 01:05:32 raven Exp $"
+#ident "$Id: lookup_hosts.c,v 1.3 2006/02/21 18:48:11 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup_hosts.c - module for Linux automount to mount the exports
@@ -55,7 +55,6 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 	}
 
 	mapfmt = MAPFMT_DEFAULT;
-/*	cache_init(); */
 
 	return !(ctxt->parse = open_parse(mapfmt, MODPREFIX, argc - 1, argv + 1));
 }
@@ -73,7 +72,11 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 
 	sethostent(0);
 	while ((host = gethostent()) != NULL)
+		cache_writelock();
+		pthread_cleanup_push(cache_lock_cleanup, NULL);
 		cache_update(host->h_name, NULL, age);
+		pthread_cleanup_pop(0);
+		cache_unlock();
 	endhostent();
 
 	status = pthread_mutex_unlock(&hostent_mutex);
@@ -89,12 +92,16 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 	struct mapent_cache *me;
 	char buf[MAX_ERR_BUF];
 	char *mapent = NULL;
+	int mapent_len;
 	time_t now = time(NULL);
 	exports exp;
+	int status = NSS_STATUS_UNKNOWN;
 	int ret;
 
+	cache_readlock();
 	me = cache_lookup(name);
 	if (!me) {
+		pthread_cleanup_push(cache_lock_cleanup, NULL);
 		if (*name == '/')
 			error(MODPREFIX
 			      "can't find path in hosts map %s", name);
@@ -102,18 +109,32 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 			error(MODPREFIX
 			      "can't find path in hosts map %s/%s",
 			      ap->path, name);
-		return NSS_STATUS_NOTFOUND;
+		pthread_cleanup_pop(0);
+		status = NSS_STATUS_NOTFOUND;
+		goto done;
 	}
-
 	/*
 	 * Host map export entries are added to the cache as
 	 * direct mounts. If the name we seek starts with a slash
 	 * it must be a mount request for one of the exports.
 	 */
 	if (*name == '/') {
+		pthread_cleanup_push(cache_lock_cleanup, NULL);
+		mapent = alloca(strlen(me->mapent) + 1);
+		mapent_len = sprintf(mapent, me->mapent);
+		pthread_cleanup_pop(0);
+		mapent[mapent_len] = '\0';
+	}
+done:
+	cache_unlock();
+
+	if (status != NSS_STATUS_UNKNOWN)
+		return status;
+
+	if (mapent) {
 		debug(MODPREFIX "%s -> %s", name, me->mapent);
 		ret = ctxt->parse->parse_mount(ap, name, name_len,
-				 me->mapent, ctxt->parse->context);
+				 mapent, ctxt->parse->context);
 
 		if (ret)
 			return NSS_STATUS_TRYAGAIN;
@@ -177,7 +198,9 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 
 	debug(MODPREFIX "%s -> %s", name, mapent);
 
+	cache_writelock();
 	cache_update(name, mapent, now);
+	cache_unlock();
 
 	ret = ctxt->parse->parse_mount(ap, name, name_len,
 				 mapent, ctxt->parse->context);
@@ -194,6 +217,5 @@ int lookup_done(void *context)
 	struct lookup_context *ctxt = (struct lookup_context *) context;
 	int rv = close_parse(ctxt->parse);
 	free(ctxt);
-/*	cache_release(); */
 	return rv;
 }

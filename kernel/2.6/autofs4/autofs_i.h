@@ -76,12 +76,12 @@ struct autofs_wait_queue {
 	int hash;
 	int len;
 	char *name;
-	u32 dev;
+	u64 dev;
 	u64 ino;
-	u64 uid;
-	u64 gid;
-	u64 pid;
-	u64 tgid;
+	uid_t uid;
+	gid_t gid;
+	pid_t pid;
+	pid_t tgid;
 	/* This is for status reporting upon return */
 	int status;
 	atomic_t notified;

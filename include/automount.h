@@ -1,4 +1,4 @@
-#ident "$Id: automount.h,v 1.22 2006/02/20 01:05:32 raven Exp $"
+#ident "$Id: automount.h,v 1.23 2006/02/21 18:48:11 raven Exp $"
 /*
  * automount.h
  *
@@ -130,6 +130,10 @@ struct mapent_cache {
 	ino_t ino;
 };
 
+void cache_lock_cleanup(void *arg);
+int cache_readlock(void);
+int cache_writelock(void);
+int cache_unlock(void);
 void cache_init(void);
 void cache_set_ino_index(const char *key, dev_t dev, ino_t ino);
 void cache_set_ino(struct mapent_cache *me, dev_t dev, ino_t ino);
@@ -147,9 +151,6 @@ int cache_delete(const char *key);
 int cache_delete_offset_list(const char *key);
 void cache_clean(const char *root, time_t age);
 void cache_release(void);
-int cache_enumerate_readlock(void);
-int cache_enumerate_writelock(void);
-int cache_enumerate_unlock(void);
 struct mapent_cache *cache_enumerate(struct mapent_cache *me);
 char *cache_get_offset(const char *prefix, char *offset, int start, struct list_head *head, struct list_head **pos);
 
@@ -325,12 +326,35 @@ int xopen(const char *path, int flags);
 
 /* Core automount definitions */
 
-struct pending {
-	struct mapent_cache *me;	/* Map entry descriptor */
+struct readmap_args {
+	struct autofs_point *ap;	/* autofs mount we are working on */
+	time_t now;		/* Time when map is read */
+	int status;			/* Return status */
+};
+
+struct expire_cond {
+	pthread_mutex_t mutex;
+	pthread_cond_t  cond;
+	struct autofs_point *ap;
+	unsigned int signaled;
+	unsigned int    when;
+};
+
+extern struct expire_cond ec;
+
+struct expire_args {
+	struct autofs_point *ap;	/* autofs mount we are working on */
+	unsigned int when;		/* Immediate expire ? */
+	int status;			/* Return status */
+};
+
+struct pending_args {
 	struct autofs_point *ap;	/* autofs mount we are working on */
 	int status;			/* Return status */
 	int type;			/* Type of packet */
+	int ioctlfd;			/* Mount ioctl fd */
 	char name[KEY_MAX_LEN];		/* Name field of the request */
+	dev_t dev;			/* device number of mount */
 	unsigned int len;		/* Name field len */
 	uid_t uid;			/* uid of requestor */
 	gid_t gid;			/* gid of requestor */
@@ -367,20 +391,6 @@ struct autofs_point {
 
 /* Standard functions used by daemon or modules */
 
-/*
- * Passing stack variables in the arg to a thread at
- * create time have a nasty habit of going away so
- * we use a condition variables to pass this info.
- */
-struct expire_cond {
-	pthread_mutex_t mutex;
-	pthread_cond_t  cond;
-	struct autofs_point *ap;
-	unsigned int    when;
-};
-
-extern struct expire_cond ec;
-
 int umount_multi(struct autofs_point *ap, const char *path, int incl);
 int send_ready(int ioctlfd, unsigned int wait_queue_token);
 int send_fail(int ioctlfd, unsigned int wait_queue_token);
@@ -404,7 +414,7 @@ int handle_packet_missing_indirect(struct autofs_point *ap, autofs_packet_missin
 int handle_packet_missing_direct(struct autofs_point *ap, autofs_packet_missing_direct_t *pkt);
 void rm_unwanted(const char *path, int incl, int rmsymlink);
 int count_mounts(const char *path);
-void handle_cleanup(void *ret);
+void expire_cleanup(void *arg);
 void cleanup_exit(const char *path, int exit_code);
 
 /* Define logging functions */

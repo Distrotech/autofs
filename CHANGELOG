@@ -8,6 +8,9 @@
 - merged configurable locking patch.
 - implemented nsswitch lookup for client maps.
 - sync kernel module source.
+- more kernel module fixes.
+- redo mapenty cache locking and start work on
+  background map refresh.
 
 11/4/2005 autofs-4.1.4
 ----------------------

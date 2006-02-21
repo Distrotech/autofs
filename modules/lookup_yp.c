@@ -1,4 +1,4 @@
-#ident "$Id: lookup_yp.c,v 1.18 2006/02/20 01:05:32 raven Exp $"
+#ident "$Id: lookup_yp.c,v 1.19 2006/02/21 18:48:12 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup_yp.c - module for Linux automountd to access a YP (NIS)
@@ -80,8 +80,6 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 	if (!mapfmt)
 		mapfmt = MAPFMT_DEFAULT;
 
-/*	cache_init(); */
-
 	return !(ctxt->parse = open_parse(mapfmt, MODPREFIX, argc - 1, argv + 1));
 }
 
@@ -112,7 +110,9 @@ int yp_all_callback(int status, char *ypkey, int ypkeylen,
 	strncpy(mapent, val, vallen);
 	*(mapent + vallen) = '\0';
 
+	cache_writelock();
 	ret = cache_update(key, mapent, age);
+	cache_unlock();
 	if (ret == CHE_FAIL)
 		return -1;
 
@@ -151,7 +151,7 @@ static int lookup_one(const char *root,
 	char *mapent;
 	int mapent_len;
 	time_t age = time(NULL);
-	int err;
+	int ret;
 
 	/*
 	 * For reasons unknown, the standard YP definitions doesn't
@@ -159,17 +159,21 @@ static int lookup_one(const char *root,
 	 * understanding is that they will not be modified by the
 	 * library.
 	 */
-	err = yp_match((char *) ctxt->domainname, (char *) ctxt->mapname,
+	ret = yp_match((char *) ctxt->domainname, (char *) ctxt->mapname,
 		       (char *) key, key_len, &mapent, &mapent_len);
 
-	if (err != YPERR_SUCCESS) {
-		if (err == YPERR_KEY)
+	if (ret != YPERR_SUCCESS) {
+		if (ret == YPERR_KEY)
 			return CHE_MISSING;
 
-		return -err;
+		return -ret;
 	}
 
-	return cache_update(key, mapent, age);
+	cache_writelock();
+	ret = cache_update(key, mapent, age);
+	cache_unlock();
+
+	return ret;
 }
 
 static int lookup_wild(const char *root, struct lookup_context *ctxt)
@@ -177,23 +181,27 @@ static int lookup_wild(const char *root, struct lookup_context *ctxt)
 	char *mapent;
 	int mapent_len;
 	time_t age = time(NULL);
-	int err;
+	int ret;
 
 	mapent = alloca(MAPENT_MAX_LEN + 1);
 	if (!mapent)
 		return 0;
 
-	err = yp_match((char *) ctxt->domainname,
+	ret = yp_match((char *) ctxt->domainname,
 		       (char *) ctxt->mapname, "*", 1, &mapent, &mapent_len);
 
-	if (err != YPERR_SUCCESS) {
-		if (err == YPERR_KEY)
+	if (ret != YPERR_SUCCESS) {
+		if (ret == YPERR_KEY)
 			return CHE_MISSING;
 
-		return -err;
+		return -ret;
 	}
 
-	return cache_update("*", mapent, age);
+	cache_writelock();
+	ret = cache_update("*", mapent, age);
+	cache_unlock();
+
+	return ret;
 }
 
 static int check_map_indirect(struct autofs_point *ap,
@@ -206,8 +214,10 @@ static int check_map_indirect(struct autofs_point *ap,
 	int need_hup = 0;
 	int ret = 0;
 
+	cache_readlock();
 	/* First check to see if this entry exists in the cache */
 	exists = cache_lookup(key);
+	cache_unlock();
 
 	/* check map and if change is detected re-read map */
 	ret = lookup_one(ap->path, key, key_len, ctxt);
@@ -220,8 +230,13 @@ static int check_map_indirect(struct autofs_point *ap,
 		return NSS_STATUS_UNAVAIL;
 	}
 
+	cache_readlock();
+	/* First check to see if this entry exists in the cache */
+	exists = cache_lookup(key);
+
 	me = cache_lookup_first();
 	t_last_read = me ? now - me->age : ap->exp_runfreq + 1;
+	cache_unlock();
 
 	if (t_last_read > ap->exp_runfreq)
 		if ((ret & CHE_UPDATED) ||
@@ -235,9 +250,13 @@ static int check_map_indirect(struct autofs_point *ap,
 		if (wild == CHE_MISSING)
 			cache_delete("*");
 
+		cache_writelock();
+		pthread_cleanup_push(cache_lock_cleanup, NULL);
 		if (cache_delete(key) &&
 				wild & (CHE_MISSING | CHE_FAIL))
 			rmdir_path(key);
+		pthread_cleanup_pop(0);
+		cache_unlock();
 	}
 
 	/* Have parent update its map */
@@ -255,11 +274,11 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 	struct lookup_context *ctxt = (struct lookup_context *) context;
 	char key[KEY_MAX_LEN + 1];
 	int key_len;
-	char *mapent;
+	char *mapent = NULL;
 	int mapent_len;
 	struct mapent_cache *me;
 	int status = 0;
-	int ret = 1;
+	int ret;
 
 	debug(MODPREFIX "looking up %s", name);
 
@@ -280,11 +299,18 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 		}
 	}
 
+	cache_readlock();
 	me = cache_lookup(key);
 	if (me) {
+		pthread_cleanup_push(cache_lock_cleanup, NULL);
 		mapent = alloca(strlen(me->mapent) + 1);
 		mapent_len = sprintf(mapent, "%s", me->mapent);
 		mapent[mapent_len] = '\0';
+		pthread_cleanup_pop(0);
+	}
+	cache_unlock();
+
+	if (mapent) {
 		debug(MODPREFIX "%s -> %s", key, mapent);
 		ret = ctxt->parse->parse_mount(ap, key, key_len,
 					       mapent, ctxt->parse->context);
@@ -301,6 +327,5 @@ int lookup_done(void *context)
 	struct lookup_context *ctxt = (struct lookup_context *) context;
 	int rv = close_parse(ctxt->parse);
 	free(ctxt);
-/*	cache_release(); */
 	return rv;
 }

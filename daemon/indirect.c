@@ -1,4 +1,4 @@
-#ident "$Id: indirect.c,v 1.4 2006/02/20 01:05:32 raven Exp $"
+#ident "$Id: indirect.c,v 1.5 2006/02/21 18:48:11 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  indirect.c - Linux automounter indirect mount handling
@@ -318,23 +318,27 @@ force_umount:
 void *expire_proc_indirect(void *arg)
 {
 	struct mnt_list *mnts, *next;
+	struct expire_args ex;
 	struct autofs_point *ap;
 	struct mapent_cache *me;
 	unsigned int now;
 	int count, ret;
 	int ioctlfd;
-	int status = 0;
+	int status;
 
-	pthread_cleanup_push(handle_cleanup, &status);
-
-	status = pthread_cond_wait(&ec.cond, &ec.mutex);
-	if (status) {
-		error("expire condition wait failed");
-		pthread_exit(NULL);
+	while (!ec.signaled) {
+		status = pthread_cond_wait(&ec.cond, &ec.mutex);
+		if (status)
+			error("expire condition wait failed");
 	}
 
-	ap = ec.ap;
-	now = ec.when;
+	ec.signaled = 0;
+
+	ap = ex.ap = ec.ap;
+	now = ex.when = ec.when;
+	ex.status = 0;
+
+	pthread_cleanup_push(expire_cleanup, &ex);
 
 	status = pthread_mutex_unlock(&ec.mutex);
 	if (status) {
@@ -360,16 +364,18 @@ void *expire_proc_indirect(void *arg)
 		 * won't be found by a cache_lookup, never the less it's
 		 * a mount under ap.path.
 		 */
+		cache_readlock();
 		me = cache_lookup(next->path);
 		if (me && *me->key == '/')
 			ioctlfd = me->ioctlfd;
 		else
 			ioctlfd = ap->ioctlfd;
+		cache_unlock();
 
 		ret = ioctl(ioctlfd, AUTOFS_IOC_EXPIRE_MULTI, &now);
 		if (ret < 0 && errno != EAGAIN) {
-			debug("failed to expire mount %s", me->key);
-			status = 1;
+			debug("failed to expire mount %s", next->path);
+			ex.status = 1;
 			goto done;
 		} else
 			sched_yield();
@@ -392,18 +398,16 @@ done:
 	 */
 	if (count) {
 		debug("%d remaining in %s\n", count, ap->path);
-		status = 1;
+		ex.status = 1;
 		pthread_exit(NULL);
 	}
 
 	/* If we are trying to shutdown make sure we can umount */
 	if (ap->state == ST_SHUTDOWN_PENDING) {
-		debug("ret = %d", ret);
 		if (!ioctl(ap->ioctlfd, AUTOFS_IOC_ASKUMOUNT, &ret)) {
-			debug("ret = %d", ret);
 			if (!ret) {
 				debug("mount still busy %s", ap->path);
-				status = 1;
+				ex.status = 1;
 				pthread_exit(NULL);
 			}
 		}
@@ -416,9 +420,9 @@ done:
 static void kernel_callback_cleanup(void *arg)
 {
 	struct autofs_point *ap;
-	struct pending *mt;
+	struct pending_args *mt;
 
-	mt = (struct pending *) arg;
+	mt = (struct pending_args *) arg;
 	ap = mt->ap;
 
 	if (mt->status)
@@ -432,10 +436,10 @@ static void kernel_callback_cleanup(void *arg)
 
 static void *do_expire_indirect(void *arg)
 {
-	struct pending *mt;
+	struct pending_args *mt;
 	int status;
 
-	mt = (struct pending *) arg;
+	mt = (struct pending_args *) arg;
 
 	mt->status = 1;
 	pthread_cleanup_push(kernel_callback_cleanup, mt);
@@ -450,7 +454,7 @@ static void *do_expire_indirect(void *arg)
 
 int handle_packet_expire_indirect(struct autofs_point *ap, autofs_packet_expire_indirect_t *pkt)
 {
-	struct pending *mt;
+	struct pending_args *mt;
 	char buf[MAX_ERR_BUF];
 	pthread_t thid;
 	int status;
@@ -458,7 +462,7 @@ int handle_packet_expire_indirect(struct autofs_point *ap, autofs_packet_expire_
 	debug("token %ld, name %s\n",
 		  (unsigned long) pkt->wait_queue_token, pkt->name);
 
-	mt = malloc(sizeof(struct pending));
+	mt = malloc(sizeof(struct pending_args));
 	if (!mt) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
 		error("malloc: %s", estr);
@@ -483,7 +487,7 @@ int handle_packet_expire_indirect(struct autofs_point *ap, autofs_packet_expire_
 
 static void *do_mount_indirect(void *arg)
 {
-	struct pending *mt;
+	struct pending_args *mt;
 	struct autofs_point *ap;
 	char buf[PATH_MAX + 1];
 	struct stat st;
@@ -497,7 +501,7 @@ static void *do_mount_indirect(void *arg)
 	char env_buf[12];
 	int len, tmplen, status;
 
-	mt = (struct pending *) arg;
+	mt = (struct pending_args *) arg;
 	ap = mt->ap;
 
 	mt->status = 0;
@@ -595,7 +599,7 @@ int handle_packet_missing_indirect(struct autofs_point *ap, autofs_packet_missin
 {
 	pthread_t thid;
 	char buf[MAX_ERR_BUF];
-	struct pending *mt;
+	struct pending_args *mt;
 	int status;
 
 	debug("token %ld, name %s requst pid=%d\n",
@@ -607,7 +611,7 @@ int handle_packet_missing_indirect(struct autofs_point *ap, autofs_packet_missin
 		return 0;
 	}
 
-	mt = malloc(sizeof(struct pending));
+	mt = malloc(sizeof(struct pending_args));
 	if (!mt) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
 		error("malloc: %s", estr);
