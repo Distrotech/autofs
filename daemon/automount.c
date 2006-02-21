@@ -1,4 +1,4 @@
-#ident "$Id: automount.c,v 1.46 2006/02/21 18:48:11 raven Exp $"
+#ident "$Id: automount.c,v 1.47 2006/02/21 23:30:33 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  automount.c - Linux automounter daemon
@@ -570,7 +570,6 @@ enum expire {
 static enum expire expire_proc(struct autofs_point *ap, int now)
 {
 	pthread_t thid;
-	char buf[MAX_ERR_BUF];
 	void *(*expire)(void *);
 	int status;
 

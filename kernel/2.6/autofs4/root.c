@@ -379,7 +379,7 @@ static struct vfsmount *autofs4_get_vfsmount(struct nameidata *nd, struct dentry
 		this = list_entry(p, struct vfsmount, mnt_child);
 		if (this && this->mnt_sb == sb && this->mnt_parent == parent) {
 			spin_unlock(&dcache_lock);
-			return this;
+			return mntget(this);
 		}
 	}
 	spin_unlock(&dcache_lock);
@@ -429,9 +429,14 @@ static int autofs4_follow_link(struct dentry *dentry, struct nameidata *nd)
 done:
 /*	 nd->last_type = LAST_BIND; */
 	dput(nd->dentry);
+	mntput(nd->mnt);
 	nd->mnt = mnt;
 	nd->dentry = dentry;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,13)
+	return NULL;
+#else
 	return 0;
+#endif
 
 out_error:
 	dput(dentry);
@@ -459,6 +464,9 @@ static int autofs4_revalidate(struct dentry *dentry, struct nameidata *nd)
 	int oz_mode = autofs4_oz_mode(sbi);
 	int flags = nd ? nd->flags : 0;
 	int status = 0;
+
+	DPRINTK("dentry=%p %.*s oz_mode=%d",
+		 dentry, dentry->d_name.len, dentry->d_name.name, oz_mode);
 
 	/* Pending dentry */
 	if (autofs4_ispending(dentry)) {

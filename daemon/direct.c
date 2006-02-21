@@ -1,4 +1,4 @@
-#ident "$Id: direct.c,v 1.5 2006/02/21 18:48:11 raven Exp $"
+#ident "$Id: direct.c,v 1.6 2006/02/21 23:30:33 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  direct.c - Linux automounter direct mount handling
@@ -515,20 +515,33 @@ out_err:
 void *expire_proc_direct(void *arg)
 {
 	struct mnt_list *mnts, *next;
-	struct expire_args *ex;
+	struct expire_args ex;
 	struct autofs_point *ap;
 	struct mapent_cache *me;
 	unsigned int now;
 	int ioctlfd;
+	int status;
 	int ret;
 
-	ex = (struct expire_args *) arg;
+	while (!ec.signaled) {
+		status = pthread_cond_wait(&ec.cond, &ec.mutex);
+		if (status)
+			error("expire condition wait failed");
+	}
 
-	ex->status = 0;
-	pthread_cleanup_push(expire_cleanup, ex);
+	ec.signaled = 0;
 
-	ap = ex->ap;
-	now = ex->when;
+	ap = ex.ap = ec.ap;
+	now = ex.when = ec.when;
+	ex.status = 0;
+
+	pthread_cleanup_push(expire_cleanup, &ex);
+
+	status = pthread_mutex_unlock(&ec.mutex);
+	if (status) {
+		error("failed to unlock expire cond mutex");
+		pthread_exit(NULL);
+	}
 
 	/* Get a list of real mounts and expire them if possible */
 	mnts = get_mnt_list(_PROC_MOUNTS, "/", 0);
@@ -549,13 +562,13 @@ void *expire_proc_direct(void *arg)
 		ioctlfd = me->ioctlfd;
 		cache_unlock();
 
-		debug("send expire to trigger %s", me->key);
+		debug("send expire to trigger %s", next->path);
 
 		/* Finally generate an expire message for the direct mount. */
 		ret = ioctl(ioctlfd, AUTOFS_IOC_EXPIRE_DIRECT, &now);
 		if (ret < 0 && errno != EAGAIN) {
 			debug("failed to expire mount %s", next->path);
-			ex->status = 1;
+			ex.status = 1;
 			goto done;
 		} else
 			sched_yield();
@@ -643,45 +656,46 @@ int handle_packet_expire_direct(struct autofs_point *ap, autofs_packet_expire_di
 	cache_readlock();
 	pthread_cleanup_push(cache_lock_cleanup, NULL);
 	me = cache_lookup_ino(pkt->dev, pkt->ino);
-	if (me) {
-		mt = malloc(sizeof(struct pending_args));
-		if (!mt) {
-			char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-			error("malloc: %s", estr);
-			send_fail(me->ioctlfd, pkt->wait_queue_token);
-			close(me->ioctlfd);
-			me->ioctlfd = -1;
-			status = 1;
-			goto done;
-		}
-		mt->ap = ap;
-		mt->ioctlfd = me->ioctlfd;
-		/* TODO: check length here */
-		strcpy(mt->name, me->key);
-		mt->dev = me->dev;
-		mt->type = NFY_EXPIRE;
-		mt->wait_queue_token = pkt->wait_queue_token;
-
-		debug("token %ld, name %s\n",
-			  (unsigned long) pkt->wait_queue_token, mt->name);
-
-		status = pthread_create(&thid, &detach_attr, do_expire_direct, mt);
-		if (status) {
-			error("expire thread create failed");
-			free(mt);
-			send_fail(mt->ioctlfd, pkt->wait_queue_token);
-			close(mt->ioctlfd);
-			me->ioctlfd = -1;
-			status = 1;
-			goto done;
-		}
-	} else {
+	if (!me) {
 		/*
 		 * Shouldn't happen as we have been sent this following
 		 * successful thread creation and lookup.
 		 */
 		crit("can't find map entry for (%lu,%lu)",
 		    (unsigned long) pkt->dev, (unsigned long) pkt->ino);
+		status = 1;
+		goto done;
+	}
+
+	mt = malloc(sizeof(struct pending_args));
+	if (!mt) {
+		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+		error("malloc: %s", estr);
+		send_fail(me->ioctlfd, pkt->wait_queue_token);
+		close(me->ioctlfd);
+		me->ioctlfd = -1;
+		status = 1;
+		goto done;
+	}
+
+	mt->ap = ap;
+	mt->ioctlfd = me->ioctlfd;
+	/* TODO: check length here */
+	strcpy(mt->name, me->key);
+	mt->dev = me->dev;
+	mt->type = NFY_EXPIRE;
+	mt->wait_queue_token = pkt->wait_queue_token;
+
+	debug("token %ld, name %s\n",
+		  (unsigned long) pkt->wait_queue_token, mt->name);
+
+	status = pthread_create(&thid, &detach_attr, do_expire_direct, mt);
+	if (status) {
+		error("expire thread create failed");
+		free(mt);
+		send_fail(mt->ioctlfd, pkt->wait_queue_token);
+		close(mt->ioctlfd);
+		me->ioctlfd = -1;
 		status = 1;
 	}
 done:
@@ -803,66 +817,65 @@ int handle_packet_missing_direct(struct autofs_point *ap, autofs_packet_missing_
 	cache_readlock();
 	pthread_cleanup_push(cache_lock_cleanup, NULL);
 	me = cache_lookup_ino(pkt->dev, pkt->ino);
-	if (me) {
-		ioctlfd = open(me->key, O_RDONLY);
-		if (ioctlfd < 0) {
-			crit("failed to create ioctl fd for %s", me->key);
-			/* TODO:  how do we clear wait q in kernel ?? */
-			status = 1;
-			goto done;
-		}
-		me->ioctlfd = ioctlfd;
-
-		debug("token %ld, name %s\n",
-			  (unsigned long) pkt->wait_queue_token, me->key);
-
-		/* Ignore packet if we're trying to shut down */
-		if (ap->state == ST_SHUTDOWN_PENDING || ap->state == ST_SHUTDOWN) {
-			status = 1;
-			send_fail(me->ioctlfd, pkt->wait_queue_token);
-			close(me->ioctlfd);
-			me->ioctlfd = -1;
-			goto done;
-		}
-
-		mt = malloc(sizeof(struct pending_args));
-		if (!mt) {
-			char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-			error("malloc: %s", estr);
-			status = 1;
-			send_fail(me->ioctlfd, pkt->wait_queue_token);
-			close(me->ioctlfd);
-			me->ioctlfd = -1;
-			goto done;
-		}
-
-		mt->ap = ap;
-		mt->ioctlfd = me->ioctlfd;
-		/* TODO: check length here */
-		strcpy(mt->name, me->key);
-		mt->dev = me->dev;
-		mt->type = NFY_MOUNT;
-		mt->uid = pkt->uid;
-		mt->gid = pkt->gid;
-		mt->wait_queue_token = pkt->wait_queue_token;
-
-		status = pthread_create(&thid, &detach_attr, do_mount_direct, mt);
-		if (status) {
-			error("missing mount thread create failed");
-			free(mt);
-			status = 1;
-			send_fail(me->ioctlfd, pkt->wait_queue_token);
-			close(me->ioctlfd);
-			me->ioctlfd = -1;
-			goto done;
-		}
-	} else {
+	if (!me) {
 		/*
 		 * Shouldn't happen as the kernel is telling us
 		 * someone has walked on our mount point.
 		 */
 		crit("can't find map entry for (%lu,%lu)",
 		    (unsigned long) pkt->dev, (unsigned long) pkt->ino);
+		status = 1;
+		goto done;
+	}
+
+	ioctlfd = open(me->key, O_RDONLY);
+	if (ioctlfd < 0) {
+		crit("failed to create ioctl fd for %s", me->key);
+		/* TODO:  how do we clear wait q in kernel ?? */
+		status = 1;
+		goto done;
+	}
+	me->ioctlfd = ioctlfd;
+
+	debug("token %ld, name %s\n",
+		  (unsigned long) pkt->wait_queue_token, me->key);
+
+	/* Ignore packet if we're trying to shut down */
+	if (ap->state == ST_SHUTDOWN_PENDING || ap->state == ST_SHUTDOWN) {
+		send_fail(me->ioctlfd, pkt->wait_queue_token);
+		close(me->ioctlfd);
+		me->ioctlfd = -1;
+		status = 1;
+		goto done;
+	}
+
+	mt = malloc(sizeof(struct pending_args));
+	if (!mt) {
+		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+		error("malloc: %s", estr);
+		send_fail(me->ioctlfd, pkt->wait_queue_token);
+		close(me->ioctlfd);
+		me->ioctlfd = -1;
+		goto done;
+	}
+
+	mt->ap = ap;
+	mt->ioctlfd = me->ioctlfd;
+	/* TODO: check length here */
+	strcpy(mt->name, me->key);
+	mt->dev = me->dev;
+	mt->type = NFY_MOUNT;
+	mt->uid = pkt->uid;
+	mt->gid = pkt->gid;
+	mt->wait_queue_token = pkt->wait_queue_token;
+
+	status = pthread_create(&thid, &detach_attr, do_mount_direct, mt);
+	if (status) {
+		error("missing mount thread create failed");
+		free(mt);
+		send_fail(me->ioctlfd, pkt->wait_queue_token);
+		close(me->ioctlfd);
+		me->ioctlfd = -1;
 		status = 1;
 	}
 done:
