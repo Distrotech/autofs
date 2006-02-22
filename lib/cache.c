@@ -1,4 +1,4 @@
-#ident "$Id: cache.c,v 1.21 2006/02/21 18:48:11 raven Exp $"
+#ident "$Id: cache.c,v 1.22 2006/02/22 23:01:57 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  cache.c - mount entry cache management routines
@@ -657,7 +657,6 @@ void cache_release(void)
 		free(me->key);
 		if (me->mapent)
 			free(me->mapent);
-		pthread_mutex_destroy(&me->mutex);
 		free(me);
 
 		while (next != NULL) {

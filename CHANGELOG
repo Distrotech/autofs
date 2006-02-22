@@ -19,6 +19,8 @@
 - fix error handling fix for SIGCHLD handler.
 - read map in sub-thread progresses.
 - add cancelation cleanup routine to expire.
+- correct error handling in lookup_ghost.
+- remove redundant pthread mutex definition from mapent_cache.
 
 11/4/2005 autofs-4.1.4
 ----------------------

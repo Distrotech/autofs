@@ -1,4 +1,4 @@
-#ident "$Id: automount.h,v 1.24 2006/02/22 22:39:26 raven Exp $"
+#ident "$Id: automount.h,v 1.25 2006/02/22 23:01:57 raven Exp $"
 /*
  * automount.h
  *
@@ -115,7 +115,6 @@ enum states {
 
 struct mapent_cache {
 	struct mapent_cache *next;
-	pthread_mutex_t mutex;
 	unsigned int count;
 	struct list_head multi_list;
 	/* Need to know owner if we're a multi mount */

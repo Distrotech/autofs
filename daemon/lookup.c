@@ -1,4 +1,4 @@
-#ident "$Id: lookup.c,v 1.2 2006/02/21 18:48:11 raven Exp $"
+#ident "$Id: lookup.c,v 1.3 2006/02/22 23:01:57 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup.c - API layer to implement nsswitch semantics for map reading
@@ -206,7 +206,9 @@ int lookup_ghost(struct autofs_point *ap)
 			goto next;
 
 		if (*me->key == '/') {
-			error("invalid key %s", me->key);
+			/* It's a busy multi-mount - leave till next time */
+			if (list_empty(&me->multi_list))
+				error("invalid key %s", me->key);
 			goto next;
 		}
 
@@ -224,7 +226,8 @@ int lookup_ghost(struct autofs_point *ap)
 			goto next;
 		}
 
-		if (mkdir_path(fullpath, 0555) < 0) {
+		ret = mkdir_path(fullpath, 0555);
+		if (ret < 0 && errno != EEXIST) {
 			char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
 			warn("mkdir_path %s failed: %s", fullpath, estr);
 			goto next;
