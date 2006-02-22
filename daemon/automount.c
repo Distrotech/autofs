@@ -1,4 +1,4 @@
-#ident "$Id: automount.c,v 1.48 2006/02/22 08:12:05 raven Exp $"
+#ident "$Id: automount.c,v 1.49 2006/02/22 15:24:11 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  automount.c - Linux automounter daemon
@@ -154,12 +154,11 @@ int umount_offsets(const char *base)
 	}
 
 	pos = NULL;
-	offset = get_offset(base, offset, &head, &pos);
-	while (offset) {
+	while ((offset = get_offset(base, offset, &head, &pos))) {
 		if (strlen(base) + strlen(offset) >= PATH_MAX) {
 			warn("can't umount - mount path too long");
 			ret++;
-			goto cont;
+			continue;
 		}
 
 		debug("umount offset %s", offset);
@@ -169,7 +168,7 @@ int umount_offsets(const char *base)
 		me = cache_lookup(key);
 		if (!me) {
 			debug("offset key %s not found", key);
-			goto cont;
+			continue;
 		}
 
 		/*
@@ -180,8 +179,6 @@ int umount_offsets(const char *base)
 			crit("failed to umount offset %s", me->key);
 			ret++;
 		}
-cont:
-		offset = get_offset(base, offset, &head, &pos);
 	}
 	free_mnt_list(mnts);
 	cache_unlock();
