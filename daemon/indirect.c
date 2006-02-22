@@ -1,4 +1,4 @@
-#ident "$Id: indirect.c,v 1.6 2006/02/22 02:23:41 raven Exp $"
+#ident "$Id: indirect.c,v 1.7 2006/02/22 22:39:26 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  indirect.c - Linux automounter indirect mount handling
@@ -326,6 +326,8 @@ void *expire_proc_indirect(void *arg)
 	int ioctlfd;
 	int status;
 
+	pthread_cleanup_push(expire_cleanup_unlock, &ec);
+
 	while (!ec.signaled) {
 		status = pthread_cond_wait(&ec.cond, &ec.mutex);
 		if (status)
@@ -339,12 +341,6 @@ void *expire_proc_indirect(void *arg)
 	ex.status = 0;
 
 	pthread_cleanup_push(expire_cleanup, &ex);
-
-	status = pthread_mutex_unlock(&ec.mutex);
-	if (status) {
-		error("failed to unlock expire cond mutex");
-		pthread_exit(NULL);
-	}
 
 	/* Get a list of real mounts and expire them if possible */
 	mnts = get_mnt_list(_PROC_MOUNTS, ap->path, 0);
@@ -398,14 +394,14 @@ done:
 	 * have some offset mounts with no '/' offset so we need to
 	 * umount them here.
 	 */
-	if (mnts && !status && !count) {
+	if (mnts && !ex.status && !count) {
 		int ret;
 
 		while (offsets--) {
 			ret = ioctl(ap->ioctlfd, AUTOFS_IOC_EXPIRE_MULTI, &now);
 			if (ret < 0 && errno != EAGAIN) {
 				debug("failed to expire ofsets under %s", ap->path);
-				status = 1;
+				ex.status = 1;
 				break;
 			}
 		}
@@ -434,6 +430,13 @@ done:
 	}
 
 	pthread_cleanup_pop(1);
+
+	status = pthread_mutex_unlock(&ec.mutex);
+	if (status)
+		error("failed to unlock expire cond mutex");
+
+	pthread_cleanup_pop(0);
+
 	return NULL;
 }
 

@@ -1,4 +1,4 @@
-#ident "$Id: automount.h,v 1.23 2006/02/21 18:48:11 raven Exp $"
+#ident "$Id: automount.h,v 1.24 2006/02/22 22:39:26 raven Exp $"
 /*
  * automount.h
  *
@@ -156,6 +156,7 @@ char *cache_get_offset(const char *prefix, char *offset, int start, struct list_
 
 /* Utility functions */
 
+void dump_core(void);
 int sigchld_start_handler(void);
 int sigchld_block(void);
 int sigchld_unblock(void);
@@ -326,21 +327,28 @@ int xopen(const char *path, int flags);
 
 /* Core automount definitions */
 
-struct readmap_args {
-	struct autofs_point *ap;	/* autofs mount we are working on */
-	time_t now;		/* Time when map is read */
-	int status;			/* Return status */
+struct readmap_cond {
+	pthread_mutex_t mutex;
+	pthread_cond_t  cond;
+	pthread_t thid;		 /* map reader thread id */
+	struct autofs_point *ap; /* autofs mount we are working on */
+	unsigned int signaled;   /* Condition has been signaled */
+	time_t now;		 /* Time when map is read */
 };
+
+extern struct readmap_cond rc;
+void do_readmap_cleanup_unlock(void *arg);
 
 struct expire_cond {
 	pthread_mutex_t mutex;
 	pthread_cond_t  cond;
-	struct autofs_point *ap;
-	unsigned int signaled;
-	unsigned int    when;
+	struct autofs_point *ap; /* autofs mount we are working on */
+	unsigned int signaled;	 /* Condition has been signaled */
+	unsigned int when;	 /* Immediate expire ? */
 };
 
 extern struct expire_cond ec;
+void expire_cleanup_unlock(void *arg);
 
 struct expire_args {
 	struct autofs_point *ap;	/* autofs mount we are working on */
@@ -454,6 +462,19 @@ extern void (*log_debug)(const char* msg, ...);
 
 #define crit(msg, args...)	\
 	do { log_crit("%s: " msg,  __FUNCTION__, ##args); } while (0)
+
+#define fatal(status)						    \
+	do {							    \
+		if (status == EDEADLK) {			    \
+			log_crit("%s: deadlock detected "	    \
+				 "at line %d in %s, dumping core.", \
+				 __FUNCTION__, __LINE__, __FILE__); \
+			dump_core();				    \
+		}						    \
+		log_crit("unexpected pthreads error: %d at %d "	    \
+			 "in %s", status, __LINE__, __FILE__);	    \
+		abort();					    \
+	} while(0)
 
 #ifndef NDEBUG
 #define assert(x)							\

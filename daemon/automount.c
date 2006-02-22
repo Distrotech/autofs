@@ -1,4 +1,4 @@
-#ident "$Id: automount.c,v 1.49 2006/02/22 15:24:11 raven Exp $"
+#ident "$Id: automount.c,v 1.50 2006/02/22 22:39:26 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  automount.c - Linux automounter daemon
@@ -55,6 +55,9 @@ pthread_mutex_t state_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 struct expire_cond ec = {
 	PTHREAD_MUTEX_INITIALIZER, PTHREAD_COND_INITIALIZER, NULL, 0, 0};
+
+struct readmap_cond rc = {
+	PTHREAD_MUTEX_INITIALIZER, PTHREAD_COND_INITIALIZER, 0, NULL, 0, 0};
 
 struct autofs_point ap;
 
@@ -564,6 +567,21 @@ enum expire {
  *          DONE	- nothing to expire
  *          PARTIAL	- partial expire
  */
+
+void expire_cleanup_unlock(void *arg)
+{
+	struct expire_cond *ec;
+	int status;
+
+	ec = (struct expire_cond *) arg;
+
+	status = pthread_mutex_unlock(&ec->mutex);
+	if (status)
+		error("failed to lock expire condition mutex");
+
+	return;
+}
+
 static enum expire expire_proc(struct autofs_point *ap, int now)
 {
 	pthread_t thid;
@@ -574,7 +592,7 @@ static enum expire expire_proc(struct autofs_point *ap, int now)
 
 	status = pthread_mutex_lock(&ec.mutex);
 	if (status) {
-		error("failed to lock expire cond mutex");
+		error("failed to lock expire condition mutex");
 		return EXP_ERROR;
 	}
 
@@ -587,8 +605,8 @@ static enum expire expire_proc(struct autofs_point *ap, int now)
 	if (status) {
 		status = pthread_mutex_unlock(&ec.mutex);
 		if (status)
-			error("failed to unlock expire cond mutex");
-		error("expire_proc thread create failed");
+			fatal(status);
+		error("thread create failed");
 		return EXP_ERROR;
 	}
 
@@ -603,34 +621,58 @@ static enum expire expire_proc(struct autofs_point *ap, int now)
 	if (status) {
 		status = pthread_mutex_unlock(&ec.mutex);
 		if (status)
-			error("failed to unlock expire cond mutex");
-		error("failed to signal expire cond");
+			fatal(status);
+		error("failed to signal expire condition");
 		return EXP_ERROR;
 	}
 
 	status = pthread_mutex_unlock(&ec.mutex);
 	if (status) {
-		error("failed to unlock expire cond mutex");
+		error("failed to unlock expire condition mutex");
 		return EXP_ERROR;
 	}
 
 	return EXP_STARTED;
 }
 
+void do_readmap_cleanup_unlock(void *arg)
+{
+	struct readmap_cond *rc;
+	int status;
+
+	rc = (struct readmap_cond *) arg;
+
+	status = pthread_mutex_unlock(&rc->mutex);
+	if (status)
+		error("failed to unlock expire cond mutex");
+
+	return;
+}
+
 static void *do_readmap(void *arg)
 {
-	struct readmap_args *rm;
 	struct autofs_point *ap;
 	int status;
 	time_t now;
 
-	rm = (struct readmap_args *) arg;
-	ap = rm->ap;
-	now = rm->now;
+	pthread_cleanup_push(do_readmap_cleanup_unlock, &rc);
+
+	while (!rc.signaled) {
+		status = pthread_cond_wait(&rc.cond, &rc.mutex);
+		if (status)
+			error("expire condition wait failed");
+		pthread_exit(NULL);
+	}
+
+	rc.signaled = 0;
+
+	ap = rc.ap;
+	now = rc.now;
 
 	status = lookup_nss_read_map(ap, now);
 	if (!status)
-		return NULL;
+		pthread_exit(NULL);
+
 	cache_clean(ap->path, now);
 
 	pthread_cleanup_push(cache_lock_cleanup, NULL);
@@ -644,52 +686,65 @@ static void *do_readmap(void *arg)
 
 	debug("status %d", status);
 
-	free(rm);
-
-	status = pthread_mutex_lock(&state_mutex);
+	status = pthread_mutex_unlock(&rc.mutex);
 	if (status)
-		error("state mutex lock failed");
+		error("failed to unlock expire cond mutex");
+
+	pthread_cleanup_pop(0);
 
 	return NULL;
 }
 
 static int st_readmap(struct autofs_point *ap)
 {
-	struct readmap_args *rm;
 	pthread_t thid;
-	char buf[MAX_ERR_BUF];
 	int status;
 	int now = time(NULL);
-
-	if (ap->state == ST_READMAP) {
-		debug("already reading map, ignored");
-		return 1;
-	}
 
 	assert(ap->state == ST_READY);
 	ap->state = ST_READMAP;
 
-	rm = malloc(sizeof(struct readmap_args));
-	if (!rm) {
-		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		error("malloc: %s", estr);
+	status = pthread_mutex_trylock(&rc.mutex);
+	if (status) {
+		if (status == EBUSY)
+			warn("read map already in progress");
+		else
+			error("failed to lock read map condition mutex");
 		return 0;
 	}
 
-	rm->ap = ap;
-	rm->now = now;
-
-	status = pthread_create(&thid, &detach_attr, do_readmap, rm);
+	status = pthread_create(&thid, &detach_attr, do_readmap, NULL);
 	if (status) {
-		error("readmap thread create failed");
-		free(rm);
+		error("read map thread create failed");
+		status = pthread_mutex_unlock(&rc.mutex);
+		if (status)
+			fatal(status);
+		return 0;
+	}
+
+	rc.thid = thid;
+	rc.ap = ap;
+	rc.now = now;
+	rc.signaled = 1;
+
+	status = pthread_cond_signal(&rc.cond);
+	if (status) {
+		status = pthread_mutex_unlock(&rc.mutex);
+		if (status)
+			fatal(status);
+		error("failed to signal read map condition");
+		return 0;
+	}
+
+	status = pthread_mutex_unlock(&rc.mutex);
+	if (status) {
+		error("failed to unlock read map condition mutex");
 		return 0;
 	}
 
 	/*
 	 * The goal is that map refresh should procceed in parallel
-	 * instead of synchronously as they are in 4.1. There's a
-	 * way to go yet though.
+	 * instead of synchronously as they are in 4.1.
 	 */
 	ap->state = ST_READY;
 

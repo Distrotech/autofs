@@ -1,4 +1,4 @@
-#ident "$Id: spawn.c,v 1.16 2006/02/20 01:05:32 raven Exp $"
+#ident "$Id: spawn.c,v 1.17 2006/02/22 22:39:26 raven Exp $"
 /* ----------------------------------------------------------------------- *
  * 
  *  spawn.c - run programs synchronously with output redirected to syslog
@@ -69,6 +69,18 @@ static struct sigchld_mutex sm = {PTHREAD_MUTEX_INITIALIZER,
 
 extern pthread_attr_t detach_attr;
 
+inline void dump_core(void)
+{
+	sigset_t segv;
+
+	sigemptyset(&segv);
+	sigaddset(&segv, SIGSEGV);
+	pthread_sigmask(SIG_UNBLOCK, &segv, NULL);
+	sigprocmask(SIG_UNBLOCK, &segv, NULL);
+
+	raise(SIGSEGV);
+}
+
 void *sigchld(void *dummy)
 {
 	pid_t pid;
@@ -84,10 +96,8 @@ void *sigchld(void *dummy)
 		sigwait(&sigchld, &sig);
 
 		status = pthread_mutex_lock(&sm.mutex);
-		if (status) {
-			error("failed to lock SIGCHLD handler mutex");
-			continue;
-		}
+		if (status)
+			fatal(status);
 
 		/*
 		 * We could receive SIGCONT from two sources at the same

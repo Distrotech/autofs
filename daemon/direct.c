@@ -1,4 +1,4 @@
-#ident "$Id: direct.c,v 1.7 2006/02/22 08:12:05 raven Exp $"
+#ident "$Id: direct.c,v 1.8 2006/02/22 22:39:26 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  direct.c - Linux automounter direct mount handling
@@ -523,6 +523,8 @@ void *expire_proc_direct(void *arg)
 	int status;
 	int ret;
 
+	pthread_cleanup_push(expire_cleanup_unlock, &ec);
+
 	while (!ec.signaled) {
 		status = pthread_cond_wait(&ec.cond, &ec.mutex);
 		if (status)
@@ -536,12 +538,6 @@ void *expire_proc_direct(void *arg)
 	ex.status = 0;
 
 	pthread_cleanup_push(expire_cleanup, &ex);
-
-	status = pthread_mutex_unlock(&ec.mutex);
-	if (status) {
-		error("failed to unlock expire cond mutex");
-		pthread_exit(NULL);
-	}
 
 	/* Get a list of real mounts and expire them if possible */
 	mnts = get_mnt_list(_PROC_MOUNTS, "/", 0);
@@ -577,6 +573,13 @@ done:
 	free_mnt_list(mnts);
 
 	pthread_cleanup_pop(1);
+
+	status = pthread_mutex_unlock(&ec.mutex);
+	if (status)
+		error("failed to unlock expire condition mutex");
+
+	pthread_cleanup_pop(0);
+
 	return NULL;
 }
 
