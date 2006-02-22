@@ -1,4 +1,4 @@
-#ident "$Id: direct.c,v 1.6 2006/02/21 23:30:33 raven Exp $"
+#ident "$Id: direct.c,v 1.7 2006/02/22 08:12:05 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  direct.c - Linux automounter direct mount handling
@@ -335,11 +335,11 @@ int mount_autofs_direct(struct autofs_point *ap, char *path)
 		return -1;
 	}
 
-	cache_readlock();
 	pthread_cleanup_push(cache_lock_cleanup, NULL);
+	cache_readlock();
 	map = lookup_enumerate(ap, do_mount_autofs_direct, now);
-	pthread_cleanup_pop(0);
 	cache_unlock();
+	pthread_cleanup_pop(0);
 	if (map & LKP_FAIL) {
 		if (map & LKP_INDIRECT) {
 			error("bad map format, found indirect, expected direct exiting");
@@ -653,8 +653,8 @@ int handle_packet_expire_direct(struct autofs_point *ap, autofs_packet_expire_di
 	 * and since it got mounted we have to trust that
 	 * there is an entry in the cache.
 	 */
-	cache_readlock();
 	pthread_cleanup_push(cache_lock_cleanup, NULL);
+	cache_readlock();
 	me = cache_lookup_ino(pkt->dev, pkt->ino);
 	if (!me) {
 		/*
@@ -699,8 +699,8 @@ int handle_packet_expire_direct(struct autofs_point *ap, autofs_packet_expire_di
 		status = 1;
 	}
 done:
-	pthread_cleanup_pop(0);
 	cache_unlock();
+	pthread_cleanup_pop(0);
 	return status;
 }
 
@@ -814,8 +814,8 @@ int handle_packet_missing_direct(struct autofs_point *ap, autofs_packet_missing_
 	int status = 0;
 	int ioctlfd;
 
-	cache_readlock();
 	pthread_cleanup_push(cache_lock_cleanup, NULL);
+	cache_readlock();
 	me = cache_lookup_ino(pkt->dev, pkt->ino);
 	if (!me) {
 		/*
@@ -879,8 +879,8 @@ int handle_packet_missing_direct(struct autofs_point *ap, autofs_packet_missing_
 		status = 1;
 	}
 done:
-	pthread_cleanup_pop(0);
 	cache_unlock();
+	pthread_cleanup_pop(0);
 	return status;
 }
 

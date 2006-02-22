@@ -1,4 +1,4 @@
-#ident "$Id: lookup_yp.c,v 1.19 2006/02/21 18:48:12 raven Exp $"
+#ident "$Id: lookup_yp.c,v 1.20 2006/02/22 08:12:05 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup_yp.c - module for Linux automountd to access a YP (NIS)
@@ -250,13 +250,13 @@ static int check_map_indirect(struct autofs_point *ap,
 		if (wild == CHE_MISSING)
 			cache_delete("*");
 
-		cache_writelock();
 		pthread_cleanup_push(cache_lock_cleanup, NULL);
+		cache_writelock();
 		if (cache_delete(key) &&
 				wild & (CHE_MISSING | CHE_FAIL))
 			rmdir_path(key);
-		pthread_cleanup_pop(0);
 		cache_unlock();
+		pthread_cleanup_pop(0);
 	}
 
 	/* Have parent update its map */

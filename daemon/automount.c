@@ -1,4 +1,4 @@
-#ident "$Id: automount.c,v 1.47 2006/02/21 23:30:33 raven Exp $"
+#ident "$Id: automount.c,v 1.48 2006/02/22 08:12:05 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  automount.c - Linux automounter daemon
@@ -142,10 +142,9 @@ int umount_offsets(const char *base)
 
 	INIT_LIST_HEAD(&head);
 
-	cache_readlock();
 	pthread_cleanup_push(cache_lock_cleanup, NULL);
+	cache_readlock();
 	mnts = get_mnt_list(_PROC_MOUNTS, base, 0);
-	pthread_cleanup_pop(0);
 	for (next = mnts; next; next = next->next) {
 		if (strcmp(next->fs_type, "autofs"))
 			continue;
@@ -186,6 +185,7 @@ cont:
 	}
 	free_mnt_list(mnts);
 	cache_unlock();
+	pthread_cleanup_pop(0);
 
 	cache_writelock();
 	me = cache_lookup(base);
@@ -636,14 +636,14 @@ static void *do_readmap(void *arg)
 		return NULL;
 	cache_clean(ap->path, now);
 
-	cache_readlock();
 	pthread_cleanup_push(cache_lock_cleanup, NULL);
+	cache_readlock();
 	if (ap->type == LKP_INDIRECT)
 		status = lookup_ghost(ap);
 	else
 		status = lookup_enumerate(ap, do_mount_autofs_direct, now);
-	pthread_cleanup_pop(0);
 	cache_unlock();
+	pthread_cleanup_pop(0);
 
 	debug("status %d", status);
 
