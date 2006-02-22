@@ -1,4 +1,4 @@
-#ident "$Id: lookup_hosts.c,v 1.3 2006/02/21 18:48:11 raven Exp $"
+#ident "$Id: lookup_hosts.c,v 1.4 2006/02/22 02:23:41 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup_hosts.c - module for Linux automount to mount the exports
@@ -71,12 +71,13 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 	}
 
 	sethostent(0);
-	while ((host = gethostent()) != NULL)
+	while ((host = gethostent()) != NULL) {
 		cache_writelock();
 		pthread_cleanup_push(cache_lock_cleanup, NULL);
 		cache_update(host->h_name, NULL, age);
 		pthread_cleanup_pop(0);
 		cache_unlock();
+	}
 	endhostent();
 
 	status = pthread_mutex_unlock(&hostent_mutex);

@@ -11,6 +11,8 @@
 - more kernel module fixes.
 - redo mapenty cache locking and start work on
   background map refresh.
+- fix hosts map (broken by mapentry cache locking update).
+- fix expire of multi-mount with no root mount.
 
 11/4/2005 autofs-4.1.4
 ----------------------

@@ -1,4 +1,4 @@
-#ident "$Id: indirect.c,v 1.5 2006/02/21 18:48:11 raven Exp $"
+#ident "$Id: indirect.c,v 1.6 2006/02/22 02:23:41 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  indirect.c - Linux automounter indirect mount handling
@@ -322,7 +322,7 @@ void *expire_proc_indirect(void *arg)
 	struct autofs_point *ap;
 	struct mapent_cache *me;
 	unsigned int now;
-	int count, ret;
+	int offsets, count, ret;
 	int ioctlfd;
 	int status;
 
@@ -383,12 +383,32 @@ void *expire_proc_indirect(void *arg)
 done:
 	free_mnt_list(mnts);
 
-	count = 0;
+	count = offsets = 0;
 	mnts = get_mnt_list(_PROC_MOUNTS, ap->path, 0);
 	/* Are there any real mounts left */
 	for (next = mnts; next; next = next->next) {
 		if (strcmp(next->fs_type, "autofs"))
 			count++;
+		else
+			offsets++;
+	}
+
+	/*
+	 * If there are no more real mounts left the we could still
+	 * have some offset mounts with no '/' offset so we need to
+	 * umount them here.
+	 */
+	if (mnts && !status && !count) {
+		int ret;
+
+		while (offsets--) {
+			ret = ioctl(ap->ioctlfd, AUTOFS_IOC_EXPIRE_MULTI, &now);
+			if (ret < 0 && errno != EAGAIN) {
+				debug("failed to expire ofsets under %s", ap->path);
+				status = 1;
+				break;
+			}
+		}
 	}
 	free_mnt_list(mnts);
 
