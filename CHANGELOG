@@ -15,6 +15,7 @@
 - fix expire of multi-mount with no root mount.
 - final v5 comms packet definition (famous last words).
 - remove goto from loop.
+- add missing definition of _GNU_SOURCE for strerror_r.
 
 11/4/2005 autofs-4.1.4
 ----------------------

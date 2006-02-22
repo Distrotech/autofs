@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.7 2006/02/20 01:05:32 raven Exp $
+# $Id: Makefile,v 1.8 2006/02/22 15:26:18 raven Exp $
 #
 # Makefile for autofs
 #
@@ -11,7 +11,7 @@ OBJS = automount.o indirect.o direct.o spawn.o module.o mount.o lookup.o
 
 version := $(shell cat ../.version)
 
-CFLAGS += -rdynamic $(DAEMON_CFLAGS) -DAUTOFS_LIB_DIR=\"$(autofslibdir)\" -DVERSION_STRING=\"$(version)\" -I../include
+CFLAGS += -rdynamic $(DAEMON_CFLAGS) -DAUTOFS_LIB_DIR=\"$(autofslibdir)\" -DVERSION_STRING=\"$(version)\" -D_GNU_SOURCE -I../include
 LDFLAGS += -rdynamic
 LIBS = -ldl
 
