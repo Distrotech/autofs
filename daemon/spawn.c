@@ -1,4 +1,4 @@
-#ident "$Id: spawn.c,v 1.17 2006/02/22 22:39:26 raven Exp $"
+#ident "$Id: spawn.c,v 1.18 2006/02/23 14:12:03 raven Exp $"
 /* ----------------------------------------------------------------------- *
  * 
  *  spawn.c - run programs synchronously with output redirected to syslog
@@ -295,7 +295,7 @@ int signal_children(int sig)
 
 	next = mnts;
 	while (next) {
-		/* 30 * 100000000 ns = 5 secs */
+		/* 30 * 100000000 ns = 3 secs */
 		int tries = 30;
 		int status;
 		struct mnt_list *this = next;
@@ -331,8 +331,6 @@ int signal_children(int sig)
 			struct timespec t = { 0, 100000000L };
 			struct timespec r;
 
-		again:
-			status = nanosleep(&t, &r);
 			/* For a prune event delay a little and pass it on */
 /*
 			if (sig == SIGUSR1)
@@ -341,14 +339,19 @@ int signal_children(int sig)
 			if (kill(pid, SIGCONT) == -1 && errno == ESRCH)
 				break;
 
-			if (status == -1 && errno == EINTR) {
-				memcpy(&t, &r, sizeof(struct timespec));
-				goto again;
+			while ((status = nanosleep(&t, &r))) {
+				if (errno == EINTR) {
+					memcpy(&t, &r, sizeof(struct timespec));
+					continue;
+				}
+				debug("nanosleep returned unexpected error"
+				      " %d\n", errno);
+				break;
 			}
 		}
 
 		if (sig != SIGUSR1 && tries < 0) {
-			warn("%d did nor exit - giving up.", pid);
+			warn("child process %d did not exit - giving up.",pid);
 			goto out;
 		}
 	}
