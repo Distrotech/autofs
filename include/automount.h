@@ -1,4 +1,4 @@
-#ident "$Id: automount.h,v 1.25 2006/02/22 23:01:57 raven Exp $"
+#ident "$Id: automount.h,v 1.26 2006/02/23 14:22:32 raven Exp $"
 /*
  * automount.h
  *
@@ -289,7 +289,6 @@ int ncat_path(char *buf, size_t len,
 #define RPC_CLOSE_DEFAULT	0x0000
 #define RPC_CLOSE_ACTIVE	RPC_CLOSE_DEFAULT
 #define RPC_CLOSE_NOLINGER	0x0001
-#
 
 unsigned int rpc_ping(const char *host,
 		      long seconds, long micros, unsigned int option);
