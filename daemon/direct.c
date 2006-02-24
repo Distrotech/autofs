@@ -1,4 +1,4 @@
-#ident "$Id: direct.c,v 1.8 2006/02/22 22:39:26 raven Exp $"
+#ident "$Id: direct.c,v 1.9 2006/02/24 14:34:27 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  direct.c - Linux automounter direct mount handling
@@ -840,8 +840,8 @@ int handle_packet_missing_direct(struct autofs_point *ap, autofs_packet_missing_
 	}
 	me->ioctlfd = ioctlfd;
 
-	debug("token %ld, name %s\n",
-		  (unsigned long) pkt->wait_queue_token, me->key);
+	debug("token %ld, name %s, request pid %u\n",
+		  (unsigned long) pkt->wait_queue_token, me->key, pkt->pid);
 
 	/* Ignore packet if we're trying to shut down */
 	if (ap->state == ST_SHUTDOWN_PENDING || ap->state == ST_SHUTDOWN) {

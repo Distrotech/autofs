@@ -1,4 +1,4 @@
-#ident "$Id: indirect.c,v 1.7 2006/02/22 22:39:26 raven Exp $"
+#ident "$Id: indirect.c,v 1.8 2006/02/24 14:34:27 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  indirect.c - Linux automounter indirect mount handling
@@ -625,8 +625,8 @@ int handle_packet_missing_indirect(struct autofs_point *ap, autofs_packet_missin
 	struct pending_args *mt;
 	int status;
 
-	debug("token %ld, name %s requst pid=%d\n",
-		(unsigned long) pkt->wait_queue_token, pkt->name);
+	debug("token %ld, name %s, request pid %u\n",
+		(unsigned long) pkt->wait_queue_token, pkt->name, pkt->pid);
 
 	/* Ignore packet if we're trying to shut down */
 	if (ap->state == ST_SHUTDOWN_PENDING || ap->state == ST_SHUTDOWN) {
