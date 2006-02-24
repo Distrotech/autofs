@@ -22,6 +22,7 @@
 - correct error handling in lookup_ghost.
 - remove redundant pthread mutex definition from mapent_cache.
 - merged signal_children cleanup patch.
+- first cut '+' included maps for client maps.
 
 11/4/2005 autofs-4.1.4
 ----------------------

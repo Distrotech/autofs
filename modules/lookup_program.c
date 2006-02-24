@@ -1,4 +1,4 @@
-#ident "$Id: lookup_program.c,v 1.12 2006/02/20 01:05:32 raven Exp $"
+#ident "$Id: lookup_program.c,v 1.13 2006/02/24 17:20:55 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup_program.c - module for Linux automount to access an
@@ -56,6 +56,8 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 
 	if (argc < 1) {
 		crit(MODPREFIX "No map name");
+		free(ctxt);
+		*context = NULL;
 		return 1;
 	}
 	ctxt->mapname = argv[0];
@@ -63,12 +65,16 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 	if (ctxt->mapname[0] != '/') {
 		crit(MODPREFIX "program map %s is not an absolute pathname",
 		       ctxt->mapname);
+		free(ctxt);
+		*context = NULL;
 		return 1;
 	}
 
 	if (access(ctxt->mapname, X_OK)) {
-		crit(MODPREFIX "program map %s missing or not executable",
+		warn(MODPREFIX "program map %s missing or not executable",
 		       ctxt->mapname);
+		free(ctxt);
+		*context = NULL;
 		return 1;
 	}
 

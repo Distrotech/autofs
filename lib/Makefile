@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.11 2006/02/20 01:05:32 raven Exp $
+# $Id: Makefile,v 1.12 2006/02/24 17:20:55 raven Exp $
 #
 # Makefile for autofs utility library
 #
@@ -11,10 +11,11 @@ RANLIB = /usr/bin/ranlib
 YACC = /usr/bin/bison
 
 SRCS = cache.c cat_path.c rpc_subs.c mounts.c lock.c log.c nsswitch.c \
-	nss_tok.c nss_parse.tab.c
+	nss_tok.c nss_parse.tab.c args.c
 RPCS = mount.h mount_clnt.c mount_xdr.c
 OBJS = cache.o mount_clnt.o mount_xdr.o cat_path.o rpc_subs.o \
-	 mounts.o lock.o log.o nsswitch.o nss_tok.o nss_parse.tab.o
+	mounts.o lock.o log.o nsswitch.o nss_tok.o nss_parse.tab.o \
+	args.o
 
 LIB = autofs.a
 

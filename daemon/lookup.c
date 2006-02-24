@@ -1,4 +1,4 @@
-#ident "$Id: lookup.c,v 1.3 2006/02/22 23:01:57 raven Exp $"
+#ident "$Id: lookup.c,v 1.4 2006/02/24 17:20:55 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup.c - API layer to implement nsswitch semantics for map reading
@@ -49,11 +49,11 @@ int lookup_nss_read_map(struct autofs_point *ap, time_t age)
 	struct list_head nsslist;
 	struct list_head *head, *p;
 	struct nss_source *this;
-	int ret;
+	int result;
 
 	if (ap->maptype) {
-		ret = do_read_map(ap, ap->maptype, age);
-		return !ret;
+		result = do_read_map(ap, ap->maptype, age);
+		return !result;
 	}
 
 	/* If it starts with a '/' it has to be a file map */
@@ -63,14 +63,15 @@ int lookup_nss_read_map(struct autofs_point *ap, time_t age)
 
 		memcpy(&tmp, ap, sizeof(struct autofs_point));
 
-		ret = do_read_map(&tmp, source, age);
-		return !ret;
+		result = do_read_map(&tmp, source, age);
+
+		return !result;
 	}
 
 	INIT_LIST_HEAD(&nsslist);
 
-	ret = nsswitch_parse(&nsslist);
-	if (ret) {
+	result = nsswitch_parse(&nsslist);
+	if (result) {
 		error("can't to read name service switch config.");
 		return 0;
 	}
@@ -79,7 +80,6 @@ int lookup_nss_read_map(struct autofs_point *ap, time_t age)
 	list_for_each(p, head) {
 		enum nsswitch_status status;
 		struct nss_action a;
-		int result;
 
 		this = list_entry(p, struct nss_source, list);
 
@@ -90,12 +90,12 @@ int lookup_nss_read_map(struct autofs_point *ap, time_t age)
 		 * note: It's invalid to specify a relative path.
 		 */
 		if (!strcasecmp(this->source, "files")) {
-			struct autofs_point tmp;
+			struct autofs_point *tap;
 			char *path;
 
 			if (strchr(ap->mapargv[0], '/')) {
 				error("relative path invalid in files map name");
-				return 0;
+				continue;
 			}
 
 			this->source[4] = '\0';
@@ -106,14 +106,44 @@ int lookup_nss_read_map(struct autofs_point *ap, time_t age)
 				free_sources(&nsslist);
 				return 0;
 			}
+
 			strcpy(path, "/etc/");
 			strcat(path, ap->mapargv[0]);
-			memcpy(&tmp, ap, sizeof(struct autofs_point));
-			tmp.mapargv[0] = path;
 
-			result = do_read_map(&tmp, this->source, age);
+			tap = malloc(sizeof(struct autofs_point));
+			if (!tap) {
+				error("could not malloc storage for nss lookup");
+				free(path);
+				free_sources(&nsslist);
+				return 0;
+			}
+			memcpy(tap, ap, sizeof(struct autofs_point));
 
-			free(path);
+			if (ap->mapargc >= 1) {
+				tap->mapargv = copy_argv(ap->mapargc, ap->mapargv);
+				if (!tap->mapargv) {
+					error("failed to copy args");
+					free(tap);
+					free(path);
+					free_sources(&nsslist);
+					return 0;
+				}
+				if (tap->mapargv[0])
+					free((char *) tap->mapargv[0]);
+				tap->mapargv[0] = path;
+			} else {
+				error("invalid arguments for autofs_point");
+				free(tap);
+				free(path);
+				free_sources(&nsslist);
+				return 0;
+			}
+
+			result = do_read_map(tap, this->source, age);
+
+			/* path is freed in free_agrs */
+			free_argv(tap->mapargc, tap->mapargv);
+			free(tap);
 		} else
 			result = do_read_map(ap, this->source, age);
 

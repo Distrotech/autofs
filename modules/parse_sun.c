@@ -1,4 +1,4 @@
-#ident "$Id: parse_sun.c,v 1.36 2006/02/21 18:48:12 raven Exp $"
+#ident "$Id: parse_sun.c,v 1.37 2006/02/24 17:20:55 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  parse_sun.c - module for Linux automountd to parse a Sun-format
@@ -640,6 +640,7 @@ int parse_init(int argc, const char *const *argv, void **context)
 			return 0;
 		} else {
 			kill_context(ctxt);
+			*context = NULL;
 			return 1;
 	} else {
 		init_ctr++;
@@ -1423,6 +1424,8 @@ int parse_done(void *context)
 		rv = close_mount(mount_nfs);
 		mount_nfs = NULL;
 	}
-	kill_context(ctxt);
+	if (ctxt)
+		kill_context(ctxt);
+
 	return rv;
 }

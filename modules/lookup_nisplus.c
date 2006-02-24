@@ -1,4 +1,4 @@
-#ident "$Id: lookup_nisplus.c,v 1.8 2006/02/21 18:48:12 raven Exp $"
+#ident "$Id: lookup_nisplus.c,v 1.9 2006/02/24 17:20:55 raven Exp $"
 /*
  * lookup_nisplus.c
  *
@@ -46,6 +46,8 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 
 	if (argc < 1) {
 		crit(MODPREFIX "No map name");
+		free(ctxt);
+		*context = NULL;
 		return 1;
 	}
 	ctxt->mapname = argv[0];
@@ -56,7 +58,9 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 	 */
 	ctxt->domainname = nis_local_directory();
 	if (!ctxt->domainname) {
-		error("NIS+ domain not set");
+		warn("NIS+ domain not set");
+		free(ctxt);
+		*context = NULL;
 		return 1;
 	}
 

@@ -1,4 +1,4 @@
-#ident "$Id: lookup_file.c,v 1.24 2006/02/21 18:48:11 raven Exp $"
+#ident "$Id: lookup_file.c,v 1.25 2006/02/24 17:20:55 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup_file.c - module for Linux automount to query a flat file map
@@ -39,7 +39,7 @@ typedef enum {
 	st_begin, st_compare, st_star, st_badent, st_entspc, st_getent
 } LOOKUP_STATE;
 
-typedef enum { got_nothing, got_star, got_real } FOUND_STATE;
+typedef enum { got_nothing, got_star, got_real, got_plus } FOUND_STATE;
 typedef enum { esc_none, esc_char, esc_val } ESCAPES;
 
 
@@ -65,6 +65,7 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 
 	if (argc < 1) {
 		crit(MODPREFIX "No map name");
+		free(ctxt);
 		return 1;
 	}
 
@@ -73,18 +74,21 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 	if (ctxt->mapname[0] != '/') {
 		crit(MODPREFIX "file map %s is not an absolute pathname",
 		       ctxt->mapname);
+		free(ctxt);
 		return 1;
 	}
 
 	if (access(ctxt->mapname, R_OK)) {
-		crit(MODPREFIX "file map %s missing or not readable",
+		warn(MODPREFIX "file map %s missing or not readable",
 		       ctxt->mapname);
+		free(ctxt);
 		return 1;
 	}
 
 	if (stat(ctxt->mapname, &st)) {
 		crit(MODPREFIX "file map %s, could not stat",
 		       ctxt->mapname);
+		free(ctxt);
 		return 1;
 	}
 		
@@ -148,6 +152,8 @@ static int read_one(FILE *f, char *key, char *mapent)
 					state = st_star;
 					*(kptr++) = ch;
 				} else {
+					if (ch == '+')
+						gotten = got_plus;
 					state = st_compare;
 					*(kptr++) = ch;
 				}
@@ -157,11 +163,15 @@ static int read_one(FILE *f, char *key, char *mapent)
 			break;
 
 		case st_compare:
-			if (ch == '\n')
+			if (ch == '\n') {
 				state = st_begin;
-			else if (isspace(ch) && !escape) {
+				if (gotten == got_plus)
+					goto got_it;
+			} else if (isspace(ch) && !escape) {
 				getting = got_real;
 				state = st_entspc;
+				if (gotten == got_plus)
+					goto got_it;
 			} else if (escape == esc_char);
 			else
 				*(kptr++) = ch;
@@ -231,11 +241,13 @@ static int read_one(FILE *f, char *key, char *mapent)
 	return 0;
 }
 
-/*
-static int do_plus_include(struct autofs_point *ap, char *key)
+static int do_plus_include(struct autofs_point *ap, char *key, time_t age)
 {
-	char *map = key;
 	struct autofs_point *iap;
+	char *type, *map, *fmt;
+	char *buf;
+	char *tmp;
+	int status;
 
 	iap = malloc(sizeof(struct autofs_point));
 	if (!iap) {
@@ -244,19 +256,79 @@ static int do_plus_include(struct autofs_point *ap, char *key)
 	}
 	memcpy(iap, ap, sizeof(struct autofs_point));
 
-	*
+	/*
 	 * TODO:
 	 * Initially just consider the passed in key to be a simple map
 	 * name (and possible source) and use the global map options in
-	 * the passed in autofs_point.
-	 * Later we might parse this and fill in the autofs_point fields.
+	 * the given autofs_point. ie. global options override.
 	 *
+	 * Later we might want to parse this and fill in the autofs_point
+	 * options fields.
+	 */
+	/* skip plus */
+	buf = strdup(key + 1);
+	if (!buf) {
+		error(MODPREFIX "failed to strdup key");
+		free(iap);
+		return 0;
+	}
 
-	map++;
+	type = fmt = NULL;
 
+	/* Look for space terminator - ignore local options */
+	map = buf;
+	for (tmp = buf; *tmp; tmp++) {
+		if (*tmp == ' ') {
+			*tmp = '\0';
+			break;
+		} else if (*tmp == ',') {
+			type = buf;
+			*tmp++ = '\0';
+			fmt = tmp;
+		} else if (*tmp == ':') {
+			if (!fmt)
+				type = buf;
+			*tmp++ = '\0';
+			map = tmp;
+		}
+		if (*tmp == '\\')
+			tmp++;
+	}
 
+	iap->maptype = type;
+	iap->mapfmt = fmt;
+
+	if (ap->mapargc >= 1) {
+		iap->mapargv = copy_argv(ap->mapargc, ap->mapargv);
+		if (!iap->mapargv) {
+			error(MODPREFIX "failed to copy args");
+			free(iap);
+			free(buf);
+			return 0;
+		}
+		if (iap->mapargv[0])
+			free((char *) iap->mapargv[0]);
+		iap->mapargv[0] = strdup(map);
+		if (!iap->mapargv[0]) {
+			error(MODPREFIX "failed to dup map name");
+			free(iap);
+			free(buf);
+			return 0;
+		}
+	} else {
+		error("invalid arguments for autofs_point");
+		return 0;
+	}
+
+	/* Gim'ee some o' that 16k stack baby !! */
+	status = lookup_nss_read_map(iap, age);
+
+	free_argv(iap->mapargc, iap->mapargv);
+	free(buf);
+	free(iap);
+
+	return status;
 }
-*/
 
 int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 {
@@ -291,9 +363,18 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 	while(1) {
 		entry = read_one(f, key, mapent);
 		if (entry) {
-			cache_writelock();
-			cache_update(key, mapent, age);
-			cache_unlock();
+			/*
+			 * If key starts with '+' it has to be an
+			 * included map.
+			 */
+			if (*key == '+') {
+				if (!do_plus_include(ap, key, age))
+					warn("failed to include map %s", key);
+			} else {
+				cache_writelock();
+				cache_update(key, mapent, age);
+				cache_unlock();
+			}
 		}
 
 		if (feof(f))

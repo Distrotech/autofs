@@ -1,4 +1,4 @@
-#ident "$Id: lookup_ldap.c,v 1.28 2006/02/21 18:48:11 raven Exp $"
+#ident "$Id: lookup_ldap.c,v 1.29 2006/02/24 17:20:55 raven Exp $"
 /*
  * lookup_ldap.c - Module for Linux automountd to access automount
  *		   maps in LDAP directories.
@@ -185,8 +185,12 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 
 	/* Initialize the LDAP context. */
 	ldap = do_connect(ctxt, &rv);
-	if (!ldap)
+	if (!ldap) {
+		warn("failed to connect to server &s", ctxt->server);
+		free(ctxt);
+		*context = NULL;
 		return 1;
+	}
 
 	/* Okay, we're done here. */
 	ldap_unbind(ldap);
@@ -710,8 +714,10 @@ int lookup_done(void *context)
 {
 	struct lookup_context *ctxt = (struct lookup_context *) context;
 	int rv = close_parse(ctxt->parse);
-	free(ctxt->server);
-	free(ctxt->base);
+	if (ctxt->server)
+		free(ctxt->server);
+	if (ctxt->base)
+		free(ctxt->base);
 	free(ctxt);
 	return rv;
 }

@@ -1,4 +1,4 @@
-#ident "$Id: automount.h,v 1.26 2006/02/23 14:22:32 raven Exp $"
+#ident "$Id: automount.h,v 1.27 2006/02/24 17:20:55 raven Exp $"
 /*
  * automount.h
  *
@@ -154,6 +154,9 @@ struct mapent_cache *cache_enumerate(struct mapent_cache *me);
 char *cache_get_offset(const char *prefix, char *offset, int start, struct list_head *head, struct list_head **pos);
 
 /* Utility functions */
+
+const char **copy_argv(int argc, const char **argv);
+int free_argv(int argc, const char **argv);
 
 void dump_core(void);
 int sigchld_start_handler(void);
@@ -381,7 +384,7 @@ struct autofs_point {
 	char *maptype;			/* Type of map "file", "NIS", etc */
 	char *mapfmt;			/* Format of map default "Sun" */
 	int mapargc;			/* Map options arg count */
-	const char **mapargv;			/* Map options args */
+	const char **mapargv;		/* Map options args */
 	unsigned int type;		/* Type of map direct or indirect */
 	time_t exp_timeout;		/* Timeout for expiring mounts */
 	time_t exp_runfreq;		/* Frequency for polling for timeouts */

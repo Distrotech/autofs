@@ -1,4 +1,4 @@
-#ident "$Id: mount_nfs.c,v 1.31 2006/02/20 01:05:33 raven Exp $"
+#ident "$Id: mount_nfs.c,v 1.32 2006/02/24 17:20:55 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  * mount_nfs.c - Module for Linux automountd to mount an NFS filesystem,
@@ -578,5 +578,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 
 int mount_done(void *context)
 {
-	return mount_bind->mount_done(mount_bind->context);
+	int rv = mount_bind->mount_done(mount_bind->context);
+	mount_bind = NULL;
+	return rv;
 }

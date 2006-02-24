@@ -1,4 +1,4 @@
-#ident "$Id: lookup_multi.c,v 1.12 2006/02/20 01:05:32 raven Exp $"
+#ident "$Id: lookup_multi.c,v 1.13 2006/02/24 17:20:55 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup_multi.c - module for Linux automount to seek multiple lookup
@@ -57,7 +57,7 @@ int lookup_init(const char *my_mapfmt, int argc, const char *const *argv, void *
 
 	if (argc < 1) {
 		crit(MODPREFIX "No map list");
-		return 1;
+		goto error_out;
 	}
 
 	ctxt->n = 1;				/* Always at least one map */
@@ -89,7 +89,7 @@ int lookup_init(const char *my_mapfmt, int argc, const char *const *argv, void *
 	for (i = 0; i < ctxt->n; i++) {
 		if (!ctxt->m[i].argv[0]) {
 			crit(MODPREFIX "missing module name");
-			return 1;
+			goto error_out;
 		}
 		map = strdup(ctxt->m[i].argv[0]);
 		if (!map)
@@ -102,7 +102,8 @@ int lookup_init(const char *my_mapfmt, int argc, const char *const *argv, void *
 						   mapfmt ? mapfmt : my_mapfmt,
 						   ctxt->m[i].argc - 1,
 						   ctxt->m[i].argv + 1)))
-			return 1;
+			error(MODPREFIX "error opening module");
+			goto error_out;
 	}
 
 	*context = ctxt;
@@ -110,7 +111,19 @@ int lookup_init(const char *my_mapfmt, int argc, const char *const *argv, void *
 
 nomem:
 	estr = strerror_r(errno, buf, MAX_ERR_BUF);
-	crit(MODPREFIX "malloc: %s", estr);
+	crit(MODPREFIX "error: %s", estr);
+error_out:
+	if (ctxt) {
+		for (i = 0; i < ctxt->n; i++)
+			if (ctxt->m[i].mod)
+				close_lookup(ctxt->m[i].mod);
+		if (ctxt->m)
+			free(ctxt->m);
+		if (ctxt->argl)
+			free(ctxt->argl);
+		free(ctxt);
+		*context = NULL;
+	}
 	return 1;
 }
 
@@ -153,12 +166,11 @@ int lookup_done(void *context)
 	int i, rv = 0;
 
 	for (i = 0; i < ctxt->n; i++) {
-		rv = rv || close_lookup(ctxt->m[i].mod);
+		if (ctxt->m[i].mod)
+			rv = rv || close_lookup(ctxt->m[i].mod);
 	}
-
 	free(ctxt->argl);
 	free(ctxt->m);
 	free(ctxt);
-
 	return rv;
 }

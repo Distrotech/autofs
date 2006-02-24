@@ -1,4 +1,4 @@
-#ident "$Id: lookup_yp.c,v 1.20 2006/02/22 08:12:05 raven Exp $"
+#ident "$Id: lookup_yp.c,v 1.21 2006/02/24 17:20:55 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup_yp.c - module for Linux automountd to access a YP (NIS)
@@ -65,15 +65,21 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 
 	if (argc < 1) {
 		crit(MODPREFIX "No map name");
+		free(ctxt);
+		*context = NULL;
 		return 1;
 	}
 	ctxt->mapname = argv[0];
 
+	debug(MODPREFIX "ctxt->mapname=%s", ctxt->mapname);
+
 	/* This should, but doesn't, take a const char ** */
 	err = yp_get_default_domain((char **) &ctxt->domainname);
 	if (err) {
-		crit(MODPREFIX "map %s: %s\n", ctxt->mapname,
+		warn(MODPREFIX "map %s: %s\n", ctxt->mapname,
 		       yperr_string(err));
+		free(ctxt);
+		*context = NULL;
 		return 1;
 	}
 
