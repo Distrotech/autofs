@@ -1,4 +1,4 @@
-#ident "$Id: lookup_yp.c,v 1.21 2006/02/24 17:20:55 raven Exp $"
+#ident "$Id: lookup_yp.c,v 1.22 2006/02/25 01:39:28 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup_yp.c - module for Linux automountd to access a YP (NIS)
@@ -284,7 +284,7 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 	int mapent_len;
 	struct mapent_cache *me;
 	int status = 0;
-	int ret;
+	int ret = 1;
 
 	debug(MODPREFIX "looking up %s", name);
 

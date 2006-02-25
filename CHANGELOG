@@ -23,6 +23,9 @@
 - remove redundant pthread mutex definition from mapent_cache.
 - merged signal_children cleanup patch.
 - first cut '+' included maps for client maps.
+- move directory management of cache prune out of cache code.
+- fix cache enumeration.
+- fix cache update of multi-mount entries on umount.
 
 11/4/2005 autofs-4.1.4
 ----------------------

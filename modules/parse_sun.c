@@ -1,4 +1,4 @@
-#ident "$Id: parse_sun.c,v 1.37 2006/02/24 17:20:55 raven Exp $"
+#ident "$Id: parse_sun.c,v 1.38 2006/02/25 01:39:28 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  parse_sun.c - module for Linux automountd to parse a Sun-format
@@ -1051,7 +1051,7 @@ int parse_mount(struct autofs_point *ap, const char *name,
 	struct mapent_cache *me;
 	char *pmapent, *options;
 	const char *p;
-	int mapent_len, rv;
+	int mapent_len, rv = 1;
 	int optlen;
 	int slashify = ctxt->slashify_colons;
 
@@ -1298,10 +1298,8 @@ int parse_mount(struct autofs_point *ap, const char *name,
 		}
 
 		cache_readlock();
-		if (mount_multi_triggers(ap, m_root, me, "/") < 0) {
+		if (mount_multi_triggers(ap, m_root, me, "/") < 0)
 			error("failed to mount offset triggers");
-			rv = 1;
-		}
 		cache_unlock();
 
 		free(options);
@@ -1405,10 +1403,8 @@ int parse_mount(struct autofs_point *ap, const char *name,
 
 			base = &me->key[start];
 
-			if (mount_multi_triggers(ap, m_root, me->multi, base) < 0) {
+			if (mount_multi_triggers(ap, m_root, me->multi, base) < 0)
 				error("failed to mount offset triggers");
-				rv = 1;
-			}
 		}
 		cache_unlock();
 	}

@@ -1,4 +1,4 @@
-#ident "$Id: indirect.c,v 1.8 2006/02/24 14:34:27 raven Exp $"
+#ident "$Id: indirect.c,v 1.9 2006/02/25 01:39:28 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  indirect.c - Linux automounter indirect mount handling
@@ -242,6 +242,8 @@ int mount_autofs_indirect(struct autofs_point *ap, char *path)
 		error("failed to read map for %s", ap->path);
 		return -1;
 	}
+
+	lookup_prune_cache(ap, now);
 
 	map = lookup_ghost(ap);
 	if (map & LKP_FAIL) {

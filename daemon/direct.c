@@ -1,4 +1,4 @@
-#ident "$Id: direct.c,v 1.9 2006/02/24 14:34:27 raven Exp $"
+#ident "$Id: direct.c,v 1.10 2006/02/25 01:39:28 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  direct.c - Linux automounter direct mount handling
@@ -334,6 +334,8 @@ int mount_autofs_direct(struct autofs_point *ap, char *path)
 		error("failed to read direct map");
 		return -1;
 	}
+
+	lookup_prune_cache(ap, now);
 
 	pthread_cleanup_push(cache_lock_cleanup, NULL);
 	cache_readlock();

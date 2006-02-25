@@ -1,4 +1,4 @@
-#ident "$Id: automount.c,v 1.50 2006/02/22 22:39:26 raven Exp $"
+#ident "$Id: automount.c,v 1.51 2006/02/25 01:39:28 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  automount.c - Linux automounter daemon
@@ -137,7 +137,7 @@ int umount_offsets(const char *base)
 {
 	char path[PATH_MAX + 1];
 	char *offset = path;
-	struct list_head head, *pos = NULL;
+	struct list_head head, *pos;
 	char key[PATH_MAX + 1];
 	struct mapent_cache *me;
 	struct mnt_list *mnts, *next;
@@ -188,10 +188,23 @@ int umount_offsets(const char *base)
 	pthread_cleanup_pop(0);
 
 	cache_writelock();
+	/*
+	 * If it's a direct mount it's base is the key otherwise
+	 * the last path componemt is the indirect entry key.
+	 */
 	me = cache_lookup(base);
+	if (!me) {
+		char *ind_key = strrchr(base, '/');
+
+		if (ind_key) {
+			ind_key++;
+			me = cache_lookup(ind_key);
+		}
+	}
+
 	if (!ret && me && me->multi == me) {
 		status = cache_delete_offset_list(me->key);
-		if (status)
+		if (status != CHE_OK)
 			warn("couldn't delete offset list");
 	}
 	cache_unlock();
@@ -673,7 +686,7 @@ static void *do_readmap(void *arg)
 	if (!status)
 		pthread_exit(NULL);
 
-	cache_clean(ap->path, now);
+	lookup_prune_cache(ap, now);
 
 	pthread_cleanup_push(cache_lock_cleanup, NULL);
 	cache_readlock();

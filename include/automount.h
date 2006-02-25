@@ -1,4 +1,4 @@
-#ident "$Id: automount.h,v 1.27 2006/02/24 17:20:55 raven Exp $"
+#ident "$Id: automount.h,v 1.28 2006/02/25 01:39:28 raven Exp $"
 /*
  * automount.h
  *
@@ -195,6 +195,7 @@ int lookup_enumerate(struct autofs_point *ap,
 	int (*fn)(struct autofs_point *,struct mapent_cache *, int), time_t now);
 int lookup_ghost(struct autofs_point *ap);
 int lookup_nss_mount(struct autofs_point *ap, const char *name, int name_len);
+int lookup_prune_cache(struct autofs_point *ap, time_t age);
 
 #ifdef MODULE_LOOKUP
 int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **context);

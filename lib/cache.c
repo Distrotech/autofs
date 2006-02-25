@@ -1,4 +1,4 @@
-#ident "$Id: cache.c,v 1.22 2006/02/22 23:01:57 raven Exp $"
+#ident "$Id: cache.c,v 1.23 2006/02/25 01:39:28 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  cache.c - mount entry cache management routines
@@ -45,26 +45,20 @@ void cache_dump_multi(struct list_head *list)
 	}
 }
 
-static char *cache_fullpath(const char *root, const char *key)
+void cache_dump_cache(void)
 {
-	int l;
-	char *path;
+	struct mapent_cache *me;
+	int i;
 
-	if (*key == '/') {
-		l = strlen(key) + 1;
-		if (l > KEY_MAX_LEN)
-			return NULL;
-		path = malloc(l);
-		strcpy(path, key);
-	} else {
-		l = strlen(key) + 1 + strlen(root) + 1; 
-		if (l > KEY_MAX_LEN)
-			return NULL;
-		path = malloc(l);
-		sprintf(path, "%s/%s", root, key);
+	for (i = 0; i < HASHSIZE; i++) {
+		me = mapent_hash[i];
+		if (me == NULL)
+			continue;
+		while (me) {
+			info("me->key=%s me->multi=%p", me->key, me->multi);
+			me = me->next;
+		}
 	}
-
-	return path;
 }
 
 int cache_readlock(void)
@@ -200,33 +194,55 @@ struct mapent_cache *cache_lookup_first(void)
 		me = mapent_hash[i];
 		if (!me)
 			continue;
-		/* Multi mount entries are not primary */
-		if (me->multi && me->multi != me)
-			continue;
-		if (me != NULL)
-			break;
+
+		while (me) {
+			/* Multi mount entries are not primary */
+			if (me->multi && me->multi != me) {
+				me = me->next;
+				continue;
+			}
+			return me;
+		}
 	}
-	return me;
+	return NULL;
 }
 
 /* cache must be read locked by caller */
 struct mapent_cache *cache_lookup_next(struct mapent_cache *me)
 {
-	struct mapent_cache *next;
+	struct mapent_cache *this;
+	unsigned long hashval;
+	int i;
 
 	if (!me)
 		return NULL;
 
-	next = me->next;
-	while (next) {
+	this = me->next;
+	while (this) {
 		/* Multi mount entries are not primary */
-		if (me->multi && me->multi != me) {
-			next = next->next;
+		if (this->multi && this->multi != this) {
+			this = this->next;
 			continue;
 		}
-		if (next)
-			return next;
-		next = next->next;
+		return this;
+	}
+
+	hashval = hash(me->key) + 1;
+	if (hashval < HASHSIZE) {
+		for (i = hashval; i < HASHSIZE; i++) {
+			this = mapent_hash[i];
+			if (!this)
+				continue;
+
+			while (this) {
+				/* Multi mount entries are not primary */
+				if (this->multi && this->multi != this) {
+					this = this->next;
+					continue;
+				}
+				return this;
+			}
+		}
 	}
 	return NULL;
 }
@@ -251,7 +267,6 @@ struct mapent_cache *cache_lookup_key_next(struct mapent_cache *me)
 			return next;
 		next = next->next;
 	}
-
 	return NULL;
 }
 
@@ -552,7 +567,7 @@ int cache_delete_offset_list(const char *key)
 
 	/* Not offset list owner */
 	if (me->multi != me)
-		return CHE_OK;
+		return CHE_FAIL;
 
 	head = &me->multi_list;
 	next = head->next;
@@ -560,9 +575,13 @@ int cache_delete_offset_list(const char *key)
 		this = list_entry(next, struct mapent_cache, multi_list);
 		next = next->next;
 		list_del_init(&this->multi_list);
+		this->multi = NULL;
 		status = cache_delete(this->key);
-		if (status == CHE_FAIL)
+		if (status == CHE_FAIL) {
+			warn("failed to delete offset %s", this->key);
+			this->multi = me;
 			remain++;
+		}
 	}
 
 	if (!remain) {
@@ -570,73 +589,10 @@ int cache_delete_offset_list(const char *key)
 		me->multi = NULL;
 	}
 
-	return remain;
-}
+	if (remain)
+		return CHE_FAIL;
 
-void cache_clean(const char *root, time_t age)
-{
-	struct mapent_cache *me, *pred;
-	char *path;
-	int i;
-
-	cache_writelock();
-
-	for (i = 0; i < HASHSIZE; i++) {
-		me = mapent_hash[i];
-		if (!me)
-			continue;
-
-		while (me->next != NULL) {
-			pred = me;
-			me = me->next;
-
-			/* We treat multi-mount offsets seperatetly */
-			if (me->multi && !list_empty(&me->multi_list))
-				continue;
-
-			path = cache_fullpath(root, me->key);
-			if (!path)
-				goto done;
-
-			if (me->age < age) {
-				pred->next = me->next;
-				free(me->key);
-				if (me->mapent)
-					free(me->mapent);
-				free(me);
-				me = pred;
-				rmdir_path(path);
-			}
-
-			free(path);
-		}
-
-		me = mapent_hash[i];
-		if (!me)
-			continue;
-
-		/* We treat multi-mount offsets seperatetly */
-		if (me->multi && !list_empty(&me->multi_list))
-			continue;
-
-		path = cache_fullpath(root, me->key);
-		if (!path)
-			goto done;
-
-		if (me->age < age) {
-			mapent_hash[i] = me->next;
-			rmdir_path(path);
-			free(me->key);
-			if (me->mapent)
-				free(me->mapent);
-			free(me);
-			rmdir_path(path);
-		}
-
-		free(path);
-	}
-done:
-	cache_unlock();
+	return CHE_OK;
 }
 
 void cache_release(void)
@@ -680,36 +636,10 @@ void cache_release(void)
 /* cache must be read locked by caller */
 struct mapent_cache *cache_enumerate(struct mapent_cache *me)
 {
-	struct mapent_cache *this = NULL;
-	unsigned long hashval;
-	int i;
+	if (!me)
+		return cache_lookup_first();
 
-	if (!me) {
-		this = cache_lookup_first();
-		if (this)
-			return this;
-		return NULL;
-	}
-
-	this =  cache_lookup_next(me);
-	if (this)
-		return this;
-
-	hashval = hash(me->key) + 1;
-	if (hashval < HASHSIZE) {
-		for (i = hashval; i < HASHSIZE; i++) {
-			this = mapent_hash[i];
-			if (this) {
-				if (this->multi && this->multi != me) {
-					this = NULL;
-					continue;
-				}
-				return this;
-			}
-		}
-	}
-
-	return this;
+	return cache_lookup_next(me);
 }
 
 /*

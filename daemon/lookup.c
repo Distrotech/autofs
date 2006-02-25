@@ -1,4 +1,4 @@
-#ident "$Id: lookup.c,v 1.4 2006/02/24 17:20:55 raven Exp $"
+#ident "$Id: lookup.c,v 1.5 2006/02/25 01:39:28 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup.c - API layer to implement nsswitch semantics for map reading
@@ -157,7 +157,6 @@ int lookup_nss_read_map(struct autofs_point *ap, time_t age)
 				if (a.action == NSS_ACTION_RETURN) {
 					free_sources(&nsslist);
 					if (result == NSS_STATUS_SUCCESS) {
-						cache_clean(ap->path, age);
 						return 1;
 					} else
 						return 0;
@@ -174,7 +173,6 @@ int lookup_nss_read_map(struct autofs_point *ap, time_t age)
 				break;
 
 			free_sources(&nsslist);
-			cache_clean(ap->path, age);
 			return 1;
 		case NSS_STATUS_NOTFOUND:
 		case NSS_STATUS_UNAVAIL:
@@ -410,5 +408,86 @@ int lookup_nss_mount(struct autofs_point *ap, const char *name, int name_len)
 
 	warn("no sources found in nsswitch");
 	return 0;
+}
+
+static char *make_fullpath(const char *root, const char *key)
+{
+	int l;
+	char *path;
+
+	if (*key == '/') {
+		l = strlen(key) + 1;
+		if (l > KEY_MAX_LEN)
+			return NULL;
+		path = malloc(l);
+		strcpy(path, key);
+	} else {
+		l = strlen(key) + 1 + strlen(root) + 1;
+		if (l > KEY_MAX_LEN)
+			return NULL;
+		path = malloc(l);
+		sprintf(path, "%s/%s", root, key);
+	}
+	return path;
+}
+
+int lookup_prune_cache(struct autofs_point *ap, time_t age)
+{
+	struct mapent_cache *me, *this;
+	char *key, *next_key;
+	char *path;
+	int status = CHE_FAIL;
+
+	cache_readlock();
+
+	me = cache_enumerate(NULL);
+	while (me) {
+		if (me->age >= age) {
+			me = cache_enumerate(me);
+			continue;
+		}
+
+		key = strdup(me->key);
+		me = cache_enumerate(me);
+
+		if (!key)
+			continue;
+
+		next_key = strdup(me->key);
+		if (!next_key) {
+			free(key);
+			continue;
+		}
+
+		cache_unlock();
+
+		cache_writelock();
+		this = cache_lookup(key);
+		if (!this) {
+			cache_unlock();
+			goto next;
+		}
+		status = cache_delete(key);
+		cache_unlock();
+
+		if (status != CHE_FAIL) {
+			path = make_fullpath(ap->path, key);
+			if (!path)
+				warn("can't malloc storage for path"); 
+			else {
+				rmdir_path(path);
+				free(path);
+			}
+		}
+next:
+		cache_readlock();
+		me = cache_lookup(next_key);
+		free(key);
+		free(next_key);
+	}
+
+	cache_unlock();
+
+	return 1;
 }
 
