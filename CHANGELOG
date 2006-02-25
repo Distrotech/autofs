@@ -26,6 +26,7 @@
 - move directory management of cache prune out of cache code.
 - fix cache enumeration.
 - fix cache update of multi-mount entries on umount.
+- fix fail to close ioctl on direct mount fail.
 
 11/4/2005 autofs-4.1.4
 ----------------------

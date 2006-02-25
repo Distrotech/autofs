@@ -1,4 +1,4 @@
-#ident "$Id: parse_sun.c,v 1.38 2006/02/25 01:39:28 raven Exp $"
+#ident "$Id: parse_sun.c,v 1.39 2006/02/25 06:20:36 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  parse_sun.c - module for Linux automountd to parse a Sun-format
@@ -1051,7 +1051,7 @@ int parse_mount(struct autofs_point *ap, const char *name,
 	struct mapent_cache *me;
 	char *pmapent, *options;
 	const char *p;
-	int mapent_len, rv = 1;
+	int mapent_len, rv = 0;
 	int optlen;
 	int slashify = ctxt->slashify_colons;
 

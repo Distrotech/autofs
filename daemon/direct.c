@@ -1,4 +1,4 @@
-#ident "$Id: direct.c,v 1.10 2006/02/25 01:39:28 raven Exp $"
+#ident "$Id: direct.c,v 1.11 2006/02/25 06:20:36 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  direct.c - Linux automounter direct mount handling
@@ -604,8 +604,17 @@ static void kernel_callback_cleanup(void *arg)
 				me->ioctlfd = -1;
 			cache_unlock();
 		}
-	} else
+	} else {
 		send_fail(mt->ioctlfd, mt->wait_queue_token);
+		if (mt->type == NFY_MOUNT) {
+			close(mt->ioctlfd);
+			cache_writelock();
+			me = cache_lookup(mt->name);
+			if (me)
+				me->ioctlfd = -1;
+			cache_unlock();
+		}
+	}
 
 	free(mt);
 	return;
@@ -677,8 +686,8 @@ int handle_packet_expire_direct(struct autofs_point *ap, autofs_packet_expire_di
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
 		error("malloc: %s", estr);
 		send_fail(me->ioctlfd, pkt->wait_queue_token);
-		close(me->ioctlfd);
-		me->ioctlfd = -1;
+/*		close(me->ioctlfd);
+		me->ioctlfd = -1; */
 		status = 1;
 		goto done;
 	}
@@ -699,8 +708,8 @@ int handle_packet_expire_direct(struct autofs_point *ap, autofs_packet_expire_di
 		error("expire thread create failed");
 		free(mt);
 		send_fail(mt->ioctlfd, pkt->wait_queue_token);
-		close(mt->ioctlfd);
-		me->ioctlfd = -1;
+/*		close(mt->ioctlfd);
+		me->ioctlfd = -1; */
 		status = 1;
 	}
 done:
