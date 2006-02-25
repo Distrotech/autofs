@@ -14,7 +14,7 @@ static struct list_head *nss_list;
 static struct nss_source *src;
 struct nss_action act[NSS_STATUS_MAX];
 
-#define YYDEBUG 1
+#define YYDEBUG 0
 
 extern int nss_lineno;
 extern int nss_lex(void);
