@@ -9,6 +9,7 @@
 
 #include "nss_parse.tab.h"
 #include "nsswitch.h"
+#include "automount.h"
 
 static struct list_head *nss_list;
 static struct nss_source *src;
@@ -93,7 +94,7 @@ status_exp: STATUS EQUAL ACTION
 
 static int nss_error(const char *s)
 {
-	msg(stderr, "syntax error in nsswitch config near [ %s ]\n", s);
+	msg("syntax error in nsswitch config near [ %s ]\n", s);
 	return(0);
 }
 
@@ -104,8 +105,8 @@ int nsswitch_parse(struct list_head *list)
 
 	nsswitch = fopen(NSSWITCH_FILE, "r");
 	if (!nsswitch) {
-		fprintf(stderr, "couldn't open input\n");
-		exit(1);
+		error("couldn't open %s\n", NSSWITCH_FILE);
+		return 1;
 	}
 	nss_in = nsswitch;
 
