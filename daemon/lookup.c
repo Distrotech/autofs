@@ -1,4 +1,4 @@
-#ident "$Id: lookup.c,v 1.5 2006/02/25 01:39:28 raven Exp $"
+#ident "$Id: lookup.c,v 1.6 2006/03/01 15:52:21 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup.c - API layer to implement nsswitch semantics for map reading
@@ -40,6 +40,14 @@ static int do_read_map(struct autofs_point *ap, char *type, time_t age)
 	status = lookup->lookup_read_map(ap, age, lookup->context);
 
 	close_lookup(lookup);
+
+	/*
+	 * For maps that don't support enumeration return success
+	 * and do whatever we must to have autofs function with an
+	 * empty map entry cache.
+	 */
+	if (status == NSS_STATUS_UNKNOWN)
+		return NSS_STATUS_SUCCESS;
 
 	return status;
 }

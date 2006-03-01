@@ -27,6 +27,8 @@
 - fix cache enumeration.
 - fix cache update of multi-mount entries on umount.
 - fix fail to close ioctl on direct mount fail.
+- add hesiod to nss source list.
+- allow for maps that don't support enumeration.
 
 11/4/2005 autofs-4.1.4
 ----------------------

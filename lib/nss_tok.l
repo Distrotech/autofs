@@ -32,7 +32,7 @@ WS		[[:blank:]]+
 
 automount	([Aa][Uu][Tt][Oo][Mm][Oo][Uu][Nn][Tt])
 
-source		files|yp|nis|nisplus|ldap
+source		files|yp|nis|nisplus|ldap|hesiod
 
 success		([Ss][Uu][Cc][Cc][Ee][Ss][Ss])
 notfound	([Nn][Oo][Tt][Ff][Oo][Uu][Nn][Dd])

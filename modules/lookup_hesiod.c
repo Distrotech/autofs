@@ -1,4 +1,4 @@
-#ident "$Id: lookup_hesiod.c,v 1.10 2006/02/20 01:05:32 raven Exp $"
+#ident "$Id: lookup_hesiod.c,v 1.11 2006/03/01 15:52:21 raven Exp $"
 /*
  * lookup_hesiod.c
  *
@@ -62,7 +62,7 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 
 int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 {
-	return NSS_STATUS_UNAVAIL;
+	return NSS_STATUS_UNKNOWN;
 }
 
 /* Lookup and act on a filesystem name.  In this case, lookup the "filsys"

@@ -93,7 +93,7 @@ status_exp: STATUS EQUAL ACTION
 
 static int nss_error(const char *s)
 {
-	fprintf(stderr, "syntax error in nsswitch config near [ %s ]\n", s);
+	msg(stderr, "syntax error in nsswitch config near [ %s ]\n", s);
 	return(0);
 }
 

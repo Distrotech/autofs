@@ -1,4 +1,4 @@
-#ident "$Id: lookup_program.c,v 1.13 2006/02/24 17:20:55 raven Exp $"
+#ident "$Id: lookup_program.c,v 1.14 2006/03/01 15:52:21 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup_program.c - module for Linux automount to access an
@@ -86,7 +86,7 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 
 int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 {
-	return NSS_STATUS_UNAVAIL;
+	return NSS_STATUS_UNKNOWN;
 }
 
 int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *context)
