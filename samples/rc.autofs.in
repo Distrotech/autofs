@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# $Id: rc.autofs.in,v 1.59 2006/02/08 16:49:21 raven Exp $
+# $Id: rc.autofs.in,v 1.60 2006/03/01 23:51:13 raven Exp $
 #
 # rc file for automount using a Sun-style "master map".
 # We first look for a local /etc/auto.master, then a YP
@@ -321,7 +321,8 @@ function getmounts()
 			maptype=file
 			map=`echo /etc/$map | sed 's^//^/^g'`
 		    else
-			maptype=yp
+			# NULL maptype => use nsswitch
+			maptype="\"\""
 			if [ "$UNDERSCORETODOT" = "1" ] ; then
 			    map=`basename $map | sed -e s/^auto_home/auto.home/ -e s/^auto_mnt/auto.mnt/`
 			else

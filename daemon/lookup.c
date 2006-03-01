@@ -1,4 +1,4 @@
-#ident "$Id: lookup.c,v 1.6 2006/03/01 15:52:21 raven Exp $"
+#ident "$Id: lookup.c,v 1.7 2006/03/01 23:51:13 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup.c - API layer to implement nsswitch semantics for map reading
@@ -149,7 +149,7 @@ int lookup_nss_read_map(struct autofs_point *ap, time_t age)
 
 			result = do_read_map(tap, this->source, age);
 
-			/* path is freed in free_agrs */
+			/* path is freed in free_argv */
 			free_argv(tap->mapargc, tap->mapargv);
 			free(tap);
 		} else
@@ -342,7 +342,7 @@ int lookup_nss_mount(struct autofs_point *ap, const char *name, int name_len)
 		 *       path.
 		 */
 		if (!strcasecmp(this->source, "files")) {
-			struct autofs_point tmp;
+			struct autofs_point *tap;
 			char *path;
 
 			if (strchr(ap->mapargv[0], '/')) {
@@ -360,12 +360,42 @@ int lookup_nss_mount(struct autofs_point *ap, const char *name, int name_len)
 			}
 			strcpy(path, "/etc/");
 			strcat(path, ap->mapargv[0]);
-			memcpy(&tmp, ap, sizeof(struct autofs_point));
-			tmp.mapargv[0] = path;
 
-			result = do_lookup_mount(&tmp,
+			tap = malloc(sizeof(struct autofs_point));
+			if (!tap) {
+				error("could not malloc storage for nss lookup");
+				free(path);
+				free_sources(&nsslist);
+				return 0;
+			}
+			memcpy(tap, ap, sizeof(struct autofs_point));
+
+			if (ap->mapargc >= 1) {
+				tap->mapargv = copy_argv(ap->mapargc, ap->mapargv);
+				if (!tap->mapargv) {
+					error("failed to copy args");
+					free(tap);
+					free(path);
+					free_sources(&nsslist);
+					return 0;
+				}
+				if (tap->mapargv[0])
+					free((char *) tap->mapargv[0]);
+				tap->mapargv[0] = path;
+			} else {
+				error("invalid arguments for autofs_point");
+				free(tap);
+				free(path);
+				free_sources(&nsslist);
+				return 0;
+			}
+
+			result = do_lookup_mount(tap,
 					 this->source, name, name_len);
-			free(path);
+
+			/* path is freed in free_argv */
+			free_argv(tap->mapargc, tap->mapargv);
+			free(tap);
 		} else
 			result = do_lookup_mount(ap,
 					 this->source, name, name_len);
@@ -409,12 +439,9 @@ int lookup_nss_mount(struct autofs_point *ap, const char *name, int name_len)
 		}
 	}
 
-	if (!list_empty(&nsslist)) {
+	if (!list_empty(&nsslist))
 		free_sources(&nsslist);
-		return 1;
-	}
 
-	warn("no sources found in nsswitch");
 	return 0;
 }
 

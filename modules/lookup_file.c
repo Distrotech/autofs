@@ -1,4 +1,4 @@
-#ident "$Id: lookup_file.c,v 1.25 2006/02/24 17:20:55 raven Exp $"
+#ident "$Id: lookup_file.c,v 1.26 2006/03/01 23:51:13 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup_file.c - module for Linux automount to query a flat file map
@@ -241,18 +241,17 @@ static int read_one(FILE *f, char *key, char *mapent)
 	return 0;
 }
 
-static int do_plus_include(struct autofs_point *ap, char *key, time_t age)
+static struct autofs_point *prepare_plus_include(struct autofs_point *ap, char *key)
 {
 	struct autofs_point *iap;
 	char *type, *map, *fmt;
 	char *buf;
 	char *tmp;
-	int status;
 
 	iap = malloc(sizeof(struct autofs_point));
 	if (!iap) {
 		error(MODPREFIX "could not malloc storage for included map");
-		return NSS_STATUS_UNAVAIL;
+		return NULL;
 	}
 	memcpy(iap, ap, sizeof(struct autofs_point));
 
@@ -270,7 +269,7 @@ static int do_plus_include(struct autofs_point *ap, char *key, time_t age)
 	if (!buf) {
 		error(MODPREFIX "failed to strdup key");
 		free(iap);
-		return 0;
+		return NULL;
 	}
 
 	type = fmt = NULL;
@@ -295,39 +294,63 @@ static int do_plus_include(struct autofs_point *ap, char *key, time_t age)
 			tmp++;
 	}
 
-	iap->maptype = type;
-	iap->mapfmt = fmt;
+	iap->maptype = NULL;
+	if (type) {
+		iap->maptype = strdup(type);
+		if (!iap->maptype) {
+			error(MODPREFIX "failed to strdup key");
+			free(iap);
+			free(buf);
+			return NULL;
+		}
+	}
+
+	iap->mapfmt = NULL;
+	if (fmt) {
+		iap->mapfmt = strdup(fmt);
+		if (!iap->mapfmt) {
+			error(MODPREFIX "failed to strdup key");
+			free(iap->maptype);
+			free(iap);
+			free(buf);
+			return NULL;
+		}
+	}
 
 	if (ap->mapargc >= 1) {
 		iap->mapargv = copy_argv(ap->mapargc, ap->mapargv);
 		if (!iap->mapargv) {
 			error(MODPREFIX "failed to copy args");
+			free(iap->maptype);
+			free(iap->mapfmt);
 			free(iap);
 			free(buf);
-			return 0;
+			return NULL;
 		}
 		if (iap->mapargv[0])
 			free((char *) iap->mapargv[0]);
 		iap->mapargv[0] = strdup(map);
 		if (!iap->mapargv[0]) {
 			error(MODPREFIX "failed to dup map name");
+			free_argv(iap->mapargc, iap->mapargv);
+			free(iap->maptype);
+			free(iap->mapfmt);
 			free(iap);
 			free(buf);
-			return 0;
+			return NULL;
 		}
 	} else {
 		error("invalid arguments for autofs_point");
-		return 0;
+		free(iap->maptype);
+		free(iap->mapfmt);
+		free(iap);
+		free(buf);
+		return NULL;
 	}
 
-	/* Gim'ee some o' that 16k stack baby !! */
-	status = lookup_nss_read_map(iap, age);
-
-	free_argv(iap->mapargc, iap->mapargv);
 	free(buf);
-	free(iap);
 
-	return status;
+	return iap;
 }
 
 int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
@@ -368,8 +391,24 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 			 * included map.
 			 */
 			if (*key == '+') {
-				if (!do_plus_include(ap, key, age))
+				struct autofs_point *iap;
+				int status;
+
+				iap = prepare_plus_include(ap, key);
+				if (!iap) {
 					warn("failed to include map %s", key);
+					continue;
+				}
+
+				/* Gim'ee some o' that 16k stack baby !! */
+				status = lookup_nss_read_map(iap, age);
+				if (!status)
+					warn("failed to read included map %s", key);
+
+				free_argv(iap->mapargc, iap->mapargv);
+				free(iap->maptype);
+				free(iap->mapfmt);
+				free(iap);
 			} else {
 				cache_writelock();
 				cache_update(key, mapent, age);
@@ -398,7 +437,7 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 	return NSS_STATUS_SUCCESS;
 }
 
-static int lookup_one(const char *root,
+static int lookup_one(struct autofs_point *ap,
 		      const char *key, int key_len,
 		      struct lookup_context *ctxt)
 {
@@ -416,14 +455,39 @@ static int lookup_one(const char *root,
 
 	while(1) {
 		entry = read_one(f, mkey, mapent);
-		if (entry)
-			if (strncmp(mkey, key, key_len) == 0) {
+		if (entry) {
+			/*
+			 * If key starts with '+' it has to be an
+			 * included map.
+			 */
+			if (*mkey == '+') {
+				struct autofs_point *iap;
+				int status;
+
+				iap = prepare_plus_include(ap, mkey);
+				if (!iap) {
+					warn("failed to select included map %s", mkey);
+					continue;
+				}
+
+				/* Gim'ee some o' that 16k stack baby !! */
+				status = lookup_nss_mount(iap, key, key_len);
+
+				free_argv(iap->mapargc, iap->mapargv);
+				free(iap->maptype);
+				free(iap->mapfmt);
+				free(iap);
+
+				if (status)
+					return CHE_COMPLETED;
+			} else if (strncmp(mkey, key, key_len) == 0) {
 				fclose(f);
 				cache_writelock();
 				ret = cache_update(key, mapent, age);
 				cache_unlock();
 				return ret;
 			}
+		}
 
 		if (feof(f))
 			break;
@@ -434,7 +498,7 @@ static int lookup_one(const char *root,
 	return CHE_MISSING;
 }
 
-static int lookup_wild(const char *root, struct lookup_context *ctxt)
+static int lookup_wild(struct autofs_point *ap, struct lookup_context *ctxt)
 {
 	char mkey[KEY_MAX_LEN + 1];
 	char mapent[MAPENT_MAX_LEN + 1];
@@ -454,14 +518,39 @@ static int lookup_wild(const char *root, struct lookup_context *ctxt)
 
 	while(1) {
 		entry = read_one(f, mkey, mapent);
-		if (entry)
-			if (strncmp(mkey, "*", 1) == 0) {
+		if (entry) {
+			/*
+			 * If key starts with '+' it has to be an
+			 * included map.
+			 */
+			if (*mkey == '+') {
+				struct autofs_point *iap;
+				int status;
+
+				iap = prepare_plus_include(ap, mkey);
+				if (!iap) {
+					warn("failed to select included map %s", mkey);
+					continue;
+				}
+
+				/* Gim'ee some o' that 16k stack baby !! */
+				status = lookup_nss_mount(iap, "*", 1);
+
+				free_argv(iap->mapargc, iap->mapargv);
+				free(iap->maptype);
+				free(iap->mapfmt);
+				free(iap);
+
+				if (status)
+					return CHE_COMPLETED;
+			} else if (strncmp(mkey, "*", 1) == 0) {
 				fclose(f);
 				cache_writelock();
 				ret = cache_update("*", mapent, age);
 				cache_unlock();
 				return ret;
 			}
+		}
 
 		if (feof(f))
 			break;
@@ -476,61 +565,47 @@ static int check_map_indirect(struct autofs_point *ap,
 			      char *key, int key_len,
 			      struct lookup_context *ctxt)
 {
-	struct stat st;
 	struct mapent_cache *me, *exists;
 	time_t now = time(NULL);
 	time_t t_last_read;
 	int need_hup = 0;
-	int ret = 0;
-
-	if (stat(ctxt->mapname, &st)) {
-		crit(MODPREFIX "file map %s, could not stat", ctxt->mapname);
-		return NSS_STATUS_TRYAGAIN;
-	}
+	int ret = CHE_OK;
 
 	cache_readlock();
-	me = cache_lookup_first();
-	t_last_read = me ? now - me->age : ap->exp_runfreq + 1;
+	exists = cache_lookup(key);
 	cache_unlock();
 
-	/* only if it has been modified */
-	if (st.st_mtime > ctxt->mtime) {
-		cache_readlock();
-		exists = cache_lookup(key);
+	ret = lookup_one(ap, key, key_len, ctxt);
+	debug("ret=%d", ret);
+	if (ret == CHE_FAIL || ret == CHE_COMPLETED)
+		return ret;
+
+	if ((ret & CHE_UPDATED) ||
+	    (exists && (ret & CHE_MISSING)))
+		need_hup = 1;
+
+	if (ret == CHE_MISSING) {
+		int wild = CHE_MISSING;
+
+		wild = lookup_wild(ap, ctxt);
+		if (wild == CHE_FAIL || wild == CHE_COMPLETED)
+			return wild;
+
+		cache_writelock();
+		if (wild == CHE_MISSING)
+			cache_delete("*");
+
+		if (cache_delete(key) &&
+			wild & (CHE_MISSING | CHE_FAIL))
+			rmdir_path(key);
 		cache_unlock();
-
-		ret = lookup_one(ap->path, key, key_len, ctxt);
-		if (ret == CHE_FAIL)
-			return NSS_STATUS_UNAVAIL;
-
-		if (t_last_read > ap->exp_runfreq)
-			if ((ret & CHE_UPDATED) ||
-			    (exists && (ret & CHE_MISSING)))
-				need_hup = 1;
-
-		if (ret == CHE_MISSING) {
-			int wild = CHE_MISSING;
-
-			wild = lookup_wild(ap->path, ctxt);
-			cache_writelock();
-			if (wild == CHE_MISSING)
-				cache_delete("*");
-
-			if (cache_delete(key) &&
-					wild & (CHE_MISSING | CHE_FAIL))
-				rmdir_path(key);
-			cache_unlock();
-		}
 	}
 
 	/* Have parent update its map ? */
 	if (need_hup)
 		kill(getppid(), SIGHUP);
 
-	if (ret == CHE_MISSING)
-		return NSS_STATUS_NOTFOUND;
-
-	return NSS_STATUS_SUCCESS;
+	return ret;
 }
 
 int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *context)
@@ -557,8 +632,12 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 	 */
 	if (ap->type == LKP_INDIRECT) {
 		status = check_map_indirect(ap, key, key_len, ctxt);
+		/* Found and mounted in nss lookup ? */
+		if (status == CHE_COMPLETED)
+			return NSS_STATUS_SUCCESS;
+
 		if (status) {
-			debug(MODPREFIX "check indirect map failure");
+			debug(MODPREFIX "check indirect map lookup failed");
 			return status;
 		}
 	}

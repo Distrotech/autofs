@@ -1,4 +1,4 @@
-#ident "$Id: automount.h,v 1.28 2006/02/25 01:39:28 raven Exp $"
+#ident "$Id: automount.h,v 1.29 2006/03/01 23:51:13 raven Exp $"
 /*
  * automount.h
  *
@@ -112,6 +112,7 @@ enum states {
 #define CHE_UPDATED	0x0002
 #define CHE_RMPATH	0x0004
 #define CHE_MISSING	0x0008
+#define CHE_COMPLETED	0x0010
 
 struct mapent_cache {
 	struct mapent_cache *next;

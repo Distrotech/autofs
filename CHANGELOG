@@ -29,6 +29,8 @@
 - fix fail to close ioctl on direct mount fail.
 - add hesiod to nss source list.
 - allow for maps that don't support enumeration.
+- add '+' included maps in key lookup (missed this).
+- fix update detection following addition of '+' key lookup.
 
 11/4/2005 autofs-4.1.4
 ----------------------

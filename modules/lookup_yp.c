@@ -1,4 +1,4 @@
-#ident "$Id: lookup_yp.c,v 1.22 2006/02/25 01:39:28 raven Exp $"
+#ident "$Id: lookup_yp.c,v 1.23 2006/03/01 23:51:13 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup_yp.c - module for Linux automountd to access a YP (NIS)
@@ -300,7 +300,7 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
         if (ap->type == LKP_INDIRECT) {
 		status = check_map_indirect(ap, key, key_len, ctxt);
 		if (status) {
-			debug(MODPREFIX "check indirect map failure");
+			debug(MODPREFIX "check indirect map lookup failed");
 			return status;
 		}
 	}
