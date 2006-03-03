@@ -1,4 +1,4 @@
-#ident "$Id: lookup_file.c,v 1.27 2006/03/03 01:30:00 raven Exp $"
+#ident "$Id: lookup_file.c,v 1.28 2006/03/03 02:14:38 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup_file.c - module for Linux automount to query a flat file map
@@ -576,7 +576,6 @@ static int check_map_indirect(struct autofs_point *ap,
 	cache_unlock();
 
 	ret = lookup_one(ap, key, key_len, ctxt);
-	debug("ret=%d", ret);
 	if (ret == CHE_FAIL || ret == CHE_COMPLETED)
 		return ret;
 
