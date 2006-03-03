@@ -1,4 +1,4 @@
-#ident "$Id: lookup_file.c,v 1.28 2006/03/03 02:14:38 raven Exp $"
+#ident "$Id: lookup_file.c,v 1.29 2006/03/03 21:48:23 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup_file.c - module for Linux automount to query a flat file map
@@ -356,6 +356,7 @@ static struct autofs_point *prepare_plus_include(struct autofs_point *ap, char *
 int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 {
 	struct lookup_context *ctxt = (struct lookup_context *) context;
+	struct mapent_cache *mc = ap->mc;
 	char *key;
 	char *mapent;
 	struct stat st;
@@ -410,9 +411,9 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 				free(iap->mapfmt);
 				free(iap);
 			} else {
-				cache_writelock();
-				cache_update(key, mapent, age);
-				cache_unlock();
+				cache_writelock(mc);
+				cache_update(mc, key, mapent, age);
+				cache_unlock(mc);
 			}
 		}
 
@@ -441,6 +442,7 @@ static int lookup_one(struct autofs_point *ap,
 		      const char *key, int key_len,
 		      struct lookup_context *ctxt)
 {
+	struct mapent_cache *mc = ap->mc;
 	char mkey[KEY_MAX_LEN + 1];
 	char mapent[MAPENT_MAX_LEN + 1];
 	time_t age = time(NULL);
@@ -482,9 +484,9 @@ static int lookup_one(struct autofs_point *ap,
 					return CHE_COMPLETED;
 			} else if (strncmp(mkey, key, key_len) == 0) {
 				fclose(f);
-				cache_writelock();
-				ret = cache_update(key, mapent, age);
-				cache_unlock();
+				cache_writelock(mc);
+				ret = cache_update(mc, key, mapent, age);
+				cache_unlock(mc);
 				return ret;
 			}
 		}
@@ -500,6 +502,7 @@ static int lookup_one(struct autofs_point *ap,
 
 static int lookup_wild(struct autofs_point *ap, struct lookup_context *ctxt)
 {
+	struct mapent_cache *mc = ap->mc;
 	char mkey[KEY_MAX_LEN + 1];
 	char mapent[MAPENT_MAX_LEN + 1];
 	time_t age = time(NULL);
@@ -545,9 +548,9 @@ static int lookup_wild(struct autofs_point *ap, struct lookup_context *ctxt)
 					return CHE_COMPLETED;
 			} else if (strncmp(mkey, "*", 1) == 0) {
 				fclose(f);
-				cache_writelock();
-				ret = cache_update("*", mapent, age);
-				cache_unlock();
+				cache_writelock(mc);
+				ret = cache_update(mc, "*", mapent, age);
+				cache_unlock(mc);
 				return ret;
 			}
 		}
@@ -565,15 +568,14 @@ static int check_map_indirect(struct autofs_point *ap,
 			      char *key, int key_len,
 			      struct lookup_context *ctxt)
 {
-	struct mapent_cache *me, *exists;
-	time_t now = time(NULL);
-	time_t t_last_read;
+	struct mapent_cache *mc = ap->mc;
+	struct mapent *exists;
 	int need_hup = 0;
 	int ret = CHE_OK;
 
-	cache_readlock();
-	exists = cache_lookup(key);
-	cache_unlock();
+	cache_readlock(mc);
+	exists = cache_lookup(mc, key);
+	cache_unlock(mc);
 
 	ret = lookup_one(ap, key, key_len, ctxt);
 	if (ret == CHE_FAIL || ret == CHE_COMPLETED)
@@ -590,14 +592,14 @@ static int check_map_indirect(struct autofs_point *ap,
 		if (wild == CHE_FAIL || wild == CHE_COMPLETED)
 			return wild;
 
-		cache_writelock();
+		cache_writelock(mc);
 		if (wild == CHE_MISSING)
-			cache_delete("*");
+			cache_delete(mc, "*");
 
-		if (cache_delete(key) &&
+		if (cache_delete(mc, key) &&
 			wild & (CHE_MISSING | CHE_FAIL))
 			rmdir_path(key);
-		cache_unlock();
+		cache_unlock(mc);
 	}
 
 	/* Have parent update its map ? */
@@ -610,7 +612,8 @@ static int check_map_indirect(struct autofs_point *ap,
 int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *context)
 {
 	struct lookup_context *ctxt = (struct lookup_context *) context;
-	struct mapent_cache *me;
+	struct mapent_cache *mc = ap->mc;
+	struct mapent *me;
 	char key[KEY_MAX_LEN + 1];
 	int key_len;
 	char *mapent = NULL;
@@ -641,16 +644,16 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 		}
 	}
 
-	cache_readlock();
-	me = cache_lookup(key);
+	cache_readlock(mc);
+	me = cache_lookup(mc, key);
 	if (me) {
-		pthread_cleanup_push(cache_lock_cleanup, NULL);
+		pthread_cleanup_push(cache_lock_cleanup, mc);
 		mapent = alloca(strlen(me->mapent) + 1);
 		mapent_len = sprintf(mapent, me->mapent);
 		pthread_cleanup_pop(0);
 		mapent[mapent_len] = '\0';
 	}
-	cache_unlock();
+	cache_unlock(mc);
 
 	if (mapent) {
 		debug(MODPREFIX "%s -> %s", key, mapent);

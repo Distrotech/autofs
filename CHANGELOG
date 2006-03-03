@@ -31,6 +31,7 @@
 - allow for maps that don't support enumeration.
 - add '+' included maps in key lookup (missed this).
 - fix update detection following addition of '+' key lookup.
+- convert mapent cache to live within autofs_point struct.
 
 11/4/2005 autofs-4.1.4
 ----------------------

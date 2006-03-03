@@ -1,4 +1,4 @@
-#ident "$Id: automount.c,v 1.53 2006/03/03 17:19:29 raven Exp $"
+#ident "$Id: automount.c,v 1.54 2006/03/03 21:48:22 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  automount.c - Linux automounter daemon
@@ -65,7 +65,7 @@ struct autofs_point ap;
 #define DEFAULT_GHOST_MODE	0
 #define MAX_OPEN_FILES		10240
 
-int do_mount_autofs_direct(struct autofs_point *ap, struct mapent_cache *me, int now);
+int do_mount_autofs_direct(struct autofs_point *ap, struct mapent *me, int now);
 static int umount_all(struct autofs_point *ap, int force);
 
 int mkdir_path(const char *path, mode_t mode)
@@ -126,20 +126,21 @@ int rmdir_path(const char *path)
 	return 0;
 }
 
-int umount_offsets(const char *base)
+int umount_offsets(struct autofs_point *ap, const char *base)
 {
 	char path[PATH_MAX + 1];
 	char *offset = path;
 	struct list_head head, *pos;
 	char key[PATH_MAX + 1];
-	struct mapent_cache *me;
+	struct mapent_cache *mc = ap->mc;
+	struct mapent *me;
 	struct mnt_list *mnts, *next;
 	int ret = 0, status;
 
 	INIT_LIST_HEAD(&head);
 
-	pthread_cleanup_push(cache_lock_cleanup, NULL);
-	cache_readlock();
+	pthread_cleanup_push(cache_lock_cleanup, mc);
+	cache_readlock(mc);
 	mnts = get_mnt_list(_PROC_MOUNTS, base, 0);
 	for (next = mnts; next; next = next->next) {
 		if (strcmp(next->fs_type, "autofs"))
@@ -161,7 +162,7 @@ int umount_offsets(const char *base)
 
 		strcpy(key, base);
 		strcat(key, offset);
-		me = cache_lookup(key);
+		me = cache_lookup(mc, key);
 		if (!me) {
 			debug("offset key %s not found", key);
 			continue;
@@ -177,30 +178,30 @@ int umount_offsets(const char *base)
 		}
 	}
 	free_mnt_list(mnts);
-	cache_unlock();
+	cache_unlock(mc);
 	pthread_cleanup_pop(0);
 
-	cache_writelock();
+	cache_writelock(mc);
 	/*
 	 * If it's a direct mount it's base is the key otherwise
 	 * the last path componemt is the indirect entry key.
 	 */
-	me = cache_lookup(base);
+	me = cache_lookup(mc, base);
 	if (!me) {
 		char *ind_key = strrchr(base, '/');
 
 		if (ind_key) {
 			ind_key++;
-			me = cache_lookup(ind_key);
+			me = cache_lookup(mc, ind_key);
 		}
 	}
 
 	if (!ret && me && me->multi == me) {
-		status = cache_delete_offset_list(me->key);
+		status = cache_delete_offset_list(mc, me->key);
 		if (status != CHE_OK)
 			warn("couldn't delete offset list");
 	}
-	cache_unlock();
+	cache_unlock(mc);
 
 	return ret;
 }
@@ -342,7 +343,7 @@ int umount_multi(struct autofs_point *ap, const char *path, int incl)
 
 	debug("path=%s incl=%d\n", path, incl);
 
-	if (umount_offsets(path)) {
+	if (umount_offsets(ap, path)) {
 		error("could not umount some offsets under %s", path);
 		return 0;
 	}
@@ -658,6 +659,7 @@ void do_readmap_cleanup_unlock(void *arg)
 static void *do_readmap(void *arg)
 {
 	struct autofs_point *ap;
+	struct mapent_cache *mc;
 	int status;
 	time_t now;
 
@@ -673,6 +675,7 @@ static void *do_readmap(void *arg)
 	rc.signaled = 0;
 
 	ap = rc.ap;
+	mc = ap->mc;
 	now = rc.now;
 
 	status = lookup_nss_read_map(ap, now);
@@ -681,13 +684,13 @@ static void *do_readmap(void *arg)
 
 	lookup_prune_cache(ap, now);
 
-	pthread_cleanup_push(cache_lock_cleanup, NULL);
-	cache_readlock();
+	pthread_cleanup_push(cache_lock_cleanup, mc);
+	cache_readlock(mc);
 	if (ap->type == LKP_INDIRECT)
 		status = lookup_ghost(ap);
 	else
 		status = lookup_enumerate(ap, do_mount_autofs_direct, now);
-	cache_unlock();
+	cache_unlock(mc);
 	pthread_cleanup_pop(0);
 
 	debug("status %d", status);
@@ -697,7 +700,6 @@ static void *do_readmap(void *arg)
 		error("failed to unlock expire cond mutex");
 
 	pthread_cleanup_pop(0);
-
 	return NULL;
 }
 
@@ -1130,8 +1132,8 @@ void cleanup_exit(struct autofs_point *ap, int exit_code)
 			warn("failed to remove dir %s: %s", ap->path, estr);
 		}
 
+	cache_release(ap);
 	free(ap->path);
-	cache_release();
 	exit(exit_code);
 }
 
@@ -1334,11 +1336,17 @@ int main(int argc, char *argv[])
 	memset(&ap, 0, sizeof ap);
 
 	ap.exp_timeout = DEFAULT_TIMEOUT;
+	ap.exp_runfreq = (ap.exp_timeout + CHECK_RATIO - 1) / CHECK_RATIO;
 	ap.ghost = DEFAULT_GHOST_MODE;
 	ap.type = LKP_INDIRECT;
 	ap.dir_created = 0; /* We haven't created the main directory yet */
 	ap.submount = 0;
-	cache_init();
+	ap.mc = cache_init(&ap);
+	if (!ap.mc) {
+		fprintf(stderr, "%s: Failed to create mapentry cache.\n",
+			program);
+		exit(1);
+	}
 
 	opterr = 0;
 	while ((opt = getopt_long(argc, argv, "+hp:t:vdVg", long_options, NULL)) != EOF) {

@@ -1,4 +1,4 @@
-#ident "$Id: indirect.c,v 1.10 2006/03/03 01:30:00 raven Exp $"
+#ident "$Id: indirect.c,v 1.11 2006/03/03 21:48:23 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  indirect.c - Linux automounter indirect mount handling
@@ -312,7 +312,8 @@ void *expire_proc_indirect(void *arg)
 	struct mnt_list *mnts, *next;
 	struct expire_args ex;
 	struct autofs_point *ap;
-	struct mapent_cache *me;
+	struct mapent_cache *mc;
+	struct mapent *me;
 	unsigned int now;
 	int offsets, count, ret;
 	int ioctlfd;
@@ -330,6 +331,7 @@ void *expire_proc_indirect(void *arg)
 
 	ap = ex.ap = ec.ap;
 	now = ex.when = ec.when;
+	mc = ap->mc;
 	ex.status = 0;
 
 	pthread_cleanup_push(expire_cleanup, &ex);
@@ -352,13 +354,13 @@ void *expire_proc_indirect(void *arg)
 		 * won't be found by a cache_lookup, never the less it's
 		 * a mount under ap->path.
 		 */
-		cache_readlock();
-		me = cache_lookup(next->path);
+		cache_readlock(mc);
+		me = cache_lookup(mc, next->path);
 		if (me && *me->key == '/')
 			ioctlfd = me->ioctlfd;
 		else
 			ioctlfd = ap->ioctlfd;
-		cache_unlock();
+		cache_unlock(mc);
 
 		ret = ioctl(ioctlfd, AUTOFS_IOC_EXPIRE_MULTI, &now);
 		if (ret < 0 && errno != EAGAIN) {

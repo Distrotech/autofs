@@ -1,4 +1,4 @@
-#ident "$Id: lookup.c,v 1.7 2006/03/01 23:51:13 raven Exp $"
+#ident "$Id: lookup.c,v 1.8 2006/03/03 21:48:23 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup.c - API layer to implement nsswitch semantics for map reading
@@ -203,20 +203,21 @@ int lookup_nss_read_map(struct autofs_point *ap, time_t age)
 }
 
 int lookup_enumerate(struct autofs_point *ap,
-	int (*fn)(struct autofs_point *ap, struct mapent_cache *, int),
+	int (*fn)(struct autofs_point *ap, struct mapent *, int),
 	time_t now)
 {
-	struct mapent_cache *me;
+	struct mapent_cache *mc = ap->mc;
+	struct mapent *me;
 
 	/* TODO: more sensible status return */
 	if (strcmp(ap->path, "/-"))
 		return LKP_FAIL | LKP_INDIRECT;
 
-	me = cache_enumerate(NULL);
+	me = cache_enumerate(mc, NULL);
 	while (me) {
 		/* TODO: check return */
 		fn(ap, me, now);
-		me = cache_enumerate(me);
+		me = cache_enumerate(mc, me);
 	}
 
 	return LKP_DIRECT;
@@ -224,7 +225,8 @@ int lookup_enumerate(struct autofs_point *ap,
 
 int lookup_ghost(struct autofs_point *ap)
 {
-	struct mapent_cache *me;
+	struct mapent_cache *mc = ap->mc;
+	struct mapent *me;
 	char buf[MAX_ERR_BUF];
 	struct stat st;
 	char *fullpath;
@@ -236,7 +238,7 @@ int lookup_ghost(struct autofs_point *ap)
 	if (!ap->ghost)
 		return LKP_INDIRECT;
 
-	me = cache_enumerate(NULL);
+	me = cache_enumerate(mc, NULL);
 	while (me) {
 		if (*me->key == '*')
 			goto next;
@@ -274,7 +276,7 @@ int lookup_ghost(struct autofs_point *ap)
 			me->ino = st.st_ino;
 		}
 next:
-		me = cache_enumerate(me);
+		me = cache_enumerate(mc, me);
 	}
 
 	return LKP_INDIRECT;
@@ -468,22 +470,23 @@ static char *make_fullpath(const char *root, const char *key)
 
 int lookup_prune_cache(struct autofs_point *ap, time_t age)
 {
-	struct mapent_cache *me, *this;
+	struct mapent_cache *mc = ap->mc;
+	struct mapent *me, *this;
 	char *key, *next_key;
 	char *path;
 	int status = CHE_FAIL;
 
-	cache_readlock();
+	cache_readlock(mc);
 
-	me = cache_enumerate(NULL);
+	me = cache_enumerate(mc, NULL);
 	while (me) {
 		if (me->age >= age) {
-			me = cache_enumerate(me);
+			me = cache_enumerate(mc, me);
 			continue;
 		}
 
 		key = strdup(me->key);
-		me = cache_enumerate(me);
+		me = cache_enumerate(mc, me);
 
 		if (!key)
 			continue;
@@ -494,16 +497,16 @@ int lookup_prune_cache(struct autofs_point *ap, time_t age)
 			continue;
 		}
 
-		cache_unlock();
+		cache_unlock(mc);
 
-		cache_writelock();
-		this = cache_lookup(key);
+		cache_writelock(mc);
+		this = cache_lookup(mc, key);
 		if (!this) {
-			cache_unlock();
+			cache_unlock(mc);
 			goto next;
 		}
-		status = cache_delete(key);
-		cache_unlock();
+		status = cache_delete(mc, key);
+		cache_unlock(mc);
 
 		if (status != CHE_FAIL) {
 			path = make_fullpath(ap->path, key);
@@ -515,13 +518,13 @@ int lookup_prune_cache(struct autofs_point *ap, time_t age)
 			}
 		}
 next:
-		cache_readlock();
-		me = cache_lookup(next_key);
+		cache_readlock(mc);
+		me = cache_lookup(mc, next_key);
 		free(key);
 		free(next_key);
 	}
 
-	cache_unlock();
+	cache_unlock(mc);
 
 	return 1;
 }

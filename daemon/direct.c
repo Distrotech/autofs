@@ -1,4 +1,4 @@
-#ident "$Id: direct.c,v 1.12 2006/03/03 01:30:00 raven Exp $"
+#ident "$Id: direct.c,v 1.13 2006/03/03 21:48:23 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  direct.c - Linux automounter direct mount handling
@@ -131,7 +131,7 @@ static int autofs_init_direct(struct autofs_point *ap, char *path)
 	return 0;
 }
 
-static int do_umount_autofs_direct(struct autofs_point *ap, struct mapent_cache *me)
+static int do_umount_autofs_direct(struct autofs_point *ap, struct mapent *me)
 {
 	char buf[MAX_ERR_BUF];
 	int rv, left, ret;
@@ -192,7 +192,8 @@ force_umount:
 
 int umount_autofs_direct(struct autofs_point *ap)
 {
-	struct mapent_cache *me;
+	struct mapent_cache *mc = ap->mc;
+	struct mapent *me;
 
 	close(ap->state_pipe[0]);
 	close(ap->state_pipe[1]);
@@ -203,22 +204,22 @@ int umount_autofs_direct(struct autofs_point *ap)
 		ap->kpipefd = -1;
 	}
 
-	cache_readlock();
-	me = cache_enumerate(NULL);
+	cache_readlock(mc);
+	me = cache_enumerate(mc, NULL);
 	while (me) {
-		cache_unlock();
+		cache_unlock(mc);
 		/* TODO: check return, locking me */
 		do_umount_autofs_direct(ap, me);
-		cache_readlock();
-		me = cache_enumerate(me);
+		cache_readlock(mc);
+		me = cache_enumerate(mc, me);
 	}
-	cache_unlock();
+	cache_unlock(mc);
 
 	return 0;
 }
 
 
-int do_mount_autofs_direct(struct autofs_point *ap, struct mapent_cache *me, int now)
+int do_mount_autofs_direct(struct autofs_point *ap, struct mapent *me, int now)
 {
 	struct mnt_params *mp;
 	time_t timeout = ap->exp_timeout;
@@ -344,7 +345,7 @@ got_version:
 		goto out_umount;
 	}
 	cache_set_ino(me, st.st_dev, st.st_ino);
-	cache_set_ino_index(me->key, st.st_dev, st.st_ino);
+	cache_set_ino_index(ap->mc, me->key, st.st_dev, st.st_ino);
 
 	close(me->ioctlfd);
 	me->ioctlfd = -1;
@@ -368,6 +369,7 @@ out_err:
 
 int mount_autofs_direct(struct autofs_point *ap, char *path)
 {
+	struct mapent_cache *mc = ap->mc;
 	time_t now = time(NULL);
 	int map;
 
@@ -382,10 +384,10 @@ int mount_autofs_direct(struct autofs_point *ap, char *path)
 
 	lookup_prune_cache(ap, now);
 
-	pthread_cleanup_push(cache_lock_cleanup, NULL);
-	cache_readlock();
+	pthread_cleanup_push(cache_lock_cleanup, mc);
+	cache_readlock(mc);
 	map = lookup_enumerate(ap, do_mount_autofs_direct, now);
-	cache_unlock();
+	cache_unlock(mc);
 	pthread_cleanup_pop(0);
 	if (map & LKP_FAIL) {
 		if (map & LKP_INDIRECT) {
@@ -398,7 +400,7 @@ int mount_autofs_direct(struct autofs_point *ap, char *path)
 	return 0;
 }
 
-int umount_autofs_offset(struct mapent_cache *me)
+int umount_autofs_offset(struct mapent *me)
 {
 	char buf[MAX_ERR_BUF];
 	int rv, ret;
@@ -456,7 +458,7 @@ force_umount:
 	return rv;
 }
 
-int mount_autofs_offset(struct autofs_point *ap, struct mapent_cache *me, int is_autofs_fs)
+int mount_autofs_offset(struct autofs_point *ap, struct mapent *me, int is_autofs_fs)
 {
 	struct mnt_params *mp;
 	time_t timeout = ap->exp_timeout;
@@ -561,7 +563,7 @@ int mount_autofs_offset(struct autofs_point *ap, struct mapent_cache *me, int is
 		goto out_umount;
 	}
 	cache_set_ino(me, st.st_dev, st.st_ino);
-	cache_set_ino_index(me->key, st.st_dev, st.st_ino);
+	cache_set_ino_index(ap->mc, me->key, st.st_dev, st.st_ino);
 
 	close(me->ioctlfd);
 	me->ioctlfd = -1;
@@ -584,7 +586,8 @@ void *expire_proc_direct(void *arg)
 	struct mnt_list *mnts, *next;
 	struct expire_args ex;
 	struct autofs_point *ap;
-	struct mapent_cache *me;
+	struct mapent_cache *mc;
+	struct mapent *me;
 	unsigned int now;
 	int ioctlfd;
 	int status;
@@ -602,6 +605,7 @@ void *expire_proc_direct(void *arg)
 
 	ap = ex.ap = ec.ap;
 	now = ex.when = ec.when;
+	mc = ap->mc;
 	ex.status = 0;
 
 	pthread_cleanup_push(expire_cleanup, &ex);
@@ -616,14 +620,14 @@ void *expire_proc_direct(void *arg)
 		 * All direct mounts must be present in the map
 		 * entry cache.
 		 */
-		cache_readlock();
-		me = cache_lookup(next->path);
+		cache_readlock(mc);
+		me = cache_lookup(mc, next->path);
 		if (!me) {
-			cache_unlock();
+			cache_unlock(mc);
 			continue;
 		}
 		ioctlfd = me->ioctlfd;
-		cache_unlock();
+		cache_unlock(mc);
 
 		debug("send expire to trigger %s", next->path);
 
@@ -653,31 +657,33 @@ done:
 static void kernel_callback_cleanup(void *arg)
 {
 	struct autofs_point *ap;
-	struct mapent_cache *me;
 	struct pending_args *mt;
+	struct mapent_cache *mc;
+	struct mapent *me;
 
 	mt = (struct pending_args *) arg;
 	ap = mt->ap;
+	mc = ap->mc;
 
 	if (mt->status) {
 		send_ready(mt->ioctlfd, mt->wait_queue_token);
 		if (mt->type == NFY_EXPIRE) {
 			close(mt->ioctlfd);
-			cache_writelock();
-			me = cache_lookup(mt->name);
+			cache_writelock(mc);
+			me = cache_lookup(mc, mt->name);
 			if (me)
 				me->ioctlfd = -1;
-			cache_unlock();
+			cache_unlock(mc);
 		}
 	} else {
 		send_fail(mt->ioctlfd, mt->wait_queue_token);
 		if (mt->type == NFY_MOUNT) {
 			close(mt->ioctlfd);
-			cache_writelock();
-			me = cache_lookup(mt->name);
+			cache_writelock(mc);
+			me = cache_lookup(mc, mt->name);
 			if (me)
 				me->ioctlfd = -1;
-			cache_unlock();
+			cache_unlock(mc);
 		}
 	}
 
@@ -716,7 +722,8 @@ static void *do_expire_direct(void *arg)
 
 int handle_packet_expire_direct(struct autofs_point *ap, autofs_packet_expire_direct_t *pkt)
 {
-	struct mapent_cache *me;
+	struct mapent_cache *mc = ap->mc;
+	struct mapent *me;
 	struct pending_args *mt;
 	char buf[MAX_ERR_BUF];
 	pthread_t thid;
@@ -732,9 +739,9 @@ int handle_packet_expire_direct(struct autofs_point *ap, autofs_packet_expire_di
 	 * and since it got mounted we have to trust that
 	 * there is an entry in the cache.
 	 */
-	pthread_cleanup_push(cache_lock_cleanup, NULL);
-	cache_readlock();
-	me = cache_lookup_ino(pkt->dev, pkt->ino);
+	pthread_cleanup_push(cache_lock_cleanup, mc);
+	cache_readlock(mc);
+	me = cache_lookup_ino(mc, pkt->dev, pkt->ino);
 	if (!me) {
 		/*
 		 * Shouldn't happen as we have been sent this following
@@ -778,7 +785,7 @@ int handle_packet_expire_direct(struct autofs_point *ap, autofs_packet_expire_di
 		status = 1;
 	}
 done:
-	cache_unlock();
+	cache_unlock(mc);
 	pthread_cleanup_pop(0);
 	return status;
 }
@@ -888,14 +895,15 @@ int handle_packet_missing_direct(struct autofs_point *ap, autofs_packet_missing_
 {
 	pthread_t thid;
 	struct pending_args *mt;
-	struct mapent_cache *me;
+	struct mapent_cache *mc = ap->mc;
+	struct mapent *me;
 	char buf[MAX_ERR_BUF];
 	int status = 0;
 	int ioctlfd;
 
-	pthread_cleanup_push(cache_lock_cleanup, NULL);
-	cache_readlock();
-	me = cache_lookup_ino(pkt->dev, pkt->ino);
+	pthread_cleanup_push(cache_lock_cleanup, mc);
+	cache_readlock(mc);
+	me = cache_lookup_ino(mc, pkt->dev, pkt->ino);
 	if (!me) {
 		/*
 		 * Shouldn't happen as the kernel is telling us
@@ -958,7 +966,7 @@ int handle_packet_missing_direct(struct autofs_point *ap, autofs_packet_missing_
 		status = 1;
 	}
 done:
-	cache_unlock();
+	cache_unlock(mc);
 	pthread_cleanup_pop(0);
 	return status;
 }

@@ -1,4 +1,4 @@
-#ident "$Id: automount.h,v 1.30 2006/03/03 01:30:00 raven Exp $"
+#ident "$Id: automount.h,v 1.31 2006/03/03 21:48:23 raven Exp $"
 /*
  * automount.h
  *
@@ -114,44 +114,52 @@ enum states {
 #define CHE_MISSING	0x0008
 #define CHE_COMPLETED	0x0010
 
+#define HASHSIZE      77
+
 struct mapent_cache {
-	struct mapent_cache *next;
-	unsigned int count;
+	pthread_rwlock_t rwlock;
+	unsigned int size;
+	unsigned long *ino_index;
+	struct mapent **hash;
+};
+
+struct mapent {
+	struct mapent *next;
 	struct list_head multi_list;
 	/* Need to know owner if we're a multi mount */
-	struct mapent_cache *multi;
+	struct mapent *multi;
 	char *key;
 	char *mapent;
 	time_t age;
 	/* For direct mounts per entry context is kept here */
 	int dir_created;
-	int ioctlfd;		/* File descriptor for ioctls */
+	/* File descriptor for ioctls */
+	int ioctlfd;
 	dev_t dev;
 	ino_t ino;
 };
 
 void cache_lock_cleanup(void *arg);
-int cache_readlock(void);
-int cache_writelock(void);
-int cache_unlock(void);
-void cache_init(void);
-void cache_set_ino_index(const char *key, dev_t dev, ino_t ino);
-void cache_set_ino(struct mapent_cache *me, dev_t dev, ino_t ino);
-struct mapent_cache *cache_lookup_ino(dev_t dev, ino_t ino);
-struct mapent_cache *cache_lookup(const char *key);
-struct mapent_cache *cache_lookup_first(void);
-struct mapent_cache *cache_lookup_next(struct mapent_cache *me);
-struct mapent_cache *cache_lookup_key_next(struct mapent_cache *me);
-struct mapent_cache *cache_lookup_offset(const char *prefix, const char *offset, int start, struct list_head *head);
-struct mapent_cache *cache_partial_match(const char *prefix);
-int cache_add(const char *key, const char *mapent, time_t age);
-int cache_add_offset(const char *mkey, const char *key, const char *mapent, time_t age);
-int cache_update(const char *key, const char *mapent, time_t age);
-int cache_delete(const char *key);
-int cache_delete_offset_list(const char *key);
-void cache_clean(const char *root, time_t age);
-void cache_release(void);
-struct mapent_cache *cache_enumerate(struct mapent_cache *me);
+int cache_readlock(struct mapent_cache *mc);
+int cache_writelock(struct mapent_cache *mc);
+int cache_unlock(struct mapent_cache *mc);
+struct mapent_cache *cache_init(struct autofs_point *ap);
+void cache_set_ino_index(struct mapent_cache *mc, const char *key, dev_t dev, ino_t ino);
+void cache_set_ino(struct mapent *me, dev_t dev, ino_t ino);
+struct mapent *cache_lookup_ino(struct mapent_cache *mc, dev_t dev, ino_t ino);
+struct mapent *cache_lookup_first(struct mapent_cache *mc);
+struct mapent *cache_lookup_next(struct mapent_cache *mc, struct mapent *me);
+struct mapent *cache_lookup_key_next(struct mapent *me);
+struct mapent *cache_lookup(struct mapent_cache *mc, const char *key);
+struct mapent *cache_lookup_offset(const char *prefix, const char *offset, int start, struct list_head *head);
+struct mapent *cache_partial_match(struct mapent_cache *mc, const char *prefix);
+int cache_add(struct mapent_cache *mc, const char *key, const char *mapent, time_t age);
+int cache_add_offset(struct mapent_cache *mc, const char *mkey, const char *key, const char *mapent, time_t age);
+int cache_update(struct mapent_cache *mc, const char *key, const char *mapent, time_t age);
+int cache_delete(struct mapent_cache *mc, const char *key);
+int cache_delete_offset_list(struct mapent_cache *mc, const char *key);
+void cache_release(struct autofs_point *ap);
+struct mapent *cache_enumerate(struct mapent_cache *mc, struct mapent *me);
 char *cache_get_offset(const char *prefix, char *offset, int start, struct list_head *head, struct list_head **pos);
 
 /* Utility functions */
@@ -193,7 +201,7 @@ int rmdir_path(const char *path);
 
 int lookup_nss_read_map(struct autofs_point *ap, time_t age);
 int lookup_enumerate(struct autofs_point *ap,
-	int (*fn)(struct autofs_point *,struct mapent_cache *, int), time_t now);
+	int (*fn)(struct autofs_point *,struct mapent *, int), time_t now);
 int lookup_ghost(struct autofs_point *ap);
 int lookup_nss_mount(struct autofs_point *ap, const char *name, int name_len);
 int lookup_prune_cache(struct autofs_point *ap, time_t age);
@@ -399,6 +407,7 @@ struct autofs_point {
 	int state_pipe[2];
 	unsigned dir_created;		/* Directory created for this mount? */
 	int submount;			/* Is this a submount */
+	struct mapent_cache *mc;	/* Mapentry lookup table for this path */
 };
 
 /* Standard functions used by daemon or modules */
@@ -408,18 +417,18 @@ int send_ready(int ioctlfd, unsigned int wait_queue_token);
 int send_fail(int ioctlfd, unsigned int wait_queue_token);
 /*int handle_expire(const char *name, int namelen,
 			int ioctlfd, autofs_wqt_t token); */
-int umount_offsets(const char *path);
+int umount_offsets(struct autofs_point *ap, const char *path);
 int do_expire(struct autofs_point *ap, const char *name, int namelen);
 void *expire_proc_indirect(void *);
 void *expire_proc_direct(void *);
-int expire_offsets_direct(struct autofs_point *ap, struct mapent_cache *me, int now);
+int expire_offsets_direct(struct autofs_point *ap, struct mapent *me, int now);
 int mount_autofs_indirect(struct autofs_point *ap, char *path);
 int mount_autofs_direct(struct autofs_point *ap, char *path);
-int mount_autofs_offset(struct autofs_point *ap, struct mapent_cache *me, int is_autofs_fs);
+int mount_autofs_offset(struct autofs_point *ap, struct mapent *me, int is_autofs_fs);
 int umount_autofs(struct autofs_point *ap, int force);
 int umount_autofs_indirect(struct autofs_point *ap);
 int umount_autofs_direct(struct autofs_point *ap);
-int umount_autofs_offset(struct mapent_cache *me);
+int umount_autofs_offset(struct mapent *me);
 int handle_packet_expire_indirect(struct autofs_point *ap, autofs_packet_expire_indirect_t *pkt);
 int handle_packet_expire_direct(struct autofs_point *ap, autofs_packet_expire_direct_t *pkt);
 int handle_packet_missing_indirect(struct autofs_point *ap, autofs_packet_missing_indirect_t *pkt);

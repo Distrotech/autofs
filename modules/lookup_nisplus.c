@@ -1,4 +1,4 @@
-#ident "$Id: lookup_nisplus.c,v 1.9 2006/02/24 17:20:55 raven Exp $"
+#ident "$Id: lookup_nisplus.c,v 1.10 2006/03/03 21:48:23 raven Exp $"
 /*
  * lookup_nisplus.c
  *
@@ -73,6 +73,7 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 {
 	struct lookup_context *ctxt = (struct lookup_context *) context;
+	struct mapent_cache *mc = ap->mc;
 	char tablename[strlen(ctxt->mapname) +
 		       strlen(ctxt->domainname) + 20];
 	nis_result *result;
@@ -112,9 +113,9 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 		if (*key == '+')
 			continue;
 		mapent = this->EN_data.en_cols.en_cols_val[1].ec_value.ec_value_val;
-		cache_writelock();
-		cache_update(key, mapent, age);
-		cache_unlock();
+		cache_writelock(mc);
+		cache_update(mc, key, mapent, age);
+		cache_unlock(mc);
 	}
 
 	nis_freeresult(result);
@@ -122,10 +123,11 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 	return NSS_STATUS_SUCCESS;
 }
 
-static int lookup_one(const char *root,
+static int lookup_one(struct autofs_point *ap,
 		      const char *key, int key_len,
 		      struct lookup_context *ctxt)
 {
+	struct mapent_cache *mc = ap->mc;
 	char tablename[strlen(key) + strlen(ctxt->mapname) +
 		       strlen(ctxt->domainname) + 20];
 	nis_result *result;
@@ -150,17 +152,18 @@ static int lookup_one(const char *root,
 	
 	this = NIS_RES_OBJECT(result);
 	mapent = this->EN_data.en_cols.en_cols_val[1].ec_value.ec_value_val;
-	cache_writelock();
-	ret = cache_update(key, mapent, age);
-	cache_unlock();
+	cache_writelock(mc);
+	ret = cache_update(mc, key, mapent, age);
+	cache_unlock(mc);
 
 	nis_freeresult(result);
 
 	return ret;
 }
 
-static int lookup_wild(const char *root, struct lookup_context *ctxt)
+static int lookup_wild(struct autofs_point *ap, struct lookup_context *ctxt)
 {
+	struct mapent_cache *mc = ap->mc;
 	char tablename[strlen(ctxt->mapname) +
 		       strlen(ctxt->domainname) + 20];
 	nis_result *result;
@@ -184,9 +187,9 @@ static int lookup_wild(const char *root, struct lookup_context *ctxt)
 
 	this = NIS_RES_OBJECT(result);
 	mapent = this->EN_data.en_cols.en_cols_val[1].ec_value.ec_value_val;
-	cache_writelock();
-	ret = cache_update("*", mapent, age);
-	cache_unlock();
+	cache_writelock(mc);
+	ret = cache_update(mc, "*", mapent, age);
+	cache_unlock(mc);
 
 	nis_freeresult(result);
 
@@ -197,19 +200,20 @@ static int check_map_indirect(struct autofs_point *ap,
 			      char *key, int key_len,
 			      struct lookup_context *ctxt)
 {
-	struct mapent_cache *me, *exists;
+	struct mapent_cache *mc = ap->mc;
+	struct mapent *me, *exists;
 	time_t now = time(NULL);
 	time_t t_last_read;
 	int need_hup = 0;
 	int ret = 0;
 
-	cache_readlock();
+	cache_readlock(mc);
 	/* First check to see if this entry exists in the cache */
-	exists = cache_lookup(key);
-	cache_unlock();
+	exists = cache_lookup(mc, key);
+	cache_unlock(mc);
 
 	/* check map and if change is detected re-read map */
-	ret = lookup_one(ap->path, key, key_len, ctxt);
+	ret = lookup_one(ap, key, key_len, ctxt);
 	if (ret == CHE_FAIL)
 		return NSS_STATUS_NOTFOUND;
 
@@ -219,10 +223,10 @@ static int check_map_indirect(struct autofs_point *ap,
 		return NSS_STATUS_UNAVAIL;
 	}
 
-	cache_readlock();
-	me = cache_lookup_first();
+	cache_readlock(mc);
+	me = cache_lookup_first(mc);
 	t_last_read = me ? now - me->age : ap->exp_runfreq + 1;
-	cache_unlock();
+	cache_unlock(mc);
 
 	if (t_last_read > ap->exp_runfreq)
 		if ((ret & CHE_UPDATED) ||
@@ -232,15 +236,20 @@ static int check_map_indirect(struct autofs_point *ap,
 	if (ret == CHE_MISSING) {
 		int wild = CHE_MISSING;
 
-		wild = lookup_wild(ap->path, ctxt);
-		cache_writelock();
-		if (wild == CHE_MISSING)
-			cache_delete("*");
+		wild = lookup_wild(ap, ctxt);
+		if (wild == CHE_MISSING) {
+			cache_writelock(mc);
+			cache_delete(mc, "*");
+			cache_unlock(mc);
+		}
 
-		if (cache_delete(key) &&
+		pthread_cleanup_push(cache_lock_cleanup, mc);
+		cache_writelock(mc);
+		if (cache_delete(mc, key) &&
 				wild & (CHE_MISSING | CHE_FAIL))
 			rmdir_path(key);
-		cache_unlock();
+		cache_unlock(mc);
+		pthread_cleanup_pop(0);
 	}
 
 	/* Have parent update its map */
@@ -260,9 +269,10 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 	int key_len;
 	char *mapent = NULL;
 	int mapent_len;
-	struct mapent_cache *me;
+	struct mapent_cache *mc = ap->mc;
+	struct mapent *me;
 	int status;
-	int ret;
+	int ret = 1;
 
 	debug(MODPREFIX "looking up %s", name);
 
@@ -283,15 +293,15 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 		}
 	}
 
-	cache_readlock();
-	me = cache_lookup(key);
+	cache_readlock(mc);
+	me = cache_lookup(mc, key);
 	if (me) {
-		pthread_cleanup_push(cache_lock_cleanup, NULL);
+		pthread_cleanup_push(cache_lock_cleanup, mc);
 		mapent = alloca(strlen(me->mapent) + 1);
 		mapent_len = sprintf(mapent, "%s", me->mapent);
 		pthread_cleanup_pop(0);
 	}
-	cache_unlock();
+	cache_unlock(mc);
 
 	if (mapent) {
 		debug(MODPREFIX "%s -> %s", key, mapent);
@@ -300,7 +310,7 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 	}
 
 	if (ret)
-		return NSS_STATUS_TRYAGAIN;
+		return NSS_STATUS_NOTFOUND;
 
 	return NSS_STATUS_SUCCESS;
 }

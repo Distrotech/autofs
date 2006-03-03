@@ -1,4 +1,4 @@
-#ident "$Id: parse_sun.c,v 1.39 2006/02/25 06:20:36 raven Exp $"
+#ident "$Id: parse_sun.c,v 1.40 2006/03/03 21:48:23 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  parse_sun.c - module for Linux automountd to parse a Sun-format
@@ -915,9 +915,10 @@ static int check_is_multi(const char *mapent)
 }
 
 static int
-add_offset_entry(const char *name, const char *m_root, int m_root_len,
-		const char *path, const char *myoptions, const char *loc,
-		time_t age)
+add_offset_entry(struct mapent_cache *mc, const char *name,
+		 const char *m_root, int m_root_len,
+		 const char *path, const char *myoptions, const char *loc,
+		 time_t age)
 {
 	char m_key[PATH_MAX + 1];
 	char m_mapent[MAPENT_MAX_LEN + 1];
@@ -944,20 +945,20 @@ add_offset_entry(const char *name, const char *m_root, int m_root_len,
 
 	debug("adding multi-mount offset %s -> %s", path, m_mapent);
 
-	cache_writelock();
-	ret = cache_add_offset(name, m_key, m_mapent, age);
-	cache_unlock();
+	cache_writelock(mc);
+	ret = cache_add_offset(mc, name, m_key, m_mapent, age);
+	cache_unlock(mc);
 
 	return ret;
 }
 
 #define AUTOFS_SUPER_MAGIC 0x0187L
 
-static int mount_multi_triggers(struct autofs_point *ap, char *root, struct mapent_cache *me, const char *base)
+static int mount_multi_triggers(struct autofs_point *ap, char *root, struct mapent *me, const char *base)
 {
 	char path[PATH_MAX + 1];
 	char *offset = path;
-	struct mapent_cache *oe;
+	struct mapent *oe;
 	struct list_head *pos = NULL;
 	unsigned int fs_path_len;
 	struct statfs fs;
@@ -1014,12 +1015,12 @@ cont:
 	return 0;
 }
 
-static void parse_sun_cleanup(const char *name,
+static void parse_sun_cleanup(struct mapent_cache *mc, const char *name,
 			 char *options, char *path, char *myoptions)
 {
-	cache_writelock();
-	cache_delete_offset_list(name);
-	cache_unlock();
+	cache_writelock(mc);
+	cache_delete_offset_list(mc, name);
+	cache_unlock(mc);
 
 	if (options)
 		free(options);
@@ -1048,7 +1049,8 @@ int parse_mount(struct autofs_point *ap, const char *name,
 {
 	struct parse_context *ctxt = (struct parse_context *) context;
 	char buf[MAX_ERR_BUF];
-	struct mapent_cache *me;
+	struct mapent_cache *mc = ap->mc;
+	struct mapent *me;
 	char *pmapent, *options;
 	const char *p;
 	int mapent_len, rv = 0;
@@ -1138,14 +1140,14 @@ int parse_mount(struct autofs_point *ap, const char *name,
 			strcat(m_root, name);
 		}
 
-		cache_writelock();
-		me = cache_lookup(name);
+		cache_writelock(mc);
+		me = cache_lookup(mc, name);
 		if (me) {
 			/* So we know we're the multi-mount root */
 			if (!me->multi)
 				me->multi = me;
 		}
-		cache_unlock();
+		cache_unlock(mc);
 
 		if (!me) {
 			error(MODPREFIX "can't find multi root");
@@ -1162,7 +1164,7 @@ int parse_mount(struct autofs_point *ap, const char *name,
 			if (myoptions == NULL) {
 				char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
 				error(MODPREFIX "multi strdup: %s", estr);
-				parse_sun_cleanup(name, options, NULL, NULL);
+				parse_sun_cleanup(mc, name, options, NULL, NULL);
 				return 1;
 			}
 
@@ -1174,7 +1176,7 @@ int parse_mount(struct autofs_point *ap, const char *name,
 
 			if (!path) {
 				error(MODPREFIX "out of memory");
-				parse_sun_cleanup(name, options, NULL, myoptions);
+				parse_sun_cleanup(mc, name, options, NULL, myoptions);
 				return 1;
 			}
 
@@ -1194,7 +1196,7 @@ int parse_mount(struct autofs_point *ap, const char *name,
 						estr = strerror_r(errno, buf, MAX_ERR_BUF);
 						error(MODPREFIX
 						    "multi concat_options: %s", estr);
-						parse_sun_cleanup(name,
+						parse_sun_cleanup(mc, name,
 							options, NULL, NULL);
 						return 1;
 					}
@@ -1209,7 +1211,7 @@ int parse_mount(struct autofs_point *ap, const char *name,
 			loc = dequote(p, l = chunklen(p, check_colon(p)));
 			if (!loc) {
 				error(MODPREFIX "out of memory");
-				parse_sun_cleanup(name, options, path, myoptions);
+				parse_sun_cleanup(mc, name, options, path, myoptions);
 				return 1;
 			}
 
@@ -1222,7 +1224,7 @@ int parse_mount(struct autofs_point *ap, const char *name,
 				ent = dequote(p, l = chunklen(p, check_colon(p)));
 				if (!ent) {
 					error(MODPREFIX "out of memory");
-					parse_sun_cleanup(name,
+					parse_sun_cleanup(mc, name,
 						options, path, myoptions);
 					return 1;
 				}
@@ -1230,7 +1232,7 @@ int parse_mount(struct autofs_point *ap, const char *name,
 				loc = realloc(loc, strlen(loc) + l + 2);
 				if (!loc) {
 					error(MODPREFIX "out of memory");
-					parse_sun_cleanup(name,
+					parse_sun_cleanup(mc, name,
 						options, path, myoptions);
 					free(ent);
 					return 1;
@@ -1245,22 +1247,22 @@ int parse_mount(struct autofs_point *ap, const char *name,
 				p = skipspace(p);
 			}
 
-			status = add_offset_entry(name,
-					m_root, m_root_len,
-					path, myoptions, loc, age);
+			status = add_offset_entry(mc, name,
+						m_root, m_root_len,
+						path, myoptions, loc, age);
 
 			if (!strcmp(path, "/")) {
 				root_path = strdup(path);
 				if (!root_path) {
 					error(MODPREFIX "out of memory");
-					parse_sun_cleanup(name,
+					parse_sun_cleanup(mc, name,
 						options, path, myoptions);
 					return 1;
 				}
 				root_loc = strdup(loc);
 				if (!root_loc) {
 					error(MODPREFIX "out of memory");
-					parse_sun_cleanup(name,
+					parse_sun_cleanup(mc, name,
 						options, path, myoptions);
 					free(root_path);
 					return 1;
@@ -1268,7 +1270,7 @@ int parse_mount(struct autofs_point *ap, const char *name,
 				root_options = strdup(myoptions);
 				if (!root_options) {
 					error(MODPREFIX "out of memory");
-					parse_sun_cleanup(name,
+					parse_sun_cleanup(mc, name,
 						options, path, myoptions);
 					free(root_loc);
 					free(root_path);
@@ -1290,17 +1292,17 @@ int parse_mount(struct autofs_point *ap, const char *name,
 
 			if (rv < 0) {
 				error("mount multi-mount root %s failed", name);
-				cache_writelock();
-				cache_delete_offset_list(name);
-				cache_unlock();
+				cache_writelock(mc);
+				cache_delete_offset_list(mc, name);
+				cache_unlock(mc);
 				return rv;
 			}
 		}
 
-		cache_readlock();
+		cache_readlock(mc);
 		if (mount_multi_triggers(ap, m_root, me, "/") < 0)
 			error("failed to mount offset triggers");
-		cache_unlock();
+		cache_unlock(mc);
 
 		free(options);
 
@@ -1375,8 +1377,8 @@ int parse_mount(struct autofs_point *ap, const char *name,
 		 * If it's a multi-mount insert the triggers
 		 * These are always direct mount triggers so root = ""
 		 */
-		cache_readlock();
-		me = cache_lookup(name);
+		cache_readlock(mc);
+		me = cache_lookup(mc, name);
 		if (me && me->multi) {
 			char *m_key = me->multi->key;
 			int start;
@@ -1387,7 +1389,7 @@ int parse_mount(struct autofs_point *ap, const char *name,
 				start = strlen(m_key);
 			} else {
 				start = strlen(ap->path) + strlen(m_key) + 1;
-				pthread_cleanup_push(cache_lock_cleanup, NULL);
+				pthread_cleanup_push(cache_lock_cleanup, mc);
 				m_root = alloca(start + 1);
 				pthread_cleanup_pop(0);
 				if (!m_root) {
@@ -1406,7 +1408,7 @@ int parse_mount(struct autofs_point *ap, const char *name,
 			if (mount_multi_triggers(ap, m_root, me->multi, base) < 0)
 				error("failed to mount offset triggers");
 		}
-		cache_unlock();
+		cache_unlock(mc);
 	}
 	return rv;
 }
