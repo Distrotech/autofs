@@ -1,4 +1,4 @@
-#ident "$Id: automount.c,v 1.52 2006/03/03 01:30:00 raven Exp $"
+#ident "$Id: automount.c,v 1.53 2006/03/03 17:19:29 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  automount.c - Linux automounter daemon
@@ -484,7 +484,7 @@ void expire_cleanup(void *arg)
 			/* If we're a submount and we've just
 			   pruned or expired everything away,
 			   try to shut down */
-			if (ap->submount && success && ap->state != ST_SHUTDOWN) {
+			if (ap->submount && !success && ap->state != ST_SHUTDOWN) {
 				next = ST_SHUTDOWN_PENDING;
 				break;
 			}
