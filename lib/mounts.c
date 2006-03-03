@@ -1,4 +1,4 @@
-#ident "$Id: mounts.c,v 1.15 2006/02/20 01:05:32 raven Exp $"
+#ident "$Id: mounts.c,v 1.16 2006/03/03 01:30:00 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  mounts.c - module for Linux automount mount table lookup functions
@@ -24,36 +24,79 @@
 
 #include "automount.h"
 
+#define MAX_OPTIONS_LEN		80
+#define MAX_MNT_NAME_LEN	30
+
+static const char options_template[]       = "fd=%d,pgrp=%u,minproto=5,maxproto=%d";
+static const char options_template_extra[] = "fd=%d,pgrp=%u,minproto=5,maxproto=%d,%s";
+static const char mnt_name_template[]      = "automount(pid%u)";
+
 /*
  * Make common autofs mount options string
  */
-int make_options_string(char *options, int options_len, int pipefd, char *extra)
+char *make_options_string(char *path, int pipefd, char *extra)
 {
+	char *options;
 	int len;
 
+	options = malloc(MAX_OPTIONS_LEN + 1);
+	if (!options) {
+		crit("can't malloc options string");
+		return NULL;
+	}
+
 	if (extra) 
-		len = snprintf(options, options_len,
-				"fd=%d,pgrp=%u,minproto=2,maxproto=%d,%s",
+		len = snprintf(options, MAX_OPTIONS_LEN,
+				options_template_extra,
 				pipefd, (unsigned) getpgrp(),
 				AUTOFS_MAX_PROTO_VERSION, extra);
 	else
-		len = snprintf(options, options_len,
-			"fd=%d,pgrp=%u,minproto=2,maxproto=%d",
+		len = snprintf(options, MAX_OPTIONS_LEN, options_template,
 			pipefd, (unsigned) getpgrp(),
 			AUTOFS_MAX_PROTO_VERSION);
 
-	if (len >= options_len) {
+	if (len >= MAX_OPTIONS_LEN) {
 		crit("buffer to small for options - truncated");
-		len = options_len - 1;
+		len = MAX_OPTIONS_LEN - 1;
 	}
 
 	if (len < 0) {
-		crit("failed setting up autofs mount options");
-		return 0;
+		crit("failed to malloc autofs mount options for %s", path);
+		free(options);
+		return NULL;
 	}
 	options[len] = '\0';
 
-	return 1;
+	return options;
+}
+
+char *make_mnt_name_string(char *path)
+{
+	char *mnt_name;
+	int len;
+
+	mnt_name = malloc(MAX_MNT_NAME_LEN + 1);
+	if (!mnt_name) {
+		crit("can't malloc mnt_name string");
+		return NULL;
+	}
+
+	len = snprintf(mnt_name, MAX_MNT_NAME_LEN,
+			mnt_name_template, (unsigned) getpid());
+
+	if (len >= MAX_MNT_NAME_LEN) {
+		crit("buffer to small for mnt_name - truncated");
+		len = MAX_MNT_NAME_LEN - 1;
+	}
+
+	if (len < 0) {
+		crit("failed setting up mnt_name for autofs path %s", path);
+		free(mnt_name);
+		return NULL;
+	}
+	mnt_name[len] = '\0';
+
+	return mnt_name;
 }
 
 /*

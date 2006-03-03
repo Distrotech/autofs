@@ -1,4 +1,4 @@
-#ident "$Id: direct.c,v 1.11 2006/02/25 06:20:36 raven Exp $"
+#ident "$Id: direct.c,v 1.12 2006/03/03 01:30:00 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  direct.c - Linux automounter direct mount handling
@@ -41,18 +41,48 @@
 
 #include "automount.h"
 
-#define MAX_OPTIONS_LEN			128
-#define MAX_MNT_NAME_LEN		128
-#define REMOUNT_OPTIONS_LEN		30
-
-static char options[MAX_OPTIONS_LEN];	/* common mount options string */
 /*
 static int kernel_pipefd = -1;		kernel pipe fd for use in direct mounts
 */
 
 extern pthread_attr_t detach_attr;
 
-extern int submount;
+struct mnt_params {
+	char *name;
+	char *options;
+};
+
+pthread_key_t key_mnt_direct_params;
+pthread_key_t key_mnt_offset_params;
+pthread_once_t key_mnt_params_once = PTHREAD_ONCE_INIT;
+
+static void key_mnt_params_destroy(void *arg)
+{
+	struct mnt_params *mp;
+
+	mp = (struct mnt_params *) arg;
+	if (mp->name)
+		free(mp->name);
+	if (mp->options)
+		free(mp->options);
+	free(mp);
+	return;
+}
+
+static void key_mnt_params_init(void)
+{
+	int status;
+
+	status = pthread_key_create(&key_mnt_direct_params, key_mnt_params_destroy);
+	if (status)
+		fatal(status);
+
+	status = pthread_key_create(&key_mnt_offset_params, key_mnt_params_destroy);
+	if (status)
+		fatal(status);
+
+	return;
+}
 
 static int autofs_init_direct(struct autofs_point *ap, char *path)
 {
@@ -183,36 +213,59 @@ int umount_autofs_direct(struct autofs_point *ap)
 		me = cache_enumerate(me);
 	}
 	cache_unlock();
-	free(ap->path);
 
 	return 0;
 }
 
+
 int do_mount_autofs_direct(struct autofs_point *ap, struct mapent_cache *me, int now)
 {
+	struct mnt_params *mp;
 	time_t timeout = ap->exp_timeout;
-	char our_name[MAX_MNT_NAME_LEN];
-	int name_len = MAX_MNT_NAME_LEN;
 	struct stat st;
-	int len, ret;
+	int status, ret;
 
 	if (is_mounted(_PROC_MOUNTS, me->key)) {
 		debug("trigger %s already mounted", me->key);
 		return 0;
 	}
 
-	len = snprintf(our_name, name_len,
-			"automount(pid%u)", (unsigned) getpid());
+	status = pthread_once(&key_mnt_params_once, key_mnt_params_init);
+	if (status)
+		fatal(status);
 
-	if (len >= name_len) {
-		crit("buffer to small for our_name - truncated");
-		len = name_len - 1;
+	mp = pthread_getspecific(key_mnt_direct_params);
+	if (!mp) {
+		mp = (struct mnt_params *) malloc(sizeof(struct mnt_params));
+		if (!mp) {
+			crit("mnt_params value create failed for direct mount %s",
+				ap->path);
+			return 0;
+		}
+		mp->name = NULL;
+		mp->options = NULL;
+
+		status = pthread_setspecific(key_mnt_direct_params, mp);
+		if (status) {
+			free(mp);
+			fatal(status);
+		}
 	}
-        if (len < 0) {
-                crit("failed setting up our_name for autofs path %s", me->key);
-                return 0;
-        }
-	our_name[len] = '\0';
+
+	if (!mp->name) {
+		mp->name = make_mnt_name_string(ap->path);
+		if (!mp->name)
+			return 0;
+	}
+
+	if (!mp->options) {
+		mp->options = make_options_string(ap->path, ap->kpipefd, "direct");
+		if (!mp->name) {
+			free(mp->name);
+			mp->name = NULL;
+			return 0;
+		}
+	}
 
 	/* In case the directory doesn't exist, try to mkdir it */
 	if (mkdir_path(me->key, 0555) < 0) {
@@ -228,8 +281,9 @@ int do_mount_autofs_direct(struct autofs_point *ap, struct mapent_cache *me, int
 		me->dir_created = 1;
 	}
 
-	if (spawnl(LOG_DEBUG, PATH_MOUNT, PATH_MOUNT,
-		   "-t", "autofs", "-n", "-o", options, our_name, me->key, NULL) != 0) {
+	ret = spawnl(LOG_DEBUG, PATH_MOUNT, PATH_MOUNT, "-t", "autofs",
+			"-n", "-o", mp->options, mp->name, me->key, NULL);
+	if (ret != 0) {
 		crit("failed to mount autofs path %s", me->key);
 		goto out_err;
 	}
@@ -314,20 +368,11 @@ out_err:
 
 int mount_autofs_direct(struct autofs_point *ap, char *path)
 {
-	int map;
 	time_t now = time(NULL);
+	int map;
 
 	if (autofs_init_direct(ap, path))
 		return -1;
-
-	if (!make_options_string(options, MAX_OPTIONS_LEN, ap->kpipefd, "direct")) {
-		close(ap->state_pipe[0]);
-		close(ap->state_pipe[1]);
-		close(ap->pipefd);
-		close(ap->kpipefd);
-		free(ap->path);
-		return -1;
-	}
 
 	/* TODO: check map type */
 	if (!lookup_nss_read_map(ap, now)) {
@@ -413,32 +458,52 @@ force_umount:
 
 int mount_autofs_offset(struct autofs_point *ap, struct mapent_cache *me, int is_autofs_fs)
 {
+	struct mnt_params *mp;
 	time_t timeout = ap->exp_timeout;
-	char our_name[MAX_MNT_NAME_LEN];
-	int name_len = MAX_MNT_NAME_LEN;
 	struct stat st;
-	int len, ret;
-
-	if (!make_options_string(options, MAX_OPTIONS_LEN, ap->kpipefd, "offset"))
-		return -1;
+	int status, ret;
 
 	if (is_mounted(_PROC_MOUNTS, me->key)) {
 		debug("trigger %s already mounted", me->key);
 		return 0;
 	}
 
-	len = snprintf(our_name, name_len,
-			"automount(pid%u)", (unsigned) getpid());
+	status = pthread_once(&key_mnt_params_once, key_mnt_params_init);
+	if (status)
+		fatal(status);
 
-	if (len >= name_len) {
-		crit("buffer to small for our_name - truncated");
-		len = name_len - 1;
+	mp = pthread_getspecific(key_mnt_offset_params);
+	if (!mp) {
+		mp = (struct mnt_params *) malloc(sizeof(struct mnt_params));
+		if (!mp) {
+			crit("mnt_params value create failed for offset mount %s",
+				me->key);
+			return 0;
+		}
+		mp->name = NULL;
+		mp->options = NULL;
+
+		status = pthread_setspecific(key_mnt_offset_params, mp);
+		if (status) {
+			free(mp);
+			fatal(status);
+		}
 	}
-        if (len < 0) {
-                crit("failed setting up our_name for autofs path %s", me->key);
-                return 0;
-        }
-	our_name[len] = '\0';
+
+	if (!mp->name) {
+		mp->name = make_mnt_name_string(ap->path);
+		if (!mp->name)
+			return 0;
+	}
+
+	if (!mp->options) {
+		mp->options = make_options_string(ap->path, ap->kpipefd, "offset");
+		if (!mp->name) {
+			free(mp->name);
+			mp->name = NULL;
+			return 0;
+		}
+	}
 
 	if (is_autofs_fs) {
 		/* In case the directory doesn't exist, try to mkdir it */
@@ -472,10 +537,10 @@ int mount_autofs_offset(struct autofs_point *ap, struct mapent_cache *me, int is
 	}
 
 	debug("calling mount -t autofs " SLOPPY "-o %s %s %s",
-		options, our_name, me->key);
+		mp->options, mp->name, me->key);
 
 	ret = spawnl(LOG_DEBUG, PATH_MOUNT, PATH_MOUNT, "-t", "autofs",
-			 "-n", SLOPPYOPT "-o", options, our_name, me->key, NULL);
+		     "-n", SLOPPYOPT "-o", mp->options, mp->name, me->key, NULL);
 	if (ret != 0) {
 		crit("failed to mount autofs offset trigger %s", me->key);
 		goto out_err;

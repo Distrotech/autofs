@@ -1,4 +1,4 @@
-#ident "$Id: automount.c,v 1.51 2006/02/25 01:39:28 raven Exp $"
+#ident "$Id: automount.c,v 1.52 2006/03/03 01:30:00 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  automount.c - Linux automounter daemon
@@ -45,8 +45,6 @@ static pid_t my_pgrp;		/* The "magic" process group */
 static pid_t my_pid;		/* The pid of this process */
 static char *pid_file = NULL;	/* File in which to keep pid */
 
-int submount = 0;
-
 /* Attribute to create detached thread */
 pthread_attr_t detach_attr;
 
@@ -65,14 +63,9 @@ struct autofs_point ap;
 #define AUTOFS_SYSLOG_CONTEXT {-1, 0, 0, LOG_PID, (const char *)0, LOG_DAEMON, 0xff};
 
 #define DEFAULT_GHOST_MODE	0
-
-#define EXIT_CHECK_TIME		2000	/* Total time to wait before retry */
-#define EXIT_CHECK_DELAY	200	/* Time interval to check if exited */
-
-#define MAX_OPEN_FILES  10240
+#define MAX_OPEN_FILES		10240
 
 int do_mount_autofs_direct(struct autofs_point *ap, struct mapent_cache *me, int now);
-
 static int umount_all(struct autofs_point *ap, int force);
 
 int mkdir_path(const char *path, mode_t mode)
@@ -218,7 +211,7 @@ static int umount_ent(struct autofs_point *ap, const char *path, const char *typ
 	int sav_errno;
 	int is_smbfs = (strcmp(type, "smbfs") == 0);
 	int status;
-	int rv = 0;
+	int rv = 1;
 
 	status = lstat(path, &st);
 	sav_errno = errno;
@@ -288,11 +281,11 @@ static int walk_tree(const char *base, int (*fn) (const char *file,
 
 static int rm_unwanted_fn(const char *file, const struct stat *st, int when, void *arg)
 {
-	int rmsymlink = *(int *) arg;
+	dev_t dev = *(int *) arg;
 	struct stat newst;
 
 	if (when == 0) {
-		if (st->st_dev != ap.dev)
+		if (st->st_dev != dev)
 			return 0;
 		return 1;
 	}
@@ -302,7 +295,7 @@ static int rm_unwanted_fn(const char *file, const struct stat *st, int when, voi
 		return 0;
 	}
 
-	if (newst.st_dev != ap.dev) {
+	if (newst.st_dev != dev) {
 		crit("file %s has the wrong device, possible race condition",
 			file);
 		return 0;
@@ -317,26 +310,26 @@ static int rm_unwanted_fn(const char *file, const struct stat *st, int when, voi
 	} else if (S_ISREG(newst.st_mode)) {
 		crit("attempting to remove files from a mounted directory");
 		return 0;
-	} else if (S_ISLNK(newst.st_mode) && rmsymlink) {
+	} else if (S_ISLNK(newst.st_mode)) {
 		debug("removing symlink %s", file);
 		unlink(file);
 	}
 	return 1;
 }
 
-void rm_unwanted(const char *path, int incl, int rmsymlink)
+void rm_unwanted(const char *path, int incl, dev_t dev)
 {
-	walk_tree(path, rm_unwanted_fn, incl, &rmsymlink);
+	walk_tree(path, rm_unwanted_fn, incl, &dev);
 }
 
-static void check_rm_dirs(const char *path, int incl)
+static void check_rm_dirs(struct autofs_point *ap, const char *path, int incl)
 {
-	if ((!ap.ghost) ||
-	    (ap.state == ST_SHUTDOWN_PENDING ||
-	     ap.state == ST_SHUTDOWN))
-		rm_unwanted(path, incl, 1);
-	else if (ap.ghost && (ap.type == LKP_INDIRECT))
-		rm_unwanted(path, 0, 1);
+	if ((!ap->ghost) ||
+	    (ap->state == ST_SHUTDOWN_PENDING ||
+	     ap->state == ST_SHUTDOWN))
+		rm_unwanted(path, incl, ap->dev);
+	else if (ap->ghost && (ap->type == LKP_INDIRECT))
+		rm_unwanted(path, 0, ap->dev);
 }
 
 /* umount all filesystems mounted under path.  If incl is true, then
@@ -357,7 +350,7 @@ int umount_multi(struct autofs_point *ap, const char *path, int incl)
 	mnts = get_mnt_list(_PATH_MOUNTED, path, incl);
 	if (!mnts) {
 		debug("no mounts found under %s", path);
-		check_rm_dirs(path, incl);
+		check_rm_dirs(ap, path, incl);
 		return 0;
 	}
 
@@ -372,7 +365,7 @@ int umount_multi(struct autofs_point *ap, const char *path, int incl)
 
 	/* Delete detritus like unwanted mountpoints and symlinks */
 	if (left == 0)
-		check_rm_dirs(path, incl);
+		check_rm_dirs(ap, path, incl);
 
 	return left;
 }
@@ -491,7 +484,7 @@ void expire_cleanup(void *arg)
 			/* If we're a submount and we've just
 			   pruned or expired everything away,
 			   try to shut down */
-			if (submount && success && ap->state != ST_SHUTDOWN) {
+			if (ap->submount && success && ap->state != ST_SHUTDOWN) {
 				next = ST_SHUTDOWN_PENDING;
 				break;
 			}
@@ -817,7 +810,7 @@ static int st_prune(struct autofs_point *ap)
 
 	switch (expire_proc(ap, 1)) {
 	case EXP_DONE:
-		if (submount)
+		if (ap->submount)
 			return st_prepare_shutdown(ap);
 		/* FALLTHROUGH */
 
@@ -841,7 +834,7 @@ static int st_expire(struct autofs_point *ap)
 
 	switch (expire_proc(ap, 0)) {
 	case EXP_DONE:
-		if (submount)
+		if (ap->submount)
 			return st_prepare_shutdown(ap);
 		/* FALLTHROUGH */
 
@@ -1040,7 +1033,7 @@ static int handle_packet(struct autofs_point *ap)
 	return -1;
 }
 
-static void become_daemon(void)
+static void become_daemon(struct autofs_point *ap)
 {
 	FILE *pidfp;
 	char buf[MAX_ERR_BUF];
@@ -1051,7 +1044,7 @@ static void become_daemon(void)
 	chdir("/");
 
 	/* Detach from foreground process */
-	if (!submount) {
+	if (!ap->submount) {
 		pid = fork();
 		if (pid > 0) {
 			exit(0);
@@ -1079,7 +1072,7 @@ static void become_daemon(void)
 	 * ouselves from the controling tty. This ensures we don't get unexpected
 	 * signals. This call also sets us as the process group leader.
 	 */
-	if (!submount && (setsid() == -1)) {
+	if (!ap->submount && (setsid() == -1)) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
 		crit("setsid: %s", estr);
 		exit(1);
@@ -1119,21 +1112,25 @@ static void become_daemon(void)
  * cleanup_exit() is valid to call once we have daemonized
  */
 
-void cleanup_exit(const char *path, int exit_code)
+void cleanup_exit(struct autofs_point *ap, int exit_code)
 {
 	char buf[MAX_ERR_BUF];
 
-	if (pid_file)
+	if (pid_file) {
 		unlink(pid_file);
+		pid_file = NULL;
+	}
 
 	closelog();
 
-	if ((!ap.ghost || !submount) && (*(path + 1) != '-') && ap.dir_created)
-		if (rmdir(path) == -1) {
+	if ((!ap->ghost || !ap->submount) &&
+			(ap->path[1] != '-') && ap->dir_created)
+		if (rmdir(ap->path) == -1) {
 			char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-			warn("failed to remove dir %s: %s", path, estr);
+			warn("failed to remove dir %s: %s", ap->path, estr);
 		}
 
+	free(ap->path);
 	cache_release();
 	exit(exit_code);
 }
@@ -1226,7 +1223,7 @@ int handle_mounts(struct autofs_point *ap, char *path)
 	if (mount_autofs(ap, path) < 0) {
 		crit("%s: mount failed!", path);
 		umount_autofs(ap, 1);
-		cleanup_exit(path, 1);
+		cleanup_exit(ap, 1);
 	}
 
 	if (ap->ghost && ap->type != LKP_DIRECT)
@@ -1235,7 +1232,7 @@ int handle_mounts(struct autofs_point *ap, char *path)
 	/* Initialization successful.  If we're a submount, send outselves
 	   SIGSTOP to let our parent know that we have grown up and don't
 	   need supervision anymore. */
-	if (submount)
+	if (ap->submount)
 		kill(my_pid, SIGSTOP);
 
 	/* We often start several automounters at the same time.  Add some
@@ -1247,12 +1244,19 @@ int handle_mounts(struct autofs_point *ap, char *path)
 		if (handle_packet(ap)) {
 			int ret;
 
+			status = pthread_mutex_lock(&state_mutex);
+			if (status)
+				fatal(status);
+
 			/*
 			 * For a direct mount map all mounts have already gone
 			 * by the time we get here.
 			 */
 			if (ap->type == LKP_DIRECT) {
 				status = 1;
+				status = pthread_mutex_unlock(&state_mutex);
+				if (status)
+					fatal(status);
 				break;
 			}
 
@@ -1262,18 +1266,30 @@ int handle_mounts(struct autofs_point *ap, char *path)
 			 * AUTOFS_IOC_ASKUMOUNT and just continue.
 			 */
 
-			if (ret == -1)
+			if (ret == -1) {
+				status = pthread_mutex_unlock(&state_mutex);
+				if (status)
+					fatal(status);
 				break;
+			}
 
 			/* OK to exit */
-			if (status)
+			if (status) {
+				status = pthread_mutex_unlock(&state_mutex);
+				if (status)
+					fatal(status);
 				break;
+			}
 
 			/* Failed shutdown returns to ready */
 			warn("can't shutdown: filesystem %s still busy",
 					ap->path);
 			alarm(ap->exp_runfreq);
 			ap->state = ST_READY;
+
+			status = pthread_mutex_unlock(&state_mutex);
+			if (status)
+				fatal(status);
 		}
 	}
 
@@ -1286,6 +1302,8 @@ int handle_mounts(struct autofs_point *ap, char *path)
 
 	/* Close down */
 	umount_autofs(ap, 1);
+	msg("shut down, path = %s", ap->path);
+	cleanup_exit(ap, 0);
 
 	return 0;
 }
@@ -1306,7 +1324,7 @@ int main(int argc, char *argv[])
 		{"debug", 0, 0, 'd'},
 		{"version", 0, 0, 'V'},
 		{"ghost", 0, 0, 'g'},
-		{"submount", 0, &submount, 1},
+		{"submount", 0, &ap.submount, 1},
 		{0, 0, 0, 0}
 	};
 
@@ -1319,6 +1337,7 @@ int main(int argc, char *argv[])
 	ap.ghost = DEFAULT_GHOST_MODE;
 	ap.type = LKP_INDIRECT;
 	ap.dir_created = 0; /* We haven't created the main directory yet */
+	ap.submount = 0;
 	cache_init();
 
 	opterr = 0;
@@ -1374,7 +1393,7 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
-	become_daemon();
+	become_daemon(&ap);
 
 	path = argv[0];
 	if (argv[1][0] == '\0')
@@ -1399,13 +1418,13 @@ int main(int argc, char *argv[])
 
 	if (pthread_attr_init(&detach_attr)) {
 		crit("failed to init thread attribute struct!");
-		cleanup_exit(path, 1);
+		cleanup_exit(&ap, 1);
 	}
 
 	if (pthread_attr_setdetachstate(
 			&detach_attr, PTHREAD_CREATE_DETACHED)) {
 		crit("failed to set detached thread attribute!");
-		cleanup_exit(path, 1);
+		cleanup_exit(&ap, 1);
 	}
 
 	sigfillset(&allsigs);
@@ -1413,12 +1432,12 @@ int main(int argc, char *argv[])
 
 	if (!sigchld_start_handler()) {
 		crit("failed to create SIGCHLD handler thread!");
-		cleanup_exit(path, 1);
+		cleanup_exit(&ap, 1);
 	}
 
 	if (pthread_create(&thid, &detach_attr, statemachine, NULL)) {
 		crit("failed to create signal handler thread!");
-		cleanup_exit(path, 1);
+		cleanup_exit(&ap, 1);
 	}
 
 	if (map && (mapfmt = strchr(map, ',')))
@@ -1437,8 +1456,5 @@ int main(int argc, char *argv[])
 
 	handle_mounts(&ap, path);
 
-	msg("shut down, path = %s", path);
-
-	cleanup_exit(path, 0);
 	exit(0);
 }

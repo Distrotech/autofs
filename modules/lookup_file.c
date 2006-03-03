@@ -1,4 +1,4 @@
-#ident "$Id: lookup_file.c,v 1.26 2006/03/01 23:51:13 raven Exp $"
+#ident "$Id: lookup_file.c,v 1.27 2006/03/03 01:30:00 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup_file.c - module for Linux automount to query a flat file map
@@ -636,9 +636,9 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 		if (status == CHE_COMPLETED)
 			return NSS_STATUS_SUCCESS;
 
-		if (status) {
+		if (status == CHE_FAIL) {
 			debug(MODPREFIX "check indirect map lookup failed");
-			return status;
+			return NSS_STATUS_NOTFOUND;
 		}
 	}
 

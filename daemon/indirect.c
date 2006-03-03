@@ -1,4 +1,4 @@
-#ident "$Id: indirect.c,v 1.9 2006/02/25 01:39:28 raven Exp $"
+#ident "$Id: indirect.c,v 1.10 2006/03/03 01:30:00 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  indirect.c - Linux automounter indirect mount handling
@@ -39,18 +39,11 @@
 
 #include "automount.h"
 
-#define MAX_OPTIONS_LEN         128
-#define MAX_MNT_NAME_LEN        128
-
-static char options[MAX_OPTIONS_LEN];   /* common mount options string */
 /*
 static int kernel_pipefd = -1;           kernel pipe fd for use in direct mounts
 */
 
 extern pthread_attr_t detach_attr;
-
-extern int submount;
-
 
 static int autofs_init_indirect(struct autofs_point *ap, char *path)
 {
@@ -103,29 +96,24 @@ static int autofs_init_indirect(struct autofs_point *ap, char *path)
 static int do_mount_autofs_indirect(struct autofs_point *ap)
 {
 	time_t timeout = ap->exp_timeout;
-	char our_name[MAX_MNT_NAME_LEN];
-	int name_len = MAX_MNT_NAME_LEN;
+	char *options = NULL;
+	char *name = NULL;
 	struct stat st;
-	int len;
+	int ret;
 
 	if (is_mounted(_PROC_MOUNTS, ap->path)) {
 		error("already mounted");
 		goto out_err;
 	}
 
-	len = snprintf(our_name, name_len,
-			"automount(pid%u)", (unsigned) getpid());
-	if (len >= name_len) {
-		crit("buffer to small for our_name - truncated");
-		len = name_len - 1;
-	}
-        if (len < 0) {
-                crit("failed setting up our_name for autofs path %s",
-		     ap->path);
-                return 0;
-        }
-	our_name[len] = '\0';
-	
+	options = make_options_string(ap->path, ap->kpipefd, NULL);
+	if (!options)
+		goto out_err;
+
+	name = make_mnt_name_string(ap->path);
+	if (!name)
+		goto out_err;
+
 	/* In case the directory doesn't exist, try to mkdir it */
 	if (mkdir_path(ap->path, 0555) < 0) {
 		if (errno != EEXIST && errno != EROFS) {
@@ -140,11 +128,18 @@ static int do_mount_autofs_indirect(struct autofs_point *ap)
 		ap->dir_created = 1;
 	}
 
-	if (spawnl(LOG_DEBUG, PATH_MOUNT, PATH_MOUNT,
-		   "-t", "autofs", "-n", "-o", options, our_name, ap->path, NULL) != 0) {
+	ret = spawnl(LOG_DEBUG, PATH_MOUNT, PATH_MOUNT,
+		   "-t", "autofs", "-n", "-o", options, name, ap->path, NULL);
+	if (ret != 0) {
 		crit("failed to mount autofs path %s", ap->path);
 		goto out_rmdir;
 	}
+
+	free(name);
+	name = NULL;
+	free(options);
+	options = NULL;
+
 /*
 	close(kernel_pipefd);
 	kernel_pipefd = -1;
@@ -206,6 +201,10 @@ out_rmdir:
 	if (ap->dir_created)
 		rmdir_path(ap->path);
 out_err:
+	if (options)
+		free(options);
+	if (name)
+		free(name);
 	close(ap->state_pipe[0]);
 	close(ap->state_pipe[1]);
 	close(ap->pipefd);
@@ -223,15 +222,6 @@ int mount_autofs_indirect(struct autofs_point *ap, char *path)
 
         if (autofs_init_indirect(ap, path))
 		return -1;
-
-	if (!make_options_string(options, MAX_OPTIONS_LEN, ap->kpipefd, NULL)) {
-		close(ap->state_pipe[0]);
-		close(ap->state_pipe[1]);
-		close(ap->pipefd);
-		close(ap->kpipefd);
-		free(ap->path);
-		return -1;
-	}
 
 	status = do_mount_autofs_indirect(ap);
 	if (status < 0)
@@ -253,7 +243,8 @@ int mount_autofs_indirect(struct autofs_point *ap, char *path)
 		} else {
 			error("failed to load map, exiting");
 		}
-		rm_unwanted(ap->path, 1, 1);
+		rm_unwanted(ap->path, 1, ap->dev);
+		/* TODO: Process cleanup ?? */
 		return -1;
 	}
 
@@ -309,10 +300,9 @@ force_umount:
 		warn("forcing umount of %s\n", ap->path);
 	} else {
 		msg("umounted %s\n", ap->path);
-		if (submount)
-			rm_unwanted(ap->path, 1, 1);
+		if (ap->submount)
+			rm_unwanted(ap->path, 1, ap->dev);
 	}
-	free(ap->path);
 
 	return rv;
 }
@@ -360,7 +350,7 @@ void *expire_proc_indirect(void *arg)
 		 * with offsets in it) and we use the usual ioctlfd.
 		 * The next->path is the full path so an indirect mount
 		 * won't be found by a cache_lookup, never the less it's
-		 * a mount under ap.path.
+		 * a mount under ap->path.
 		 */
 		cache_readlock();
 		me = cache_lookup(next->path);

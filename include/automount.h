@@ -1,4 +1,4 @@
-#ident "$Id: automount.h,v 1.29 2006/03/01 23:51:13 raven Exp $"
+#ident "$Id: automount.h,v 1.30 2006/03/03 01:30:00 raven Exp $"
 /*
  * automount.h
  *
@@ -311,7 +311,8 @@ struct mnt_list {
 	struct list_head list;
 };
 
-int make_options_string(char *options, int options_len, int kernel_pipefd, char *extra);
+char *make_options_string(char *path, int kernel_pipefd, char *extra);
+char *make_mnt_name_string(char *path);
 struct mnt_list *get_mnt_list(const char *table, const char *path, int include);
 struct mnt_list *reverse_mnt_list(struct mnt_list *list);
 struct mnt_list *get_base_mnt_list(struct mnt_list *list);
@@ -396,8 +397,8 @@ struct autofs_point {
 	struct lookup_mod *lookup;	/* Lookup module */
 	enum states state;
 	int state_pipe[2];
-	unsigned dir_created;		/* Was a directory created for this
-					   mount? */
+	unsigned dir_created;		/* Directory created for this mount? */
+	int submount;			/* Is this a submount */
 };
 
 /* Standard functions used by daemon or modules */
@@ -423,10 +424,10 @@ int handle_packet_expire_indirect(struct autofs_point *ap, autofs_packet_expire_
 int handle_packet_expire_direct(struct autofs_point *ap, autofs_packet_expire_direct_t *pkt);
 int handle_packet_missing_indirect(struct autofs_point *ap, autofs_packet_missing_indirect_t *pkt);
 int handle_packet_missing_direct(struct autofs_point *ap, autofs_packet_missing_direct_t *pkt);
-void rm_unwanted(const char *path, int incl, int rmsymlink);
+void rm_unwanted(const char *path, int incl, dev_t dev);
 int count_mounts(const char *path);
 void expire_cleanup(void *arg);
-void cleanup_exit(const char *path, int exit_code);
+void cleanup_exit(struct autofs_point *ap, int exit_code);
 
 /* Define logging functions */
 
