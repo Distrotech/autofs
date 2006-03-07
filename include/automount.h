@@ -1,4 +1,4 @@
-#ident "$Id: automount.h,v 1.32 2006/03/07 20:00:18 raven Exp $"
+#ident "$Id: automount.h,v 1.33 2006/03/07 23:16:41 raven Exp $"
 /*
  * automount.h
  *
@@ -458,7 +458,6 @@ int handle_packet_missing_direct(struct autofs_point *ap, autofs_packet_missing_
 void rm_unwanted(const char *path, int incl, dev_t dev);
 int count_mounts(struct autofs_point *ap, const char *path);
 void expire_cleanup(void *arg);
-void cleanup_exit(struct autofs_point *ap, int exit_code);
 
 /* Expire alarm handling routines */
 int alarm_start_handler(void);

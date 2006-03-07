@@ -1,4 +1,4 @@
-#ident "$Id: automount.c,v 1.55 2006/03/07 20:00:18 raven Exp $"
+#ident "$Id: automount.c,v 1.56 2006/03/07 23:16:41 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  automount.c - Linux automounter daemon
@@ -1197,11 +1197,7 @@ static void become_daemon(struct autofs_point *ap)
 	}
 }
 
-/*
- * cleanup_exit() is valid to call once we have daemonized
- */
-
-void cleanup_exit(struct autofs_point *ap, int exit_code)
+static void cleanup(struct autofs_point *ap)
 {
 	char buf[MAX_ERR_BUF];
 	int status;
@@ -1214,21 +1210,13 @@ void cleanup_exit(struct autofs_point *ap, int exit_code)
 	closelog();
 
 	if ((!ap->ghost || !ap->submount) &&
-			(ap->path[1] != '-') && ap->dir_created)
+			(ap->path[1] != '-') && ap->dir_created) {
 		if (rmdir(ap->path) == -1) {
 			char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
 			warn("failed to remove dir %s: %s", ap->path, estr);
 		}
-
+	}
 	free_autofs_point(ap);
-
-	sc.status = exit_code;
-	sc.done = 1;
-	status = pthread_cond_signal(&sc.cond);
-	if (status)
-		fatal(status);
-
-	pthread_exit(NULL);
 }
 
 static unsigned long getnumopt(char *str, char option)
@@ -1361,18 +1349,22 @@ void *handle_mounts(void *arg)
 		crit("%s: mount failed!", ap->path);
 		umount_autofs(ap, 1);
 		return_start_status(&sc, 1);
-		cleanup_exit(ap, 1);
+		cleanup(ap);
+		pthread_exit(1);
 	}
 
-	status = pthread_mutex_lock(&state_mutex);
-	if (status)
-		fatal(status);
+	/* If we're a submount we're owned by someone else */
+	if (!ap->submount) {
+		status = pthread_mutex_lock(&state_mutex);
+		if (status)
+			fatal(status);
 
-	list_add(&ap->mounts, &mounts);
+		list_add(&ap->mounts, &mounts);
 
-	status = pthread_mutex_unlock(&state_mutex);
-	if (status)
-		fatal(status);
+		status = pthread_mutex_unlock(&state_mutex);
+		if (status)
+			fatal(status);
+	}
 
 	if (ap->ghost && ap->type != LKP_DIRECT)
 		msg("ghosting enabled");
@@ -1438,14 +1430,6 @@ void *handle_mounts(void *arg)
 		}
 	}
 
-
-	/* Mop up remaining kids - expire_cleanup frees ex */
-/*
-	ex = malloc(sizeof(struct expire_args));
-	ex->ap = ap;
-	ex->status = status;
-	expire_cleanup(ex);
-*/
 	/* Close down */
 	umount_autofs(ap, 1);
 	msg("shut down, path = %s", ap->path);
@@ -1454,7 +1438,7 @@ void *handle_mounts(void *arg)
 	if (status)
 		fatal(status);
 
-	list_del(&ap->mounts);
+	cleanup(ap);
 
 	/* If we are the last tell the state machine to shutdown */
 	if (list_empty(&mounts))
@@ -1464,10 +1448,7 @@ void *handle_mounts(void *arg)
 	if (status)
 		fatal(status);
 
-
-	cleanup_exit(ap, 0);
-
-	return 0;
+	return NULL;
 }
 
 struct autofs_point *
@@ -1721,7 +1702,8 @@ int main(int argc, char *argv[])
 
 	if (!alarm_start_handler()) {
 		crit("failed to create alarm handler thread!");
-		cleanup_exit(ap, 1);
+		cleanup(ap);
+		pthread_exit(NULL);
 	}
 
 	sigfillset(&allsigs);
@@ -1729,13 +1711,15 @@ int main(int argc, char *argv[])
 
 	if (!sigchld_start_handler()) {
 		crit("failed to create SIGCHLD handler thread!");
-		cleanup_exit(ap, 1);
+		cleanup(ap);
+		pthread_exit(NULL);
 	}
 
 	status = pthread_mutex_lock(&sc.mutex);
 	if (status) {
 		crit("failed to lock startup condition mutex!");
-		cleanup_exit(ap, 1);
+		cleanup(ap);
+		pthread_exit(NULL);
 	}
 
 	sc.done = 0;
@@ -1744,12 +1728,16 @@ int main(int argc, char *argv[])
 	path = strdup(ap->path);
 	if (!path) {
 		error("malloc failure");
-		cleanup_exit(ap, 1);
+		pthread_mutex_unlock(&sc.mutex);
+		cleanup(ap);
+		pthread_exit(NULL);
 	}
 
 	if (pthread_create(&thid, &detach_attr, handle_mounts, ap)) {
-		crit("failed to create mount handler threadi for %s", path);
-		cleanup_exit(ap, 1);
+		crit("failed to create mount handler thread for %s", path);
+		pthread_mutex_unlock(&sc.mutex);
+		cleanup(ap);
+		pthread_exit(NULL);
 	}
 	ap->thid = thid;
 
@@ -1762,6 +1750,10 @@ int main(int argc, char *argv[])
 
 	if (sc.status) {
 		error("failed to startup mount %s", path);
+		free(path);
+		pthread_mutex_unlock(&sc.mutex);
+		cleanup(ap);
+		pthread_exit(NULL);
 	}
 
 	free(path);

@@ -34,6 +34,7 @@
 - convert mapent cache to live within autofs_point struct.
 - convert submounts to use a thread instead of a process.
 - fix rootless multi-mount as target of direct mount.
+- fix sub-mount brakage following above.
 
 11/4/2005 autofs-4.1.4
 ----------------------
