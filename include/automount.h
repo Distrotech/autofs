@@ -1,4 +1,4 @@
-#ident "$Id: automount.h,v 1.31 2006/03/03 21:48:23 raven Exp $"
+#ident "$Id: automount.h,v 1.32 2006/03/07 20:00:18 raven Exp $"
 /*
  * automount.h
  *
@@ -183,7 +183,6 @@ int spawnv(int ogpri, const char *prog, const char *const *argv);
 void reset_signals(void);
 void ignore_signals(void);
 void discard_pending(int sig);
-int signal_children(int sig);
 int do_mount(struct autofs_point *ap, const char *root, const char *name,
 	     int name_len, const char *what, const char *fstype,
 	     const char *options);
@@ -313,6 +312,7 @@ int rpc_time(const char *host,
 struct mnt_list {
 	char *path;
 	char *fs_type;
+	char *opts;
 	pid_t pid;
 	time_t last_access;
 	struct mnt_list *next;
@@ -338,6 +338,13 @@ void add_ordered_list(struct mnt_list *ent, struct list_head *head);
 int xopen(const char *path, int flags);
 
 /* Core automount definitions */
+
+struct startup_cond {
+	pthread_mutex_t mutex;
+	pthread_cond_t  cond;
+	unsigned int done;
+	unsigned int status;
+};
 
 struct readmap_cond {
 	pthread_mutex_t mutex;
@@ -386,7 +393,15 @@ struct kernel_mod_version {
 	unsigned int minor;
 };
 
+struct autofs_master {
+	char *map;
+	unsigned int timeout;
+	unsigned int logging;
+	struct autofs_point *ap;
+};
+
 struct autofs_point {
+	pthread_t thid;
 	char *path;			/* Mount point name */
 	int pipefd;			/* File descriptor for pipe */
 	int kpipefd;			/* Kernel end descriptor for pipe */
@@ -406,24 +421,31 @@ struct autofs_point {
 	enum states state;
 	int state_pipe[2];
 	unsigned dir_created;		/* Directory created for this mount? */
-	int submount;			/* Is this a submount */
+	unsigned int submount;		/* Is this a submount */
+	pthread_mutex_t mounts_mutex;	/* Protect mount lists */
+	struct list_head mounts;	/* List of mounts */
+	struct list_head submounts;	/* List of child submounts */
 	struct mapent_cache *mc;	/* Mapentry lookup table for this path */
 };
 
 /* Standard functions used by daemon or modules */
 
+struct autofs_point *
+new_autofs_point(char *path, char *type, char *fmt, time_t timeout,
+                 unsigned ghost, int argc, const char **argv,
+                 int submount);
+void free_autofs_point(struct autofs_point *ap);
+void *handle_mounts(void *arg);
 int umount_multi(struct autofs_point *ap, const char *path, int incl);
 int send_ready(int ioctlfd, unsigned int wait_queue_token);
 int send_fail(int ioctlfd, unsigned int wait_queue_token);
-/*int handle_expire(const char *name, int namelen,
-			int ioctlfd, autofs_wqt_t token); */
-int umount_offsets(struct autofs_point *ap, const char *path);
+void nextstate(int statefd, enum states next);
 int do_expire(struct autofs_point *ap, const char *name, int namelen);
 void *expire_proc_indirect(void *);
 void *expire_proc_direct(void *);
 int expire_offsets_direct(struct autofs_point *ap, struct mapent *me, int now);
-int mount_autofs_indirect(struct autofs_point *ap, char *path);
-int mount_autofs_direct(struct autofs_point *ap, char *path);
+int mount_autofs_indirect(struct autofs_point *ap);
+int mount_autofs_direct(struct autofs_point *ap);
 int mount_autofs_offset(struct autofs_point *ap, struct mapent *me, int is_autofs_fs);
 int umount_autofs(struct autofs_point *ap, int force);
 int umount_autofs_indirect(struct autofs_point *ap);
@@ -434,9 +456,14 @@ int handle_packet_expire_direct(struct autofs_point *ap, autofs_packet_expire_di
 int handle_packet_missing_indirect(struct autofs_point *ap, autofs_packet_missing_indirect_t *pkt);
 int handle_packet_missing_direct(struct autofs_point *ap, autofs_packet_missing_direct_t *pkt);
 void rm_unwanted(const char *path, int incl, dev_t dev);
-int count_mounts(const char *path);
+int count_mounts(struct autofs_point *ap, const char *path);
 void expire_cleanup(void *arg);
 void cleanup_exit(struct autofs_point *ap, int exit_code);
+
+/* Expire alarm handling routines */
+int alarm_start_handler(void);
+int alarm_insert(struct autofs_point *ap, time_t seconds);
+void alarm_remove(struct autofs_point *ap);
 
 /* Define logging functions */
 

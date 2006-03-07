@@ -1,4 +1,4 @@
-#ident "$Id: spawn.c,v 1.18 2006/02/23 14:12:03 raven Exp $"
+#ident "$Id: spawn.c,v 1.19 2006/03/07 20:00:18 raven Exp $"
 /* ----------------------------------------------------------------------- *
  * 
  *  spawn.c - run programs synchronously with output redirected to syslog
@@ -27,9 +27,6 @@
 #include <sys/stat.h>
 
 #include "automount.h"
-
-/* Make gcc happy */
-pid_t getpgid(pid_t);
 
 /*
  * SIGCHLD handling.
@@ -130,10 +127,9 @@ int sigchld_start_handler(void)
 	int status;
 
 	status = pthread_create(&sm.thid, &detach_attr, sigchld, NULL);
-	if (status) {
-		error("failed to create SIGCHLD handler thread");
+	if (status)
 		return 0;
-	}
+
 	return 1;
 }
 
@@ -272,93 +268,6 @@ void discard_pending(int sig)
 
 	sigaction(sig, &sa, &oldsa);
 	sigaction(sig, &oldsa, NULL);
-}
-
-/*
- * Process group signals each child in the process group the given signal.
- * For us we must signal deepest mount path to shortest to avoid mount
- * busy on exit.
- */
-int signal_children(int sig)
-{
-	struct mnt_list *mnts = get_mnt_list(_PROC_MOUNTS, "/", 0);
-	struct mnt_list *next;
-	pid_t pgrp = getpgrp();
-	int ret = -1;
-
-	if (!mnts) {
-		warn("no mounts found");
-		goto out;
-	}
-
-	debug("send sig %d to process group %d", sig, pgrp);
-
-	next = mnts;
-	while (next) {
-		/* 30 * 100000000 ns = 3 secs */
-		int tries = 30;
-		int status;
-		struct mnt_list *this = next;
-		pid_t pid = this->pid;
-
-		next = this->next;
-
-		if (!pid)
-			continue;
-
-		/* Don't signal ourselves */
-		if (pid == pgrp)
-			continue;
-
-		/* Only signal members of our process group */
-		if (getpgid(pid) != pgrp)
-			continue;
-
-		if (strncmp(this->fs_type, "autofs", 6))
-			continue;
-
-		/* Gone in between */
-		if (kill(pid, SIGCONT) == -1 && errno == ESRCH)
-			continue;
-
-		debug("signal %s %d", this->path, pid);
-
-		status = kill(pid, sig);
-		if (status)
-			goto out;
-
-		while (tries--) {
-			struct timespec t = { 0, 100000000L };
-			struct timespec r;
-
-			/* For a prune event delay a little and pass it on */
-/*
-			if (sig == SIGUSR1)
-				break;
-*/
-			if (kill(pid, SIGCONT) == -1 && errno == ESRCH)
-				break;
-
-			while ((status = nanosleep(&t, &r))) {
-				if (errno == EINTR) {
-					memcpy(&t, &r, sizeof(struct timespec));
-					continue;
-				}
-				debug("nanosleep returned unexpected error"
-				      " %d\n", errno);
-				break;
-			}
-		}
-
-		if (sig != SIGUSR1 && tries < 0) {
-			warn("child process %d did not exit - giving up.",pid);
-			goto out;
-		}
-	}
-	ret = 0;
-out:
-	free_mnt_list(mnts);
-	return ret;
 }
 
 #define ERRBUFSIZ 2047		/* Max length of error string excl \0 */

@@ -1,4 +1,4 @@
-#ident "$Id: cache.c,v 1.24 2006/03/03 21:48:23 raven Exp $"
+#ident "$Id: cache.c,v 1.25 2006/03/07 20:00:18 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  cache.c - mount entry cache management routines
@@ -35,7 +35,7 @@ void cache_dump_multi(struct list_head *list)
 
 	list_for_each(p, list) {
 		me = list_entry(p, struct mapent, multi_list);
-		info("key = %s", me->key);
+		info("key=%s", me->key);
 	}
 }
 
@@ -49,7 +49,8 @@ void cache_dump_cache(struct mapent_cache *mc)
 		if (me == NULL)
 			continue;
 		while (me) {
-			info("me->key=%s me->multi=%p", me->key, me->multi);
+			info("me->key=%s me->multi=%p dev=%ld ino=%ld",
+				me->key, me->multi, me->dev, me->ino);
 			me = me->next;
 		}
 	}
@@ -466,7 +467,8 @@ int cache_add_offset(struct mapent_cache *mc, const char *mkey, const char *key,
 	if (!owner)
 		return CHE_FAIL;
 
-	if (cache_add(mc, key, mapent, age) != CHE_OK) {
+	ret = cache_update(mc, key, mapent, age);
+	if (ret == CHE_FAIL) {
 		warn("failed to add key %s to cache", key);
 		return CHE_FAIL;
 	}

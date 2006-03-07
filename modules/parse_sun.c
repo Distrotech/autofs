@@ -1,4 +1,4 @@
-#ident "$Id: parse_sun.c,v 1.40 2006/03/03 21:48:23 raven Exp $"
+#ident "$Id: parse_sun.c,v 1.41 2006/03/07 20:00:18 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  parse_sun.c - module for Linux automountd to parse a Sun-format
@@ -965,16 +965,17 @@ static int mount_multi_triggers(struct autofs_point *ap, char *root, struct mape
 	struct stat st;
 	unsigned int is_autofs_fs;
 	int ret, start;
+	int count = 0, at_least_one = 0;
 
 	fs_path_len = strlen(root) + strlen(base);
 	if (fs_path_len > PATH_MAX)
-		return -1;
+		return 0;
 
 	strcpy(path, root);
 	strcat(path, base);
 	ret = statfs(path, &fs);
 	if (ret == -1)
-		return -1;
+		return 0;
 
 	is_autofs_fs = fs.f_type == AUTOFS_SUPER_MAGIC ? 1 : 0;
 
@@ -982,6 +983,8 @@ static int mount_multi_triggers(struct autofs_point *ap, char *root, struct mape
 	offset = cache_get_offset(base, offset, start, &me->multi_list, &pos);
 	while (offset) {
 		int plen = fs_path_len + strlen(offset);
+
+		count++;
 
 		if (plen > PATH_MAX) {
 			warn("path loo long");
@@ -1007,12 +1010,14 @@ static int mount_multi_triggers(struct autofs_point *ap, char *root, struct mape
 
 		if (mount_autofs_offset(ap, oe, is_autofs_fs) < 0)
 			warn("failed to mount offset");
+		else
+			at_least_one++;
 cont:
 		offset = cache_get_offset(base,
 				offset, start, &me->multi_list, &pos);
 	}
 
-	return 0;
+	return count ? at_least_one : 1;
 }
 
 static void parse_sun_cleanup(struct mapent_cache *mc, const char *name,
@@ -1300,8 +1305,10 @@ int parse_mount(struct autofs_point *ap, const char *name,
 		}
 
 		cache_readlock(mc);
-		if (mount_multi_triggers(ap, m_root, me, "/") < 0)
+		if (!mount_multi_triggers(ap, m_root, me, "/")) {
 			error("failed to mount offset triggers");
+			rv = 1;
+		}
 		cache_unlock(mc);
 
 		free(options);
@@ -1405,8 +1412,10 @@ int parse_mount(struct autofs_point *ap, const char *name,
 
 			base = &me->key[start];
 
-			if (mount_multi_triggers(ap, m_root, me->multi, base) < 0)
+			if (!mount_multi_triggers(ap, m_root, me->multi, base)) {
 				error("failed to mount offset triggers");
+				rv = 1;
+			}
 		}
 		cache_unlock(mc);
 	}

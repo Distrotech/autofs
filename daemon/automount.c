@@ -1,4 +1,4 @@
-#ident "$Id: automount.c,v 1.54 2006/03/03 21:48:22 raven Exp $"
+#ident "$Id: automount.c,v 1.55 2006/03/07 20:00:18 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  automount.c - Linux automounter daemon
@@ -51,13 +51,14 @@ pthread_attr_t detach_attr;
 /* Serialize state transitions */
 pthread_mutex_t state_mutex = PTHREAD_MUTEX_INITIALIZER;
 
+struct startup_cond sc = {
+	PTHREAD_MUTEX_INITIALIZER, PTHREAD_COND_INITIALIZER, 0, 0};
+
 struct expire_cond ec = {
 	PTHREAD_MUTEX_INITIALIZER, PTHREAD_COND_INITIALIZER, NULL, 0, 0};
 
 struct readmap_cond rc = {
 	PTHREAD_MUTEX_INITIALIZER, PTHREAD_COND_INITIALIZER, 0, NULL, 0, 0};
-
-struct autofs_point ap;
 
 /* re-entrant syslog default context data */
 #define AUTOFS_SYSLOG_CONTEXT {-1, 0, 0, LOG_PID, (const char *)0, LOG_DAEMON, 0xff};
@@ -67,6 +68,8 @@ struct autofs_point ap;
 
 int do_mount_autofs_direct(struct autofs_point *ap, struct mapent *me, int now);
 static int umount_all(struct autofs_point *ap, int force);
+
+LIST_HEAD(mounts);
 
 int mkdir_path(const char *path, mode_t mode)
 {
@@ -126,7 +129,7 @@ int rmdir_path(const char *path)
 	return 0;
 }
 
-int umount_offsets(struct autofs_point *ap, const char *base)
+static int umount_offsets(struct autofs_point *ap, const char *base)
 {
 	char path[PATH_MAX + 1];
 	char *offset = path;
@@ -323,6 +326,38 @@ void rm_unwanted(const char *path, int incl, dev_t dev)
 	walk_tree(path, rm_unwanted_fn, incl, &dev);
 }
 
+struct counter_args {
+	unsigned int count;
+	dev_t dev;
+};
+
+static int counter_fn(const char *file, const struct stat *st, int when, void *arg)
+{
+	struct counter_args *counter = (struct counter_args *) arg;
+
+	if (S_ISLNK(st->st_mode) || (S_ISDIR(st->st_mode) 
+		&& st->st_dev != counter->dev)) {
+		counter->count++;
+		return 0;
+	}
+
+	return 1;
+}
+
+/* Count mounted filesystems and symlinks */
+int count_mounts(struct autofs_point *ap, const char *path)
+{
+	struct counter_args counter;
+
+	counter.count = 0;
+	counter.dev = ap->dev;
+	
+	if (walk_tree(path, counter_fn, 0, &counter) == -1)
+		return -1;
+
+	return counter.count;
+}
+
 static void check_rm_dirs(struct autofs_point *ap, const char *path, int incl)
 {
 	if ((!ap->ghost) ||
@@ -348,12 +383,16 @@ int umount_multi(struct autofs_point *ap, const char *path, int incl)
 		return 0;
 	}
 
+	debug("umounted offsets");
+
 	mnts = get_mnt_list(_PATH_MOUNTED, path, incl);
 	if (!mnts) {
 		debug("no mounts found under %s", path);
 		check_rm_dirs(ap, path, incl);
 		return 0;
 	}
+
+	debug("got mnts %p", mnts);
 
 	left = 0;
 	for (mptr = mnts; mptr != NULL; mptr = mptr->next) {
@@ -398,10 +437,16 @@ int umount_autofs(struct autofs_point *ap, int force)
 		status = umount_autofs_direct(ap);
 	}
 
+	if (ap->submount) {
+		pthread_mutex_lock(&ap->mounts_mutex);
+		list_del_init(&ap->mounts);
+		pthread_mutex_unlock(&ap->mounts_mutex);
+	}
+
 	return status;
 }
 
-static void nextstate(int statefd, enum states next)
+void nextstate(int statefd, enum states next)
 {
 	char buf[MAX_ERR_BUF];
 
@@ -479,7 +524,8 @@ void expire_cleanup(void *arg)
 
 		switch (ap->state) {
 		case ST_EXPIRE:
-			alarm(ap->exp_runfreq);
+			if (!ap->submount)
+				alarm_insert(ap, ap->exp_runfreq);
 			/* FALLTHROUGH */
 		case ST_PRUNE:
 			/* If we're a submount and we've just
@@ -503,7 +549,8 @@ void expire_cleanup(void *arg)
 			/* Failed shutdown returns to ready */
 			warn("can't shutdown: filesystem %s still busy",
 			     ap->path);
-			alarm(ap->exp_runfreq);
+			if (!ap->submount)
+				alarm_insert(ap, ap->exp_runfreq);
 			next = ST_READY;
 			break;
 
@@ -533,30 +580,6 @@ static int st_ready(struct autofs_point *ap)
 	ap->state = ST_READY;
 
 	return 0;
-}
-
-static int counter_fn(const char *file, const struct stat *st, int when, void *arg)
-{
-	int *countp = (int *) arg;
-
-	if (S_ISLNK(st->st_mode) || (S_ISDIR(st->st_mode) 
-		&& st->st_dev != ap.dev)) {
-		(*countp)++;
-		return 0;
-	}
-
-	return 1;
-}
-
-/* Count mounted filesystems and symlinks */
-int count_mounts(const char *path)
-{
-	int count = 0;
-
-	if (walk_tree(path, counter_fn, 0, &count) == -1)
-		return -1;
-
-	return count;
 }
 
 enum expire {
@@ -703,11 +726,82 @@ static void *do_readmap(void *arg)
 	return NULL;
 }
 
+static int notify_mounts(struct autofs_point *ap, enum states state)
+{
+	struct list_head *head = &ap->submounts;
+	struct list_head *p;
+	struct autofs_point *this;
+	/* 30 * 100000000 ns = 3 secs */
+	int tries = 30;
+	int status = 0;
+
+	pthread_mutex_lock(&ap->mounts_mutex);
+	if (list_empty(head)) {
+		pthread_mutex_unlock(&ap->mounts_mutex);
+		return 1;
+	}
+
+	list_for_each(p, head) {
+		this = list_entry(p, struct autofs_point, mounts);
+		nextstate(this->state_pipe[1], state);
+	}
+	pthread_mutex_unlock(&ap->mounts_mutex);
+
+	/*
+	 * If we are shuting down or expiring we need to give the
+	 * threads a chance to exit. If they don't make it iin time
+	 * then they have to wait till next time. Hence we may need
+	 * multiple signals to exit or expire mounts with several
+	 * levels of submounts.
+	 */
+	if (state != ST_SHUTDOWN_PENDING &&
+	    state != ST_EXPIRE &&
+	    state != ST_PRUNE)
+		return 1;
+
+	status = pthread_mutex_unlock(&state_mutex);
+	if (status) {
+		error("state mutex unlock failed");
+		return 0;
+	}
+
+	while (tries--) {
+		struct timespec t = { 0, 100000000L };
+		struct timespec r;
+
+		pthread_mutex_lock(&ap->mounts_mutex);
+		if (list_empty(head)) {
+			pthread_mutex_unlock(&ap->mounts_mutex);
+			status = 1;
+			break;
+		}
+		pthread_mutex_unlock(&ap->mounts_mutex);
+
+		while (nanosleep(&t, &r)) {
+			if (errno == EINTR) {
+				memcpy(&t, &r, sizeof(struct timespec));
+				continue;
+			}
+			debug("nanosleep returned unexpected error"
+			      " %d\n", errno);
+		}
+	}
+
+	status = pthread_mutex_lock(&state_mutex);
+	if (status)
+		error("state mutex lock failed");
+
+	return status;
+}
+
 static int st_readmap(struct autofs_point *ap)
 {
 	pthread_t thid;
 	int status;
 	int now = time(NULL);
+
+	/* If we have submounts pass on message */
+	notify_mounts(ap, ST_READMAP);
 
 	assert(ap->state == ST_READY);
 	ap->state = ST_READMAP;
@@ -765,27 +859,25 @@ static int st_prepare_shutdown(struct autofs_point *ap)
 
 	debug("state = %d\n", ap->state);
 
+	/* Turn off timeouts for this mountpoint */
+	if (!ap->submount)
+		alarm_remove(ap);
+
+	/* If we have submounts pass on message */
+	notify_mounts(ap, ST_SHUTDOWN_PENDING);
+
 	assert(ap->state == ST_READY || ap->state == ST_EXPIRE);
 	ap->state = ST_SHUTDOWN_PENDING;
 
-	/* Turn off timeouts */
-	alarm(0);
-
-	/* Where're the boss, tell everyone to finish up */
-	if (getpid() == getpgrp()) 
-		signal_children(SIGUSR2);
-
 	/* Unmount everything */
 	exp = expire_proc(ap, 1);
-
-	debug("expire returns %d\n", exp);
-
 	switch (exp) {
 	case EXP_ERROR:
 	case EXP_PARTIAL:
 		/* It didn't work: return to ready */
 		ap->state = ST_READY;
-		alarm(ap->exp_runfreq);
+		if (!ap->submount)
+			alarm_insert(ap, ap->exp_runfreq);
 		return 0;
 
 	case EXP_DONE:
@@ -803,12 +895,11 @@ static int st_prune(struct autofs_point *ap)
 {
 	debug("state = %d\n", ap->state);
 
+	/* If we have submounts pass on message */
+	notify_mounts(ap, ST_PRUNE);
+
 	assert(ap->state == ST_READY);
 	ap->state = ST_PRUNE;
-
-	/* We're the boss, pass on the prune event */
-	if (getpid() == getpgrp()) 
-		signal_children(SIGUSR1);
 
 	switch (expire_proc(ap, 1)) {
 	case EXP_DONE:
@@ -831,6 +922,9 @@ static int st_expire(struct autofs_point *ap)
 {
 	debug("state = %d\n", ap->state);
 
+	/* If we have submounts pass on message */
+	notify_mounts(ap, ST_EXPIRE);
+
 	assert(ap->state == ST_READY);
 	ap->state = ST_EXPIRE;
 
@@ -843,7 +937,8 @@ static int st_expire(struct autofs_point *ap)
 	case EXP_ERROR:
 	case EXP_PARTIAL:
 		ap->state = ST_READY;
-		alarm(ap->exp_runfreq);
+		if (!ap->submount)
+			alarm_insert(ap, ap->exp_runfreq);
 		return 1;
 
 	case EXP_STARTED:
@@ -989,17 +1084,14 @@ int do_expire(struct autofs_point *ap, const char *name, int namelen)
 	return ret;
 }
 
-static int mount_autofs(struct autofs_point *ap, char *path)
+static int mount_autofs(struct autofs_point *ap)
 {
 	int status = 0;
 
-	if (!strcmp(path, "/-")) {
-		ap->type = LKP_DIRECT;
-		status = mount_autofs_direct(ap, path);
-	} else {
-		ap->type = LKP_INDIRECT;
-		status = mount_autofs_indirect(ap, path);
-	}
+	if (ap->type == LKP_DIRECT)
+		status = mount_autofs_direct(ap);
+	else
+		status = mount_autofs_indirect(ap);
 
 	if (status < 0)
 		return -1;
@@ -1046,15 +1138,13 @@ static void become_daemon(struct autofs_point *ap)
 	chdir("/");
 
 	/* Detach from foreground process */
-	if (!ap->submount) {
-		pid = fork();
-		if (pid > 0) {
-			exit(0);
-		} else if (pid < 0) {
-			fprintf(stderr, "%s: Could not detach process\n",
-				program);
-			exit(1);
-		}
+	pid = fork();
+	if (pid > 0) {
+		exit(0);
+	} else if (pid < 0) {
+		fprintf(stderr, "%s: Could not detach process\n",
+			program);
+		exit(1);
 	}
 
 	/* Setup logging */
@@ -1065,16 +1155,13 @@ static void become_daemon(struct autofs_point *ap)
 
 	/*
 	 * Make our own process group for "magic" reason: processes that share
-	 * our pgrp see the raw filesystem behind the magic.  So if we are a 
-	 * submount, don't change -- otherwise we won't be able to actually
-	 * perform the mount.  A pgrp is also useful for controlling all the
-	 * child processes we generate. 
+	 * our pgrp see the raw filesystem behind the magic.
 	 *
 	 * IMK: we now use setsid instead of setpgrp so that we also disassociate
 	 * ouselves from the controling tty. This ensures we don't get unexpected
 	 * signals. This call also sets us as the process group leader.
 	 */
-	if (!ap->submount && (setsid() == -1)) {
+	if ((setsid() == -1)) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
 		crit("setsid: %s", estr);
 		exit(1);
@@ -1117,6 +1204,7 @@ static void become_daemon(struct autofs_point *ap)
 void cleanup_exit(struct autofs_point *ap, int exit_code)
 {
 	char buf[MAX_ERR_BUF];
+	int status;
 
 	if (pid_file) {
 		unlink(pid_file);
@@ -1132,9 +1220,15 @@ void cleanup_exit(struct autofs_point *ap, int exit_code)
 			warn("failed to remove dir %s: %s", ap->path, estr);
 		}
 
-	cache_release(ap);
-	free(ap->path);
-	exit(exit_code);
+	free_autofs_point(ap);
+
+	sc.status = exit_code;
+	sc.done = 1;
+	status = pthread_cond_signal(&sc.cond);
+	if (status)
+		fatal(status);
+
+	pthread_exit(NULL);
 }
 
 static unsigned long getnumopt(char *str, char option)
@@ -1158,8 +1252,10 @@ static void usage(void)
 }
 
 /* Deal with all the signal-driven events in the state machine */
-static void *statemachine(void *dummy)
+static void *statemachine(void *arg)
 {
+	struct autofs_point *ap = NULL;
+	struct list_head *p = NULL;
 	enum states next = ST_INVAL;
 	sigset_t sigset;
 	int sig, status;
@@ -1178,69 +1274,115 @@ static void *statemachine(void *dummy)
 			goto done;
 		}
 
-		next = ap.state;
-		state_pipe = ap.state_pipe[1];
-
-		switch (sig) {
-		case SIGTERM:
-		case SIGUSR2:
-			if (ap.state != ST_SHUTDOWN)
-				nextstate(state_pipe, next = ST_SHUTDOWN_PENDING);
-			break;
-
-		case SIGUSR1:
-			assert(ap.state == ST_READY);
-			nextstate(state_pipe, next = ST_PRUNE);
-			break;
-
-		case SIGALRM:
-			assert(ap.state == ST_READY);
-			nextstate(state_pipe, next = ST_EXPIRE);
-			break;
-
-		case SIGHUP:
-			assert(ap.state == ST_READY);
-			nextstate(state_pipe, next = ST_READMAP);
-			break;
-
-		default:
-			error("got unexpected signal %d!", sig);
-			continue;
+		if (list_empty(&mounts)) {
+			status = pthread_mutex_unlock(&state_mutex);
+			if (status)
+				error("state mutex unlock failed");
+			return NULL;
 		}
-done:
-		debug("sig %d switching from %d to %d",
-			sig, ap.state, next);
 
-		status = pthread_mutex_unlock(&state_mutex);
-		if (status)
-			error("state mutex unlock failed");
+		list_for_each(p, &mounts) {
+			ap = list_entry(p, struct autofs_point, mounts);
+			state_pipe = ap->state_pipe[1];
+
+			switch (sig) {
+			case SIGTERM:
+			case SIGUSR2:
+				if (ap->state != ST_SHUTDOWN) {
+					next = ST_SHUTDOWN_PENDING;
+					nextstate(state_pipe, next);
+				} else if (ap->state == ST_SHUTDOWN) {
+					if (ap->submount)
+						break;
+					status = pthread_mutex_unlock(&state_mutex);
+					if (status)
+						error("state mutex unlock failed");
+					return NULL;
+				}
+				break;
+
+			case SIGUSR1:
+				assert(ap->state == ST_READY);
+				next = ST_PRUNE;
+				nextstate(state_pipe, next);
+				break;
+
+			case SIGHUP:
+				assert(ap->state == ST_READY);
+				next = ST_READMAP;
+				nextstate(state_pipe, next);
+				break;
+
+			default:
+				error("got unexpected signal %d!", sig);
+				continue;
+			}
+done:
+			debug("sig %d switching from %d to %d",
+				sig, ap->state, next);
+
+			status = pthread_mutex_unlock(&state_mutex);
+			if (status)
+				error("state mutex unlock failed");
+		}
 	}
 }
 
-int handle_mounts(struct autofs_point *ap, char *path)
+static void return_start_status(struct startup_cond *sc, unsigned int status)
 {
-	struct expire_args *ex;
+	sc->done = 1;
+	sc->status = status;
+
+	/*
+	 * Startup condition mutex must be locked during 
+	 * the startup process.
+	 */
+	status = pthread_cond_signal(&sc->cond);
+	if (status)
+		fatal(status);
+
+	status = pthread_mutex_unlock(&sc->mutex);
+	if (status)
+		fatal(status);
+}
+
+void *handle_mounts(void *arg)
+{
+	struct autofs_point *ap = (struct autofs_point *) arg;
 	int status = 0;
 
-	if (mount_autofs(ap, path) < 0) {
-		crit("%s: mount failed!", path);
+	status = pthread_mutex_lock(&sc.mutex);
+	if (status) {
+		crit("failed to lock startup condition mutex!");
+		fatal(status);
+	}
+
+	if (mount_autofs(ap) < 0) {
+		crit("%s: mount failed!", ap->path);
 		umount_autofs(ap, 1);
+		return_start_status(&sc, 1);
 		cleanup_exit(ap, 1);
 	}
+
+	status = pthread_mutex_lock(&state_mutex);
+	if (status)
+		fatal(status);
+
+	list_add(&ap->mounts, &mounts);
+
+	status = pthread_mutex_unlock(&state_mutex);
+	if (status)
+		fatal(status);
 
 	if (ap->ghost && ap->type != LKP_DIRECT)
 		msg("ghosting enabled");
 
-	/* Initialization successful.  If we're a submount, send outselves
-	   SIGSTOP to let our parent know that we have grown up and don't
-	   need supervision anymore. */
-	if (ap->submount)
-		kill(my_pid, SIGSTOP);
+	return_start_status(&sc, 0);
 
 	/* We often start several automounters at the same time.  Add some
 	   randomness so we don't all expire at the same time. */
-	if (ap->exp_timeout)
-		alarm(ap->exp_runfreq + my_pid % ap->exp_runfreq);
+	if (!ap->submount && ap->exp_timeout)
+		alarm_insert(ap, ap->exp_runfreq + my_pid % ap->exp_runfreq);
 
 	while (ap->state != ST_SHUTDOWN) {
 		if (handle_packet(ap)) {
@@ -1286,7 +1428,8 @@ int handle_mounts(struct autofs_point *ap, char *path)
 			/* Failed shutdown returns to ready */
 			warn("can't shutdown: filesystem %s still busy",
 					ap->path);
-			alarm(ap->exp_runfreq);
+			if (!ap->submount)
+				alarm_insert(ap, ap->exp_runfreq);
 			ap->state = ST_READY;
 
 			status = pthread_mutex_unlock(&state_mutex);
@@ -1297,25 +1440,158 @@ int handle_mounts(struct autofs_point *ap, char *path)
 
 
 	/* Mop up remaining kids - expire_cleanup frees ex */
+/*
 	ex = malloc(sizeof(struct expire_args));
 	ex->ap = ap;
 	ex->status = status;
 	expire_cleanup(ex);
-
+*/
 	/* Close down */
 	umount_autofs(ap, 1);
 	msg("shut down, path = %s", ap->path);
+
+	status = pthread_mutex_lock(&state_mutex);
+	if (status)
+		fatal(status);
+
+	list_del(&ap->mounts);
+
+	/* If we are the last tell the state machine to shutdown */
+	if (list_empty(&mounts))
+		kill(getpid(), SIGUSR2);
+
+	status = pthread_mutex_unlock(&state_mutex);
+	if (status)
+		fatal(status);
+
+
 	cleanup_exit(ap, 0);
 
 	return 0;
 }
 
+struct autofs_point *
+new_autofs_point(char *path, char *type, char *fmt, time_t timeout,
+		 unsigned ghost, int argc, const char **argv,
+		 int submount) 
+{
+	struct autofs_point *ap;
+	int status;
+
+	ap = malloc(sizeof(struct autofs_point));
+	if (!ap)
+		return NULL;
+
+	memset(ap, 0, sizeof(struct autofs_point));
+
+	ap->state = ST_INIT;
+
+	ap->mc = cache_init(ap);
+	if (!ap->mc) {
+		free(ap);
+		return NULL;
+	}
+
+	ap->path = strdup(path);
+	if (!ap->path) {
+		free(ap->mc);
+		free(ap);
+		return NULL;
+	}
+
+	if (type) {
+		ap->maptype = strdup(type);
+		if (!ap->maptype) {
+			free(ap->path);
+			free(ap->mc);
+			free(ap);
+			return NULL;
+		}
+	} else
+		ap->maptype = type;
+
+	if (fmt) {
+		ap->mapfmt = strdup(fmt);
+		if (!ap->mapfmt) {
+			free(ap->maptype);
+			free(ap->path);
+			free(ap->mc);
+			free(ap);
+			return NULL;
+		}
+	} else
+		ap->mapfmt = fmt;
+
+	ap->mapargc = argc;
+	ap->mapargv = copy_argv(argc, argv);
+	if (!ap->mapargv) {
+		free(ap->mapfmt);
+		free(ap->maptype);
+		free(ap->path);
+		free(ap->mc);
+		free(ap);
+		return NULL;
+	}
+
+	ap->exp_timeout = timeout;
+	ap->exp_runfreq = (timeout + CHECK_RATIO - 1) / CHECK_RATIO;
+	ap->ghost = ghost;
+
+	if (path[1] == '-')
+		ap->type = LKP_DIRECT;
+	else
+		ap->type = LKP_INDIRECT;
+
+	ap->dir_created = 0;
+
+	ap->submount = submount;
+	INIT_LIST_HEAD(&ap->mounts);
+	INIT_LIST_HEAD(&ap->submounts);
+
+	status = pthread_mutex_init(&ap->mounts_mutex, NULL);
+	if (status) {
+		free(ap->mapfmt);
+		free(ap->maptype);
+		free(ap->path);
+		free(ap->mc);
+		free(ap);
+		return NULL;
+	}
+
+	return ap;
+}
+
+void free_autofs_point(struct autofs_point *ap)
+{
+	int status;
+
+	cache_release(ap);
+	free(ap->path);
+	if (ap->maptype)
+		free(ap->maptype);
+	if (ap->mapfmt)
+		free(ap->mapfmt);
+	free_argv(ap->mapargc, ap->mapargv);
+	if (!list_empty(&ap->mounts)) {
+		pthread_mutex_lock(&ap->mounts_mutex);
+		list_del(&ap->mounts);
+		pthread_mutex_unlock(&ap->mounts_mutex);
+	}
+	status = pthread_mutex_destroy(&ap->mounts_mutex);
+	if (status)
+		warn("failed to destroy mounts_mutex");
+	free(ap);
+}
+
 int main(int argc, char *argv[])
 {
+	pthread_t thid;
+	struct autofs_point *ap;
 	char *path, *map, *mapfmt = NULL;
 	const char **mapargv;
-	int mapargc, opt, res;
-	pthread_t thid;
+	int mapargc, opt, res, status;
+	unsigned ghost;
+	time_t timeout;
 	sigset_t allsigs;
 	struct rlimit rlim;
 	static const struct option long_options[] = {
@@ -1326,24 +1602,22 @@ int main(int argc, char *argv[])
 		{"debug", 0, 0, 'd'},
 		{"version", 0, 0, 'V'},
 		{"ghost", 0, 0, 'g'},
-		{"submount", 0, &ap.submount, 1},
 		{0, 0, 0, 0}
 	};
 
 	program = argv[0];
+	timeout = DEFAULT_TIMEOUT;
+	ghost = DEFAULT_GHOST_MODE;
 
-	/* Initialize ap so we can test for null */
-	memset(&ap, 0, sizeof ap);
+	if (pthread_attr_init(&detach_attr)) {
+		fprintf(stderr, "%s: failed to init thread attribute struct!",
+			program);
+		exit(1);
+	}
 
-	ap.exp_timeout = DEFAULT_TIMEOUT;
-	ap.exp_runfreq = (ap.exp_timeout + CHECK_RATIO - 1) / CHECK_RATIO;
-	ap.ghost = DEFAULT_GHOST_MODE;
-	ap.type = LKP_INDIRECT;
-	ap.dir_created = 0; /* We haven't created the main directory yet */
-	ap.submount = 0;
-	ap.mc = cache_init(&ap);
-	if (!ap.mc) {
-		fprintf(stderr, "%s: Failed to create mapentry cache.\n",
+	if (pthread_attr_setdetachstate(
+			&detach_attr, PTHREAD_CREATE_DETACHED)) {
+		fprintf(stderr, "%s: failed to set detached thread attribute!",
 			program);
 		exit(1);
 	}
@@ -1360,7 +1634,7 @@ int main(int argc, char *argv[])
 			break;
 
 		case 't':
-			ap.exp_timeout = getnumopt(optarg, opt);
+			timeout = getnumopt(optarg, opt);
 			break;
 
 		case 'v':
@@ -1376,7 +1650,7 @@ int main(int argc, char *argv[])
 			exit(0);
 
 		case 'g':
-			ap.ghost = LKP_GHOST;
+			ghost = LKP_GHOST;
 			break;
 
 		case '?':
@@ -1387,7 +1661,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (geteuid() != 0) {
-		fprintf(stderr, "%s: This program must be run by root.\n",
+		fprintf(stderr, "%s: this program must be run by root.\n",
 			program);
 		exit(1);
 	}
@@ -1401,15 +1675,36 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
-	become_daemon(&ap);
+	/* Must be an absolute pathname */
+	if (argv[0][0] != '/') {
+		fprintf(stderr, "%s: invalid autofs mount point %s",
+			program, argv[0]);
+		exit(1);
+	}
 
 	path = argv[0];
+
 	if (argv[1][0] == '\0')
 		map = NULL;
 	else
 		map = argv[1];
+
 	mapargv = (const char **) &argv[2];
 	mapargc = argc - 2;
+
+	if (map && (mapfmt = strchr(map, ',')))
+		*(mapfmt++) = '\0';
+
+	ap = new_autofs_point(path, map, mapfmt,
+			timeout, ghost, mapargc, mapargv, 0); 
+
+	become_daemon(ap);
+
+	rlim.rlim_cur = MAX_OPEN_FILES;
+	rlim.rlim_max = MAX_OPEN_FILES;
+	res = setrlimit(RLIMIT_NOFILE, &rlim);
+	if (res)
+		warn("can't increase open file limit - continuing");
 
 	msg("Starting automounter version %s, path = %s, "
 	       "maptype = %s, mapname = %s", version, path, map,
@@ -1424,15 +1719,9 @@ int main(int argc, char *argv[])
 	}
 #endif
 
-	if (pthread_attr_init(&detach_attr)) {
-		crit("failed to init thread attribute struct!");
-		cleanup_exit(&ap, 1);
-	}
-
-	if (pthread_attr_setdetachstate(
-			&detach_attr, PTHREAD_CREATE_DETACHED)) {
-		crit("failed to set detached thread attribute!");
-		cleanup_exit(&ap, 1);
+	if (!alarm_start_handler()) {
+		crit("failed to create alarm handler thread!");
+		cleanup_exit(ap, 1);
 	}
 
 	sigfillset(&allsigs);
@@ -1440,29 +1729,50 @@ int main(int argc, char *argv[])
 
 	if (!sigchld_start_handler()) {
 		crit("failed to create SIGCHLD handler thread!");
-		cleanup_exit(&ap, 1);
+		cleanup_exit(ap, 1);
 	}
 
-	if (pthread_create(&thid, &detach_attr, statemachine, NULL)) {
-		crit("failed to create signal handler thread!");
-		cleanup_exit(&ap, 1);
+	status = pthread_mutex_lock(&sc.mutex);
+	if (status) {
+		crit("failed to lock startup condition mutex!");
+		cleanup_exit(ap, 1);
 	}
 
-	if (map && (mapfmt = strchr(map, ',')))
-		*(mapfmt++) = '\0';
+	sc.done = 0;
+	sc.status = 0;
 
-	ap.maptype = map;
-	ap.mapfmt = mapfmt;
-	ap.mapargc = mapargc;
-	ap.mapargv = mapargv;
+	path = strdup(ap->path);
+	if (!path) {
+		error("malloc failure");
+		cleanup_exit(ap, 1);
+	}
 
-	rlim.rlim_cur = MAX_OPEN_FILES;
-	rlim.rlim_max = MAX_OPEN_FILES;
-	res = setrlimit(RLIMIT_NOFILE, &rlim);
-	if (res)
-		warn("can't increase open file limit - continuing");
+	if (pthread_create(&thid, &detach_attr, handle_mounts, ap)) {
+		crit("failed to create mount handler threadi for %s", path);
+		cleanup_exit(ap, 1);
+	}
+	ap->thid = thid;
 
-	handle_mounts(&ap, path);
+	while (!sc.done) {
+		status = pthread_cond_wait(&sc.cond, &sc.mutex);
+		if (status) {
+			crit("failed waiting or startup of mount %s", path);
+		}
+	}
+
+	if (sc.status) {
+		error("failed to startup mount %s", path);
+	}
+
+	free(path);
+
+	status = pthread_mutex_unlock(&sc.mutex);
+	if (status) {
+		crit("failed to unlock startup condition mutex!");
+		fatal(status);
+	}
+
+	statemachine(NULL);
 
 	exit(0);
 }

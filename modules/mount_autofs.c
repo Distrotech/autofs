@@ -1,8 +1,18 @@
-#ident "$Id: mount_autofs.c,v 1.19 2006/02/20 01:05:33 raven Exp $"
-/*
- * mount_autofs.c - Module for recursive autofs mounts.
+#ident "$Id: mount_autofs.c,v 1.20 2006/03/07 20:00:18 raven Exp $"
+/* ----------------------------------------------------------------------- *
  *
- */
+ *  mount_autofs.c - Module for recursive autofs mounts.
+ *
+ *   Copyright 1997 Transmeta Corporation - All Rights Reserved
+ *   Copyright 2006 Ian Kent <raven@themaw.net>
+ *
+ *   This program is free software; you can redistribute it and/or modify
+ *   it under the terms of the GNU General Public License as published by
+ *   the Free Software Foundation, Inc., 675 Mass Ave, Cambridge MA 02139,
+ *   USA; either version 2 of the License, or (at your option) any later
+ *   version; incorporated herein by reference.
+ *
+ * ----------------------------------------------------------------------- */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -23,6 +33,10 @@
 
 #define MODPREFIX "mount(autofs): "
 
+/* Attribute to create detached thread */
+extern pthread_attr_t detach_attr;
+extern struct startup_cond sc;
+
 int mount_version = AUTOFS_MOUNT_VERSION;	/* Required by protocol */
 
 int mount_init(void **context)
@@ -34,12 +48,15 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 		int name_len, const char *what, const char *fstype,
 		const char *c_options, void *context)
 {
-	char *fullpath, **argv;
-	char buf[MAX_ERR_BUF];
+	pthread_t thid;
+	char *fullpath;
+	const char **argv;
 	int argc, status, ghost = ap->ghost;
+	time_t timeout = ap->exp_timeout;
+	char *type, *fmt, *tmp, *tmp2;
+	struct autofs_point *nap;
+	char buf[MAX_ERR_BUF];
 	char *options, *p;
-	pid_t slave, wp;
-	char timeout_opt[30];
 	int rlen;
 
 	/* Root offset of multi-mount */
@@ -63,6 +80,12 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 	else
 		sprintf(fullpath, "%s", name);
 
+	if (is_mounted(_PATH_MOUNTED, fullpath)) {
+		error(MODPREFIX 
+		 "warning: about to mount over %s, continuing", fullpath);
+		return 0;
+	}
+
 	if (c_options) {
 		options = alloca(strlen(c_options) + 1);
 		if (!options) {
@@ -75,22 +98,8 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 		options = NULL;
 	}
 
-	debug(MODPREFIX "calling mkdir_path %s", fullpath);
-
-	if (mkdir_path(fullpath, 0555) && errno != EEXIST) {
-		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		error(MODPREFIX "mkdir_path %s failed: %s", name, estr);
-		return 1;
-	}
-
 	debug(MODPREFIX "fullpath=%s what=%s options=%s",
 		  fullpath, what, options);
-
-	if (is_mounted(_PATH_MOUNTED, fullpath)) {
-		error(MODPREFIX 
-		 "warning: about to mount over %s, continuing", fullpath);
-		return 0;
-	}
 
 	if (strstr(options, "browse")) {
 		if (strstr(options, "nobrowse"))
@@ -98,19 +107,8 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 		else
 			ghost = 1;
 	}
-	/* Build our argument vector.  */
 
-	argc = 5;
-	if (ghost)
-		argc++;
-
-	if (is_log_verbose() || is_log_debug())
-		argc++;
-
-	if (ap->exp_timeout && ap->exp_timeout != DEFAULT_TIMEOUT) {
-		argc++;
-		sprintf(timeout_opt, "--timeout=%d", (int) ap->exp_timeout);
-	}
+	argc = 1;
 
 	if (options) {
 		char *p = options;
@@ -120,37 +118,27 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 				p++;
 		} while ((p = strchr(p, ',')) != NULL);
 	}
-	argv = (char **) alloca((argc + 1) * sizeof(char *));
+	argv = (const char **) alloca((argc + 1) * sizeof(char *));
 
-	argc = 0;
-	argv[argc++] = PATH_AUTOMOUNT;
-	argv[argc++] = "--submount";
+	argc = 1;
 
-	if (ghost)
-		argv[argc++] = "--ghost";
+	type = NULL;
+	fmt = NULL;
 
-	if (ap->exp_timeout != DEFAULT_TIMEOUT)
-		argv[argc++] = timeout_opt;
-
-	if (is_log_debug())
-		argv[argc++] = "--debug";
-	else if (is_log_verbose())
-		argv[argc++] = "--verbose";
-
-	argv[argc++] = fullpath;
-	argv[argc++] = strcpy(alloca(strlen(what) + 1), what);
-
-	if ((p = strchr(argv[argc - 1], ':')) == NULL) {
-		error(MODPREFIX "%s missing script type on %s", name, what);
-		goto error;
-	}
-
-	*p++ = '\0';
-	argv[argc++] = p;
+	tmp = strchr(what, ':');
+	if (tmp) {
+		*tmp++ = '\0';
+		tmp2 = strchr(what, ',');
+		if (tmp2) {
+			*tmp2++ = '\0';
+			fmt = tmp2;
+		}
+		type = (char *) what;
+		argv[0] = tmp;
+	} else
+		argv[0] = (char *) what;
 
 	if (options) {
-		/* Rainer Clasen reported funniness using strtok() here. */
-
 		p = options;
 		do {
 			if (*p == ',') {
@@ -162,53 +150,62 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 	}
 	argv[argc] = NULL;
 
-	/*
-	 * Spawn a new daemon.  If initialization is successful,
-	 * the daemon will send itself SIGSTOP, which we detect
-	 * and let it go on its merry way.
-	 */
-
-	sigchld_block();
-
-	slave = fork();
-	if (slave < 0) {
-		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		error(MODPREFIX "fork: %s", estr);
-		goto error;
-	} else if (slave == 0) {
-		/* Slave process */
-		execv(PATH_AUTOMOUNT, argv);
-		_exit(255);
+	nap = new_autofs_point(fullpath,type,fmt,timeout,ghost,argc,argv,1);
+	if (!nap) {
+		error(MODPREFIX "failed to allocate autofs_point struct");
+		return 1;
 	}
 
-	while ((wp = waitpid(slave, &status, WUNTRACED)) == -1 && errno == EINTR);
-	if (wp != slave) {
-		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		error(MODPREFIX "waitpid: %s", estr);
-		goto error;
+	status = pthread_mutex_lock(&sc.mutex);
+	if (status) {
+		crit("failed to lock startup condition mutex!");
+		free_autofs_point(nap);
+		return 1;
 	}
 
-	if (!WIFSTOPPED(status) || WSTOPSIG(status) != SIGSTOP) {
-		error(MODPREFIX "sub automount returned status 0x%x", status);
-		goto error;
+	sc.done = 0;
+	sc.status = 0;
+
+	if (pthread_create(&thid, &detach_attr, handle_mounts, nap)) {
+		crit("failed to create mount handler thread for %s", fullpath);
+		status = pthread_mutex_unlock(&sc.mutex);
+		if (status)
+			fatal(status);
+		free_autofs_point(nap);
+		return 1;
+	}
+	nap->thid = thid;
+
+	while (!sc.done) {
+		status = pthread_cond_wait(&sc.cond, &sc.mutex);
+		if (status) {
+			status = pthread_mutex_unlock(&sc.mutex);
+			if (status)
+				fatal(status);
+			free_autofs_point(ap);
+			return 1;
+		}
 	}
 
-	sigchld_unblock();
+	if (sc.status) {
+		crit("failed to create submount for %s", fullpath);
+		status = pthread_mutex_unlock(&sc.mutex);
+		if (status)
+			fatal(status);
+		return 1;
+	}
 
-	kill(slave, SIGCONT);	/* Carry on, private */
+	pthread_mutex_lock(&ap->mounts_mutex);
+	list_add(&nap->mounts, &ap->submounts);
+	pthread_mutex_unlock(&ap->mounts_mutex);
 
-	debug(MODPREFIX "mounted %s on %s", what, fullpath);
+	status = pthread_mutex_unlock(&sc.mutex);
+	if (status) {
+		crit("failed to unlock startup condition mutex!");
+		return 1;
+	}
 
 	return 0;
-
-error:
-	sigchld_unblock();
-	if (!ap->ghost)
-		rmdir_path(fullpath);
-
-	error(MODPREFIX "failed to mount %s on %s", what, fullpath);
-
-	return 1;
 }
 
 int mount_done(void *context)

@@ -1,4 +1,4 @@
-#ident "$Id: direct.c,v 1.13 2006/03/03 21:48:23 raven Exp $"
+#ident "$Id: direct.c,v 1.14 2006/03/07 20:00:18 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  direct.c - Linux automounter direct mount handling
@@ -84,7 +84,7 @@ static void key_mnt_params_init(void)
 	return;
 }
 
-static int autofs_init_direct(struct autofs_point *ap, char *path)
+static int autofs_init_direct(struct autofs_point *ap)
 {
 	int pipefd[2];
 
@@ -94,26 +94,12 @@ static int autofs_init_direct(struct autofs_point *ap, char *path)
 		return -1;
 	}
 
-	/* Must be an absolute pathname */
-	if (strcmp(path, "/-")) {
-		crit("invalid direct mount key %s", ap->path);
-		errno = EINVAL;
-		return -1;
-	}
-
-	ap->path = strdup(path);
-	if (!ap->path) {
-		crit("memory alloc failed");
-		errno = ENOMEM;
-		return -1;
-	}
 	ap->pipefd = ap->kpipefd = ap->ioctlfd = -1;
 
 	/* Pipe for kernel communications */
 	if (pipe(pipefd) < 0) {
 		crit("failed to create commumication pipe for autofs path %s",
 		     ap->path);
-		free(ap->path);
 		return -1;
 	}
 
@@ -125,7 +111,6 @@ static int autofs_init_direct(struct autofs_point *ap, char *path)
 		crit("failed create state pipe for autofs path %s", ap->path);
 		close(ap->pipefd);
 		close(ap->kpipefd);
-		free(ap->path);
 		return -1;
 	}
 	return 0;
@@ -177,7 +162,7 @@ force_umount:
 	if (rv != 0) {
 		rv = spawnl(LOG_DEBUG,
 			    PATH_UMOUNT, PATH_UMOUNT, "-n", "-l", me->key, NULL);
-		msg("forcing unmount of %s", me->key);
+		msg("forced unmount of %s", me->key);
 	} else
 		msg("umounted %s", me->key);
 
@@ -367,13 +352,13 @@ out_err:
 	return -1;
 }
 
-int mount_autofs_direct(struct autofs_point *ap, char *path)
+int mount_autofs_direct(struct autofs_point *ap)
 {
 	struct mapent_cache *mc = ap->mc;
 	time_t now = time(NULL);
 	int map;
 
-	if (autofs_init_direct(ap, path))
+	if (autofs_init_direct(ap))
 		return -1;
 
 	/* TODO: check map type */
@@ -511,8 +496,8 @@ int mount_autofs_offset(struct autofs_point *ap, struct mapent *me, int is_autof
 		/* In case the directory doesn't exist, try to mkdir it */
 		if (mkdir_path(me->key, 0555) < 0) {
 			if (errno != EEXIST) {
-				crit("failed to create mount directory %s",
-				     me->key);
+				crit("failed to create mount directory %s %d",
+				     me->key, errno);
 				return -1;
 			}
 			/* 
@@ -613,7 +598,8 @@ void *expire_proc_direct(void *arg)
 	/* Get a list of real mounts and expire them if possible */
 	mnts = get_mnt_list(_PROC_MOUNTS, "/", 0);
 	for (next = mnts; next; next = next->next) {
-		if (!strcmp(next->fs_type, "autofs"))
+		/* Consider only autofs mounts */
+		if (!strstr(next->fs_type, "autofs"))
 			continue;
 
 		/*
@@ -621,12 +607,22 @@ void *expire_proc_direct(void *arg)
 		 * entry cache.
 		 */
 		cache_readlock(mc);
+
 		me = cache_lookup(mc, next->path);
 		if (!me) {
+			debug("not found %s", next->path);
 			cache_unlock(mc);
 			continue;
 		}
-		ioctlfd = me->ioctlfd;
+
+		/* Real mounts have an open ioctl fd */
+		if (me->ioctlfd >= 0)
+			ioctlfd = me->ioctlfd;
+		else {
+			cache_unlock(mc);
+			continue;
+		}
+
 		cache_unlock(mc);
 
 		debug("send expire to trigger %s", next->path);
@@ -780,8 +776,6 @@ int handle_packet_expire_direct(struct autofs_point *ap, autofs_packet_expire_di
 		error("expire thread create failed");
 		free(mt);
 		send_fail(mt->ioctlfd, pkt->wait_queue_token);
-/*		close(mt->ioctlfd);
-		me->ioctlfd = -1; */
 		status = 1;
 	}
 done:

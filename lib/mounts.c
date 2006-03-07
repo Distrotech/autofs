@@ -1,4 +1,4 @@
-#ident "$Id: mounts.c,v 1.16 2006/03/03 01:30:00 raven Exp $"
+#ident "$Id: mounts.c,v 1.17 2006/03/07 20:00:18 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  mounts.c - module for Linux automount mount table lookup functions
@@ -169,11 +169,22 @@ struct mnt_list *get_mnt_list(const char *table, const char *path, int include)
 
 		ent->fs_type = malloc(strlen(mnt->mnt_type) + 1);
 		if (!ent->fs_type) {
+			free(ent->path);
 			endmntent(tab);
 			free_mnt_list(list);
 			return NULL;
 		}
 		strcpy(ent->fs_type, mnt->mnt_type);
+
+		ent->opts = malloc(strlen(mnt->mnt_opts) + 1);
+		if (!ent->opts) {
+			free(ent->fs_type);
+			free(ent->path);
+			endmntent(tab);
+			free_mnt_list(list);
+			return NULL;
+		}
+		strcpy(ent->opts, mnt->mnt_opts);
 
 		ent->pid = 0;
 		if (strncmp(ent->fs_type, "autofs", 6) == 0)
@@ -193,7 +204,6 @@ struct mnt_list *get_mnt_list(const char *table, const char *path, int include)
 
 	return list;
 }
-
 
 /*
  * Reverse a list of mounts
@@ -230,7 +240,7 @@ static struct mnt_list *copy_mnt_list_ent(struct mnt_list *ent)
 		return NULL;
 	}
 
-	if (!ent->path || !ent->fs_type) {
+	if (!ent->path || !ent->fs_type || !ent->opts) {
 		free(new);
 		return NULL;
 	}
@@ -249,6 +259,15 @@ static struct mnt_list *copy_mnt_list_ent(struct mnt_list *ent)
 		return NULL;
 	}
 	strcpy(new->fs_type, ent->fs_type);
+
+	new->opts = malloc(strlen(ent->opts) + 1);
+	if (!new->opts) {
+		free(new->fs_type);
+		free(new->path);
+		free(new);
+		return NULL;
+	}
+	strcpy(new->opts, ent->opts);
 
 	new->next = NULL;
 
@@ -320,6 +339,9 @@ void free_mnt_list(struct mnt_list *list)
 
 		if (this->fs_type)
 			free(this->fs_type);
+
+		if (this->opts)
+			free(this->opts);
 
 		free(this);
 	}

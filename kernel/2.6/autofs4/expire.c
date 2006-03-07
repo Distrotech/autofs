@@ -119,10 +119,6 @@ static int autofs4_direct_busy(struct vfsmount *mnt,
 	DPRINTK("top %p %.*s",
 		top, (int) top->d_name.len, top->d_name.name);
 
-	/* Not a mountpoint - give up */
-	if (!d_mountpoint(top))
-		goto done;
-
 	/* If it's busy update the expiry counters */
 #if LINUX_VERSION_CODE > KERNEL_VERSION(2,6,16)
 	if (!may_umount_tree(mnt)) {

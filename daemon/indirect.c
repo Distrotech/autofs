@@ -1,4 +1,4 @@
-#ident "$Id: indirect.c,v 1.11 2006/03/03 21:48:23 raven Exp $"
+#ident "$Id: indirect.c,v 1.12 2006/03/07 20:00:18 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  indirect.c - Linux automounter indirect mount handling
@@ -45,7 +45,7 @@ static int kernel_pipefd = -1;           kernel pipe fd for use in direct mounts
 
 extern pthread_attr_t detach_attr;
 
-static int autofs_init_indirect(struct autofs_point *ap, char *path)
+static int autofs_init_indirect(struct autofs_point *ap)
 {
 	int pipefd[2];
 
@@ -55,19 +55,6 @@ static int autofs_init_indirect(struct autofs_point *ap, char *path)
 		return -1;
 	}
 
-	/* Must be an absolute pathname */
-	if (path[0] != '/') {
-		crit("invalid indirect mount key %s", path);
-		errno = EINVAL;
-		return -1;
-	}
-
-	ap->path = strdup(path);
-	if (!ap->path) {
-		crit("memory alloc failed");
-		errno = ENOMEM;
-		return -1;
-	}
 	ap->pipefd = ap->kpipefd = ap->ioctlfd = -1;
 
 	/* Pipe for kernel communications */
@@ -136,8 +123,9 @@ static int do_mount_autofs_indirect(struct autofs_point *ap)
 	}
 
 	free(name);
-	name = NULL;
 	free(options);
+
+	name = NULL;
 	options = NULL;
 
 /*
@@ -202,25 +190,24 @@ out_rmdir:
 		rmdir_path(ap->path);
 out_err:
 	if (options)
-		free(options);
+	free(options);
 	if (name)
 		free(name);
 	close(ap->state_pipe[0]);
 	close(ap->state_pipe[1]);
 	close(ap->pipefd);
 	close(ap->kpipefd);
-	free(ap->path);
 
 	return -1;
 }
 
-int mount_autofs_indirect(struct autofs_point *ap, char *path)
+int mount_autofs_indirect(struct autofs_point *ap)
 {
 	time_t now = time(NULL);
 	int status;
 	int map;
 
-        if (autofs_init_indirect(ap, path))
+        if (autofs_init_indirect(ap))
 		return -1;
 
 	status = do_mount_autofs_indirect(ap);
