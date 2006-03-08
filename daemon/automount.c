@@ -1,4 +1,4 @@
-#ident "$Id: automount.c,v 1.57 2006/03/08 02:40:22 raven Exp $"
+#ident "$Id: automount.c,v 1.58 2006/03/08 19:18:20 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  automount.c - Linux automounter daemon
@@ -523,7 +523,7 @@ void expire_cleanup(void *arg)
 		switch (ap->state) {
 		case ST_EXPIRE:
 			if (!ap->submount)
-				alarm_insert(ap, ap->exp_runfreq);
+				alarm_add(ap, ap->exp_runfreq);
 			/* FALLTHROUGH */
 		case ST_PRUNE:
 			/* If we're a submount and we've just
@@ -548,7 +548,7 @@ void expire_cleanup(void *arg)
 			warn("can't shutdown: filesystem %s still busy",
 			     ap->path);
 			if (!ap->submount)
-				alarm_insert(ap, ap->exp_runfreq);
+				alarm_add(ap, ap->exp_runfreq);
 			next = ST_READY;
 			break;
 
@@ -859,7 +859,7 @@ static int st_prepare_shutdown(struct autofs_point *ap)
 
 	/* Turn off timeouts for this mountpoint */
 	if (!ap->submount)
-		alarm_remove(ap);
+		alarm_delete(ap);
 
 	/* If we have submounts pass on message */
 	notify_mounts(ap, ST_SHUTDOWN_PENDING);
@@ -875,7 +875,7 @@ static int st_prepare_shutdown(struct autofs_point *ap)
 		/* It didn't work: return to ready */
 		ap->state = ST_READY;
 		if (!ap->submount)
-			alarm_insert(ap, ap->exp_runfreq);
+			alarm_add(ap, ap->exp_runfreq);
 		return 0;
 
 	case EXP_DONE:
@@ -936,7 +936,7 @@ static int st_expire(struct autofs_point *ap)
 	case EXP_PARTIAL:
 		ap->state = ST_READY;
 		if (!ap->submount)
-			alarm_insert(ap, ap->exp_runfreq);
+			alarm_add(ap, ap->exp_runfreq);
 		return 1;
 
 	case EXP_STARTED:
@@ -1371,7 +1371,7 @@ void *handle_mounts(void *arg)
 	/* We often start several automounters at the same time.  Add some
 	   randomness so we don't all expire at the same time. */
 	if (!ap->submount && ap->exp_timeout)
-		alarm_insert(ap, ap->exp_runfreq + my_pid % ap->exp_runfreq);
+		alarm_add(ap, ap->exp_runfreq + my_pid % ap->exp_runfreq);
 
 	while (ap->state != ST_SHUTDOWN) {
 		if (handle_packet(ap)) {
@@ -1418,7 +1418,7 @@ void *handle_mounts(void *arg)
 			warn("can't shutdown: filesystem %s still busy",
 					ap->path);
 			if (!ap->submount)
-				alarm_insert(ap, ap->exp_runfreq);
+				alarm_add(ap, ap->exp_runfreq);
 			ap->state = ST_READY;
 
 			status = pthread_mutex_unlock(&state_mutex);

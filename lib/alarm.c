@@ -1,7 +1,7 @@
-#ident "$Id: alarm.c,v 1.2 2006/03/07 23:16:41 raven Exp $"
+#ident "$Id: alarm.c,v 1.3 2006/03/08 19:18:20 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
- *  alarm.c - alarm queueing module.
+ *  alarm.c - alarm queue handling module.
  *
  *   Copyright 2006 Ian Kent <raven@themaw.net> - All Rights Reserved
  *
@@ -10,9 +10,6 @@
  *   the Free Software Foundation, Inc., 675 Mass Ave, Cambridge MA 02139,
  *   USA; either version 2 of the License, or (at your option) any later
  *   version; incorporated herein by reference.
- *
- *   Adapted from the example program alarm_cond.c from 
- *   "Programming with POSIX Threads", Butenhof D. R.
  *
  * ----------------------------------------------------------------------- */
 
@@ -29,88 +26,101 @@ struct alarm {
 	struct list_head list;
 };
 
-static pthread_mutex_t alarm_mutex = PTHREAD_MUTEX_INITIALIZER;
-static pthread_cond_t alarm_cond = PTHREAD_COND_INITIALIZER;
-static LIST_HEAD(alarm_list);
-static time_t next_alarm = 0;
+static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
+static LIST_HEAD(alarms);
 
 void dump_alarms(void)
 {
-	struct list_head *head = &alarm_list;
+	struct list_head *head = &alarms;
 	struct list_head *p;
 
+	pthread_mutex_lock(&mutex);
 	list_for_each(p, head) {
 		struct alarm *alarm;
 
 		alarm = list_entry(p, struct alarm, list);
 		msg("alarm time = %d\n", alarm->time);
 	}
+	pthread_mutex_unlock(&mutex);
 }
 
-/*
- * Insert alarm entry on list, in order.
- */
-int alarm_insert(struct autofs_point *ap, time_t seconds)
+/* Insert alarm entry on ordered list. */
+int alarm_add(struct autofs_point *ap, time_t seconds)
 {
-	struct list_head *head = &alarm_list;
+	struct list_head *head = &alarms;
 	struct list_head *p;
-	struct alarm *alarm;
+	struct alarm *new;
 	time_t now = time(NULL);
+	time_t next_alarm = 0;
+	unsigned int empty = 1;
 	int status;
 
-	alarm = malloc(sizeof(struct alarm));
-	if (!alarm)
+	new = malloc(sizeof(struct alarm));
+	if (!new)
 		return 0;
 
-	alarm->ap = ap;
-	alarm->cancel = 0;
-	alarm->time = now + seconds;
+	new->ap = ap;
+	new->cancel = 0;
+	new->time = now + seconds;
 
-	status = pthread_mutex_lock(&alarm_mutex);
+	status = pthread_mutex_lock(&mutex);
 	if (status)
 		fatal(status);
+
+	/* Check if we have a pending alarm */
+	if (!list_empty(head)) {
+		struct alarm *current;
+		current = list_entry(head->next, struct alarm, list);
+		next_alarm = current->time;
+		empty = 0;
+	}
 
 	list_for_each(p, head) {
 		struct alarm *this;
 
 		this = list_entry(p, struct alarm, list);
-		if (this->time >= alarm->time) {
-			list_add_tail(&alarm->list, p);
+		if (this->time >= new->time) {
+			list_add_tail(&new->list, p);
 			break;
 		}
 	}
 	if (p == head)
-		list_add_tail(&alarm->list, p);
+		list_add_tail(&new->list, p);
 
 	/*
-	 * Wake the alarm thread if it is not busy (that is, if
-	 * next_alarm is 0, signifying that it's waiting for
-	 * work), or if the new alarm comes before the one on
-	 * which the alarm thread is waiting.
+	 * Wake the alarm thread if it is not busy (ie. if the
+	 * alarms list was empty) or if the new alarm comes before
+	 * the alarm we are currently waiting on.
 	 */
-	if (next_alarm == 0 || alarm->time < next_alarm) {
-        	next_alarm = alarm->time;
-        	status = pthread_cond_signal(&alarm_cond);
+	if (empty || new->time < next_alarm) {
+        	status = pthread_cond_signal(&cond);
 		if (status)
 			fatal(status);
 	}
 
-	status = pthread_mutex_unlock(&alarm_mutex);
+	status = pthread_mutex_unlock(&mutex);
 	if (status)
 		fatal(status);
 
 	return 1;
 }
 
-void alarm_remove(struct autofs_point *ap)
+void alarm_delete(struct autofs_point *ap)
 {
-	struct list_head *head = &alarm_list;
+	struct list_head *head = &alarms;
 	struct list_head *p;
+	struct alarm *current;
 	int status;
 
-	status = pthread_mutex_lock(&alarm_mutex);
+	status = pthread_mutex_lock(&mutex);
 	if (status)
 		fatal(status);
+
+	if (list_empty(head))
+		return;
+
+	current = list_entry(head->next, struct alarm, list);
 
 	p = head->next;
 	while (p != head) {
@@ -120,7 +130,7 @@ void alarm_remove(struct autofs_point *ap)
 		p = p->next;
 
 		if (ap == alarm->ap) {
-			if (next_alarm != alarm->time) {
+			if (current != alarm) {
 				list_del_init(&alarm->list);
 				free(alarm);
 				continue;
@@ -130,81 +140,47 @@ void alarm_remove(struct autofs_point *ap)
 		}
 	}
 
-	status = pthread_mutex_unlock(&alarm_mutex);
+	status = pthread_mutex_unlock(&mutex);
 	if (status)
 		fatal(status);
 }
 
-/* alarm thread routine. */
 static void *alarm_handler(void *arg)
 {
-	struct list_head *head = &alarm_list;
+	struct list_head *head = &alarms;
 	struct autofs_point *ap;
-	struct alarm *alarm;
-	struct timespec cond_time;
+	struct timespec expire;
 	time_t now;
 	int status;
 
-	status = pthread_mutex_lock(&alarm_mutex);
+	status = pthread_mutex_lock(&mutex);
 	if (status)
 		fatal(status);
 
 	while (1) {
+		struct alarm *current;
+
 		/*
 		 * If the alarm list is empty, wait until an alarm is
-		 * added. Setting next_alarm to 0 informs the insert
-		 * routine that the thread is not busy.
+		 * added.
 		 */
-		next_alarm = 0;
 		while (list_empty(head)) {
-			status = pthread_cond_wait(&alarm_cond, &alarm_mutex);
+			status = pthread_cond_wait(&cond, &mutex);
 			if (status)
 				fatal(status);
 		}
 
-		alarm = list_entry(head->next, struct alarm, list);
+		current = list_entry(head->next, struct alarm, list);
 
-		ap = alarm->ap;
+		ap = current->ap;
 		now = time(NULL);
 
-		if (alarm->time <= now) {
-			list_del_init(&alarm->list);
+		if (current->time <= now) {
+			list_del(&current->list);
 
-			if (alarm->cancel) {
-				free(alarm);
+			if (current->cancel) {
+				free(current);
 				continue;
-			}
-
-			status = pthread_mutex_lock(&state_mutex);
-			if (status)
-				fatal(status);
-
-			nextstate(alarm->ap->state_pipe[1], ST_EXPIRE);
-
-			status = pthread_mutex_unlock(&state_mutex);
-			if (status)
-				fatal(status);
-
-			free(alarm);
-			continue;
-		}
-
-		cond_time.tv_sec = alarm->time;
-		cond_time.tv_nsec = 0;
-		next_alarm = alarm->time;
-
-		while (next_alarm == alarm->time) {
-			status = pthread_cond_timedwait (
-					&alarm_cond, &alarm_mutex, &cond_time);
-
-			if (status && status != ETIMEDOUT)
-				fatal(status);
-
-			list_del_init(&alarm->list);
-
-			if (alarm->cancel) {
-				free(alarm);
-				break;
 			}
 
 			status = pthread_mutex_lock(&state_mutex);
@@ -217,7 +193,43 @@ static void *alarm_handler(void *arg)
 			if (status)
 				fatal(status);
 
-			free (alarm);
+			free(current);
+			continue;
+		}
+
+		expire.tv_sec = current->time;
+		expire.tv_nsec = 0;
+
+		while (1) {
+			struct alarm *next;
+
+			status = pthread_cond_timedwait(&cond, &mutex, &expire);
+			if (status && status != ETIMEDOUT)
+				fatal(status);
+
+			if (current->cancel) {
+				list_del(&current->list);
+				free(current);
+				break;
+			}
+
+			next = list_entry(head->next, struct alarm, list);
+			if (next != current)
+				break;
+
+			list_del(&current->list);
+
+			status = pthread_mutex_lock(&state_mutex);
+			if (status)
+				fatal(status);
+
+			nextstate(ap->state_pipe[1], ST_EXPIRE);
+
+			status = pthread_mutex_unlock(&state_mutex);
+			if (status)
+				fatal(status);
+
+			free (current);
 			break;
 		}
 	}

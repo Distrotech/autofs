@@ -1,4 +1,4 @@
-#ident "$Id: automount.h,v 1.33 2006/03/07 23:16:41 raven Exp $"
+#ident "$Id: automount.h,v 1.34 2006/03/08 19:18:20 raven Exp $"
 /*
  * automount.h
  *
@@ -461,8 +461,8 @@ void expire_cleanup(void *arg);
 
 /* Expire alarm handling routines */
 int alarm_start_handler(void);
-int alarm_insert(struct autofs_point *ap, time_t seconds);
-void alarm_remove(struct autofs_point *ap);
+int alarm_add(struct autofs_point *ap, time_t seconds);
+void alarm_delete(struct autofs_point *ap);
 
 /* Define logging functions */
 
