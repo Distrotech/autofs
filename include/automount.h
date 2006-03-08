@@ -1,4 +1,4 @@
-#ident "$Id: automount.h,v 1.34 2006/03/08 19:18:20 raven Exp $"
+#ident "$Id: automount.h,v 1.35 2006/03/08 23:56:31 raven Exp $"
 /*
  * automount.h
  *
@@ -314,7 +314,6 @@ struct mnt_list {
 	char *fs_type;
 	char *opts;
 	pid_t pid;
-	time_t last_access;
 	struct mnt_list *next;
 	struct list_head list;
 };
@@ -323,11 +322,9 @@ char *make_options_string(char *path, int kernel_pipefd, char *extra);
 char *make_mnt_name_string(char *path);
 struct mnt_list *get_mnt_list(const char *table, const char *path, int include);
 struct mnt_list *reverse_mnt_list(struct mnt_list *list);
-struct mnt_list *get_base_mnt_list(struct mnt_list *list);
 void free_mnt_list(struct mnt_list *list);
 int is_mounted(const char *table, const char *path);
 int has_fstab_option(const char *path, const char *opt);
-int allow_owner_mount(const char *);
 char *find_mnt_ino(const char *table, dev_t dev, ino_t ino);
 char *get_offset(const char *prefix, char *offset,
                  struct list_head *head, struct list_head **pos);

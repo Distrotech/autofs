@@ -36,6 +36,7 @@
 - fix rootless multi-mount as target of direct mount.
 - fix sub-mount brakage following above.
 - fix sub-mount as target of direct mount.
+- update mounts.c to use re-entrant getmntent.
 
 11/4/2005 autofs-4.1.4
 ----------------------

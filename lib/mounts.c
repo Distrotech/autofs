@@ -1,4 +1,4 @@
-#ident "$Id: mounts.c,v 1.18 2006/03/08 02:40:22 raven Exp $"
+#ident "$Id: mounts.c,v 1.19 2006/03/08 23:56:31 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  mounts.c - module for Linux automount mount table lookup functions
@@ -105,12 +105,12 @@ char *make_mnt_name_string(char *path)
 struct mnt_list *get_mnt_list(const char *table, const char *path, int include)
 {
 	FILE *tab;
-	char buf[MAX_ERR_BUF];
 	int pathlen = strlen(path);
+	struct mntent mnt_wrk;
+	char buf[PATH_MAX];
 	struct mntent *mnt;
 	struct mnt_list *ent, *mptr, *last;
 	struct mnt_list *list = NULL;
-	struct stat st;
 	int len;
 
 	if (!path || !pathlen || pathlen > PATH_MAX)
@@ -118,12 +118,12 @@ struct mnt_list *get_mnt_list(const char *table, const char *path, int include)
 
 	tab = setmntent(table, "r");
 	if (!tab) {
-		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+		char *estr = strerror_r(errno, buf, PATH_MAX - 1);
 		error("setmntent: %s", estr);
 		return NULL;
 	}
 
-	while ((mnt = getmntent(tab)) != NULL) {
+	while ((mnt = getmntent_r(tab, &mnt_wrk, buf, PATH_MAX)) != NULL) {
 		len = strlen(mnt->mnt_dir);
 
 		if ((!include && len <= pathlen) ||
@@ -192,16 +192,6 @@ struct mnt_list *get_mnt_list(const char *table, const char *path, int include)
 	}
 	endmntent(tab);
 
-	mptr = list;
-	while (mptr) {
-		mptr->last_access = time(NULL);
-
-		if (stat(mptr->path, &st) != -1)
-			mptr->last_access = st.st_atime;
-
-		mptr = mptr->next;
-	}
-
 	return list;
 }
 
@@ -219,106 +209,11 @@ struct mnt_list *reverse_mnt_list(struct mnt_list *list)
 	last = NULL;
 	while (next) {
 		struct mnt_list *this = next;
-
 		next = this->next;
 		this->next = last;
 		last = this;
 	}
-
 	return last;
-}
-
-static struct mnt_list *copy_mnt_list_ent(struct mnt_list *ent)
-{
-	struct mnt_list *new;
-
-	if (!ent)
-		return NULL;
-		
-	new = malloc(sizeof(*new));
-	if (!new) {
-		return NULL;
-	}
-
-	if (!ent->path || !ent->fs_type || !ent->opts) {
-		free(new);
-		return NULL;
-	}
-
-	new->path = malloc(strlen(ent->path) + 1);
-	if (!new->path) {
-		free(new);
-		return NULL;
-	}
-	strcpy(new->path, ent->path);
-
-	new->fs_type = malloc(strlen(ent->fs_type) + 1);
-	if (!new->fs_type) {
-		free(new->path);
-		free(new);
-		return NULL;
-	}
-	strcpy(new->fs_type, ent->fs_type);
-
-	new->opts = malloc(strlen(ent->opts) + 1);
-	if (!new->opts) {
-		free(new->fs_type);
-		free(new->path);
-		free(new);
-		return NULL;
-	}
-	strcpy(new->opts, ent->opts);
-
-	new->next = NULL;
-
-	return new;
-}
-
-/*
- * Get list of mount points that are the base of a mount
- * tree (ie. get highest point at which we cross file
- * system boundary). Assumes mount list with
- * shortest -> longest paths.
- */
-struct mnt_list *get_base_mnt_list(struct mnt_list *head)
-{
-	struct mnt_list *next, *list = NULL;
-	char *base;
-
-	if (!head)
-		return NULL;
-
-	next = head;
-	base = next->path;
-	list = copy_mnt_list_ent(next);
-	while (next) {
-		struct mnt_list *this = next;
-		struct mnt_list *new;
-		int blen = strlen(base);
-		int nlen, eq;
-
-		next = this->next;
-		if (!next)
-			break;
-		nlen = strlen(next->path);
-
-		eq = strncmp(this->path, base, blen);
-		if (!eq)
-			continue;
-
-		if (strncmp(this->path, base, blen)) {
-			if (nlen > blen && next->path[blen + 1] == '/')
-				continue;
-		}
-
-		base = this->path;
-
-		new = copy_mnt_list_ent(this);
-		new->next = list;
-		list = new;
-	}
-
-	return list;
 }
 
 void free_mnt_list(struct mnt_list *list)
@@ -347,96 +242,74 @@ void free_mnt_list(struct mnt_list *list)
 	}
 }
 
-static int find_mntent(const char *table, const char *path, struct mntent *ent)
+int is_mounted(const char *table, const char *path)
 {
 	struct mntent *mnt;
-	char buf[MAX_ERR_BUF];
-	FILE *tab;
+	struct mntent mnt_wrk;
+	char buf[PATH_MAX];
 	int pathlen = strlen(path);
+	FILE *tab;
 	int ret = 0;
 
-	if (!path || !pathlen || pathlen > PATH_MAX)
+	if (!path || !pathlen || pathlen >= PATH_MAX)
 		return 0;
 
 	tab = setmntent(table, "r");
 	if (!tab) {
-		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+		char *estr = strerror_r(errno, buf, PATH_MAX - 1);
 		error("setmntent: %s", estr);
 		return 0;
 	}
 
-	while ((mnt = getmntent(tab)) != NULL) {
+	while ((mnt = getmntent_r(tab, &mnt_wrk, buf, PATH_MAX))) {
 		int len = strlen(mnt->mnt_dir);
 
 		if (pathlen == len && !strncmp(path, mnt->mnt_dir, pathlen)) {
-			int szent = sizeof(struct mntent);
-
-			if (ent)
-				memcpy(ent, mnt, szent);
 			ret = 1;
-
 			break;
 		}
 	}
+
 	endmntent(tab);
-
-	return ret;
-}
-
-int is_mounted(const char *table, const char *path)
-{
-	int ret = 0;
-
-	if (find_mntent(table, path, NULL))
-		ret = 1;
 
 	return ret;
 }
 
 int has_fstab_option(const char *path, const char *opt)
 {
-	struct mntent ent;
-	char *res = NULL;
-
-	if (find_mntent(_PATH_MNTTAB, path, &ent)) {
-		if ((res = hasmntopt(&ent, opt)))
-			return 1;
-	}
-
-	return 0;
-}
-
-/*
- * Check id owner option is present in fstab of requested
- * mount. If it is return iowner uid of requested dev.
- */
-int allow_owner_mount(const char *path)
-{
-	struct mntent ent;
+	struct mntent *mnt;
+	struct mntent mnt_wrk;
+	char buf[PATH_MAX];
+	FILE *tab;
 	int ret = 0;
 
-	if (getuid() || is_mounted(_PATH_MOUNTED, path))
+	if (!opt)
 		return 0;
 
-	if (find_mntent(_PATH_MNTTAB, path, &ent)) {
-		struct stat st;
-
-		if (!hasmntopt(&ent, "owner"))
-			return 0;
-
-		if (stat(ent.mnt_fsname, &st) == -1)
-			return 0;
-
-		ret = st.st_uid;
+	tab = setmntent(_PATH_MNTTAB, "r");
+	if (!tab) {
+		char *estr = strerror_r(errno, buf, PATH_MAX - 1);
+		error("setmntent: %s", estr);
+		return 0;
 	}
+
+	while ((mnt = getmntent_r(tab, &mnt_wrk, buf, PATH_MAX))) {
+		if (hasmntopt(mnt, opt)) {
+			ret = 1;
+			break;
+		}
+	}
+
+	endmntent(tab);
 
 	return ret;
 }
 
 char *find_mnt_ino(const char *table, dev_t dev, ino_t ino)
 {
+	struct mntent mnt_wrk;
 	struct mntent *mnt;
-	char buf[MAX_ERR_BUF];
+	char buf[PATH_MAX];
 	char *path = NULL;
 	unsigned long l_dev = dev;
 	unsigned long l_ino = ino;
@@ -444,12 +317,12 @@ char *find_mnt_ino(const char *table, dev_t dev, ino_t ino)
 
 	tab = setmntent(table, "r");
 	if (!tab) {
-		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+		char *estr = strerror_r(errno, buf, PATH_MAX - 1);
 		error("setmntent: %s", estr);
 		return 0;
 	}
 
-	while ((mnt = getmntent(tab)) != NULL) {
+	while ((mnt = getmntent_r(tab, &mnt_wrk, buf, PATH_MAX))) {
 		char *p_dev, *p_ino;
 		unsigned long m_dev, m_ino;
 
@@ -472,6 +345,7 @@ char *find_mnt_ino(const char *table, dev_t dev, ino_t ino)
 			break;
 		}
 	}
+
 	endmntent(tab);
 
 	return path;

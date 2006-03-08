@@ -1,4 +1,4 @@
-#ident "$Id: automount.c,v 1.58 2006/03/08 19:18:20 raven Exp $"
+#ident "$Id: automount.c,v 1.59 2006/03/08 23:56:31 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  automount.c - Linux automounter daemon
@@ -1371,7 +1371,7 @@ void *handle_mounts(void *arg)
 	/* We often start several automounters at the same time.  Add some
 	   randomness so we don't all expire at the same time. */
 	if (!ap->submount && ap->exp_timeout)
-		alarm_add(ap, ap->exp_runfreq + my_pid % ap->exp_runfreq);
+		alarm_add(ap, ap->exp_runfreq + ap->thid % ap->exp_runfreq);
 
 	while (ap->state != ST_SHUTDOWN) {
 		if (handle_packet(ap)) {
