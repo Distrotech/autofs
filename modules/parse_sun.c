@@ -1,4 +1,4 @@
-#ident "$Id: parse_sun.c,v 1.41 2006/03/07 20:00:18 raven Exp $"
+#ident "$Id: parse_sun.c,v 1.42 2006/03/08 02:40:22 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  parse_sun.c - module for Linux automountd to parse a Sun-format
@@ -940,7 +940,7 @@ add_offset_entry(struct mapent_cache *mc, const char *name,
 	}
 	strcpy(m_mapent, "-");
 	strcat(m_mapent, myoptions);
-	strcpy(m_mapent, " ");
+	strcat(m_mapent, " ");
 	strcat(m_mapent, loc);
 
 	debug("adding multi-mount offset %s -> %s", path, m_mapent);

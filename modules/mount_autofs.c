@@ -1,4 +1,4 @@
-#ident "$Id: mount_autofs.c,v 1.20 2006/03/07 20:00:18 raven Exp $"
+#ident "$Id: mount_autofs.c,v 1.21 2006/03/08 02:40:22 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  mount_autofs.c - Module for recursive autofs mounts.
@@ -100,6 +100,8 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 
 	debug(MODPREFIX "fullpath=%s what=%s options=%s",
 		  fullpath, what, options);
+
+	/* TODO: options processing needs more work */
 
 	if (strstr(options, "browse")) {
 		if (strstr(options, "nobrowse"))

@@ -1,4 +1,4 @@
-#ident "$Id: mount.c,v 1.11 2006/03/07 20:00:18 raven Exp $"
+#ident "$Id: mount.c,v 1.12 2006/03/08 02:40:22 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  mount.c - Abstract mount code used by modules for an unexpected
@@ -52,8 +52,14 @@ int do_mount(struct autofs_point *ap, const char *root, const char *name, int na
 		}
 	}
 
-	debug("%s %s/%s type %s options %s using module %s",
-		  what, root, name, fstype, options, modstr);
+	if (is_log_debug()) {
+		if (ap->path[1] == '-')
+			debug("%s %s type %s options %s using module %s",
+				what, name, fstype, options, modstr);
+		else
+			debug("%s %s/%s type %s options %s using module %s",
+				what, root, name, fstype, options, modstr);
+	}
 
 	rv = mod->mount_mount(ap, root, name, name_len, what, fstype, options, mod->context);
 	close_mount(mod);

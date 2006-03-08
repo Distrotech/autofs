@@ -1,4 +1,4 @@
-#ident "$Id: direct.c,v 1.14 2006/03/07 20:00:18 raven Exp $"
+#ident "$Id: direct.c,v 1.15 2006/03/08 02:40:22 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  direct.c - Linux automounter direct mount handling
@@ -600,6 +600,10 @@ void *expire_proc_direct(void *arg)
 	for (next = mnts; next; next = next->next) {
 		/* Consider only autofs mounts */
 		if (!strstr(next->fs_type, "autofs"))
+			continue;
+
+		/* Skip submounts */
+		if (strstr(next->opts, "indirect"))
 			continue;
 
 		/*

@@ -1,4 +1,4 @@
-#ident "$Id: mounts.c,v 1.17 2006/03/07 20:00:18 raven Exp $"
+#ident "$Id: mounts.c,v 1.18 2006/03/08 02:40:22 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  mounts.c - module for Linux automount mount table lookup functions
@@ -382,7 +382,7 @@ static int find_mntent(const char *table, const char *path, struct mntent *ent)
 
 	return ret;
 }
-	
+
 int is_mounted(const char *table, const char *path)
 {
 	int ret = 0;

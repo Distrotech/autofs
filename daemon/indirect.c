@@ -1,4 +1,4 @@
-#ident "$Id: indirect.c,v 1.12 2006/03/07 20:00:18 raven Exp $"
+#ident "$Id: indirect.c,v 1.13 2006/03/08 02:40:22 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  indirect.c - Linux automounter indirect mount handling
@@ -86,11 +86,28 @@ static int do_mount_autofs_indirect(struct autofs_point *ap)
 	char *options = NULL;
 	char *name = NULL;
 	struct stat st;
+	struct mnt_list *mnts;
 	int ret;
 
-	if (is_mounted(_PROC_MOUNTS, ap->path)) {
-		error("already mounted");
-		goto out_err;
+	mnts = get_mnt_list(_PROC_MOUNTS, ap->path, 1);
+	if (mnts) {
+		struct mnt_list *ent;
+
+		for (ent = mnts; ent; ent = ent->next) {
+			if (strcmp(ent->path, ap->path))
+				continue;
+
+			if (strstr(ent->opts, "direct"))
+				continue;
+
+			if (strstr(ent->opts, "offset"))
+				continue;
+
+			error("already mounted");
+			free_mnt_list(mnts);
+			goto out_err;
+		}
+		free_mnt_list(mnts);
 	}
 
 	options = make_options_string(ap->path, ap->kpipefd, NULL);
@@ -127,11 +144,6 @@ static int do_mount_autofs_indirect(struct autofs_point *ap)
 
 	name = NULL;
 	options = NULL;
-
-/*
-	close(kernel_pipefd);
-	kernel_pipefd = -1;
-*/
 
 	/* Root directory for ioctl()'s */
 	ap->ioctlfd = open(ap->path, O_RDONLY);

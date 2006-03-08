@@ -35,6 +35,7 @@
 - convert submounts to use a thread instead of a process.
 - fix rootless multi-mount as target of direct mount.
 - fix sub-mount brakage following above.
+- fix sub-mount as target of direct mount.
 
 11/4/2005 autofs-4.1.4
 ----------------------

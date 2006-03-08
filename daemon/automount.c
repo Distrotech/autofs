@@ -1,4 +1,4 @@
-#ident "$Id: automount.c,v 1.56 2006/03/07 23:16:41 raven Exp $"
+#ident "$Id: automount.c,v 1.57 2006/03/08 02:40:22 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  automount.c - Linux automounter daemon
@@ -391,8 +391,6 @@ int umount_multi(struct autofs_point *ap, const char *path, int incl)
 		check_rm_dirs(ap, path, incl);
 		return 0;
 	}
-
-	debug("got mnts %p", mnts);
 
 	left = 0;
 	for (mptr = mnts; mptr != NULL; mptr = mptr->next) {
@@ -1200,7 +1198,6 @@ static void become_daemon(struct autofs_point *ap)
 static void cleanup(struct autofs_point *ap)
 {
 	char buf[MAX_ERR_BUF];
-	int status;
 
 	if (pid_file) {
 		unlink(pid_file);
@@ -1350,7 +1347,7 @@ void *handle_mounts(void *arg)
 		umount_autofs(ap, 1);
 		return_start_status(&sc, 1);
 		cleanup(ap);
-		pthread_exit(1);
+		pthread_exit(NULL);
 	}
 
 	/* If we're a submount we're owned by someone else */
