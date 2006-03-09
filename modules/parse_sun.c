@@ -1,4 +1,4 @@
-#ident "$Id: parse_sun.c,v 1.43 2006/03/08 23:56:31 raven Exp $"
+#ident "$Id: parse_sun.c,v 1.44 2006/03/09 23:01:01 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  parse_sun.c - module for Linux automountd to parse a Sun-format
@@ -36,6 +36,7 @@
 
 #define MODULE_PARSE
 #include "automount.h"
+#include "macros.h"
 
 #define MODPREFIX "parse(sun): "
 
@@ -44,14 +45,9 @@ int parse_version = AUTOFS_PARSE_VERSION;	/* Required by protocol */
 static struct mount_mod *mount_nfs = NULL;
 static int init_ctr = 0;
 
-struct substvar {
-	char *def;		/* Define variable */
-	char *val;		/* Value to replace with */
-	struct substvar *next;
-};
-
 struct parse_context {
 	char *optstr;		/* Mount options */
+	char *macros;		/* Map wide macro defines */
 	struct substvar *subst;	/* $-substitutions */
 	int slashify_colons;	/* Change colons to slashes? */
 };
@@ -63,164 +59,26 @@ struct multi_mnt {
 	struct multi_mnt *next;
 };
 
-struct utsname un;
-char processor[65];		/* Not defined on Linux, so we make our own */
+/* Default context */
 
-/* Predefined variables: tail of link chain */
-static struct substvar
-	sv_arch   = {"ARCH",   un.machine,  NULL },
-	sv_cpu    = {"CPU",    processor,   &sv_arch},
-	sv_host   = {"HOST",   un.nodename, &sv_cpu},
-	sv_osname = {"OSNAME", un.sysname,  &sv_host},
-	sv_osrel  = {"OSREL",  un.release,  &sv_osname},
-	sv_osvers = {"OSVERS", un.version,  &sv_osrel
-};
-
-/* Default context pattern */
-
-static char *child_args = NULL;
 static struct parse_context default_context = {
 	NULL,			/* No mount options */
-	&sv_osvers,		/* The substvar predefined variables */
+	NULL,			/* No map wide macros */
+	NULL,			/* The substvar local vars table */
 	1			/* Do slashify_colons */
 };
+
+void dump_table(struct substvar *);
 
 /* Free all storage associated with this context */
 static void kill_context(struct parse_context *ctxt)
 {
-	struct substvar *sv, *nsv;
-
-	sv = ctxt->subst;
-
-	while (sv != &sv_osvers) {
-		nsv = sv->next;
-		free(sv);
-		sv = nsv;
-	}
-
+	macro_free_table(ctxt->subst);
 	if (ctxt->optstr)
 		free(ctxt->optstr);
-
+	if (ctxt->macros)
+		free(ctxt->macros);
 	free(ctxt);
-}
-
-static int is_systemvar(const char *str, int len)
-{
-	struct substvar *sv = &sv_osvers;
-	int found = 0;
-
-	while (sv) {
-		if (!strncmp(str, sv->def, len) && sv->def[len] == '\0') {
-			found = 1;
-			break;
-		}
-		sv = sv->next;
-	}
-	return found;
-}
-
-static struct substvar *addvar(struct substvar *sv,
-			       const char *str, int len, const char *value)
-{
-	struct substvar *list = sv;
-
-	if (is_systemvar(str, len))
-		return NULL;
-
-	while (sv) {
-		if (!strncmp(str, sv->def, len) && sv->def[len] == '\0')
-			break;
-		sv = sv->next;
-	}
-
-	if (sv) {
-		char *this = realloc(sv->val, len + 1);
-		if (!this)
-			return NULL;
-		strcat(this, value);
-		sv->val = this;
-	} else {
-		struct substvar *new;
-		char *def, *val;
-
-		def = strdup(str);
-		if (!def)
-			return NULL;
-		val = strdup(value);
-		if (!val) {
-			free(def);
-			return NULL;
-		}
-
-		new = malloc(sizeof(struct substvar));
-		if (!new) {
-			free(def);
-			free(val);
-			return NULL;
-		}
-		new->def = def;
-		new->val = val;
-		new->next = list;
-		list = new;
-	}
-	return list;
-}
-
-static struct substvar *removevar(struct substvar *sv, const char *str, int len)
-{
-	struct substvar *list = sv;
-	struct substvar *last = NULL;
-
-	if (is_systemvar(str, len))
-		return NULL;
-
-	while (sv) {
-		if (!strncmp(str, sv->def, len) && sv->def[len] == '\0')
-			break;
-		last = sv;
-		sv = sv->next;
-	}
-
-	if (sv) {
-		if (last)
-			last->next = sv->next;
-		else
-			list = sv->next;
-		free(sv->def);
-		free(sv->val);
-		free(sv);
-	}
-	return list;
-}
-
-/* Find the $-variable matching a certain string fragment */
-static const struct substvar *findvar(const struct substvar *sv, const char *str, int len)
-{
-#ifdef ENABLE_EXT_ENV
-	/* holds one env var */
-	static struct substvar sv_env = { NULL, NULL,  NULL };
-	static char *substvar_env;
-	char etmp[512];
-#endif
-
-	while (sv) {
-		if (!strncmp(str, sv->def, len) && sv->def[len] == '\0')
-			return sv;
-		sv = sv->next;
-	}
-
-#ifdef ENABLE_EXT_ENV
-	/* builtin map failed, try the $ENV */
-	memcpy(etmp, str, len);
-	etmp[len]='\0';
-
-	if ((substvar_env=getenv(etmp)) != NULL) {
-		sv_env.val = substvar_env;
-		return(&sv_env);
-	}
-#endif
-
-	return NULL;
 }
 
 static struct substvar *addstdenv(struct substvar *sv)
@@ -229,35 +87,20 @@ static struct substvar *addstdenv(struct substvar *sv)
 	struct substvar *list = sv;
 	struct substvar *this;
 
-	if ((val = getenv("UID"))) {
-		this = addvar(list, "UID", 3, val);
-		if (this)
-			list = this;
-	}
+	if ((val = getenv("UID")))
+		list = macro_addvar(list, "UID", 3, val);
 
-	if ((val = getenv("USER"))) {
-		this = addvar(list, "USER", 4, val);
-		if (this)
-			list = this;
-	}
+	if ((val = getenv("USER")))
+		list = macro_addvar(list, "USER", 4, val);
 
-	if ((val = getenv("HOME"))) {
-		this = addvar(list, "HOME", 4, val);
-		if (this)
-			list = this;
-	}
+	if ((val = getenv("HOME")))
+		list = macro_addvar(list, "HOME", 4, val);
 
-	if ((val = getenv("GID"))) {
-		this = addvar(list, "GID", 3, val);
-		if (this)
-			list = this;
-	}
+	if ((val = getenv("GID")))
+		list = macro_addvar(list, "GID", 3, val);
 
-	if ((val = getenv("GROUP"))) {
-		this = addvar(list, "GROUP", 4, val);
-		if (this)
-			list = this;
-	}
+	if ((val = getenv("GROUP")))
+		list = macro_addvar(list, "GROUP", 5, val);
 
 	return list;
 }
@@ -265,23 +108,12 @@ static struct substvar *addstdenv(struct substvar *sv)
 static struct substvar *removestdenv(struct substvar *sv)
 {
 	struct substvar *list = sv;
-	struct substvar *this;
 
-	this = removevar(list, "UID", 3);
-	if (this)
-		list = this;
-	this = removevar(list, "USER", 4);
-	if (this)
-		list = this;
-	this = removevar(list, "HOME", 4);
-	if (this)
-		list = this;
-	this = removevar(list, "GID", 3);
-	if (this)
-		list = this;
-	this = removevar(list, "GROUP", 4);
-	if (this)
-		list = this;
+	list = macro_removevar(list, "UID", 3);
+	list = macro_removevar(list, "USER", 4);
+	list = macro_removevar(list, "HOME", 4);
+	list = macro_removevar(list, "GID", 3);
+	list = macro_removevar(list, "GROUP", 5);
 
 	return list;
 }
@@ -321,7 +153,7 @@ int expandsunent(const char *src, char *dst, const char *key,
 						*dst = '\0';
 					return len;
 				}
-				sv = findvar(svc, src, p - src);
+				sv = macro_findvar(svc, src, p - src);
 				if (sv) {
 					l = strlen(sv->val);
 					if (dst) {
@@ -335,7 +167,7 @@ int expandsunent(const char *src, char *dst, const char *key,
 				p = src;
 				while (isalnum(*p) || *p == '_')
 					p++;
-				sv = findvar(svc, src, p - src);
+				sv = macro_findvar(svc, src, p - src);
 				if (sv) {
 					l = strlen(sv->val);
 					if (dst) {
@@ -498,23 +330,15 @@ int parse_init(int argc, const char *const *argv, void **context)
 {
 	struct parse_context *ctxt;
 	char buf[MAX_ERR_BUF];
-	struct substvar *sv;
-	char *noptstr;
+	char *noptstr, *def, *val, *macros;
 	const char *xopt;
-	int optlen, len;
+	int optlen, len, offset;
 	int i, bval;
 
 	/* Get processor information for predefined escapes */
 
-	if (!init_ctr) {
-		uname(&un);
-		/* uname -p is not defined on Linux.  Make it the same as uname -m,
-		   except make it return i386 on all x86 (x >= 3) */
-		strcpy(processor, un.machine);
-		if (processor[0] == 'i' && processor[1] >= '3' &&
-		    !strcmp(processor + 2, "86"))
-			processor[1] = '3';
-	}
+	if (!init_ctr)
+		macro_init();
 
 	/* Set up context and escape chain */
 
@@ -535,51 +359,53 @@ int parse_init(int argc, const char *const *argv, void **context)
 		   (argv[i][1] == 'D' || argv[i][1] == '-') ) {
 			switch (argv[i][1]) {
 			case 'D':
-				sv = malloc(sizeof(struct substvar));
-				if (!sv) {
-					char *estr;
-					estr = strerror_r(errno, buf, MAX_ERR_BUF);
-					error(MODPREFIX "malloc: %s", estr);
-					break;
-				}
 				if (argv[i][2])
-					sv->def = strdup(argv[i] + 2);
+					def = strdup(argv[i] + 2);
 				else if (++i < argc)
-					sv->def = strdup(argv[i]);
-				else {
-					free(sv);
+					def = strdup(argv[i]);
+				else
 					break;
-				}
 
-				if (!sv->def) {
+				if (!def) {
 					char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
 					error(MODPREFIX "strdup: %s", estr);
-					free(sv);
-				} else {
-					int len = strlen(sv->def) + strlen(sv->val);
-					int clen = len + strlen(child_args);
-
-					sv->val = strchr(sv->def, '=');
-					if (sv->val)
-						*(sv->val++) = '\0';
-					else
-						sv->val = "";
-
-					/* we use 5 for the "-D", the "=", and the null */
-					if (child_args) {
-						child_args = realloc(child_args, clen + 5);
-						strcat(child_args, ",");
-					} else { /* No comma, so only +4 */
-						child_args = malloc(len + 4);
-						*child_args = '\0';
-					}
-					strcat(child_args, "-D");
-					strcat(child_args, sv->def);
-					strcat(child_args, "=");
-					strcat(child_args, sv->val);
-					sv->next = ctxt->subst;
-					ctxt->subst = sv;
+					break;
 				}
+
+				val = strchr(def, '=');
+				if (val)
+					*(val++) = '\0';
+				else
+					val = "";
+
+				ctxt->subst = macro_addvar(ctxt->subst,
+							def, strlen(def), val);
+
+				/* we use 5 for the "-D", "=", "," and the null */
+				if (ctxt->macros) {
+					len = strlen(ctxt->macros) + strlen(def) + strlen(val);
+					macros = realloc(ctxt->macros, len + 5);
+					if (!macros) {
+						free(def);
+						break;
+					}
+					strcat(macros, ",");
+				} else { /* No comma, so only +4 */
+					len = strlen(def) + strlen(val);
+					macros = malloc(len + 4);
+					if (!macros) {
+						free(def);
+						break;
+					}
+					*macros = '\0';
+				}
+				ctxt->macros = macros;
+
+				strcat(ctxt->macros, "-D");
+				strcat(ctxt->macros, def);
+				strcat(ctxt->macros, "=");
+				strcat(ctxt->macros, val);
+				free(def);
 				break;
 
 			case '-':
@@ -596,7 +422,6 @@ int parse_init(int argc, const char *const *argv, void **context)
 				else
 					error(MODPREFIX "unknown option: %s",
 					      argv[i]);
-
 				break;
 
 			default:
@@ -604,7 +429,7 @@ int parse_init(int argc, const char *const *argv, void **context)
 				break;
 			}
 		} else {
-			int offset = (argv[i][0] == '-' ? 1 : 0);
+			offset = (argv[i][0] == '-' ? 1 : 0);
 			len = strlen(argv[i] + offset);
 			if (ctxt->optstr) {
 				noptstr =
@@ -721,8 +546,10 @@ static char *concat_options(char *left, char *right)
 	return ret;
 }
 
-static int sun_mount(struct autofs_point *ap, const char *root, const char *name, int namelen,
-		     const char *loc, int loclen, const char *options)
+static int sun_mount(struct autofs_point *ap, const char *root,
+			const char *name, int namelen,
+			const char *loc, int loclen, const char *options,
+			struct parse_context *ctxt)
 {
 	char *fstype = "nfs";	/* Default filesystem type */
 	int nonstrict = 1;
@@ -779,14 +606,15 @@ static int sun_mount(struct autofs_point *ap, const char *root, const char *name
 	}
 
 
-	if (child_args && !strcmp(fstype, "autofs")) {
-		char *noptions;
+	if (!strcmp(fstype, "autofs") && ctxt->macros) {
+		char *noptions = NULL;
 
 		if (!options) {
-			noptions = alloca(strlen(child_args) + 1);
+			noptions = alloca(strlen(ctxt->macros) + 1);
 			*noptions = '\0';
 		} else {
-			noptions = alloca(strlen(options) + strlen(child_args) + 2);
+			int len = strlen(options) + strlen(ctxt->macros) + 2;
+			noptions = alloca(len);
 
 			if (noptions) {
 				strcpy(noptions, options);
@@ -795,20 +623,13 @@ static int sun_mount(struct autofs_point *ap, const char *root, const char *name
 		}
 
 		if (noptions) {
-			strcat(noptions, child_args);
+			strcat(noptions, ctxt->macros);
 			options = noptions;
 		} else {
 			error(MODPREFIX "alloca failed for options");
 		}
 	}
-/*
-	if (strcmp(root, "/-")) {
-		while (*name == '/') {
-			name++;
-			namelen--;
-		}
-	}
-*/
+
 	mountpoint = alloca(namelen + 1);
 	sprintf(mountpoint, "%.*s", namelen, name);
 
@@ -1288,7 +1109,7 @@ int parse_mount(struct autofs_point *ap, const char *name,
 
 		if (root_path) {
 			rv = sun_mount(ap, m_root, root_path, strlen(root_path),
-				root_loc, strlen(root_loc), root_options);
+				root_loc, strlen(root_loc), root_options, ctxt);
 
 			free(root_path);
 			free(root_loc);
@@ -1370,7 +1191,7 @@ int parse_mount(struct autofs_point *ap, const char *name,
 		debug(MODPREFIX "core of entry: options=%s, loc=%.*s",
 		      options, loclen, loc);
 
-		rv = sun_mount(ap, ap->path, name, name_len, loc, loclen, options);
+		rv = sun_mount(ap, ap->path, name, name_len, loc, loclen, options, ctxt);
 
 		/* non-strict failure to normal failure for ordinary mount */
 		if (rv < 0)
