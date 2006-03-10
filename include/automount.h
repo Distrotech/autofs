@@ -1,4 +1,4 @@
-#ident "$Id: automount.h,v 1.35 2006/03/08 23:56:31 raven Exp $"
+#ident "$Id: automount.h,v 1.36 2006/03/10 20:54:53 raven Exp $"
 /*
  * automount.h
  *
@@ -385,12 +385,23 @@ struct pending_args {
 	unsigned long wait_queue_token;	/* Associated kernel wait token */
 };
 
+struct thread_stdenv_vars {
+	uid_t uid;
+	gid_t gid;
+	char *user;
+	char *group;
+	char *home;
+};
+
+extern pthread_key_t key_thread_stdenv_vars;
+
 struct kernel_mod_version {
 	unsigned int major;
 	unsigned int minor;
 };
 
 struct autofs_master {
+	char *mountpoint;
 	char *map;
 	unsigned int timeout;
 	unsigned int logging;

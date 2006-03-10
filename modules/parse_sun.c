@@ -1,4 +1,4 @@
-#ident "$Id: parse_sun.c,v 1.44 2006/03/09 23:01:01 raven Exp $"
+#ident "$Id: parse_sun.c,v 1.45 2006/03/10 20:54:53 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  parse_sun.c - module for Linux automountd to parse a Sun-format
@@ -68,8 +68,6 @@ static struct parse_context default_context = {
 	1			/* Do slashify_colons */
 };
 
-void dump_table(struct substvar *);
-
 /* Free all storage associated with this context */
 static void kill_context(struct parse_context *ctxt)
 {
@@ -83,25 +81,27 @@ static void kill_context(struct parse_context *ctxt)
 
 static struct substvar *addstdenv(struct substvar *sv)
 {
-	char *val;
 	struct substvar *list = sv;
-	struct substvar *this;
+	struct thread_stdenv_vars *tsv;
+	char numbuf[16];
 
-	if ((val = getenv("UID")))
-		list = macro_addvar(list, "UID", 3, val);
+	tsv = pthread_getspecific(key_thread_stdenv_vars);
+	if (tsv) {
+		int ret;
+		long num;
 
-	if ((val = getenv("USER")))
-		list = macro_addvar(list, "USER", 4, val);
-
-	if ((val = getenv("HOME")))
-		list = macro_addvar(list, "HOME", 4, val);
-
-	if ((val = getenv("GID")))
-		list = macro_addvar(list, "GID", 3, val);
-
-	if ((val = getenv("GROUP")))
-		list = macro_addvar(list, "GROUP", 5, val);
-
+		num = (long) tsv->uid;
+		ret = sprintf(numbuf, "%ld", num);
+		if (ret > 0)
+			list = macro_addvar(list, "UID", 3, numbuf);
+		num = (long) tsv->gid;
+		ret = sprintf(numbuf, "%ld", num);
+		if (ret > 0)
+			list = macro_addvar(list, "GID", 3, numbuf);
+		list = macro_addvar(list, "USER", 4, tsv->user);
+		list = macro_addvar(list, "GROUP", 5, tsv->group);
+		list = macro_addvar(list, "HOME", 4, tsv->home);
+	}
 	return list;
 }
 
@@ -114,7 +114,6 @@ static struct substvar *removestdenv(struct substvar *sv)
 	list = macro_removevar(list, "HOME", 4);
 	list = macro_removevar(list, "GID", 3);
 	list = macro_removevar(list, "GROUP", 5);
-
 	return list;
 }
 

@@ -39,6 +39,8 @@
 - update mounts.c to use re-entrant getmntent.
 - make substution table re-entrant.
   - divide into global and local symbol tables.
+- implement per thread storage for extended macro vars
+  (ie. UID, GID, USER, GROUP etc.).
 
 11/4/2005 autofs-4.1.4
 ----------------------

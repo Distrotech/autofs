@@ -1,4 +1,4 @@
-#ident "$Id: automount.c,v 1.59 2006/03/08 23:56:31 raven Exp $"
+#ident "$Id: automount.c,v 1.60 2006/03/10 20:54:53 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  automount.c - Linux automounter daemon
@@ -59,6 +59,8 @@ struct expire_cond ec = {
 
 struct readmap_cond rc = {
 	PTHREAD_MUTEX_INITIALIZER, PTHREAD_COND_INITIALIZER, 0, NULL, 0, 0};
+
+pthread_key_t key_thread_stdenv_vars;
 
 /* re-entrant syslog default context data */
 #define AUTOFS_SYSLOG_CONTEXT {-1, 0, 0, LOG_PID, (const char *)0, LOG_DAEMON, 0xff};
@@ -1561,6 +1563,21 @@ void free_autofs_point(struct autofs_point *ap)
 	free(ap);
 }
 
+static void key_thread_stdenv_vars_destroy(void *arg)
+{
+	struct thread_stdenv_vars *tsv;
+
+	tsv = (struct thread_stdenv_vars *) arg;
+	if (tsv->user)
+		free(tsv->user);
+	if (tsv->group)
+		free(tsv->group);
+	if (tsv->home)
+		free(tsv->home);
+	free(tsv);
+	return;
+}
+
 int main(int argc, char *argv[])
 {
 	pthread_t thid;
@@ -1696,6 +1713,14 @@ int main(int argc, char *argv[])
 			debug("Map argv[%d] = %s", i, mapargv[i]);
 	}
 #endif
+
+	status = pthread_key_create(&key_thread_stdenv_vars,
+				key_thread_stdenv_vars_destroy);
+	if (status) {
+		crit("failed to create thread data key for std env vars!");
+		cleanup(ap);
+		pthread_exit(NULL);
+	}
 
 	if (!alarm_start_handler()) {
 		crit("failed to create alarm handler thread!");

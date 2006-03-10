@@ -1,4 +1,4 @@
-#ident "$Id: direct.c,v 1.15 2006/03/08 02:40:22 raven Exp $"
+#ident "$Id: direct.c,v 1.16 2006/03/10 20:54:53 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  direct.c - Linux automounter direct mount handling
@@ -40,10 +40,6 @@
 #include <grp.h>
 
 #include "automount.h"
-
-/*
-static int kernel_pipefd = -1;		kernel pipe fd for use in direct mounts
-*/
 
 extern pthread_attr_t detach_attr;
 
@@ -798,9 +794,9 @@ static void *do_mount_direct(void *arg)
 	struct group gr;
 	struct group *pgr = &gr;
 	struct group **ppgr = &pgr;
-	char *tmp;
+	char *pw_tmp, *gr_tmp;
+	struct thread_stdenv_vars *tsv;
 	int tmplen;
-	char env_buf[30];
 	struct stat st;
 	int status;
 
@@ -823,56 +819,112 @@ static void *do_mount_direct(void *arg)
 	msg("attempting to mount entry %s", mt->name);
 
 	/*
-	 * Setup ENV for mount.
+	 * Setup thread specific data values for macro
+	 * substution in map entries during the mount.
 	 * Best effort only as it must go ahead.
 	 */
 
-	sprintf(env_buf, "%lu", (unsigned long) mt->uid);
-	setenv("UID", env_buf, 1);
-	sprintf(env_buf, "%lu", (unsigned long) mt->gid);
-	setenv("GID", env_buf, 1);
+	tsv = malloc(sizeof(struct thread_stdenv_vars));
+	if (!tsv) 
+		goto cont;
+
+	tsv->uid = mt->uid;
+	tsv->gid = mt->gid;
 
 	/* Try to get passwd info */
 
 	tmplen = sysconf(_SC_GETPW_R_SIZE_MAX);
 	if (tmplen < 0) {
 		error("failed to get buffer size for getpwuid_r");
+		free(tsv);
 		goto cont;
 	}
 
-	tmp = malloc(tmplen + 1);
-	if (!tmp) {
+	pw_tmp = malloc(tmplen + 1);
+	if (!pw_tmp) {
 		error("failed to malloc buffer for getpwuid_r");
+		free(tsv);
 		goto cont;
 	}
 
-	status = getpwuid_r(mt->uid, ppw, tmp, tmplen, pppw);
-	if (!status) {
-		setenv("USER", pw.pw_name, 1);
-		setenv("HOME", pw.pw_dir, 1);
+	status = getpwuid_r(mt->uid, ppw, pw_tmp, tmplen, pppw);
+	if (status) {
+		error("failed to get passwd info from getpwuid_r");
+		free(tsv);
+		free(pw_tmp);
+		goto cont;
 	}
 
-	free(tmp);
+	tsv->user = strdup(pw.pw_name);
+	if (!tsv->user) {
+		error("failed to malloc buffer for user");
+		free(tsv);
+		free(pw_tmp);
+		goto cont;
+	}
+
+	tsv->home = strdup(pw.pw_dir);
+	if (!tsv->user) {
+		error("failed to malloc buffer for home");
+		free(pw_tmp);
+		free(tsv->user);
+		free(tsv);
+		goto cont;
+	}
+
+	free(pw_tmp);
 
 	/* Try to get group info */
 
 	tmplen = sysconf(_SC_GETGR_R_SIZE_MAX);
 	if (tmplen < 0) {
 		error("failed to get buffer size for getgrgid_r");
+		free(tsv->user);
+		free(tsv->home);
+		free(tsv);
 		goto cont;
 	}
 
-	tmp = malloc(tmplen + 1);
-	if (!tmp) {
+	gr_tmp = malloc(tmplen + 1);
+	if (!gr_tmp) {
 		error("failed to malloc buffer for getgrgid_r");
+		free(tsv->user);
+		free(tsv->home);
+		free(tsv);
 		goto cont;
 	}
 
-	status = getgrgid_r(mt->gid, pgr, tmp, tmplen, ppgr);
-	if (!status)
-		setenv("GROUP", gr.gr_name, 1);
+	status = getgrgid_r(mt->gid, pgr, gr_tmp, tmplen, ppgr);
+	if (status) {
+		error("failed to get group info from getgrgid_r");
+		free(tsv->user);
+		free(tsv->home);
+		free(tsv);
+		free(gr_tmp);
+		goto cont;
+	}
 
-	free(tmp);
+	tsv->group = strdup(gr.gr_name);
+	if (!tsv->group) {
+		error("failed to malloc buffer for group");
+		free(tsv->user);
+		free(tsv->home);
+		free(tsv);
+		free(gr_tmp);
+		goto cont;
+	}
+
+	free(gr_tmp);
+
+	status = pthread_setspecific(key_thread_stdenv_vars, tsv);
+	if (status) {
+		error("failed to set stdenv thread var");
+		free(tsv->group);
+		free(tsv->user);
+		free(tsv->home);
+		free(tsv);
+	}
+
 cont:
 	status = lookup_nss_mount(ap, mt->name, strlen(mt->name));
 	/*
