@@ -1,4 +1,4 @@
-#ident "$Id: parse_sun.c,v 1.45 2006/03/10 20:54:53 raven Exp $"
+#ident "$Id: parse_sun.c,v 1.46 2006/03/11 06:02:48 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  parse_sun.c - module for Linux automountd to parse a Sun-format
@@ -23,7 +23,6 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
-#include <syslog.h>
 #include <ctype.h>
 #include <limits.h>
 #include <sys/param.h>
@@ -160,7 +159,8 @@ int expandsunent(const char *src, char *dst, const char *key,
 						dst += l;
 					}
 					len += l;
-				}
+				} else
+					return 0;
 				src = p + 1;
 			} else {
 				p = src;
@@ -174,7 +174,8 @@ int expandsunent(const char *src, char *dst, const char *key,
 						dst += l;
 					}
 					len += l;
-				}
+				} else
+					return 0;
 				src = p;
 			}
 			break;
@@ -887,7 +888,13 @@ int parse_mount(struct autofs_point *ap, const char *name,
 	}
 
 	ctxt->subst = addstdenv(ctxt->subst);
+
 	mapent_len = expandsunent(mapent, NULL, name, ctxt->subst, slashify);
+	if (mapent_len == 0) {
+		error("failed to expand map entry");
+		return 1;
+	}
+
 	pmapent = alloca(mapent_len + 1);
 	if (!pmapent) {	
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);

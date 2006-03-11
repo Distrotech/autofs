@@ -1,4 +1,4 @@
-#ident "$Id: parse_hesiod.c,v 1.8 2006/02/20 01:05:33 raven Exp $"
+#ident "$Id: parse_hesiod.c,v 1.9 2006/03/11 06:02:48 raven Exp $"
 /*
  * parse_hesiod.c
  *
@@ -8,7 +8,6 @@
 #include <sys/types.h>
 #include <ctype.h>
 #include <string.h>
-#include <syslog.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <netinet/in.h>

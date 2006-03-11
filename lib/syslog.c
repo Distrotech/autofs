@@ -1,4 +1,4 @@
-#ident "$Id: syslog.c,v 1.2 2005/11/27 04:08:54 raven Exp $"
+#ident "$Id: syslog.c,v 1.3 2006/03/11 06:02:48 raven Exp $"
 /*
  * Copyright (c) 1983, 1988, 1993
  *	The Regents of the University of California.  All rights reserved.
@@ -33,7 +33,6 @@
 #include <sys/uio.h>
 #include <sys/un.h>
 #include <netdb.h>
-
 #include <errno.h>
 #include <fcntl.h>
 #include <paths.h>

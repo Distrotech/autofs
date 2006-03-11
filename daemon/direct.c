@@ -1,4 +1,4 @@
-#ident "$Id: direct.c,v 1.16 2006/03/10 20:54:53 raven Exp $"
+#ident "$Id: direct.c,v 1.17 2006/03/11 06:02:47 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  direct.c - Linux automounter direct mount handling
@@ -26,7 +26,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <syslog.h>
 #include <unistd.h>
 #include <sys/ioctl.h>
 #include <sys/types.h>
@@ -156,9 +155,9 @@ static int do_umount_autofs_direct(struct autofs_point *ap, struct mapent *me)
 
 force_umount:
 	if (rv != 0) {
+		msg("forcing unmount of %s", me->key);
 		rv = spawnl(LOG_DEBUG,
 			    PATH_UMOUNT, PATH_UMOUNT, "-n", "-l", me->key, NULL);
-		msg("forced unmount of %s", me->key);
 	} else
 		msg("umounted %s", me->key);
 
@@ -381,11 +380,11 @@ int mount_autofs_direct(struct autofs_point *ap)
 	return 0;
 }
 
-int umount_autofs_offset(struct mapent *me)
+int umount_autofs_offset(struct autofs_point *ap, struct mapent *me)
 {
 	char buf[MAX_ERR_BUF];
-	int rv, ret;
 	struct stat st;
+	int rv = 1, ret;
 
 	if (me->ioctlfd < 0)
 		me->ioctlfd = open(me->key, O_RDONLY);
@@ -393,12 +392,23 @@ int umount_autofs_offset(struct mapent *me)
 	if (me->ioctlfd >= 0) {
 		int status = 1;
 
+#ifndef TEST_FORCE_UMOUNT
 		ioctl(me->ioctlfd, AUTOFS_IOC_ASKUMOUNT, &status);
 		if (!status) {
 			debug("ask umount returned busy");
 			return 1;
 		}
-
+#else
+		ioctl(me->ioctlfd, AUTOFS_IOC_ASKUMOUNT, &status);
+		if (!status) {
+			if (ap->state == ST_SHUTDOWN)
+				goto force_umount;
+			else {
+				debug("ask umount returned busy");
+				return 1;
+			}
+		}
+#endif
 		ioctl(me->ioctlfd, AUTOFS_IOC_CATATONIC, 0);
 		close(me->ioctlfd);
 	} else {
@@ -424,9 +434,9 @@ int umount_autofs_offset(struct mapent *me)
 
 force_umount:
 	if (rv != 0) {
+		msg("forcing unmount of %s", me->key);
 		rv = spawnl(LOG_DEBUG,
 			    PATH_UMOUNT, PATH_UMOUNT, "-n", "-l", me->key, NULL);
-		msg("forcing unmount of %s", me->key);
 	} else
 		msg("umounted %s", me->key);
 

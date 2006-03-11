@@ -1,4 +1,4 @@
-#ident "$Id: lookup_userhome.c,v 1.8 2006/03/01 15:52:21 raven Exp $"
+#ident "$Id: lookup_userhome.c,v 1.9 2006/03/11 06:02:48 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup_userhome.c - module for Linux automount to generate symlinks
@@ -18,7 +18,6 @@
 #include <malloc.h>
 #include <pwd.h>
 #include <unistd.h>
-#include <syslog.h>
 #include <string.h>
 #include <sys/param.h>
 #include <sys/types.h>

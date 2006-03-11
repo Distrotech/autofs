@@ -1,4 +1,4 @@
-#ident "$Id: lookup_multi.c,v 1.13 2006/02/24 17:20:55 raven Exp $"
+#ident "$Id: lookup_multi.c,v 1.14 2006/03/11 06:02:48 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup_multi.c - module for Linux automount to seek multiple lookup
@@ -19,7 +19,6 @@
 #include <malloc.h>
 #include <stdio.h>
 #include <string.h>
-#include <syslog.h>
 #include <unistd.h>
 
 #define MODULE_LOOKUP

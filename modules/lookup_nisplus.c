@@ -1,4 +1,4 @@
-#ident "$Id: lookup_nisplus.c,v 1.10 2006/03/03 21:48:23 raven Exp $"
+#ident "$Id: lookup_nisplus.c,v 1.11 2006/03/11 06:02:48 raven Exp $"
 /*
  * lookup_nisplus.c
  *
@@ -8,7 +8,6 @@
 #include <stdio.h>
 #include <malloc.h>
 #include <unistd.h>
-#include <syslog.h>
 #include <sys/param.h>
 #include <sys/types.h>
 #include <signal.h>

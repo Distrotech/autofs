@@ -41,6 +41,9 @@
   - divide into global and local symbol tables.
 - implement per thread storage for extended macro vars
   (ie. UID, GID, USER, GROUP etc.).
+- fix expandsunent not returning fail on failed macro translation.
+- fix expandsunent return no checked.
+- add EXPERIMENTAL forced shutdown.
 
 11/4/2005 autofs-4.1.4
 ----------------------

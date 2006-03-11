@@ -1,4 +1,4 @@
-#ident "$Id: lookup_yp.c,v 1.24 2006/03/03 21:48:23 raven Exp $"
+#ident "$Id: lookup_yp.c,v 1.25 2006/03/11 06:02:48 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup_yp.c - module for Linux automountd to access a YP (NIS)
@@ -18,7 +18,6 @@
 #include <stdio.h>
 #include <malloc.h>
 #include <unistd.h>
-#include <syslog.h>
 #include <time.h>
 #include <signal.h>
 #include <sys/param.h>

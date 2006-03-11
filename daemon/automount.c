@@ -1,4 +1,4 @@
-#ident "$Id: automount.c,v 1.60 2006/03/10 20:54:53 raven Exp $"
+#ident "$Id: automount.c,v 1.61 2006/03/11 06:02:47 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  automount.c - Linux automounter daemon
@@ -177,7 +177,7 @@ static int umount_offsets(struct autofs_point *ap, const char *base)
 		 * We're in trouble if umounting the triggers fails.
 		 * It should always succeed due to the expire design.
 		 */
-		if (umount_autofs_offset(me)) {
+		if (umount_autofs_offset(ap, me)) {
 			crit("failed to umount offset %s", me->key);
 			ret++;
 		}
@@ -217,24 +217,44 @@ static int umount_ent(struct autofs_point *ap, const char *path, const char *typ
 	int sav_errno;
 	int is_smbfs = (strcmp(type, "smbfs") == 0);
 	int status;
-	int rv = 1;
+	int ret, rv = 1;
 
 	status = lstat(path, &st);
 	sav_errno = errno;
 
-	/* EIO appears to correspond to an smb mount that has gone away */
-	if (!status ||
-	    (is_smbfs && (sav_errno == EIO || sav_errno == EBADSLT))) {
-		int umount_ok = 0;
-
-		if (!status && (S_ISDIR(st.st_mode) && (st.st_dev != ap->dev)))
-			umount_ok = 1;
-
-		if (umount_ok || is_smbfs) {
-			rv = spawnll(LOG_DEBUG, 
-				    PATH_UMOUNT, PATH_UMOUNT, path, NULL);
-		}
+	/*
+	 * lstat failed and we're an smbfs fs returning an error that is not
+	 * EIO or EBADSLT or the lstat failed so it's a bad path. Return
+	 * a fail.
+	 *
+	 * EIO appears to correspond to an smb mount that has gone away
+	 * and EBADSLT relates to CD changer not responding.
+	 */
+	if (!status && (S_ISDIR(st.st_mode) && st.st_dev != ap->dev)) {
+		rv = spawnll(LOG_DEBUG, PATH_UMOUNT, PATH_UMOUNT, path, NULL);
+	} else if (is_smbfs && (sav_errno == EIO || sav_errno == EBADSLT)) {
+		rv = spawnll(LOG_DEBUG, PATH_UMOUNT, PATH_UMOUNT, path, NULL);
 	}
+
+#ifdef TEST_FORCE_UMOUNT
+	/* We are shutting down so unlink busy mounts */
+	if (rv && (ap->state == ST_SHUTDOWN_PENDING || ap->state == ST_SHUTDOWN)) {
+		ret = stat(path, &st);
+		if (ret == -1 && errno == ENOENT) {
+			error("mount point does not exist");
+			return 0;
+		}
+
+		if (ret == 0 && !S_ISDIR(st.st_mode)) {
+			error("mount point is not a directory");
+			return 0;
+		}
+
+		msg("forcing unmount of %s", path);
+		rv = spawnll(LOG_DEBUG, PATH_UMOUNT, PATH_UMOUNT, "-l", path, NULL);
+	}
+#endif
+
 	return rv;
 }
 
@@ -543,15 +563,17 @@ void expire_cleanup(void *arg)
 
 		case ST_SHUTDOWN_PENDING:
 			next = ST_SHUTDOWN;
+#ifndef TEST_FORCE_UMOUNT
 			if (success == 0)
 				break;
 
 			/* Failed shutdown returns to ready */
-			warn("can't shutdown: filesystem %s still busy",
+			warn("filesystem %s still busy, forcing shutdown",
 			     ap->path);
 			if (!ap->submount)
 				alarm_add(ap, ap->exp_runfreq);
 			next = ST_READY;
+#endif
 			break;
 
 		default:
@@ -1416,13 +1438,14 @@ void *handle_mounts(void *arg)
 				break;
 			}
 
+#ifndef TEST_FORCE_UMOUNT
 			/* Failed shutdown returns to ready */
 			warn("can't shutdown: filesystem %s still busy",
 					ap->path);
 			if (!ap->submount)
 				alarm_add(ap, ap->exp_runfreq);
 			ap->state = ST_READY;
-
+#endif
 			status = pthread_mutex_unlock(&state_mutex);
 			if (status)
 				fatal(status);

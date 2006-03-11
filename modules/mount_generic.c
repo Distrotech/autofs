@@ -1,4 +1,4 @@
-#ident "$Id: mount_generic.c,v 1.20 2006/02/20 01:05:33 raven Exp $"
+#ident "$Id: mount_generic.c,v 1.21 2006/03/11 06:02:48 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  mount_generic.c - module for Linux automountd to mount filesystems
@@ -18,7 +18,6 @@
 #include <malloc.h>
 #include <fcntl.h>
 #include <unistd.h>
-#include <syslog.h>
 #include <string.h>
 #include <stdlib.h>
 #include <sys/param.h>

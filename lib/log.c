@@ -1,4 +1,4 @@
-#ident "$Id: log.c,v 1.1 2006/02/08 16:50:32 raven Exp $"
+#ident "$Id: log.c,v 1.2 2006/03/11 06:02:48 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  log.c - applcation logging routines.
@@ -17,7 +17,6 @@
 
 #include <stdarg.h>
 #include <stdio.h>
-#include <syslog.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <stdlib.h>

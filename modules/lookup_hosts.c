@@ -1,4 +1,4 @@
-#ident "$Id: lookup_hosts.c,v 1.6 2006/03/03 21:48:23 raven Exp $"
+#ident "$Id: lookup_hosts.c,v 1.7 2006/03/11 06:02:48 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup_hosts.c - module for Linux automount to mount the exports
@@ -17,7 +17,6 @@
 #include <stdio.h>
 #include <malloc.h>
 #include <unistd.h>
-#include <syslog.h>
 #include <sys/param.h>
 #include <sys/types.h>
 #include <sys/stat.h>

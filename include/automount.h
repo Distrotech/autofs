@@ -1,4 +1,4 @@
-#ident "$Id: automount.h,v 1.36 2006/03/10 20:54:53 raven Exp $"
+#ident "$Id: automount.h,v 1.37 2006/03/11 06:02:47 raven Exp $"
 /*
  * automount.h
  *
@@ -13,6 +13,7 @@
 #include <paths.h>
 #include <limits.h>
 #include <time.h>
+#include <syslog.h>
 #include <linux/types.h>
 #include <pthread.h>
 #include <errno.h>
@@ -21,8 +22,11 @@
 
 #include <linux/auto_fs4.h>
 
-/* OpenBSD re-entrant syslog */
+/* #define TEST_FORCE_UMOUNT */
+
+/* OpenBSD re-entrant syslog
 #include "syslog.h"
+*/
 
 /* We MUST have the paths to mount(8) and umount(8) */
 #ifndef HAVE_MOUNT
@@ -458,7 +462,7 @@ int mount_autofs_offset(struct autofs_point *ap, struct mapent *me, int is_autof
 int umount_autofs(struct autofs_point *ap, int force);
 int umount_autofs_indirect(struct autofs_point *ap);
 int umount_autofs_direct(struct autofs_point *ap);
-int umount_autofs_offset(struct mapent *me);
+int umount_autofs_offset(struct autofs_point *ap, struct mapent *me);
 int handle_packet_expire_indirect(struct autofs_point *ap, autofs_packet_expire_indirect_t *pkt);
 int handle_packet_expire_direct(struct autofs_point *ap, autofs_packet_expire_direct_t *pkt);
 int handle_packet_missing_indirect(struct autofs_point *ap, autofs_packet_missing_indirect_t *pkt);

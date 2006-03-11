@@ -1,4 +1,4 @@
-#ident "$Id: mount_autofs.c,v 1.21 2006/03/08 02:40:22 raven Exp $"
+#ident "$Id: mount_autofs.c,v 1.22 2006/03/11 06:02:48 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  mount_autofs.c - Module for recursive autofs mounts.
@@ -19,7 +19,6 @@
 #include <malloc.h>
 #include <fcntl.h>
 #include <unistd.h>
-#include <syslog.h>
 #include <string.h>
 #include <signal.h>
 #include <alloca.h>

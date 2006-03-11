@@ -1,4 +1,4 @@
-#ident "$Id: indirect.c,v 1.14 2006/03/10 20:54:53 raven Exp $"
+#ident "$Id: indirect.c,v 1.15 2006/03/11 06:02:47 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  indirect.c - Linux automounter indirect mount handling
@@ -26,7 +26,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <syslog.h>
 #include <unistd.h>
 #include <sys/ioctl.h>
 #include <sys/types.h>
@@ -412,6 +411,7 @@ done:
 	}
 
 	/* If we are trying to shutdown make sure we can umount */
+/*
 	if (ap->state == ST_SHUTDOWN_PENDING) {
 		if (!ioctl(ap->ioctlfd, AUTOFS_IOC_ASKUMOUNT, &ret)) {
 			if (!ret) {
@@ -421,7 +421,7 @@ done:
 			}
 		}
 	}
-
+*/
 	pthread_cleanup_pop(1);
 
 	status = pthread_mutex_unlock(&ec.mutex);
