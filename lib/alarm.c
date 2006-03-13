@@ -1,4 +1,4 @@
-#ident "$Id: alarm.c,v 1.3 2006/03/08 19:18:20 raven Exp $"
+#ident "$Id: alarm.c,v 1.4 2006/03/13 21:15:57 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  alarm.c - alarm queue handling module.
@@ -16,7 +16,6 @@
 #include <stdlib.h>
 #include "automount.h"
 
-extern pthread_mutex_t state_mutex;
 extern pthread_attr_t detach_attr;
 
 struct alarm {
@@ -111,14 +110,19 @@ void alarm_delete(struct autofs_point *ap)
 	struct list_head *head = &alarms;
 	struct list_head *p;
 	struct alarm *current;
+	unsigned int signal_cancel = 0;
 	int status;
 
 	status = pthread_mutex_lock(&mutex);
 	if (status)
 		fatal(status);
 
-	if (list_empty(head))
+	if (list_empty(head)) {
+		status = pthread_mutex_unlock(&mutex);
+		if (status)
+			fatal(status);
 		return;
+	}
 
 	current = list_entry(head->next, struct alarm, list);
 
@@ -137,7 +141,15 @@ void alarm_delete(struct autofs_point *ap)
 			}
 			/* Mark as canceled */
 			alarm->cancel = 1;
+			alarm->time = 0;
+			signal_cancel = 1;
 		}
+	}
+
+	if (signal_cancel) {
+        	status = pthread_cond_signal(&cond);
+		if (status)
+			fatal(status);
 	}
 
 	status = pthread_mutex_unlock(&mutex);
@@ -183,13 +195,13 @@ static void *alarm_handler(void *arg)
 				continue;
 			}
 
-			status = pthread_mutex_lock(&state_mutex);
+			status = pthread_mutex_lock(&ap->state_mutex);
 			if (status)
 				fatal(status);
 
 			nextstate(ap->state_pipe[1], ST_EXPIRE);
 
-			status = pthread_mutex_unlock(&state_mutex);
+			status = pthread_mutex_unlock(&ap->state_mutex);
 			if (status)
 				fatal(status);
 
@@ -207,29 +219,29 @@ static void *alarm_handler(void *arg)
 			if (status && status != ETIMEDOUT)
 				fatal(status);
 
-			if (current->cancel) {
-				list_del(&current->list);
-				free(current);
+			next = list_entry(head->next, struct alarm, list);
+			if (next->cancel) {
+				list_del(&next->list);
+				free(next);
 				break;
 			}
 
-			next = list_entry(head->next, struct alarm, list);
 			if (next != current)
 				break;
 
 			list_del(&current->list);
 
-			status = pthread_mutex_lock(&state_mutex);
+			status = pthread_mutex_lock(&ap->state_mutex);
 			if (status)
 				fatal(status);
 
 			nextstate(ap->state_pipe[1], ST_EXPIRE);
 
-			status = pthread_mutex_unlock(&state_mutex);
+			status = pthread_mutex_unlock(&ap->state_mutex);
 			if (status)
 				fatal(status);
 
-			free (current);
+			free(current);
 			break;
 		}
 	}

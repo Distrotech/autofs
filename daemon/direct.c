@@ -1,4 +1,4 @@
-#ident "$Id: direct.c,v 1.17 2006/03/11 06:02:47 raven Exp $"
+#ident "$Id: direct.c,v 1.18 2006/03/13 21:15:57 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  direct.c - Linux automounter direct mount handling
@@ -155,7 +155,7 @@ static int do_umount_autofs_direct(struct autofs_point *ap, struct mapent *me)
 
 force_umount:
 	if (rv != 0) {
-		msg("forcing unmount of %s", me->key);
+		msg("forcing umount of %s", me->key);
 		rv = spawnl(LOG_DEBUG,
 			    PATH_UMOUNT, PATH_UMOUNT, "-n", "-l", me->key, NULL);
 	} else
@@ -392,28 +392,21 @@ int umount_autofs_offset(struct autofs_point *ap, struct mapent *me)
 	if (me->ioctlfd >= 0) {
 		int status = 1;
 
-#ifndef TEST_FORCE_UMOUNT
 		ioctl(me->ioctlfd, AUTOFS_IOC_ASKUMOUNT, &status);
 		if (!status) {
-			debug("ask umount returned busy");
-			return 1;
-		}
-#else
-		ioctl(me->ioctlfd, AUTOFS_IOC_ASKUMOUNT, &status);
-		if (!status) {
-			if (ap->state == ST_SHUTDOWN)
+			if (ap->state == ST_SHUTDOWN) {
+				ioctl(me->ioctlfd, AUTOFS_IOC_CATATONIC, 0);
+				close(me->ioctlfd);
 				goto force_umount;
-			else {
+			} else {
 				debug("ask umount returned busy");
 				return 1;
 			}
 		}
-#endif
 		ioctl(me->ioctlfd, AUTOFS_IOC_CATATONIC, 0);
 		close(me->ioctlfd);
 	} else {
 		error("couldn't get ioctl fd for offset %s", me->key);
-		rv = 1;
 		goto force_umount;
 	}
 
@@ -434,7 +427,7 @@ int umount_autofs_offset(struct autofs_point *ap, struct mapent *me)
 
 force_umount:
 	if (rv != 0) {
-		msg("forcing unmount of %s", me->key);
+		msg("forcing umount of %s", me->key);
 		rv = spawnl(LOG_DEBUG,
 			    PATH_UMOUNT, PATH_UMOUNT, "-n", "-l", me->key, NULL);
 	} else
@@ -575,6 +568,7 @@ out_err:
 void *expire_proc_direct(void *arg)
 {
 	struct mnt_list *mnts, *next;
+	struct expire_cond *ec;
 	struct expire_args ex;
 	struct autofs_point *ap;
 	struct mapent_cache *mc;
@@ -584,20 +578,25 @@ void *expire_proc_direct(void *arg)
 	int status;
 	int ret;
 
-	pthread_cleanup_push(expire_cleanup_unlock, &ec);
+	ec = (struct expire_cond *) arg;
 
-	while (!ec.signaled) {
-		status = pthread_cond_wait(&ec.cond, &ec.mutex);
-		if (status)
-			error("expire condition wait failed");
-	}
+	status = pthread_mutex_lock(&ec->mutex);
+	if (status)
+		fatal(status);
 
-	ec.signaled = 0;
-
-	ap = ex.ap = ec.ap;
-	now = ex.when = ec.when;
+	ap = ex.ap = ec->ap;
+	now = ex.when = ec->when;
 	mc = ap->mc;
 	ex.status = 0;
+
+	ec->signaled = 1;
+	status = pthread_cond_signal(&ec->cond);
+	if (status)
+		fatal(status);
+
+	status = pthread_mutex_unlock(&ec->mutex);
+	if (status)
+		fatal(status);
 
 	pthread_cleanup_push(expire_cleanup, &ex);
 
@@ -649,13 +648,28 @@ void *expire_proc_direct(void *arg)
 done:
 	free_mnt_list(mnts);
 
+	cache_readlock(mc);
+	me = cache_enumerate(mc, NULL);
+	while (me) {
+		mnts = get_mnt_list(_PROC_MOUNTS, me->key, 0);
+		for (next = mnts; next; next = next->next) {
+			if (strstr(next->opts, "offset"))
+				continue;
+			/*
+			 * If there's anything other than offset mounts
+			 * we're still busy
+			 */
+			ex.status = 1;
+			free_mnt_list(mnts);
+			cache_unlock(mc);
+			pthread_exit(NULL);
+		}
+		free_mnt_list(mnts);
+		me = cache_enumerate(mc, me);
+	}
+	cache_unlock(mc);
+
 	pthread_cleanup_pop(1);
-
-	status = pthread_mutex_unlock(&ec.mutex);
-	if (status)
-		error("failed to unlock expire condition mutex");
-
-	pthread_cleanup_pop(0);
 
 	return NULL;
 }
@@ -764,8 +778,6 @@ int handle_packet_expire_direct(struct autofs_point *ap, autofs_packet_expire_di
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
 		error("malloc: %s", estr);
 		send_fail(me->ioctlfd, pkt->wait_queue_token);
-/*		close(me->ioctlfd);
-		me->ioctlfd = -1; */
 		status = 1;
 		goto done;
 	}
@@ -988,7 +1000,9 @@ int handle_packet_missing_direct(struct autofs_point *ap, autofs_packet_missing_
 		  (unsigned long) pkt->wait_queue_token, me->key, pkt->pid);
 
 	/* Ignore packet if we're trying to shut down */
-	if (ap->state == ST_SHUTDOWN_PENDING || ap->state == ST_SHUTDOWN) {
+	if (ap->state == ST_SHUTDOWN_PENDING ||
+	    ap->state == ST_SHUTDOWN_FORCE ||
+	    ap->state == ST_SHUTDOWN) {
 		send_fail(me->ioctlfd, pkt->wait_queue_token);
 		close(me->ioctlfd);
 		me->ioctlfd = -1;

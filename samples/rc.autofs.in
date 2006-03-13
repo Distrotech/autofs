@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# $Id: rc.autofs.in,v 1.60 2006/03/01 23:51:13 raven Exp $
+# $Id: rc.autofs.in,v 1.61 2006/03/13 21:15:57 raven Exp $
 #
 # rc file for automount using a Sun-style "master map".
 # We first look for a local /etc/auto.master, then a YP
@@ -427,7 +427,7 @@ function signal_automounts()
 	pgrp_pids=`get_pgrp_pids`
 	for pid in $pgrp_pids
 	do
-		kill -USR2 $pid 2 > /dev/null
+		kill -TERM $pid 2 > /dev/null
 		count=0
 		while ps ax|grep -v grep|grep $pid >/dev/null
 		do
@@ -537,7 +537,7 @@ case "$1" in
 	fi
 	count=0
 	while [ -n "`/sbin/pidof $DAEMON`" -a $count -lt 10 ] ; do
-	   killproc $DAEMON -USR2 >& /dev/null
+	   killproc $DAEMON -TERM >& /dev/null
 	   RETVAL=$?
 	   [ $RETVAL = 0 -a -z "`/sbin/pidof $DAEMON`" ] || sleep 3
 	   count=`expr $count + 1`
@@ -570,7 +570,7 @@ case "$1" in
 		echo "$command" >>$TMP2
 		if ! grep -q "^$command" $TMP1; then
 		    if ! echo "$command" | grep -q -e --submount; then
-			kill -USR2 $pid 2> /dev/null
+			kill -TERM $pid 2> /dev/null
 			echo $"Stop $command"
 		    fi
 		else
@@ -672,7 +672,7 @@ stop)
 			dname=`basename $DAEMON`
 
 			start-stop-daemon --stop --quiet \
-					--retry USR2/$DAEMON_EXIT_WAIT \
+					--retry TERM/$DAEMON_EXIT_WAIT \
 					--pidfile $file --name $dname
 
 			ret=$?
@@ -720,7 +720,7 @@ reload)
 
 		if ! grep -q "$cmd" $TMP1; then
 			echo "Stopping automounter for: $mnt"
-			kill -USR2 $pid 2> /dev/null
+			kill -TERM $pid 2> /dev/null
 		else
 			echo "Reloading automounter map for: $mnt"
 			kill -HUP $pid 2> /dev/null

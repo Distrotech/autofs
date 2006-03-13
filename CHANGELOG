@@ -44,6 +44,9 @@
 - fix expandsunent not returning fail on failed macro translation.
 - fix expandsunent return no checked.
 - add EXPERIMENTAL forced shutdown.
+- fixed race in expire.
+- fixed race in alarm module.
+- updated readmap to be autofs_point specific.
 
 11/4/2005 autofs-4.1.4
 ----------------------

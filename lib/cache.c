@@ -1,4 +1,4 @@
-#ident "$Id: cache.c,v 1.25 2006/03/07 20:00:18 raven Exp $"
+#ident "$Id: cache.c,v 1.26 2006/03/13 21:15:57 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  cache.c - mount entry cache management routines
@@ -591,6 +591,7 @@ int cache_delete_offset_list(struct mapent_cache *mc, const char *key)
 		next = next->next;
 		list_del_init(&this->multi_list);
 		this->multi = NULL;
+		debug("deleting offset key %s", this->key);
 		status = cache_delete(mc, this->key);
 		if (status == CHE_FAIL) {
 			warn("failed to delete offset %s", this->key);

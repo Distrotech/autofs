@@ -1,4 +1,4 @@
-#ident "$Id: indirect.c,v 1.15 2006/03/11 06:02:47 raven Exp $"
+#ident "$Id: indirect.c,v 1.16 2006/03/13 21:15:57 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  indirect.c - Linux automounter indirect mount handling
@@ -308,6 +308,7 @@ force_umount:
 void *expire_proc_indirect(void *arg)
 {
 	struct mnt_list *mnts, *next;
+	struct expire_cond *ec;
 	struct expire_args ex;
 	struct autofs_point *ap;
 	struct mapent_cache *mc;
@@ -317,20 +318,25 @@ void *expire_proc_indirect(void *arg)
 	int ioctlfd;
 	int status;
 
-	pthread_cleanup_push(expire_cleanup_unlock, &ec);
+	ec = (struct expire_cond *) arg;
 
-	while (!ec.signaled) {
-		status = pthread_cond_wait(&ec.cond, &ec.mutex);
-		if (status)
-			error("expire condition wait failed");
-	}
+	status = pthread_mutex_lock(&ec->mutex);
+	if (status)
+		fatal(status);
 
-	ec.signaled = 0;
-
-	ap = ex.ap = ec.ap;
-	now = ex.when = ec.when;
+	ap = ex.ap = ec->ap;
+	now = ex.when = ec->when;
 	mc = ap->mc;
 	ex.status = 0;
+
+	ec->signaled = 1;
+	status = pthread_cond_signal(&ec->cond);
+	if (status)
+		fatal(status);
+
+	status = pthread_mutex_unlock(&ec->mutex);
+	if (status)
+		fatal(status);
 
 	pthread_cleanup_push(expire_cleanup, &ex);
 
@@ -411,7 +417,7 @@ done:
 	}
 
 	/* If we are trying to shutdown make sure we can umount */
-/*
+
 	if (ap->state == ST_SHUTDOWN_PENDING) {
 		if (!ioctl(ap->ioctlfd, AUTOFS_IOC_ASKUMOUNT, &ret)) {
 			if (!ret) {
@@ -421,14 +427,8 @@ done:
 			}
 		}
 	}
-*/
+
 	pthread_cleanup_pop(1);
-
-	status = pthread_mutex_unlock(&ec.mutex);
-	if (status)
-		error("failed to unlock expire cond mutex");
-
-	pthread_cleanup_pop(0);
 
 	return NULL;
 }
@@ -677,7 +677,9 @@ int handle_packet_missing_indirect(struct autofs_point *ap, autofs_packet_missin
 		(unsigned long) pkt->wait_queue_token, pkt->name, pkt->pid);
 
 	/* Ignore packet if we're trying to shut down */
-	if (ap->state == ST_SHUTDOWN_PENDING || ap->state == ST_SHUTDOWN) {
+	if (ap->state == ST_SHUTDOWN_PENDING ||
+	    ap->state == ST_SHUTDOWN_FORCE ||
+	    ap->state == ST_SHUTDOWN) {
 		send_fail(ap->ioctlfd, pkt->wait_queue_token);
 		return 0;
 	}

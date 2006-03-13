@@ -1,4 +1,4 @@
-#ident "$Id: mount_autofs.c,v 1.22 2006/03/11 06:02:48 raven Exp $"
+#ident "$Id: mount_autofs.c,v 1.23 2006/03/13 21:15:57 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  mount_autofs.c - Module for recursive autofs mounts.
@@ -197,6 +197,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 	}
 
 	pthread_mutex_lock(&ap->mounts_mutex);
+	nap->parent = ap;
 	list_add(&nap->mounts, &ap->submounts);
 	pthread_mutex_unlock(&ap->mounts_mutex);
 

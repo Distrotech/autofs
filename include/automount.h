@@ -1,4 +1,4 @@
-#ident "$Id: automount.h,v 1.37 2006/03/11 06:02:47 raven Exp $"
+#ident "$Id: automount.h,v 1.38 2006/03/13 21:15:57 raven Exp $"
 /*
  * automount.h
  *
@@ -106,6 +106,7 @@ enum states {
 	ST_PRUNE,
 	ST_READMAP,
 	ST_SHUTDOWN_PENDING,
+	ST_SHUTDOWN_FORCE,
 	ST_SHUTDOWN,
 };
 
@@ -367,7 +368,6 @@ struct expire_cond {
 	unsigned int when;	 /* Immediate expire ? */
 };
 
-extern struct expire_cond ec;
 void expire_cleanup_unlock(void *arg);
 
 struct expire_args {
@@ -423,6 +423,7 @@ struct autofs_point {
 	char *mapfmt;			/* Format of map default "Sun" */
 	int mapargc;			/* Map options arg count */
 	const char **mapargv;		/* Map options args */
+	struct readmap_cond rc;		/* Readmap condition var */
 	unsigned int type;		/* Type of map direct or indirect */
 	time_t exp_timeout;		/* Timeout for expiring mounts */
 	time_t exp_runfreq;		/* Frequency for polling for timeouts */
@@ -430,10 +431,12 @@ struct autofs_point {
 	struct kernel_mod_version kver;	/* autofs kernel module version */
 	pthread_t exp_thread;		/* Process that is currently expiring */
 	struct lookup_mod *lookup;	/* Lookup module */
+	pthread_mutex_t state_mutex;	/* Protect state transitions */
 	enum states state;
 	int state_pipe[2];
 	unsigned dir_created;		/* Directory created for this mount? */
 	unsigned int submount;		/* Is this a submount */
+	struct autofs_point *parent;	/* Owner of mounts list for submount */
 	pthread_mutex_t mounts_mutex;	/* Protect mount lists */
 	struct list_head mounts;	/* List of mounts */
 	struct list_head submounts;	/* List of child submounts */
