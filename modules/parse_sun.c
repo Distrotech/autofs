@@ -1,4 +1,4 @@
-#ident "$Id: parse_sun.c,v 1.46 2006/03/11 06:02:48 raven Exp $"
+#ident "$Id: parse_sun.c,v 1.47 2006/03/21 04:28:53 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  parse_sun.c - module for Linux automountd to parse a Sun-format
@@ -973,6 +973,20 @@ int parse_mount(struct autofs_point *ap, const char *name,
 
 		cache_writelock(mc);
 		me = cache_lookup(mc, name);
+		if (!me) {
+			int ret;
+			/*
+			 * Not in the cache, perhaps it's a program map
+			 * or one that doesn't support enumeration
+			 */
+			ret = cache_add(mc, name, mapent, time(NULL));
+			if (ret == CHE_FAIL) {
+				free(options);
+				return 1;
+			}
+		}
+
+		me = cache_lookup(mc, name);
 		if (me) {
 			/* So we know we're the multi-mount root */
 			if (!me->multi)
@@ -981,7 +995,7 @@ int parse_mount(struct autofs_point *ap, const char *name,
 		cache_unlock(mc);
 
 		if (!me) {
-			error(MODPREFIX "can't find multi root");
+			error(MODPREFIX "can't find multi root %s", name);
 			free(options);
 			return 1;
 		}

@@ -37,6 +37,14 @@ EXT2FS = @HAVE_E2FSCK@
 # Support for calling e3fsck when mounting ext3 filesystems
 EXT3FS = @HAVE_E3FSCK@
 
+LEX = @PATH_LEX@
+YACC = @PATH_YACC@
+RPCGEN = @PATH_RPCGEN@
+RANLIB = @PATH_RANLIB@
+
+# Use dmalloc for memory debuging
+DMALLOCLIB = @DMALLOCLIB@
+
 #
 # Note: the DESTDIR define is so you can build autofs into a temporary
 # directory and still have all the compiled-in paths point to the right
@@ -50,6 +58,12 @@ exec_prefix = @exec_prefix@
 # Directory for autofs modules
 autofslibdir = @libdir@/autofs
 
+# Location for configuration init script
+autofsconfdir = @confdir@
+
+# Location for autofs maps
+autofsmapdir = @mapdir@
+
 # Where to install the automount program
 sbindir = @sbindir@
 
@@ -58,3 +72,4 @@ mandir = @mandir@
 
 # Location for init.d files
 initdir = @initdir@
+

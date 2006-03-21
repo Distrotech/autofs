@@ -1,4 +1,4 @@
-#ident "$Id: lookup_program.c,v 1.15 2006/03/11 06:02:48 raven Exp $"
+#ident "$Id: lookup_program.c,v 1.16 2006/03/21 04:28:53 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup_program.c - module for Linux automount to access an
@@ -83,6 +83,11 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 	return !(ctxt->parse = open_parse(mapfmt, MODPREFIX, argc - 1, argv + 1));
 }
 
+int lookup_read_master(struct master *master, time_t age, void *context)
+{
+        return NSS_STATUS_UNKNOWN;
+}
+
 int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 {
 	return NSS_STATUS_UNKNOWN;
@@ -91,7 +96,8 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *context)
 {
 	struct lookup_context *ctxt = (struct lookup_context *) context;
-	char *mapent, *mapp, *tmp;
+	char *mapent = NULL, *mapp, *tmp;
+	struct mapent *me;
 	char buf[MAX_ERR_BUF];
 	char errbuf[1024], *errp;
 	char ch;
@@ -108,6 +114,16 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 	int alloci = 1;
 
 	debug(MODPREFIX "looking up %s", name);
+
+	/* Catch installed direct offset triggers */
+	me = cache_lookup(ap->mc, name);
+	if (me) {
+		debug(MODPREFIX "%s -> %s", name, me->mapent);
+
+		ret = ctxt->parse->parse_mount(ap, name, name_len,
+				      me->mapent, ctxt->parse->context);
+		goto out_free;
+	}
 
 	mapent = (char *) malloc(MAPENT_MAX_LEN + 1);
 	if (!mapent) {
@@ -297,7 +313,8 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 	ret = ctxt->parse->parse_mount(ap, name, name_len,
 				       mapent, ctxt->parse->context);
 out_free:
-	free(mapent);
+	if (mapent)
+		free(mapent);
 
 	if (ret)
 		return NSS_STATUS_UNAVAIL;

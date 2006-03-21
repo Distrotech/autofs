@@ -1,4 +1,4 @@
-#ident "$Id: lookup.c,v 1.8 2006/03/03 21:48:23 raven Exp $"
+#ident "$Id: lookup.c,v 1.9 2006/03/21 04:28:52 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup.c - API layer to implement nsswitch semantics for map reading
@@ -27,19 +27,147 @@
 #include "automount.h"
 #include "nsswitch.h"
 
-static int do_read_map(struct autofs_point *ap, char *type, time_t age)
+static int check_nss_result(struct nss_source *this, enum nsswitch_status result)
+{
+	enum nsswitch_status status;
+	struct nss_action a;
+
+	/* Check if we have negated actions */
+	for (status = 0; status < NSS_STATUS_MAX; status++) {
+		a = this->action[status];
+		if (a.action == NSS_ACTION_UNKNOWN)
+			continue;
+
+		if (a.negated && result != status) {
+			if (a.action == NSS_ACTION_RETURN) {
+				if (result == NSS_STATUS_SUCCESS)
+					return 1;
+				else
+					return 0;
+			}
+		}
+	}
+
+	a = this->action[result];
+
+	/* Check if we have other actions for this status */
+	switch (result) {
+	case NSS_STATUS_SUCCESS:
+		if (a.action == NSS_ACTION_CONTINUE)
+			break;
+		return 1;
+
+	case NSS_STATUS_NOTFOUND:
+	case NSS_STATUS_UNAVAIL:
+	case NSS_STATUS_TRYAGAIN:
+		if (a.action == NSS_ACTION_RETURN) {
+			return 0;
+		}
+		break;
+
+	default:
+		break;
+	}
+
+	return -1;
+}
+
+static int do_read_master(struct master *master, char *type, time_t age)
+{
+	struct lookup_mod *lookup;
+	const char *argv[2];
+	int argc;
+	int status;
+
+	argc = 1;
+	argv[0] = master->name;
+	argv[1] = NULL;
+
+	lookup = open_lookup(type, "", NULL, argc, argv);
+	if (!lookup)
+		return NSS_STATUS_UNAVAIL;
+
+	status = lookup->lookup_read_master(master, age, lookup->context);
+
+	close_lookup(lookup);
+
+	return status;
+}
+
+int lookup_nss_read_master(struct master *master, time_t age)
+{
+	struct list_head nsslist;
+	struct list_head *head, *p;
+	int result;
+
+	/* If it starts with a '/' it has to be a file map */
+	if (*master->name == '/') {
+		char source[] = "file";
+
+		debug("reading master %s %s", master->name, source);
+
+		result = do_read_master(master, source, age);
+		return !result;
+	}
+
+	INIT_LIST_HEAD(&nsslist);
+
+	result = nsswitch_parse(&nsslist);
+	if (result) {
+		error("can't to read name service switch config.");
+		return 0;
+	}
+
+	/* First one gets it */
+	head = &nsslist;
+	list_for_each(p, head) {
+		struct nss_source *this;
+		int status;
+
+		this = list_entry(p, struct nss_source, list);
+
+		debug("reading master %s", master->name, this->source);
+
+		result = do_read_master(master, this->source, age);
+		if (result == NSS_STATUS_UNKNOWN) {
+			free_sources(&nsslist);
+			return 0;
+		}
+
+		status = check_nss_result(this, result);
+		if (status >= 0) {
+			free_sources(&nsslist);
+			return status;
+		}
+	}
+
+	if (!list_empty(&nsslist)) {
+		free_sources(&nsslist);
+		return 1;
+	}
+
+	warn("no sources found in nsswitch");
+
+	return 0;
+}
+
+static int do_read_map(struct autofs_point *ap, struct map_source *map, time_t age)
 {
 	struct lookup_mod *lookup;
 	int status;
 
-	lookup = open_lookup(type, "",
-			ap->mapfmt, ap->mapargc, ap->mapargv);
-	if (!lookup)
-		return NSS_STATUS_UNAVAIL;
+	if (!map->lookup) {
+		lookup = open_lookup(map->type, "",
+				map->format, map->argc, map->argv);
+		if (!lookup)
+			return NSS_STATUS_UNAVAIL;
+
+		map->lookup = lookup;
+	}
+
+	lookup = map->lookup;
 
 	status = lookup->lookup_read_map(ap, age, lookup->context);
-
-	close_lookup(lookup);
 
 	/*
 	 * For maps that don't support enumeration return success
@@ -52,153 +180,183 @@ static int do_read_map(struct autofs_point *ap, char *type, time_t age)
 	return status;
 }
 
+static int read_file_source_instance(struct autofs_point *ap, struct map_source *map, time_t age)
+{
+	struct map_source *instance;
+	char src_file[] = "file";
+	char src_prog[] = "program";
+	struct stat st;
+	char *type, *format;
+
+	if (stat(map->argv[0], &st) == -1) {
+		warn("file map %s not found", map->argv[0]);
+		return NSS_STATUS_NOTFOUND;
+	}
+
+	if (!S_ISREG(st.st_mode))
+		return NSS_STATUS_NOTFOUND;
+
+	if (st.st_mode & __S_IEXEC)
+		type = src_prog;
+	else
+		type = src_file;
+
+	format = map->format;
+
+	instance = master_find_source_instance(map,
+				type, format, map->argc, map->argv);
+	if (!instance)
+		instance = master_add_source_instance(map, type, format, age);
+
+	return do_read_map(ap, instance, age);
+}
+
+static int read_source_instance(struct autofs_point *ap, struct map_source *map, const char *type, time_t age)
+{
+	struct map_source *instance;
+	const char *format;
+
+	format = map->format;
+
+	instance = master_find_source_instance(map,
+				type, format, map->argc, map->argv);
+	if (!instance)
+		instance = master_add_source_instance(map, type, format, age);
+
+	return do_read_map(ap, instance, age);
+}
+
+static enum nsswitch_status read_map_source(struct nss_source *this,
+		struct autofs_point *ap, struct map_source *map, time_t age)
+{
+	enum nsswitch_status result;
+	struct map_source *instance;
+	struct map_source tmap;
+	char *path;
+
+	if (strcasecmp(this->source, "files")) {
+		return read_source_instance(ap, map, this->source, age);
+	}
+
+	/* 
+	 * autofs built-in map for nsswitch "files" is "file".
+	 * This is a special case as we need to append the
+	 * normal location to the map name.
+	 * note: It's invalid to specify a relative path.
+	 */
+
+	if (strchr(map->argv[0], '/')) {
+		error("relative path invalid in files map name");
+		return NSS_STATUS_NOTFOUND;
+	}
+
+	instance = master_find_source_instance(map,
+				"file", map->format, map->argc, map->argv);
+	if (!instance)
+		instance = master_find_source_instance(map,
+				"program", map->format, map->argc, map->argv);
+
+	if (instance)
+		return read_file_source_instance(ap, map, age);
+
+	this->source[4] = '\0';
+	tmap.type = this->source;
+	tmap.format = map->format;
+	tmap.argc = 0;
+	tmap.argv = NULL;
+
+	path = malloc(strlen(AUTOFS_MAP_DIR) + strlen(map->argv[0]) + 2);
+	if (!path)
+		return NSS_STATUS_UNKNOWN;
+
+	strcpy(path, AUTOFS_MAP_DIR);
+	strcat(path, "/");
+	strcat(path, map->argv[0]);
+
+	if (map->argc >= 1) {
+		tmap.argc = map->argc;
+		tmap.argv = copy_argv(map->argc, map->argv);
+		if (!tmap.argv) {
+			error("failed to copy args");
+			free(path);
+			return NSS_STATUS_UNKNOWN;
+		}
+		if (tmap.argv[0])
+			free((char *) tmap.argv[0]);
+		tmap.argv[0] = path;
+	} else {
+		error("invalid arguments for autofs_point");
+		free(path);
+		return NSS_STATUS_UNKNOWN;
+	}
+
+	result = read_file_source_instance(ap, &tmap, age);
+
+	/* path is freed in free_argv */
+	free_argv(tmap.argc, tmap.argv);
+
+	return result;
+}
+
 int lookup_nss_read_map(struct autofs_point *ap, time_t age)
 {
 	struct list_head nsslist;
 	struct list_head *head, *p;
 	struct nss_source *this;
+	struct map_source *map;
 	int result;
 
-	if (ap->maptype) {
-		result = do_read_map(ap, ap->maptype, age);
-		return !result;
-	}
+	/*
+	 * For each map source (ie. each entry for the mount
+	 * point in the master map) do the nss lookup to
+	 * locate the map and read it.
+	 */
+	map = ap->entry->first;
+	while (map) {
+		if (map->type) {
+			result = do_read_map(ap, map, age);
+			return !result;
+		}
 
-	/* If it starts with a '/' it has to be a file map */
-	if (*ap->mapargv[0] == '/') {
-		struct autofs_point tmp;
-		char source[] = "file";
+		/* If it starts with a '/' it has to be a file map */
+		if (map->argv && *map->argv[0] == '/') {
+			result = read_file_source_instance(ap, map, age);
+			return !result;
+		}
 
-		memcpy(&tmp, ap, sizeof(struct autofs_point));
+		INIT_LIST_HEAD(&nsslist);
 
-		result = do_read_map(&tmp, source, age);
+		result = nsswitch_parse(&nsslist);
+		if (result) {
+			error("can't to read name service switch config.");
+			return 0;
+		}
 
-		return !result;
-	}
+		head = &nsslist;
+		list_for_each(p, head) {
+			int status;
 
-	INIT_LIST_HEAD(&nsslist);
+			this = list_entry(p, struct nss_source, list);
 
-	result = nsswitch_parse(&nsslist);
-	if (result) {
-		error("can't to read name service switch config.");
-		return 0;
-	}
-
-	head = &nsslist;
-	list_for_each(p, head) {
-		enum nsswitch_status status;
-		struct nss_action a;
-
-		this = list_entry(p, struct nss_source, list);
-
-		/* 
-		 * autofs built-in map for nsswitch "files" is "file".
-		 * This is a special case as we need to append the
-		 * normal location to the map name.
-		 * note: It's invalid to specify a relative path.
-		 */
-		if (!strcasecmp(this->source, "files")) {
-			struct autofs_point *tap;
-			char *path;
-
-			if (strchr(ap->mapargv[0], '/')) {
-				error("relative path invalid in files map name");
-				continue;
-			}
-
-			this->source[4] = '\0';
-			/* TODO: autoconf maps location */
-			path = malloc(strlen("/etc/") + 
-				      strlen(ap->mapargv[0]) + 1);
-			if (!path) {
+			result = read_map_source(this, ap, map, age);
+			if (result == NSS_STATUS_UNKNOWN) {
 				free_sources(&nsslist);
 				return 0;
 			}
 
-			strcpy(path, "/etc/");
-			strcat(path, ap->mapargv[0]);
-
-			tap = malloc(sizeof(struct autofs_point));
-			if (!tap) {
-				error("could not malloc storage for nss lookup");
-				free(path);
+			status = check_nss_result(this, result);
+			if (status >= 0) {
 				free_sources(&nsslist);
-				return 0;
-			}
-			memcpy(tap, ap, sizeof(struct autofs_point));
-
-			if (ap->mapargc >= 1) {
-				tap->mapargv = copy_argv(ap->mapargc, ap->mapargv);
-				if (!tap->mapargv) {
-					error("failed to copy args");
-					free(tap);
-					free(path);
-					free_sources(&nsslist);
-					return 0;
-				}
-				if (tap->mapargv[0])
-					free((char *) tap->mapargv[0]);
-				tap->mapargv[0] = path;
-			} else {
-				error("invalid arguments for autofs_point");
-				free(tap);
-				free(path);
-				free_sources(&nsslist);
-				return 0;
-			}
-
-			result = do_read_map(tap, this->source, age);
-
-			/* path is freed in free_argv */
-			free_argv(tap->mapargc, tap->mapargv);
-			free(tap);
-		} else
-			result = do_read_map(ap, this->source, age);
-
-		/* Check if we have negated actions */
-		for (status = 0; status < NSS_STATUS_MAX; status++) {
-			a = this->action[status];
-			if (a.action == NSS_ACTION_UNKNOWN)
-				continue;
-
-			if (a.negated && result != status) {
-				if (a.action == NSS_ACTION_RETURN) {
-					free_sources(&nsslist);
-					if (result == NSS_STATUS_SUCCESS) {
-						return 1;
-					} else
-						return 0;
-				}
+				return status;
 			}
 		}
 
-		a = this->action[result];
-
-		/* Check if we have other actions for this status */
-		switch (result) {
-		case NSS_STATUS_SUCCESS:
-			if (a.action == NSS_ACTION_CONTINUE)
-				break;
-
+		if (!list_empty(&nsslist))
 			free_sources(&nsslist);
-			return 1;
-		case NSS_STATUS_NOTFOUND:
-		case NSS_STATUS_UNAVAIL:
-		case NSS_STATUS_TRYAGAIN:
-			if (a.action == NSS_ACTION_RETURN) {
-				free_sources(&nsslist);
-				return 0;
-			}
-			break;
-		}
+
+		map = map->next;
 	}
 
-	if (!list_empty(&nsslist)) {
-		free_sources(&nsslist);
-		return 1;
-	}
-
-	warn("no sources found in nsswitch");
 	return 0;
 }
 
@@ -282,22 +440,143 @@ next:
 	return LKP_INDIRECT;
 }
 
-int do_lookup_mount(struct autofs_point *ap, const char *type, const char *name, int name_len)
+int do_lookup_mount(struct autofs_point *ap, struct map_source *map, const char *name, int name_len)
 {
 	struct lookup_mod *lookup;
 	int status;
 
-	lookup = open_lookup(type, "", ap->mapfmt, ap->mapargc, ap->mapargv);
-	if (!lookup) {
-		debug("lookup module %s failed", type);
-		return NSS_STATUS_UNAVAIL;
+	if (!map->lookup) {
+		lookup = open_lookup(map->type, "", map->format, map->argc, map->argv);
+		if (!lookup) {
+			debug("lookup module %s failed", map->type);
+			return NSS_STATUS_UNAVAIL;
+		}
+		map->lookup = lookup;
 	}
+
+	lookup = map->lookup;
 
 	status = lookup->lookup_mount(ap, name, name_len, lookup->context);
 
-	close_lookup(lookup);
-
 	return status;
+}
+
+static int lookup_name_file_source_instance(struct autofs_point *ap, struct map_source *map, const char *name, int name_len)
+{
+	struct map_source *instance;
+	char src_file[] = "file";
+	char src_prog[] = "program";
+	time_t age = time(NULL);
+	struct stat st;
+	char *type, *format;
+
+	if (stat(map->argv[0], &st) == -1) {
+		warn("file map not found");
+		return NSS_STATUS_NOTFOUND;
+	}
+
+	if (!S_ISREG(st.st_mode))
+		return NSS_STATUS_NOTFOUND;
+
+	if (st.st_mode & __S_IEXEC)
+		type = src_prog;
+	else
+		type = src_file;
+
+	format = map->format;
+
+	instance = master_find_source_instance(map,
+				type, format, map->argc, map->argv);
+	if (!instance)
+		instance = master_add_source_instance(map, type, format, age);
+
+	return do_lookup_mount(ap, instance, name, name_len);
+}
+
+static int lookup_name_source_instance(struct autofs_point *ap, struct map_source *map, const char *type, const char *name, int name_len)
+{
+	struct map_source *instance;
+	const char *format;
+	time_t age = time(NULL);
+
+	format = map->format;
+
+	instance = master_find_source_instance(map, type, format, 0, NULL);
+	if (!instance)
+		instance = master_add_source_instance(map, type, format, age);
+
+	return do_lookup_mount(ap, instance, name, name_len);
+}
+
+static enum nsswitch_status lookup_map_name(struct nss_source *this,
+			struct autofs_point *ap, struct map_source *map,
+			const char *name, int name_len)
+{
+	enum nsswitch_status result;
+	struct map_source *instance;
+	struct map_source tmap;
+	char *path;
+
+	if (strcasecmp(this->source, "files"))
+		return lookup_name_source_instance(ap, map,
+					this->source, name, name_len);
+
+	/* 
+	 * autofs build-in map for nsswitch "files" is "file".
+	 * This is a special case as we need to append the
+	 * normal location to the map name.
+	 * note: we consider it invalid to specify a relative
+	 *       path.
+	 */
+	if (strchr(map->argv[0], '/')) {
+		error("relative path invalid in files map name");
+		return NSS_STATUS_NOTFOUND;
+	}
+
+	instance = master_find_source_instance(map, "file", map->format, 0, NULL);
+	if (!instance)
+		instance = master_find_source_instance(map, "program", map->format, 0, NULL);
+
+	if (instance)
+		return lookup_name_file_source_instance(ap, map, name, name_len);
+
+	this->source[4] = '\0';
+	tmap.type = this->source;
+	tmap.format = map->format;
+	tmap.argc = 0;
+	tmap.argv = NULL;
+
+	path = malloc(strlen(AUTOFS_MAP_DIR) + strlen(map->argv[0]) + 2);
+	if (!path)
+		return NSS_STATUS_UNKNOWN;
+
+	strcpy(path, AUTOFS_MAP_DIR);
+	strcat(path, "/");
+	strcat(path, map->argv[0]);
+
+	if (map->argc >= 1) {
+		tmap.argc = map->argc;
+		tmap.argv = copy_argv(map->argc, map->argv);
+		if (!tmap.argv) {
+			error("failed to copy args");
+			free(path);
+			return NSS_STATUS_UNKNOWN;
+		}
+		if (tmap.argv[0])
+			free((char *) tmap.argv[0]);
+		tmap.argv[0] = path;
+	} else {
+		error("invalid arguments for autofs_point");
+		free(path);
+		return NSS_STATUS_UNKNOWN;
+	}
+
+	result = lookup_name_file_source_instance(ap, &tmap, name, name_len);
+
+	/* path is freed in free_argv */
+	free_argv(tmap.argc, tmap.argv);
+
+	return result;
 }
 
 int lookup_nss_mount(struct autofs_point *ap, const char *name, int name_len)
@@ -305,144 +584,60 @@ int lookup_nss_mount(struct autofs_point *ap, const char *name, int name_len)
 	struct list_head nsslist;
 	struct list_head *head, *p;
 	struct nss_source *this;
-	int ret;
+	struct map_source *map;
+	int result;
 
-	if (ap->maptype)
-		return !do_lookup_mount(ap, ap->maptype, name, name_len);
+	/*
+	 * For each map source (ie. each entry for the mount
+	 * point in the master map) do the nss lookup to
+	 * locate the map and lookup the name.
+	 */
+	map = ap->entry->first;
+	while (map) {
+		if (map->type) {
+			result = do_lookup_mount(ap, map, name, name_len);
+			return !result;
+		}
 
-	/* If it starts with a '/' it has to be a file map */
-	if (*ap->mapargv[0] == '/') {
-		struct autofs_point tmp;
-		char source[] = "file";
+		/* If it starts with a '/' it has to be a file map */
+		if (*map->argv[0] == '/') {
+			result = lookup_name_file_source_instance(ap, map, name, name_len);
+			return !result;
+		}
 
-		memcpy(&tmp, ap, sizeof(struct autofs_point));
+		INIT_LIST_HEAD(&nsslist);
 
-		return !do_lookup_mount(&tmp, source, name, name_len);
-	}
+		result = nsswitch_parse(&nsslist);
+		if (result) {
+			error("can't to read name service switch config.");
+			return 0;
+		}
 
-	INIT_LIST_HEAD(&nsslist);
+		head = &nsslist;
+		list_for_each(p, head) {
+			enum nsswitch_status status;
+			int result;
 
-	ret = nsswitch_parse(&nsslist);
-	if (ret) {
-		error("can't to read name service switch config.");
-		return 0;
-	}
+			this = list_entry(p, struct nss_source, list);
 
-	head = &nsslist;
-	list_for_each(p, head) {
-		enum nsswitch_status status;
-		struct nss_action a;
-		int result;
-
-		this = list_entry(p, struct nss_source, list);
-
-		/* 
-		 * autofs build-in map for nsswitch "files" is "file".
-		 * This is a special case as we need to append the
-		 * normal location to the map name.
-		 * note: we consider it invalid to specify a relative
-		 *       path.
-		 */
-		if (!strcasecmp(this->source, "files")) {
-			struct autofs_point *tap;
-			char *path;
-
-			if (strchr(ap->mapargv[0], '/')) {
-				error("relative path invalid in files map name");
-				return 0;
-			}
-
-			this->source[4] = '\0';
-			/* TODO: autoconf maps location */
-			path = malloc(strlen("/etc/") + 
-				      strlen(ap->mapargv[0]) + 1);
-			if (!path) {
-				free_sources(&nsslist);
-				return 0;
-			}
-			strcpy(path, "/etc/");
-			strcat(path, ap->mapargv[0]);
-
-			tap = malloc(sizeof(struct autofs_point));
-			if (!tap) {
-				error("could not malloc storage for nss lookup");
-				free(path);
-				free_sources(&nsslist);
-				return 0;
-			}
-			memcpy(tap, ap, sizeof(struct autofs_point));
-
-			if (ap->mapargc >= 1) {
-				tap->mapargv = copy_argv(ap->mapargc, ap->mapargv);
-				if (!tap->mapargv) {
-					error("failed to copy args");
-					free(tap);
-					free(path);
-					free_sources(&nsslist);
-					return 0;
-				}
-				if (tap->mapargv[0])
-					free((char *) tap->mapargv[0]);
-				tap->mapargv[0] = path;
-			} else {
-				error("invalid arguments for autofs_point");
-				free(tap);
-				free(path);
+			result = lookup_map_name(this, ap, map, name, name_len);
+			if (result == NSS_STATUS_UNKNOWN) {
 				free_sources(&nsslist);
 				return 0;
 			}
 
-			result = do_lookup_mount(tap,
-					 this->source, name, name_len);
-
-			/* path is freed in free_argv */
-			free_argv(tap->mapargc, tap->mapargv);
-			free(tap);
-		} else
-			result = do_lookup_mount(ap,
-					 this->source, name, name_len);
-
-		/* Check if we have negated actions */
-		for (status = 0; status < NSS_STATUS_MAX; status++) {
-			a = this->action[status];
-			if (a.action == NSS_ACTION_UNKNOWN)
-				continue;
-
-			if (a.negated && result != status) {
-				if (a.action == NSS_ACTION_RETURN) {
-					free_sources(&nsslist);
-					if (result == NSS_STATUS_SUCCESS)
-						return 1;
-					else
-						return 0;
-				}
+			status = check_nss_result(this, result);
+			if (status >= 0) {
+				free_sources(&nsslist);
+				return status;
 			}
 		}
-			
-		a = this->action[result];
 
-		/* Check if we have other actions for this status */
-		switch (result) {
-		case NSS_STATUS_SUCCESS:
-			/* Doesn't make much sense for a successful mount */
-			if (a.action == NSS_ACTION_CONTINUE)
-				break;
-
+		if (!list_empty(&nsslist))
 			free_sources(&nsslist);
-			return 1;
-		case NSS_STATUS_NOTFOUND:
-		case NSS_STATUS_UNAVAIL:
-		case NSS_STATUS_TRYAGAIN:
-			if (a.action == NSS_ACTION_RETURN) {
-				free_sources(&nsslist);
-				return 0;
-			}
-			break;
-		}
-	}
 
-	if (!list_empty(&nsslist))
-		free_sources(&nsslist);
+		map = map->next;
+	}
 
 	return 0;
 }

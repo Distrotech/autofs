@@ -1,4 +1,4 @@
-#ident "$Id: direct.c,v 1.18 2006/03/13 21:15:57 raven Exp $"
+#ident "$Id: direct.c,v 1.19 2006/03/21 04:28:52 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  direct.c - Linux automounter direct mount handling
@@ -138,7 +138,8 @@ static int do_umount_autofs_direct(struct autofs_point *ap, struct mapent *me)
 		goto force_umount;
 	}
 
-	rv = spawnl(LOG_DEBUG, PATH_UMOUNT, PATH_UMOUNT, "-n", me->key, NULL);
+/*	rv = spawnl(LOG_DEBUG, PATH_UMOUNT, PATH_UMOUNT, "-n", me->key, NULL); */
+	rv = umount(me->key);
 	ret = stat(me->key, &st);
 	if (rv != 0) {
 		if (ret == -1 && errno == ENOENT) {
@@ -156,8 +157,9 @@ static int do_umount_autofs_direct(struct autofs_point *ap, struct mapent *me)
 force_umount:
 	if (rv != 0) {
 		msg("forcing umount of %s", me->key);
-		rv = spawnl(LOG_DEBUG,
-			    PATH_UMOUNT, PATH_UMOUNT, "-n", "-l", me->key, NULL);
+/*		rv = spawnl(LOG_DEBUG,
+			    PATH_UMOUNT, PATH_UMOUNT, "-n", "-l", me->key, NULL); */
+		rv = umount2(me->key, MNT_DETACH);
 	} else
 		msg("umounted %s", me->key);
 
@@ -261,20 +263,19 @@ int do_mount_autofs_direct(struct autofs_point *ap, struct mapent *me, int now)
 		/* No errors so the directory was successfully created */
 		me->dir_created = 1;
 	}
-
+/*
 	ret = spawnl(LOG_DEBUG, PATH_MOUNT, PATH_MOUNT, "-t", "autofs",
 			"-n", "-o", mp->options, mp->name, me->key, NULL);
 	if (ret != 0) {
 		crit("failed to mount autofs path %s", me->key);
 		goto out_err;
 	}
-/*
-	ret = mount(our_name, me->key, "autofs", MS_MGC_VAL, options);
+*/
+	ret = mount(mp->name, me->key, "autofs", MS_MGC_VAL, mp->options);
 	if (ret) {
 		crit("failed to mount autofs path %s", me->key);
 		goto out_err;
 	}
-*/
 
 	/* Root directory for ioctl()'s */
 	me->ioctlfd = open(me->key, O_RDONLY);
@@ -340,6 +341,7 @@ out_close:
 out_umount:
 	/* TODO: maybe force umount (-l) */
 /*	spawnl(LOG_DEBUG, PATH_UMOUNT, PATH_UMOUNT, "-n", me->key, NULL); */
+	umount(me->key);
 out_err:
 	if (me->dir_created)
 		rmdir(me->key);
@@ -410,7 +412,8 @@ int umount_autofs_offset(struct autofs_point *ap, struct mapent *me)
 		goto force_umount;
 	}
 
-	rv = spawnl(LOG_DEBUG, PATH_UMOUNT, PATH_UMOUNT, "-n", me->key, NULL);
+/*	rv = spawnl(LOG_DEBUG, PATH_UMOUNT, PATH_UMOUNT, "-n", me->key, NULL); */
+	rv = umount(me->key);
 	ret = stat(me->key, &st);
 	if (rv != 0) {
 		if (ret == -1 && errno == ENOENT) {
@@ -428,8 +431,9 @@ int umount_autofs_offset(struct autofs_point *ap, struct mapent *me)
 force_umount:
 	if (rv != 0) {
 		msg("forcing umount of %s", me->key);
-		rv = spawnl(LOG_DEBUG,
-			    PATH_UMOUNT, PATH_UMOUNT, "-n", "-l", me->key, NULL);
+/*		rv = spawnl(LOG_DEBUG,
+			    PATH_UMOUNT, PATH_UMOUNT, "-n", "-l", me->key, NULL); */
+		rv = umount2(me->key, MNT_FORCE);
 	} else
 		msg("umounted %s", me->key);
 
@@ -450,7 +454,7 @@ int mount_autofs_offset(struct autofs_point *ap, struct mapent *me, int is_autof
 	int status, ret;
 
 	if (is_mounted(_PROC_MOUNTS, me->key)) {
-		debug("trigger %s already mounted", me->key);
+	/*	debug("trigger %s already mounted", me->key); */
 		return 0;
 	}
 
@@ -525,8 +529,14 @@ int mount_autofs_offset(struct autofs_point *ap, struct mapent *me, int is_autof
 	debug("calling mount -t autofs " SLOPPY "-o %s %s %s",
 		mp->options, mp->name, me->key);
 
-	ret = spawnl(LOG_DEBUG, PATH_MOUNT, PATH_MOUNT, "-t", "autofs",
-		     "-n", SLOPPYOPT "-o", mp->options, mp->name, me->key, NULL);
+/*	ret = spawnl(LOG_DEBUG, PATH_MOUNT, PATH_MOUNT, "-t", "autofs",
+		     "-n", SLOPPYOPT "-o", mp->options, mp->name, me->key, NULL); */
+	ret = mount(mp->name, me->key, "autofs", MS_MGC_VAL, mp->options);
+	if (ret) {
+		crit("failed to mount autofs path %s", me->key);
+		goto out_err;
+	}
+
 	if (ret != 0) {
 		crit("failed to mount autofs offset trigger %s", me->key);
 		goto out_err;
@@ -557,7 +567,8 @@ int mount_autofs_offset(struct autofs_point *ap, struct mapent *me, int is_autof
 	return 0;
 
 out_umount:
-	spawnl(LOG_DEBUG, PATH_UMOUNT, PATH_UMOUNT, "-n", me->key, NULL);
+/*	spawnl(LOG_DEBUG, PATH_UMOUNT, PATH_UMOUNT, "-n", me->key, NULL); */
+	umount(me->key);
 out_err:
 	if (me->dir_created)
 		rmdir_path(me->key);
@@ -573,6 +584,7 @@ void *expire_proc_direct(void *arg)
 	struct autofs_point *ap;
 	struct mapent_cache *mc;
 	struct mapent *me;
+	enum states state;
 	unsigned int now;
 	int ioctlfd;
 	int status;
@@ -586,6 +598,7 @@ void *expire_proc_direct(void *arg)
 
 	ap = ex.ap = ec->ap;
 	now = ex.when = ec->when;
+	state = ec->state;
 	mc = ap->mc;
 	ex.status = 0;
 
@@ -599,6 +612,12 @@ void *expire_proc_direct(void *arg)
 		fatal(status);
 
 	pthread_cleanup_push(expire_cleanup, &ex);
+
+	status = pthread_mutex_lock(&ap->state_mutex);
+	if (status)
+		fatal(status);
+
+	ap->state = state;
 
 	/* Get a list of real mounts and expire them if possible */
 	mnts = get_mnt_list(_PROC_MOUNTS, "/", 0);

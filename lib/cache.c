@@ -1,4 +1,4 @@
-#ident "$Id: cache.c,v 1.26 2006/03/13 21:15:57 raven Exp $"
+#ident "$Id: cache.c,v 1.27 2006/03/21 04:28:53 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  cache.c - mount entry cache management routines
@@ -398,7 +398,7 @@ int cache_add(struct mapent_cache *mc, const char *key, const char *mapent, time
 		}
 		me->mapent = strcpy(pent, mapent);
 	} else
-		pent = NULL;
+		me->mapent = NULL;
 
 	me->age = age;
 	INIT_LIST_HEAD(&me->multi_list);
@@ -504,7 +504,9 @@ int cache_update(struct mapent_cache *mc, const char *key, const char *mapent, t
 		if (me->age == age)
 			return CHE_OK;
 
-		if (!me->mapent || strcmp(me->mapent, mapent) != 0) {
+		if (!mapent)
+			me->mapent = NULL;
+		else if (!me->mapent || strcmp(me->mapent, mapent) != 0) {
 			pent = malloc(strlen(mapent) + 1);
 			if (pent == NULL)
 				return CHE_FAIL;

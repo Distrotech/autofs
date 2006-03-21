@@ -1,4 +1,4 @@
-#ident "$Id: module.c,v 1.10 2006/02/20 01:05:32 raven Exp $"
+#ident "$Id: module.c,v 1.11 2006/03/21 04:28:52 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  module.c - common module-management functions
@@ -18,6 +18,18 @@
 #include <string.h>
 #include <stdlib.h>
 #include "automount.h"
+
+int load_autofs4_module(void)
+{
+	int ret;
+
+	ret = spawnl(LOG_DEBUG, PATH_MODPROBE, PATH_MODPROBE,
+				"-q", FS_MODULE_NAME, NULL);
+	if (ret)
+		return 0;
+
+	return 1;
+}
 
 struct lookup_mod *open_lookup(const char *name, const char *err_prefix,
 			       const char *mapfmt, int argc, const char *const *argv)
@@ -74,6 +86,7 @@ struct lookup_mod *open_lookup(const char *name, const char *err_prefix,
 	}
 
 	if (!(mod->lookup_init = (lookup_init_t) dlsym(dh, "lookup_init")) ||
+	    !(mod->lookup_read_master = (lookup_read_master_t) dlsym(dh, "lookup_read_master")) ||
 	    !(mod->lookup_read_map = (lookup_read_map_t) dlsym(dh, "lookup_read_map")) ||
 	    !(mod->lookup_mount = (lookup_mount_t) dlsym(dh, "lookup_mount")) ||
 	    !(mod->lookup_done = (lookup_done_t) dlsym(dh, "lookup_done"))) {

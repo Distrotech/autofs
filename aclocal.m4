@@ -1,5 +1,5 @@
 dnl
-dnl $Id: aclocal.m4,v 1.3 2006/02/20 01:05:32 raven Exp $
+dnl $Id: aclocal.m4,v 1.4 2006/03/21 04:28:52 raven Exp $
 dnl
 dnl --------------------------------------------------------------------------
 dnl AF_PATH_INCLUDE:
@@ -16,6 +16,22 @@ else
   HAVE_$1=0
 fi
 AC_SUBST(HAVE_$1)])
+
+dnl --------------------------------------------------------------------------
+dnl AF_CHECK_PROG:
+dnl
+dnl Like AC_CHECK_PROG, but fail configure if not found
+dnl and only define PATH_<name> variable
+dnl --------------------------------------------------------------------------
+AC_DEFUN(AF_CHECK_PROG,
+[AC_PATH_PROGS($1,$2,$3,$4)
+if test -n "$$1"; then
+  AC_DEFINE_UNQUOTED(PATH_$1, "$$1", [define if you have $1])
+  PATH_$1="$$1"
+else
+  AC_MSG_ERROR([required program $1 not found])
+fi
+AC_SUBST(PATH_$1)])
 
 dnl --------------------------------------------------------------------------
 dnl AF_SLOPPY_MOUNT
@@ -52,3 +68,71 @@ AC_DEFUN(AF_INIT_D,
     fi
   done
 fi])
+
+dnl --------------------------------------------------------------------------
+dnl AF_CONF_D
+dnl
+dnl Check the location of the configuration defaults directory
+dnl --------------------------------------------------------------------------
+AC_DEFUN(AF_CONF_D,
+[if test -z "$confdir"; then
+  AC_MSG_CHECKING([location of the configuration defaults directory])
+  for conf_d in /etc/sysconfig /etc/defaults /etc/conf.d; do
+    if test -z "$confdir"; then
+      if test -d "$conf_d"; then
+	confdir="$conf_d"
+	AC_MSG_RESULT($confdir)
+      fi
+    fi
+  done
+fi])
+
+dnl --------------------------------------------------------------------------
+dnl AF_MAP_D
+dnl
+dnl Check the location of the autofs maps directory
+dnl --------------------------------------------------------------------------
+AC_DEFUN(AF_MAP_D,
+[if test -z "$mapdir"; then
+  AC_MSG_CHECKING([location of the autofs maps directory])
+  for map_d in /etc/autofs /etc; do
+    if test -z "$mapdir"; then
+      if test -d "$map_d"; then
+	mapdir="$map_d"
+	AC_MSG_RESULT($mapdir)
+      fi
+    fi
+  done
+fi])
+
+dnl ----------------------------------- ##                   -*- Autoconf -*-
+dnl Check if --with-dmalloc was given.  ##
+dnl From Franc,ois Pinard               ##
+dnl ----------------------------------- ##
+dnl
+dnl Copyright (C) 1996, 1998, 1999, 2000, 2001, 2002, 2003, 2005
+dnl Free Software Foundation, Inc.
+dnl
+dnl This file is free software; the Free Software Foundation
+dnl gives unlimited permission to copy and/or distribute it,
+dnl with or without modifications, as long as this notice is preserved.
+
+dnl serial 3
+
+AC_DEFUN([AM_WITH_DMALLOC],
+[AC_MSG_CHECKING([if malloc debugging is wanted])
+AC_ARG_WITH(dmalloc,
+[  --with-dmalloc          use dmalloc, as in
+			  http://www.dmalloc.com/dmalloc.tar.gz],
+[if test "$withval" = yes; then
+  AC_MSG_RESULT(yes)
+  AC_DEFINE(WITH_DMALLOC,1,
+	    [Define if using the dmalloc debugging malloc package])
+  DMALLOCLIB="-ldmallocth"
+  LDFLAGS="$LDFLAGS -g"
+else
+  AC_MSG_RESULT(no)
+fi], [AC_MSG_RESULT(no)])
+])
+
+AU_DEFUN([fp_WITH_DMALLOC], [AM_WITH_DMALLOC])

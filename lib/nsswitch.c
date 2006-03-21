@@ -1,4 +1,4 @@
-#ident "$Id: nsswitch.c,v 1.1 2006/02/20 01:05:32 raven Exp $"
+#ident "$Id: nsswitch.c,v 1.2 2006/03/21 04:28:53 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  nsswitch.c - module to call parser for nsswitch config and store
@@ -24,7 +24,7 @@
 #include <string.h>
 #include <memory.h>
 #include <limits.h>
-
+#include "automount.h"
 #include "nsswitch.h"
 
 int set_action(struct nss_action *act, char *status, char *action, int negated)

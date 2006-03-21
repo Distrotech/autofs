@@ -1,4 +1,4 @@
-#ident "$Id: automount.h,v 1.38 2006/03/13 21:15:57 raven Exp $"
+#ident "$Id: automount.h,v 1.39 2006/03/21 04:28:52 raven Exp $"
 /*
  * automount.h
  *
@@ -22,11 +22,17 @@
 
 #include <linux/auto_fs4.h>
 
-/* #define TEST_FORCE_UMOUNT */
+#include "master.h"
+
+#if WITH_DMALLOC
+#include <dmalloc.h>
+#endif
 
 /* OpenBSD re-entrant syslog
 #include "syslog.h"
 */
+
+#define ENABLE_CORES	1
 
 /* We MUST have the paths to mount(8) and umount(8) */
 #ifndef HAVE_MOUNT
@@ -36,6 +42,13 @@
 #ifndef HAVE_UMOUNT
 #error Failed to locate umount(8)!
 #endif
+
+#ifndef HAVE_MODPROBE
+#error Failed to locate modprobe(8)!
+#endif
+
+#define FS_MODULE_NAME  "autofs4"
+int load_autofs4_module(void);
 
 /* The -s (sloppy) option to mount is good, if we have it... */
 
@@ -47,7 +60,6 @@
 #define SLOPPY
 #endif
 
-#define DEFAULT_TIMEOUT (5*60)			/* 5 minutes */
 #define CHECK_RATIO	4			/* exp_runfreq = exp_timeout/CHECK_RATIO */
 #define AUTOFS_LOCK	"/var/lock/autofs"	/* To serialize access to mount */
 #define MOUNTED_LOCK	_PATH_MOUNTED "~"	/* mounts' lock file */
@@ -169,7 +181,9 @@ char *cache_get_offset(const char *prefix, char *offset, int start, struct list_
 
 /* Utility functions */
 
+char **add_argv(int argc, char **argv, char *str);
 const char **copy_argv(int argc, const char **argv);
+int compare_argv(int argc1, const char **argv1, int argc2, const char **argv2);
 int free_argv(int argc, const char **argv);
 
 void dump_core(void);
@@ -203,6 +217,7 @@ int rmdir_path(const char *path);
 #define KEY_MAX_LEN    NAME_MAX
 #define MAPENT_MAX_LEN 4095
 
+int lookup_nss_read_master(struct master *master, time_t age);
 int lookup_nss_read_map(struct autofs_point *ap, time_t age);
 int lookup_enumerate(struct autofs_point *ap,
 	int (*fn)(struct autofs_point *,struct mapent *, int), time_t now);
@@ -212,17 +227,20 @@ int lookup_prune_cache(struct autofs_point *ap, time_t age);
 
 #ifdef MODULE_LOOKUP
 int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **context);
+int lookup_read_master(struct master *master, time_t age, void *context);
 int lookup_read_map(struct autofs_point *, time_t, void *context);
 int lookup_mount(struct autofs_point *, const char *, int, void *);
 int lookup_done(void *);
 #endif
 typedef int (*lookup_init_t) (const char *, int, const char *const *, void **);
-typedef int (*lookup_read_map_t) (struct autofs_point *, time_t, void *context);
+typedef int (*lookup_read_master_t) (struct master *master, time_t, void *);
+typedef int (*lookup_read_map_t) (struct autofs_point *, time_t, void *);
 typedef int (*lookup_mount_t) (struct autofs_point *, const char *, int, void *);
 typedef int (*lookup_done_t) (void *);
 
 struct lookup_mod {
 	lookup_init_t lookup_init;
+	lookup_read_master_t lookup_read_master;
 	lookup_read_map_t lookup_read_map;
 	lookup_mount_t lookup_mount;
 	lookup_done_t lookup_done;
@@ -341,6 +359,8 @@ int xopen(const char *path, int flags);
 
 /* Core automount definitions */
 
+#define MNT_DETACH	0x00000002	/* Just detach from the tree */
+
 struct startup_cond {
 	pthread_mutex_t mutex;
 	pthread_cond_t  cond;
@@ -348,12 +368,26 @@ struct startup_cond {
 	unsigned int status;
 };
 
+struct master_readmap_cond {
+	pthread_mutex_t mutex;
+	pthread_cond_t  cond;
+	pthread_t thid;		 /* map reader thread id */
+	struct master *master;
+	time_t age;		 /* Last time read */
+	enum states state;	 /* Next state */
+	unsigned int signaled;   /* Condition has been signaled */
+	unsigned int busy;	 /* Map read in progress. */
+};
+
+extern struct master_readmap_cond mc;
+
 struct readmap_cond {
 	pthread_mutex_t mutex;
 	pthread_cond_t  cond;
 	pthread_t thid;		 /* map reader thread id */
 	struct autofs_point *ap; /* autofs mount we are working on */
 	unsigned int signaled;   /* Condition has been signaled */
+	unsigned int busy;	 /* Map read in progress. */
 	time_t now;		 /* Time when map is read */
 };
 
@@ -364,6 +398,7 @@ struct expire_cond {
 	pthread_mutex_t mutex;
 	pthread_cond_t  cond;
 	struct autofs_point *ap; /* autofs mount we are working on */
+	enum states state;	 /* State prune or expire */
 	unsigned int signaled;	 /* Condition has been signaled */
 	unsigned int when;	 /* Immediate expire ? */
 };
@@ -404,14 +439,6 @@ struct kernel_mod_version {
 	unsigned int minor;
 };
 
-struct autofs_master {
-	char *mountpoint;
-	char *map;
-	unsigned int timeout;
-	unsigned int logging;
-	struct autofs_point *ap;
-};
-
 struct autofs_point {
 	pthread_t thid;
 	char *path;			/* Mount point name */
@@ -419,15 +446,13 @@ struct autofs_point {
 	int kpipefd;			/* Kernel end descriptor for pipe */
 	int ioctlfd;			/* File descriptor for ioctls */
 	dev_t dev;			/* "Device" number assigned by kernel */
-	char *maptype;			/* Type of map "file", "NIS", etc */
-	char *mapfmt;			/* Format of map default "Sun" */
-	int mapargc;			/* Map options arg count */
-	const char **mapargv;		/* Map options args */
+	struct master_mapent *entry;	/* Master map entry for this mount */
 	struct readmap_cond rc;		/* Readmap condition var */
 	unsigned int type;		/* Type of map direct or indirect */
 	time_t exp_timeout;		/* Timeout for expiring mounts */
 	time_t exp_runfreq;		/* Frequency for polling for timeouts */
 	unsigned ghost;			/* Enable/disable gohsted directories */
+	unsigned logopt;		/* Per map loggin */
 	struct kernel_mod_version kver;	/* autofs kernel module version */
 	pthread_t exp_thread;		/* Process that is currently expiring */
 	struct lookup_mod *lookup;	/* Lookup module */
@@ -438,18 +463,13 @@ struct autofs_point {
 	unsigned int submount;		/* Is this a submount */
 	struct autofs_point *parent;	/* Owner of mounts list for submount */
 	pthread_mutex_t mounts_mutex;	/* Protect mount lists */
-	struct list_head mounts;	/* List of mounts */
+	struct list_head mounts;	/* List of autofs mounts */
 	struct list_head submounts;	/* List of child submounts */
 	struct mapent_cache *mc;	/* Mapentry lookup table for this path */
 };
 
 /* Standard functions used by daemon or modules */
 
-struct autofs_point *
-new_autofs_point(char *path, char *type, char *fmt, time_t timeout,
-                 unsigned ghost, int argc, const char **argv,
-                 int submount);
-void free_autofs_point(struct autofs_point *ap);
 void *handle_mounts(void *arg);
 int umount_multi(struct autofs_point *ap, const char *path, int incl);
 int send_ready(int ioctlfd, unsigned int wait_queue_token);
@@ -480,6 +500,9 @@ int alarm_add(struct autofs_point *ap, time_t seconds);
 void alarm_delete(struct autofs_point *ap);
 
 /* Define logging functions */
+
+#define LOGOPT_DEBUG	0x0001
+#define LOGOPT_VERBOSE	0x0002
 
 extern void set_log_norm(void);
 extern void set_log_verbose(void);

@@ -1,4 +1,4 @@
-#ident "$Id: lookup_yp.c,v 1.25 2006/03/11 06:02:48 raven Exp $"
+#ident "$Id: lookup_yp.c,v 1.26 2006/03/21 04:28:53 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup_yp.c - module for Linux automountd to access a YP (NIS)
@@ -39,13 +39,19 @@
 struct lookup_context {
 	const char *domainname;
 	const char *mapname;
+	unsigned long yplast_modified;
 	struct parse_mod *parse;
+};
+
+struct callback_master_data {
+	unsigned timeout;
+	unsigned logging;
+	time_t age;
 };
 
 struct callback_data {
 	struct autofs_point *ap;
 	time_t age;
-	struct lookup_context *ctxt;
 };
 
 int lookup_version = AUTOFS_LOOKUP_VERSION;	/* Required by protocol */
@@ -63,7 +69,7 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 	}
 
 	if (argc < 1) {
-		crit(MODPREFIX "No map name");
+		crit(MODPREFIX "no map name");
 		free(ctxt);
 		*context = NULL;
 		return 1;
@@ -75,7 +81,7 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 	/* This should, but doesn't, take a const char ** */
 	err = yp_get_default_domain((char **) &ctxt->domainname);
 	if (err) {
-		warn(MODPREFIX "map %s: %s\n", ctxt->mapname,
+		debug(MODPREFIX "map %s: %s", ctxt->mapname,
 		       yperr_string(err));
 		free(ctxt);
 		*context = NULL;
@@ -86,6 +92,75 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 		mapfmt = MAPFMT_DEFAULT;
 
 	return !(ctxt->parse = open_parse(mapfmt, MODPREFIX, argc - 1, argv + 1));
+}
+
+int yp_all_master_callback(int status, char *ypkey, int ypkeylen,
+		    char *val, int vallen, char *ypcb_data)
+{
+	struct callback_master_data *cbdata =
+			(struct callback_master_data *) ypcb_data;
+	unsigned int timeout = cbdata->timeout;
+	unsigned int logging = cbdata->logging;
+	time_t age = cbdata->age;
+	char *buffer;
+	unsigned int len;
+
+	if (status != YP_TRUE)
+		return status;
+
+	/*
+	 * Ignore keys beginning with '+' as plus map
+	 * inclusion is only valid in file maps.
+	 */
+	if (*ypkey == '+')
+		return 0;
+
+	*(ypkey + ypkeylen) = '\0';
+	*(val + vallen) = '\0';
+
+	len = ypkeylen + 1 + vallen + 1;
+
+	buffer = malloc(len);
+	if (!buffer) {
+		error(MODPREFIX "could not malloc parse buffer");
+		return 0;
+	}
+	memset(buffer, 0, len);
+
+	strcat(buffer, ypkey);
+	strcat(buffer, " ");
+	strcat(buffer, val);
+
+	master_parse_entry(buffer, timeout, logging, age);
+
+	free(buffer);
+
+	return 0;
+}
+
+int lookup_read_master(struct master *master, time_t age, void *context)
+{
+	struct lookup_context *ctxt = (struct lookup_context *) context;
+	struct ypall_callback ypcb;
+	struct callback_master_data ypcb_data;
+	int err;
+
+	ypcb_data.timeout = master->default_timeout;
+	ypcb_data.logging = master->default_logging;
+	ypcb_data.age = age;
+
+	ypcb.foreach = yp_all_master_callback;
+	ypcb.data = (char *) &ypcb_data;
+
+	err = yp_all((char *) ctxt->domainname, (char *) ctxt->mapname, &ypcb);
+
+	if (err != YPERR_SUCCESS) {
+		warn(MODPREFIX "read of master map %s failed: %s",
+		       ctxt->mapname, yperr_string(err));
+		return NSS_STATUS_NOTFOUND;
+	}
+
+	return NSS_STATUS_SUCCESS;
 }
 
 int yp_all_callback(int status, char *ypkey, int ypkeylen,
@@ -134,7 +209,6 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 
 	ypcb_data.ap = ap;
 	ypcb_data.age = age;
-	ypcb_data.ctxt = ctxt;
 
 	ypcb.foreach = yp_all_callback;
 	ypcb.data = (char *) &ypcb_data;
@@ -142,7 +216,7 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 	err = yp_all((char *) ctxt->domainname, (char *) ctxt->mapname, &ypcb);
 
 	if (err != YPERR_SUCCESS) {
-		warn(MODPREFIX "lookup_ghost for map %s failed: %s",
+		warn(MODPREFIX "read of map %s failed: %s",
 		       ap->path, yperr_string(err));
 		return NSS_STATUS_NOTFOUND;
 	}
@@ -305,7 +379,21 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 	  * we never know about it.
 	  */
         if (ap->type == LKP_INDIRECT) {
-		status = check_map_indirect(ap, key, key_len, ctxt);
+		char *lkp_key;
+
+		cache_readlock(mc);
+		me = cache_lookup(mc, key);
+		if (me && me->multi)
+			lkp_key = strdup(me->multi->key);
+		else
+			lkp_key = strdup(key);
+		cache_unlock(mc);
+
+		if (!lkp_key)
+			return NSS_STATUS_UNKNOWN;
+
+		status = check_map_indirect(ap, lkp_key, strlen(lkp_key), ctxt);
+		free(lkp_key);
 		if (status) {
 			debug(MODPREFIX "check indirect map lookup failed");
 			return status;

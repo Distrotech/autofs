@@ -1,4 +1,4 @@
-#ident "$Id: lookup_nisplus.c,v 1.11 2006/03/11 06:02:48 raven Exp $"
+#ident "$Id: lookup_nisplus.c,v 1.12 2006/03/21 04:28:53 raven Exp $"
 /*
  * lookup_nisplus.c
  *
@@ -57,7 +57,7 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 	 */
 	ctxt->domainname = nis_local_directory();
 	if (!ctxt->domainname) {
-		warn("NIS+ domain not set");
+		debug("NIS+ domain not set");
 		free(ctxt);
 		*context = NULL;
 		return 1;
@@ -67,6 +67,73 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 		mapfmt = MAPFMT_DEFAULT;
 
 	return !(ctxt->parse = open_parse(mapfmt, MODPREFIX, argc - 1, argv + 1));
+}
+
+int lookup_read_master(struct master *master, time_t age, void *context)
+{
+	struct lookup_context *ctxt = (struct lookup_context *) context;
+	char tablename[strlen(ctxt->mapname) +
+		       strlen(ctxt->domainname) + 20];
+	unsigned int timeout = master->default_timeout;
+	unsigned int logging =  master->default_logging;
+	nis_result *result;
+	nis_object *this;
+	unsigned int current, result_count;
+	char *path, *ent;
+	char *buffer;
+
+	sprintf(tablename, "%s.org_dir.%s", ctxt->mapname, ctxt->domainname);
+
+	/* check that the table exists */
+	result = nis_lookup(tablename, FOLLOW_PATH | FOLLOW_LINKS);
+	if (result->status != NIS_SUCCESS && result->status != NIS_S_SUCCESS) {
+		nis_freeresult(result);
+		crit(MODPREFIX "couldn't locat nis+ table %s", ctxt->mapname);
+		return NSS_STATUS_NOTFOUND;
+	}
+
+	sprintf(tablename, "[],%s.org_dir.%s", ctxt->mapname, ctxt->domainname);
+
+	result = nis_list(tablename, FOLLOW_PATH | FOLLOW_LINKS, NULL, NULL);
+	if (result->status != NIS_SUCCESS && result->status != NIS_S_SUCCESS) {
+		nis_freeresult(result);
+		crit(MODPREFIX "couldn't enumrate nis+ map %s", ctxt->mapname);
+		return NSS_STATUS_UNAVAIL;
+	}
+
+	current = 0;
+	result_count = NIS_RES_NUMOBJ(result);
+
+	while (result_count--) {
+		this = &result->objects.objects_val[current++];
+		path = ENTRY_VAL(this, 0);
+		/*
+		 * Ignore keys beginning with '+' as plus map
+		 * inclusion is only valid in file maps.
+		 */
+		if (*path == '+')
+			continue;
+
+		ent = ENTRY_VAL(this, 1);
+
+		buffer = malloc(ENTRY_LEN(this, 0) + 1 + ENTRY_LEN(this, 1) + 1);
+		if (!buffer) {
+			error(MODPREFIX "could not malloc parse buffer");
+			continue;
+		}
+
+		strcat(buffer, path);
+		strcat(buffer, " ");
+		strcat(buffer, ent);
+
+		master_parse_entry(buffer, timeout, logging, age);
+
+		free(buffer);
+	}
+
+	nis_freeresult(result);
+
+	return NSS_STATUS_SUCCESS;
 }
 
 int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
@@ -100,18 +167,19 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 	}
 
 	current = 0;
-	result_count = result->objects.objects_len;
+	result_count = NIS_RES_NUMOBJ(result);
 
 	while (result_count--) {
 		this = &result->objects.objects_val[current++];
-		key = this->EN_data.en_cols.en_cols_val[0].ec_value.ec_value_val;
+		key = ENTRY_VAL(this, 0);
 		/*
 		 * Ignore keys beginning with '+' as plus map
 		 * inclusion is only valid in file maps.
 		 */
 		if (*key == '+')
 			continue;
-		mapent = this->EN_data.en_cols.en_cols_val[1].ec_value.ec_value_val;
+
+		mapent = ENTRY_VAL(this, 1);
 		cache_writelock(mc);
 		cache_update(mc, key, mapent, age);
 		cache_unlock(mc);
@@ -150,7 +218,7 @@ static int lookup_one(struct autofs_point *ap,
 
 	
 	this = NIS_RES_OBJECT(result);
-	mapent = this->EN_data.en_cols.en_cols_val[1].ec_value.ec_value_val;
+	mapent = ENTRY_VAL(this, 1);
 	cache_writelock(mc);
 	ret = cache_update(mc, key, mapent, age);
 	cache_unlock(mc);
@@ -185,7 +253,7 @@ static int lookup_wild(struct autofs_point *ap, struct lookup_context *ctxt)
 	}
 
 	this = NIS_RES_OBJECT(result);
-	mapent = this->EN_data.en_cols.en_cols_val[1].ec_value.ec_value_val;
+	mapent = ENTRY_VAL(this, 1);
 	cache_writelock(mc);
 	ret = cache_update(mc, "*", mapent, age);
 	cache_unlock(mc);
@@ -285,7 +353,20 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 	 * we never know about it.
 	 */
 	if (ap->type == LKP_INDIRECT) {
-		status = check_map_indirect(ap, key, key_len, ctxt);
+		char *lkp_key;
+
+		cache_readlock(mc);
+		me = cache_lookup(mc, key);
+		if (me && me->multi)
+			lkp_key = strdup(me->multi->key);
+		else
+			lkp_key = strdup(key);
+		cache_unlock(mc);
+
+		if (!lkp_key)
+			return NSS_STATUS_UNKNOWN;
+
+		status = check_map_indirect(ap, lkp_key, strlen(lkp_key), ctxt);
 		if (status) {
 			debug(MODPREFIX "check indirect map failure");
 			return status;

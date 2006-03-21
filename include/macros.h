@@ -1,4 +1,4 @@
-#ident "$Id: macros.h,v 1.1 2006/03/09 23:01:01 raven Exp $"
+#ident "$Id: macros.h,v 1.2 2006/03/21 04:28:52 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  macros.h - header file for module to handle macro substitution
@@ -13,6 +13,9 @@
  *   version; incorporated herein by reference.
  *
  * ----------------------------------------------------------------------- */
+
+#ifndef MACROS_H
+#define MACROS_H
 
 struct substvar {
 	char *def;		/* Define variable */
@@ -34,3 +37,4 @@ void macro_free_table(struct substvar *table);
 const struct substvar *
 macro_findvar(const struct substvar *table, const char *str, int len);
 
+#endif

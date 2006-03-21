@@ -47,6 +47,8 @@
 - fixed race in expire.
 - fixed race in alarm module.
 - updated readmap to be autofs_point specific.
+- integrated master map parsing into daemon.
+  - fixed several brakages from above.
 
 11/4/2005 autofs-4.1.4
 ----------------------

@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.14 2006/03/09 23:01:01 raven Exp $
+# $Id: Makefile,v 1.15 2006/03/21 04:28:52 raven Exp $
 #
 # Makefile for autofs utility library
 #
@@ -6,16 +6,17 @@
 -include ../Makefile.conf
 include ../Makefile.rules
 
-RPCGEN = /usr/bin/rpcgen
-RANLIB = /usr/bin/ranlib
-YACC = /usr/bin/bison
+#RPCGEN = /usr/bin/rpcgen
+#RANLIB = /usr/bin/ranlib
+#YACC = /usr/bin/bison
 
 SRCS = cache.c cat_path.c rpc_subs.c mounts.c lock.c log.c nsswitch.c \
-	nss_tok.c nss_parse.tab.c args.c alarm.c macros.c
+	master_tok.l master_parse.y nss_tok.c nss_parse.tab.c args.c \
+	alarm.c macros.c master.c
 RPCS = mount.h mount_clnt.c mount_xdr.c
 OBJS = cache.o mount_clnt.o mount_xdr.o cat_path.o rpc_subs.o \
-	mounts.o lock.o log.o nsswitch.o nss_tok.o nss_parse.tab.o \
-	args.o alarm.o macros.o
+	mounts.o lock.o log.o nsswitch.o master_tok.o master_parse.tab.o \
+	nss_tok.o nss_parse.tab.o args.o alarm.o macros.o master.o
 
 LIB = autofs.a
 
@@ -46,6 +47,16 @@ mount_xdr.c: mount.h
 mount_xdr.o: mount_xdr.c
 	$(CC) $(CFLAGS) -Wno-unused-variable -o mount_xdr.o -c mount_xdr.c
 	$(STRIP) mount_xdr.o
+
+master_tok.c: master_tok.l
+	$(LEX) -o$@ -Pmaster_ $?
+
+master_parse.tab.c master_parse.tab.h: master_parse.y
+	$(YACC) -v -d -p master_ -b master_parse $?
+
+master_tok.o: master_tok.c master_parse.tab.h
+
+master_parse.tab.o: master_parse.tab.c master_parse.tab.h
 
 nss_tok.c: nss_tok.l
 	$(LEX) -o$@ -Pnss_ $?

@@ -1,21 +1,17 @@
+#
 # Define custom options in /etc/sysconfig/autofs
-# Use LOCALOPTIONS for defining variables, e.g. OSREL
-# Use DAEMONOPTIONS to define the unmount timeout
+#
+# DEFAULT_TIMEOUT sets the default timeout (in seconds)
+#		  the daemon will use.
+#
+# DEFAULT_BROWSE_MODE set to 1 or yes will 
+#
 # Define UNDERSCORETODOT as 1 to convert 
 #     auto_home to auto.home and auto_mnt to auto.mnt
 # Mount options, e.g. rsize=8192, should go in auto.master or
 #     the auto_* map entry for a specific mount point
 #
-LOCALOPTIONS=""
-DAEMONOPTIONS="--timeout=60"
 
 #  UNDERSCORETODOT changes auto_home to auto.home and auto_mnt to auto.mnt
 UNDERSCORETODOT=1
-DISABLE_DIRECT=1
-
-# Using a good number of maps can cause autofs to take
-# some time to exit. If you get init script stop fails
-# but find that a little while latter it's gone increase
-# this value.
-DAEMON_EXIT_WAIT=10
 

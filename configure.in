@@ -1,5 +1,5 @@
 #
-#ident $Id: configure.in,v 1.22 2006/02/20 01:05:32 raven Exp $
+#ident $Id: configure.in,v 1.23 2006/03/21 04:28:52 raven Exp $
 #
 # configure.in for the autofs daemon
 
@@ -23,7 +23,7 @@ AC_PREFIX_DEFAULT(/usr)
 #
 searchpath="/usr/bin:/bin:/usr/sbin:/sbin"
 AC_ARG_WITH(path,
---with-path=PATH	  look in PATH for binaries needed by the automounter,
+[  --with-path=PATH	  look in PATH for binaries needed by the automounter],
 	if test -z "$withval" -o "$withval" = "yes" -o "$withval" = "no"
 	then
 		:
@@ -36,12 +36,54 @@ AC_MSG_CHECKING([for binaries in])
 AC_MSG_RESULT([$searchpath])
 
 #
+# Location of init.d directory?
+#
+AF_INIT_D()
+AC_SUBST(initdir)
+
+#
+# Location of system config script directory?
+#
+AF_CONF_D()
+AC_SUBST(confdir)
+
+#
+# The user can specify --with-mapsdir=PATH to specify autofs maps go
+#
+AF_MAP_D()
+AC_ARG_WITH(mapdir,
+[  --with-mapdir=PATH	  look in PATH for mount maps used by the automounter],
+	if test -z "$withval" -o "$withval" = "yes" -o "$withval" = "no"
+	then
+		:
+	else
+		mapdir="${withval}"
+	fi
+)
+
+AC_MSG_CHECKING([for autofs maps directory])
+AC_MSG_RESULT([$mapdir])
+AC_SUBST(mapdir)
+
+#
+# Optional include dmalloc
+#
+AM_WITH_DMALLOC()
+AC_SUBST(DMALLOCLIB)
+
+#
 # Programs needed for various system functions or modules
 #
 AF_PATH_INCLUDE(MOUNT, mount, /bin/mount, $searchpath)
 AF_PATH_INCLUDE(UMOUNT, umount, /bin/umount, $searchpath)
 AF_PATH_INCLUDE(E2FSCK, fsck.ext2 e2fsck, , $searchpath)
 AF_PATH_INCLUDE(E3FSCK, fsck.ext3 e3fsck, , $searchpath)
+AF_PATH_INCLUDE(MODPROBE, modprobe, , $searchpath)
+
+AF_CHECK_PROG(LEX, flex lex, , $searchpath)
+AF_CHECK_PROG(YACC, bison, , $searchpath)
+AF_CHECK_PROG(RANLIB, ranlib, , $searchpath)
+AF_CHECK_PROG(RPCGEN, rpcgen, , $searchpath)
 
 #
 # Newer mounts have the -s (sloppy) option to ignore unknown options,
@@ -65,7 +107,7 @@ AF_tmp_ldflags="$LDFLAGS"
 LIBHESIOD=''
 HAVE_HESIOD=''
 AC_ARG_WITH(hesiod,
---with-hesiod=DIR	  enable Hesiod support (libs and includes in DIR),
+[  --with-hesiod=DIR	  enable Hesiod support (libs and includes in DIR)],
 	if test "$withval" = no
 	then
 		HAVE_HESIOD=0	# Disable
@@ -103,7 +145,7 @@ AF_tmp_ldflags="$LDFLAGS"
 LIBLDAP=''
 HAVE_LDAP=''
 AC_ARG_WITH(openldap,
---with-openldap=DIR	  enable OpenLDAP map support (libs and includes in DIR),
+[  --with-openldap=DIR	  enable OpenLDAP map support (libs and includes in DIR)],
 	if test "$withval" = 'no'; then
 		HAVE_LDAP=0	# Disable 
 	elif test -z "$withval" -o "$withval" = 'yes'
@@ -152,16 +194,10 @@ AC_SUBST(DAEMON_CFLAGS)
 AC_SUBST(DAEMON_LDFLAGS)
 
 #
-# Location of init.d directory?
-#
-AF_INIT_D()
-AC_SUBST(initdir)
-
-#
 # Enable ability to access value in external env variable
 #
 AC_ARG_ENABLE(ext-env,
---disable-ext-env          disable search in environment for substitution variable,,
+[  --disable-ext-env	  disable search in environment for substitution variable],,
 	enableval=yes)
 if test x$enable_ext_env = xyes; then
         AC_DEFINE(ENABLE_EXT_ENV, 1, [leave this alone])
@@ -171,7 +207,7 @@ fi
 # Disable use of locking when spawning mount command
 #
 AC_ARG_ENABLE(mount-locking,
---disable-mount-locking          disable use of locking when spawning mount command,,
+[  --disable-mount-locking disable use of locking when spawning mount command],,
 	enableval=yes)
 if test x$enable_mount_locking = xyes -o x$enableval = xyes; then
 	AC_DEFINE(ENABLE_MOUNT_LOCKING, 1)

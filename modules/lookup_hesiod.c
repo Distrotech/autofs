@@ -1,4 +1,4 @@
-#ident "$Id: lookup_hesiod.c,v 1.12 2006/03/11 06:02:48 raven Exp $"
+#ident "$Id: lookup_hesiod.c,v 1.13 2006/03/21 04:28:53 raven Exp $"
 /*
  * lookup_hesiod.c
  *
@@ -57,6 +57,11 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 
 	/* Open the parser, if we can. */
 	return !(ctxt->parser = open_parse(mapfmt, MODPREFIX, argc - 1, argv + 1));
+}
+
+int lookup_read_master(struct master *master, time_t age, void *context)
+{
+	return NSS_STATUS_UNKNOWN;
 }
 
 int lookup_read_map(struct autofs_point *ap, time_t age, void *context)

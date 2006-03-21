@@ -1,4 +1,4 @@
-#ident "$Id: mount_nfs.c,v 1.33 2006/03/11 06:02:48 raven Exp $"
+#ident "$Id: mount_nfs.c,v 1.34 2006/03/21 04:28:53 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  * mount_nfs.c - Module for Linux automountd to mount an NFS filesystem,
@@ -152,14 +152,18 @@ int is_local_mount(const char *hostpath)
 
 	for (haddr = he->h_addr_list; *haddr; haddr++) {
 		local = is_local_addr(hostname, *haddr, he->h_length);
-		if (local < 0) 
+		if (local < 0) {
+			free(hostname);
 			return local;
+		}
  		if (local) {
 			debug(MODPREFIX "host %s: is localhost",
 					hostname);
+			free(hostname);
 			return local;
 		}
 	}
+	free(hostname);
 	return 0;
 }
 

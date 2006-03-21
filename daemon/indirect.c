@@ -1,4 +1,4 @@
-#ident "$Id: indirect.c,v 1.16 2006/03/13 21:15:57 raven Exp $"
+#ident "$Id: indirect.c,v 1.17 2006/03/21 04:28:52 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  indirect.c - Linux automounter indirect mount handling
@@ -32,6 +32,7 @@
 #include <sys/wait.h>
 #include <sys/stat.h>
 #include <sys/time.h>
+#include <sys/mount.h>
 #include <sched.h>
 #include <pwd.h>
 #include <grp.h>
@@ -102,7 +103,8 @@ static int do_mount_autofs_indirect(struct autofs_point *ap)
 			if (strstr(ent->opts, "offset"))
 				continue;
 
-			error("already mounted");
+			error("%s already mounted", ap->path);
+
 			free_mnt_list(mnts);
 			goto out_err;
 		}
@@ -130,10 +132,16 @@ static int do_mount_autofs_indirect(struct autofs_point *ap)
 		/* No errors so the directory was successfully created */
 		ap->dir_created = 1;
 	}
-
+/*
 	ret = spawnl(LOG_DEBUG, PATH_MOUNT, PATH_MOUNT,
 		   "-t", "autofs", "-n", "-o", options, name, ap->path, NULL);
 	if (ret != 0) {
+		crit("failed to mount autofs path %s", ap->path);
+		goto out_rmdir;
+	}
+*/
+	ret = mount(name, ap->path, "autofs", MS_MGC_VAL, options);
+	if (ret) {
 		crit("failed to mount autofs path %s", ap->path);
 		goto out_rmdir;
 	}
@@ -195,7 +203,8 @@ static int do_mount_autofs_indirect(struct autofs_point *ap)
 	return 0;
 
 out_umount:
-	spawnll(LOG_DEBUG, PATH_UMOUNT, PATH_UMOUNT, "-n", ap->path, NULL);
+/*	spawnll(LOG_DEBUG, PATH_UMOUNT, PATH_UMOUNT, "-n", ap->path, NULL); */
+	umount(ap->path);
 out_rmdir:
 	if (ap->dir_created)
 		rmdir_path(ap->path);
@@ -241,7 +250,6 @@ int mount_autofs_indirect(struct autofs_point *ap)
 		} else {
 			error("failed to load map, exiting");
 		}
-		rm_unwanted(ap->path, 1, ap->dev);
 		/* TODO: Process cleanup ?? */
 		return -1;
 	}
@@ -271,6 +279,8 @@ int umount_autofs_indirect(struct autofs_point *ap)
 		close(ap->ioctlfd);
 		close(ap->state_pipe[0]);
 		close(ap->state_pipe[1]);
+		ap->state_pipe[0] = -1;
+		ap->state_pipe[1] = -1;
 	}
 
 	if (ap->pipefd >= 0)
@@ -284,7 +294,8 @@ int umount_autofs_indirect(struct autofs_point *ap)
 		goto force_umount;
 	}
 
-	rv = spawnl(LOG_DEBUG, PATH_UMOUNT, PATH_UMOUNT, "-n", ap->path, NULL);
+/*	rv = spawnl(LOG_DEBUG, PATH_UMOUNT, PATH_UMOUNT, "-n", ap->path, NULL); */
+	rv = umount(ap->path);
 	ret = stat(ap->path, &st);
 	if (rv != 0 && ((ret == -1 && errno == ENOENT) ||
 	    (ret == 0 && (!S_ISDIR(st.st_mode) || st.st_dev != ap->dev)))) {
@@ -293,9 +304,10 @@ int umount_autofs_indirect(struct autofs_point *ap)
 
 force_umount:
 	if (rv != 0) {
-		rv = spawnl(LOG_DEBUG,
-			    PATH_UMOUNT, PATH_UMOUNT, "-n", "-l", ap->path, NULL);
 		warn("forcing umount of %s\n", ap->path);
+/*		rv = spawnl(LOG_DEBUG,
+			    PATH_UMOUNT, PATH_UMOUNT, "-n", "-l", ap->path, NULL); */
+		rv = umount2(ap->path, MNT_FORCE);
 	} else {
 		msg("umounted %s\n", ap->path);
 		if (ap->submount)
@@ -313,6 +325,7 @@ void *expire_proc_indirect(void *arg)
 	struct autofs_point *ap;
 	struct mapent_cache *mc;
 	struct mapent *me;
+	enum states state;
 	unsigned int now;
 	int offsets, count, ret;
 	int ioctlfd;
@@ -327,6 +340,7 @@ void *expire_proc_indirect(void *arg)
 	ap = ex.ap = ec->ap;
 	now = ex.when = ec->when;
 	mc = ap->mc;
+	state = ec->state;
 	ex.status = 0;
 
 	ec->signaled = 1;
@@ -339,6 +353,12 @@ void *expire_proc_indirect(void *arg)
 		fatal(status);
 
 	pthread_cleanup_push(expire_cleanup, &ex);
+
+	status = pthread_mutex_lock(&ap->state_mutex);
+	if (status)
+		fatal(status);
+
+	ap->state = state;
 
 	/* Get a list of real mounts and expire them if possible */
 	mnts = get_mnt_list(_PROC_MOUNTS, ap->path, 0);

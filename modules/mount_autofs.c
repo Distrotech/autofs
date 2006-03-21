@@ -1,4 +1,4 @@
-#ident "$Id: mount_autofs.c,v 1.23 2006/03/13 21:15:57 raven Exp $"
+#ident "$Id: mount_autofs.c,v 1.24 2006/03/21 04:28:53 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  mount_autofs.c - Module for recursive autofs mounts.
@@ -52,11 +52,14 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 	const char **argv;
 	int argc, status, ghost = ap->ghost;
 	time_t timeout = ap->exp_timeout;
-	char *type, *fmt, *tmp, *tmp2;
+	unsigned logopt = ap->logopt;
+	char *type, *format, *tmp, *tmp2;
+	struct master_mapent *entry;
+	struct map_source *source;
 	struct autofs_point *nap;
 	char buf[MAX_ERR_BUF];
 	char *options, *p;
-	int rlen;
+	int ret, rlen;
 
 	/* Root offset of multi-mount */
 	if (*name == '/' && name_len == 1) {
@@ -109,6 +112,20 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 			ghost = 1;
 	}
 
+	entry = master_new_mapent(fullpath, ap->entry->age);
+	if (!entry) {
+		error(MODPREFIX "failed to malloc master_mapent struct");
+		return 1;
+	}
+
+	ret = master_add_autofs_point(entry, timeout, logopt, ghost, 1);
+	if (!ret) {
+		error(MODPREFIX "failed to add autofs_point to entry");
+		master_free_mapent(entry);
+		return 1;
+	}
+	nap = entry->ap;
+
 	argc = 1;
 
 	if (options) {
@@ -124,7 +141,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 	argc = 1;
 
 	type = NULL;
-	fmt = NULL;
+	format = NULL;
 
 	tmp = strchr(what, ':');
 	if (tmp) {
@@ -132,7 +149,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 		tmp2 = strchr(what, ',');
 		if (tmp2) {
 			*tmp2++ = '\0';
-			fmt = tmp2;
+			format = tmp2;
 		}
 		type = (char *) what;
 		argv[0] = tmp;
@@ -151,16 +168,17 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 	}
 	argv[argc] = NULL;
 
-	nap = new_autofs_point(fullpath,type,fmt,timeout,ghost,argc,argv,1);
-	if (!nap) {
-		error(MODPREFIX "failed to allocate autofs_point struct");
+	source = master_add_map_source(entry, type, format, time(NULL), argc, argv);
+	if (!source) {
+		error(MODPREFIX "failed to add map source to entry");
+		master_free_mapent(entry);
 		return 1;
 	}
 
 	status = pthread_mutex_lock(&sc.mutex);
 	if (status) {
 		crit("failed to lock startup condition mutex!");
-		free_autofs_point(nap);
+		master_free_mapent(entry);
 		return 1;
 	}
 
@@ -172,7 +190,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 		status = pthread_mutex_unlock(&sc.mutex);
 		if (status)
 			fatal(status);
-		free_autofs_point(nap);
+		master_free_mapent(entry);
 		return 1;
 	}
 	nap->thid = thid;
@@ -180,11 +198,8 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 	while (!sc.done) {
 		status = pthread_cond_wait(&sc.cond, &sc.mutex);
 		if (status) {
-			status = pthread_mutex_unlock(&sc.mutex);
-			if (status)
-				fatal(status);
-			free_autofs_point(ap);
-			return 1;
+			pthread_mutex_unlock(&sc.mutex);
+			fatal(status);
 		}
 	}
 
@@ -202,10 +217,8 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 	pthread_mutex_unlock(&ap->mounts_mutex);
 
 	status = pthread_mutex_unlock(&sc.mutex);
-	if (status) {
-		crit("failed to unlock startup condition mutex!");
-		return 1;
-	}
+	if (status)
+		fatal(status);
 
 	return 0;
 }

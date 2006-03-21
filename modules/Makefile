@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.7 2006/02/22 15:26:18 raven Exp $
+# $Id: Makefile,v 1.8 2006/03/21 04:28:53 raven Exp $
 #
 # Makefile for autofs
 #
@@ -43,7 +43,10 @@ ifeq ($(LDAP), 1)
   MODS += lookup_ldap.so
 endif
 
-CFLAGS += -I../include -I../lib -fPIC -DAUTOFS_LIB_DIR=\"$(autofslibdir)\" -DPATH_AUTOMOUNT=\"$(sbindir)/automount\" -D_GNU_SOURCE
+CFLAGS += -I../include -I../lib -fPIC -D_GNU_SOURCE
+CFLAGS += -DAUTOFS_LIB_DIR=\"$(autofslibdir)\"
+CFLAGS += -DAUTOFS_MAP_DIR=\"$(autofsmapdir)\"
+CFLAGS += -DPATH_AUTOMOUNT=\"$(sbindir)/automount\"
 
 all: $(MODS)
 
@@ -86,9 +89,4 @@ lookup_ldap.so: lookup_ldap.c
 	$(CC) $(SOLDFLAGS) $(CFLAGS) $(LDAP_FLAGS) -o lookup_ldap.so \
 		lookup_ldap.c $(AUTOFS_LIB) $(LIBLDAP)
 	$(STRIP) lookup_ldap.so
-
-lookup_hosts.so: lookup_hosts.c
-	$(CC) $(SOLDFLAGS) $(CFLAGS) -o lookup_hosts.so \
-		lookup_hosts.c $(AUTOFS_LIB)
-	$(STRIP) lookup_hosts.so
 

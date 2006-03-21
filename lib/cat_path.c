@@ -1,4 +1,4 @@
-#ident "$Id: cat_path.c,v 1.8 2005/11/27 04:08:54 raven Exp $"
+#ident "$Id: cat_path.c,v 1.9 2006/03/21 04:28:53 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  cat_path.c - boundary aware buffer management routines
@@ -17,7 +17,7 @@
 #include <string.h>
 #include <limits.h>
 #include <ctype.h>
-
+#include "automount.h"
 /*
  * sum = "dir/base" with attention to buffer overflows, and multiple
  * slashes at the joint are avoided.
@@ -58,7 +58,7 @@ int cat_path(char *buf, size_t len, const char *dir, const char *base)
 	return 1;
 }
 
-int _strlen(const char *str, int max)
+int _strlen(const char *str, size_t max)
 {
 	char *s = (char *) str;
 

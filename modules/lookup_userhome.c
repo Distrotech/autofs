@@ -1,4 +1,4 @@
-#ident "$Id: lookup_userhome.c,v 1.9 2006/03/11 06:02:48 raven Exp $"
+#ident "$Id: lookup_userhome.c,v 1.10 2006/03/21 04:28:53 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup_userhome.c - module for Linux automount to generate symlinks
@@ -34,6 +34,11 @@ int lookup_version = AUTOFS_LOOKUP_VERSION;	/* Required by protocol */
 int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **context)
 {
 	return 0;		/* Nothing to do */
+}
+
+int lookup_read_master(struct master *master, time_t age, void *context)
+{
+        return NSS_STATUS_UNKNOWN;
 }
 
 int lookup_read_map(struct autofs_point *ap, time_t age, void *context)

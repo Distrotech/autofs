@@ -1,5 +1,5 @@
 #
-# $Id: autofs.spec,v 1.28 2006/02/08 16:49:20 raven Exp $
+# $Id: autofs.spec,v 1.29 2006/03/21 04:28:52 raven Exp $
 #
 Summary: A tool from automatically mounting and umounting filesystems.
 Name: autofs
@@ -50,7 +50,7 @@ inkludera nätfilsystem, CD-ROM, floppydiskar, och så vidare.
 echo %{version}-%{release} > .version
 
 %build
-CFLAGS="$RPM_OPT_FLAGS -Wall" ./configure --prefix=/usr --libdir=%{_libdir}
+CFLAGS="$RPM_OPT_FLAGS -Wall" ./configure --with-dmalloc --libdir=%{_libdir}
 CFLAGS="$RPM_OPT_FLAGS -Wall" DEBUG=1 make initdir=/etc/rc.d/init.d
 
 %install
@@ -65,7 +65,7 @@ make install mandir=%{_mandir} initdir=/etc/rc.d/init.d INSTALLROOT=$RPM_BUILD_R
 install -m 755 -d $RPM_BUILD_ROOT/misc
 install -m 755 -d $RPM_BUILD_ROOT/net
 install -m 755 -d $RPM_BUILD_ROOT/smb
-install -m 644 redhat/autofs.sysconfig $RPM_BUILD_ROOT/etc/sysconfig/autofs
+#install -m 644 redhat/autofs.sysconfig $RPM_BUILD_ROOT/etc/sysconfig/autofs
 
 %clean
 [ "$RPM_BUILD_ROOT" != "/" ] && rm -rf $RPM_BUILD_ROOT

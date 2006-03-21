@@ -1,4 +1,24 @@
 %{
+/* ----------------------------------------------------------------------- *
+ *   
+ *  "$Id: nss_parse.y,v 1.5 2006/03/21 04:28:53 raven Exp $"
+ *
+ *  nss_parser.y - nsswitch parser.
+ *
+ *   Copyright 2006 Ian Kent <raven@themaw.net>
+ *
+ *   This program is free software; you can redistribute it and/or modify
+ *   it under the terms of the GNU General Public License as published by
+ *   the Free Software Foundation, Inc., 675 Mass Ave, Cambridge MA 02139,
+ *   USA; either version 2 of the License, or (at your option) any later
+ *   version.
+ *   
+ *   This program is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *   GNU General Public License for more details.
+ *
+ * ----------------------------------------------------------------------- */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -7,9 +27,9 @@
 #include <unistd.h>
 #include <limits.h>
 
-#include "nss_parse.tab.h"
-#include "nsswitch.h"
 #include "automount.h"
+#include "nsswitch.h"
+#include "nss_parse.tab.h"
 
 static struct list_head *nss_list;
 static struct nss_source *src;

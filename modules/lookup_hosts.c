@@ -1,4 +1,4 @@
-#ident "$Id: lookup_hosts.c,v 1.7 2006/03/11 06:02:48 raven Exp $"
+#ident "$Id: lookup_hosts.c,v 1.8 2006/03/21 04:28:53 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup_hosts.c - module for Linux automount to mount the exports
@@ -22,10 +22,11 @@
 #include <sys/stat.h>
 #include <netdb.h>
 
+#include "mount.h"
+
 #define MODULE_LOOKUP
 #include "automount.h"
 #include "nsswitch.h"
-#include "mount.h"
 
 #define MAPFMT_DEFAULT "sun"
 #define MODPREFIX "lookup(hosts): "
@@ -55,7 +56,12 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 
 	mapfmt = MAPFMT_DEFAULT;
 
-	return !(ctxt->parse = open_parse(mapfmt, MODPREFIX, argc - 1, argv + 1));
+	return !(ctxt->parse = open_parse(mapfmt, MODPREFIX, argc, argv));
+}
+
+int lookup_read_master(struct master *master, time_t age, void *context)
+{
+	return NSS_STATUS_UNKNOWN;
 }
 
 int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
@@ -70,6 +76,8 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 		return NSS_STATUS_UNAVAIL;
 	}
 
+	debug("getting hosts");
+
 	sethostent(0);
 	while ((host = gethostent()) != NULL) {
 		pthread_cleanup_push(cache_lock_cleanup, mc);
@@ -79,6 +87,8 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 		pthread_cleanup_pop(0);
 	}
 	endhostent();
+
+	debug("got hosts");
 
 	status = pthread_mutex_unlock(&hostent_mutex);
 	if (status)

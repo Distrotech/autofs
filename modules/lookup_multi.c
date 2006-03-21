@@ -1,4 +1,4 @@
-#ident "$Id: lookup_multi.c,v 1.14 2006/03/11 06:02:48 raven Exp $"
+#ident "$Id: lookup_multi.c,v 1.15 2006/03/21 04:28:53 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup_multi.c - module for Linux automount to seek multiple lookup
@@ -124,6 +124,11 @@ error_out:
 		*context = NULL;
 	}
 	return 1;
+}
+
+int lookup_read_master(struct master *master, time_t age, void *context)
+{
+        return NSS_STATUS_UNKNOWN;
 }
 
 int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
