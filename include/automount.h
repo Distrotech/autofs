@@ -1,4 +1,4 @@
-#ident "$Id: automount.h,v 1.40 2006/03/23 05:08:15 raven Exp $"
+#ident "$Id: automount.h,v 1.41 2006/03/23 20:00:13 raven Exp $"
 /*
  * automount.h
  *
@@ -113,12 +113,13 @@ struct autofs_point;
 struct mapent_cache {
 	pthread_rwlock_t rwlock;
 	unsigned int size;
-	unsigned long *ino_index;
+	struct list_head *ino_index;
 	struct mapent **hash;
 };
 
 struct mapent {
 	struct mapent *next;
+	struct list_head ino_index;
 	struct list_head multi_list;
 	/* Need to know owner if we're a multi mount */
 	struct mapent *multi;
@@ -138,8 +139,8 @@ int cache_readlock(struct mapent_cache *mc);
 int cache_writelock(struct mapent_cache *mc);
 int cache_unlock(struct mapent_cache *mc);
 struct mapent_cache *cache_init(struct autofs_point *ap);
-void cache_set_ino_index(struct mapent_cache *mc, const char *key, dev_t dev, ino_t ino);
-void cache_set_ino(struct mapent *me, dev_t dev, ino_t ino);
+int cache_set_ino_index(struct mapent_cache *mc, const char *key, dev_t dev, ino_t ino);
+/* void cache_set_ino(struct mapent *me, dev_t dev, ino_t ino); */
 struct mapent *cache_lookup_ino(struct mapent_cache *mc, dev_t dev, ino_t ino);
 struct mapent *cache_lookup_first(struct mapent_cache *mc);
 struct mapent *cache_lookup_next(struct mapent_cache *mc, struct mapent *me);

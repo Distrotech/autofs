@@ -1,4 +1,4 @@
-#ident "$Id: direct.c,v 1.20 2006/03/23 05:08:15 raven Exp $"
+#ident "$Id: direct.c,v 1.21 2006/03/23 20:00:13 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  direct.c - Linux automounter direct mount handling
@@ -328,7 +328,7 @@ got_version:
 		error("failed to stat direct mount trigger %s", me->key);
 		goto out_umount;
 	}
-	cache_set_ino(me, st.st_dev, st.st_ino);
+/*	cache_set_ino(me, st.st_dev, st.st_ino); */
 	cache_set_ino_index(ap->mc, me->key, st.st_dev, st.st_ino);
 
 	close(me->ioctlfd);
@@ -457,7 +457,8 @@ int mount_autofs_offset(struct autofs_point *ap, struct mapent *me, int is_autof
 	int status, ret;
 
 	if (is_mounted(_PROC_MOUNTS, me->key)) {
-	/*	debug("trigger %s already mounted", me->key); */
+		if (ap->state != ST_READMAP)
+			debug("trigger %s already mounted", me->key);
 		return 0;
 	}
 
@@ -559,7 +560,8 @@ int mount_autofs_offset(struct autofs_point *ap, struct mapent *me, int is_autof
 		error("failed to stat direct mount trigger %s", me->key);
 		goto out_umount;
 	}
-	cache_set_ino(me, st.st_dev, st.st_ino);
+
+/*	cache_set_ino(me, st.st_dev, st.st_ino); */
 	cache_set_ino_index(ap->mc, me->key, st.st_dev, st.st_ino);
 
 	close(me->ioctlfd);

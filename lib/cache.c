@@ -1,4 +1,4 @@
-#ident "$Id: cache.c,v 1.27 2006/03/21 04:28:53 raven Exp $"
+#ident "$Id: cache.c,v 1.28 2006/03/23 20:00:13 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  cache.c - mount entry cache management routines
@@ -119,7 +119,7 @@ struct mapent_cache *cache_init(struct autofs_point *ap)
 		return NULL;
 	}
 
-	mc->ino_index = malloc(mc->size * sizeof(unsigned long));
+	mc->ino_index = malloc(mc->size * sizeof(struct list_head));
 	if (!mc->ino_index) {
 		free(mc->hash);
 		free(mc);
@@ -134,7 +134,7 @@ struct mapent_cache *cache_init(struct autofs_point *ap)
 
 	for (i = 0; i < mc->size; i++) {
 		mc->hash[i] = NULL;
-		mc->ino_index[i] = -1;
+		INIT_LIST_HEAD(&mc->ino_index[i]);
 	}
 
 	cache_unlock(mc);
@@ -162,43 +162,39 @@ static unsigned int ino_hash(dev_t dev, ino_t ino)
 	return hashval % HASHSIZE;
 }
 
-void cache_set_ino_index(struct mapent_cache *mc, const char *key, dev_t dev, ino_t ino)
+int cache_set_ino_index(struct mapent_cache *mc, const char *key, dev_t dev, ino_t ino)
 {
 	unsigned int ino_index = ino_hash(dev, ino);
-	unsigned int key_hash = hash(key);
+	struct mapent *me;
 
-	mc->ino_index[ino_index] = key_hash;
+	me = cache_lookup(mc, key);
+	if (!me)
+		return 0;
 
-	return;
-}
-
-/* cache must be write locked by caller */
-void cache_set_ino(struct mapent *me, dev_t dev, ino_t ino)
-{
-	if (!me) {
-		warn("can't set index for entry");
-		return;
-	}
+	list_add(&me->ino_index, &mc->ino_index[ino_index]);
 
 	me->dev = dev;
 	me->ino = ino;
+
+	return 1;
 }
 
 /* cache must be read locked by caller */
 struct mapent *cache_lookup_ino(struct mapent_cache *mc, dev_t dev, ino_t ino)
 {
 	struct mapent *me = NULL;
+	struct list_head *head, *p;
 	unsigned int ino_index;
-	unsigned int index;
 
 	ino_index = ino_hash(dev, ino);
-	index = mc->ino_index[ino_index];
-	if (index == -1)
-		return NULL;
+	head = &mc->ino_index[ino_index];
 
-	for (me = mc->hash[index]; me != NULL; me = me->next) {
+	list_for_each(p, head) {
+		me = list_entry(p, struct mapent, ino_index);
+
 		if (me->dev != dev || me->ino != ino)
 			continue;
+
 		return me;
 	}
 	return NULL;
@@ -267,9 +263,6 @@ struct mapent *cache_lookup_next(struct mapent_cache *mc, struct mapent *me)
 	return NULL;
 }
 
-/*
- * This badness must go when the LDAP module is fixed.
- */
 /* cache must be read locked by caller */
 struct mapent *cache_lookup_key_next(struct mapent *me)
 {
@@ -401,6 +394,7 @@ int cache_add(struct mapent_cache *mc, const char *key, const char *mapent, time
 		me->mapent = NULL;
 
 	me->age = age;
+	INIT_LIST_HEAD(&me->ino_index);
 	INIT_LIST_HEAD(&me->multi_list);
 	me->multi = NULL;
 	me->ioctlfd = -1;
@@ -419,7 +413,7 @@ int cache_add(struct mapent_cache *mc, const char *key, const char *mapent, time
 		while (1) {
 			struct mapent *next;
 		
-			next = cache_lookup_next(mc, existing);
+			next = cache_lookup_key_next(existing);
 			if (!next)
 				break;
 
@@ -542,6 +536,8 @@ int cache_delete(struct mapent_cache *mc, const char *key)
 				goto done;
 			}
 			pred->next = me->next;
+			if (!list_empty(&me->ino_index))
+				list_del(&me->ino_index);
 			free(me->key);
 			if (me->mapent)
 				free(me->mapent);
@@ -560,6 +556,8 @@ int cache_delete(struct mapent_cache *mc, const char *key)
 			goto done;
 		}
 		mc->hash[hashval] = me->next;
+		if (!list_empty(&me->ino_index))
+			list_del(&me->ino_index);
 		free(me->key);
 		if (me->mapent)
 			free(me->mapent);
@@ -626,12 +624,9 @@ void cache_release(struct autofs_point *ap)
 	cache_writelock(mc);
 
 	for (i = 0; i < mc->size; i++) {
-		mc->ino_index[i] = -1;
 		me = mc->hash[i];
 		if (me == NULL)
 			continue;
-		mc->hash[i] = NULL;
-		mc->ino_index[i] = -1;
 		next = me->next;
 		free(me->key);
 		if (me->mapent)
