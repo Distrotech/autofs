@@ -1,4 +1,4 @@
-#ident "$Id: direct.c,v 1.19 2006/03/21 04:28:52 raven Exp $"
+#ident "$Id: direct.c,v 1.20 2006/03/23 05:08:15 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  direct.c - Linux automounter direct mount handling
@@ -39,6 +39,8 @@
 #include <grp.h>
 
 #include "automount.h"
+
+void cache_dump_cache(struct mapent_cache *);
 
 extern pthread_attr_t detach_attr;
 
@@ -209,7 +211,8 @@ int do_mount_autofs_direct(struct autofs_point *ap, struct mapent *me, int now)
 	int status, ret;
 
 	if (is_mounted(_PROC_MOUNTS, me->key)) {
-		debug("trigger %s already mounted", me->key);
+		if (ap->state != ST_READMAP)
+			debug("trigger %s already mounted", me->key);
 		return 0;
 	}
 
@@ -584,40 +587,29 @@ void *expire_proc_direct(void *arg)
 	struct autofs_point *ap;
 	struct mapent_cache *mc;
 	struct mapent *me;
-	enum states state;
 	unsigned int now;
-	int ioctlfd;
-	int status;
+	unsigned int skip = 0;
+	int ioctlfd = -1;
+	int old_state, status;
 	int ret;
 
 	ec = (struct expire_cond *) arg;
+
+	pthread_cleanup_push(expire_cleanup_unlock, ec);
+	pthread_cleanup_push(expire_cleanup, &ex);
 
 	status = pthread_mutex_lock(&ec->mutex);
 	if (status)
 		fatal(status);
 
-	ap = ex.ap = ec->ap;
-	now = ex.when = ec->when;
-	state = ec->state;
+	ap = ec->ap;
 	mc = ap->mc;
+
+	now = ec->when;
+
+	ex.ap = ap;
+	ex.when = ec->when;
 	ex.status = 0;
-
-	ec->signaled = 1;
-	status = pthread_cond_signal(&ec->cond);
-	if (status)
-		fatal(status);
-
-	status = pthread_mutex_unlock(&ec->mutex);
-	if (status)
-		fatal(status);
-
-	pthread_cleanup_push(expire_cleanup, &ex);
-
-	status = pthread_mutex_lock(&ap->state_mutex);
-	if (status)
-		fatal(status);
-
-	ap->state = state;
 
 	/* Get a list of real mounts and expire them if possible */
 	mnts = get_mnt_list(_PROC_MOUNTS, "/", 0);
@@ -634,24 +626,22 @@ void *expire_proc_direct(void *arg)
 		 * All direct mounts must be present in the map
 		 * entry cache.
 		 */
+		pthread_cleanup_push(cache_lock_cleanup, mc);
 		cache_readlock(mc);
-
 		me = cache_lookup(mc, next->path);
-		if (!me) {
-			debug("not found %s", next->path);
-			cache_unlock(mc);
-			continue;
-		}
-
-		/* Real mounts have an open ioctl fd */
-		if (me->ioctlfd >= 0)
+		if (!me)
+			skip = 1;
+		else if (me->ioctlfd >= 0)
+			/* Real mounts have an open ioctl fd */
 			ioctlfd = me->ioctlfd;
-		else {
-			cache_unlock(mc);
+		else
+			skip = 1;
+		pthread_cleanup_pop(1);
+
+		if (skip) {
+			skip = 0;
 			continue;
 		}
-
-		cache_unlock(mc);
 
 		debug("send expire to trigger %s", next->path);
 
@@ -667,6 +657,7 @@ void *expire_proc_direct(void *arg)
 done:
 	free_mnt_list(mnts);
 
+	pthread_cleanup_push(cache_lock_cleanup, mc);
 	cache_readlock(mc);
 	me = cache_enumerate(mc, NULL);
 	while (me) {
@@ -680,14 +671,14 @@ done:
 			 */
 			ex.status = 1;
 			free_mnt_list(mnts);
-			cache_unlock(mc);
 			pthread_exit(NULL);
 		}
 		free_mnt_list(mnts);
 		me = cache_enumerate(mc, me);
 	}
-	cache_unlock(mc);
+	pthread_cleanup_pop(1);
 
+	pthread_cleanup_pop(1);
 	pthread_cleanup_pop(1);
 
 	return NULL;

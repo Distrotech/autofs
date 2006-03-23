@@ -1,4 +1,4 @@
-#ident "$Id: master.h,v 1.1 2006/03/21 04:28:52 raven Exp $"
+#ident "$Id: master.h,v 1.2 2006/03/23 05:08:15 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  master.h - header file for master map parser utility routines.
@@ -56,7 +56,7 @@ struct master {
 	struct list_head mounts;
 };
 
-struct readmap_cond;
+struct state_cond;
 
 /* From the yacc master map parser */
 
@@ -67,8 +67,10 @@ int master_parse_entry(const char *, unsigned int, unsigned int, time_t);
 
 void master_set_default_timeout(void);
 void master_set_default_ghost_mode(void);
-int master_readmap_cond_init(struct readmap_cond *);
-void master_readmap_cond_destroy(struct readmap_cond *);
+/*
+int master_state_cond_init(struct autofs_point *);
+void master_state_cond_destroy(struct autofs_point *);
+*/
 int master_add_autofs_point(struct master_mapent *, time_t, unsigned, unsigned, int);
 void master_free_autofs_point(struct autofs_point *);
 struct map_source *

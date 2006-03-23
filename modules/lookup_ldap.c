@@ -1,4 +1,4 @@
-#ident "$Id: lookup_ldap.c,v 1.32 2006/03/21 04:28:53 raven Exp $"
+#ident "$Id: lookup_ldap.c,v 1.33 2006/03/23 05:08:15 raven Exp $"
 /*
  * lookup_ldap.c - Module for Linux automountd to access automount
  *		   maps in LDAP directories.
@@ -602,7 +602,7 @@ static int check_map_indirect(struct autofs_point *ap,
 	struct mapent *me, *exists;
 	time_t now = time(NULL);
 	time_t t_last_read;
-	int need_hup = 0;
+	int need_map = 0;
 
 	cache_readlock(mc);
 	exists = cache_lookup(mc, key);
@@ -623,10 +623,10 @@ static int check_map_indirect(struct autofs_point *ap,
 	if (t_last_read > ap->exp_runfreq) {
 		if ((ret & CHE_UPDATED) ||
 		    (exists && (ret & CHE_MISSING)))
-			need_hup = 1;
+			need_map = 1;
 		else if ((ret2 & CHE_UPDATED) ||
 			 (exists && (ret2 & CHE_MISSING)))
-			need_hup = 1;
+			need_map = 1;
 	}
 
 	if (ret == CHE_MISSING && ret2 == CHE_MISSING) {
@@ -649,8 +649,8 @@ static int check_map_indirect(struct autofs_point *ap,
 	}
 
 	/* Have parent update its map */
-	if (need_hup)
-		kill(getppid(), SIGHUP);
+	if (need_map)
+		nextstate(ap->state_pipe[1], ST_READMAP);
 
 	if (ret == CHE_MISSING && ret2 == CHE_MISSING)
 		return NSS_STATUS_NOTFOUND;

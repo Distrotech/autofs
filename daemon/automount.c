@@ -1,4 +1,4 @@
-#ident "$Id: automount.c,v 1.63 2006/03/21 04:28:52 raven Exp $"
+#ident "$Id: automount.c,v 1.64 2006/03/23 05:08:15 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  automount.c - Linux automounter daemon
@@ -59,7 +59,6 @@ pthread_key_t key_thread_stdenv_vars;
 
 #define MAX_OPEN_FILES		10240
 
-int do_mount_autofs_direct(struct autofs_point *ap, struct mapent *me, int now);
 static int umount_all(struct autofs_point *ap, int force);
 
 extern pthread_mutex_t master_mutex;
@@ -457,16 +456,6 @@ int umount_autofs(struct autofs_point *ap, int force)
 	return status;
 }
 
-void nextstate(int statefd, enum states next)
-{
-	char buf[MAX_ERR_BUF];
-
-	if (write(statefd, &next, sizeof(next)) != sizeof(next)) {
-		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		error("write failed %s", estr);
-	}
-}
-
 int send_ready(int ioctlfd, unsigned int wait_queue_token)
 {
 	char buf[MAX_ERR_BUF];
@@ -501,483 +490,13 @@ int send_fail(int ioctlfd, unsigned int wait_queue_token)
 	return 0;
 }
 
-/*
- * Handle expire thread cleanup and return the next state the system
- * should enter as a result.
- */
-void expire_cleanup(void *arg)
-{
-	pthread_t thid = pthread_self();
-	struct expire_args *ex;
-	struct autofs_point *ap;
-	int statefd;
-	enum states next = ST_INVAL;
-	int success;
-	int status;
-
-	ex = (struct expire_args *) arg;
-	ap = ex->ap;
-	success = ex->status;
-/*
-	status = pthread_mutex_lock(&ap->state_mutex);
-	if (status) {
-		error("state mutex lock failed");
-		return;
-	}
-*/
-	debug("got thid %lu path %s stat %d", (unsigned long) thid, ap->path, success);
-
-	statefd = ap->state_pipe[1];
-
-	/* Check to see if expire process finished */
-	if (thid == ap->exp_thread) {
-		ap->exp_thread = 0;
-
-		switch (ap->state) {
-		case ST_EXPIRE:
-			alarm_add(ap, ap->exp_runfreq);
-			/* FALLTHROUGH */
-		case ST_PRUNE:
-			/* If we're a submount and we've just
-			   pruned or expired everything away,
-			   try to shut down */
-			if (ap->submount && !success && ap->state != ST_SHUTDOWN) {
-				next = ST_SHUTDOWN_PENDING;
-				break;
-			}
-			/* FALLTHROUGH */
-
-		case ST_READY:
-			next = ST_READY;
-			break;
-
-		case ST_SHUTDOWN_PENDING:
-			next = ST_SHUTDOWN;
-			if (success == 0)
-				break;
-
-			/* Failed shutdown returns to ready */
-			warn("filesystem %s still busy", ap->path);
-			if (ap->submount) {
-				status = pthread_mutex_unlock(&ap->parent->state_mutex);
-				if (status)
-					fatal(status);
-			}
-			alarm_add(ap, ap->exp_runfreq);
-			next = ST_READY;
-			break;
-
-		case ST_SHUTDOWN_FORCE:
-			next = ST_SHUTDOWN;
-			break;
-
-		default:
-			error("bad state %d", ap->state);
-		}
-
-		if (next != ST_INVAL) {
-			debug("sigchld: exp "
-				"%lu finished, switching from %d to %d",
-				(unsigned long) thid, ap->state, next);
-		}
-	}
-
-	if (next != ST_INVAL)
-		nextstate(statefd, next);
-
-	status = pthread_mutex_unlock(&ap->state_mutex);
-	if (status)
-		error("state mutex unlock failed");
-}
-
-static int st_ready(struct autofs_point *ap)
+int st_ready(struct autofs_point *ap)
 {
 	debug("st_ready(): state = %d path %s", ap->state, ap->path);
 
 	ap->state = ST_READY;
 
 	return 0;
-}
-
-enum expire {
-	EXP_ERROR,
-	EXP_STARTED,
-	EXP_DONE,
-	EXP_PARTIAL
-};
-
-/*
- * Generate expiry messages.  If "now" is true, timeouts are ignored.
- *
- * Returns: ERROR	- error
- *          STARTED	- expiry process started
- *          DONE	- nothing to expire
- *          PARTIAL	- partial expire
- */
-
-void expire_cleanup_unlock(void *arg)
-{
-	struct expire_cond *ec;
-	int status;
-
-	ec = (struct expire_cond *) arg;
-
-	status = pthread_mutex_unlock(&ec->mutex);
-	if (status)
-		fatal(status);
-
-	status = pthread_cond_destroy(&ec->cond);
-	if (status)
-		fatal(status);
-
-	status = pthread_mutex_destroy(&ec->mutex);
-	if (status)
-		fatal(status);
-
-	free(ec);
-
-	return;
-}
-
-static enum expire expire_proc(struct autofs_point *ap, enum states state, int now)
-{
-	pthread_t thid;
-	struct expire_cond *ec;
-	void *(*expire)(void *);
-	int status;
-
-	assert(ap->exp_thread == 0);
-
-	ec = malloc(sizeof(struct expire_cond));
-	if (!ec) {
-		error("failed to malloc expire condition struct");
-		return EXP_ERROR;
-	}
-
-	status = pthread_mutex_init(&ec->mutex, NULL);
-	if (status)
-		fatal(status);
-
-	status = pthread_cond_init(&ec->cond, NULL);
-	if (status)
-		fatal(status);
-
-	status = pthread_mutex_lock(&ec->mutex);
-	if (status) {
-		error("failed to lock expire condition mutex");
-		free(ec);
-		return EXP_ERROR;
-	}
-
-	if (ap->type == LKP_INDIRECT)
-		expire = expire_proc_indirect;
-	else
-		expire = expire_proc_direct;
-
-	status = pthread_create(&thid, &detach_attr, expire, ec);
-	if (status) {
-		status = pthread_mutex_unlock(&ec->mutex);
-		if (status)
-			fatal(status);
-		free(ec);
-		error("thread create failed");
-		return EXP_ERROR;
-	}
-
-	debug("exp_proc = %lu path %s", (unsigned long) thid, ap->path);
-
-	ap->exp_thread = thid;
-	ec->ap = ap;
-	ec->state = state;
-	ec->when = now;
-	ec->signaled = 0;
-
-	pthread_cleanup_push(expire_cleanup_unlock, ec);
-
-	while (!ec->signaled) {
-		status = pthread_cond_wait(&ec->cond, &ec->mutex);
-		if (status)
-			fatal(status);
-	}
-
-	pthread_cleanup_pop(1);
-
-	return EXP_STARTED;
-}
-
-void do_readmap_unlock(void *arg)
-{
-	struct autofs_point *ap;
-	int status;
-
-	ap = (struct autofs_point *) arg;
-
-	ap->state = ST_READY;
-
-	status = pthread_mutex_unlock(&ap->state_mutex);
-	if (status)
-		fatal(status);
-
-	return;
-}
-
-static void *do_readmap(void *arg)
-{
-	struct autofs_point *ap;
-	struct mapent_cache *mc;
-	struct readmap_cond *rc;
-	int status, state;
-	time_t now;
-
-	rc = (struct readmap_cond *) arg;
-
-	status = pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &state);
-	if (status)
-		fatal(status);
-
-	while (!rc->signaled) {
-		status = pthread_cond_wait(&rc->cond, &rc->mutex);
-		if (status)
-			fatal(status);
-		pthread_exit(NULL);
-	}
-
-	rc->signaled = 0;
-
-	ap = rc->ap;
-	mc = ap->mc;
-	now = rc->now;
-
-	status = pthread_mutex_unlock(&rc->mutex);
-	if (status)
-		fatal(status);
-
-	status = pthread_setcancelstate(state, &state);
-	if (status)
-		fatal(status);
-
-	pthread_testcancel();
-
-	pthread_cleanup_push(do_readmap_unlock, ap);
-
-	status = pthread_mutex_lock(&ap->state_mutex);
-	if (status)
-		fatal(status);
-
-	ap->state = ST_READMAP;
-
-	status = lookup_nss_read_map(ap, now);
-	if (!status)
-		pthread_exit(NULL);
-
-	lookup_prune_cache(ap, now);
-
-	pthread_cleanup_push(cache_lock_cleanup, mc);
-	cache_readlock(mc);
-	if (ap->type == LKP_INDIRECT)
-		status = lookup_ghost(ap);
-	else
-		status = lookup_enumerate(ap, do_mount_autofs_direct, now);
-	cache_unlock(mc);
-	pthread_cleanup_pop(0);
-
-	debug("path %s status %d", ap->path, status);
-
-	rc->busy = 0;
-
-	pthread_cleanup_pop(1);
-
-	return NULL;
-}
-
-static int st_readmap(struct autofs_point *ap)
-{
-	pthread_t thid;
-	int status;
-	int now = time(NULL);
-
-	debug("state %d path %s", ap->state, ap->path);
-
-	assert(ap->state == ST_READY);
-
-	if (!master_readmap_cond_init(&ap->rc)) {
-		warn("read map already in progress for map %s", ap->path);
-		ap->state = ST_READY;
-		ap->rc.busy = 0;
-		return 0;
-	}
-
-	status = pthread_mutex_lock(&ap->rc.mutex);
-	if (status)
-		fatal(status);
-
-	status = pthread_create(&thid, &detach_attr, do_readmap, &ap->rc);
-	if (status) {
-		error("read map thread create failed");
-		status = pthread_mutex_unlock(&ap->rc.mutex);
-		if (status)
-			fatal(status);
-		master_readmap_cond_destroy(&ap->rc);
-		ap->state = ST_READY;
-		ap->rc.busy = 0;
-		return 0;
-	}
-
-	ap->rc.thid = thid;
-	ap->rc.ap = ap;
-	ap->rc.busy = 1;
-	ap->rc.signaled = 0;
-	ap->rc.now = now;
-	ap->rc.signaled = 1;
-
-	status = pthread_cond_signal(&ap->rc.cond);
-	if (status) {
-		error("failed to signal read map condition");
-		status = pthread_mutex_unlock(&ap->rc.mutex);
-		if (status)
-			fatal(status);
-		master_readmap_cond_destroy(&ap->rc);
-		ap->state = ST_READY;
-		ap->rc.busy = 0;
-		return 0;
-	}
-
-	status = pthread_mutex_unlock(&ap->rc.mutex);
-	if (status) {
-		error("failed to unlock read map condition mutex");
-		fatal(status);
-	}
-
-	master_readmap_cond_destroy(&ap->rc);
-
-	ap->state = ST_READY;
-
-	return 1;
-}
-
-static int st_prepare_shutdown(struct autofs_point *ap)
-{
-	int status;
-	int exp;
-
-	debug("state %d path %s", ap->state, ap->path);
-
-	/* Turn off timeouts for this mountpoint */
-	alarm_delete(ap);
-
-	assert(ap->state == ST_READY || ap->state == ST_EXPIRE);
-
-	if (ap->submount) {
-		status = pthread_mutex_lock(&ap->parent->state_mutex);
-		if (status)
-			fatal(status);
-	}
-
-	/* Unmount everything */
-	exp = expire_proc(ap, ST_SHUTDOWN_PENDING, 1);
-	switch (exp) {
-	case EXP_ERROR:
-	case EXP_PARTIAL:
-		/* It didn't work: return to ready */
-		alarm_add(ap, ap->exp_runfreq);
-		ap->state = ST_READY;
-		return 0;
-
-	case EXP_DONE:
-		/* All expired: go straight to exit */
-		ap->state = ST_SHUTDOWN;
-		return 1;
-
-	case EXP_STARTED:
-		return 0;
-	}
-	return 1;
-}
-
-static int st_force_shutdown(struct autofs_point *ap)
-{
-	int status;
-	int exp;
-
-	debug("state %d path %s", ap->state, ap->path);
-
-	/* Turn off timeouts for this mountpoint */
-	alarm_delete(ap);
-
-	assert(ap->state == ST_READY || ap->state == ST_EXPIRE);
-
-	if (ap->submount) {
-		status = pthread_mutex_lock(&ap->parent->state_mutex);
-		if (status)
-			fatal(status);
-	}
-
-	/* Unmount everything */
-	exp = expire_proc(ap, ST_SHUTDOWN_FORCE, 1);
-	switch (exp) {
-	case EXP_ERROR:
-	case EXP_PARTIAL:
-		/* It didn't work: return to ready */
-		alarm_add(ap, ap->exp_runfreq);
-		ap->state = ST_READY;
-		return 0;
-
-	case EXP_DONE:
-		/* All expired: go straight to exit */
-		ap->state = ST_SHUTDOWN;
-		return 1;
-
-	case EXP_STARTED:
-		return 0;
-	}
-	return 1;
-}
-
-static int st_prune(struct autofs_point *ap)
-{
-	debug("state %d path %s", ap->state, ap->path);
-
-	assert(ap->state == ST_READY);
-
-	switch (expire_proc(ap, ST_PRUNE, 1)) {
-	case EXP_DONE:
-		if (ap->submount)
-			return st_prepare_shutdown(ap);
-		/* FALLTHROUGH */
-
-	case EXP_ERROR:
-	case EXP_PARTIAL:
-		ap->state = ST_READY;
-		return 1;
-
-	case EXP_STARTED:
-		return 0;
-	}
-	return 1;
-}
-
-static int st_expire(struct autofs_point *ap)
-{
-	debug("state %d path %s", ap->state, ap->path);
-
-	assert(ap->state == ST_READY);
-
-	switch (expire_proc(ap, ST_EXPIRE, 0)) {
-	case EXP_DONE:
-		if (ap->submount)
-			return st_prepare_shutdown(ap);
-		/* FALLTHROUGH */
-
-	case EXP_ERROR:
-	case EXP_PARTIAL:
-		alarm_add(ap, ap->exp_runfreq);
-		ap->state = ST_READY;
-		return 1;
-
-	case EXP_STARTED:
-		return 0;
-	}
-	return 1;
 }
 
 static int fullread(int fd, void *ptr, size_t len)
@@ -1040,23 +559,27 @@ static int get_pkt(struct autofs_point *ap, union autofs_packet_union *pkt)
 
 				switch (next_state) {
 				case ST_READY:
-					ret = st_ready(ap);
+					state_queue_add(ap, ST_READY);
 					break;
 
 				case ST_PRUNE:
-					ret = st_prune(ap);
+					state_queue_add(ap, ST_PRUNE);
 					break;
 
 				case ST_EXPIRE:
-					ret = st_expire(ap);
+					state_queue_add(ap, ST_EXPIRE);
+					break;
+
+				case ST_READMAP:
+					state_queue_add(ap, ST_READMAP);
 					break;
 
 				case ST_SHUTDOWN_PENDING:
-					ret = st_prepare_shutdown(ap);
+					state_queue_add(ap, ST_SHUTDOWN_PENDING);
 					break;
 
 				case ST_SHUTDOWN_FORCE:
-					ret = st_force_shutdown(ap);
+					state_queue_add(ap, ST_SHUTDOWN_FORCE);
 					break;
 
 				case ST_SHUTDOWN:
@@ -1064,13 +587,6 @@ static int get_pkt(struct autofs_point *ap, union autofs_packet_union *pkt)
 					       ap->state == ST_SHUTDOWN_FORCE ||
 					       ap->state == ST_SHUTDOWN_PENDING);
 					ap->state = ST_SHUTDOWN;
-					break;
-
-				case ST_READMAP:
-					/* Syncronous reread of map */
-					ret = st_readmap(ap);
-					if (!ret)
-						ret = st_prepare_shutdown(ap);
 					break;
 
 				default:
@@ -1528,7 +1044,6 @@ static void mutex_operation_wait(pthread_mutex_t *mutex)
 static void handle_mounts_cleanup(void *arg)
 {
 	struct autofs_point *ap;
-	int status;
 
 	ap = (struct autofs_point *) arg;
 
@@ -1546,17 +1061,7 @@ static void handle_mounts_cleanup(void *arg)
 	/* If we have been canceled then we may hold the state mutex. */
 	mutex_operation_wait(&ap->state_mutex);
 
-	/* Cancel readmap in progres */
-	while (ap->rc.busy) {
-		status = pthread_cancel(ap->rc.thid);
-		if (status == ESRCH) {
-			ap->rc.busy = 0;
-			break;
-		} else if (status)
-			fatal(status);
-		sleep(1);
-	}
-
+	state_queue_delete(ap);
 	master_free_mapent(ap->entry);
 
 	/* If we are the last tell the state machine to shutdown */
@@ -1839,6 +1344,12 @@ int main(int argc, char *argv[])
 	pthread_sigmask(SIG_BLOCK, &allsigs, NULL);
 
 	if (!sigchld_start_handler()) {
+		crit("failed to create SIGCHLD handler thread!");
+		master_kill(master, 1);
+		exit(1);
+	}
+
+	if (!state_queue_start_handler()) {
 		crit("failed to create SIGCHLD handler thread!");
 		master_kill(master, 1);
 		exit(1);

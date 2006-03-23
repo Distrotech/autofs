@@ -1,4 +1,4 @@
-#ident "$Id: master.c,v 1.1 2006/03/21 04:28:53 raven Exp $"
+#ident "$Id: master.c,v 1.2 2006/03/23 05:08:15 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  master.c - master map utility routines.
@@ -70,51 +70,6 @@ void master_set_default_ghost_mode(void)
 	}
 }
 
-int master_readmap_cond_init(struct readmap_cond *rc)
-{
-	int status;
-
-
-	if (rc->busy)
-		return 0;
-
-	status = pthread_mutex_init(&rc->mutex, NULL);
-	if (status) {
-		error("failed to init readmap condition mutex");
-		return 0;
-	}
-
-	status = pthread_cond_init(&rc->cond, NULL);
-	if (status) {
-		error("failed to init readmap condition");
-		status = pthread_mutex_destroy(&rc->mutex);
-		if (status)
-			fatal(status);
-		return 0;
-	}
-
-	return 1;
-}
-
-void master_readmap_cond_destroy(struct readmap_cond *rc)
-{
-	int status;
-
-	status = pthread_cond_destroy(&rc->cond);
-	if (status) {
-		debug("failed to destroy readmap condition mutex");
-		fatal(status);
-	}
-
-	status = pthread_mutex_destroy(&rc->mutex);
-	if (status) {
-		debug("failed to destroy readmap condition");
-		fatal(status);
-	}
-
-	return;
-}
-
 int master_add_autofs_point(struct master_mapent *entry,
 		time_t timeout, unsigned logopt, unsigned ghost, int submount) 
 {
@@ -165,6 +120,7 @@ int master_add_autofs_point(struct master_mapent *entry,
 	ap->submount = submount;
 	INIT_LIST_HEAD(&ap->mounts);
 	INIT_LIST_HEAD(&ap->submounts);
+	INIT_LIST_HEAD(&ap->pending);
 
 	status = pthread_mutex_init(&ap->state_mutex, NULL);
 	if (status) {
@@ -187,8 +143,6 @@ int master_add_autofs_point(struct master_mapent *entry,
 
 	entry->ap = ap;
 
-	debug("add %s", ap->path);
-
 	return 1;
 }
 
@@ -198,8 +152,6 @@ void master_free_autofs_point(struct autofs_point *ap)
 
 	if (!ap)
 		return;
-
-	debug("free %s", ap->path);
 
 	if (ap->submount) {
 		pthread_mutex_lock(&ap->parent->mounts_mutex);
@@ -300,13 +252,6 @@ master_add_map_source(struct master_mapent *entry,
 	if (status)
 		fatal(status);
 
-	if (source->argv)
-		debug("add %s %s %s",
-			source->type, source->format, source->argv[0]);
-	else
-		debug("add %s %s",
-			source->type, source->format);
-
 	return source;
 }
 
@@ -376,13 +321,6 @@ void master_free_map_source(struct map_source *source)
 {
 	int status;
 
-	if (source->argv[0])
-		debug("free %s %s %s",
-			source->type, source->format, source->argv[0]);
-	else
-		debug("free %s %s",
-			source->type, source->format);
-
 	if (source->type)
 		free(source->type);
 	if (source->format)
@@ -397,8 +335,6 @@ void master_free_map_source(struct map_source *source)
 		status = pthread_mutex_lock(&instance_mutex);
 		if (status)
 			fatal(status);
-
-		debug("free source instances");
 
 		instance = source->instance;
 		while (instance) {
@@ -524,9 +460,6 @@ master_add_source_instance(struct map_source *source, const char *type, const ch
 	if (status)
 		fatal(status);
 
-	debug("add source instance %s %s %s",
-			new->type, new->format, new->argv[0]);
-
 	return new;
 }
 
@@ -586,8 +519,6 @@ struct master_mapent *master_new_mapent(const char *path, time_t age)
 
 	INIT_LIST_HEAD(&entry->list);
 
-	debug("new %s", path);
-
 	return entry;
 }
 
@@ -605,8 +536,6 @@ void master_add_mapent(struct master *master, struct master_mapent *entry)
 	if (status)
 		fatal(status);
 
-	debug("add %s", entry->path);
-
 	return;
 }
 
@@ -614,14 +543,14 @@ void master_free_mapent(struct master_mapent *entry)
 {
 	int status;
 
-	debug("free %s", entry->path);
-
 	status = pthread_mutex_lock(&master_mutex);
 	if (status)
 		fatal(status);
 
+	debug("attempt to free %s", entry->path);
+
 	if (!list_empty(&entry->list))
-		list_del(&entry->list);
+		list_del_init(&entry->list);
 
 	if (entry->path)
 		free(entry->path);
@@ -917,7 +846,7 @@ static void check_update_map_sources(struct master_mapent *entry, time_t age, in
 			map_stale = 1;
 		} else if (source->type) {
 			if (!strcmp(source->type, "null")) {
-				entry->ap->mc = cache_init(entry->ap);
+/*				entry->ap->mc = cache_init(entry->ap); */
 				entry->first = source->next;
 				map_stale = 1;
 			}
@@ -927,7 +856,6 @@ static void check_update_map_sources(struct master_mapent *entry, time_t age, in
 
 	/* The map sources have changed */
 	if (map_stale) {
-
 		status = pthread_mutex_lock(&ap->state_mutex);
 		if (status)
 			fatal(status);
@@ -941,7 +869,6 @@ static void check_update_map_sources(struct master_mapent *entry, time_t age, in
 		status = pthread_mutex_unlock(&ap->state_mutex);
 		if (status)
 			fatal(status);
-
 	}
 
 	return;

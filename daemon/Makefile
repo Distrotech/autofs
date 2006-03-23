@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.9 2006/03/21 04:28:52 raven Exp $
+# $Id: Makefile,v 1.10 2006/03/23 05:08:14 raven Exp $
 #
 # Makefile for autofs
 #
@@ -6,8 +6,10 @@
 -include ../Makefile.conf
 include ../Makefile.rules
 
-SRCS = automount.c indirect.c direct.c spawn.c module.c mount.c lookup.c
-OBJS = automount.o indirect.o direct.o spawn.o module.o mount.o lookup.o
+SRCS = automount.c indirect.c direct.c spawn.c module.c mount.c \
+	lookup.c state.c
+OBJS = automount.o indirect.o direct.o spawn.o module.o mount.o \
+	lookup.o state.o
 
 version := $(shell cat ../.version)
 

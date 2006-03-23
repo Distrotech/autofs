@@ -1,4 +1,4 @@
-#ident "$Id: indirect.c,v 1.17 2006/03/21 04:28:52 raven Exp $"
+#ident "$Id: indirect.c,v 1.18 2006/03/23 05:08:15 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  indirect.c - Linux automounter indirect mount handling
@@ -38,10 +38,6 @@
 #include <grp.h>
 
 #include "automount.h"
-
-/*
-static int kernel_pipefd = -1;           kernel pipe fd for use in direct mounts
-*/
 
 extern pthread_attr_t detach_attr;
 
@@ -325,40 +321,28 @@ void *expire_proc_indirect(void *arg)
 	struct autofs_point *ap;
 	struct mapent_cache *mc;
 	struct mapent *me;
-	enum states state;
 	unsigned int now;
 	int offsets, count, ret;
-	int ioctlfd;
+	int ioctlfd, old_state;
 	int status;
 
 	ec = (struct expire_cond *) arg;
+
+	pthread_cleanup_push(expire_cleanup_unlock, ec);
+	pthread_cleanup_push(expire_cleanup, &ex);
 
 	status = pthread_mutex_lock(&ec->mutex);
 	if (status)
 		fatal(status);
 
-	ap = ex.ap = ec->ap;
-	now = ex.when = ec->when;
+	ap = ec->ap;
 	mc = ap->mc;
-	state = ec->state;
+
+	now = ec->when;
+
+	ex.ap = ap;
+	ex.when = ec->when;
 	ex.status = 0;
-
-	ec->signaled = 1;
-	status = pthread_cond_signal(&ec->cond);
-	if (status)
-		fatal(status);
-
-	status = pthread_mutex_unlock(&ec->mutex);
-	if (status)
-		fatal(status);
-
-	pthread_cleanup_push(expire_cleanup, &ex);
-
-	status = pthread_mutex_lock(&ap->state_mutex);
-	if (status)
-		fatal(status);
-
-	ap->state = state;
 
 	/* Get a list of real mounts and expire them if possible */
 	mnts = get_mnt_list(_PROC_MOUNTS, ap->path, 0);
@@ -378,13 +362,14 @@ void *expire_proc_indirect(void *arg)
 		 * won't be found by a cache_lookup, never the less it's
 		 * a mount under ap->path.
 		 */
+		pthread_cleanup_push(cache_lock_cleanup, mc);
 		cache_readlock(mc);
 		me = cache_lookup(mc, next->path);
 		if (me && *me->key == '/')
 			ioctlfd = me->ioctlfd;
 		else
 			ioctlfd = ap->ioctlfd;
-		cache_unlock(mc);
+		pthread_cleanup_pop(1);
 
 		ret = ioctl(ioctlfd, AUTOFS_IOC_EXPIRE_MULTI, &now);
 		if (ret < 0 && errno != EAGAIN) {
@@ -448,6 +433,7 @@ done:
 		}
 	}
 
+	pthread_cleanup_pop(1);
 	pthread_cleanup_pop(1);
 
 	return NULL;

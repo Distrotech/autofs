@@ -49,6 +49,9 @@
 - updated readmap to be autofs_point specific.
 - integrated master map parsing into daemon.
   - fixed several brakages from above.
+  - implemented state task manager to improve concurrency.
+  - fixed thread creation problem with expire and read map.
+  - worked on master map update (not quite right yet).
 
 11/4/2005 autofs-4.1.4
 ----------------------

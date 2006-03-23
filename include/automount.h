@@ -1,4 +1,4 @@
-#ident "$Id: automount.h,v 1.39 2006/03/21 04:28:52 raven Exp $"
+#ident "$Id: automount.h,v 1.40 2006/03/23 05:08:15 raven Exp $"
 /*
  * automount.h
  *
@@ -16,12 +16,14 @@
 #include <syslog.h>
 #include <linux/types.h>
 #include <pthread.h>
+#include <sched.h>
 #include <errno.h>
 #include "config.h"
 #include "list.h"
 
 #include <linux/auto_fs4.h>
 
+#include "state.h"
 #include "master.h"
 
 #if WITH_DMALLOC
@@ -96,31 +98,6 @@ int load_autofs4_module(void);
 
 /* Forward declaraion */
 struct autofs_point; 
-
-/*
- * State machine for daemon
- * 
- * READY - reads from pipe; performs mount/umount operations
- * PRUNE - generates prune events in subprocess; reads from pipe
- * READMAP - read read map for maps taht use cache
- * EXPIRE - generates expire events in subprocess; reads from pipe
- * SHUTDOWN_PENDING - as prune, but goes to SHUTDOWN when done
- * SHUTDOWN - unmount autofs, exit
- *
- * Signals TERM, USR1, USR2, HUP and ALRM are blocked in all states except
- * READY.  SIGCHLD is blocked when protecting the manipulating mount list.
- */
-enum states {
-	ST_INVAL = -1,
-	ST_INIT,
-	ST_READY,
-	ST_EXPIRE,
-	ST_PRUNE,
-	ST_READMAP,
-	ST_SHUTDOWN_PENDING,
-	ST_SHUTDOWN_FORCE,
-	ST_SHUTDOWN,
-};
 
 /* mapent cache definition */
 
@@ -381,36 +358,6 @@ struct master_readmap_cond {
 
 extern struct master_readmap_cond mc;
 
-struct readmap_cond {
-	pthread_mutex_t mutex;
-	pthread_cond_t  cond;
-	pthread_t thid;		 /* map reader thread id */
-	struct autofs_point *ap; /* autofs mount we are working on */
-	unsigned int signaled;   /* Condition has been signaled */
-	unsigned int busy;	 /* Map read in progress. */
-	time_t now;		 /* Time when map is read */
-};
-
-extern struct readmap_cond rc;
-void do_readmap_cleanup_unlock(void *arg);
-
-struct expire_cond {
-	pthread_mutex_t mutex;
-	pthread_cond_t  cond;
-	struct autofs_point *ap; /* autofs mount we are working on */
-	enum states state;	 /* State prune or expire */
-	unsigned int signaled;	 /* Condition has been signaled */
-	unsigned int when;	 /* Immediate expire ? */
-};
-
-void expire_cleanup_unlock(void *arg);
-
-struct expire_args {
-	struct autofs_point *ap;	/* autofs mount we are working on */
-	unsigned int when;		/* Immediate expire ? */
-	int status;			/* Return status */
-};
-
 struct pending_args {
 	struct autofs_point *ap;	/* autofs mount we are working on */
 	int status;			/* Return status */
@@ -447,7 +394,6 @@ struct autofs_point {
 	int ioctlfd;			/* File descriptor for ioctls */
 	dev_t dev;			/* "Device" number assigned by kernel */
 	struct master_mapent *entry;	/* Master map entry for this mount */
-	struct readmap_cond rc;		/* Readmap condition var */
 	unsigned int type;		/* Type of map direct or indirect */
 	time_t exp_timeout;		/* Timeout for expiring mounts */
 	time_t exp_runfreq;		/* Frequency for polling for timeouts */
@@ -457,8 +403,10 @@ struct autofs_point {
 	pthread_t exp_thread;		/* Process that is currently expiring */
 	struct lookup_mod *lookup;	/* Lookup module */
 	pthread_mutex_t state_mutex;	/* Protect state transitions */
-	enum states state;
-	int state_pipe[2];
+	pthread_mutex_t working;	/* Perfoming a state task */
+	enum states state;		/* Current state */
+	int state_pipe[2];		/* State change router pipe */
+	struct list_head pending;	/* Pending state change requests */
 	unsigned dir_created;		/* Directory created for this mount? */
 	unsigned int submount;		/* Is this a submount */
 	struct autofs_point *parent;	/* Owner of mounts list for submount */
@@ -474,7 +422,6 @@ void *handle_mounts(void *arg);
 int umount_multi(struct autofs_point *ap, const char *path, int incl);
 int send_ready(int ioctlfd, unsigned int wait_queue_token);
 int send_fail(int ioctlfd, unsigned int wait_queue_token);
-void nextstate(int statefd, enum states next);
 int do_expire(struct autofs_point *ap, const char *name, int namelen);
 void *expire_proc_indirect(void *);
 void *expire_proc_direct(void *);
@@ -492,7 +439,6 @@ int handle_packet_missing_indirect(struct autofs_point *ap, autofs_packet_missin
 int handle_packet_missing_direct(struct autofs_point *ap, autofs_packet_missing_direct_t *pkt);
 void rm_unwanted(const char *path, int incl, dev_t dev);
 int count_mounts(struct autofs_point *ap, const char *path);
-void expire_cleanup(void *arg);
 
 /* Expire alarm handling routines */
 int alarm_start_handler(void);

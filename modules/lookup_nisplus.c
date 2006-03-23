@@ -1,4 +1,4 @@
-#ident "$Id: lookup_nisplus.c,v 1.12 2006/03/21 04:28:53 raven Exp $"
+#ident "$Id: lookup_nisplus.c,v 1.13 2006/03/23 05:08:15 raven Exp $"
 /*
  * lookup_nisplus.c
  *
@@ -271,7 +271,7 @@ static int check_map_indirect(struct autofs_point *ap,
 	struct mapent *me, *exists;
 	time_t now = time(NULL);
 	time_t t_last_read;
-	int need_hup = 0;
+	int need_map = 0;
 	int ret = 0;
 
 	cache_readlock(mc);
@@ -298,7 +298,7 @@ static int check_map_indirect(struct autofs_point *ap,
 	if (t_last_read > ap->exp_runfreq)
 		if ((ret & CHE_UPDATED) ||
 		    (exists && (ret & CHE_MISSING)))
-			need_hup = 1;
+			need_map = 1;
 
 	if (ret == CHE_MISSING) {
 		int wild = CHE_MISSING;
@@ -320,8 +320,8 @@ static int check_map_indirect(struct autofs_point *ap,
 	}
 
 	/* Have parent update its map */
-	if (need_hup)
-		kill(getppid(), SIGHUP);
+	if (need_map)
+		nextstate(ap->state_pipe[1], ST_READMAP);
 
 	if (ret == CHE_MISSING)
 		return NSS_STATUS_NOTFOUND;

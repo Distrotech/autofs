@@ -1,4 +1,4 @@
-#ident "$Id: lookup_file.c,v 1.31 2006/03/21 04:28:53 raven Exp $"
+#ident "$Id: lookup_file.c,v 1.32 2006/03/23 05:08:15 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup_file.c - module for Linux automount to query a flat file map
@@ -641,7 +641,7 @@ static int check_map_indirect(struct autofs_point *ap,
 {
 	struct mapent_cache *mc = ap->mc;
 	struct mapent *exists;
-	int need_hup = 0;
+	int need_map = 0;
 	int ret = CHE_OK;
 
 	cache_readlock(mc);
@@ -657,7 +657,7 @@ static int check_map_indirect(struct autofs_point *ap,
 
 	if ((ret & CHE_UPDATED) ||
 	    (exists && (ret & CHE_MISSING)))
-		need_hup = 1;
+		need_map = 1;
 
 	if (ret == CHE_MISSING) {
 		int wild = CHE_MISSING;
@@ -683,8 +683,8 @@ static int check_map_indirect(struct autofs_point *ap,
 
 	/* Have parent update its map ? */
 	/* TODO: update specific map */
-	if (need_hup)
-		kill(getppid(), SIGHUP);
+	if (need_map)
+		nextstate(ap->state_pipe[1], ST_READMAP);
 
 	if (ret == CHE_MISSING)
 		return NSS_STATUS_NOTFOUND;
@@ -715,7 +715,6 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 	 * the map cache already we never get a mount lookup, so
 	 * we never know about it.
 	 */
-	debug("name %s ap->type %x", key, ap->type);
 	if (ap->type == LKP_INDIRECT) {
 		char *lkp_key;
 
@@ -731,7 +730,6 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 			return NSS_STATUS_UNKNOWN;
 
 		status = check_map_indirect(ap, lkp_key, strlen(lkp_key), ctxt);
-		debug("status %d", status);
 		free(lkp_key);
 		if (status) {
 			debug(MODPREFIX "check indirect map lookup failed");
