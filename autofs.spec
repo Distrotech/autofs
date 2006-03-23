@@ -1,5 +1,5 @@
 #
-# $Id: autofs.spec,v 1.31 2006/03/23 05:16:06 raven Exp $
+# $Id: autofs.spec,v 1.32 2006/03/23 05:16:46 raven Exp $
 #
 Summary: A tool from automatically mounting and umounting filesystems.
 Name: autofs
@@ -50,7 +50,7 @@ inkludera nätfilsystem, CD-ROM, floppydiskar, och så vidare.
 echo %{version}-%{release} > .version
 
 %build
-CFLAGS="$RPM_OPT_FLAGS -Wall" ./configure --with-dmalloc --libdir=%{_libdir}
+CFLAGS="$RPM_OPT_FLAGS -Wall" ./configure --libdir=%{_libdir}
 CFLAGS="$RPM_OPT_FLAGS -Wall" DEBUG=1 make initdir=/etc/rc.d/init.d
 
 %install

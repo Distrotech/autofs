@@ -1,4 +1,4 @@
-#ident "$Id: master.c,v 1.2 2006/03/23 05:08:15 raven Exp $"
+#ident "$Id: master.c,v 1.3 2006/03/23 05:16:06 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  master.c - master map utility routines.
@@ -546,8 +546,6 @@ void master_free_mapent(struct master_mapent *entry)
 	status = pthread_mutex_lock(&master_mutex);
 	if (status)
 		fatal(status);
-
-	debug("attempt to free %s", entry->path);
 
 	if (!list_empty(&entry->list))
 		list_del_init(&entry->list);
