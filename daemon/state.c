@@ -1,4 +1,4 @@
-#ident "$Id: state.c,v 1.2 2006/03/24 03:43:40 raven Exp $"
+#ident "$Id: state.c,v 1.3 2006/03/24 03:45:17 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  state.c - state machine queue runner.
@@ -725,13 +725,10 @@ static void *state_queue_handler(void *arg)
 
 			entry = list_entry(p, struct state_queue, list);
 
-			msg("entry %p path %s thid %lu busy %d",
+			debug("entry %p path %s thid %lu busy %d",
 				entry, entry->ap->path,
 				(unsigned int) entry->thid, entry->busy);
-/*
-			debug("state %d next %d path %s",
-				entry->ap->state, entry->state, entry->ap->path);
-*/
+
 			entry->busy = 1;
 			run_state_task(entry);
 		}
@@ -759,7 +756,7 @@ static void *state_queue_handler(void *arg)
 				this = list_entry(p, struct state_queue, list);
 				p = p->next;
 
-				msg("entry %p path %s thid %lu busy %d",
+				debug("entry %p path %s thid %lu busy %d",
 					this, this->ap->path,
 					(unsigned int) this->thid, this->busy);
 
@@ -788,10 +785,7 @@ static void *state_queue_handler(void *arg)
 					list_del(&this->list);
 					free(this);
 				}
-/*
-				debug("state %d next %d path %s",
-					this->ap->state, this->state, this->ap->path);
-*/
+
 				/* Start a new task */
 				this->busy = 1;
 				run_state_task(this);
