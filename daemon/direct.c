@@ -1,4 +1,4 @@
-#ident "$Id: direct.c,v 1.21 2006/03/23 20:00:13 raven Exp $"
+#ident "$Id: direct.c,v 1.22 2006/03/24 03:43:40 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  direct.c - Linux automounter direct mount handling
@@ -39,8 +39,6 @@
 #include <grp.h>
 
 #include "automount.h"
-
-void cache_dump_cache(struct mapent_cache *);
 
 extern pthread_attr_t detach_attr;
 
@@ -140,27 +138,37 @@ static int do_umount_autofs_direct(struct autofs_point *ap, struct mapent *me)
 		goto force_umount;
 	}
 
-/*	rv = spawnl(LOG_DEBUG, PATH_UMOUNT, PATH_UMOUNT, "-n", me->key, NULL); */
 	rv = umount(me->key);
-	ret = stat(me->key, &st);
+/*	ret = stat(me->key, &st); */
 	if (rv != 0) {
+		if (errno == ENOENT) {
+			error("mount point does not exist");
+			return 0;
+		} else if (errno == EBUSY) {
+			debug("mount point %s is in use", me->key);
+			if (ap->state != ST_SHUTDOWN_FORCE)
+				return 0;
+		} else if (errno == ENOTDIR) {
+			error("mount point is not a directory");
+			return 0;
+		}
+/*
 		if (ret == -1 && errno == ENOENT) {
 			error("mount point does not exist");
 			return 0;
 		}
+*/
 		goto force_umount;
 	}
-
+/*
 	if (ret == 0 && !S_ISDIR(st.st_mode)) {
 		error("mount point is not a directory");
 		return 0;
 	}
-
+*/
 force_umount:
 	if (rv != 0) {
 		msg("forcing umount of %s", me->key);
-/*		rv = spawnl(LOG_DEBUG,
-			    PATH_UMOUNT, PATH_UMOUNT, "-n", "-l", me->key, NULL); */
 		rv = umount2(me->key, MNT_DETACH);
 	} else
 		msg("umounted %s", me->key);
@@ -266,14 +274,7 @@ int do_mount_autofs_direct(struct autofs_point *ap, struct mapent *me, int now)
 		/* No errors so the directory was successfully created */
 		me->dir_created = 1;
 	}
-/*
-	ret = spawnl(LOG_DEBUG, PATH_MOUNT, PATH_MOUNT, "-t", "autofs",
-			"-n", "-o", mp->options, mp->name, me->key, NULL);
-	if (ret != 0) {
-		crit("failed to mount autofs path %s", me->key);
-		goto out_err;
-	}
-*/
+
 	ret = mount(mp->name, me->key, "autofs", MS_MGC_VAL, mp->options);
 	if (ret) {
 		crit("failed to mount autofs path %s", me->key);
@@ -328,7 +329,6 @@ got_version:
 		error("failed to stat direct mount trigger %s", me->key);
 		goto out_umount;
 	}
-/*	cache_set_ino(me, st.st_dev, st.st_ino); */
 	cache_set_ino_index(ap->mc, me->key, st.st_dev, st.st_ino);
 
 	close(me->ioctlfd);
@@ -343,7 +343,6 @@ out_close:
 	me->ioctlfd = -1;
 out_umount:
 	/* TODO: maybe force umount (-l) */
-/*	spawnl(LOG_DEBUG, PATH_UMOUNT, PATH_UMOUNT, "-n", me->key, NULL); */
 	umount(me->key);
 out_err:
 	if (me->dir_created)
@@ -415,27 +414,30 @@ int umount_autofs_offset(struct autofs_point *ap, struct mapent *me)
 		goto force_umount;
 	}
 
-/*	rv = spawnl(LOG_DEBUG, PATH_UMOUNT, PATH_UMOUNT, "-n", me->key, NULL); */
 	rv = umount(me->key);
-	ret = stat(me->key, &st);
-	if (rv != 0) {
-		if (ret == -1 && errno == ENOENT) {
+/*	ret = stat(me->key, &st); */
+	if (rv == -1) {
+		if (errno == ENOENT) {
 			error("mount point does not exist");
+			return 0;
+		} else if (errno == EBUSY) {
+			debug("path %s already mounted", me->key);
+			return 0;
+		} else if (errno == ENOTDIR) {
+			error("mount point is not a directory");
 			return 0;
 		}
 		goto force_umount;
 	}
-
+/*
 	if (ret == 0 && !S_ISDIR(st.st_mode)) {
 		error("mount point is not a directory");
 		return 0;
 	}
-
+*/
 force_umount:
 	if (rv != 0) {
 		msg("forcing umount of %s", me->key);
-/*		rv = spawnl(LOG_DEBUG,
-			    PATH_UMOUNT, PATH_UMOUNT, "-n", "-l", me->key, NULL); */
 		rv = umount2(me->key, MNT_FORCE);
 	} else
 		msg("umounted %s", me->key);
@@ -533,8 +535,6 @@ int mount_autofs_offset(struct autofs_point *ap, struct mapent *me, int is_autof
 	debug("calling mount -t autofs " SLOPPY "-o %s %s %s",
 		mp->options, mp->name, me->key);
 
-/*	ret = spawnl(LOG_DEBUG, PATH_MOUNT, PATH_MOUNT, "-t", "autofs",
-		     "-n", SLOPPYOPT "-o", mp->options, mp->name, me->key, NULL); */
 	ret = mount(mp->name, me->key, "autofs", MS_MGC_VAL, mp->options);
 	if (ret) {
 		crit("failed to mount autofs path %s", me->key);
@@ -561,7 +561,6 @@ int mount_autofs_offset(struct autofs_point *ap, struct mapent *me, int is_autof
 		goto out_umount;
 	}
 
-/*	cache_set_ino(me, st.st_dev, st.st_ino); */
 	cache_set_ino_index(ap->mc, me->key, st.st_dev, st.st_ino);
 
 	close(me->ioctlfd);
@@ -572,7 +571,6 @@ int mount_autofs_offset(struct autofs_point *ap, struct mapent *me, int is_autof
 	return 0;
 
 out_umount:
-/*	spawnl(LOG_DEBUG, PATH_UMOUNT, PATH_UMOUNT, "-n", me->key, NULL); */
 	umount(me->key);
 out_err:
 	if (me->dir_created)
@@ -845,8 +843,10 @@ static void *do_mount_direct(void *arg)
 		error("can't stat direct mount trigger %s", mt->name);
 		pthread_exit(NULL);
 	}
+
+	status = stat(mt->name, &st);
 	if (!S_ISDIR(st.st_mode) || st.st_dev != mt->dev) {
-		error("direct mount trigger is not valid mount point %s", mt->name);
+		error("direct trigger not valid or already mounted %s", mt->name);
 		pthread_exit(NULL);
 	}
 
@@ -969,7 +969,7 @@ cont:
 		msg("mounted %s", mt->name);
 		mt->status = 1;
 	} else
-		error("failed to mount %s", mt->name);
+		msg("failed to mount %s", mt->name);
 
 	pthread_cleanup_pop(1);
 	return NULL;

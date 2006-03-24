@@ -1,4 +1,4 @@
-#ident "$Id: spawn.c,v 1.19 2006/03/07 20:00:18 raven Exp $"
+#ident "$Id: spawn.c,v 1.20 2006/03/24 03:43:40 raven Exp $"
 /* ----------------------------------------------------------------------- *
  * 
  *  spawn.c - run programs synchronously with output redirected to syslog
@@ -27,6 +27,10 @@
 #include <sys/stat.h>
 
 #include "automount.h"
+
+#ifdef ENABLE_MOUNT_LOCKING
+static pthread_mutex_t spawn_mutex = PTHREAD_MUTEX_INITIALIZER;
+#endif
 
 /*
  * SIGCHLD handling.
@@ -193,7 +197,7 @@ int sigchld_unblock(void)
 
 /*
  * Used by subprocesses which exec to avoid carrying over the main
- * daemon's rather weird signalling environment
+ * daemon's signalling environment
  */
 void reset_signals(void)
 {
@@ -227,50 +231,20 @@ void reset_signals(void)
 	sigprocmask(SIG_UNBLOCK, &allsignals, NULL);
 }
 
-/*
- * Used by subprocesses which don't exec to avoid carrying over the
- * main daemon's rather weird signalling environment.  Signals are
- * mostly ignored so that "/bin/kill -x automount" (where x is
- * typically SIGTERM or SIGUSR1) only affects the main process.
- */
-void ignore_signals(void)
-{
-	struct sigaction sa;
-	sigset_t allsignals;
-	int i;
-
-	sigfillset(&allsignals);
-	sigprocmask(SIG_BLOCK, &allsignals, NULL);
-
-	/* Discard all pending signals and ignore them */
-	sa.sa_handler = SIG_IGN;
-	sigemptyset(&sa.sa_mask);
-	sa.sa_flags = 0;
-
-	for (i = 1; i < NSIG; i++)
-		sigaction(i, &sa, NULL);
-
-	/* Default handler for SIGCHLD so that waitpid() still works */
-	sa.sa_handler = SIG_DFL;
-	sigaction(SIGCHLD, &sa, NULL);
-
-	sigprocmask(SIG_UNBLOCK, &allsignals, NULL);
-}
-
-/* Throw away an unwanted pending signal */
-void discard_pending(int sig)
-{
-	struct sigaction sa, oldsa;
-
-	sa.sa_handler = SIG_IGN;
-	sigemptyset(&sa.sa_mask);
-	sa.sa_flags = 0;
-
-	sigaction(sig, &sa, &oldsa);
-	sigaction(sig, &oldsa, NULL);
-}
-
 #define ERRBUFSIZ 2047		/* Max length of error string excl \0 */
+
+void spawn_unlock(void *arg)
+{
+	int *use_lock = (int *) arg;
+
+#ifdef ENABLE_MOUNT_LOCKING
+	if (*use_lock) {
+		if (pthread_mutex_unlock(&spawn_mutex))
+			warn("failed to unlock spawn_mutex");
+	}
+#endif
+	return;
+}
 
 static int do_spawn(int logpri, int use_lock, const char *prog, const char *const *argv)
 {
@@ -279,14 +253,22 @@ static int do_spawn(int logpri, int use_lock, const char *prog, const char *cons
 	char errbuf[ERRBUFSIZ + 1], *p, *sp;
 	int errp, errn;
 
-	if (use_lock)
-		if (!aquire_lock())
+	pthread_cleanup_push(spawn_unlock, &use_lock);
+#ifdef ENABLE_MOUNT_LOCKING
+	if (use_lock) {
+		if (pthread_mutex_lock(&spawn_mutex)) {
+			warn("failed to lock spawn_mutex");
 			return -1;
+		}
+	}
+#endif
 
 	sigchld_block();
 
-	if (pipe(pipefd))
+	if (pipe(pipefd)) {
+		spawn_unlock(&use_lock);
 		return -1;
+	}
 
 	f = fork();
 	if (f == 0) {
@@ -304,6 +286,7 @@ static int do_spawn(int logpri, int use_lock, const char *prog, const char *cons
 		if (f < 0) {
 			close(pipefd[0]);
 			sigchld_unblock();
+			spawn_unlock(&use_lock);
 			return -1;
 		}
 
@@ -349,12 +332,11 @@ static int do_spawn(int logpri, int use_lock, const char *prog, const char *cons
 			status = -1;	/* waitpid() failed */
 
 		sigchld_unblock();
-
-		if (use_lock)
-			release_lock();
+		spawn_unlock(&use_lock);
 
 		return status;
 	}
+	pthread_cleanup_pop(1);
 }
 
 int spawnv(int logpri, const char *prog, const char *const *argv)

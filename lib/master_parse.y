@@ -1,7 +1,7 @@
 %{
 /* ----------------------------------------------------------------------- *
  *   
- *  "$Id: master_parse.y,v 1.1 2006/03/21 04:28:53 raven Exp $"
+ *  "$Id: master_parse.y,v 1.2 2006/03/24 03:43:40 raven Exp $"
  *
  *  master_parser.y - master map buffer parser.
  *
@@ -498,10 +498,17 @@ int master_parse_entry(const char *buffer, unsigned int default_timeout, unsigne
 		struct autofs_point *ap = entry->ap;
 		unsigned int tout = timeout;
 
+		/*
+		 * TODO: how do we know if this is the first read entry
+		 *	 during a map re-read?
+		 *
+		 * Second and subsequent instances of a mount point
+		 * use the ghost, log and timeout of the first
+		 */
 		ap->ghost = ghost;
 		ap->logopt = logopt;
 		ap->exp_timeout = timeout;
-		if (ap->type == LKP_INDIRECT)
+		if (ap->ioctlfd != -1 && ap->type == LKP_INDIRECT)
 			ioctl(ap->ioctlfd, AUTOFS_IOC_SETTIMEOUT, &tout);
 	}
 

@@ -1,4 +1,4 @@
-#ident "$Id: indirect.c,v 1.18 2006/03/23 05:08:15 raven Exp $"
+#ident "$Id: indirect.c,v 1.19 2006/03/24 03:43:40 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  indirect.c - Linux automounter indirect mount handling
@@ -128,14 +128,7 @@ static int do_mount_autofs_indirect(struct autofs_point *ap)
 		/* No errors so the directory was successfully created */
 		ap->dir_created = 1;
 	}
-/*
-	ret = spawnl(LOG_DEBUG, PATH_MOUNT, PATH_MOUNT,
-		   "-t", "autofs", "-n", "-o", options, name, ap->path, NULL);
-	if (ret != 0) {
-		crit("failed to mount autofs path %s", ap->path);
-		goto out_rmdir;
-	}
-*/
+
 	ret = mount(name, ap->path, "autofs", MS_MGC_VAL, options);
 	if (ret) {
 		crit("failed to mount autofs path %s", ap->path);
@@ -199,7 +192,6 @@ static int do_mount_autofs_indirect(struct autofs_point *ap)
 	return 0;
 
 out_umount:
-/*	spawnll(LOG_DEBUG, PATH_UMOUNT, PATH_UMOUNT, "-n", ap->path, NULL); */
 	umount(ap->path);
 out_rmdir:
 	if (ap->dir_created)
@@ -290,19 +282,31 @@ int umount_autofs_indirect(struct autofs_point *ap)
 		goto force_umount;
 	}
 
-/*	rv = spawnl(LOG_DEBUG, PATH_UMOUNT, PATH_UMOUNT, "-n", ap->path, NULL); */
 	rv = umount(ap->path);
+	if (rv == -1) {
+		if (errno == ENOENT) {
+			error("mount point does not exist");
+			return 0;
+		} else if (errno == EBUSY) {
+			debug("mount point %s is in use", ap->path);
+			if (ap->state != ST_SHUTDOWN_FORCE)
+				return 0;
+		} else if (errno == ENOTDIR) {
+			error("mount point is not a directory");
+			return 0;
+		}
+		return 1;
+	}
+/*
 	ret = stat(ap->path, &st);
 	if (rv != 0 && ((ret == -1 && errno == ENOENT) ||
 	    (ret == 0 && (!S_ISDIR(st.st_mode) || st.st_dev != ap->dev)))) {
 		rv = 0;
 	}
-
+*/
 force_umount:
 	if (rv != 0) {
 		warn("forcing umount of %s\n", ap->path);
-/*		rv = spawnl(LOG_DEBUG,
-			    PATH_UMOUNT, PATH_UMOUNT, "-n", "-l", ap->path, NULL); */
 		rv = umount2(ap->path, MNT_FORCE);
 	} else {
 		msg("umounted %s\n", ap->path);
@@ -535,138 +539,133 @@ static void *do_mount_indirect(void *arg)
 		pthread_exit(NULL);
 	}
 
-	if (lstat(buf, &st) == -1 ||
-	   (S_ISDIR(st.st_mode) && st.st_dev == ap->dev)) {
-		msg("attempting to mount entry %s", buf);
-
-		/*
-		 * Setup thread specific data values for macro
-		 * substution in map entries during the mount.
-		 * Best effort only as it must go ahead.
-		 */
-
-		tsv = malloc(sizeof(struct thread_stdenv_vars));
-		if (!tsv) 
-			goto cont;
-
-		tsv->uid = mt->uid;
-		tsv->gid = mt->gid;
-
-		/* Try to get passwd info */
-
-		tmplen = sysconf(_SC_GETPW_R_SIZE_MAX);
-		if (tmplen < 0) {
-			error("failed to get buffer size for getpwuid_r");
-			free(tsv);
-			goto cont;
-		}
-
-		pw_tmp = malloc(tmplen + 1);
-		if (!pw_tmp) {
-			error("failed to malloc buffer for getpwuid_r");
-			free(tsv);
-			goto cont;
-		}
-
-		status = getpwuid_r(mt->uid, ppw, pw_tmp, tmplen, pppw);
-		if (status) {
-			error("failed to get passwd info from getpwuid_r");
-			free(tsv);
-			free(pw_tmp);
-			goto cont;
-		}
-
-		tsv->user = strdup(pw.pw_name);
-		if (!tsv->user) {
-			error("failed to malloc buffer for user");
-			free(tsv);
-			free(pw_tmp);
-			goto cont;
-		}
-
-		tsv->home = strdup(pw.pw_dir);
-		if (!tsv->user) {
-			error("failed to malloc buffer for home");
-			free(pw_tmp);
-			free(tsv->user);
-			free(tsv);
-			goto cont;
-		}
-
-		free(pw_tmp);
-
-		/* Try to get group info */
-
-		tmplen = sysconf(_SC_GETGR_R_SIZE_MAX);
-		if (tmplen < 0) {
-			error("failed to get buffer size for getgrgid_r");
-			free(tsv->user);
-			free(tsv->home);
-			free(tsv);
-			goto cont;
-		}
-
-		gr_tmp = malloc(tmplen + 1);
-		if (!gr_tmp) {
-			error("failed to malloc buffer for getgrgid_r");
-			free(tsv->user);
-			free(tsv->home);
-			free(tsv);
-			goto cont;
-		}
-
-		status = getgrgid_r(mt->gid, pgr, gr_tmp, tmplen, ppgr);
-		if (status) {
-			error("failed to get group info from getgrgid_r");
-			free(tsv->user);
-			free(tsv->home);
-			free(tsv);
-			free(gr_tmp);
-			goto cont;
-		}
-
-		tsv->group = strdup(gr.gr_name);
-		if (!tsv->group) {
-			error("failed to malloc buffer for group");
-			free(tsv->user);
-			free(tsv->home);
-			free(tsv);
-			free(gr_tmp);
-			goto cont;
-		}
-
-		free(gr_tmp);
-
-		status = pthread_setspecific(key_thread_stdenv_vars, tsv);
-		if (status) {
-			error("failed to set stdenv thread var");
-			free(tsv->group);
-			free(tsv->user);
-			free(tsv->home);
-			free(tsv);
-		}
-cont:
-		status = lookup_nss_mount(ap, mt->name, mt->len);
-		if (status) {
-			mt->status = 1;
-			msg("mounted %s", buf);
-		} else
-			error("failed to mount %s", buf);
-	} else {
-		/*
-		 * Already there (can happen if a process connects to a
-		 * directory while we're still working on it)
-		 */
-		/*
-		 * XXX For v4, this would be the wrong thing to do if it could
-		 * happen. It should add the new wait_queue_token to the pending
-		 * mount structure so that it gets sent a ready when its really
-		 * done.  In practice, the kernel keeps any other processes
-		 * blocked until the initial mount request is done. -JSGF
-		 */
-		/* Use the thread cleanup to take care of busines */
-		mt->status = 1;
+	status = fstat(mt->ioctlfd, &st);
+	if (status == -1) {
+		error("can't stat indirect mount trigger %s", mt->name);
+		pthread_exit(NULL);
 	}
+
+	status = stat(mt->name, &st);
+	if (!S_ISDIR(st.st_mode) || st.st_dev != mt->dev) {
+		error("indirect trigger not valid or already mounted %s", mt->name);
+		pthread_exit(NULL);
+	}
+
+	msg("attempting to mount entry %s", buf);
+
+	/*
+	 * Setup thread specific data values for macro
+	 * substution in map entries during the mount.
+	 * Best effort only as it must go ahead.
+	 */
+
+	tsv = malloc(sizeof(struct thread_stdenv_vars));
+	if (!tsv) 
+		goto cont;
+
+	tsv->uid = mt->uid;
+	tsv->gid = mt->gid;
+
+	/* Try to get passwd info */
+
+	tmplen = sysconf(_SC_GETPW_R_SIZE_MAX);
+	if (tmplen < 0) {
+		error("failed to get buffer size for getpwuid_r");
+		free(tsv);
+		goto cont;
+	}
+
+	pw_tmp = malloc(tmplen + 1);
+	if (!pw_tmp) {
+		error("failed to malloc buffer for getpwuid_r");
+		free(tsv);
+		goto cont;
+	}
+
+	status = getpwuid_r(mt->uid, ppw, pw_tmp, tmplen, pppw);
+	if (status) {
+		error("failed to get passwd info from getpwuid_r");
+		free(tsv);
+		free(pw_tmp);
+		goto cont;
+	}
+
+	tsv->user = strdup(pw.pw_name);
+	if (!tsv->user) {
+		error("failed to malloc buffer for user");
+		free(tsv);
+		free(pw_tmp);
+		goto cont;
+	}
+
+	tsv->home = strdup(pw.pw_dir);
+	if (!tsv->user) {
+		error("failed to malloc buffer for home");
+		free(pw_tmp);
+		free(tsv->user);
+		free(tsv);
+		goto cont;
+	}
+
+	free(pw_tmp);
+
+	/* Try to get group info */
+
+	tmplen = sysconf(_SC_GETGR_R_SIZE_MAX);
+	if (tmplen < 0) {
+		error("failed to get buffer size for getgrgid_r");
+		free(tsv->user);
+		free(tsv->home);
+		free(tsv);
+		goto cont;
+	}
+
+	gr_tmp = malloc(tmplen + 1);
+	if (!gr_tmp) {
+		error("failed to malloc buffer for getgrgid_r");
+		free(tsv->user);
+		free(tsv->home);
+		free(tsv);
+		goto cont;
+	}
+
+	status = getgrgid_r(mt->gid, pgr, gr_tmp, tmplen, ppgr);
+	if (status) {
+		error("failed to get group info from getgrgid_r");
+		free(tsv->user);
+		free(tsv->home);
+		free(tsv);
+		free(gr_tmp);
+		goto cont;
+	}
+
+	tsv->group = strdup(gr.gr_name);
+	if (!tsv->group) {
+		error("failed to malloc buffer for group");
+		free(tsv->user);
+		free(tsv->home);
+		free(tsv);
+		free(gr_tmp);
+		goto cont;
+	}
+
+	free(gr_tmp);
+
+	status = pthread_setspecific(key_thread_stdenv_vars, tsv);
+	if (status) {
+		error("failed to set stdenv thread var");
+		free(tsv->group);
+		free(tsv->user);
+		free(tsv->home);
+		free(tsv);
+	}
+cont:
+	status = lookup_nss_mount(ap, mt->name, mt->len);
+	if (status) {
+		mt->status = 1;
+		msg("mounted %s", buf);
+	} else
+		msg("failed to mount %s", buf);
 
 	pthread_cleanup_pop(1);
 	return NULL;

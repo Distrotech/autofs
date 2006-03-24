@@ -1,4 +1,4 @@
-#ident "$Id: args.c,v 1.2 2006/03/21 04:28:53 raven Exp $"
+#ident "$Id: args.c,v 1.3 2006/03/24 03:43:40 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  args.c - argument vector handling.
@@ -135,8 +135,11 @@ int free_argv(int argc, const char **argv)
 	char **vector = (char **) argv;
 	int i;
 
-	if (!argc)
+	if (!argc) {
+		if (vector)
+			free(vector);
 		return 1;
+	}
 
 	for (i = 0; i < argc; i++) {
 		if (vector[i])
