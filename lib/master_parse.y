@@ -1,7 +1,7 @@
 %{
 /* ----------------------------------------------------------------------- *
  *   
- *  "$Id: master_parse.y,v 1.2 2006/03/24 03:43:40 raven Exp $"
+ *  "$Id: master_parse.y,v 1.3 2006/03/25 05:22:52 raven Exp $"
  *
  *  master_parser.y - master map buffer parser.
  *
@@ -505,13 +505,14 @@ int master_parse_entry(const char *buffer, unsigned int default_timeout, unsigne
 		 * Second and subsequent instances of a mount point
 		 * use the ghost, log and timeout of the first
 		 */
-		ap->ghost = ghost;
+/*		ap->ghost = ghost;
 		ap->logopt = logopt;
 		ap->exp_timeout = timeout;
 		if (ap->ioctlfd != -1 && ap->type == LKP_INDIRECT)
-			ioctl(ap->ioctlfd, AUTOFS_IOC_SETTIMEOUT, &tout);
+			ioctl(ap->ioctlfd, AUTOFS_IOC_SETTIMEOUT, &tout); */
 	}
 
+/*
 	source = master_find_map_source(entry, type, format,
 					local_argc, (const char **) local_argv); 
 	if (!source)
@@ -519,12 +520,16 @@ int master_parse_entry(const char *buffer, unsigned int default_timeout, unsigne
 					local_argc, (const char **) local_argv);
 	else
 		source->age = age;
-
+*/
+	source = master_add_map_source(entry, type, format, age, 
+					local_argc, (const char **) local_argv);
 	if (!source) {
 		if (new)
 			master_free_mapent(new);
 		return 0;
 	}
+
+	debug("add mapent");
 
 	if (new)
 		master_add_mapent(master, entry);

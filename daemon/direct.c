@@ -1,4 +1,4 @@
-#ident "$Id: direct.c,v 1.22 2006/03/24 03:43:40 raven Exp $"
+#ident "$Id: direct.c,v 1.23 2006/03/25 05:22:52 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  direct.c - Linux automounter direct mount handling
@@ -40,7 +40,7 @@
 
 #include "automount.h"
 
-extern pthread_attr_t detach_attr;
+extern pthread_attr_t thread_attr;
 
 struct mnt_params {
 	char *name;
@@ -582,8 +582,7 @@ out_err:
 void *expire_proc_direct(void *arg)
 {
 	struct mnt_list *mnts, *next;
-	struct expire_cond *ec;
-	struct expire_args ex;
+	struct expire_args *ea;
 	struct autofs_point *ap;
 	struct mapent_cache *mc;
 	struct mapent *me;
@@ -593,23 +592,14 @@ void *expire_proc_direct(void *arg)
 	int old_state, status;
 	int ret;
 
-	ec = (struct expire_cond *) arg;
+	ea = (struct expire_args *) arg;
 
-	pthread_cleanup_push(expire_cleanup_unlock, ec);
-	pthread_cleanup_push(expire_cleanup, &ex);
-
-	status = pthread_mutex_lock(&ec->mutex);
-	if (status)
-		fatal(status);
-
-	ap = ec->ap;
+	ap = ea->ap;
 	mc = ap->mc;
+	now = ea->when;
+	ea->status = 0;
 
-	now = ec->when;
-
-	ex.ap = ap;
-	ex.when = ec->when;
-	ex.status = 0;
+	pthread_cleanup_push(expire_cleanup, ea);
 
 	/* Get a list of real mounts and expire them if possible */
 	mnts = get_mnt_list(_PROC_MOUNTS, "/", 0);
@@ -649,7 +639,7 @@ void *expire_proc_direct(void *arg)
 		ret = ioctl(ioctlfd, AUTOFS_IOC_EXPIRE_DIRECT, &now);
 		if (ret < 0 && errno != EAGAIN) {
 			debug("failed to expire mount %s", next->path);
-			ex.status = 1;
+			ea->status = 1;
 			goto done;
 		} else
 			sched_yield();
@@ -669,7 +659,7 @@ done:
 			 * If there's anything other than offset mounts
 			 * we're still busy
 			 */
-			ex.status = 1;
+			ea->status = 1;
 			free_mnt_list(mnts);
 			pthread_exit(NULL);
 		}
@@ -678,7 +668,6 @@ done:
 	}
 	pthread_cleanup_pop(1);
 
-	pthread_cleanup_pop(1);
 	pthread_cleanup_pop(1);
 
 	return NULL;
@@ -803,7 +792,7 @@ int handle_packet_expire_direct(struct autofs_point *ap, autofs_packet_expire_di
 	debug("token %ld, name %s\n",
 		  (unsigned long) pkt->wait_queue_token, mt->name);
 
-	status = pthread_create(&thid, &detach_attr, do_expire_direct, mt);
+	status = pthread_create(&thid, &thread_attr, do_expire_direct, mt);
 	if (status) {
 		error("expire thread create failed");
 		free(mt);
@@ -1042,7 +1031,7 @@ int handle_packet_missing_direct(struct autofs_point *ap, autofs_packet_missing_
 	mt->gid = pkt->gid;
 	mt->wait_queue_token = pkt->wait_queue_token;
 
-	status = pthread_create(&thid, &detach_attr, do_mount_direct, mt);
+	status = pthread_create(&thid, &thread_attr, do_mount_direct, mt);
 	if (status) {
 		error("missing mount thread create failed");
 		free(mt);

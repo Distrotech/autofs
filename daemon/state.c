@@ -1,4 +1,4 @@
-#ident "$Id: state.c,v 1.3 2006/03/24 03:45:17 raven Exp $"
+#ident "$Id: state.c,v 1.4 2006/03/25 05:22:52 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  state.c - state machine queue runner.
@@ -15,7 +15,7 @@
 
 #include "automount.h"
 
-extern pthread_attr_t detach_attr;
+extern pthread_attr_t thread_attr;
 
 struct state_queue {
 	pthread_t thid;
@@ -76,20 +76,21 @@ void nextstate(int statefd, enum states next)
 void expire_cleanup(void *arg)
 {
 	pthread_t thid = pthread_self();
-	struct expire_args *ex;
+	struct expire_args *ea;
 	struct autofs_point *ap;
 	int statefd;
 	enum states next = ST_INVAL;
 	int success;
 	int status;
 
-	ex = (struct expire_args *) arg;
-	ap = ex->ap;
-	success = ex->status;
+	ea = (struct expire_args *) arg;
+	ap = ea->ap;
+	success = ea->status;
 
 	status = pthread_mutex_lock(&ap->state_mutex);
 	if (status) {
 		error("state mutex lock failed");
+		free(ea);
 		return;
 	}
 
@@ -157,6 +158,8 @@ void expire_cleanup(void *arg)
 	if (status)
 		error("state mutex unlock failed");
 
+	free(ea);
+
 	return;
 }
 
@@ -185,85 +188,52 @@ enum expire {
  *          PARTIAL	- partial expire
  */
 
-void expire_cleanup_unlock(void *arg)
-{
-	struct expire_cond *ec;
-	int status;
-
-	ec = (struct expire_cond *) arg;
-
-	status = pthread_mutex_unlock(&ec->mutex);
-	if (status)
-		fatal(status);
-
-	status = pthread_mutex_destroy(&ec->mutex);
-	if (status)
-		fatal(status);
-
-	free(ec);
-
-	return;
-}
-
 static enum expire expire_proc(struct autofs_point *ap, int now)
 {
 	pthread_t thid;
-	struct expire_cond *ec;
+	struct expire_args *ea;
 	void *(*expire)(void *);
 	int status;
 
 	assert(ap->exp_thread == 0);
 
-	ec = malloc(sizeof(struct expire_cond));
-	if (!ec) {
+	ea = malloc(sizeof(struct expire_args));
+	if (!ea) {
 		error("failed to malloc expire cond struct");
 		return EXP_ERROR;
 	}
-	memset(ec, 0, sizeof(struct expire_cond));
+	memset(ea, 0, sizeof(struct expire_args));
 
-	status = pthread_mutex_init(&ec->mutex, NULL);
-	if (status)
-		fatal(status);
+	ea->ap = ap;
+	ea->when = now;
+	ea->status = 1;
 
 	if (ap->type == LKP_INDIRECT)
 		expire = expire_proc_indirect;
 	else
 		expire = expire_proc_direct;
 
-	status = pthread_mutex_lock(&ec->mutex);
-	if (status) {
-		error("failed to lock state condition mutex");
-		expire_cleanup_unlock(ec);
-		return EXP_ERROR;
-	}
-
-	status = pthread_create(&thid, &detach_attr, expire, ec);
+	status = pthread_create(&ap->exp_thread, &thread_attr, expire, ea);
 	if (status) {
 		error("expire thread create for %s failed", ap->path);
-		expire_cleanup_unlock(ec);
 		return EXP_ERROR;
 	}
 	state_queue_set_thid(ap, thid);
-	ap->exp_thread = thid;
 
 	debug("exp_proc = %lu path %s", (unsigned long) thid, ap->path);
-
-	ec->ap = ap;
-	ec->when = now;
-
-	status = pthread_mutex_unlock(&ec->mutex);
-	if (status)
-		fatal(status);
 
 	return EXP_STARTED;
 }
 
 static void do_readmap_cleanup(void *arg)
 {
+	struct readmap_args *ra;
 	struct autofs_point *ap;
 	int status;
 
-	ap = (struct autofs_point *) arg;
+	ra = (struct readmap_args *) arg;
+
+	ap = ra->ap;
 
 	status = pthread_mutex_lock(&ap->state_mutex);
 	if (status)
@@ -275,25 +245,7 @@ static void do_readmap_cleanup(void *arg)
 	if (status)
 		fatal(status);
 
-	return;
-}
-
-static void do_readmap_unlock(void *arg)
-{
-	struct readmap_cond *rc;
-	int status;
-
-	rc = (struct readmap_cond *) arg;
-
-	status = pthread_mutex_unlock(&rc->mutex);
-	if (status)
-		fatal(status);
-
-	status = pthread_mutex_destroy(&rc->mutex);
-	if (status)
-		fatal(status);
-
-	free(rc);
+	free(ap);
 
 	return;
 }
@@ -302,23 +254,17 @@ static void *do_readmap(void *arg)
 {
 	struct autofs_point *ap;
 	struct mapent_cache *mc;
-	struct readmap_cond *rc;
-	int status, old_state;
+	struct readmap_args *ra;
+	int status;
 	time_t now;
 
-	rc = (struct readmap_cond *) arg;
+	ra = (struct readmap_args *) arg;
 
-	status = pthread_mutex_lock(&rc->mutex);
-	if (status)
-		fatal(status);
-
-	ap = rc->ap;
+	ap = ra->ap;
+	now = ra->now;
 	mc = ap->mc;
 
-	now = rc->now;
-
-	pthread_cleanup_push(do_readmap_unlock, rc);
-	pthread_cleanup_push(do_readmap_cleanup, ap);
+	pthread_cleanup_push(do_readmap_cleanup, ra);
 
 	status = lookup_nss_read_map(ap, now);
 	if (!status)
@@ -338,7 +284,6 @@ static void *do_readmap(void *arg)
 	debug("path %s status %d", ap->path, status);
 
 	pthread_cleanup_pop(1);
-	pthread_cleanup_pop(1);
 
 	return NULL;
 }
@@ -346,7 +291,7 @@ static void *do_readmap(void *arg)
 static int st_readmap(struct autofs_point *ap)
 {
 	pthread_t thid;
-	struct readmap_cond *rc;
+	struct readmap_args *ra;
 	int status;
 	int now = time(NULL);
 
@@ -355,34 +300,22 @@ static int st_readmap(struct autofs_point *ap)
 	assert(ap->state == ST_READY);
 	ap->state = ST_READMAP;
 
-	rc = malloc(sizeof(struct readmap_cond));
-	if (!rc) {
+	ra = malloc(sizeof(struct readmap_args));
+	if (!ra) {
 		error("failed to malloc reamap cond struct");
 		return 0;
 	}
-	memset(rc, 0, sizeof(struct readmap_cond));
+	memset(ra, 0, sizeof(struct readmap_args));
 
-	status = pthread_mutex_init(&rc->mutex, NULL);
-	if (status)
-		fatal(status);
+	ra->ap = ap;
+	ra->now = now;
 
-	status = pthread_mutex_lock(&rc->mutex);
-	if (status)
-		fatal(status);
-
-	status = pthread_create(&thid, &detach_attr, do_readmap, rc);
+	status = pthread_create(&thid, &thread_attr, do_readmap, ra);
 	if (status) {
 		error("read map thread create failed");
 		return 0;
 	}
 	state_queue_set_thid(ap, thid);
-
-	rc->ap = ap;
-	rc->now = now;
-
-	status = pthread_mutex_unlock(&rc->mutex);
-	if (status)
-		fatal(status);
 
 	return 1;
 }
@@ -566,13 +499,13 @@ int state_queue_add(struct autofs_point *ap, enum states state)
 
 	/* Add to task queue for autofs_point ? */
 	list_for_each(p, head) {
-		struct state_queue *entry;
+		struct state_queue *task;
 
-		entry = list_entry(p, struct state_queue, list);
+		task = list_entry(p, struct state_queue, list);
 
-		if (entry->ap == ap) {
+		if (task->ap == ap) {
 			empty = 0;
-			list_add_tail(&new->pending, &entry->pending);
+			list_add_tail(&new->pending, &task->pending);
 			break;
 		}
 	}
@@ -598,7 +531,7 @@ void state_queue_delete(struct autofs_point *ap)
 {
 	struct list_head *head = &state_queue;
 	struct list_head *p, *q;
-	struct state_queue *entry, *this;
+	struct state_queue *task, *waiting;
 	int status;
 
 	status = pthread_mutex_lock(&mutex);
@@ -614,23 +547,26 @@ void state_queue_delete(struct autofs_point *ap)
 
 	p = head->next;
 	while (p != head) {
-		entry = list_entry(p, struct state_queue, list);
+		task = list_entry(p, struct state_queue, list);
 		p = p->next;
 
-		if (entry->ap != ap)
+		if (task->ap != ap)
 			continue;
 
-		q = (&entry->pending)->next;
-		while(q != &entry->pending) {
-			this = list_entry(q, struct state_queue, pending);
+		if (task->busy)
+			task->cancel = 1;
+
+		q = (&task->pending)->next;
+		while(q != &task->pending) {
+			waiting = list_entry(q, struct state_queue, pending);
 			q = q->next;
 
-			list_del(&this->pending);
-			free(this);
+			list_del(&waiting->pending);
+			free(waiting);
 		}
 
-		list_del(&entry->list);
-		free(entry);
+		list_del(&task->list);
+		free(task);
 	}
 
 	signaled = 1;
@@ -643,16 +579,16 @@ void state_queue_delete(struct autofs_point *ap)
 		fatal(status);
 }
 
-static int run_state_task(struct state_queue *entry)
+static int run_state_task(struct state_queue *task)
 {
 	struct autofs_point *ap;
 	enum states state;
 	enum states next_state;
 	int ret;
 
-	ap = entry->ap;
+	ap = task->ap;
 	state = ap->state;
-	next_state = entry->state;
+	next_state = task->state;
 
 	if (next_state != state) {
 		switch (next_state) {
@@ -687,12 +623,12 @@ static int run_state_task(struct state_queue *entry)
 void state_queue_set_thid(struct autofs_point *ap, pthread_t thid)
 {
 	struct list_head *p, *head = &state_queue;
-	struct state_queue *entry;
+	struct state_queue *task;
 
 	list_for_each(p, head) {
-		entry = list_entry(p, struct state_queue, list);
-		if (entry->ap == ap) {
-			entry->thid = thid;
+		task = list_entry(p, struct state_queue, list);
+		if (task->ap == ap) {
+			task->thid = thid;
 			break;
 		}
 	}
@@ -721,26 +657,26 @@ static void *state_queue_handler(void *arg)
 		}
 
 		list_for_each(p, head) {
-			struct state_queue *entry;
+			struct state_queue *task;
 
-			entry = list_entry(p, struct state_queue, list);
+			task = list_entry(p, struct state_queue, list);
 
-			debug("entry %p path %s thid %lu busy %d",
-				entry, entry->ap->path,
-				(unsigned int) entry->thid, entry->busy);
+			debug("task %p state %d next %d busy %d",
+				task, task->ap->state, task->state, task->busy);
 
-			entry->busy = 1;
-			run_state_task(entry);
+			task->busy = 1;
+			/* TODO: field return code and delete immediately on fail */
+			run_state_task(task);
 		}
 
 		while (1) {
 			struct timespec wait;
 
-			wait.tv_sec = time(NULL) + 4;
+			wait.tv_sec = time(NULL) + 2;
 			wait.tv_nsec = 0;
 
 			while (!signaled) {
-				status = pthread_cond_timedwait(&cond, &mutex, &wait);
+				status = pthread_cond_wait(&cond, &mutex);
 				if (status) {
 					if (status == ETIMEDOUT)
 						break;
@@ -751,49 +687,54 @@ static void *state_queue_handler(void *arg)
 
 			p = head->next;
 			while (p != head) {
-				struct state_queue *this, *next;
+				struct state_queue *task, *next;
 
-				this = list_entry(p, struct state_queue, list);
+				task = list_entry(p, struct state_queue, list);
 				p = p->next;
 
-				debug("entry %p path %s thid %lu busy %d",
-					this, this->ap->path,
-					(unsigned int) this->thid, this->busy);
+				debug("task %p state %d next %d busy %d",
+					task, task->ap->state, task->state, task->busy);
 
-				if (this->busy) {
+				if (task->busy) {
+					if (task->cancel)
+						pthread_cancel(task->thid);
+
 					/* Still busy */
-					if (this->thid) {
-						status = pthread_kill(this->thid, 0);
+					if (task->thid) {
+						status = pthread_kill(task->thid, 0);
 						if (status != ESRCH)
 							continue;
 					}
 
 					/* No more tasks for this queue */
-					if (list_empty(&this->pending)) {
-						list_del(&this->list);
-						free(this);
+					if (list_empty(&task->pending)) {
+						list_del(&task->list);
+						free(task);
 						continue;
 					}
 
 					/* Next task */
-					next = list_entry((&this->pending)->next,
+					next = list_entry((&task->pending)->next,
 								 struct state_queue, pending);
 
 					list_del_init(&next->pending);
 					list_add_tail(&next->list, head);
 
-					list_del(&this->list);
-					free(this);
+					list_del(&task->list);
+					free(task);
+
+					task = next;
 				}
 
 				/* Start a new task */
-				this->busy = 1;
-				run_state_task(this);
-				continue;
+				task->busy = 1;
+				/* TODO: field return code and delete immediately on fail */
+				run_state_task(task);
 
-				if (list_empty(head))
-					break;
 			}
+
+			if (list_empty(head))
+				break;
 		}
 	}
 }
@@ -803,7 +744,7 @@ int state_queue_start_handler(void)
 	pthread_t thid;
 	int status;
 
-	status = pthread_create(&thid, &detach_attr, state_queue_handler, NULL);
+	status = pthread_create(&thid, &thread_attr, state_queue_handler, NULL);
 	if (status)
 		return 0;
 

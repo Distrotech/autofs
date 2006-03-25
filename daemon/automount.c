@@ -1,4 +1,4 @@
-#ident "$Id: automount.c,v 1.64 2006/03/23 05:08:15 raven Exp $"
+#ident "$Id: automount.c,v 1.65 2006/03/25 05:22:52 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  automount.c - Linux automounter daemon
@@ -44,7 +44,7 @@ const char *version = VERSION_STRING;	/* Program version */
 static char *pid_file = NULL;	/* File in which to keep pid */
 
 /* Attribute to create detached thread */
-pthread_attr_t detach_attr;
+pthread_attr_t thread_attr;
 
 struct master_readmap_cond mc = {
 	PTHREAD_MUTEX_INITIALIZER, PTHREAD_COND_INITIALIZER, 0, NULL, 0, 0};
@@ -828,7 +828,7 @@ static int do_signals(struct master *master, int signal)
 		return 0;
 	}
 
-	status = pthread_create(&thid, &detach_attr, do_notify_state, &sig);
+	status = pthread_create(&thid, &thread_attr, do_notify_state, &sig);
 	if (status) {
 		error("maount state notify thread create failed");
 		status = pthread_mutex_unlock(&mc.mutex);
@@ -907,7 +907,7 @@ static int do_hup_signal(struct master *master, time_t age)
 		return 0;
 	}
 
-	status = pthread_create(&thid, &detach_attr, do_read_master, NULL);
+	status = pthread_create(&thid, &thread_attr, do_read_master, NULL);
 	if (status) {
 		error("master read map thread create failed");
 		status = pthread_mutex_unlock(&mc.mutex);
@@ -1219,18 +1219,27 @@ int main(int argc, char *argv[])
 	timeout = DEFAULT_TIMEOUT;
 	ghost = DEFAULT_GHOST_MODE;
 
-	if (pthread_attr_init(&detach_attr)) {
+	if (pthread_attr_init(&thread_attr)) {
 		fprintf(stderr, "%s: failed to init thread attribute struct!\n",
 			program);
 		exit(1);
 	}
 
 	if (pthread_attr_setdetachstate(
-			&detach_attr, PTHREAD_CREATE_DETACHED)) {
+			&thread_attr, PTHREAD_CREATE_DETACHED)) {
 		fprintf(stderr, "%s: failed to set detached thread attribute!\n",
 			program);
 		exit(1);
 	}
+
+#ifdef _POSIX_THREAD_ATTR_STACKSIZE
+	if (pthread_attr_setstacksize(
+			&thread_attr, PTHREAD_STACK_MIN*8)) {
+		fprintf(stderr, "%s: failed to set stack size thread attribute!\n",
+			program);
+		exit(1);
+	}
+#endif
 
 	opterr = 0;
 	while ((opt = getopt_long(argc, argv, "+hp:t:vdV", long_options, NULL)) != EOF) {

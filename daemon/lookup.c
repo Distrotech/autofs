@@ -1,4 +1,4 @@
-#ident "$Id: lookup.c,v 1.9 2006/03/21 04:28:52 raven Exp $"
+#ident "$Id: lookup.c,v 1.10 2006/03/25 05:22:52 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup.c - API layer to implement nsswitch semantics for map reading
@@ -129,10 +129,8 @@ int lookup_nss_read_master(struct master *master, time_t age)
 		debug("reading master %s", master->name, this->source);
 
 		result = do_read_master(master, this->source, age);
-		if (result == NSS_STATUS_UNKNOWN) {
-			free_sources(&nsslist);
-			return 0;
-		}
+		if (result == NSS_STATUS_UNKNOWN)
+			continue;
 
 		status = check_nss_result(this, result);
 		if (status >= 0) {
@@ -314,14 +312,18 @@ int lookup_nss_read_map(struct autofs_point *ap, time_t age)
 	map = ap->entry->first;
 	while (map) {
 		if (map->type) {
-			result = do_read_map(ap, map, age);
-			return !result;
+			result = !do_read_map(ap, map, age);
+			map = map->next;
+			continue;
+/*			return !result; */
 		}
 
 		/* If it starts with a '/' it has to be a file map */
 		if (map->argv && *map->argv[0] == '/') {
-			result = read_file_source_instance(ap, map, age);
-			return !result;
+			result = !read_file_source_instance(ap, map, age);
+			map = map->next;
+			continue;
+/*			return !result; */
 		}
 
 		INIT_LIST_HEAD(&nsslist);
@@ -339,10 +341,8 @@ int lookup_nss_read_map(struct autofs_point *ap, time_t age)
 			this = list_entry(p, struct nss_source, list);
 
 			result = read_map_source(this, ap, map, age);
-			if (result == NSS_STATUS_UNKNOWN) {
-				free_sources(&nsslist);
-				return 0;
-			}
+			if (result == NSS_STATUS_UNKNOWN)
+				continue;
 
 			status = check_nss_result(this, result);
 			if (status >= 0) {
@@ -357,7 +357,7 @@ int lookup_nss_read_map(struct autofs_point *ap, time_t age)
 		map = map->next;
 	}
 
-	return 0;
+	return result;
 }
 
 int lookup_enumerate(struct autofs_point *ap,
@@ -595,14 +595,22 @@ int lookup_nss_mount(struct autofs_point *ap, const char *name, int name_len)
 	map = ap->entry->first;
 	while (map) {
 		if (map->type) {
-			result = do_lookup_mount(ap, map, name, name_len);
-			return !result;
+			result = !do_lookup_mount(ap, map, name, name_len);
+			if (result)
+				return result;
+			map = map->next;
+			continue;
+/*			return !result; */
 		}
 
 		/* If it starts with a '/' it has to be a file map */
 		if (*map->argv[0] == '/') {
-			result = lookup_name_file_source_instance(ap, map, name, name_len);
-			return !result;
+			result = !lookup_name_file_source_instance(ap, map, name, name_len);
+			if (result)
+				return result;
+			map = map->next;
+			continue;
+/*			return !result; */
 		}
 
 		INIT_LIST_HEAD(&nsslist);
@@ -621,10 +629,8 @@ int lookup_nss_mount(struct autofs_point *ap, const char *name, int name_len)
 			this = list_entry(p, struct nss_source, list);
 
 			result = lookup_map_name(this, ap, map, name, name_len);
-			if (result == NSS_STATUS_UNKNOWN) {
-				free_sources(&nsslist);
-				return 0;
-			}
+			if (result == NSS_STATUS_UNKNOWN)
+				continue;
 
 			status = check_nss_result(this, result);
 			if (status >= 0) {

@@ -1,4 +1,4 @@
-#ident "$Id: mount_autofs.c,v 1.24 2006/03/21 04:28:53 raven Exp $"
+#ident "$Id: mount_autofs.c,v 1.25 2006/03/25 05:22:52 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  mount_autofs.c - Module for recursive autofs mounts.
@@ -33,7 +33,7 @@
 #define MODPREFIX "mount(autofs): "
 
 /* Attribute to create detached thread */
-extern pthread_attr_t detach_attr;
+extern pthread_attr_t thread_attr;
 extern struct startup_cond sc;
 
 int mount_version = AUTOFS_MOUNT_VERSION;	/* Required by protocol */
@@ -185,7 +185,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 	sc.done = 0;
 	sc.status = 0;
 
-	if (pthread_create(&thid, &detach_attr, handle_mounts, nap)) {
+	if (pthread_create(&thid, &thread_attr, handle_mounts, nap)) {
 		crit("failed to create mount handler thread for %s", fullpath);
 		status = pthread_mutex_unlock(&sc.mutex);
 		if (status)

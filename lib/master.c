@@ -1,4 +1,4 @@
-#ident "$Id: master.c,v 1.3 2006/03/23 05:16:06 raven Exp $"
+#ident "$Id: master.c,v 1.4 2006/03/25 05:22:52 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  master.c - master map utility routines.
@@ -37,9 +37,13 @@ static unsigned int default_ghost_mode = DEFAULT_GHOST_MODE;
 struct master *master;
 
 /* Attribute to create detached thread */
-extern pthread_attr_t detach_attr;
+extern pthread_attr_t thread_attr;
 
 extern struct startup_cond sc;
+
+static struct map_source *
+__master_find_map_source(struct master_mapent *,
+			 const char *, const char *, int, const char **);
 
 pthread_mutex_t master_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t instance_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -226,14 +230,18 @@ master_add_map_source(struct master_mapent *entry,
 		entry->maps = source;
 		entry->first = source;
 	} else {
-		struct map_source *last, *next;
+		struct map_source *this, *last, *next;
 
 		/* Typically there only a few map sources */
 
-		if (master_find_map_source(entry, type, format, argc, tmpargv)) {
-			warn("ignoring duplicate map source %s", name);
+		this = __master_find_map_source(entry, type, format, argc, tmpargv);
+		if (this) {
+			this->age = age;
 			master_free_map_source(source);
-			return NULL;
+			status = pthread_mutex_unlock(&master_mutex);
+			if (status)
+				fatal(status);
+			return this;
 		}
 
 		last = NULL;
@@ -282,17 +290,14 @@ done:
 	return res;
 }
 
-struct map_source *master_find_map_source(struct master_mapent *entry,
-				const char *type, const char *format,
-				int argc, const char **argv)
+static struct map_source *
+__master_find_map_source(struct master_mapent *entry,
+			 const char *type, const char *format,
+			 int argc, const char **argv)
 {
 	struct map_source *map;
 	struct map_source *source = NULL;
 	int status, res;
-
-	status = pthread_mutex_lock(&master_mutex);
-	if (status)
-		fatal(status);
 
 	map = entry->first;
 	while (map) {
@@ -309,6 +314,22 @@ struct map_source *master_find_map_source(struct master_mapent *entry,
 next:
 		map = map->next;
 	}
+
+	return source;
+}
+
+struct map_source *master_find_map_source(struct master_mapent *entry,
+				const char *type, const char *format,
+				int argc, const char **argv)
+{
+	struct map_source *source = NULL;
+	int status;
+
+	status = pthread_mutex_lock(&master_mutex);
+	if (status)
+		fatal(status);
+
+	source = __master_find_map_source(entry, type, format, argc, argv);
 
 	status = pthread_mutex_unlock(&master_mutex);
 	if (status)
@@ -762,7 +783,7 @@ static void master_do_mount(struct master_mapent *entry)
 	sc.status = 0;
 
 	ap = entry->ap;
-	if (pthread_create(&thid, &detach_attr, handle_mounts, ap)) {
+	if (pthread_create(&thid, &thread_attr, handle_mounts, ap)) {
 		crit("failed to create mount handler thread for %s",
 				entry->path);
 		status = pthread_mutex_unlock(&sc.mutex);

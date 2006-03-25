@@ -1,4 +1,4 @@
-#ident "$Id: indirect.c,v 1.19 2006/03/24 03:43:40 raven Exp $"
+#ident "$Id: indirect.c,v 1.20 2006/03/25 05:22:52 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  indirect.c - Linux automounter indirect mount handling
@@ -39,7 +39,7 @@
 
 #include "automount.h"
 
-extern pthread_attr_t detach_attr;
+extern pthread_attr_t thread_attr;
 
 static int autofs_init_indirect(struct autofs_point *ap)
 {
@@ -320,8 +320,7 @@ force_umount:
 void *expire_proc_indirect(void *arg)
 {
 	struct mnt_list *mnts, *next;
-	struct expire_cond *ec;
-	struct expire_args ex;
+	struct expire_args *ea;
 	struct autofs_point *ap;
 	struct mapent_cache *mc;
 	struct mapent *me;
@@ -330,23 +329,14 @@ void *expire_proc_indirect(void *arg)
 	int ioctlfd, old_state;
 	int status;
 
-	ec = (struct expire_cond *) arg;
+	ea = (struct expire_args *) arg;
 
-	pthread_cleanup_push(expire_cleanup_unlock, ec);
-	pthread_cleanup_push(expire_cleanup, &ex);
-
-	status = pthread_mutex_lock(&ec->mutex);
-	if (status)
-		fatal(status);
-
-	ap = ec->ap;
+	ap = ea->ap;
 	mc = ap->mc;
+	now = ea->when;
+	ea->status = 0;
 
-	now = ec->when;
-
-	ex.ap = ap;
-	ex.when = ec->when;
-	ex.status = 0;
+	pthread_cleanup_push(expire_cleanup, ea);
 
 	/* Get a list of real mounts and expire them if possible */
 	mnts = get_mnt_list(_PROC_MOUNTS, ap->path, 0);
@@ -378,7 +368,7 @@ void *expire_proc_indirect(void *arg)
 		ret = ioctl(ioctlfd, AUTOFS_IOC_EXPIRE_MULTI, &now);
 		if (ret < 0 && errno != EAGAIN) {
 			debug("failed to expire mount %s", next->path);
-			ex.status = 1;
+			ea->status = 1;
 			goto done;
 		} else
 			sched_yield();
@@ -401,14 +391,14 @@ done:
 	 * have some offset mounts with no '/' offset so we need to
 	 * umount them here.
 	 */
-	if (mnts && !ex.status && !count) {
+	if (mnts && !ea->status && !count) {
 		int ret;
 
 		while (offsets--) {
 			ret = ioctl(ap->ioctlfd, AUTOFS_IOC_EXPIRE_MULTI, &now);
 			if (ret < 0 && errno != EAGAIN) {
 				debug("failed to expire ofsets under %s", ap->path);
-				ex.status = 1;
+				ea->status = 1;
 				break;
 			}
 		}
@@ -421,7 +411,7 @@ done:
 	 */
 	if (count) {
 		debug("%d remaining in %s\n", count, ap->path);
-		ex.status = 1;
+		ea->status = 1;
 		pthread_exit(NULL);
 	}
 
@@ -431,13 +421,12 @@ done:
 		if (!ioctl(ap->ioctlfd, AUTOFS_IOC_ASKUMOUNT, &ret)) {
 			if (!ret) {
 				debug("mount still busy %s", ap->path);
-				ex.status = 1;
+				ea->status = 1;
 				pthread_exit(NULL);
 			}
 		}
 	}
 
-	pthread_cleanup_pop(1);
 	pthread_cleanup_pop(1);
 
 	return NULL;
@@ -502,7 +491,7 @@ int handle_packet_expire_indirect(struct autofs_point *ap, autofs_packet_expire_
 	mt->len = pkt->len;
 	mt->wait_queue_token = pkt->wait_queue_token;
 
-	status = pthread_create(&thid, &detach_attr, do_expire_indirect, mt);
+	status = pthread_create(&thid, &thread_attr, do_expire_indirect, mt);
 	if (status) {
 		error("expire thread create failed");
 		send_fail(ap->ioctlfd, pkt->wait_queue_token);
@@ -705,7 +694,7 @@ int handle_packet_missing_indirect(struct autofs_point *ap, autofs_packet_missin
 	mt->gid = pkt->gid;
 	mt->wait_queue_token = pkt->wait_queue_token;
 
-	status = pthread_create(&thid, &detach_attr, do_mount_indirect, mt);
+	status = pthread_create(&thid, &thread_attr, do_mount_indirect, mt);
 	if (status) {
 		error("expire thread create failed");
 		send_fail(ap->ioctlfd, pkt->wait_queue_token);

@@ -1,4 +1,4 @@
-#ident "$Id: state.h,v 1.1 2006/03/23 05:08:15 raven Exp $"
+#ident "$Id: state.h,v 1.2 2006/03/25 05:22:52 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  state.h - state queue manager.
@@ -50,29 +50,18 @@ enum states {
 	ST_SHUTDOWN,
 };
 
-struct expire_cond {
-	pthread_mutex_t mutex;
-	pthread_cond_t  cond;
+struct expire_args {
 	struct autofs_point *ap; /* autofs mount we are working on */
 	enum states state;       /* State prune or expire */
 	unsigned int when;       /* Immediate expire ? */
+	int status;		 /* Return status */
 };
 
-struct expire_args {
-	struct autofs_point *ap;        /* autofs mount we are working on */
-	unsigned int when;              /* Immediate expire ? */
-	int status;                     /* Return status */
-};
-
-struct readmap_cond {
-	pthread_mutex_t mutex;
-	pthread_cond_t  cond;
+struct readmap_args {
 	struct autofs_point *ap; /* autofs mount we are working on */
 	time_t now;              /* Time when map is read */
 };
 
-void expire_cleanup_unlock(void *);
-void do_readmap_cleanup_unlock(void *);
 void expire_cleanup(void *);
 void nextstate(int, enum states);
 

@@ -477,35 +477,32 @@ static int autofs4_follow_link(struct dentry *dentry, struct nameidata *nd)
 
 	/*
 	 * If the dentry contains directories then it is an
-	 * autofs multi-mount with no root offset. So don't
-	 * try to mount it again.
+	 * autofs multi-mount with no root mount offset. So
+	 * don't try to mount it again.
 	 */
 	spin_lock(&dcache_lock);
-	if (!list_empty(&dentry->d_subdirs)) {
+	if (!d_mountpoint(dentry) && list_empty(&dentry->d_subdirs)) {
 		spin_unlock(&dcache_lock);
-		goto done;
+
+		status = try_to_fill_dentry(dentry, 0);
+		if (status)
+			goto out_error;
+
+		goto follow;
 	}
 	spin_unlock(&dcache_lock);
-
-	status = try_to_fill_dentry(dentry, 0);
-	if (status)
-		goto out_error;
 
 	/*
-	 * The mount succeeded but if there is no root mount
-	 * and directories have been created so it must
-	 * be an autofs multi-mount with no root offset.
+	 * A mount may have succeeded but if there is no root
+	 * mount it must be an autofs multi-mount with no root
+	 * offset so we don't need to follow the mount.
 	 */
-	spin_lock(&dcache_lock);
-	if (!d_mountpoint(dentry) && !list_empty(&dentry->d_subdirs)) {
-		spin_unlock(&dcache_lock);
-		goto done;
-	}
-	spin_unlock(&dcache_lock);
-
-	if (!autofs4_follow_mount(&mnt, &dentry)) {
-		status = -ENOENT;
-		goto out_error;
+follow:
+	if (d_mountpoint(dentry)) {
+		if (!autofs4_follow_mount(&mnt, &dentry)) {
+			status = -ENOENT;
+			goto out_error;
+		}
 	}
 done:
 /*	 nd->last_type = LAST_BIND; */

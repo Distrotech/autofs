@@ -55,6 +55,8 @@
 - fix (dev, ino) cache lookup.
 - convert spawn locking to use mutex instead of file.
   - seems to fix hang during mounting ~1000 direct mounts.
+- fix expire and readmap thread create.
+- fix read multiple sources for mount point.
 
 11/4/2005 autofs-4.1.4
 ----------------------

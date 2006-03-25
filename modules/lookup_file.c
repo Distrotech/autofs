@@ -1,4 +1,4 @@
-#ident "$Id: lookup_file.c,v 1.32 2006/03/23 05:08:15 raven Exp $"
+#ident "$Id: lookup_file.c,v 1.33 2006/03/25 05:22:52 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup_file.c - module for Linux automount to query a flat file map
@@ -284,7 +284,7 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 			continue;
 		}
 
-		debug("read entry %s", path);
+		debug(MODPREFIX "read entry %s", path);
 
 		/*
 		 * If key starts with '+' it has to be an
@@ -299,7 +299,7 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 
 			status = lookup_nss_read_master(master, age);
 			if (!status)
-				warn("failed to read included master map %s",
+				warn(MODPREFIX "failed to read included master map %s",
 				     master->name);
 
 			master->name = save_name;

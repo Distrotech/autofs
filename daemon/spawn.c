@@ -1,4 +1,4 @@
-#ident "$Id: spawn.c,v 1.20 2006/03/24 03:43:40 raven Exp $"
+#ident "$Id: spawn.c,v 1.21 2006/03/25 05:22:52 raven Exp $"
 /* ----------------------------------------------------------------------- *
  * 
  *  spawn.c - run programs synchronously with output redirected to syslog
@@ -68,7 +68,7 @@ static struct sigchld_mutex sm = {PTHREAD_MUTEX_INITIALIZER,
 				  PTHREAD_COND_INITIALIZER,
 				  0, 1, 0};
 
-extern pthread_attr_t detach_attr;
+extern pthread_attr_t thread_attr;
 
 inline void dump_core(void)
 {
@@ -130,7 +130,7 @@ int sigchld_start_handler(void)
 {
 	int status;
 
-	status = pthread_create(&sm.thid, &detach_attr, sigchld, NULL);
+	status = pthread_create(&sm.thid, &thread_attr, sigchld, NULL);
 	if (status)
 		return 0;
 
