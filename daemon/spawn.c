@@ -1,4 +1,4 @@
-#ident "$Id: spawn.c,v 1.22 2006/03/26 17:26:32 raven Exp $"
+#ident "$Id: spawn.c,v 1.23 2006/03/26 17:52:41 raven Exp $"
 /* ----------------------------------------------------------------------- *
  * 
  *  spawn.c - run programs synchronously with output redirected to syslog
@@ -31,8 +31,6 @@
 #ifdef ENABLE_MOUNT_LOCKING
 static pthread_mutex_t spawn_mutex = PTHREAD_MUTEX_INITIALIZER;
 #endif
-
-extern pthread_attr_t thread_attr;
 
 /*
  * SIGCHLD handling.
@@ -251,12 +249,12 @@ void spawn_unlock(void *arg)
 {
 	int *use_lock = (int *) arg;
 
-#ifdef ENABLE_MOUNT_LOCKING
 	if (*use_lock) {
+#ifdef ENABLE_MOUNT_LOCKING
 		if (pthread_mutex_unlock(&spawn_mutex))
 			warn("failed to unlock spawn_mutex");
-	}
 #endif
+	}
 	return;
 }
 

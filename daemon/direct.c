@@ -1,4 +1,4 @@
-#ident "$Id: direct.c,v 1.24 2006/03/26 04:56:22 raven Exp $"
+#ident "$Id: direct.c,v 1.25 2006/03/26 17:52:41 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  direct.c - Linux automounter direct mount handling
@@ -114,9 +114,8 @@ static int autofs_init_direct(struct autofs_point *ap)
 static int do_umount_autofs_direct(struct autofs_point *ap, struct mapent *me)
 {
 	char buf[MAX_ERR_BUF];
-	int rv, left, ret;
+	int rv, left;
 	int status = 1;
-	struct stat st;
 
 	left = umount_multi(ap, me->key, 1);
 	if (left) {
@@ -139,7 +138,6 @@ static int do_umount_autofs_direct(struct autofs_point *ap, struct mapent *me)
 	}
 
 	rv = umount(me->key);
-/*	ret = stat(me->key, &st); */
 	if (rv != 0) {
 		if (errno == ENOENT) {
 			error("mount point does not exist");
@@ -152,20 +150,9 @@ static int do_umount_autofs_direct(struct autofs_point *ap, struct mapent *me)
 			error("mount point is not a directory");
 			return 0;
 		}
-/*
-		if (ret == -1 && errno == ENOENT) {
-			error("mount point does not exist");
-			return 0;
-		}
-*/
 		goto force_umount;
 	}
-/*
-	if (ret == 0 && !S_ISDIR(st.st_mode)) {
-		error("mount point is not a directory");
-		return 0;
-	}
-*/
+
 force_umount:
 	if (rv != 0) {
 		msg("forcing umount of %s", me->key);
@@ -387,8 +374,7 @@ int mount_autofs_direct(struct autofs_point *ap)
 int umount_autofs_offset(struct autofs_point *ap, struct mapent *me)
 {
 	char buf[MAX_ERR_BUF];
-	struct stat st;
-	int rv = 1, ret;
+	int rv = 1;
 
 	if (me->ioctlfd < 0)
 		me->ioctlfd = open(me->key, O_RDONLY);
@@ -415,7 +401,6 @@ int umount_autofs_offset(struct autofs_point *ap, struct mapent *me)
 	}
 
 	rv = umount(me->key);
-/*	ret = stat(me->key, &st); */
 	if (rv == -1) {
 		if (errno == ENOENT) {
 			error("mount point does not exist");
@@ -429,12 +414,7 @@ int umount_autofs_offset(struct autofs_point *ap, struct mapent *me)
 		}
 		goto force_umount;
 	}
-/*
-	if (ret == 0 && !S_ISDIR(st.st_mode)) {
-		error("mount point is not a directory");
-		return 0;
-	}
-*/
+
 force_umount:
 	if (rv != 0) {
 		msg("forcing umount of %s", me->key);
@@ -589,8 +569,7 @@ void *expire_proc_direct(void *arg)
 	unsigned int now;
 	unsigned int skip = 0;
 	int ioctlfd = -1;
-	int old_state, status;
-	int ret;
+	int status, ret;
 
 	ea = (struct expire_args *) arg;
 

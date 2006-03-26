@@ -1,7 +1,7 @@
 %{
 /* ----------------------------------------------------------------------- *
  *   
- *  "$Id: master_parse.y,v 1.4 2006/03/26 17:26:32 raven Exp $"
+ *  "$Id: master_parse.y,v 1.5 2006/03/26 17:52:41 raven Exp $"
  *
  *  master_parser.y - master map buffer parser.
  *
@@ -485,8 +485,8 @@ int master_parse_entry(const char *buffer, unsigned int default_timeout, unsigne
 			return 0;
 		}
 	} else {
-		struct autofs_point *ap = entry->ap;
-		unsigned int tout = timeout;
+/*		struct autofs_point *ap = entry->ap;
+		unsigned int tout = timeout; */
 
 		/*
 		 * TODO: how do we know if this is the first read entry

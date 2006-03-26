@@ -1,4 +1,4 @@
-#ident "$Id: alarm.c,v 1.6 2006/03/26 17:26:32 raven Exp $"
+#ident "$Id: alarm.c,v 1.7 2006/03/26 17:52:41 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  alarm.c - alarm queue handling module.
@@ -26,8 +26,6 @@ struct alarm {
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
 static LIST_HEAD(alarms);
-
-extern pthread_attr_t thread_attr;
 
 void dump_alarms(void)
 {

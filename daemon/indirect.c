@@ -1,4 +1,4 @@
-#ident "$Id: indirect.c,v 1.21 2006/03/26 04:56:22 raven Exp $"
+#ident "$Id: indirect.c,v 1.22 2006/03/26 17:52:41 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  indirect.c - Linux automounter indirect mount handling
@@ -250,10 +250,9 @@ int mount_autofs_indirect(struct autofs_point *ap)
 
 int umount_autofs_indirect(struct autofs_point *ap)
 {
-	int rv, ret;
+	int rv;
 	int status = 1;
 	int left;
-	struct stat st;
 
 	left = umount_multi(ap, ap->path, 0);
 	if (left) {
@@ -297,13 +296,7 @@ int umount_autofs_indirect(struct autofs_point *ap)
 		}
 		return 1;
 	}
-/*
-	ret = stat(ap->path, &st);
-	if (rv != 0 && ((ret == -1 && errno == ENOENT) ||
-	    (ret == 0 && (!S_ISDIR(st.st_mode) || st.st_dev != ap->dev)))) {
-		rv = 0;
-	}
-*/
+
 force_umount:
 	if (rv != 0) {
 		warn("forcing umount of %s\n", ap->path);
@@ -326,7 +319,7 @@ void *expire_proc_indirect(void *arg)
 	struct mapent *me;
 	unsigned int now;
 	int offsets, count, ret;
-	int ioctlfd, old_state;
+	int ioctlfd;
 	int status;
 
 	ea = (struct expire_args *) arg;

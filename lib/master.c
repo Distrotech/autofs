@@ -1,4 +1,4 @@
-#ident "$Id: master.c,v 1.5 2006/03/26 04:56:23 raven Exp $"
+#ident "$Id: master.c,v 1.6 2006/03/26 17:52:41 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  master.c - master map utility routines.
@@ -297,7 +297,7 @@ __master_find_map_source(struct master_mapent *entry,
 {
 	struct map_source *map;
 	struct map_source *source = NULL;
-	int status, res;
+	int res;
 
 	map = entry->first;
 	while (map) {
