@@ -1,4 +1,4 @@
-#ident "$Id: lookup_file.c,v 1.33 2006/03/25 05:22:52 raven Exp $"
+#ident "$Id: lookup_file.c,v 1.34 2006/03/26 04:56:23 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup_file.c - module for Linux automount to query a flat file map
@@ -683,8 +683,19 @@ static int check_map_indirect(struct autofs_point *ap,
 
 	/* Have parent update its map ? */
 	/* TODO: update specific map */
-	if (need_map)
+	if (need_map) {
+		int status;
+
+		status = pthread_mutex_lock(&ap->state_mutex);
+		if (status)
+			fatal(status);
+
 		nextstate(ap->state_pipe[1], ST_READMAP);
+
+		status = pthread_mutex_unlock(&ap->state_mutex);
+		if (status)
+			fatal(status);
+	}
 
 	if (ret == CHE_MISSING)
 		return NSS_STATUS_NOTFOUND;

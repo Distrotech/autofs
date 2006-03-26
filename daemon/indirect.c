@@ -1,4 +1,4 @@
-#ident "$Id: indirect.c,v 1.20 2006/03/25 05:22:52 raven Exp $"
+#ident "$Id: indirect.c,v 1.21 2006/03/26 04:56:22 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  indirect.c - Linux automounter indirect mount handling
@@ -336,6 +336,10 @@ void *expire_proc_indirect(void *arg)
 	now = ea->when;
 	ea->status = 0;
 
+	status = pthread_barrier_wait(&ea->barrier);
+	if (status && status != PTHREAD_BARRIER_SERIAL_THREAD)
+		fatal(status);
+
 	pthread_cleanup_push(expire_cleanup, ea);
 
 	/* Get a list of real mounts and expire them if possible */
@@ -528,14 +532,8 @@ static void *do_mount_indirect(void *arg)
 		pthread_exit(NULL);
 	}
 
-	status = fstat(mt->ioctlfd, &st);
-	if (status == -1) {
-		error("can't stat indirect mount trigger %s", mt->name);
-		pthread_exit(NULL);
-	}
-
-	status = stat(mt->name, &st);
-	if (!S_ISDIR(st.st_mode) || st.st_dev != mt->dev) {
+	status = lstat(mt->name, &st);
+	if (status != -1 && (!S_ISDIR(st.st_mode) || st.st_dev != mt->dev)) {
 		error("indirect trigger not valid or already mounted %s", mt->name);
 		pthread_exit(NULL);
 	}

@@ -1,4 +1,4 @@
-#ident "$Id: automount.h,v 1.41 2006/03/23 20:00:13 raven Exp $"
+#ident "$Id: automount.h,v 1.42 2006/03/26 04:56:22 raven Exp $"
 /*
  * automount.h
  *
@@ -331,10 +331,6 @@ char *get_offset(const char *prefix, char *offset,
                  struct list_head *head, struct list_head **pos);
 void add_ordered_list(struct mnt_list *ent, struct list_head *head);
 
-/* file utility functions */
-
-int xopen(const char *path, int flags);
-
 /* Core automount definitions */
 
 #define MNT_DETACH	0x00000002	/* Just detach from the tree */
@@ -360,6 +356,7 @@ struct master_readmap_cond {
 extern struct master_readmap_cond mc;
 
 struct pending_args {
+	pthread_barrier_t barrier;
 	struct autofs_point *ap;	/* autofs mount we are working on */
 	int status;			/* Return status */
 	int type;			/* Type of packet */
@@ -404,10 +401,9 @@ struct autofs_point {
 	pthread_t exp_thread;		/* Process that is currently expiring */
 	struct lookup_mod *lookup;	/* Lookup module */
 	pthread_mutex_t state_mutex;	/* Protect state transitions */
-	pthread_mutex_t working;	/* Perfoming a state task */
+	struct list_head state_queue;	/* Pending state transitions */
 	enum states state;		/* Current state */
 	int state_pipe[2];		/* State change router pipe */
-	struct list_head pending;	/* Pending state change requests */
 	unsigned dir_created;		/* Directory created for this mount? */
 	unsigned int submount;		/* Is this a submount */
 	struct autofs_point *parent;	/* Owner of mounts list for submount */

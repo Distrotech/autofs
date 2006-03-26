@@ -1,4 +1,4 @@
-#ident "$Id: lookup_yp.c,v 1.27 2006/03/23 05:08:15 raven Exp $"
+#ident "$Id: lookup_yp.c,v 1.28 2006/03/26 04:56:23 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup_yp.c - module for Linux automountd to access a YP (NIS)
@@ -346,8 +346,19 @@ static int check_map_indirect(struct autofs_point *ap,
 	}
 
 	/* Have parent update its map */
-	if (need_map)
+	if (need_map) {
+		int status;
+
+		status = pthread_mutex_lock(&ap->state_mutex);
+		if (status)
+			fatal(status);
+
 		nextstate(ap->state_pipe[1], ST_READMAP);
+
+		status = pthread_mutex_unlock(&ap->state_mutex);
+		if (status)
+			fatal(status);
+	}
 
 	if (ret == CHE_MISSING)
 		return NSS_STATUS_NOTFOUND;

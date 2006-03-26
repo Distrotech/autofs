@@ -1,7 +1,7 @@
-#ident "$Id: state.h,v 1.2 2006/03/25 05:22:52 raven Exp $"
+#ident "$Id: state.h,v 1.3 2006/03/26 04:56:22 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
- *  state.h - state queue manager.
+ *  state.h - state queue functions.
  *
  *   Copyright 2006 Ian Kent <raven@themaw.net>
  *
@@ -51,6 +51,7 @@ enum states {
 };
 
 struct expire_args {
+	pthread_barrier_t barrier;
 	struct autofs_point *ap; /* autofs mount we are working on */
 	enum states state;       /* State prune or expire */
 	unsigned int when;       /* Immediate expire ? */
@@ -58,6 +59,7 @@ struct expire_args {
 };
 
 struct readmap_args {
+	pthread_barrier_t barrier;
 	struct autofs_point *ap; /* autofs mount we are working on */
 	time_t now;              /* Time when map is read */
 };
@@ -65,10 +67,6 @@ struct readmap_args {
 void expire_cleanup(void *);
 void nextstate(int, enum states);
 
-/* State queue manager */
-int state_queue_add(struct autofs_point *, enum states);
-void state_queue_delete(struct autofs_point *);
-void state_queue_set_thid(struct autofs_point *, pthread_t);
-int state_queue_start_handler(void);
+enum states st_next(struct autofs_point *api, enum states state);
 
 #endif

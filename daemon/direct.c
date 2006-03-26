@@ -1,4 +1,4 @@
-#ident "$Id: direct.c,v 1.23 2006/03/25 05:22:52 raven Exp $"
+#ident "$Id: direct.c,v 1.24 2006/03/26 04:56:22 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  direct.c - Linux automounter direct mount handling
@@ -599,6 +599,10 @@ void *expire_proc_direct(void *arg)
 	now = ea->when;
 	ea->status = 0;
 
+	status = pthread_barrier_wait(&ea->barrier);
+	if (status && status != PTHREAD_BARRIER_SERIAL_THREAD)
+		fatal(status);
+
 	pthread_cleanup_push(expire_cleanup, ea);
 
 	/* Get a list of real mounts and expire them if possible */
@@ -721,6 +725,11 @@ static void *do_expire_direct(void *arg)
 	ap = mt->ap;
 
 	mt->status = 1;
+
+	status = pthread_barrier_wait(&mt->barrier);
+	if (status && status != PTHREAD_BARRIER_SERIAL_THREAD)
+		fatal(status);
+
 	pthread_cleanup_push(kernel_callback_cleanup, mt);
 
 	len = _strlen(mt->name, KEY_MAX_LEN);
@@ -781,6 +790,10 @@ int handle_packet_expire_direct(struct autofs_point *ap, autofs_packet_expire_di
 		goto done;
 	}
 
+	status = pthread_barrier_init(&mt->barrier, NULL, 2);
+	if (status)
+		fatal(status);
+
 	mt->ap = ap;
 	mt->ioctlfd = me->ioctlfd;
 	/* TODO: check length here */
@@ -799,6 +812,14 @@ int handle_packet_expire_direct(struct autofs_point *ap, autofs_packet_expire_di
 		send_fail(mt->ioctlfd, pkt->wait_queue_token);
 		status = 1;
 	}
+
+	status = pthread_barrier_wait(&mt->barrier);
+	if (status && status != PTHREAD_BARRIER_SERIAL_THREAD)
+		fatal(status);
+
+	status = pthread_barrier_destroy(&mt->barrier);
+	if (status)
+		fatal(status);
 done:
 	cache_unlock(mc);
 	pthread_cleanup_pop(0);
@@ -825,6 +846,11 @@ static void *do_mount_direct(void *arg)
 	ap = mt->ap;
 
 	mt->status = 0;
+
+	status = pthread_barrier_wait(&mt->barrier);
+	if (status && status != PTHREAD_BARRIER_SERIAL_THREAD)
+		fatal(status);
+
 	pthread_cleanup_push(kernel_callback_cleanup, mt);
 
 	status = fstat(mt->ioctlfd, &st);
@@ -1021,6 +1047,10 @@ int handle_packet_missing_direct(struct autofs_point *ap, autofs_packet_missing_
 		goto done;
 	}
 
+	status = pthread_barrier_init(&mt->barrier, NULL, 2);
+	if (status)
+		fatal(status);
+
 	mt->ap = ap;
 	mt->ioctlfd = me->ioctlfd;
 	/* TODO: check length here */
@@ -1040,6 +1070,14 @@ int handle_packet_missing_direct(struct autofs_point *ap, autofs_packet_missing_
 		me->ioctlfd = -1;
 		status = 1;
 	}
+
+	status = pthread_barrier_wait(&mt->barrier);
+	if (status && status != PTHREAD_BARRIER_SERIAL_THREAD)
+		fatal(status);
+
+	status = pthread_barrier_destroy(&mt->barrier);
+	if (status)
+		fatal(status);
 done:
 	cache_unlock(mc);
 	pthread_cleanup_pop(0);

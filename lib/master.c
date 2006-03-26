@@ -1,4 +1,4 @@
-#ident "$Id: master.c,v 1.4 2006/03/25 05:22:52 raven Exp $"
+#ident "$Id: master.c,v 1.5 2006/03/26 04:56:23 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  master.c - master map utility routines.
@@ -124,7 +124,6 @@ int master_add_autofs_point(struct master_mapent *entry,
 	ap->submount = submount;
 	INIT_LIST_HEAD(&ap->mounts);
 	INIT_LIST_HEAD(&ap->submounts);
-	INIT_LIST_HEAD(&ap->pending);
 
 	status = pthread_mutex_init(&ap->state_mutex, NULL);
 	if (status) {
@@ -133,6 +132,7 @@ int master_add_autofs_point(struct master_mapent *entry,
 		free(ap);
 		return 0;
 	}
+	INIT_LIST_HEAD(&ap->state_queue);
 
 	status = pthread_mutex_init(&ap->mounts_mutex, NULL);
 	if (status) {

@@ -57,6 +57,7 @@
   - seems to fix hang during mounting ~1000 direct mounts.
 - fix expire and readmap thread create.
 - fix read multiple sources for mount point.
+- fix hanging state machine (again).
 
 11/4/2005 autofs-4.1.4
 ----------------------

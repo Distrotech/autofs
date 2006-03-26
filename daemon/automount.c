@@ -1,4 +1,4 @@
-#ident "$Id: automount.c,v 1.65 2006/03/25 05:22:52 raven Exp $"
+#ident "$Id: automount.c,v 1.66 2006/03/26 04:56:22 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  automount.c - Linux automounter daemon
@@ -490,15 +490,6 @@ int send_fail(int ioctlfd, unsigned int wait_queue_token)
 	return 0;
 }
 
-int st_ready(struct autofs_point *ap)
-{
-	debug("st_ready(): state = %d path %s", ap->state, ap->path);
-
-	ap->state = ST_READY;
-
-	return 0;
-}
-
 static int fullread(int fd, void *ptr, size_t len)
 {
 	char *buf = (char *) ptr;
@@ -540,65 +531,24 @@ static int get_pkt(struct autofs_point *ap, union autofs_packet_union *pkt)
 		}
 
 		if (fds[1].revents & POLLIN) {
-			enum states next_state;
+			enum states state = ST_INVAL, next_state;
 			int status;
-			int ret = 1;
 
 			status = pthread_mutex_lock(&ap->state_mutex);
-			if (status) {
-				error("state mutex lock failed");
-				continue;
-			}
+			if (status)
+				fatal(status);
 
 			if (fullread(ap->state_pipe[0], &next_state, sizeof(next_state)))
 				continue;
 
-			if (next_state != ap->state) {
-				debug("state %d, next %d path %s",
-					ap->state, next_state, ap->path);
-
-				switch (next_state) {
-				case ST_READY:
-					state_queue_add(ap, ST_READY);
-					break;
-
-				case ST_PRUNE:
-					state_queue_add(ap, ST_PRUNE);
-					break;
-
-				case ST_EXPIRE:
-					state_queue_add(ap, ST_EXPIRE);
-					break;
-
-				case ST_READMAP:
-					state_queue_add(ap, ST_READMAP);
-					break;
-
-				case ST_SHUTDOWN_PENDING:
-					state_queue_add(ap, ST_SHUTDOWN_PENDING);
-					break;
-
-				case ST_SHUTDOWN_FORCE:
-					state_queue_add(ap, ST_SHUTDOWN_FORCE);
-					break;
-
-				case ST_SHUTDOWN:
-					assert(ap->state == ST_SHUTDOWN ||
-					       ap->state == ST_SHUTDOWN_FORCE ||
-					       ap->state == ST_SHUTDOWN_PENDING);
-					ap->state = ST_SHUTDOWN;
-					break;
-
-				default:
-					error("bad next state %d", next_state);
-				}
-			}
+			if (next_state != ap->state)
+				state = st_next(ap, next_state);
 
 			status = pthread_mutex_unlock(&ap->state_mutex);
 			if (status)
-				error("state mutex unlock failed");
+				fatal(status);
 
-			if (ap->state == ST_SHUTDOWN)
+			if (state == ST_SHUTDOWN)
 				return -1;
 		}
 
@@ -694,7 +644,6 @@ static void become_daemon(void)
 	/* Detach from foreground process */
 	pid = fork();
 	if (pid > 0) {
-		/* Wait till child has started */
 		exit(0);
 	} else if (pid < 0) {
 		fprintf(stderr, "%s: Could not detach process\n",
@@ -1061,7 +1010,6 @@ static void handle_mounts_cleanup(void *arg)
 	/* If we have been canceled then we may hold the state mutex. */
 	mutex_operation_wait(&ap->state_mutex);
 
-	state_queue_delete(ap);
 	master_free_mapent(ap->entry);
 
 	/* If we are the last tell the state machine to shutdown */
@@ -1358,17 +1306,11 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
-	if (!state_queue_start_handler()) {
-		crit("failed to create SIGCHLD handler thread!");
-		master_kill(master, 1);
-		exit(1);
-	}
-
 	if (!master_read_master(master, age, 0)) {
 		master_kill(master, 1);
 		exit(3);
 	}
-		
+
 	statemachine(NULL);
 
 	master_kill(master, 1);

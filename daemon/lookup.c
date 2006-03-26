@@ -1,4 +1,4 @@
-#ident "$Id: lookup.c,v 1.10 2006/03/25 05:22:52 raven Exp $"
+#ident "$Id: lookup.c,v 1.11 2006/03/26 04:56:22 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup.c - API layer to implement nsswitch semantics for map reading
@@ -302,7 +302,7 @@ int lookup_nss_read_map(struct autofs_point *ap, time_t age)
 	struct list_head *head, *p;
 	struct nss_source *this;
 	struct map_source *map;
-	int result;
+	int result = 0;
 
 	/*
 	 * For each map source (ie. each entry for the mount
