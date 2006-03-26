@@ -1,7 +1,7 @@
 %{
 /* ----------------------------------------------------------------------- *
  *   
- *  "$Id: master_parse.y,v 1.3 2006/03/25 05:22:52 raven Exp $"
+ *  "$Id: master_parse.y,v 1.4 2006/03/26 17:26:32 raven Exp $"
  *
  *  master_parser.y - master map buffer parser.
  *
@@ -39,8 +39,8 @@ extern FILE *master_in;
 extern char *master_text;
 extern int master_lex(void);
 extern int master_lineno;
+extern void master_set_scan_buffer(const char *);
 
-extern void master_restart(FILE *master_in);
 static char *master_strdup(char *);
 static void local_init_vars(void);
 static void local_free_vars(void);
@@ -59,9 +59,6 @@ static int local_argc;
 static unsigned int verbose;
 static unsigned int debug;
 
-char *line;
-char *line_pos;
-char *line_lim;
 static int lineno;
 
 #define YYDEBUG 0
@@ -442,13 +439,6 @@ void master_init_scan(void)
 	lineno = 0;
 }
 
-void master_set_scan_buffer(const char *buffer)
-{
-	line = (char *) buffer;
-	line_pos = &line[0];
-	line_lim = line + strlen(buffer);
-}
-
 int master_parse_entry(const char *buffer, unsigned int default_timeout, unsigned int logging, time_t age)
 {
 	struct master_mapent *entry, *new;
@@ -460,7 +450,7 @@ int master_parse_entry(const char *buffer, unsigned int default_timeout, unsigne
 
 	lineno++;
 
-	master_set_scan_buffer((char *) buffer);
+	master_set_scan_buffer(buffer);
 
 	ret = master_parse();
 	if (ret != 0) {

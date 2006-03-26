@@ -1,4 +1,4 @@
-#ident "$Id: alarm.c,v 1.5 2006/03/25 05:22:52 raven Exp $"
+#ident "$Id: alarm.c,v 1.6 2006/03/26 17:26:32 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  alarm.c - alarm queue handling module.
@@ -16,8 +16,6 @@
 #include <stdlib.h>
 #include "automount.h"
 
-extern pthread_attr_t thread_attr;
-
 struct alarm {
 	time_t time;
 	unsigned int cancel;
@@ -28,6 +26,8 @@ struct alarm {
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
 static LIST_HEAD(alarms);
+
+extern pthread_attr_t thread_attr;
 
 void dump_alarms(void)
 {
@@ -250,11 +250,23 @@ static void *alarm_handler(void *arg)
 int alarm_start_handler(void)
 {
 	pthread_t thid;
+	pthread_attr_t attrs;
+	pthread_attr_t *pattrs = &attrs;
 	int status;
 
-	status = pthread_create(&thid, &thread_attr, alarm_handler, NULL);
+	status = pthread_attr_init(pattrs);
 	if (status)
-		return 0;
+		pattrs = NULL;
+	else {
+		pthread_attr_setdetachstate(pattrs, PTHREAD_CREATE_DETACHED);
+#ifdef _POSIX_THREAD_ATTR_STACKSIZE
+		pthread_attr_setstacksize(pattrs, PTHREAD_STACK_MIN*4);
+#endif
+	}
+
+	status = pthread_create(&thid, pattrs, alarm_handler, NULL);
+	if (status)
+	 	return 0;
 
 	return 1;
 }

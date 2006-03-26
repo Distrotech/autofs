@@ -1,4 +1,4 @@
-#ident "$Id: spawn.c,v 1.21 2006/03/25 05:22:52 raven Exp $"
+#ident "$Id: spawn.c,v 1.22 2006/03/26 17:26:32 raven Exp $"
 /* ----------------------------------------------------------------------- *
  * 
  *  spawn.c - run programs synchronously with output redirected to syslog
@@ -31,6 +31,8 @@
 #ifdef ENABLE_MOUNT_LOCKING
 static pthread_mutex_t spawn_mutex = PTHREAD_MUTEX_INITIALIZER;
 #endif
+
+extern pthread_attr_t thread_attr;
 
 /*
  * SIGCHLD handling.
@@ -128,11 +130,23 @@ void *sigchld(void *dummy)
 
 int sigchld_start_handler(void)
 {
+	pthread_attr_t attrs;
+	pthread_attr_t *pattrs = &attrs;
 	int status;
 
-	status = pthread_create(&sm.thid, &thread_attr, sigchld, NULL);
+	status = pthread_attr_init(pattrs);
 	if (status)
-		return 0;
+		pattrs = NULL;
+	else {
+		pthread_attr_setdetachstate(pattrs, PTHREAD_CREATE_DETACHED);
+#ifdef _POSIX_THREAD_ATTR_STACKSIZE
+		pthread_attr_setstacksize(pattrs, PTHREAD_STACK_MIN*4);
+#endif
+	}
+
+	status = pthread_create(&sm.thid, pattrs, sigchld, NULL);
+	if (status)
+	 	return 0;
 
 	return 1;
 }

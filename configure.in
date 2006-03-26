@@ -1,5 +1,5 @@
 #
-#ident $Id: configure.in,v 1.23 2006/03/21 04:28:52 raven Exp $
+#ident $Id: configure.in,v 1.24 2006/03/26 17:26:32 raven Exp $
 #
 # configure.in for the autofs daemon
 
@@ -80,7 +80,7 @@ AF_PATH_INCLUDE(E2FSCK, fsck.ext2 e2fsck, , $searchpath)
 AF_PATH_INCLUDE(E3FSCK, fsck.ext3 e3fsck, , $searchpath)
 AF_PATH_INCLUDE(MODPROBE, modprobe, , $searchpath)
 
-AF_CHECK_PROG(LEX, flex lex, , $searchpath)
+AF_CHECK_PROG(LEX, lex, , $searchpath)
 AF_CHECK_PROG(YACC, bison, , $searchpath)
 AF_CHECK_PROG(RANLIB, ranlib, , $searchpath)
 AF_CHECK_PROG(RPCGEN, rpcgen, , $searchpath)

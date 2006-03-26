@@ -1,4 +1,4 @@
-#ident "$Id: automount.c,v 1.67 2006/03/26 05:41:50 raven Exp $"
+#ident "$Id: automount.c,v 1.68 2006/03/26 17:26:32 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  automount.c - Linux automounter daemon
@@ -1173,28 +1173,6 @@ int main(int argc, char *argv[])
 	timeout = DEFAULT_TIMEOUT;
 	ghost = DEFAULT_GHOST_MODE;
 
-	if (pthread_attr_init(&thread_attr)) {
-		fprintf(stderr, "%s: failed to init thread attribute struct!\n",
-			program);
-		exit(1);
-	}
-
-	if (pthread_attr_setdetachstate(
-			&thread_attr, PTHREAD_CREATE_DETACHED)) {
-		fprintf(stderr, "%s: failed to set detached thread attribute!\n",
-			program);
-		exit(1);
-	}
-
-#ifdef _POSIX_THREAD_ATTR_STACKSIZE
-	if (pthread_attr_setstacksize(
-			&thread_attr, PTHREAD_STACK_MIN*8)) {
-		fprintf(stderr, "%s: failed to set stack size thread attribute!\n",
-			program);
-		exit(1);
-	}
-#endif
-
 	opterr = 0;
 	while ((opt = getopt_long(argc, argv, "+hp:t:vdV", long_options, NULL)) != EOF) {
 		switch (opt) {
@@ -1274,19 +1252,27 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
-	if (!sigchld_start_handler()) {
-		crit("%s: failed to create SIGCHLD handler thread!",
+	if (pthread_attr_init(&thread_attr)) {
+		crit("%s: failed to init thread attribute struct!\n",
 			program);
-		master_kill(master, 1);
 		exit(1);
 	}
 
-	if (!load_autofs4_module()) {
-		crit("%s: can't load %s filesystem module",
-			program, FS_MODULE_NAME);
-		master_kill(master, 1);
-		exit(2);
+	if (pthread_attr_setdetachstate(
+			&thread_attr, PTHREAD_CREATE_DETACHED)) {
+		crit("%s: failed to set detached thread attribute!\n",
+			program);
+		exit(1);
 	}
+
+#ifdef _POSIX_THREAD_ATTR_STACKSIZE
+	if (pthread_attr_setstacksize(
+			&thread_attr, PTHREAD_STACK_MIN*20)) {
+		crit("%s: failed to set stack size thread attribute!\n",
+			program);
+		exit(1);
+	}
+#endif
 
 	msg("Starting automounter version %s, master map %s",
 		version, master->name);
@@ -1312,6 +1298,13 @@ int main(int argc, char *argv[])
 		crit("failed to create SIGCHLD handler thread!");
 		master_kill(master, 1);
 		exit(1);
+	}
+
+	if (!load_autofs4_module()) {
+		crit("%s: can't load %s filesystem module",
+			program, FS_MODULE_NAME);
+		master_kill(master, 1);
+		exit(2);
 	}
 
 	if (!master_read_master(master, age, 0)) {

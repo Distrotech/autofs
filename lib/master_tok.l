@@ -1,7 +1,7 @@
 %{
 /* ----------------------------------------------------------------------- *
  *   
- *  "$Id: master_tok.l,v 1.1 2006/03/21 04:28:53 raven Exp $"
+ *  "$Id: master_tok.l,v 1.2 2006/03/26 17:26:32 raven Exp $"
  *
  *  master_tok.l - master map tokenizer.
  *
@@ -45,13 +45,22 @@ int master_wrap(void);
 /* no need for yywrap() */
 #define YY_SKIP_YYWRAP
 
+void master_set_scan_buffer(const char *);
 const char *line = NULL;
+
+#ifdef FLEX_SCANNER
 const char *line_pos = NULL;
 const char *line_lim = NULL;
 int my_yyinput(char *, int);
 
 #undef YY_INPUT
 #define YY_INPUT(b, r, ms) (r = my_yyinput(b, ms))
+#else
+#undef input
+#undef unput
+#define input()  (*(char *) line++)
+#define unput(c) (*(char *) --line = c)
+#endif
 
 char buf[1024];
 char *bptr;
@@ -326,6 +335,15 @@ static void master_echo(void)
 	return;
 }
 
+#ifdef FLEX_SCANNER
+
+void master_set_scan_buffer(const char *buffer)
+{
+	line = buffer;
+	line_pos = &line[0];
+	line_lim = line + strlen(buffer);
+}
+
 #define min(a,b) (((a) < (b)) ? (a) : (b))
 
 int my_yyinput(char *buffer, int max_size)
@@ -339,3 +357,11 @@ int my_yyinput(char *buffer, int max_size)
 	return n;
 }
 
+#else
+
+void master_set_scan_buffer(const char *buffer)
+{
+	line = buffer;
+}
+
+#endif
