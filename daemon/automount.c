@@ -1,4 +1,4 @@
-#ident "$Id: automount.c,v 1.66 2006/03/26 04:56:22 raven Exp $"
+#ident "$Id: automount.c,v 1.67 2006/03/26 05:41:50 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  automount.c - Linux automounter daemon
@@ -42,6 +42,8 @@ const char *program;		/* Initialized with argv[0] */
 const char *version = VERSION_STRING;	/* Program version */
 
 static char *pid_file = NULL;	/* File in which to keep pid */
+static char start_lockf[] = "/tmp/autofsXXXXXX";
+static int start_lockfd = -1;
 
 /* Attribute to create detached thread */
 pthread_attr_t thread_attr;
@@ -644,6 +646,10 @@ static void become_daemon(void)
 	/* Detach from foreground process */
 	pid = fork();
 	if (pid > 0) {
+		struct stat st;
+		close(start_lockfd);
+		while (stat(start_lockf, &st) != -1)
+			sleep(2);
 		exit(0);
 	} else if (pid < 0) {
 		fprintf(stderr, "%s: Could not detach process\n",
@@ -1247,6 +1253,8 @@ int main(int argc, char *argv[])
 		warn("can't increase core file limit - continuing");
 #endif
 
+	start_lockfd = mkstemp(start_lockf);
+
 	become_daemon();
 
 	if (argc == 0) {
@@ -1310,6 +1318,9 @@ int main(int argc, char *argv[])
 		master_kill(master, 1);
 		exit(3);
 	}
+
+	close(start_lockfd);
+	unlink(start_lockf);
 
 	statemachine(NULL);
 

@@ -58,6 +58,7 @@
 - fix expire and readmap thread create.
 - fix read multiple sources for mount point.
 - fix hanging state machine (again).
+- add delay at startup till mount complete.
 
 11/4/2005 autofs-4.1.4
 ----------------------
