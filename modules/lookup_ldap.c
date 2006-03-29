@@ -1,4 +1,4 @@
-#ident "$Id: lookup_ldap.c,v 1.35 2006/03/29 10:32:36 raven Exp $"
+#ident "$Id: lookup_ldap.c,v 1.36 2006/03/29 11:23:27 raven Exp $"
 /*
  * lookup_ldap.c - Module for Linux automountd to access automount
  *		   maps in LDAP directories.
@@ -61,7 +61,7 @@ struct lookup_context {
 	char *value_attr;
 
 	/* sasl authentication information */
-	cahr *auth_conf;
+	char *auth_conf;
 	char *sasl_mech;
 	char *user;
 	char *secret;
@@ -430,7 +430,6 @@ int parse_server_string(const char *url, struct lookup_context *ctxt)
 		ctxt->mapname = map;
 		memset(ctxt->mapname, 0, l + 1);
 		memcpy(map, ptr, l);
-		debug("map %s", map);
 	}
 
 	if (ctxt->mapname)
@@ -908,8 +907,6 @@ static int read_one_map(struct autofs_point *ap,
 
 		if (ap->type == LKP_DIRECT && **keyValue != '/')
 			goto next;
-
-		debug("update key %s mapent %s", *keyValue, mapent);
 
 		cache_writelock(mc);
 		cache_update(mc, *keyValue, mapent, age);

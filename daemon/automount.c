@@ -1,4 +1,4 @@
-#ident "$Id: automount.c,v 1.70 2006/03/29 10:32:36 raven Exp $"
+#ident "$Id: automount.c,v 1.71 2006/03/29 11:23:26 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  automount.c - Linux automounter daemon
@@ -633,18 +633,18 @@ static int handle_packet(struct autofs_point *ap)
 	return -1;
 }
 
-static void become_daemon(void)
+static void become_daemon(unsigned foreground)
 {
 	FILE *pidfp;
 	char buf[MAX_ERR_BUF];
+	unsigned to_stderr = 0;
 	pid_t pid;
-	int daemonize = 1;
 
 	/* Don't BUSY any directories unnecessarily */
 	chdir("/");
 
 	/* Detach from foreground process */
-	if (daemonize) {
+	if (!foreground) {
 		pid = fork();
 		if (pid > 0) {
 			struct stat st;
@@ -669,10 +669,10 @@ static void become_daemon(void)
 	}
 
 	/* Setup logging */
-	if (daemonize)
-		log_to_syslog();
-	else
+	if (to_stderr)
 		log_to_stderr();
+	else
+		log_to_syslog();
 
 	/* Write pid file if requested */
 	if (pid_file) {
@@ -700,11 +700,6 @@ static unsigned long getnumopt(char *str, char option)
 		exit(1);
 	}
 	return val;
-}
-
-static void usage(void)
-{
-	fprintf(stderr, "Usage: %s [options] path map_type [args...]\n", program);
 }
 
 static void do_master_cleanup_unlock(void *arg)
@@ -1136,10 +1131,25 @@ static void key_thread_stdenv_vars_destroy(void *arg)
 	return;
 }
 
+static void usage(void)
+{
+	fprintf(stderr,
+		"Usage: %s [options] [master_map_name]\n"
+		"	-h --help	this text\n"
+		"	-p --pid-file f write process id to file f\n"
+		"	-t --timeout n	auto-unmount in n seconds (0-disable)\n"
+		"	-v --verbose	be verbose\n"
+		"	-d --debug	log debuging info\n"
+		/*"	-f --foreground do not fork into background\n" */
+		"	-V --version	print version and exit\n"
+		, program);
+}
+
 int main(int argc, char *argv[])
 {
 	int res, opt, status;
 	unsigned ghost;
+	unsigned foreground;
 	time_t timeout;
 	time_t age = time(NULL);
 	sigset_t allsigs;
@@ -1150,6 +1160,7 @@ int main(int argc, char *argv[])
 		{"timeout", 1, 0, 't'},
 		{"verbose", 0, 0, 'v'},
 		{"debug", 0, 0, 'd'},
+		{"foreground", 0, 0, 'f'},
 		{"version", 0, 0, 'V'},
 		{0, 0, 0, 0}
 	};
@@ -1157,9 +1168,10 @@ int main(int argc, char *argv[])
 	program = argv[0];
 	timeout = get_default_timeout();
 	ghost = get_default_browse_mode();
+	foreground = 0;
 
 	opterr = 0;
-	while ((opt = getopt_long(argc, argv, "+hp:t:vdV", long_options, NULL)) != EOF) {
+	while ((opt = getopt_long(argc, argv, "+hp:t:vdfV", long_options, NULL)) != EOF) {
 		switch (opt) {
 		case 'h':
 			usage();
@@ -1179,6 +1191,10 @@ int main(int argc, char *argv[])
 
 		case 'd':
 			set_log_debug();
+			break;
+
+		case 'f':
+			foreground = 1;
 			break;
 
 		case 'V':
@@ -1218,7 +1234,7 @@ int main(int argc, char *argv[])
 
 	start_lockfd = mkstemp(start_lockf);
 
-	become_daemon();
+	become_daemon(foreground);
 
 	if (argc == 0) {
 		const char *name;

@@ -1,4 +1,4 @@
-#ident "$Id: defaults.h,v 1.1 2006/03/29 10:32:36 raven Exp $"
+#ident "$Id: defaults.h,v 1.2 2006/03/29 11:23:27 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  defaults.h - system initialization defaults.
@@ -33,7 +33,7 @@
 #define DEFAULT_ENTRY_ATTRIBUTE		"cn"
 #define DEFAULT_VALUE_ATTRIBUTE		"nisMapEntry"
 
-#define DEFAULT_AUTH_CONF_FILE		AUTOFS_MAP_DIR "/autofs-auth.conf"
+#define DEFAULT_AUTH_CONF_FILE		AUTOFS_MAP_DIR "/autofs_ldap_auth.conf"
 
 const char *get_default_master_map(void);
 unsigned int get_default_timeout(void);
