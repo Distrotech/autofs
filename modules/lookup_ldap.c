@@ -1,4 +1,4 @@
-#ident "$Id: lookup_ldap.c,v 1.36 2006/03/29 11:23:27 raven Exp $"
+#ident "$Id: lookup_ldap.c,v 1.37 2006/03/29 11:44:54 raven Exp $"
 /*
  * lookup_ldap.c - Module for Linux automountd to access automount
  *		   maps in LDAP directories.
@@ -143,7 +143,7 @@ static LDAP *do_connect(struct lookup_context *ctxt)
 	if (ctxt->sasl_mech) {
 		sasl_conn_t *conn;
 
-		debug("attempting sasl bind, mechanism %s, user %s, pass %s\n",
+		debug("attempting sasl bind, mechanism %s, user %s, pass %s",
 		      ctxt->sasl_mech, ctxt->user, ctxt->secret);
 
 		conn = sasl_bind_mech(ldap, ctxt->server, ctxt->sasl_mech);
@@ -153,11 +153,11 @@ static LDAP *do_connect(struct lookup_context *ctxt)
 		sasl_dispose(&conn);
 	} else {
 		rv = ldap_bind_anonymous(ldap, ctxt);
-		debug("doing anonymous bind, ret %d\n", rv);
+		debug("doing anonymous bind, ret %d", rv);
 	}
 #else
 	rv = ldap_bind_anonymous(ldap, ctxt);
-	debug("doing anonymous bind, ret %d\n", rv);
+	debug("doing anonymous bind, ret %d", rv);
 #endif
 
 	if (rv != 0)
@@ -173,12 +173,12 @@ int get_property(xmlNodePtr node, const char *prop, char **value)
 	xmlChar *property = (xmlChar *) prop;
 
 	if (!(ret = xmlGetProp(node, property))) {
-		debug("xmlGetProp failed for prop %s\n", prop);
+		debug("xmlGetProp failed for prop %s", prop);
 		return -1;
 	}
 
 	if (!(*value = strdup((char *) ret))) {
-		error("strdup failed with %d\n", errno);
+		error("strdup failed with %d", errno);
 		xmlFree(ret);
 		return -1;
 	}
@@ -896,8 +896,6 @@ static int read_one_map(struct autofs_point *ap,
 			}
 		}
 		ldap_value_free(values);
-
-		debug("key %s mapent %s", *keyValue, mapent);
 
 		if (**keyValue == '/' && strlen(*keyValue) == 1)
 			**keyValue = '*';

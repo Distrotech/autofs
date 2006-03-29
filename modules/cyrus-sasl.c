@@ -110,8 +110,7 @@ sasl_log_func(void *context, int level, const char *message)
 static int
 getuser_func(void *context, int id, const char **result, unsigned *len)
 {
-	debug("%s: called with context %p, id %d.\n",
-	      __FUNCTION__, context, id);
+	debug("called with context %p, id %d.", context, id);
 
 	switch (id) {
 	case SASL_CB_USER:
@@ -120,7 +119,7 @@ getuser_func(void *context, int id, const char **result, unsigned *len)
 		*len = strlen(sasl_auth_id);
 		break;
 	default:
-		error("%s: unknown id in request: %d\n", __FUNCTION__, id);
+		error("unknown id in request: %d", id);
 		return SASL_FAIL;
 	}
 
@@ -137,7 +136,7 @@ getpass_func(sasl_conn_t *conn, void *context, int id, sasl_secret_t **psecret)
 {
 	int len = strlen(sasl_auth_secret);
 
-	debug("%s: context %p, id %d\n", __FUNCTION__, context, id);
+	debug("context %p, id %d", context, id);
 
 	*psecret = (sasl_secret_t *) malloc(sizeof(sasl_secret_t) + len);
 	if (!*psecret)
@@ -177,8 +176,8 @@ get_server_SASL_mechanisms(LDAP *ld)
 	if (entry == NULL) {
 		/* No root DSE. (!) */
 		ldap_msgfree(results);
-		debug("%s: a lookup of \"supportedSASLmechanisms\" returned "
-		      "no results.\n", __FUNCTION__);
+		debug("a lookup of \"supportedSASLmechanisms\" returned "
+		      "no results.");
 		return NULL;
 	}
 
@@ -186,9 +185,8 @@ get_server_SASL_mechanisms(LDAP *ld)
 	ldap_msgfree(results);
 	if (mechanisms == NULL) {
 		/* Well, that was a waste of time. */
-		info("%s: No SASL authentication mechanisms are supported"
-		     " by the LDAP server.\n",
-		     __FUNCTION__);
+		info("No SASL authentication mechanisms are supported"
+		     " by the LDAP server.\n");
 		return NULL;
 	}
 
@@ -218,7 +216,7 @@ do_sasl_bind(LDAP *ld, sasl_conn_t *conn, const char **clientout,
 				     NULL, NULL, &msgid);
 		if (ret != LDAP_SUCCESS) {
 			crit("Error sending sasl_bind request to "
-			     "the server: %s\n", ldap_err2string(ret));
+			     "the server: %s", ldap_err2string(ret));
 			return -1;
 		}
 
@@ -227,7 +225,7 @@ do_sasl_bind(LDAP *ld, sasl_conn_t *conn, const char **clientout,
 		ret = ldap_result(ld, msgid, LDAP_MSG_ALL, NULL, &results);
 		if (ret != LDAP_RES_BIND) {
 			crit("Error while waiting for response to "
-			     "sasl_bind request: %s\n", ldap_err2string(ret));
+			     "sasl_bind request: %s", ldap_err2string(ret));
 			return -1;
 		}
 
@@ -254,7 +252,7 @@ do_sasl_bind(LDAP *ld, sasl_conn_t *conn, const char **clientout,
 					      &bind_result);
 			if (ret != LDAP_SUCCESS) {
 				crit("Error retrieving response to sasl_bind "
-				     "request: %s\n", ldap_err2string(ret));
+				     "request: %s", ldap_err2string(ret));
 				ret = -1;
 				break;
 			}
@@ -266,7 +264,7 @@ do_sasl_bind(LDAP *ld, sasl_conn_t *conn, const char **clientout,
 				break;
 			default:
 				warn("Error parsing response to sasl_bind "
-				     "request: %s.\n", ldap_err2string(ret));
+				     "request: %s.", ldap_err2string(ret));
 				break;
 			}
 		}
@@ -288,8 +286,8 @@ do_sasl_bind(LDAP *ld, sasl_conn_t *conn, const char **clientout,
 		if (have_data && !expected_data) {
 			warn("The LDAP server sent data in response to our "
 			     "bind request, but indicated that the bind was "
-			     "complete.\nLDAP SASL bind with mechansim %s "
-			     "failed.\n", auth_mech);
+			     "complete. LDAP SASL bind with mechansim %s "
+			     "failed.", auth_mech);
 			//debug(""); /* dump out the data we got */
 			ret = -1;
 			break;
@@ -297,8 +295,8 @@ do_sasl_bind(LDAP *ld, sasl_conn_t *conn, const char **clientout,
 		if (expected_data && !have_data) {
 			warn("The LDAP server indicated that the LDAP SASL "
 			     "bind was incomplete, but did not provide the "
-			     "required data to proceed.\nLDAP SASL bind with "
-			     "mechanism %s failed.\n", auth_mech);
+			     "required data to proceed. LDAP SASL bind with "
+			     "mechanism %s failed.", auth_mech);
 			ret = -1;
 			break;
 		}
@@ -327,7 +325,7 @@ do_sasl_bind(LDAP *ld, sasl_conn_t *conn, const char **clientout,
 			if ((clientoutlen > 0) &&
 			    (bind_result != LDAP_SASL_BIND_IN_PROGRESS)) {
 				printf("We have data for the server, "
-				       "but it thinks we are done!\n");
+				       "but it thinks we are done!");
 				/* XXX should print out debug data here */
 				ret = -1;
 			}

@@ -1,4 +1,4 @@
-#ident "$Id: lookup.c,v 1.12 2006/03/29 10:32:36 raven Exp $"
+#ident "$Id: lookup.c,v 1.13 2006/03/29 11:44:54 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup.c - API layer to implement nsswitch semantics for map reading
@@ -423,7 +423,6 @@ int lookup_ghost(struct autofs_point *ap)
 
 	me = cache_enumerate(mc, NULL);
 	while (me) {
-		debug("key %s", me->key);
 		if (*me->key == '*')
 			goto next;
 
