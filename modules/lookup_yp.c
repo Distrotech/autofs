@@ -1,4 +1,4 @@
-#ident "$Id: lookup_yp.c,v 1.28 2006/03/26 04:56:23 raven Exp $"
+#ident "$Id: lookup_yp.c,v 1.29 2006/03/29 10:32:36 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup_yp.c - module for Linux automountd to access a YP (NIS)
@@ -167,7 +167,8 @@ int yp_all_callback(int status, char *ypkey, int ypkeylen,
 		    char *val, int vallen, char *ypcb_data)
 {
 	struct callback_data *cbdata = (struct callback_data *) ypcb_data;
-	struct mapent_cache *mc = cbdata->ap->mc;
+	struct autofs_point *ap = cbdata->ap;
+	struct mapent_cache *mc = ap->mc;
 	time_t age = cbdata->age;
 	char *key;
 	char *mapent;
@@ -181,6 +182,12 @@ int yp_all_callback(int status, char *ypkey, int ypkeylen,
 	 * inclusion is only valid in file maps.
 	 */
 	if (*ypkey == '+')
+		return 0;
+
+	if (ap->type == LKP_INDIRECT && *ypkey == '/')
+		return 0;
+
+	if (ap->type == LKP_DIRECT && *ypkey != '/')
 		return 0;
 
 	key = alloca(ypkeylen + 1);

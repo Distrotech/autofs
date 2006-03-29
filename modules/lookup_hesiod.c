@@ -1,4 +1,4 @@
-#ident "$Id: lookup_hesiod.c,v 1.13 2006/03/21 04:28:53 raven Exp $"
+#ident "$Id: lookup_hesiod.c,v 1.14 2006/03/29 10:32:36 raven Exp $"
 /*
  * lookup_hesiod.c
  *
@@ -89,7 +89,7 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 	hes_result = hes_resolve(name, "filsys");
 
 	if (!hes_result || !hes_result[0]) {
-		warn(MODPREFIX "entry \"%s\" not found in map\n", name);
+		warn(MODPREFIX "entry \"%s\" not found in map", name);
 		return NSS_STATUS_UNAVAIL;
 	}
 

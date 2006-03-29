@@ -1,4 +1,4 @@
-#ident "$Id: mount_bind.c,v 1.21 2006/03/11 06:02:48 raven Exp $"
+#ident "$Id: mount_bind.c,v 1.22 2006/03/29 10:32:36 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  mount_bind.c      - module to mount a local filesystem if possible;
@@ -57,7 +57,7 @@ int mount_init(void **context)
 	if (lstat(tmp1, &st1) == -1)
 		goto out;
 
-	err = spawnl(LOG_DEBUG,
+	err = spawnl(log_debug,
 	    	     PATH_MOUNT, PATH_MOUNT, "-n", "--bind", tmp1, tmp2, NULL);
 
 	if (err == 0 &&
@@ -66,8 +66,8 @@ int mount_init(void **context)
 		bind_works = 1;
 	}
 
-	debug(MODPREFIX "bind_works = %d\n", bind_works);
-	spawnl(LOG_DEBUG,
+	debug(MODPREFIX "bind_works = %d", bind_works);
+	spawnl(log_debug,
 	       PATH_UMOUNT, PATH_UMOUNT, "-n", tmp2, NULL);
 
       out:
@@ -145,7 +145,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 		      "calling mount --bind " SLOPPY " -o %s %s %s",
 		      options, what, fullpath);
 
-		err = spawnll(LOG_NOTICE,
+		err = spawnll(log_debug,
 			     PATH_MOUNT, PATH_MOUNT, "--bind",
 			     SLOPPYOPT "-o", options,
 			     what, fullpath, NULL);

@@ -1,4 +1,4 @@
-#ident "$Id: spawn.c,v 1.23 2006/03/26 17:52:41 raven Exp $"
+#ident "$Id: spawn.c,v 1.24 2006/03/29 10:32:36 raven Exp $"
 /* ----------------------------------------------------------------------- *
  * 
  *  spawn.c - run programs synchronously with output redirected to syslog
@@ -258,7 +258,7 @@ void spawn_unlock(void *arg)
 	return;
 }
 
-static int do_spawn(int logpri, int use_lock, const char *prog, const char *const *argv)
+static int do_spawn(logger *log, int use_lock, const char *prog, const char *const *argv)
 {
 	pid_t f;
 	int status, pipefd[2];
@@ -315,7 +315,7 @@ static int do_spawn(int logpri, int use_lock, const char *prog, const char *cons
 				while (errp && (p = memchr(sp, '\n', errp))) {
 					*p++ = '\0';
 					if (sp[0])	/* Don't output empty lines */
-						syslog(logpri, ">> %s", sp);
+						log(">> %s", sp);
 					errp -= (p - sp);
 					sp = p;
 				}
@@ -326,7 +326,7 @@ static int do_spawn(int logpri, int use_lock, const char *prog, const char *cons
 				if (errp >= ERRBUFSIZ) {
 					/* Line too long, split */
 					errbuf[errp] = '\0';
-					syslog(logpri, ">> %s", errbuf);
+					log(">> %s", errbuf);
 					errp = 0;
 				}
 			}
@@ -337,7 +337,7 @@ static int do_spawn(int logpri, int use_lock, const char *prog, const char *cons
 		if (errp > 0) {
 			/* End of file without \n */
 			errbuf[errp] = '\0';
-			syslog(logpri, ">> %s", errbuf);
+			log(">> %s", errbuf);
 		}
 
 		if (waitpid(f, &status, 0) != f)
@@ -351,12 +351,12 @@ static int do_spawn(int logpri, int use_lock, const char *prog, const char *cons
 	pthread_cleanup_pop(1);
 }
 
-int spawnv(int logpri, const char *prog, const char *const *argv)
+int spawnv(logger *log, const char *prog, const char *const *argv)
 {
-	return do_spawn(logpri, 0, prog, argv);
+	return do_spawn(log, 0, prog, argv);
 }
 
-int spawnl(int logpri, const char *prog, ...)
+int spawnl(logger *log, const char *prog, ...)
 {
 	va_list arg;
 	int argc;
@@ -374,11 +374,11 @@ int spawnl(int logpri, const char *prog, ...)
 	while ((*p++ = va_arg(arg, char *)));
 	va_end(arg);
 
-	return do_spawn(logpri, 0, prog, (const char **) argv);
+	return do_spawn(log, 0, prog, (const char **) argv);
 }
 
 #ifdef ENABLE_MOUNT_LOCKING
-int spawnll(int logpri, const char *prog, ...)
+int spawnll(logger *log, const char *prog, ...)
 {
 	va_list arg;
 	int argc;
@@ -396,6 +396,6 @@ int spawnll(int logpri, const char *prog, ...)
 	while ((*p++ = va_arg(arg, char *)));
 	va_end(arg);
 
-	return do_spawn(logpri, 1, prog, (const char **) argv);
+	return do_spawn(log, 1, prog, (const char **) argv);
 }
 #endif

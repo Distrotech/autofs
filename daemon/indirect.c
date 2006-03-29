@@ -1,4 +1,4 @@
-#ident "$Id: indirect.c,v 1.22 2006/03/26 17:52:41 raven Exp $"
+#ident "$Id: indirect.c,v 1.23 2006/03/29 10:32:36 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  indirect.c - Linux automounter indirect mount handling
@@ -299,10 +299,10 @@ int umount_autofs_indirect(struct autofs_point *ap)
 
 force_umount:
 	if (rv != 0) {
-		warn("forcing umount of %s\n", ap->path);
+		warn("forcing umount of %s", ap->path);
 		rv = umount2(ap->path, MNT_FORCE);
 	} else {
-		msg("umounted %s\n", ap->path);
+		msg("umounted %s", ap->path);
 		if (ap->submount)
 			rm_unwanted(ap->path, 1, ap->dev);
 	}
@@ -407,7 +407,7 @@ done:
 	 * words) the umounts are done by the time we reach here
 	 */
 	if (count) {
-		debug("%d remaining in %s\n", count, ap->path);
+		debug("%d remaining in %s", count, ap->path);
 		ea->status = 1;
 		pthread_exit(NULL);
 	}
@@ -471,7 +471,7 @@ int handle_packet_expire_indirect(struct autofs_point *ap, autofs_packet_expire_
 	pthread_t thid;
 	int status;
 
-	debug("token %ld, name %s\n",
+	debug("token %ld, name %s",
 		  (unsigned long) pkt->wait_queue_token, pkt->name);
 
 	mt = malloc(sizeof(struct pending_args));
@@ -525,9 +525,11 @@ static void *do_mount_indirect(void *arg)
 		pthread_exit(NULL);
 	}
 
-	status = lstat(mt->name, &st);
-	if (status != -1 && (!S_ISDIR(st.st_mode) || st.st_dev != mt->dev)) {
-		error("indirect trigger not valid or already mounted %s", mt->name);
+	status = lstat(buf, &st);
+	debug("status %d S_ISDIR(st.st_mode) %d st.st_dev %ld mt->dev %ld",
+		status, S_ISDIR(st.st_mode), (long) st.st_dev, (long)  mt->dev);
+	if (status != -1 && !(S_ISDIR(st.st_mode) && st.st_dev == mt->dev)) {
+		error("indirect trigger not valid or already mounted %s", buf);
 		pthread_exit(NULL);
 	}
 
@@ -658,7 +660,7 @@ int handle_packet_missing_indirect(struct autofs_point *ap, autofs_packet_missin
 	struct pending_args *mt;
 	int status;
 
-	debug("token %ld, name %s, request pid %u\n",
+	debug("token %ld, name %s, request pid %u",
 		(unsigned long) pkt->wait_queue_token, pkt->name, pkt->pid);
 
 	/* Ignore packet if we're trying to shut down */
@@ -681,6 +683,7 @@ int handle_packet_missing_indirect(struct autofs_point *ap, autofs_packet_missin
 	strncpy(mt->name, pkt->name, pkt->len);
 	mt->name[pkt->len] = '\0';
 	mt->len = pkt->len;
+	mt->dev = pkt->dev;
 	mt->uid = pkt->uid;
 	mt->gid = pkt->gid;
 	mt->wait_queue_token = pkt->wait_queue_token;

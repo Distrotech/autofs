@@ -1,23 +1,24 @@
 #
-# $Id: Makefile,v 1.9 2006/03/21 04:28:53 raven Exp $
+# $Id: Makefile,v 1.10 2006/03/29 10:32:37 raven Exp $
 #
 -include ../Makefile.conf
 include ../Makefile.rules
 
-ifeq ($(LDAP), 1)
-  SRCS = autofs-ldap-auto-master.c
-  OBJS = autofs-ldap-auto-master.o
-  BINS = autofs-ldap-auto-master
-endif
+#ifeq ($(LDAP), 1)
+#  SRCS = autofs-ldap-auto-master.c
+#  OBJS = autofs-ldap-auto-master.o
+#  BINS = autofs-ldap-auto-master
+#endif
 
-CFLAGS += -I../include
-LIBS = -lldap -llber
+#CFLAGS += -I../include
+#LIBS = -lldap -llber
 
-all: $(BINS) rc.autofs
+#all: $(BINS) rc.autofs
+all: rc.autofs autofs.conf.default
 
-autofs-ldap-auto-master: $(OBJS)
-	$(CC) $(LDFLAGS) -o autofs-ldap-auto-master $(OBJS) $(LIBS)
-	$(STRIP) autofs-ldap-auto-master
+#autofs-ldap-auto-master: $(OBJS)
+#	$(CC) $(LDFLAGS) -o autofs-ldap-auto-master $(OBJS) $(LIBS)
+#	$(STRIP) autofs-ldap-auto-master
 
 rc.autofs: rc.autofs.in
 	sed -e "s|@@sbindir@@|$(sbindir)|g" \
@@ -25,8 +26,13 @@ rc.autofs: rc.autofs.in
 	    -e "s|@@autofsconfdir@@|$(autofsconfdir)|g" \
 	    -e "s|@@initdir@@|$(initdir)|g" < rc.autofs.in > rc.autofs
 
+autofs.conf.default: autofs.conf.default.in
+	sed -e "s|@@autofsmapdir@@|$(autofsmapdir)|g" \
+		< autofs.conf.default.in > autofs.conf.default
+
 install: all
 	install -d -m 755 $(INSTALLROOT)$(autofsconfdir)
+	-mv -f $(INSTALLROOT)$(autofsconfdir)/autofs $(INSTALLROOT)$(autofsconfdir)/autofs.conf.old
 	install -c autofs.conf.default -m 755 $(INSTALLROOT)$(autofsconfdir)/autofs
 	install -d -m 755 $(INSTALLROOT)$(autofsmapdir)
 	-mv -f $(INSTALLROOT)$(autofsmapdir)/auto.master $(INSTALLROOT)$(autofsmapdir)/auto.master.old
@@ -41,10 +47,11 @@ install: all
 	install -c rc.autofs   -m 755 $(INSTALLROOT)$(initdir)/autofs
 	install -d -m 755 $(INSTALLROOT)$(autofslibdir)
 	install -d -m 755 $(INSTALLROOT)/var/run/autofs
-ifeq ($(LDAP), 1)
-	install -c autofs-ldap-auto-master -m 755 $(INSTALLROOT)$(autofslibdir)
-endif
+#ifeq ($(LDAP), 1)
+#	install -c autofs-ldap-auto-master -m 755 $(INSTALLROOT)$(autofslibdir)
+#endif
 
 clean:
-	rm -f *.o *.s autofs-ldap-auto-master rc.autofs
+#	rm -f *.o *.s autofs-ldap-auto-master rc.autofs
+	rm -f *.o *.s rc.autofs autofs.conf.default
 

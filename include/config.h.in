@@ -1,4 +1,4 @@
-#ident "$Id: config.h.in,v 1.6 2006/03/21 04:28:52 raven Exp $"
+#ident "$Id: config.h.in,v 1.7 2006/03/29 10:32:36 raven Exp $"
 /* -*- c -*-
  *
  * config.h.in: Pattern file for autofs to be filled in by configure
@@ -32,3 +32,6 @@
 #undef ENABLE_MOUNT_LOCKING
 
 #undef WITH_DMALLOC
+
+#undef WITH_SASL
+

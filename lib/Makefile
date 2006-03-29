@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.18 2006/03/26 05:41:50 raven Exp $
+# $Id: Makefile,v 1.19 2006/03/29 10:32:36 raven Exp $
 #
 # Makefile for autofs utility library
 #
@@ -6,21 +6,19 @@
 -include ../Makefile.conf
 include ../Makefile.rules
 
-#RPCGEN = /usr/bin/rpcgen
-#RANLIB = /usr/bin/ranlib
-#YACC = /usr/bin/bison
-
 SRCS = cache.c cat_path.c rpc_subs.c mounts.c log.c nsswitch.c \
 	master_tok.l master_parse.y nss_tok.c nss_parse.tab.c \
-	args.c alarm.c macros.c master.c
+	args.c alarm.c macros.c master.c defaults.c
 RPCS = mount.h mount_clnt.c mount_xdr.c
 OBJS = cache.o mount_clnt.o mount_xdr.o cat_path.o rpc_subs.o \
 	mounts.o log.o nsswitch.o master_tok.o master_parse.tab.o \
-	nss_tok.o nss_parse.tab.o args.o alarm.o macros.o master.o
+	nss_tok.o nss_parse.tab.o args.o alarm.o macros.o master.o \
+	defaults.o
 
 LIB = autofs.a
 
 CFLAGS += -I../include -fPIC -D_GNU_SOURCE -DHAVE_TCP_WRAPPER -DNFS3_SUPPORTED
+CFLAGS += -DAUTOFS_MAP_DIR=\"$(autofsmapdir)\"
 
 .PHONY: all install clean
 

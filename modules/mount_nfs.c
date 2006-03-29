@@ -1,4 +1,4 @@
-#ident "$Id: mount_nfs.c,v 1.34 2006/03/21 04:28:53 raven Exp $"
+#ident "$Id: mount_nfs.c,v 1.35 2006/03/29 10:32:36 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  * mount_nfs.c - Module for Linux automountd to mount an NFS filesystem,
@@ -454,7 +454,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 
 #if 0
 			debug(MODPREFIX "*comma=%x %c  comma=%p %s cp=%p %s "
-			      "nfsoptions=%p nfsp=%p end=%p used=%d len=%d\n",
+			      "nfsoptions=%p nfsp=%p end=%p used=%d len=%d",
 			      *comma, *comma, comma, comma, cp, cp,
 			      nfsoptions, nfsp, nfsoptions + len,
 			      nfsp - nfsoptions, len);
@@ -553,14 +553,14 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 			debug(MODPREFIX "calling mount -t nfs " SLOPPY 
 			      "-o %s %s %s", nfsoptions, whatstr, fullpath);
 
-			err = spawnll(LOG_NOTICE,
+			err = spawnll(log_debug,
 				     PATH_MOUNT, PATH_MOUNT, "-t",
 				     "nfs", SLOPPYOPT "-o", nfsoptions,
 				     whatstr, fullpath, NULL);
 		} else {
 			debug(MODPREFIX "calling mount -t nfs %s %s",
 			      whatstr, fullpath);
-			err = spawnll(LOG_NOTICE,
+			err = spawnll(log_debug,
 				     PATH_MOUNT, PATH_MOUNT, "-t",
 				     "nfs", whatstr, fullpath, NULL);
 		}

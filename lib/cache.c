@@ -1,4 +1,4 @@
-#ident "$Id: cache.c,v 1.28 2006/03/23 20:00:13 raven Exp $"
+#ident "$Id: cache.c,v 1.29 2006/03/29 10:32:36 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  cache.c - mount entry cache management routines
@@ -486,7 +486,7 @@ int cache_update(struct mapent_cache *mc, const char *key, const char *mapent, t
 	int ret = CHE_OK;
 
 	me = cache_lookup(mc, key);
-	if (!me) {
+	if (!me || *me->key == '*') {
 		ret = cache_add(mc, key, mapent, age);
 		if (!ret) {
 			debug("failed for %s", key);

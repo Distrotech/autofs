@@ -1,7 +1,7 @@
 %{
 /* ----------------------------------------------------------------------- *
  *   
- *  "$Id: master_parse.y,v 1.5 2006/03/26 17:52:41 raven Exp $"
+ *  "$Id: master_parse.y,v 1.6 2006/03/29 10:32:36 raven Exp $"
  *
  *  master_parser.y - master map buffer parser.
  *
@@ -518,8 +518,6 @@ int master_parse_entry(const char *buffer, unsigned int default_timeout, unsigne
 			master_free_mapent(new);
 		return 0;
 	}
-
-	debug("add mapent");
 
 	if (new)
 		master_add_mapent(master, entry);

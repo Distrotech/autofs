@@ -1,4 +1,4 @@
-#ident "$Id: parse_sun.c,v 1.47 2006/03/21 04:28:53 raven Exp $"
+#ident "$Id: parse_sun.c,v 1.48 2006/03/29 10:32:37 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  parse_sun.c - module for Linux automountd to parse a Sun-format
@@ -663,7 +663,7 @@ static int sun_mount(struct autofs_point *ap, const char *root,
 	}
 
 	debug(MODPREFIX
-	    "mounting root %s, mountpoint %s, what %s, fstype %s, options %s\n",
+	    "mounting root %s, mountpoint %s, what %s, fstype %s, options %s",
 	    root, mountpoint, what, fstype, options);
 
 	if (!strcmp(fstype, "nfs")) {

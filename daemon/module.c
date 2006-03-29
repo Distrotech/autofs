@@ -1,4 +1,4 @@
-#ident "$Id: module.c,v 1.11 2006/03/21 04:28:52 raven Exp $"
+#ident "$Id: module.c,v 1.12 2006/03/29 10:32:36 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  module.c - common module-management functions
@@ -23,7 +23,7 @@ int load_autofs4_module(void)
 {
 	int ret;
 
-	ret = spawnl(LOG_DEBUG, PATH_MODPROBE, PATH_MODPROBE,
+	ret = spawnl(log_debug, PATH_MODPROBE, PATH_MODPROBE,
 				"-q", FS_MODULE_NAME, NULL);
 	if (ret)
 		return 0;

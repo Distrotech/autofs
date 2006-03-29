@@ -1,4 +1,4 @@
-#ident "$Id: state.c,v 1.5 2006/03/26 04:56:22 raven Exp $"
+#ident "$Id: state.c,v 1.6 2006/03/29 10:32:36 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  state.c - state machine functions.
@@ -338,7 +338,7 @@ static unsigned int st_prepare_shutdown(struct autofs_point *ap)
 	case EXP_PARTIAL:
 		/* It didn't work: return to ready */
 		alarm_add(ap, ap->exp_runfreq);
-		ap->state = ST_READY;
+		nextstate(ap->state_pipe[1], ST_READY);
 		return 0;
 
 	case EXP_STARTED:
@@ -373,7 +373,7 @@ static unsigned int st_force_shutdown(struct autofs_point *ap)
 	case EXP_PARTIAL:
 		/* It didn't work: return to ready */
 		alarm_add(ap, ap->exp_runfreq);
-		ap->state = ST_READY;
+		nextstate(ap->state_pipe[1], ST_READY);
 		return 0;
 
 	case EXP_STARTED:
@@ -392,7 +392,7 @@ static unsigned int st_prune(struct autofs_point *ap)
 	switch (expire_proc(ap, 1)) {
 	case EXP_ERROR:
 	case EXP_PARTIAL:
-		ap->state = ST_READY;
+		nextstate(ap->state_pipe[1], ST_READY);
 		return 0;
 
 	case EXP_STARTED:
@@ -415,7 +415,7 @@ static unsigned int st_expire(struct autofs_point *ap)
 	case EXP_ERROR:
 	case EXP_PARTIAL:
 		alarm_add(ap, ap->exp_runfreq);
-		ap->state = ST_READY;
+		nextstate(ap->state_pipe[1], ST_READY);
 		return 0;
 
 	case EXP_STARTED:
@@ -526,10 +526,10 @@ enum states st_next(struct autofs_point *ap, enum states state)
 
 	case ST_SHUTDOWN_PENDING:
 	case ST_SHUTDOWN_FORCE:
-		if (state != ST_READY) {
+/*		if (state != ST_READY) {
 			st_queue_head(ap, state);
 			return ap->state;
-		}
+		} */
 		break;
 
 	case ST_SHUTDOWN:

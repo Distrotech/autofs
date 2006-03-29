@@ -1,4 +1,4 @@
-#ident "$Id: log.c,v 1.2 2006/03/11 06:02:48 raven Exp $"
+#ident "$Id: log.c,v 1.3 2006/03/29 10:32:36 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  log.c - applcation logging routines.
@@ -12,6 +12,10 @@
  *   the Free Software Foundation, Inc., 675 Mass Ave, Cambridge MA 02139,
  *   USA; either version 2 of the License, or (at your option) any later
  *   version; incorporated herein by reference.
+ *
+ *  This module has been adapted from patches submitted by:
+ *	Denis Vlasenko <vda@port.imtp.ilyichevsk.odessa.ua>
+ *	Thanks Denis.
  *
  * ----------------------------------------------------------------------- */
 
@@ -130,8 +134,11 @@ static void to_stderr(const char *msg, ...)
 	va_end(ap);
 }
 
-void log_to_syslog()
+void log_to_syslog(void)
 {
+	char buf[MAX_ERR_BUF];
+	int nullfd;
+
 	if (!syslog_open) {
 		syslog_open = 1;
 		openlog("automount", LOG_PID, LOG_DAEMON);
@@ -154,9 +161,28 @@ void log_to_syslog()
 
 	log_error = syslog_err;
 	log_crit = syslog_crit;
+
+	/* Redirect all our file descriptors to /dev/null */
+	nullfd = open("/dev/null", O_RDWR);
+	if (nullfd < 0) {
+		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+		crit("cannot open /dev/null: %s", estr);
+		exit(1);
+	}
+
+	if (dup2(nullfd, STDIN_FILENO) < 0 ||
+	    dup2(nullfd, STDOUT_FILENO) < 0 ||
+	    dup2(nullfd, STDERR_FILENO) < 0) {
+		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+		crit("redirecting file descriptors failed: %s", estr);
+		exit(1);
+	}
+
+	if (nullfd > 2)
+		close(nullfd);
 }
 
-void log_to_stderr()
+void log_to_stderr(void)
 {
 	if (syslog_open) {
 		syslog_open = 0;

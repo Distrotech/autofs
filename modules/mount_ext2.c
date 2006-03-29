@@ -1,4 +1,4 @@
-#ident "$Id: mount_ext2.c,v 1.24 2006/03/11 06:02:48 raven Exp $"
+#ident "$Id: mount_ext2.c,v 1.25 2006/03/29 10:32:36 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  mount_ext2.c - module for Linux automountd to mount ext2 filesystems
@@ -107,10 +107,10 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 #endif
 	if (ro) {
 		debug(MODPREFIX "calling %s -n %s", fsck_prog, what);
-		err = spawnl(LOG_DEBUG, fsck_prog, fsck_prog, "-n", what, NULL);
+		err = spawnl(log_debug, fsck_prog, fsck_prog, "-n", what, NULL);
 	} else {
 		debug(MODPREFIX "calling %s -p %s", fsck_prog, what);
-		err = spawnl(LOG_DEBUG, fsck_prog, fsck_prog, "-p", what, NULL);
+		err = spawnl(log_debug, fsck_prog, fsck_prog, "-p", what, NULL);
 	}
 
 	if (err & ~6) {
@@ -122,13 +122,13 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 	if (options) {
 		debug(MODPREFIX "calling mount -t %s " SLOPPY "-o %s %s %s",
 		      fstype, options, what, fullpath);
-		err = spawnll(LOG_NOTICE,
+		err = spawnll(log_debug,
 		             PATH_MOUNT, PATH_MOUNT, "-t", fstype,
 			     SLOPPYOPT "-o", options, what, fullpath, NULL);
 	} else {
 		debug(MODPREFIX "calling mount -t %s %s %s",
 		      fstype, what, fullpath);
-		err = spawnll(LOG_NOTICE,
+		err = spawnll(log_debug,
 			     PATH_MOUNT, PATH_MOUNT, "-t", fstype,
 			     what, fullpath, NULL);
 	}

@@ -1,4 +1,4 @@
-#ident "$Id: mount_generic.c,v 1.21 2006/03/11 06:02:48 raven Exp $"
+#ident "$Id: mount_generic.c,v 1.22 2006/03/29 10:32:36 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  mount_generic.c - module for Linux automountd to mount filesystems
@@ -91,13 +91,13 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 		debug(MODPREFIX "calling mount -t %s " SLOPPY "-o %s %s %s",
 		      fstype, options, what, fullpath);
 
-		err = spawnll(LOG_NOTICE,
+		err = spawnll(log_debug,
 			     PATH_MOUNT, PATH_MOUNT, "-t", fstype,
 			     SLOPPYOPT "-o", options, what, fullpath, NULL);
 	} else {
 		debug(MODPREFIX "calling mount -t %s %s %s",
 		      fstype, what, fullpath);
-		err = spawnll(LOG_NOTICE,
+		err = spawnll(log_debug,
 			     PATH_MOUNT, PATH_MOUNT, "-t", fstype,
 			     what, fullpath, NULL);
 	}

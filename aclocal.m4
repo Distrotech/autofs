@@ -1,5 +1,5 @@
 dnl
-dnl $Id: aclocal.m4,v 1.4 2006/03/21 04:28:52 raven Exp $
+dnl $Id: aclocal.m4,v 1.5 2006/03/29 10:32:36 raven Exp $
 dnl
 dnl --------------------------------------------------------------------------
 dnl AF_PATH_INCLUDE:
@@ -135,4 +135,22 @@ else
 fi], [AC_MSG_RESULT(no)])
 ])
 
-AU_DEFUN([fp_WITH_DMALLOC], [AM_WITH_DMALLOC])
+dnl --------------------------------------------------------------------------
+dnl AF_CHECK_LIBXML
+dnl
+dnl Check for lib xml
+dnl --------------------------------------------------------------------------
+AC_DEFUN([AF_CHECK_LIBXML],
+[AC_PATH_PROGS(XML_CONFIG, xml2-config, no)
+AC_MSG_CHECKING(for libxml2)
+if test "$XML_CONFIG" = "no"
+then
+  AC_MSG_RESULT(no)
+  HAVE_LIBXML=0
+else
+  AC_MSG_RESULT(yes)
+  HAVE_LIBXML=1
+  XML_LIBS=`$XML_CONFIG --libs`
+  XML_FLAGS=`$XML_CONFIG --cflags`
+fi])
+

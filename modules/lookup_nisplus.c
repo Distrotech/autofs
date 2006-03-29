@@ -1,4 +1,4 @@
-#ident "$Id: lookup_nisplus.c,v 1.14 2006/03/26 04:56:23 raven Exp $"
+#ident "$Id: lookup_nisplus.c,v 1.15 2006/03/29 10:32:36 raven Exp $"
 /*
  * lookup_nisplus.c
  *
@@ -177,6 +177,12 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 		 * inclusion is only valid in file maps.
 		 */
 		if (*key == '+')
+			continue;
+
+		if (ap->type == LKP_INDIRECT && *key == '/')
+			continue;
+
+		if (ap->type == LKP_DIRECT && *key != '/')
 			continue;
 
 		mapent = ENTRY_VAL(this, 1);

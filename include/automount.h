@@ -1,4 +1,4 @@
-#ident "$Id: automount.h,v 1.42 2006/03/26 04:56:22 raven Exp $"
+#ident "$Id: automount.h,v 1.43 2006/03/29 10:32:36 raven Exp $"
 /*
  * automount.h
  *
@@ -23,8 +23,10 @@
 
 #include <linux/auto_fs4.h>
 
+#include "defaults.h"
 #include "state.h"
 #include "master.h"
+#include "log.h"
 
 #if WITH_DMALLOC
 #include <dmalloc.h>
@@ -170,16 +172,14 @@ int sigchld_block(void);
 int sigchld_unblock(void);
 int aquire_lock(void);
 void release_lock(void);
-int spawnl(int logpri, const char *prog, ...);
+int spawnl(logger *log, const char *prog, ...);
 #ifdef ENABLE_MOUNT_LOCKING
-int spawnll(int logpri, const char *prog, ...);
+int spawnll(logger *log, const char *prog, ...);
 #else
 #define spawnll	spawnl
 #endif
-int spawnv(int ogpri, const char *prog, const char *const *argv);
+int spawnv(logger *log, const char *prog, const char *const *argv);
 void reset_signals(void);
-void ignore_signals(void);
-void discard_pending(int sig);
 int do_mount(struct autofs_point *ap, const char *root, const char *name,
 	     int name_len, const char *what, const char *fstype,
 	     const char *options);
@@ -441,71 +441,6 @@ int count_mounts(struct autofs_point *ap, const char *path);
 int alarm_start_handler(void);
 int alarm_add(struct autofs_point *ap, time_t seconds);
 void alarm_delete(struct autofs_point *ap);
-
-/* Define logging functions */
-
-#define LOGOPT_DEBUG	0x0001
-#define LOGOPT_VERBOSE	0x0002
-
-extern void set_log_norm(void);
-extern void set_log_verbose(void);
-extern unsigned int is_log_verbose(void);
-extern void set_log_debug(void);
-extern unsigned int is_log_debug(void);
-
-extern void log_to_syslog(void);
- 
-extern void (*log_info)(const char* msg, ...);
-extern void (*log_notice)(const char* msg, ...);
-extern void (*log_warn)(const char* msg, ...);
-extern void (*log_error)(const char* msg, ...);
-extern void (*log_crit)(const char* msg, ...);
-extern void (*log_debug)(const char* msg, ...);
-
-#define msg(msg, args...)	\
-	do { log_info(msg, ##args); } while (0)
-
-#define debug(msg, args...)	\
-	do { log_debug("%s: " msg,  __FUNCTION__, ##args); } while (0)
-
-#define info(msg, args...)	\
-	do { log_info("%s: " msg,  __FUNCTION__, ##args); } while (0)
-
-#define notice(msg, args...)	\
-	do { log_notice("%s: " msg,  __FUNCTION__, ##args); } while (0)
-
-#define warn(msg, args...)	\
-	do { log_warn("%s: " msg,  __FUNCTION__, ##args); } while (0)
-
-#define error(msg, args...)	\
-	do { log_error("%s: " msg,  __FUNCTION__, ##args); } while (0)
-
-#define crit(msg, args...)	\
-	do { log_crit("%s: " msg,  __FUNCTION__, ##args); } while (0)
-
-#define fatal(status)						    \
-	do {							    \
-		if (status == EDEADLK) {			    \
-			log_crit("%s: deadlock detected "	    \
-				 "at line %d in %s, dumping core.", \
-				 __FUNCTION__, __LINE__, __FILE__); \
-			dump_core();				    \
-		}						    \
-		log_crit("unexpected pthreads error: %d at %d "	    \
-			 "in %s", status, __LINE__, __FILE__);	    \
-		abort();					    \
-	} while(0)
-
-#ifndef NDEBUG
-#define assert(x)							\
-do {									\
-	if (!(x)) {							\
-		crit(__FILE__ ":%d: assertion failed: " #x, __LINE__);	\
-	}								\
-} while(0)
-#else
-#define assert(x)	do { } while(0)
-#endif
 
 #endif
 

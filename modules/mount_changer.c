@@ -1,4 +1,4 @@
-#ident "$Id: mount_changer.c,v 1.19 2006/03/11 06:02:48 raven Exp $"
+#ident "$Id: mount_changer.c,v 1.20 2006/03/29 10:32:36 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  mount_changer.c - module for Linux automountd to mount filesystems
@@ -81,7 +81,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 
 	debug(MODPREFIX "calling umount %s", what);
 
-	err = spawnll(LOG_DEBUG,
+	err = spawnll(log_debug,
 		     PATH_UMOUNT, PATH_UMOUNT, what, NULL);
 	if (err) {
 		error(MODPREFIX "umount of %s failed (all may be unmounted)",
@@ -112,14 +112,14 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 		debug(MODPREFIX "calling mount -t %s " SLOPPY "-o %s %s %s",
 		    fstype, options, what, fullpath);
 
-		err = spawnll(LOG_DEBUG,
+		err = spawnll(log_debug,
 			     PATH_MOUNT, PATH_MOUNT, "-t", fstype,
 			     SLOPPYOPT "-o", options, what, fullpath, NULL);
 	} else {
 		debug(MODPREFIX "calling mount -t %s %s %s",
 			  fstype, what, fullpath);
 
-		err = spawnll(LOG_DEBUG, PATH_MOUNT, PATH_MOUNT,
+		err = spawnll(log_debug, PATH_MOUNT, PATH_MOUNT,
 			     "-t", fstype, what, fullpath, NULL);
 	}
 
@@ -163,7 +163,7 @@ int swapCD(const char *device, const char *slotName)
 	total_slots_available = ioctl(fd, CDROM_CHANGER_NSLOTS);
 	if (total_slots_available <= 1) {
 		error(MODPREFIX
-		      "Device %s is not an ATAPI compliant CD changer.\n",
+		      "Device %s is not an ATAPI compliant CD changer.",
 		      device);
 		return 1;
 	}
@@ -178,7 +178,7 @@ int swapCD(const char *device, const char *slotName)
 	/* close device */
 	status = close(fd);
 	if (status != 0) {
-		error(MODPREFIX "close failed for `%s': %s\n",
+		error(MODPREFIX "close failed for `%s': %s",
 		      device, strerror(errno));
 		return 1;
 	}

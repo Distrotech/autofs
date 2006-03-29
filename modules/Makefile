@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.8 2006/03/21 04:28:53 raven Exp $
+# $Id: Makefile,v 1.9 2006/03/29 10:32:36 raven Exp $
 #
 # Makefile for autofs
 #
@@ -41,6 +41,11 @@ endif
 ifeq ($(LDAP), 1)
   SRCS += lookup_ldap.c
   MODS += lookup_ldap.so
+  ifeq ($(SASL), 1)
+    SASL_OBJ = cyrus-sasl.o
+    LDAP_FLAGS += $(SASL_FLAGS) $(XML_FLAGS)
+    LIBLDAP += $(LIBSASL) $(XML_LIBS)
+  endif
 endif
 
 CFLAGS += -I../include -I../lib -fPIC -D_GNU_SOURCE
@@ -85,8 +90,11 @@ lookup_hesiod.so: lookup_hesiod.c
 		lookup_hesiod.c $(AUTOFS_LIB) $(LIBHESIOD) $(LIBRESOLV)
 	$(STRIP) lookup_hesiod.so
 
-lookup_ldap.so: lookup_ldap.c
+cyrus-sasl.o: cyrus-sasl.c
+	$(CC) $(CFLAGS) $(LDAP_FLAGS) -c $<
+
+lookup_ldap.so: lookup_ldap.c $(SASL_OBJ)
 	$(CC) $(SOLDFLAGS) $(CFLAGS) $(LDAP_FLAGS) -o lookup_ldap.so \
-		lookup_ldap.c $(AUTOFS_LIB) $(LIBLDAP)
+		lookup_ldap.c $(SASL_OBJ) $(AUTOFS_LIB) $(LIBLDAP)
 	$(STRIP) lookup_ldap.so
 

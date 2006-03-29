@@ -59,6 +59,11 @@
 - fix read multiple sources for mount point.
 - fix hanging state machine (again).
 - add delay at startup till mount complete.
+- initial merge of Jeffs SASL auth code.
+  - entirely untest as yet.
+- re-work LDAP to use configurable defaults.
+- updated configure to check for libxml2 - required by SASL code.
+- updated configure to provide optional inclusion of SASL auth.
 
 11/4/2005 autofs-4.1.4
 ----------------------

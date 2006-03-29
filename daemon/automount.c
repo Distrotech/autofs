@@ -1,4 +1,4 @@
-#ident "$Id: automount.c,v 1.69 2006/03/26 17:52:41 raven Exp $"
+#ident "$Id: automount.c,v 1.70 2006/03/29 10:32:36 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  automount.c - Linux automounter daemon
@@ -224,9 +224,9 @@ static int umount_ent(struct autofs_point *ap, const char *path, const char *typ
 	 * and EBADSLT relates to CD changer not responding.
 	 */
 	if (!status && (S_ISDIR(st.st_mode) && st.st_dev != ap->dev)) {
-		rv = spawnll(LOG_DEBUG, PATH_UMOUNT, PATH_UMOUNT, path, NULL);
+		rv = spawnll(log_debug, PATH_UMOUNT, PATH_UMOUNT, path, NULL);
 	} else if (is_smbfs && (sav_errno == EIO || sav_errno == EBADSLT)) {
-		rv = spawnll(LOG_DEBUG, PATH_UMOUNT, PATH_UMOUNT, path, NULL);
+		rv = spawnll(log_debug, PATH_UMOUNT, PATH_UMOUNT, path, NULL);
 	}
 
 	/* We are doing a forced shutcwdown down so unlink busy mounts */
@@ -243,7 +243,7 @@ static int umount_ent(struct autofs_point *ap, const char *path, const char *typ
 		}
 
 		msg("forcing umount of %s", path);
-		rv = spawnll(LOG_DEBUG, PATH_UMOUNT, PATH_UMOUNT, "-l", path, NULL);
+		rv = spawnll(log_debug, PATH_UMOUNT, PATH_UMOUNT, "-l", path, NULL);
 	}
 
 	return rv;
@@ -390,7 +390,7 @@ int umount_multi(struct autofs_point *ap, const char *path, int incl)
 	struct mnt_list *mnts = NULL;
 	struct mnt_list *mptr;
 
-	debug("path %s incl %d\n", path, incl);
+	debug("path %s incl %d", path, incl);
 
 	if (umount_offsets(ap, path)) {
 		error("could not umount some offsets under %s", path);
@@ -408,7 +408,7 @@ int umount_multi(struct autofs_point *ap, const char *path, int incl)
 
 	left = 0;
 	for (mptr = mnts; mptr != NULL; mptr = mptr->next) {
-		debug("unmounting dir = %s\n", mptr->path);
+		debug("unmounting dir = %s", mptr->path);
 		if (umount_ent(ap, mptr->path, mptr->fs_type)) {
 			left++;
 		}
@@ -482,7 +482,7 @@ int send_fail(int ioctlfd, unsigned int wait_queue_token)
 	if (wait_queue_token == 0)
 		return 0;
 
-	debug("token = %d\n", wait_queue_token);
+	debug("token = %d", wait_queue_token);
 
 	if (ioctl(ioctlfd, AUTOFS_IOC_FAIL, wait_queue_token) < 0) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
@@ -614,7 +614,7 @@ static int handle_packet(struct autofs_point *ap)
 	if (get_pkt(ap, &pkt))
 		return -1;
 
-	debug("type = %d\n", pkt.hdr.type);
+	debug("type = %d", pkt.hdr.type);
 
 	switch (pkt.hdr.type) {
 	case autofs_ptype_missing_indirect:
@@ -629,7 +629,7 @@ static int handle_packet(struct autofs_point *ap)
 	case autofs_ptype_expire_direct:
 		return handle_packet_expire_direct(ap, &pkt.v5_packet);
 	}
-	error("unknown packet type %d\n", pkt.hdr.type);
+	error("unknown packet type %d", pkt.hdr.type);
 	return -1;
 }
 
@@ -638,57 +638,41 @@ static void become_daemon(void)
 	FILE *pidfp;
 	char buf[MAX_ERR_BUF];
 	pid_t pid;
-	int nullfd;
+	int daemonize = 1;
 
 	/* Don't BUSY any directories unnecessarily */
 	chdir("/");
 
 	/* Detach from foreground process */
-	pid = fork();
-	if (pid > 0) {
-		struct stat st;
-		close(start_lockfd);
-		while (stat(start_lockf, &st) != -1)
-			sleep(2);
-		exit(0);
-	} else if (pid < 0) {
-		fprintf(stderr, "%s: Could not detach process\n",
-			program);
-		exit(1);
+	if (daemonize) {
+		pid = fork();
+		if (pid > 0) {
+			struct stat st;
+			close(start_lockfd);
+			while (stat(start_lockf, &st) != -1)
+				sleep(2);
+			exit(0);
+		} else if (pid < 0) {
+			fprintf(stderr, "%s: Could not detach process\n",
+				program);
+			exit(1);
+		}
+		/*
+		 * Make our own process group for "magic" reason: processes that share
+		 * our pgrp see the raw filesystem behind the magic.
+		 */
+		if (setsid() == -1) {
+			char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+			fprintf(stderr, "setsid: %s", estr);
+			exit(1);
+		}
 	}
 
 	/* Setup logging */
-	log_to_syslog();
-
-	/*
-	 * Make our own process group for "magic" reason: processes that share
-	 * our pgrp see the raw filesystem behind the magic.
-	 *
-	 * IMK: we now use setsid instead of setpgrp so that we also disassociate
-	 * ouselves from the controling tty. This ensures we don't get unexpected
-	 * signals. This call also sets us as the process group leader.
-	 */
-	if ((setsid() == -1)) {
-		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		crit("setsid: %s", estr);
-		exit(1);
-	}
-
-	/* Redirect all our file descriptors to /dev/null */
-	if ((nullfd = open("/dev/null", O_RDWR)) < 0) {
-		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		crit("cannot open /dev/null: %s", estr);
-		exit(1);
-	}
-
-	if (dup2(nullfd, STDIN_FILENO) < 0 ||
-	    dup2(nullfd, STDOUT_FILENO) < 0 ||
-	    dup2(nullfd, STDERR_FILENO) < 0) {
-		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		crit("redirecting file descriptors failed: %s", estr);
-		exit(1);
-	}
-	close(nullfd);
+	if (daemonize)
+		log_to_syslog();
+	else
+		log_to_stderr();
 
 	/* Write pid file if requested */
 	if (pid_file) {
@@ -906,6 +890,7 @@ static void *statemachine(void *arg)
 	sigfillset(&sigset);
 	sigdelset(&sigset, SIGCHLD);
 	sigdelset(&sigset, SIGCONT);
+	sigdelset(&sigset, SIGPROF);
 
 	while (1) {
 		sigwait(&sigset, &sig);
@@ -1121,7 +1106,7 @@ void *handle_mounts(void *arg)
 			warn("can't shutdown: filesystem %s still busy",
 					ap->path);
 			alarm_add(ap, ap->exp_runfreq);
-			ap->state = ST_READY;
+			nextstate(ap->state_pipe[1], ST_READY);
 
 			status = pthread_mutex_unlock(&ap->state_mutex);
 			if (status)
@@ -1170,8 +1155,8 @@ int main(int argc, char *argv[])
 	};
 
 	program = argv[0];
-	timeout = DEFAULT_TIMEOUT;
-	ghost = DEFAULT_GHOST_MODE;
+	timeout = get_default_timeout();
+	ghost = get_default_browse_mode();
 
 	opterr = 0;
 	while ((opt = getopt_long(argc, argv, "+hp:t:vdV", long_options, NULL)) != EOF) {
@@ -1236,15 +1221,15 @@ int main(int argc, char *argv[])
 	become_daemon();
 
 	if (argc == 0) {
-		char *name;
+		const char *name;
 
-		name = getenv("DEFAULT_MASTER_MAP");
+		name = get_default_master_map();
 		if (!name)
 			master = master_new(NULL);
 		else
 			master = master_new(name);
 	} else
-		master = master_new(argv[1]);
+		master = master_new(argv[0]);
 
 	if (!master) {
 		crit("%s: can't create master map %s",
@@ -1253,14 +1238,14 @@ int main(int argc, char *argv[])
 	}
 
 	if (pthread_attr_init(&thread_attr)) {
-		crit("%s: failed to init thread attribute struct!\n",
+		crit("%s: failed to init thread attribute struct!",
 			program);
 		exit(1);
 	}
 
 	if (pthread_attr_setdetachstate(
 			&thread_attr, PTHREAD_CREATE_DETACHED)) {
-		crit("%s: failed to set detached thread attribute!\n",
+		crit("%s: failed to set detached thread attribute!",
 			program);
 		exit(1);
 	}
@@ -1268,7 +1253,7 @@ int main(int argc, char *argv[])
 #ifdef _POSIX_THREAD_ATTR_STACKSIZE
 	if (pthread_attr_setstacksize(
 			&thread_attr, PTHREAD_STACK_MIN*32)) {
-		crit("%s: failed to set stack size thread attribute!\n",
+		crit("%s: failed to set stack size thread attribute!",
 			program);
 		exit(1);
 	}
@@ -1292,6 +1277,7 @@ int main(int argc, char *argv[])
 	}
 
 	sigfillset(&allsigs);
+	sigdelset(&allsigs, SIGPROF);
 	pthread_sigmask(SIG_BLOCK, &allsigs, NULL);
 
 	if (!sigchld_start_handler()) {

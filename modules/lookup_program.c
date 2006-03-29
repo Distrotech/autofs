@@ -1,4 +1,4 @@
-#ident "$Id: lookup_program.c,v 1.16 2006/03/21 04:28:53 raven Exp $"
+#ident "$Id: lookup_program.c,v 1.17 2006/03/29 10:32:36 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup_program.c - module for Linux automount to access an
@@ -236,7 +236,7 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 						       ++alloci));
 					if (!tmp) {
 						alloci--;
-						error(MODPREFIX "realloc: %s\n",
+						error(MODPREFIX "realloc: %s",
 						      strerror(errno));
 						break;
 					}

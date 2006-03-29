@@ -1,4 +1,4 @@
-#ident "$Id: lookup.c,v 1.11 2006/03/26 04:56:22 raven Exp $"
+#ident "$Id: lookup.c,v 1.12 2006/03/29 10:32:36 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup.c - API layer to implement nsswitch semantics for map reading
@@ -108,6 +108,31 @@ int lookup_nss_read_master(struct master *master, time_t age)
 
 		result = do_read_master(master, source, age);
 		return !result;
+	} else {
+		char *name = master->name;
+		char *tmp;
+
+		/* Old style name specification will remain I think. */
+		tmp = strchr(name, ':');
+		if (tmp) {
+			char source[10];
+
+			memset(source, 0, 10);
+			/* TODO: ldaps is not yet handled by ldap module */
+			if (!strncmp(name, "file", 4) ||
+			    !strncmp(name, "yp", 2) ||
+			    !strncmp(name, "nis", 3) ||
+			    !strncmp(name, "nisplus", 7) ||
+			    !strncmp(name, "ldap", 4)) {
+				strncpy(source, name, tmp - name);
+
+				master->name = tmp + 1;
+				result = do_read_master(master, source, age);
+				master->name = name;
+
+				return !result;
+			}
+		}
 	}
 
 	INIT_LIST_HEAD(&nsslist);
@@ -398,6 +423,7 @@ int lookup_ghost(struct autofs_point *ap)
 
 	me = cache_enumerate(mc, NULL);
 	while (me) {
+		debug("key %s", me->key);
 		if (*me->key == '*')
 			goto next;
 

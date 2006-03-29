@@ -1,4 +1,4 @@
-#ident "$Id: direct.c,v 1.25 2006/03/26 17:52:41 raven Exp $"
+#ident "$Id: direct.c,v 1.26 2006/03/29 10:32:36 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  direct.c - Linux automounter direct mount handling
@@ -781,7 +781,7 @@ int handle_packet_expire_direct(struct autofs_point *ap, autofs_packet_expire_di
 	mt->type = NFY_EXPIRE;
 	mt->wait_queue_token = pkt->wait_queue_token;
 
-	debug("token %ld, name %s\n",
+	debug("token %ld, name %s",
 		  (unsigned long) pkt->wait_queue_token, mt->name);
 
 	status = pthread_create(&thid, &thread_attr, do_expire_direct, mt);
@@ -1002,7 +1002,7 @@ int handle_packet_missing_direct(struct autofs_point *ap, autofs_packet_missing_
 	}
 	me->ioctlfd = ioctlfd;
 
-	debug("token %ld, name %s, request pid %u\n",
+	debug("token %ld, name %s, request pid %u",
 		  (unsigned long) pkt->wait_queue_token, me->key, pkt->pid);
 
 	/* Ignore packet if we're trying to shut down */

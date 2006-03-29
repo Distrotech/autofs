@@ -1,4 +1,4 @@
-#ident "$Id: master.c,v 1.6 2006/03/26 17:52:41 raven Exp $"
+#ident "$Id: master.c,v 1.7 2006/03/29 10:32:36 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  master.c - master map utility routines.
@@ -28,11 +28,6 @@
 #include <ctype.h>
 #include "automount.h"
 
-char default_master_map[] = DEFAULT_MASTER_MAP;
-
-static unsigned int default_timeout = DEFAULT_TIMEOUT;
-static unsigned int default_ghost_mode = DEFAULT_GHOST_MODE;
-
 /* The root of the map entry tree */
 struct master *master;
 
@@ -47,32 +42,6 @@ __master_find_map_source(struct master_mapent *,
 
 pthread_mutex_t master_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t instance_mutex = PTHREAD_MUTEX_INITIALIZER;
-
-void master_set_default_timeout(void)
-{
-	char *timeout;
-
-	timeout = getenv("DEFAULT_TIMEOUT");
-	if (timeout) {
-		if (isdigit(*timeout))
-			default_timeout = atoi(timeout);
-	}
-}
-
-void master_set_default_ghost_mode(void)
-{
-	char *ghost;
-
-	ghost = getenv("DEFAULT_BROWSE_MODE");
-	if (ghost) {
-		if (isdigit(*ghost)) {
-			if (!atoi(ghost))
-				default_ghost_mode = 0;
-		} else if (strcasecmp(ghost, "no")) {
-			default_ghost_mode = 0;
-		}
-	}
-}
 
 int master_add_autofs_point(struct master_mapent *entry,
 		time_t timeout, unsigned logopt, unsigned ghost, int submount) 
@@ -110,7 +79,7 @@ int master_add_autofs_point(struct master_mapent *entry,
 	if (ghost)
 		ap->ghost = ghost;
 	else
-		ap->ghost = default_ghost_mode;
+		ap->ghost = get_default_browse_mode();
 
 	if (ap->path[1] == '-')
 		ap->type = LKP_DIRECT;
@@ -607,19 +576,18 @@ struct master *master_new(const char *name)
 		return NULL;
 
 	if (!name)
-		tmp = strdup(default_master_map);
+		tmp = strdup(get_default_master_map());
 	else
 		tmp = strdup(name);
 
-	if (!tmp) {
-		free(tmp);
+	if (!tmp)
 		return NULL;
-	}
+
 	master->name = tmp;
 
-	master->default_ghost = default_ghost_mode;
-	master->default_logging = DEFAULT_LOGGING;
-	master->default_timeout = DEFAULT_TIMEOUT;
+	master->default_ghost = get_default_browse_mode();
+	master->default_logging = get_default_logging();
+	master->default_timeout = get_default_timeout();
 
 	INIT_LIST_HEAD(&master->mounts);
 

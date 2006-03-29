@@ -1,4 +1,4 @@
-#ident "$Id: master.h,v 1.2 2006/03/23 05:08:15 raven Exp $"
+#ident "$Id: master.h,v 1.3 2006/03/29 10:32:36 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  master.h - header file for master map parser utility routines.
@@ -20,12 +20,6 @@
 
 #ifndef MASTER_H
 #define MASTER_H
-
-#define DEFAULT_MASTER_MAP	"/etc/auto.master"
-
-#define DEFAULT_TIMEOUT (10*60)
-#define DEFAULT_GHOST_MODE	1
-#define DEFAULT_LOGGING		0
 
 struct map_source {
 	char *type;

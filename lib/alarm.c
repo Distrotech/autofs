@@ -1,4 +1,4 @@
-#ident "$Id: alarm.c,v 1.7 2006/03/26 17:52:41 raven Exp $"
+#ident "$Id: alarm.c,v 1.8 2006/03/29 10:32:36 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  alarm.c - alarm queue handling module.
@@ -37,7 +37,7 @@ void dump_alarms(void)
 		struct alarm *alarm;
 
 		alarm = list_entry(p, struct alarm, list);
-		msg("alarm time = %d\n", alarm->time);
+		msg("alarm time = %d", alarm->time);
 	}
 	pthread_mutex_unlock(&mutex);
 }

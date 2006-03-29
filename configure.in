@@ -1,5 +1,5 @@
 #
-#ident $Id: configure.in,v 1.25 2006/03/26 17:52:41 raven Exp $
+#ident $Id: configure.in,v 1.26 2006/03/29 10:32:36 raven Exp $
 #
 # configure.in for the autofs daemon
 
@@ -91,6 +91,9 @@ AF_CHECK_PROG(RPCGEN, rpcgen, , $searchpath)
 #
 AF_SLOPPY_MOUNT()
 
+# LDAP SASL auth need libxml
+AF_CHECK_LIBXML()
+
 #
 # glibc/libc 6 new libraries
 #
@@ -168,6 +171,47 @@ fi
 AC_SUBST(LDAP_FLAGS)
 AC_SUBST(HAVE_LDAP)
 AC_SUBST(LIBLDAP)
+LDFLAGS="${AF_tmp_ldflags}"
+
+#
+# SASL support
+#   configure magic taken from:
+#	http://www.timof.qipc.org/autofs/autofs-4.1.4-ldap-20050930.patch
+#
+
+AF_tmp_ldflags="$LDFLAGS"
+LIBSASL=''
+HAVE_SASL=''
+AC_ARG_WITH(sasl,
+[  --with-sasl=DIR	  enable SASL support for LDAP maps (libs and includes in DIR)],
+	if test "$withval" = 'no'; then
+		HAVE_SASL=0     # Disable
+	elif test -z "$withval" -o "$withval" = 'yes'
+	then
+		: Search for SASL in normal directory path
+	else
+		: Search for SASL in specific directory
+		HAVE_SASL=1
+		LDFLAGS="$LDFLAGS -L${withval}/lib"
+		LIBSASL="-L${withval}/lib"
+		SASL_FLAGS="-I${withval}/include"
+	fi
+)
+if test -z "$HAVE_SASL" -a "$HAVE_LIBXML" == "1"
+then
+	HAVE_SASL=0
+	AC_CHECK_LIB(sasl2, sasl_client_start, HAVE_SASL=1 LIBSASL="$LIBSASL -lsasl2", , -lsasl2 $LIBS)
+	if test "$HAVE_SASL" == "1"; then
+		AC_DEFINE(WITH_SASL,1,
+			[Define if using SASL authentication with the LDAP module])
+	fi
+fi
+
+AC_SUBST(XML_FLAGS)
+AC_SUBST(XML_LIBS)
+AC_SUBST(SASL_FLAGS)
+AC_SUBST(HAVE_SASL)
+AC_SUBST(LIBSASL)
 LDFLAGS="${AF_tmp_ldflags}"
 
 #
