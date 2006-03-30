@@ -44,7 +44,7 @@ DEFAULT_BROWSE_MODE="no"
 # DEFAULT_AUTH_CONF_FILE - set the default location for the SASL
 #			   authentication configuration file.
 #
-#DEFAULT_AUTH_CONF_FILE="@@AUTOFS_MAP_DIR@@/autofs-auth.conf"
+#DEFAULT_AUTH_CONF_FILE="@@autofsmapdir@@/autofs-auth.conf"
 #
 # General global options
 #

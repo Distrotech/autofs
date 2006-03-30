@@ -848,6 +848,7 @@ Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
   --with-path=PATH	  look in PATH for binaries needed by the automounter
+  --with-confdir=DIR	  use DIR for autofs configuration files
   --with-mapdir=PATH	  look in PATH for mount maps used by the automounter
   --with-dmalloc          use dmalloc, as in
 			  http://www.dmalloc.com/dmalloc.tar.gz
@@ -1348,6 +1349,23 @@ echo "${ECHO_T}$confdir" >&6
     fi
   done
 fi
+
+# Check whether --with-confdir or --without-confdir was given.
+if test "${with_confdir+set}" = set; then
+  withval="$with_confdir"
+  if test -z "$withval" -o "$withval" = "yes" -o "$withval" = "no"
+	then
+		:
+	else
+		confdir="${withval}"
+	fi
+
+fi;
+
+echo "$as_me:$LINENO: checking for autofs configuration file directory" >&5
+echo $ECHO_N "checking for autofs configuration file directory... $ECHO_C" >&6
+echo "$as_me:$LINENO: result: $confdir" >&5
+echo "${ECHO_T}$confdir" >&6
 
 
 #

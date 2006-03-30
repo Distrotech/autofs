@@ -1,4 +1,4 @@
-#ident "$Id: automount.c,v 1.71 2006/03/29 11:23:26 raven Exp $"
+#ident "$Id: automount.c,v 1.72 2006/03/30 02:09:51 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  automount.c - Linux automounter daemon
@@ -1166,8 +1166,11 @@ int main(int argc, char *argv[])
 	};
 
 	program = argv[0];
-	timeout = get_default_timeout();
-	ghost = get_default_browse_mode();
+
+	defaults_read_config();
+
+	timeout = defaults_get_timeout();
+	ghost = defaults_get_browse_mode();
 	foreground = 0;
 
 	opterr = 0;
@@ -1239,23 +1242,27 @@ int main(int argc, char *argv[])
 	if (argc == 0) {
 		const char *name;
 
-		name = get_default_master_map();
+		name = defaults_get_master_map();
 		if (!name)
-			master = master_new(NULL);
+			master = master_new(NULL, timeout, ghost);
 		else
-			master = master_new(name);
+			master = master_new(name, timeout, ghost);
 	} else
-		master = master_new(argv[0]);
+		master = master_new(argv[0], timeout, ghost);
 
 	if (!master) {
 		crit("%s: can't create master map %s",
 			program, argv[0]);
+		close(start_lockfd);
+		unlink(start_lockf);
 		exit(1);
 	}
 
 	if (pthread_attr_init(&thread_attr)) {
 		crit("%s: failed to init thread attribute struct!",
 			program);
+		close(start_lockfd);
+		unlink(start_lockf);
 		exit(1);
 	}
 
@@ -1263,6 +1270,8 @@ int main(int argc, char *argv[])
 			&thread_attr, PTHREAD_CREATE_DETACHED)) {
 		crit("%s: failed to set detached thread attribute!",
 			program);
+		close(start_lockfd);
+		unlink(start_lockf);
 		exit(1);
 	}
 
@@ -1271,6 +1280,8 @@ int main(int argc, char *argv[])
 			&thread_attr, PTHREAD_STACK_MIN*32)) {
 		crit("%s: failed to set stack size thread attribute!",
 			program);
+		close(start_lockfd);
+		unlink(start_lockf);
 		exit(1);
 	}
 #endif
@@ -1283,12 +1294,16 @@ int main(int argc, char *argv[])
 	if (status) {
 		crit("failed to create thread data key for std env vars!");
 		master_kill(master, 1);
+		close(start_lockfd);
+		unlink(start_lockf);
 		exit(1);
 	}
 
 	if (!alarm_start_handler()) {
 		crit("failed to create alarm handler thread!");
 		master_kill(master, 1);
+		close(start_lockfd);
+		unlink(start_lockf);
 		exit(1);
 	}
 
@@ -1299,6 +1314,8 @@ int main(int argc, char *argv[])
 	if (!sigchld_start_handler()) {
 		crit("failed to create SIGCHLD handler thread!");
 		master_kill(master, 1);
+		close(start_lockfd);
+		unlink(start_lockf);
 		exit(1);
 	}
 
@@ -1306,11 +1323,15 @@ int main(int argc, char *argv[])
 		crit("%s: can't load %s filesystem module",
 			program, FS_MODULE_NAME);
 		master_kill(master, 1);
+		close(start_lockfd);
+		unlink(start_lockf);
 		exit(2);
 	}
 
 	if (!master_read_master(master, age, 0)) {
 		master_kill(master, 1);
+		close(start_lockfd);
+		unlink(start_lockf);
 		exit(3);
 	}
 

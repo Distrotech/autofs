@@ -1,4 +1,4 @@
-#ident "$Id: defaults.h,v 1.2 2006/03/29 11:23:27 raven Exp $"
+#ident "$Id: defaults.h,v 1.3 2006/03/30 02:09:51 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  defaults.h - system initialization defaults.
@@ -27,24 +27,25 @@
 #define DEFAULT_BROWSE_MODE	1
 #define DEFAULT_LOGGING		0
 
-#define DEFAULT_MAP_OBJECT_CALSS	"nisMap"
-#define DEFAULT_ENTRY_OBJECT_CALSS	"nisObject"
-#define DEFAULT_MAP_ATTRIBUTE		"nisMapName"
-#define DEFAULT_ENTRY_ATTRIBUTE		"cn"
-#define DEFAULT_VALUE_ATTRIBUTE		"nisMapEntry"
+#define DEFAULT_MAP_OBJ_CLASS		"nisMap"
+#define DEFAULT_ENTRY_OBJ_CLASS		"nisObject"
+#define DEFAULT_MAP_ATTR		"nisMapName"
+#define DEFAULT_ENTRY_ATTR		"cn"
+#define DEFAULT_VALUE_ATTR		"nisMapEntry"
 
 #define DEFAULT_AUTH_CONF_FILE		AUTOFS_MAP_DIR "/autofs_ldap_auth.conf"
 
-const char *get_default_master_map(void);
-unsigned int get_default_timeout(void);
-unsigned int get_default_browse_mode(void);
-unsigned int get_default_logging(void);
-const char *get_default_ldap_map_object_class(void);
-const char *get_default_ldap_entry_object_class(void);
-const char *get_default_ldap_map_attribute(void);
-const char *get_default_ldap_entry_attribute(void);
-const char *get_default_ldap_value_attribute(void);
-const char *get_default_auth_conf_file(void);
+unsigned int defaults_read_config(void);
+const char *defaults_get_master_map(void);
+unsigned int defaults_get_timeout(void);
+unsigned int defaults_get_browse_mode(void);
+unsigned int defaults_get_logging(void);
+const char *defaults_get_map_obj_class(void);
+const char *defaults_get_entry_obj_class(void);
+const char *defaults_get_map_attr(void);
+const char *defaults_get_entry_attr(void);
+const char *defaults_get_value_attr(void);
+const char *defaults_get_auth_conf_file(void);
 
 #endif
 

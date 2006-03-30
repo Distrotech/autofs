@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.9 2006/03/29 10:32:36 raven Exp $
+# $Id: Makefile,v 1.10 2006/03/30 02:09:51 raven Exp $
 #
 # Makefile for autofs
 #
@@ -51,7 +51,6 @@ endif
 CFLAGS += -I../include -I../lib -fPIC -D_GNU_SOURCE
 CFLAGS += -DAUTOFS_LIB_DIR=\"$(autofslibdir)\"
 CFLAGS += -DAUTOFS_MAP_DIR=\"$(autofsmapdir)\"
-CFLAGS += -DPATH_AUTOMOUNT=\"$(sbindir)/automount\"
 
 all: $(MODS)
 

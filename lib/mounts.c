@@ -1,4 +1,4 @@
-#ident "$Id: mounts.c,v 1.20 2006/03/26 04:56:23 raven Exp $"
+#ident "$Id: mounts.c,v 1.21 2006/03/30 02:09:51 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  mounts.c - module for Linux automount mount table lookup functions
@@ -187,10 +187,6 @@ struct mnt_list *get_mnt_list(const char *table, const char *path, int include)
 		}
 		strcpy(ent->opts, mnt->mnt_opts);
 
-		ent->pid = 0;
-		if (strncmp(ent->fs_type, "autofs", 6) == 0)
-			sscanf(mnt->mnt_fsname, "automount(pid%d)", &ent->pid);
-
 		if (count++ % 100)
 			sched_yield();
 	}
@@ -273,7 +269,6 @@ int is_mounted(const char *table, const char *path)
 			break;
 		}
 	}
-
 	endmntent(tab);
 
 	return ret;
@@ -303,7 +298,6 @@ int has_fstab_option(const char *path, const char *opt)
 			break;
 		}
 	}
-
 	endmntent(tab);
 
 	return ret;
@@ -349,7 +343,6 @@ char *find_mnt_ino(const char *table, dev_t dev, ino_t ino)
 			break;
 		}
 	}
-
 	endmntent(tab);
 
 	return path;

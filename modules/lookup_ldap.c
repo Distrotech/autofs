@@ -1,4 +1,4 @@
-#ident "$Id: lookup_ldap.c,v 1.37 2006/03/29 11:44:54 raven Exp $"
+#ident "$Id: lookup_ldap.c,v 1.38 2006/03/30 02:09:51 raven Exp $"
 /*
  * lookup_ldap.c - Module for Linux automountd to access automount
  *		   maps in LDAP directories.
@@ -223,7 +223,7 @@ int parse_ldap_config(struct lookup_context *ctxt)
 
 	authtype = user = secret = NULL;
 
-	auth_conf = (char *) get_default_auth_conf_file();
+	auth_conf = (char *) defaults_get_auth_conf_file();
 	if (!auth_conf) {
 		debug(MODPREFIX "failed to get auth config file name.");
 		return 0;
@@ -444,23 +444,23 @@ int parse_server_string(const char *url, struct lookup_context *ctxt)
 
 static int get_default_schema(struct lookup_context *ctxt)
 {
-	ctxt->map_obj_class = (char *) get_default_ldap_map_object_class();
+	ctxt->map_obj_class = (char *) defaults_get_map_obj_class();
 	if (!ctxt->map_obj_class)
 		return 0;
 
-	ctxt->entry_obj_class = (char *) get_default_ldap_entry_object_class();
+	ctxt->entry_obj_class = (char *) defaults_get_entry_obj_class();
 	if (!ctxt->entry_obj_class)
 		goto free_moc;
 
-	ctxt->map_attr = (char *) get_default_ldap_map_attribute();
+	ctxt->map_attr = (char *) defaults_get_map_attr();
 	if (!ctxt->map_attr)
 		goto free_eoc;
 
-	ctxt->entry_attr = (char *) get_default_ldap_entry_attribute();
+	ctxt->entry_attr = (char *) defaults_get_entry_attr();
 	if (!ctxt->entry_attr)
 		goto free_ma;
 
-	ctxt->value_attr = (char *) get_default_ldap_value_attribute();
+	ctxt->value_attr = (char *) defaults_get_value_attr();
 	if (!ctxt->value_attr)
 		goto free_ea;
 

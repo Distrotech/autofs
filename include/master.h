@@ -1,4 +1,4 @@
-#ident "$Id: master.h,v 1.3 2006/03/29 10:32:36 raven Exp $"
+#ident "$Id: master.h,v 1.4 2006/03/30 02:09:51 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  master.h - header file for master map parser utility routines.
@@ -80,7 +80,7 @@ struct master_mapent *master_find_mapent(struct master *, const char *);
 struct master_mapent *master_new_mapent(const char *, time_t);
 void master_add_mapent(struct master *, struct master_mapent *);
 void master_free_mapent(struct master_mapent *);
-struct master *master_new(const char *);
+struct master *master_new(const char *, unsigned int, unsigned int);
 int master_read_master(struct master *, time_t, int);
 void master_notify_state_change(struct master *, int);
 int master_mount_mounts(struct master *, time_t, int);

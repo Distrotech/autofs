@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.19 2006/03/29 10:32:36 raven Exp $
+# $Id: Makefile,v 1.20 2006/03/30 02:09:51 raven Exp $
 #
 # Makefile for autofs utility library
 #
@@ -17,8 +17,9 @@ OBJS = cache.o mount_clnt.o mount_xdr.o cat_path.o rpc_subs.o \
 
 LIB = autofs.a
 
-CFLAGS += -I../include -fPIC -D_GNU_SOURCE -DHAVE_TCP_WRAPPER -DNFS3_SUPPORTED
+CFLAGS += -I../include -fPIC -D_GNU_SOURCE
 CFLAGS += -DAUTOFS_MAP_DIR=\"$(autofsmapdir)\"
+CFLAGS += -DAUTOFS_CONF_DIR=\"$(autofsconfdir)\"
 
 .PHONY: all install clean
 

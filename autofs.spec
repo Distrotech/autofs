@@ -1,5 +1,5 @@
 #
-# $Id: autofs.spec,v 1.34 2006/03/29 11:23:26 raven Exp $
+# $Id: autofs.spec,v 1.35 2006/03/30 02:09:51 raven Exp $
 #
 Summary: A tool from automatically mounting and umounting filesystems.
 Name: autofs
@@ -65,6 +65,7 @@ make install mandir=%{_mandir} initdir=/etc/rc.d/init.d INSTALLROOT=$RPM_BUILD_R
 install -m 755 -d $RPM_BUILD_ROOT/misc
 install -m 755 -d $RPM_BUILD_ROOT/net
 install -m 755 -d $RPM_BUILD_ROOT/smb
+#install -m 644 redhat/autofs.init $RPM_BUILD_ROOT/etc/rc.d/init.d/autofs
 #install -m 644 redhat/autofs.sysconfig $RPM_BUILD_ROOT/etc/sysconfig/autofs
 
 %clean

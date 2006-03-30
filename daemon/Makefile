@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.10 2006/03/23 05:08:14 raven Exp $
+# $Id: Makefile,v 1.11 2006/03/30 02:09:51 raven Exp $
 #
 # Makefile for autofs
 #
@@ -16,6 +16,7 @@ version := $(shell cat ../.version)
 CFLAGS += -rdynamic $(DAEMON_CFLAGS) -D_GNU_SOURCE -I../include
 CFLAGS += -DAUTOFS_LIB_DIR=\"$(autofslibdir)\" 
 CFLAGS += -DAUTOFS_MAP_DIR=\"$(autofsmapdir)\"
+CFLAGS += -DAUTOFS_CONF_DIR=\"$(autofsconfdir)\"
 CFLAGS += -DVERSION_STRING=\"$(version)\"
 LDFLAGS += -rdynamic
 LIBS = -ldl

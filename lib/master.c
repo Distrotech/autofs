@@ -1,4 +1,4 @@
-#ident "$Id: master.c,v 1.7 2006/03/29 10:32:36 raven Exp $"
+#ident "$Id: master.c,v 1.8 2006/03/30 02:09:51 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  master.c - master map utility routines.
@@ -79,7 +79,7 @@ int master_add_autofs_point(struct master_mapent *entry,
 	if (ghost)
 		ap->ghost = ghost;
 	else
-		ap->ghost = get_default_browse_mode();
+		ap->ghost = defaults_get_browse_mode();
 
 	if (ap->path[1] == '-')
 		ap->type = LKP_DIRECT;
@@ -566,7 +566,7 @@ void master_free_mapent(struct master_mapent *entry)
 	return;
 }
 
-struct master *master_new(const char *name)
+struct master *master_new(const char *name, unsigned int timeout, unsigned int ghost)
 {
 	struct master *master;
 	char *tmp;
@@ -576,7 +576,7 @@ struct master *master_new(const char *name)
 		return NULL;
 
 	if (!name)
-		tmp = strdup(get_default_master_map());
+		tmp = strdup(defaults_get_master_map());
 	else
 		tmp = strdup(name);
 
@@ -585,9 +585,9 @@ struct master *master_new(const char *name)
 
 	master->name = tmp;
 
-	master->default_ghost = get_default_browse_mode();
-	master->default_logging = get_default_logging();
-	master->default_timeout = get_default_timeout();
+	master->default_ghost = ghost;
+	master->default_timeout = timeout;
+	master->default_logging = defaults_get_logging();
 
 	INIT_LIST_HEAD(&master->mounts);
 
@@ -703,7 +703,7 @@ void master_notify_state_change(struct master *master, int sig)
 				nextstate(state_pipe, next);
 			}
 			break;
-
+/*
 		case SIGUSR2:
 			if (ap->state != ST_SHUTDOWN) {
 				next = ST_SHUTDOWN_FORCE;
@@ -711,7 +711,7 @@ void master_notify_state_change(struct master *master, int sig)
 				nextstate(state_pipe, next);
 			}
 			break;
-
+*/
 		case SIGUSR1:
 			assert(ap->state == ST_READY);
 			next = ST_PRUNE;

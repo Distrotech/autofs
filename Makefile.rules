@@ -1,5 +1,5 @@
 #
-# $Id: Makefile.rules,v 1.8 2006/03/21 04:28:52 raven Exp $
+# $Id: Makefile.rules,v 1.9 2006/03/30 02:09:51 raven Exp $
 #
 # Makefile rules for autofs project
 #
@@ -22,7 +22,7 @@ DEBUG=1
 endif
 
 ifdef DEBUG
-CFLAGS    ?= -O2 -g -Wall -DDEBUG
+CFLAGS    ?= -g -Wall -DDEBUG
 LDFLAGS   = -g
 STRIP     = :
 else

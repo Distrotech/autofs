@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# $Id: rc.autofs.in,v 1.62 2006/03/21 04:28:53 raven Exp $
+# $Id: rc.autofs.in,v 1.63 2006/03/30 02:09:51 raven Exp $
 #
 # rc file for automount using a Sun-style "master map".
 #
@@ -128,7 +128,7 @@ case "$1" in
 		reload
 		;;
 	*)
-		echo $"Usage: $0 {start|stop|status|restart|condrestart}"
+		echo $"Usage: $0 {start|stop|status|restart|reload}"
 		exit 1;
 		;;
 esac

@@ -1,5 +1,5 @@
 #
-#ident $Id: configure.in,v 1.26 2006/03/29 10:32:36 raven Exp $
+#ident $Id: configure.in,v 1.27 2006/03/30 02:09:51 raven Exp $
 #
 # configure.in for the autofs daemon
 
@@ -45,6 +45,18 @@ AC_SUBST(initdir)
 # Location of system config script directory?
 #
 AF_CONF_D()
+AC_ARG_WITH(confdir,
+[  --with-confdir=DIR	  use DIR for autofs configuration files],
+	if test -z "$withval" -o "$withval" = "yes" -o "$withval" = "no"
+	then
+		:
+	else
+		confdir="${withval}"
+	fi
+)
+
+AC_MSG_CHECKING([for autofs configuration file directory])
+AC_MSG_RESULT([$confdir])
 AC_SUBST(confdir)
 
 #

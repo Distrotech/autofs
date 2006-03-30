@@ -1,4 +1,4 @@
-#ident "$Id: indirect.c,v 1.23 2006/03/29 10:32:36 raven Exp $"
+#ident "$Id: indirect.c,v 1.24 2006/03/30 02:09:51 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  indirect.c - Linux automounter indirect mount handling
@@ -454,6 +454,11 @@ static void *do_expire_indirect(void *arg)
 	mt = (struct pending_args *) arg;
 
 	mt->status = 1;
+
+	status = pthread_barrier_wait(&mt->barrier);
+	if (status && status != PTHREAD_BARRIER_SERIAL_THREAD)
+		fatal(status);
+
 	pthread_cleanup_push(kernel_callback_cleanup, mt);
 
 	status = do_expire(mt->ap, mt->name, mt->len);
@@ -482,6 +487,10 @@ int handle_packet_expire_indirect(struct autofs_point *ap, autofs_packet_expire_
 		return 1;
 	}
 
+	status = pthread_barrier_init(&mt->barrier, NULL, 2);
+	if (status)
+		fatal(status);
+
 	mt->ap = ap;
 	strncpy(mt->name, pkt->name, pkt->len);
 	mt->name[pkt->len] = '\0';
@@ -494,6 +503,15 @@ int handle_packet_expire_indirect(struct autofs_point *ap, autofs_packet_expire_
 		send_fail(ap->ioctlfd, pkt->wait_queue_token);
 		free(mt);
 	}
+
+	status = pthread_barrier_wait(&mt->barrier);
+	if (status && status != PTHREAD_BARRIER_SERIAL_THREAD)
+		fatal(status);
+
+	status = pthread_barrier_destroy(&mt->barrier);
+	if (status)
+		fatal(status);
+
 	return 0;
 }
 
@@ -517,6 +535,11 @@ static void *do_mount_indirect(void *arg)
 	ap = mt->ap;
 
 	mt->status = 0;
+
+	status = pthread_barrier_wait(&mt->barrier);
+	if (status && status != PTHREAD_BARRIER_SERIAL_THREAD)
+		fatal(status);
+
 	pthread_cleanup_push(kernel_callback_cleanup, mt);
 
 	len = ncat_path(buf, sizeof(buf), ap->path, mt->name, mt->len);
@@ -679,6 +702,10 @@ int handle_packet_missing_indirect(struct autofs_point *ap, autofs_packet_missin
 		return 1;
 	}
 
+	status = pthread_barrier_init(&mt->barrier, NULL, 2);
+	if (status)
+		fatal(status);
+
 	mt->ap = ap;
 	strncpy(mt->name, pkt->name, pkt->len);
 	mt->name[pkt->len] = '\0';
@@ -695,6 +722,15 @@ int handle_packet_missing_indirect(struct autofs_point *ap, autofs_packet_missin
 		free(mt);
 		return 1;
 	}
+
+	status = pthread_barrier_wait(&mt->barrier);
+	if (status && status != PTHREAD_BARRIER_SERIAL_THREAD)
+		fatal(status);
+
+	status = pthread_barrier_destroy(&mt->barrier);
+	if (status)
+		fatal(status);
+
 	return 0;
 }
 

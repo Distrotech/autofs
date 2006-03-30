@@ -1,4 +1,4 @@
-#ident "$Id: lookup.c,v 1.13 2006/03/29 11:44:54 raven Exp $"
+#ident "$Id: lookup.c,v 1.14 2006/03/30 02:09:51 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup.c - API layer to implement nsswitch semantics for map reading
@@ -119,6 +119,7 @@ int lookup_nss_read_master(struct master *master, time_t age)
 
 			memset(source, 0, 10);
 			/* TODO: ldaps is not yet handled by ldap module */
+			/* TODO: must tighten up this test */
 			if (!strncmp(name, "file", 4) ||
 			    !strncmp(name, "yp", 2) ||
 			    !strncmp(name, "nis", 3) ||

@@ -1,4 +1,4 @@
-#ident "$Id: automount.h,v 1.43 2006/03/29 10:32:36 raven Exp $"
+#ident "$Id: automount.h,v 1.44 2006/03/30 02:09:51 raven Exp $"
 /*
  * automount.h
  *
@@ -314,7 +314,6 @@ struct mnt_list {
 	char *path;
 	char *fs_type;
 	char *opts;
-	pid_t pid;
 	struct mnt_list *next;
 	struct list_head list;
 };
@@ -399,7 +398,6 @@ struct autofs_point {
 	unsigned logopt;		/* Per map loggin */
 	struct kernel_mod_version kver;	/* autofs kernel module version */
 	pthread_t exp_thread;		/* Process that is currently expiring */
-	struct lookup_mod *lookup;	/* Lookup module */
 	pthread_mutex_t state_mutex;	/* Protect state transitions */
 	struct list_head state_queue;	/* Pending state transitions */
 	enum states state;		/* Current state */
