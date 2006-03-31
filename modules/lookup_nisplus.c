@@ -1,4 +1,4 @@
-#ident "$Id: lookup_nisplus.c,v 1.15 2006/03/29 10:32:36 raven Exp $"
+#ident "$Id: lookup_nisplus.c,v 1.16 2006/03/31 18:26:16 raven Exp $"
 /*
  * lookup_nisplus.c
  *
@@ -140,6 +140,7 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 {
 	struct lookup_context *ctxt = (struct lookup_context *) context;
 	struct mapent_cache *mc = ap->mc;
+	struct map_source *source = ap->entry->current;
 	char tablename[strlen(ctxt->mapname) +
 		       strlen(ctxt->domainname) + 20];
 	nis_result *result;
@@ -187,7 +188,7 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 
 		mapent = ENTRY_VAL(this, 1);
 		cache_writelock(mc);
-		cache_update(mc, key, mapent, age);
+		cache_update(mc, source, key, mapent, age);
 		cache_unlock(mc);
 	}
 
@@ -201,6 +202,7 @@ static int lookup_one(struct autofs_point *ap,
 		      struct lookup_context *ctxt)
 {
 	struct mapent_cache *mc = ap->mc;
+	struct map_source *source = ap->entry->current;
 	char tablename[strlen(key) + strlen(ctxt->mapname) +
 		       strlen(ctxt->domainname) + 20];
 	nis_result *result;
@@ -226,7 +228,7 @@ static int lookup_one(struct autofs_point *ap,
 	this = NIS_RES_OBJECT(result);
 	mapent = ENTRY_VAL(this, 1);
 	cache_writelock(mc);
-	ret = cache_update(mc, key, mapent, age);
+	ret = cache_update(mc, source, key, mapent, age);
 	cache_unlock(mc);
 
 	nis_freeresult(result);
@@ -237,6 +239,7 @@ static int lookup_one(struct autofs_point *ap,
 static int lookup_wild(struct autofs_point *ap, struct lookup_context *ctxt)
 {
 	struct mapent_cache *mc = ap->mc;
+	struct map_source *source = ap->entry->current;
 	char tablename[strlen(ctxt->mapname) +
 		       strlen(ctxt->domainname) + 20];
 	nis_result *result;
@@ -261,7 +264,7 @@ static int lookup_wild(struct autofs_point *ap, struct lookup_context *ctxt)
 	this = NIS_RES_OBJECT(result);
 	mapent = ENTRY_VAL(this, 1);
 	cache_writelock(mc);
-	ret = cache_update(mc, "*", mapent, age);
+	ret = cache_update(mc, source, "*", mapent, age);
 	cache_unlock(mc);
 
 	nis_freeresult(result);
@@ -328,6 +331,8 @@ static int check_map_indirect(struct autofs_point *ap,
 	/* Have parent update its map */
 	if (need_map) {
 		int status;
+
+		ap->entry->current->stale = 1;
 
 		status = pthread_mutex_lock(&ap->state_mutex);
 		if (status)

@@ -1,4 +1,4 @@
-#ident "$Id: parse_sun.c,v 1.48 2006/03/29 10:32:37 raven Exp $"
+#ident "$Id: parse_sun.c,v 1.49 2006/03/31 18:26:16 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  parse_sun.c - module for Linux automountd to parse a Sun-format
@@ -735,11 +735,12 @@ static int check_is_multi(const char *mapent)
 }
 
 static int
-add_offset_entry(struct mapent_cache *mc, const char *name,
+add_offset_entry(struct autofs_point *ap, const char *name,
 		 const char *m_root, int m_root_len,
 		 const char *path, const char *myoptions, const char *loc,
 		 time_t age)
 {
+	struct mapent_cache *mc = ap->mc;
 	char m_key[PATH_MAX + 1];
 	char m_mapent[MAPENT_MAX_LEN + 1];
 	int m_key_len, m_mapent_len;
@@ -875,6 +876,7 @@ int parse_mount(struct autofs_point *ap, const char *name,
 	struct parse_context *ctxt = (struct parse_context *) context;
 	char buf[MAX_ERR_BUF];
 	struct mapent_cache *mc = ap->mc;
+	struct map_source *source = ap->entry->current;
 	struct mapent *me;
 	char *pmapent, *options;
 	const char *p;
@@ -979,7 +981,7 @@ int parse_mount(struct autofs_point *ap, const char *name,
 			 * Not in the cache, perhaps it's a program map
 			 * or one that doesn't support enumeration
 			 */
-			ret = cache_add(mc, name, mapent, time(NULL));
+			ret = cache_add(mc, source, name, mapent, time(NULL));
 			if (ret == CHE_FAIL) {
 				free(options);
 				return 1;
@@ -1092,7 +1094,7 @@ int parse_mount(struct autofs_point *ap, const char *name,
 				p = skipspace(p);
 			}
 
-			status = add_offset_entry(mc, name,
+			status = add_offset_entry(ap, name,
 						m_root, m_root_len,
 						path, myoptions, loc, age);
 

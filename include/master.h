@@ -1,4 +1,4 @@
-#ident "$Id: master.h,v 1.4 2006/03/30 02:09:51 raven Exp $"
+#ident "$Id: master.h,v 1.5 2006/03/31 18:26:16 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  master.h - header file for master map parser utility routines.
@@ -25,6 +25,7 @@ struct map_source {
 	char *type;
 	char *format;
 	time_t age;
+	unsigned int stale;
 	struct lookup_mod *lookup;
 	int argc;
 	const char **argv;
@@ -36,7 +37,9 @@ struct master_mapent {
 	char *path;
 	pthread_t thid;
 	time_t age;
+	pthread_rwlock_t source_lock;
 	struct map_source *first;
+	struct map_source *current;
 	struct map_source *maps;
 	struct autofs_point *ap;
 	struct list_head list;
@@ -76,6 +79,10 @@ struct map_source *
 master_find_source_instance(struct map_source *, const char *, const char *, int, const char **);
 struct map_source *
 master_add_source_instance(struct map_source *, const char *, const char *, time_t);
+void master_source_writelock(struct master_mapent *);
+void master_source_readlock(struct master_mapent *);
+void master_source_unlock(struct master_mapent *);
+void master_source_lock_cleanup(void *);
 struct master_mapent *master_find_mapent(struct master *, const char *);
 struct master_mapent *master_new_mapent(const char *, time_t);
 void master_add_mapent(struct master *, struct master_mapent *);

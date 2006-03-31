@@ -1,4 +1,4 @@
-#ident "$Id: lookup_file.c,v 1.35 2006/03/29 10:32:36 raven Exp $"
+#ident "$Id: lookup_file.c,v 1.36 2006/03/31 18:26:16 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup_file.c - module for Linux automount to query a flat file map
@@ -433,6 +433,7 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 {
 	struct lookup_context *ctxt = (struct lookup_context *) context;
 	struct mapent_cache *mc = ap->mc;
+	struct map_source *source = ap->entry->current;
 	char *key;
 	char *mapent;
 	struct stat st;
@@ -496,7 +497,7 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 				continue;
 
 			cache_writelock(mc);
-			cache_update(mc, key, mapent, age);
+			cache_update(mc, source, key, mapent, age);
 			cache_unlock(mc);
 		}
 
@@ -526,6 +527,7 @@ static int lookup_one(struct autofs_point *ap,
 		      struct lookup_context *ctxt)
 {
 	struct mapent_cache *mc = ap->mc;
+	struct map_source *source = ap->entry->current;
 	char mkey[KEY_MAX_LEN + 1];
 	char mapent[MAPENT_MAX_LEN + 1];
 	time_t age = time(NULL);
@@ -565,7 +567,7 @@ static int lookup_one(struct autofs_point *ap,
 			} else if (strncmp(mkey, key, key_len) == 0) {
 				fclose(f);
 				cache_writelock(mc);
-				ret = cache_update(mc, key, mapent, age);
+				ret = cache_update(mc, source, key, mapent, age);
 				cache_unlock(mc);
 				return ret;
 			}
@@ -583,6 +585,7 @@ static int lookup_one(struct autofs_point *ap,
 static int lookup_wild(struct autofs_point *ap, struct lookup_context *ctxt)
 {
 	struct mapent_cache *mc = ap->mc;
+	struct map_source *source = ap->entry->current;
 	char mkey[KEY_MAX_LEN + 1];
 	char mapent[MAPENT_MAX_LEN + 1];
 	time_t age = time(NULL);
@@ -626,7 +629,7 @@ static int lookup_wild(struct autofs_point *ap, struct lookup_context *ctxt)
 			} else if (strncmp(mkey, "*", 1) == 0) {
 				fclose(f);
 				cache_writelock(mc);
-				ret = cache_update(mc, "*", mapent, age);
+				ret = cache_update(mc, source, "*", mapent, age);
 				cache_unlock(mc);
 				return ret;
 			}
@@ -691,6 +694,8 @@ static int check_map_indirect(struct autofs_point *ap,
 	/* TODO: update specific map */
 	if (need_map) {
 		int status;
+
+		ap->entry->current->stale = 1;
 
 		status = pthread_mutex_lock(&ap->state_mutex);
 		if (status)

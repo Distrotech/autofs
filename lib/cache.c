@@ -1,4 +1,4 @@
-#ident "$Id: cache.c,v 1.29 2006/03/29 10:32:36 raven Exp $"
+#ident "$Id: cache.c,v 1.30 2006/03/31 18:26:16 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  cache.c - mount entry cache management routines
@@ -56,40 +56,40 @@ void cache_dump_cache(struct mapent_cache *mc)
 	}
 }
 
-int cache_readlock(struct mapent_cache *mc)
+void cache_readlock(struct mapent_cache *mc)
 {
 	int status;
 
 	status = pthread_rwlock_rdlock(&mc->rwlock);
 	if (status) {
 		error("mapent cache rwlock lock failed");
-		return 0;
+		fatal(status);
 	}
-	return 1;
+	return;
 }
 
-int cache_writelock(struct mapent_cache *mc)
+void cache_writelock(struct mapent_cache *mc)
 {
 	int status;
 
 	status = pthread_rwlock_wrlock(&mc->rwlock);
 	if (status) {
 		error("mapent cache rwlock lock failed");
-		return 0;
+		fatal(status);
 	}
-	return 1;
+	return;
 }
 
-int cache_unlock(struct mapent_cache *mc)
+void cache_unlock(struct mapent_cache *mc)
 {
 	int status;
 
 	status = pthread_rwlock_unlock(&mc->rwlock);
 	if (status) {
 		error("mapent cache rwlock unlock failed");
-		return 0;
+		fatal(status);
 	}
-	return 1;
+	return;
 }
 
 void cache_lock_cleanup(void *arg)
@@ -365,7 +365,8 @@ struct mapent *cache_partial_match(struct mapent_cache *mc, const char *prefix)
 }
 
 /* cache must be write locked by caller */
-int cache_add(struct mapent_cache *mc, const char *key, const char *mapent, time_t age)
+int cache_add(struct mapent_cache *mc, struct map_source *source,
+		const char *key, const char *mapent, time_t age)
 {
 	struct mapent *me, *existing = NULL;
 	char *pkey, *pent;
@@ -394,6 +395,7 @@ int cache_add(struct mapent_cache *mc, const char *key, const char *mapent, time
 		me->mapent = NULL;
 
 	me->age = age;
+	me->source = source;
 	INIT_LIST_HEAD(&me->ino_index);
 	INIT_LIST_HEAD(&me->multi_list);
 	me->multi = NULL;
@@ -461,7 +463,7 @@ int cache_add_offset(struct mapent_cache *mc, const char *mkey, const char *key,
 	if (!owner)
 		return CHE_FAIL;
 
-	ret = cache_update(mc, key, mapent, age);
+	ret = cache_update(mc, owner->source, key, mapent, age);
 	if (ret == CHE_FAIL) {
 		warn("failed to add key %s to cache", key);
 		return CHE_FAIL;
@@ -479,7 +481,8 @@ done:
 }
 
 /* cache must be write locked by caller */
-int cache_update(struct mapent_cache *mc, const char *key, const char *mapent, time_t age)
+int cache_update(struct mapent_cache *mc, struct map_source *source,
+		 const char *key, const char *mapent, time_t age)
 {
 	struct mapent *me = NULL;
 	char *pent;
@@ -487,7 +490,7 @@ int cache_update(struct mapent_cache *mc, const char *key, const char *mapent, t
 
 	me = cache_lookup(mc, key);
 	if (!me || *me->key == '*') {
-		ret = cache_add(mc, key, mapent, age);
+		ret = cache_add(mc, source, key, mapent, age);
 		if (!ret) {
 			debug("failed for %s", key);
 			return CHE_FAIL;

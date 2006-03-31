@@ -1,5 +1,5 @@
 #
-#ident $Id: configure.in,v 1.27 2006/03/30 02:09:51 raven Exp $
+#ident $Id: configure.in,v 1.28 2006/03/31 18:26:15 raven Exp $
 #
 # configure.in for the autofs daemon
 
@@ -54,7 +54,6 @@ AC_ARG_WITH(confdir,
 		confdir="${withval}"
 	fi
 )
-
 AC_MSG_CHECKING([for autofs configuration file directory])
 AC_MSG_RESULT([$confdir])
 AC_SUBST(confdir)
@@ -72,7 +71,6 @@ AC_ARG_WITH(mapdir,
 		mapdir="${withval}"
 	fi
 )
-
 AC_MSG_CHECKING([for autofs maps directory])
 AC_MSG_RESULT([$mapdir])
 AC_SUBST(mapdir)

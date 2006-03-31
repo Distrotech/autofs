@@ -1,4 +1,4 @@
-#ident "$Id: automount.c,v 1.72 2006/03/30 02:09:51 raven Exp $"
+#ident "$Id: automount.c,v 1.73 2006/03/31 18:26:15 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  automount.c - Linux automounter daemon
@@ -402,7 +402,7 @@ int umount_multi(struct autofs_point *ap, const char *path, int incl)
 	mnts = get_mnt_list(_PATH_MOUNTED, path, incl);
 	if (!mnts) {
 		debug("no mounts found under %s", path);
-		check_rm_dirs(ap, path, incl);
+/*		check_rm_dirs(ap, path, incl); */
 		return 0;
 	}
 
@@ -416,8 +416,8 @@ int umount_multi(struct autofs_point *ap, const char *path, int incl)
 	free_mnt_list(mnts);
 
 	/* Delete detritus like unwanted mountpoints and symlinks */
-	if (left == 0)
-		check_rm_dirs(ap, path, incl);
+/*	if (left == 0)
+		check_rm_dirs(ap, path, incl); */
 
 	return left;
 }
@@ -708,7 +708,7 @@ static void do_master_cleanup_unlock(void *arg)
 
 	status = pthread_mutex_unlock(&mc.mutex);
 	if (status)
-		error("failed to unlock expire cond mutex");
+		fatal(status);
 
 	return;
 }
@@ -716,33 +716,30 @@ static void do_master_cleanup_unlock(void *arg)
 static void *do_notify_state(void *arg)
 {
 	struct master *master;
-	int *sig;
+	int sig;
 	int status;
 
-	sig = (int *) arg;
+	sig = *(int *) arg;
 
-	debug("signal %d", *sig);
+	debug("signal %d", sig);
 
-	pthread_cleanup_push(do_master_cleanup_unlock, NULL);
+	master = mc.master;
 
-	while (!mc.signaled) {
-		status = pthread_cond_wait(&mc.cond, &mc.mutex);
+	mc.signaled = 1;
+	status = pthread_cond_signal(&mc.cond);
+	if (status) {
+		error("failed to signal state notify condition");
+		status = pthread_mutex_unlock(&mc.mutex);
 		if (status)
 			fatal(status);
 		pthread_exit(NULL);
 	}
 
-	mc.signaled = 0;
-
-	master = mc.master;
-
 	status = pthread_mutex_unlock(&mc.mutex);
 	if (status)
 		fatal(status);
 
-	pthread_cleanup_pop(0);
-
-	master_notify_state_change(master, *sig);
+	master_notify_state_change(master, sig);
 
 	return NULL;
 }
@@ -753,14 +750,9 @@ static int do_signals(struct master *master, int signal)
 	int sig = signal;
 	int status;
 
-	status = pthread_mutex_trylock(&mc.mutex);
-	if (status) {
-		if (status == EBUSY)
-			return 1;
-		else
-			fatal(status);
-		return 0;
-	}
+	status = pthread_mutex_lock(&mc.mutex);
+	if (status)
+		fatal(status);
 
 	status = pthread_create(&thid, &thread_attr, do_notify_state, &sig);
 	if (status) {
@@ -773,22 +765,17 @@ static int do_signals(struct master *master, int signal)
 
 	mc.thid = thid;
 	mc.master = master;
-	mc.signaled = 1;
 
-	status = pthread_cond_signal(&mc.cond);
-	if (status) {
-		error("failed to signal state notify condition");
-		status = pthread_mutex_unlock(&mc.mutex);
+	pthread_cleanup_push(do_master_cleanup_unlock, NULL);
+
+	mc.signaled = 0;
+	while (!mc.signaled) {
+		status = pthread_cond_wait(&mc.cond, &mc.mutex);
 		if (status)
 			fatal(status);
-		return 0;
 	}
 
-	status = pthread_mutex_unlock(&mc.mutex);
-	if (status) {
-		error("failed to unlock state notify condition mutex");
-		return 0;
-	}
+	pthread_cleanup_pop(1);
 
 	return 1;
 }
@@ -800,25 +787,22 @@ static void *do_read_master(void *arg)
 	int readall = 1;
 	int status;
 
-	pthread_cleanup_push(do_master_cleanup_unlock, NULL);
+	master = mc.master;
+	age = mc.age;
 
-	while (!mc.signaled) {
-		status = pthread_cond_wait(&mc.cond, &mc.mutex);
+	mc.signaled = 1;
+	status = pthread_cond_signal(&mc.cond);
+	if (status) {
+		error("failed to signal master read map condition");
+		status = pthread_mutex_unlock(&mc.mutex);
 		if (status)
 			fatal(status);
 		pthread_exit(NULL);
 	}
 
-	mc.signaled = 0;
-
-	master = mc.master;
-	age = mc.age;
-
 	status = pthread_mutex_unlock(&mc.mutex);
 	if (status)
 		fatal(status);
-
-	pthread_cleanup_pop(0);
 
 	status = master_read_master(master, age, readall);
 
@@ -832,14 +816,9 @@ static int do_hup_signal(struct master *master, time_t age)
 	pthread_t thid;
 	int status;
 
-	status = pthread_mutex_trylock(&mc.mutex);
-	if (status) {
-		if (status == EBUSY)
-			warn("master read map already in progress");
-		else
-			fatal(status);
-		return 0;
-	}
+	status = pthread_mutex_lock(&mc.mutex);
+	if (status)
+		fatal(status);
 
 	status = pthread_create(&thid, &thread_attr, do_read_master, NULL);
 	if (status) {
@@ -853,22 +832,18 @@ static int do_hup_signal(struct master *master, time_t age)
 	mc.thid = thid;
 	mc.master = master;
 	mc.age = age;
-	mc.signaled = 1;
 
-	status = pthread_cond_signal(&mc.cond);
-	if (status) {
-		error("failed to signal master read map condition");
-		status = pthread_mutex_unlock(&mc.mutex);
+	pthread_cleanup_push(do_master_cleanup_unlock, NULL);
+
+	mc.signaled = 0;
+	while (!mc.signaled) {
+		status = pthread_cond_wait(&mc.cond, &mc.mutex);
 		if (status)
 			fatal(status);
 		return 0;
 	}
 
-	status = pthread_mutex_unlock(&mc.mutex);
-	if (status) {
-		error("failed to unlock read map condition mutex");
-		return 0;
-	}
+	pthread_cleanup_pop(1);
 
 	debug("started master map read"); 
 

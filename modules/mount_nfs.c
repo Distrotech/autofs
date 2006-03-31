@@ -1,4 +1,4 @@
-#ident "$Id: mount_nfs.c,v 1.35 2006/03/29 10:32:36 raven Exp $"
+#ident "$Id: mount_nfs.c,v 1.36 2006/03/31 18:26:16 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  * mount_nfs.c - Module for Linux automountd to mount an NFS filesystem,
@@ -126,44 +126,46 @@ static int inline is_replicated_entry(char *what)
  */
 int is_local_mount(const char *hostpath)
 {
-	struct hostent *he;
+	struct hostent he;
+	struct hostent *phe = &he;
+	struct hostent *result;
+	char buf[HOST_ENT_BUF_SIZE];
 	char **haddr;
 	char *delim;
 	char *hostname;
-	int hostnamelen;
-	int local = 0;
+	int hostnamelen, h_errno;
+	int ret, local = 0;
 
-	debug(MODPREFIX "is_local_mount: %s", hostpath);
+	debug(MODPREFIX "%s", hostpath);
+
 	delim = strpbrk(hostpath,":");
-
 	if (delim) 
 		hostnamelen = delim - hostpath; 
 	else 
 		hostnamelen = strlen(hostpath);
 
-	hostname = malloc(hostnamelen+1);
+	hostname = alloca(hostnamelen + 1);
 	strncpy(hostname, hostpath, hostnamelen);
 	hostname[hostnamelen] = '\0';
-	he = gethostbyname(hostname);
-	if (!he) {
+
+	ret = gethostbyname_r(hostname, phe,
+			buf, HOST_ENT_BUF_SIZE, &result, &h_errno);
+	if (ret) {
 		error(MODPREFIX "host %s: lookup failure", hostname);
 		return -1;
 	}
 
-	for (haddr = he->h_addr_list; *haddr; haddr++) {
-		local = is_local_addr(hostname, *haddr, he->h_length);
-		if (local < 0) {
-			free(hostname);
+	for (haddr = phe->h_addr_list; *haddr; haddr++) {
+		local = is_local_addr(hostname, *haddr, phe->h_length);
+		if (local < 0)
 			return local;
-		}
+
  		if (local) {
-			debug(MODPREFIX "host %s: is localhost",
-					hostname);
-			free(hostname);
+			debug(MODPREFIX "host %s: is localhost", hostname);
 			return local;
 		}
 	}
-	free(hostname);
+
 	return 0;
 }
 
@@ -189,7 +191,7 @@ int get_best_mount(char *what, const char *original, int longtimeout)
 	int winner_weight = INT_MAX, local = 0;
 	double winner_time = 0;
 	char *delim, *pstrip;
-	int sec = (longtimeout) ? 10 : 0;
+	int sec = (longtimeout) ? 8 : 0;
 	int micros = (longtimeout) ? 0 : 100000;
 	int skiplocal = longtimeout; /* clearly local is not available */
 
@@ -229,7 +231,7 @@ int get_best_mount(char *what, const char *original, int longtimeout)
 
 	while (p && *p) {
 		char *next;
-		unsigned int ping_stat = 0;
+		int ping_stat = -1;
 
 		p += strspn(p, " \t,");
 		delim = strpbrk(p, "(, \t:");
@@ -250,8 +252,8 @@ int get_best_mount(char *what, const char *original, int longtimeout)
 				*delim = '\0';
 				w = atoi(weight);
 
-				alive = rpc_ping(p, sec, micros, RPC_CLOSE_DEFAULT);
-				if (w < winner_weight && alive) {
+				ping_stat = rpc_ping(p, sec, micros, RPC_CLOSE_NOLINGER);
+				if (w < winner_weight && ping_stat) {
 					winner_weight = w;
 					winner = p;
 				}
@@ -285,7 +287,8 @@ int get_best_mount(char *what, const char *original, int longtimeout)
 		}
 
 		/* ping each (or the) entry to see if it's alive. */
-		ping_stat = rpc_ping(p, sec, micros, RPC_CLOSE_DEFAULT);
+		if (ping_stat == -1)
+			ping_stat = rpc_ping(p, sec, micros, RPC_CLOSE_NOLINGER);
 		if (!ping_stat) {
 			p = next;
 			continue;
@@ -307,13 +310,15 @@ int get_best_mount(char *what, const char *original, int longtimeout)
 			unsigned int vers = NFS2_VERSION;
 			unsigned int proto = RPC_PING_UDP;
 
-			if (ping_stat) {
-				vers = ping_stat & 0x00ff;
-				proto = ping_stat & 0xff00;
+			if (!ping_stat) {
+				p = next;
+				continue;
 			}
+			vers = ping_stat & 0x00ff;
+			proto = ping_stat & 0xff00;
 
 			status = rpc_time(p, vers, proto, sec, micros,
-					  RPC_CLOSE_DEFAULT, &resp_time);
+					      RPC_CLOSE_NOLINGER, &resp_time);
 			/* did we time the first winner? */
 			if (winner_time == 0) {
 				if (status) {
@@ -322,7 +327,7 @@ int get_best_mount(char *what, const char *original, int longtimeout)
 				} else
 					winner_time = 501;
 			} else {
-				if ((status) && (resp_time < winner_time)) {
+				if (status && (resp_time < winner_time)) {
 					winner = p;
 					winner_time = resp_time;
 				}

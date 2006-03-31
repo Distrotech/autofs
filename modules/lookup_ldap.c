@@ -1,4 +1,4 @@
-#ident "$Id: lookup_ldap.c,v 1.38 2006/03/30 02:09:51 raven Exp $"
+#ident "$Id: lookup_ldap.c,v 1.39 2006/03/31 18:26:16 raven Exp $"
 /*
  * lookup_ldap.c - Module for Linux automountd to access automount
  *		   maps in LDAP directories.
@@ -739,6 +739,7 @@ static int read_one_map(struct autofs_point *ap,
 			time_t age, int *result_ldap)
 {
 	struct mapent_cache *mc = ap->mc;
+	struct map_source *source = ap->entry->current;
 	int rv, i, l, count;
 	char buf[MAX_ERR_BUF];
 	char *query;
@@ -907,7 +908,7 @@ static int read_one_map(struct autofs_point *ap,
 			goto next;
 
 		cache_writelock(mc);
-		cache_update(mc, *keyValue, mapent, age);
+		cache_update(mc, source, *keyValue, mapent, age);
 		cache_unlock(mc);
 next:
 		if (mapent) {
@@ -959,6 +960,7 @@ static int lookup_one(struct autofs_point *ap,
 		char *qKey, int qKey_len, struct lookup_context *ctxt)
 {
 	struct mapent_cache *mc = ap->mc;
+	struct map_source *source = ap->entry->current;
 	int rv, i, l, ql, count;
 	char buf[MAX_ERR_BUF];
 	time_t age = time(NULL);
@@ -1122,7 +1124,7 @@ static int lookup_one(struct autofs_point *ap,
 	}
 
 	cache_writelock(mc);
-	ret = cache_update(mc, *keyValue, mapent, age);
+	ret = cache_update(mc, source, *keyValue, mapent, age);
 	cache_unlock(mc);
 done:
 	if (mapent) {
@@ -1190,6 +1192,8 @@ static int check_map_indirect(struct autofs_point *ap,
 	/* Have parent update its map */
 	if (need_map) {
 		int status;
+
+		ap->entry->current->stale = 1;
 
 		status = pthread_mutex_lock(&ap->state_mutex);
 		if (status)

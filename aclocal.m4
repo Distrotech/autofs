@@ -1,5 +1,5 @@
 dnl
-dnl $Id: aclocal.m4,v 1.5 2006/03/29 10:32:36 raven Exp $
+dnl $Id: aclocal.m4,v 1.6 2006/03/31 18:26:15 raven Exp $
 dnl
 dnl --------------------------------------------------------------------------
 dnl AF_PATH_INCLUDE:
@@ -76,12 +76,10 @@ dnl Check the location of the configuration defaults directory
 dnl --------------------------------------------------------------------------
 AC_DEFUN(AF_CONF_D,
 [if test -z "$confdir"; then
-  AC_MSG_CHECKING([location of the configuration defaults directory])
   for conf_d in /etc/sysconfig /etc/defaults /etc/conf.d; do
     if test -z "$confdir"; then
       if test -d "$conf_d"; then
 	confdir="$conf_d"
-	AC_MSG_RESULT($confdir)
       fi
     fi
   done
@@ -94,12 +92,10 @@ dnl Check the location of the autofs maps directory
 dnl --------------------------------------------------------------------------
 AC_DEFUN(AF_MAP_D,
 [if test -z "$mapdir"; then
-  AC_MSG_CHECKING([location of the autofs maps directory])
   for map_d in /etc/autofs /etc; do
     if test -z "$mapdir"; then
       if test -d "$map_d"; then
 	mapdir="$map_d"
-	AC_MSG_RESULT($mapdir)
       fi
     fi
   done

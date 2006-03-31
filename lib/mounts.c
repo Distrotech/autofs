@@ -1,4 +1,4 @@
-#ident "$Id: mounts.c,v 1.21 2006/03/30 02:09:51 raven Exp $"
+#ident "$Id: mounts.c,v 1.22 2006/03/31 18:26:16 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  mounts.c - module for Linux automount mount table lookup functions
@@ -107,7 +107,7 @@ struct mnt_list *get_mnt_list(const char *table, const char *path, int include)
 	FILE *tab;
 	int pathlen = strlen(path);
 	struct mntent mnt_wrk;
-	char buf[PATH_MAX];
+	char buf[PATH_MAX * 3];
 	struct mntent *mnt;
 	struct mnt_list *ent, *mptr, *last;
 	struct mnt_list *list = NULL;

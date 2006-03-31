@@ -1,4 +1,4 @@
-#ident "$Id: state.c,v 1.6 2006/03/29 10:32:36 raven Exp $"
+#ident "$Id: state.c,v 1.7 2006/03/31 18:26:16 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  state.c - state machine functions.
@@ -560,10 +560,12 @@ enum states st_next(struct autofs_point *ap, enum states state)
 		break;
 
 	case ST_SHUTDOWN_PENDING:
+		st_dequeue_all(ap);
 		ret = st_prepare_shutdown(ap);
 		break;
 
 	case ST_SHUTDOWN_FORCE:
+		st_dequeue_all(ap);
 		ret = st_force_shutdown(ap);
 		break;
 
@@ -572,7 +574,6 @@ enum states st_next(struct autofs_point *ap, enum states state)
 			ap->state == ST_SHUTDOWN_FORCE ||
 			ap->state == ST_SHUTDOWN_PENDING);
 		ap->state = ST_SHUTDOWN;
-		st_dequeue_all(ap);
 		break;
 
 	default:

@@ -1,4 +1,4 @@
-#ident "$Id: lookup_hosts.c,v 1.9 2006/03/23 05:08:15 raven Exp $"
+#ident "$Id: lookup_hosts.c,v 1.10 2006/03/31 18:26:16 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup_hosts.c - module for Linux automount to mount the exports
@@ -67,6 +67,7 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 {
 	struct mapent_cache *mc = ap->mc;
+	struct map_source *source = ap->entry->current;
 	struct hostent *host;
 	int status;
 
@@ -80,7 +81,7 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 	while ((host = gethostent()) != NULL) {
 		pthread_cleanup_push(cache_lock_cleanup, mc);
 		cache_writelock(mc);
-		cache_update(mc, host->h_name, NULL, age);
+		cache_update(mc, source, host->h_name, NULL, age);
 		cache_unlock(mc);
 		pthread_cleanup_pop(0);
 	}
@@ -97,6 +98,7 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 {
 	struct lookup_context *ctxt = (struct lookup_context *) context;
 	struct mapent_cache *mc = ap->mc;
+	struct map_source *source = ap->entry->current;
 	struct mapent *me;
 	char buf[MAX_ERR_BUF];
 	char *mapent = NULL;
@@ -156,7 +158,7 @@ done:
 	 */
 	debug(MODPREFIX "fetchng export list for %s", name);
 
-	exp = rpc_get_exports(name, 10, 0, RPC_CLOSE_DEFAULT);
+	exp = rpc_get_exports(name, 10, 0, RPC_CLOSE_NOLINGER);
 
 	/* Check exports for obvious ones we don't have access to */
 	exp = rpc_exports_prune(exp);
@@ -207,7 +209,7 @@ done:
 	debug(MODPREFIX "%s -> %s", name, mapent);
 
 	cache_writelock(mc);
-	cache_update(mc, name, mapent, now);
+	cache_update(mc, source, name, mapent, now);
 	cache_unlock(mc);
 
 	ret = ctxt->parse->parse_mount(ap, name, name_len,

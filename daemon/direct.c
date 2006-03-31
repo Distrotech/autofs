@@ -1,4 +1,4 @@
-#ident "$Id: direct.c,v 1.26 2006/03/29 10:32:36 raven Exp $"
+#ident "$Id: direct.c,v 1.27 2006/03/31 18:26:15 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  direct.c - Linux automounter direct mount handling
@@ -634,19 +634,22 @@ done:
 	cache_readlock(mc);
 	me = cache_enumerate(mc, NULL);
 	while (me) {
-		mnts = get_mnt_list(_PROC_MOUNTS, me->key, 0);
-		for (next = mnts; next; next = next->next) {
-			if (strstr(next->opts, "offset"))
-				continue;
-			/*
-			 * If there's anything other than offset mounts
-			 * we're still busy
-			 */
-			ea->status = 1;
-			free_mnt_list(mnts);
-			pthread_exit(NULL);
+		if (me->ioctlfd >= 0)
+			/* Real mounts have an open ioctl fd */
+			ioctlfd = me->ioctlfd;
+		else {
+			me = cache_enumerate(mc, me);
+			continue;
 		}
-		free_mnt_list(mnts);
+
+		if (!ioctl(ioctlfd, AUTOFS_IOC_ASKUMOUNT, &ret)) {
+			if (!ret) {
+				ea->status = 1;
+				break;
+			}
+		} else
+			sched_yield();
+
 		me = cache_enumerate(mc, me);
 	}
 	pthread_cleanup_pop(1);

@@ -1,4 +1,4 @@
-#ident "$Id: nsswitch.h,v 1.2 2006/03/09 23:01:01 raven Exp $"
+#ident "$Id: nsswitch.h,v 1.3 2006/03/31 18:26:16 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  nsswitch.h - header file for module to call parser for nsswitch
@@ -22,9 +22,10 @@
 #ifndef __NSSWITCH_H
 #define __NSSWITCH_H
 
+#include <netdb.h>
 #include "list.h"
 
-#define NSSWITCH_FILE "/etc/nsswitch.conf"
+#define NSSWITCH_FILE _PATH_NSSWITCH_CONF
 
 enum nsswitch_status {
 	NSS_STATUS_UNKNOWN = -1,

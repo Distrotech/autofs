@@ -1337,14 +1337,10 @@ fi
 # Location of system config script directory?
 #
 if test -z "$confdir"; then
-  echo "$as_me:$LINENO: checking location of the configuration defaults directory" >&5
-echo $ECHO_N "checking location of the configuration defaults directory... $ECHO_C" >&6
   for conf_d in /etc/sysconfig /etc/defaults /etc/conf.d; do
     if test -z "$confdir"; then
       if test -d "$conf_d"; then
 	confdir="$conf_d"
-	echo "$as_me:$LINENO: result: $confdir" >&5
-echo "${ECHO_T}$confdir" >&6
       fi
     fi
   done
@@ -1361,7 +1357,6 @@ if test "${with_confdir+set}" = set; then
 	fi
 
 fi;
-
 echo "$as_me:$LINENO: checking for autofs configuration file directory" >&5
 echo $ECHO_N "checking for autofs configuration file directory... $ECHO_C" >&6
 echo "$as_me:$LINENO: result: $confdir" >&5
@@ -1372,14 +1367,10 @@ echo "${ECHO_T}$confdir" >&6
 # The user can specify --with-mapsdir=PATH to specify autofs maps go
 #
 if test -z "$mapdir"; then
-  echo "$as_me:$LINENO: checking location of the autofs maps directory" >&5
-echo $ECHO_N "checking location of the autofs maps directory... $ECHO_C" >&6
   for map_d in /etc/autofs /etc; do
     if test -z "$mapdir"; then
       if test -d "$map_d"; then
 	mapdir="$map_d"
-	echo "$as_me:$LINENO: result: $mapdir" >&5
-echo "${ECHO_T}$mapdir" >&6
       fi
     fi
   done
@@ -1396,7 +1387,6 @@ if test "${with_mapdir+set}" = set; then
 	fi
 
 fi;
-
 echo "$as_me:$LINENO: checking for autofs maps directory" >&5
 echo $ECHO_N "checking for autofs maps directory... $ECHO_C" >&6
 echo "$as_me:$LINENO: result: $mapdir" >&5

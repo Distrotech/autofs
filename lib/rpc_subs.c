@@ -1,4 +1,4 @@
-#ident "$Id: rpc_subs.c,v 1.10 2006/02/20 01:05:32 raven Exp $"
+#ident "$Id: rpc_subs.c,v 1.11 2006/03/31 18:26:16 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  rpc_subs.c - routines for rpc discovery
@@ -14,6 +14,7 @@
  *
  * ----------------------------------------------------------------------- */
 
+#include <rpc/types.h>
 #include <rpc/rpc.h>
 #include <rpc/pmap_prot.h>
 #include <nfs/nfs.h>
@@ -30,8 +31,8 @@
 #include "automount.h"
 #include "mount.h"
 
-#define PMAP_TOUT_UDP	2
-#define PMAP_TOUT_TCP	3
+#define PMAP_TOUT_UDP	3
+#define PMAP_TOUT_TCP	5
 
 struct conn_info {
 	const char *host;
@@ -50,10 +51,13 @@ struct conn_info {
  */
 static CLIENT* create_udp_client(struct conn_info *info)
 {
-	int fd;
+	int fd, ret, h_errno;
 	CLIENT *client;
 	struct sockaddr_in laddr, raddr;
-	struct hostent *hp;
+	struct hostent hp;
+	struct hostent *php = &hp;
+	struct hostent *result;
+	char buf[HOST_ENT_BUF_SIZE];
 
 	if (info->proto->p_proto != IPPROTO_UDP)
 		return NULL;
@@ -61,13 +65,17 @@ static CLIENT* create_udp_client(struct conn_info *info)
 	memset(&laddr, 0, sizeof(laddr));
 	memset(&raddr, 0, sizeof(raddr));
 
-	hp = gethostbyname(info->host);
-	if (!hp)
+	ret = gethostbyname_r(info->host, php,
+			buf, HOST_ENT_BUF_SIZE, &result, &h_errno);
+	if (ret) {
+		char *estr =  strerror_r(h_errno, buf, HOST_ENT_BUF_SIZE);
+		error("hostname lookup failed: %s", estr);
 		return NULL;
+	}
 
 	raddr.sin_family = AF_INET;
 	raddr.sin_port = htons(info->port);
-	memcpy(&raddr.sin_addr.s_addr, hp->h_addr, hp->h_length);
+	memcpy(&raddr.sin_addr.s_addr, php->h_addr, php->h_length);
 
 	/*
 	 * bind to any unused port.  If we left this up to the rpc
@@ -175,7 +183,10 @@ static CLIENT* create_tcp_client(struct conn_info *info)
 	int fd;
 	CLIENT *client;
 	struct sockaddr_in addr;
-	struct hostent *hp;
+	struct hostent hp;
+	struct hostent *php = &hp;
+	struct hostent *result;
+	char buf[HOST_ENT_BUF_SIZE];
 	int ret;
 
 	if (info->proto->p_proto != IPPROTO_TCP)
@@ -183,13 +194,17 @@ static CLIENT* create_tcp_client(struct conn_info *info)
 
 	memset(&addr, 0, sizeof(addr));
 
-	hp = gethostbyname(info->host);
-	if (!hp)
+	ret = gethostbyname_r(info->host, php,
+			buf, HOST_ENT_BUF_SIZE, &result, &h_errno);
+	if (ret) {
+		char *estr =  strerror_r(h_errno, buf, HOST_ENT_BUF_SIZE);
+		error("hostname lookup failed: %s", estr);
 		return NULL;
+	}
 
 	addr.sin_family = AF_INET;
 	addr.sin_port = htons(info->port);
-	memcpy(&addr.sin_addr.s_addr, hp->h_addr, hp->h_length);
+	memcpy(&addr.sin_addr.s_addr, php->h_addr, php->h_length);
 
 	fd = socket(PF_INET, SOCK_STREAM, info->proto->p_proto);
 	if (fd < 0)
@@ -362,7 +377,7 @@ static unsigned int __rpc_ping(const char *host,
 	return status;
 }
 
-unsigned int rpc_ping(const char *host, long seconds, long micros, unsigned int option)
+int rpc_ping(const char *host, long seconds, long micros, unsigned int option)
 {
 	unsigned int status;
 
@@ -504,22 +519,27 @@ void rpc_exports_free(exports list)
 static int rpc_export_allowed(groups grouplist)
 {
 	groups grp = grouplist;
-	struct hostent *he;
-	char myname[31];
+	char myname[MAXHOSTNAMELEN + 1];
+	struct hostent he;
+	struct hostent *phe = &he;
+	struct hostent *result;
+	char buf[HOST_ENT_BUF_SIZE];
+	int ret;
 
 	/* NULL group list => everyone */
 	if (!grp)
 		return 1;
 
-	if (gethostname(myname, 30))
+	if (gethostname(myname, MAXHOSTNAMELEN))
 		return 0;
 
 	while (grp) {
 		if (*grp->gr_name == '*')
 			return 1;
-		he = gethostbyname(grp->gr_name);
-		if (he) {
-			if (!strcmp(myname, he->h_name))
+		ret = gethostbyname_r(grp->gr_name, phe,
+				buf, HOST_ENT_BUF_SIZE, &result, &h_errno);
+		if (!ret) {
+			if (!strcmp(myname, phe->h_name))
 				return 1;
 		}
 		grp = grp->gr_next;
@@ -572,13 +592,13 @@ exports rpc_get_exports(const char *host, long seconds, long micros, unsigned in
 	info.close_option = option;
 
 	/* Try UDP first */
-	info.proto = getprotobyname("tcp");
+	info.proto = getprotobyname("udp");
 	if (!info.proto)
-		goto try_udp;
+		goto try_tcp;
 
 	info.port = portmap_getport(&info);
 	if (!info.port)
-		goto try_udp;
+		goto try_tcp;
 
 	memset(&exportlist, '\0', sizeof(exportlist));
 
@@ -586,8 +606,8 @@ exports rpc_get_exports(const char *host, long seconds, long micros, unsigned in
 	if (status)
 		return exportlist;
 
-try_udp:
-	info.proto = getprotobyname("udp");
+try_tcp:
+	info.proto = getprotobyname("tcp");
 	if (!info.proto)
 		return NULL;
 

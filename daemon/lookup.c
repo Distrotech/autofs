@@ -1,4 +1,4 @@
-#ident "$Id: lookup.c,v 1.14 2006/03/30 02:09:51 raven Exp $"
+#ident "$Id: lookup.c,v 1.15 2006/03/31 18:26:16 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup.c - API layer to implement nsswitch semantics for map reading
@@ -324,6 +324,7 @@ static enum nsswitch_status read_map_source(struct nss_source *this,
 
 int lookup_nss_read_map(struct autofs_point *ap, time_t age)
 {
+	struct master_mapent *entry = ap->entry;
 	struct list_head nsslist;
 	struct list_head *head, *p;
 	struct nss_source *this;
@@ -335,8 +336,17 @@ int lookup_nss_read_map(struct autofs_point *ap, time_t age)
 	 * point in the master map) do the nss lookup to
 	 * locate the map and read it.
 	 */
-	map = ap->entry->first;
+	pthread_cleanup_push(master_source_lock_cleanup, entry);
+	master_source_readlock(entry);
+	map = entry->first;
 	while (map) {
+		if (!map->stale) {
+			map = map->next;
+			continue;
+		}
+
+		entry->current = map;
+
 		if (map->type) {
 			result = !do_read_map(ap, map, age);
 			map = map->next;
@@ -357,7 +367,8 @@ int lookup_nss_read_map(struct autofs_point *ap, time_t age)
 		result = nsswitch_parse(&nsslist);
 		if (result) {
 			error("can't to read name service switch config.");
-			return 0;
+			result = 0;
+			goto done;
 		}
 
 		head = &nsslist;
@@ -373,7 +384,8 @@ int lookup_nss_read_map(struct autofs_point *ap, time_t age)
 			status = check_nss_result(this, result);
 			if (status >= 0) {
 				free_sources(&nsslist);
-				return status;
+				result = status;
+				goto done;
 			}
 		}
 
@@ -382,6 +394,9 @@ int lookup_nss_read_map(struct autofs_point *ap, time_t age)
 
 		map = map->next;
 	}
+done:
+	entry->current = NULL;
+	pthread_cleanup_pop(1);
 
 	return result;
 }
@@ -607,23 +622,28 @@ static enum nsswitch_status lookup_map_name(struct nss_source *this,
 
 int lookup_nss_mount(struct autofs_point *ap, const char *name, int name_len)
 {
+	struct master_mapent *entry = ap->entry;
 	struct list_head nsslist;
 	struct list_head *head, *p;
 	struct nss_source *this;
 	struct map_source *map;
-	int result;
+	int result = 0;
 
 	/*
 	 * For each map source (ie. each entry for the mount
 	 * point in the master map) do the nss lookup to
 	 * locate the map and lookup the name.
 	 */
-	map = ap->entry->first;
+	pthread_cleanup_push(master_source_lock_cleanup, entry);
+	master_source_readlock(entry);
+	map = entry->first;
 	while (map) {
+		entry->current = map;
 		if (map->type) {
 			result = !do_lookup_mount(ap, map, name, name_len);
 			if (result)
-				return result;
+				goto done;
+
 			map = map->next;
 			continue;
 /*			return !result; */
@@ -633,7 +653,8 @@ int lookup_nss_mount(struct autofs_point *ap, const char *name, int name_len)
 		if (*map->argv[0] == '/') {
 			result = !lookup_name_file_source_instance(ap, map, name, name_len);
 			if (result)
-				return result;
+				goto done;
+
 			map = map->next;
 			continue;
 /*			return !result; */
@@ -644,7 +665,8 @@ int lookup_nss_mount(struct autofs_point *ap, const char *name, int name_len)
 		result = nsswitch_parse(&nsslist);
 		if (result) {
 			error("can't to read name service switch config.");
-			return 0;
+			result = 0;
+			goto done;
 		}
 
 		head = &nsslist;
@@ -661,7 +683,8 @@ int lookup_nss_mount(struct autofs_point *ap, const char *name, int name_len)
 			status = check_nss_result(this, result);
 			if (status >= 0) {
 				free_sources(&nsslist);
-				return status;
+				result = status;
+				goto done;
 			}
 		}
 
@@ -670,8 +693,11 @@ int lookup_nss_mount(struct autofs_point *ap, const char *name, int name_len)
 
 		map = map->next;
 	}
+done:
+	entry->current = NULL;
+	pthread_cleanup_pop(1);
 
-	return 0;
+	return result;
 }
 
 static char *make_fullpath(const char *root, const char *key)
@@ -699,14 +725,22 @@ int lookup_prune_cache(struct autofs_point *ap, time_t age)
 {
 	struct mapent_cache *mc = ap->mc;
 	struct mapent *me, *this;
+	struct master_mapent *entry = ap->entry;
+	struct map_source *next;
 	char *key, *next_key;
 	char *path;
 	int status = CHE_FAIL;
 
 	cache_readlock(mc);
+	master_source_readlock(ap->entry);
 
 	me = cache_enumerate(mc, NULL);
 	while (me) {
+		if (!me->source->stale) {
+			me = cache_enumerate(mc, me);
+			continue;
+		}
+
 		if (me->age >= age) {
 			me = cache_enumerate(mc, me);
 			continue;
@@ -714,9 +748,13 @@ int lookup_prune_cache(struct autofs_point *ap, time_t age)
 
 		key = strdup(me->key);
 		me = cache_enumerate(mc, me);
-
 		if (!key)
 			continue;
+
+		if (!me) {
+			free(key);
+			continue;
+		}
 
 		next_key = strdup(me->key);
 		if (!next_key) {
@@ -751,6 +789,13 @@ next:
 		free(next_key);
 	}
 
+	next = entry->maps;
+	while (next) {
+		next->stale = 0;
+		next = next->next;
+	}
+
+	master_source_unlock(ap->entry);
 	cache_unlock(mc);
 
 	return 1;

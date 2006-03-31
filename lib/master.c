@@ -1,4 +1,4 @@
-#ident "$Id: master.c,v 1.8 2006/03/30 02:09:51 raven Exp $"
+#ident "$Id: master.c,v 1.9 2006/03/31 18:26:16 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  master.c - master map utility routines.
@@ -178,6 +178,7 @@ master_add_map_source(struct master_mapent *entry,
 	}
 
 	source->age = age;
+	source->stale = 1;
 
 	tmpargv = copy_argv(argc, argv);
 	if (!tmpargv) {
@@ -191,9 +192,7 @@ master_add_map_source(struct master_mapent *entry,
 	if (argv)
 		name = argv[0];
 
-	status = pthread_mutex_lock(&master_mutex);
-	if (status)
-		fatal(status);
+	master_source_writelock(entry);
 
 	if (!entry->maps) {
 		entry->maps = source;
@@ -225,9 +224,7 @@ master_add_map_source(struct master_mapent *entry,
 			entry->maps = source;
 	}
 
-	status = pthread_mutex_unlock(&master_mutex);
-	if (status)
-		fatal(status);
+	master_source_unlock(entry);
 
 	return source;
 }
@@ -453,6 +450,51 @@ master_add_source_instance(struct map_source *source, const char *type, const ch
 	return new;
 }
 
+void master_source_writelock(struct master_mapent *entry)
+{
+	int status;
+
+	status = pthread_rwlock_wrlock(&entry->source_lock);
+	if (status) {
+		error("master_mapent source write lock failed");
+		fatal(status);
+	}
+	return;
+}
+
+void master_source_readlock(struct master_mapent *entry)
+{
+	int status;
+
+	status = pthread_rwlock_rdlock(&entry->source_lock);
+	if (status) {
+		error("master_mapent source read lock failed");
+		fatal(status);
+	}
+	return;
+}
+
+void master_source_unlock(struct master_mapent *entry)
+{
+	int status;
+
+	status = pthread_rwlock_unlock(&entry->source_lock);
+	if (status) {
+		error("master_mapent source unlock failed");
+		fatal(status);
+	}
+	return;
+}
+
+void master_source_lock_cleanup(void *arg)
+{
+	struct master_mapent *entry = (struct master_mapent *) arg;
+
+	master_source_unlock(entry);
+
+	return;
+}
+
 struct master_mapent *master_find_mapent(struct master *master, const char *path)
 {
 	struct list_head *head, *p;
@@ -486,6 +528,7 @@ struct master_mapent *master_find_mapent(struct master *master, const char *path
 struct master_mapent *master_new_mapent(const char *path, time_t age)
 {
 	struct master_mapent *entry;
+	int status;
 	char *tmp;
 
 	entry = malloc(sizeof(struct master_mapent));
@@ -504,8 +547,13 @@ struct master_mapent *master_new_mapent(const char *path, time_t age)
 	entry->thid = 0;
 	entry->age = age;
 	entry->first = NULL;
+	entry->current = NULL;
 	entry->maps = NULL;
 	entry->ap = NULL;
+
+	status = pthread_rwlock_init(&entry->source_lock, NULL);
+	if (status)
+		fatal(status);
 
 	INIT_LIST_HEAD(&entry->list);
 
@@ -540,8 +588,11 @@ void master_free_mapent(struct master_mapent *entry)
 	if (!list_empty(&entry->list))
 		list_del_init(&entry->list);
 
-	if (entry->path)
-		free(entry->path);
+	status = pthread_mutex_unlock(&master_mutex);
+	if (status)
+		fatal(status);
+
+	master_source_writelock(entry);
 
 	if (entry->maps) {
 		struct map_source *m, *n;
@@ -555,11 +606,16 @@ void master_free_mapent(struct master_mapent *entry)
 		entry->maps = NULL;
 	}
 
-	status = pthread_mutex_unlock(&master_mutex);
-	if (status)
-		fatal(status);
+	master_source_unlock(entry);
+
+	if (entry->path)
+		free(entry->path);
 
 	master_free_autofs_point(entry->ap);
+
+	status = pthread_rwlock_destroy(&entry->source_lock);
+	if (status)
+		fatal(status);
 
 	free(entry);
 
@@ -571,7 +627,7 @@ struct master *master_new(const char *name, unsigned int timeout, unsigned int g
 	struct master *master;
 	char *tmp;
 
-	master = malloc(sizeof(struct master_mapent));
+	master = malloc(sizeof(struct master));
 	if (!master)
 		return NULL;
 
@@ -824,9 +880,14 @@ static void check_update_map_sources(struct master_mapent *entry, time_t age, in
 
 	ap = entry->ap;
 
+	master_source_writelock(entry);
+
 	source = entry->maps;
 	last = NULL;
 	while (source) {
+		if (readall)
+			source->stale = 1;
+
 		/* Map source has gone away */
 		if (source->age < age) {
 			master_free_map_source(source);
@@ -835,11 +896,14 @@ static void check_update_map_sources(struct master_mapent *entry, time_t age, in
 			if (!strcmp(source->type, "null")) {
 /*				entry->ap->mc = cache_init(entry->ap); */
 				entry->first = source->next;
+				readall = 1;
 				map_stale = 1;
 			}
 		}
 		source = source->next;
 	}
+
+	master_source_unlock(entry);
 
 	/* The map sources have changed */
 	if (map_stale) {

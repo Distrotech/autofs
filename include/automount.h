@@ -1,4 +1,4 @@
-#ident "$Id: automount.h,v 1.44 2006/03/30 02:09:51 raven Exp $"
+#ident "$Id: automount.h,v 1.45 2006/03/31 18:26:16 raven Exp $"
 /*
  * automount.h
  *
@@ -64,6 +64,9 @@ int load_autofs4_module(void);
 #define SLOPPY
 #endif
 
+/* This sould be enough for at least 20 host aliases */
+#define HOST_ENT_BUF_SIZE	2048
+
 #define CHECK_RATIO	4			/* exp_runfreq = exp_timeout/CHECK_RATIO */
 #define AUTOFS_LOCK	"/var/lock/autofs"	/* To serialize access to mount */
 #define MOUNTED_LOCK	_PATH_MOUNTED "~"	/* mounts' lock file */
@@ -123,6 +126,8 @@ struct mapent {
 	struct mapent *next;
 	struct list_head ino_index;
 	struct list_head multi_list;
+	/* Map source of the cache entry */
+	struct map_source *source;
 	/* Need to know owner if we're a multi mount */
 	struct mapent *multi;
 	char *key;
@@ -137,9 +142,9 @@ struct mapent {
 };
 
 void cache_lock_cleanup(void *arg);
-int cache_readlock(struct mapent_cache *mc);
-int cache_writelock(struct mapent_cache *mc);
-int cache_unlock(struct mapent_cache *mc);
+void cache_readlock(struct mapent_cache *mc);
+void cache_writelock(struct mapent_cache *mc);
+void cache_unlock(struct mapent_cache *mc);
 struct mapent_cache *cache_init(struct autofs_point *ap);
 int cache_set_ino_index(struct mapent_cache *mc, const char *key, dev_t dev, ino_t ino);
 /* void cache_set_ino(struct mapent *me, dev_t dev, ino_t ino); */
@@ -150,9 +155,11 @@ struct mapent *cache_lookup_key_next(struct mapent *me);
 struct mapent *cache_lookup(struct mapent_cache *mc, const char *key);
 struct mapent *cache_lookup_offset(const char *prefix, const char *offset, int start, struct list_head *head);
 struct mapent *cache_partial_match(struct mapent_cache *mc, const char *prefix);
-int cache_add(struct mapent_cache *mc, const char *key, const char *mapent, time_t age);
+int cache_add(struct mapent_cache *mc, struct map_source *source,
+			const char *key, const char *mapent, time_t age);
 int cache_add_offset(struct mapent_cache *mc, const char *mkey, const char *key, const char *mapent, time_t age);
-int cache_update(struct mapent_cache *mc, const char *key, const char *mapent, time_t age);
+int cache_update(struct mapent_cache *mc, struct map_source *source,
+			const char *key, const char *mapent, time_t age);
 int cache_delete(struct mapent_cache *mc, const char *key);
 int cache_delete_offset_list(struct mapent_cache *mc, const char *key);
 void cache_release(struct autofs_point *ap);
@@ -303,8 +310,7 @@ int ncat_path(char *buf, size_t len,
 #define RPC_CLOSE_ACTIVE	RPC_CLOSE_DEFAULT
 #define RPC_CLOSE_NOLINGER	0x0001
 
-unsigned int rpc_ping(const char *host,
-		      long seconds, long micros, unsigned int option);
+int rpc_ping(const char *host, long seconds, long micros, unsigned int option);
 int rpc_time(const char *host, 
 	     unsigned int ping_vers, unsigned int ping_proto,
 	     long seconds, long micros, unsigned int option, double *result);

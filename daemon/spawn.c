@@ -1,4 +1,4 @@
-#ident "$Id: spawn.c,v 1.24 2006/03/29 10:32:36 raven Exp $"
+#ident "$Id: spawn.c,v 1.25 2006/03/31 18:26:16 raven Exp $"
 /* ----------------------------------------------------------------------- *
  * 
  *  spawn.c - run programs synchronously with output redirected to syslog
@@ -245,28 +245,33 @@ void reset_signals(void)
 
 #define ERRBUFSIZ 2047		/* Max length of error string excl \0 */
 
+#ifdef ENABLE_MOUNT_LOCKING
 void spawn_unlock(void *arg)
 {
 	int *use_lock = (int *) arg;
 
 	if (*use_lock) {
-#ifdef ENABLE_MOUNT_LOCKING
 		if (pthread_mutex_unlock(&spawn_mutex))
 			warn("failed to unlock spawn_mutex");
-#endif
 	}
 	return;
 }
+#endif
 
 static int do_spawn(logger *log, int use_lock, const char *prog, const char *const *argv)
 {
 	pid_t f;
 	int status, pipefd[2];
 	char errbuf[ERRBUFSIZ + 1], *p, *sp;
-	int errp, errn;
+	int errp, errn, cancel_state;
 
-	pthread_cleanup_push(spawn_unlock, &use_lock);
+	if (pipe(pipefd))
+		return -1;
+
+	sigchld_block();
+
 #ifdef ENABLE_MOUNT_LOCKING
+	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cancel_state);
 	if (use_lock) {
 		if (pthread_mutex_lock(&spawn_mutex)) {
 			warn("failed to lock spawn_mutex");
@@ -274,13 +279,6 @@ static int do_spawn(logger *log, int use_lock, const char *prog, const char *con
 		}
 	}
 #endif
-
-	sigchld_block();
-
-	if (pipe(pipefd)) {
-		spawn_unlock(&use_lock);
-		return -1;
-	}
 
 	f = fork();
 	if (f == 0) {
@@ -297,8 +295,10 @@ static int do_spawn(logger *log, int use_lock, const char *prog, const char *con
 
 		if (f < 0) {
 			close(pipefd[0]);
-			sigchld_unblock();
+#ifdef ENABLE_MOUNT_LOCKING
 			spawn_unlock(&use_lock);
+#endif
+			sigchld_unblock();
 			return -1;
 		}
 
@@ -343,12 +343,14 @@ static int do_spawn(logger *log, int use_lock, const char *prog, const char *con
 		if (waitpid(f, &status, 0) != f)
 			status = -1;	/* waitpid() failed */
 
-		sigchld_unblock();
+#ifdef ENABLE_MOUNT_LOCKING
 		spawn_unlock(&use_lock);
+		pthread_setcancelstate(cancel_state, &cancel_state);
+#endif
+		sigchld_unblock();
 
 		return status;
 	}
-	pthread_cleanup_pop(1);
 }
 
 int spawnv(logger *log, const char *prog, const char *const *argv)

@@ -1,4 +1,4 @@
-#ident "$Id: indirect.c,v 1.24 2006/03/30 02:09:51 raven Exp $"
+#ident "$Id: indirect.c,v 1.25 2006/03/31 18:26:16 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  indirect.c - Linux automounter indirect mount handling
@@ -549,8 +549,6 @@ static void *do_mount_indirect(void *arg)
 	}
 
 	status = lstat(buf, &st);
-	debug("status %d S_ISDIR(st.st_mode) %d st.st_dev %ld mt->dev %ld",
-		status, S_ISDIR(st.st_mode), (long) st.st_dev, (long)  mt->dev);
 	if (status != -1 && !(S_ISDIR(st.st_mode) && st.st_dev == mt->dev)) {
 		error("indirect trigger not valid or already mounted %s", buf);
 		pthread_exit(NULL);

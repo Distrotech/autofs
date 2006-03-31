@@ -1,4 +1,4 @@
-#ident "$Id: lookup_yp.c,v 1.29 2006/03/29 10:32:36 raven Exp $"
+#ident "$Id: lookup_yp.c,v 1.30 2006/03/31 18:26:16 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup_yp.c - module for Linux automountd to access a YP (NIS)
@@ -169,6 +169,7 @@ int yp_all_callback(int status, char *ypkey, int ypkeylen,
 	struct callback_data *cbdata = (struct callback_data *) ypcb_data;
 	struct autofs_point *ap = cbdata->ap;
 	struct mapent_cache *mc = ap->mc;
+	struct map_source *source = ap->entry->current;
 	time_t age = cbdata->age;
 	char *key;
 	char *mapent;
@@ -199,7 +200,7 @@ int yp_all_callback(int status, char *ypkey, int ypkeylen,
 	*(mapent + vallen) = '\0';
 
 	cache_writelock(mc);
-	ret = cache_update(mc, key, mapent, age);
+	ret = cache_update(mc, source, key, mapent, age);
 	cache_unlock(mc);
 	if (ret == CHE_FAIL)
 		return -1;
@@ -236,6 +237,7 @@ static int lookup_one(struct autofs_point *ap,
 		      struct lookup_context *ctxt)
 {
 	struct mapent_cache *mc = ap->mc;
+	struct map_source *source = ap->entry->current;
 	char *mapent;
 	int mapent_len;
 	time_t age = time(NULL);
@@ -258,7 +260,7 @@ static int lookup_one(struct autofs_point *ap,
 	}
 
 	cache_writelock(mc);
-	ret = cache_update(mc, key, mapent, age);
+	ret = cache_update(mc, source, key, mapent, age);
 	cache_unlock(mc);
 
 	return ret;
@@ -267,6 +269,7 @@ static int lookup_one(struct autofs_point *ap,
 static int lookup_wild(struct autofs_point *ap, struct lookup_context *ctxt)
 {
 	struct mapent_cache *mc = ap->mc;
+	struct map_source *source = ap->entry->current;
 	char *mapent;
 	int mapent_len;
 	time_t age = time(NULL);
@@ -287,7 +290,7 @@ static int lookup_wild(struct autofs_point *ap, struct lookup_context *ctxt)
 	}
 
 	cache_writelock(mc);
-	ret = cache_update(mc, "*", mapent, age);
+	ret = cache_update(mc, source, "*", mapent, age);
 	cache_unlock(mc);
 
 	return ret;
@@ -355,6 +358,8 @@ static int check_map_indirect(struct autofs_point *ap,
 	/* Have parent update its map */
 	if (need_map) {
 		int status;
+
+		ap->entry->current->stale = 1;
 
 		status = pthread_mutex_lock(&ap->state_mutex);
 		if (status)
