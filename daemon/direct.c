@@ -1,4 +1,4 @@
-#ident "$Id: direct.c,v 1.27 2006/03/31 18:26:15 raven Exp $"
+#ident "$Id: direct.c,v 1.28 2006/03/31 21:35:14 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  direct.c - Linux automounter direct mount handling
@@ -559,6 +559,8 @@ out_err:
 	return -1;
 }
 
+extern void expire_proc_cleanup(void *);
+
 void *expire_proc_direct(void *arg)
 {
 	struct mnt_list *mnts, *next;
@@ -573,13 +575,27 @@ void *expire_proc_direct(void *arg)
 
 	ea = (struct expire_args *) arg;
 
+	status = pthread_mutex_lock(&ea->mutex);
+	if (status)
+		fatal(status);
+
 	ap = ea->ap;
 	mc = ap->mc;
 	now = ea->when;
 	ea->status = 0;
 
-	status = pthread_barrier_wait(&ea->barrier);
-	if (status && status != PTHREAD_BARRIER_SERIAL_THREAD)
+	ea->signaled = 1;
+	status = pthread_cond_signal(&ea->cond);
+	if (status) {
+		error("failed to signal expire condition");
+		status = pthread_mutex_unlock(&ea->mutex);
+		if (status)
+			fatal(status);
+		pthread_exit(NULL);
+	}
+
+	status = pthread_mutex_unlock(&ea->mutex);
+	if (status)
 		fatal(status);
 
 	pthread_cleanup_push(expire_cleanup, ea);

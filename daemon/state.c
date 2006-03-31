@@ -1,4 +1,4 @@
-#ident "$Id: state.c,v 1.7 2006/03/31 18:26:16 raven Exp $"
+#ident "$Id: state.c,v 1.8 2006/03/31 21:35:14 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  state.c - state machine functions.
@@ -69,9 +69,9 @@ void expire_cleanup(void *arg)
 
 		switch (ap->state) {
 		case ST_EXPIRE:
-			alarm_add(ap, ap->exp_runfreq);
 			/* FALLTHROUGH */
 		case ST_PRUNE:
+			alarm_add(ap, ap->exp_runfreq);
 			/* If we're a submount and we've just
 			   pruned or expired everything away,
 			   try to shut down */
@@ -152,6 +152,28 @@ enum expire {
  *          PARTIAL	- partial expire
  */
 
+void expire_proc_cleanup(void *arg)
+{
+	struct expire_args *ea;
+	int status;
+
+	ea = (struct expire_args *) arg;
+
+	status = pthread_mutex_unlock(&ea->mutex);
+	if (status)
+		fatal(status);
+
+	status = pthread_cond_destroy(&ea->cond);
+	if (status)
+		fatal(status);
+
+	status = pthread_mutex_destroy(&ea->mutex);
+	if (status)
+		fatal(status);
+
+	return;
+}
+
 static enum expire expire_proc(struct autofs_point *ap, int now)
 {
 	pthread_t thid;
@@ -166,9 +188,16 @@ static enum expire expire_proc(struct autofs_point *ap, int now)
 		error("failed to malloc expire cond struct");
 		return EXP_ERROR;
 	}
-	memset(ea, 0, sizeof(struct expire_args));
 
-	status = pthread_barrier_init(&ea->barrier, NULL, 2);
+	status = pthread_mutex_init(&ea->mutex, NULL);
+	if (status)
+		fatal(status);
+
+	status = pthread_cond_init(&ea->cond, NULL);
+	if (status)
+		fatal(status);
+
+	status = pthread_mutex_lock(&ea->mutex);
 	if (status)
 		fatal(status);
 
@@ -184,20 +213,24 @@ static enum expire expire_proc(struct autofs_point *ap, int now)
 	status = pthread_create(&thid, &thread_attr, expire, ea);
 	if (status) {
 		error("expire thread create for %s failed", ap->path);
+		expire_proc_cleanup((void *) ea);
 		return EXP_ERROR;
 	}
 	ap->exp_thread = thid;
 
+	pthread_cleanup_push(expire_proc_cleanup, ea);
+
 	debug("exp_proc = %lu path %s",
 		(unsigned long) ap->exp_thread, ap->path);
 
-	status = pthread_barrier_wait(&ea->barrier);
-	if (status && status != PTHREAD_BARRIER_SERIAL_THREAD)
-		fatal(status);
+	ea->signaled = 0;
+	while (!ea->signaled) {
+		status = pthread_cond_wait(&ea->cond, &ea->mutex);
+		if (status)
+			fatal(status);
+	}
 
-	status = pthread_barrier_destroy(&ea->barrier);
-	if (status)
-		fatal(status);
+	pthread_cleanup_pop(1);
 
 	return EXP_STARTED;
 }
@@ -389,9 +422,13 @@ static unsigned int st_prune(struct autofs_point *ap)
 	assert(ap->state == ST_READY);
 	ap->state = ST_PRUNE;
 
+	/* Turn off timeouts while we prune */
+	alarm_delete(ap);
+
 	switch (expire_proc(ap, 1)) {
 	case EXP_ERROR:
 	case EXP_PARTIAL:
+		alarm_add(ap, ap->exp_runfreq);
 		nextstate(ap->state_pipe[1], ST_READY);
 		return 0;
 
@@ -408,7 +445,7 @@ static unsigned int st_expire(struct autofs_point *ap)
 	assert(ap->state == ST_READY);
 	ap->state = ST_EXPIRE;
 
-	/* Turn off timeouts for this mountpoint */
+	/* Turn off timeouts while we expire */
 	alarm_delete(ap);
 
 	switch (expire_proc(ap, 0)) {
