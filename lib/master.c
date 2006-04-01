@@ -1,4 +1,4 @@
-#ident "$Id: master.c,v 1.9 2006/03/31 18:26:16 raven Exp $"
+#ident "$Id: master.c,v 1.10 2006/04/01 06:48:05 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  master.c - master map utility routines.
@@ -53,7 +53,7 @@ int master_add_autofs_point(struct master_mapent *entry,
 	if (!ap)
 		return 0;
 
-	memset(ap, 0, sizeof(struct autofs_point));
+/*	memset(ap, 0, sizeof(struct autofs_point)); */
 
 	ap->state = ST_INIT;
 
@@ -74,6 +74,8 @@ int master_add_autofs_point(struct master_mapent *entry,
 	}
 
 	ap->entry = entry;
+	ap->exp_thread = 0;
+	ap->readmap_thread = 0;
 	ap->exp_timeout = timeout;
 	ap->exp_runfreq = (timeout + CHECK_RATIO - 1) / CHECK_RATIO;
 	if (ghost)
@@ -94,8 +96,19 @@ int master_add_autofs_point(struct master_mapent *entry,
 	INIT_LIST_HEAD(&ap->mounts);
 	INIT_LIST_HEAD(&ap->submounts);
 
+	status = pthread_cond_init(&ap->state_cond, NULL);
+	if (status) {
+		free(ap->path);
+		free(ap->mc);
+		free(ap);
+		return 0;
+	}
+
 	status = pthread_mutex_init(&ap->state_mutex, NULL);
 	if (status) {
+		status = pthread_cond_destroy(&ap->state_cond);
+		if (status)
+			fatal(status);
 		free(ap->path);
 		free(ap->mc);
 		free(ap);
@@ -106,6 +119,9 @@ int master_add_autofs_point(struct master_mapent *entry,
 	status = pthread_mutex_init(&ap->mounts_mutex, NULL);
 	if (status) {
 		status = pthread_mutex_destroy(&ap->state_mutex);
+		if (status)
+			fatal(status);
+		status = pthread_cond_destroy(&ap->state_cond);
 		if (status)
 			fatal(status);
 		free(ap->path);
@@ -134,6 +150,9 @@ void master_free_autofs_point(struct autofs_point *ap)
 	}
 	cache_release(ap);
 	free(ap->path);
+	status = pthread_cond_destroy(&ap->state_cond);
+	if (status)
+		fatal(status);
 	status = pthread_mutex_destroy(&ap->state_mutex);
 	if (status)
 		fatal(status);
@@ -152,7 +171,6 @@ master_add_map_source(struct master_mapent *entry,
 	struct map_source *source;
 	char *ntype, *nformat;
 	const char **tmpargv, *name = NULL;
-	int status;
 
 	source = malloc(sizeof(struct map_source));
 	if (!source)
@@ -206,9 +224,7 @@ master_add_map_source(struct master_mapent *entry,
 		if (this) {
 			this->age = age;
 			master_free_map_source(source);
-			status = pthread_mutex_unlock(&master_mutex);
-			if (status)
-				fatal(status);
+			master_source_unlock(entry);
 			return this;
 		}
 
@@ -661,7 +677,7 @@ int master_read_master(struct master *master, time_t age, int readall)
 
 	master_mount_mounts(master, age, readall);
 
-	status = pthread_mutex_unlock(&master_mutex);
+	status = pthread_mutex_lock(&master_mutex);
 	if (status)
 		fatal(status);
 

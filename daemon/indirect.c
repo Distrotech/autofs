@@ -1,4 +1,4 @@
-#ident "$Id: indirect.c,v 1.26 2006/03/31 21:35:14 raven Exp $"
+#ident "$Id: indirect.c,v 1.27 2006/04/01 06:48:05 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  indirect.c - Linux automounter indirect mount handling
@@ -129,7 +129,7 @@ static int do_mount_autofs_indirect(struct autofs_point *ap)
 		ap->dir_created = 1;
 	}
 
-	ret = mount(name, ap->path, "autofs", MS_MGC_VAL, options);
+	ret = mount("automount", ap->path, "autofs", MS_MGC_VAL, options);
 	if (ret) {
 		crit("failed to mount autofs path %s", ap->path);
 		goto out_rmdir;
@@ -309,8 +309,6 @@ force_umount:
 
 	return rv;
 }
-
-extern void expire_proc_cleanup(void *);
 
 void *expire_proc_indirect(void *arg)
 {

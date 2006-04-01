@@ -1,4 +1,4 @@
-#ident "$Id: lookup.c,v 1.15 2006/03/31 18:26:16 raven Exp $"
+#ident "$Id: lookup.c,v 1.16 2006/04/01 06:48:05 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup.c - API layer to implement nsswitch semantics for map reading
@@ -345,6 +345,8 @@ int lookup_nss_read_map(struct autofs_point *ap, time_t age)
 			continue;
 		}
 
+		sched_yield();
+
 		entry->current = map;
 
 		if (map->type) {
@@ -638,6 +640,7 @@ int lookup_nss_mount(struct autofs_point *ap, const char *name, int name_len)
 	master_source_readlock(entry);
 	map = entry->first;
 	while (map) {
+		sched_yield();
 		entry->current = map;
 		if (map->type) {
 			result = !do_lookup_mount(ap, map, name, name_len);
@@ -731,17 +734,12 @@ int lookup_prune_cache(struct autofs_point *ap, time_t age)
 	char *path;
 	int status = CHE_FAIL;
 
-	cache_readlock(mc);
-	master_source_readlock(ap->entry);
+	master_source_readlock(entry);
 
+	cache_readlock(mc);
 	me = cache_enumerate(mc, NULL);
 	while (me) {
-		if (!me->source->stale) {
-			me = cache_enumerate(mc, me);
-			continue;
-		}
-
-		if (me->age >= age) {
+		if (!me->source->stale || me->age >= age) {
 			me = cache_enumerate(mc, me);
 			continue;
 		}
@@ -759,6 +757,7 @@ int lookup_prune_cache(struct autofs_point *ap, time_t age)
 		next_key = strdup(me->key);
 		if (!next_key) {
 			free(key);
+			me = cache_enumerate(mc, me);
 			continue;
 		}
 
@@ -788,6 +787,7 @@ next:
 		free(key);
 		free(next_key);
 	}
+	cache_unlock(mc);
 
 	next = entry->maps;
 	while (next) {
@@ -795,8 +795,7 @@ next:
 		next = next->next;
 	}
 
-	master_source_unlock(ap->entry);
-	cache_unlock(mc);
+	master_source_unlock(entry);
 
 	return 1;
 }

@@ -1,4 +1,4 @@
-#ident "$Id: state.h,v 1.5 2006/03/31 22:02:49 raven Exp $"
+#ident "$Id: state.h,v 1.6 2006/04/01 06:48:05 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  state.h - state queue functions.
@@ -53,7 +53,7 @@ enum states {
 struct expire_args {
 	pthread_mutex_t mutex;
 	pthread_cond_t cond;
-	unsigned int signaled;	 /* Immediate expire ? */
+	unsigned int signaled;
 	struct autofs_point *ap; /* autofs mount we are working on */
 	enum states state;	 /* State prune or expire */
 	unsigned int when;	 /* Immediate expire ? */
@@ -61,12 +61,15 @@ struct expire_args {
 };
 
 struct readmap_args {
-	pthread_barrier_t barrier;
+	pthread_mutex_t mutex;
+	pthread_cond_t cond;
+	unsigned int signaled;
 	struct autofs_point *ap; /* autofs mount we are working on */
 	time_t now;              /* Time when map is read */
 };
 
 void expire_cleanup(void *);
+void expire_proc_cleanup(void *);
 void nextstate(int, enum states);
 
 enum states st_next(struct autofs_point *api, enum states state);

@@ -1,4 +1,4 @@
-#ident "$Id: state.c,v 1.8 2006/03/31 21:35:14 raven Exp $"
+#ident "$Id: state.c,v 1.9 2006/04/01 06:48:05 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  state.c - state machine functions.
@@ -214,6 +214,7 @@ static enum expire expire_proc(struct autofs_point *ap, int now)
 	if (status) {
 		error("expire thread create for %s failed", ap->path);
 		expire_proc_cleanup((void *) ea);
+		free(ea);
 		return EXP_ERROR;
 	}
 	ap->exp_thread = thid;
@@ -244,6 +245,7 @@ static void do_readmap_cleanup(void *arg)
 	ra = (struct readmap_args *) arg;
 
 	ap = ra->ap;
+	ap->readmap_thread = 0;
 
 	status = pthread_mutex_lock(&ap->state_mutex);
 	if (status)
@@ -270,12 +272,26 @@ static void *do_readmap(void *arg)
 
 	ra = (struct readmap_args *) arg;
 
+	status = pthread_mutex_lock(&ra->mutex);
+	if (status)
+		fatal(status);
+
 	ap = ra->ap;
 	now = ra->now;
 	mc = ap->mc;
 
-	status = pthread_barrier_wait(&ra->barrier);
-	if (status && status != PTHREAD_BARRIER_SERIAL_THREAD)
+	ra->signaled = 1;
+	status = pthread_cond_signal(&ra->cond);
+	if (status) {
+		error("failed to signal expire condition");
+		status = pthread_mutex_unlock(&ra->mutex);
+		if (status)
+			fatal(status);
+		pthread_exit(NULL);
+	}
+
+	status = pthread_mutex_unlock(&ra->mutex);
+	if (status)
 		fatal(status);
 
 	pthread_cleanup_push(do_readmap_cleanup, ra);
@@ -302,6 +318,28 @@ static void *do_readmap(void *arg)
 	return NULL;
 }
 
+static void st_readmap_cleanup(void *arg)
+{
+	struct readmap_args *ra;
+	int status;
+
+	ra = (struct readmap_args *) arg;
+
+	status = pthread_mutex_unlock(&ra->mutex);
+	if (status)
+		fatal(status);
+
+	status = pthread_cond_destroy(&ra->cond);
+	if (status)
+		fatal(status);
+
+	status = pthread_mutex_destroy(&ra->mutex);
+	if (status)
+		fatal(status);
+
+	return;
+}
+
 static unsigned int st_readmap(struct autofs_point *ap)
 {
 	pthread_t thid;
@@ -319,9 +357,16 @@ static unsigned int st_readmap(struct autofs_point *ap)
 		error("failed to malloc reamap cond struct");
 		return 0;
 	}
-	memset(ra, 0, sizeof(struct readmap_args));
 
-	status = pthread_barrier_init(&ra->barrier, NULL, 2);
+	status = pthread_mutex_init(&ra->mutex, NULL);
+	if (status)
+		fatal(status);
+
+	status = pthread_cond_init(&ra->cond, NULL);
+	if (status)
+		fatal(status);
+
+	status = pthread_mutex_lock(&ra->mutex);
 	if (status)
 		fatal(status);
 
@@ -331,16 +376,18 @@ static unsigned int st_readmap(struct autofs_point *ap)
 	status = pthread_create(&thid, &thread_attr, do_readmap, ra);
 	if (status) {
 		error("read map thread create failed");
+		st_readmap_cleanup(ra);
+		free(ra);
 		return 0;
 	}
+	ap->readmap_thread = thid;
 
-	status = pthread_barrier_wait(&ra->barrier);
-	if (status && status != PTHREAD_BARRIER_SERIAL_THREAD)
-		fatal(status);
-
-	status = pthread_barrier_destroy(&ra->barrier);
-	if (status)
-		fatal(status);
+	ra->signaled = 0;
+	while (!ra->signaled) {
+		status = pthread_cond_wait(&ra->cond, &ra->mutex);
+		if (status)
+			fatal(status);
+	}
 
 	return 1;
 }
@@ -461,23 +508,7 @@ static unsigned int st_expire(struct autofs_point *ap)
 	return 0;
 }
 
-static unsigned int st_queue_head(struct autofs_point *ap, enum states state)
-{
-	struct state *st;
-
-	st = malloc(sizeof(struct state));
-	if (!st)
-		return 0;
-
-	st->state = state;
-	INIT_LIST_HEAD(&st->queue);
-
-	list_add(&st->queue, &ap->state_queue);
-
-	return 1;
-}
-
-static unsigned int st_queue_tail(struct autofs_point *ap, enum states state)
+static unsigned int st_queue(struct autofs_point *ap, enum states state)
 {
 	struct state *st;
 
@@ -533,6 +564,26 @@ static void st_dequeue_all(struct autofs_point *ap)
 	return;
 }
 
+static void st_cancel_pending(struct autofs_point *ap)
+{
+	if (ap->exp_thread) {
+		debug("cancel expire thid %lu",
+			(unsigned long) ap->exp_thread);
+		while (pthread_cancel(ap->exp_thread) != ESRCH)
+			sleep(1);
+		alarm_delete(ap);
+		debug("done");
+	}
+			
+	if (ap->readmap_thread) {
+		debug("cancel readmap thid %lu",
+			(unsigned long) ap->readmap_thread);
+		while (pthread_cancel(ap->readmap_thread) != ESRCH)
+			sleep(1);
+		debug("done");
+	}
+}
+
 /*
  * autofs_point state_mutex must be held when calling
  * this function.
@@ -556,17 +607,18 @@ enum states st_next(struct autofs_point *ap, enum states state)
 	case ST_PRUNE:
 	case ST_READMAP:
 		if (ap->state != ST_READY) {
-			st_queue_tail(ap, state);
+			st_queue(ap, state);
 			return ap->state;
 		}
 		break;
 
 	case ST_SHUTDOWN_PENDING:
 	case ST_SHUTDOWN_FORCE:
-/*		if (state != ST_READY) {
-			st_queue_head(ap, state);
-			return ap->state;
-		} */
+	/*	st_dequeue_all(ap);
+		if (ap->state != ST_READY &&
+		    ap->state != ST_SHUTDOWN_PENDING &&
+		    ap->state != ST_SHUTDOWN_FORCE)
+			st_cancel_pending(ap); */
 		break;
 
 	case ST_SHUTDOWN:
@@ -597,12 +649,10 @@ enum states st_next(struct autofs_point *ap, enum states state)
 		break;
 
 	case ST_SHUTDOWN_PENDING:
-		st_dequeue_all(ap);
 		ret = st_prepare_shutdown(ap);
 		break;
 
 	case ST_SHUTDOWN_FORCE:
-		st_dequeue_all(ap);
 		ret = st_force_shutdown(ap);
 		break;
 

@@ -1,4 +1,4 @@
-#ident "$Id: automount.h,v 1.45 2006/03/31 18:26:16 raven Exp $"
+#ident "$Id: automount.h,v 1.46 2006/04/01 06:48:05 raven Exp $"
 /*
  * automount.h
  *
@@ -49,6 +49,10 @@
 
 #ifndef HAVE_MODPROBE
 #error Failed to locate modprobe(8)!
+#endif
+
+#ifndef HAVE_LINUX_PROCFS
+#error Failed to verify existence of procfs filesystem!
 #endif
 
 #define FS_MODULE_NAME  "autofs4"
@@ -403,8 +407,10 @@ struct autofs_point {
 	unsigned ghost;			/* Enable/disable gohsted directories */
 	unsigned logopt;		/* Per map loggin */
 	struct kernel_mod_version kver;	/* autofs kernel module version */
-	pthread_t exp_thread;		/* Process that is currently expiring */
-	pthread_mutex_t state_mutex;	/* Protect state transitions */
+	pthread_t exp_thread;		/* Thread that is expiring */
+	pthread_t readmap_thread;	/* Thread that is reading maps */
+	pthread_mutex_t state_mutex;	/* Protect state changes */
+	pthread_cond_t state_cond;	/* Condition to serialise state changes */
 	struct list_head state_queue;	/* Pending state transitions */
 	enum states state;		/* Current state */
 	int state_pipe[2];		/* State change router pipe */

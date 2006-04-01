@@ -64,6 +64,7 @@
 - re-work LDAP to use configurable defaults.
 - updated configure to check for libxml2 - required by SASL code.
 - updated configure to provide optional inclusion of SASL auth.
+- add check for automount already running.
 
 11/4/2005 autofs-4.1.4
 ----------------------

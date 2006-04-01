@@ -1,5 +1,5 @@
 #
-#ident $Id: configure.in,v 1.28 2006/03/31 18:26:15 raven Exp $
+#ident $Id: configure.in,v 1.29 2006/04/01 06:48:05 raven Exp $
 #
 # configure.in for the autofs daemon
 
@@ -34,6 +34,11 @@ AC_ARG_WITH(path,
 
 AC_MSG_CHECKING([for binaries in])
 AC_MSG_RESULT([$searchpath])
+
+#
+# Make sure we have "/proc"
+#
+AF_LINUX_PROCFS()
 
 #
 # Location of init.d directory?

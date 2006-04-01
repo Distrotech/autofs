@@ -1,4 +1,4 @@
-#ident "$Id: direct.c,v 1.28 2006/03/31 21:35:14 raven Exp $"
+#ident "$Id: direct.c,v 1.29 2006/04/01 06:48:05 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  direct.c - Linux automounter direct mount handling
@@ -515,7 +515,7 @@ int mount_autofs_offset(struct autofs_point *ap, struct mapent *me, int is_autof
 	debug("calling mount -t autofs " SLOPPY "-o %s %s %s",
 		mp->options, mp->name, me->key);
 
-	ret = mount(mp->name, me->key, "autofs", MS_MGC_VAL, mp->options);
+	ret = mount("automount", me->key, "autofs", MS_MGC_VAL, mp->options);
 	if (ret) {
 		crit("failed to mount autofs path %s", me->key);
 		goto out_err;
@@ -558,8 +558,6 @@ out_err:
 
 	return -1;
 }
-
-extern void expire_proc_cleanup(void *);
 
 void *expire_proc_direct(void *arg)
 {

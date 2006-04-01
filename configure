@@ -1316,6 +1316,28 @@ echo "$as_me:$LINENO: result: $searchpath" >&5
 echo "${ECHO_T}$searchpath" >&6
 
 #
+# Make sure we have "/proc"
+#
+echo "$as_me:$LINENO: checking for Linux proc filesystem" >&5
+echo $ECHO_N "checking for Linux proc filesystem... $ECHO_C" >&6
+if test "x`cat /proc/sys/kernel/ostype 2>&-`" = "xLinux"
+then
+	linux_procfs=yes
+else
+	linux_procfs=no
+fi
+echo "$as_me:$LINENO: result: $linux_procfs" >&5
+echo "${ECHO_T}$linux_procfs" >&6
+if test $linux_procfs = yes
+then
+
+cat >>confdefs.h <<\_ACEOF
+#define HAVE_LINUX_PROCFS 1
+_ACEOF
+
+fi
+
+#
 # Location of init.d directory?
 #
 if test -z "$initdir"; then

@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.20 2006/03/30 02:09:51 raven Exp $
+# $Id: Makefile,v 1.21 2006/04/01 06:48:05 raven Exp $
 #
 # Makefile for autofs utility library
 #
@@ -14,6 +14,9 @@ OBJS = cache.o mount_clnt.o mount_xdr.o cat_path.o rpc_subs.o \
 	mounts.o log.o nsswitch.o master_tok.o master_parse.tab.o \
 	nss_tok.o nss_parse.tab.o args.o alarm.o macros.o master.o \
 	defaults.o
+
+YACCSRC = nss_tok.c nss_parse.tab.c nss_parse.tab.h \
+	  master_tok.c master_parse.tab.c master_parse.tab.h
 
 LIB = autofs.a
 
@@ -70,5 +73,5 @@ nss_parse.tab.o: nss_parse.tab.c nss_parse.tab.h
 install: all
 
 clean:
-	rm -f $(LIB) $(RPCS) $(OBJS) *~
+	rm -f $(LIB) $(RPCS) $(OBJS) $(YACCSRC) *.output *~
 

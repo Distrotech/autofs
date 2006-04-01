@@ -1,5 +1,5 @@
 dnl
-dnl $Id: aclocal.m4,v 1.6 2006/03/31 18:26:15 raven Exp $
+dnl $Id: aclocal.m4,v 1.7 2006/04/01 06:48:05 raven Exp $
 dnl
 dnl --------------------------------------------------------------------------
 dnl AF_PATH_INCLUDE:
@@ -49,6 +49,27 @@ AC_DEFUN(AF_SLOPPY_MOUNT,
   else
     AC_MSG_RESULT(no)
   fi
+fi])
+
+
+dnl --------------------------------------------------------------------------
+dnl AF_LINUX_PROCFS
+dnl
+dnl Check for the Linux /proc filesystem
+dnl --------------------------------------------------------------------------
+AC_DEFUN(AF_LINUX_PROCFS,
+[AC_MSG_CHECKING(for Linux proc filesystem)
+if test "x`cat /proc/sys/kernel/ostype 2>&-`" = "xLinux"
+then
+	linux_procfs=yes
+else
+	linux_procfs=no
+fi
+AC_MSG_RESULT($linux_procfs)
+if test $linux_procfs = yes
+then
+	AC_DEFINE(HAVE_LINUX_PROCFS, 1,
+		[Define if you have the Linux /proc filesystem.])
 fi])
 
 dnl --------------------------------------------------------------------------

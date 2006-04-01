@@ -1,4 +1,4 @@
-#ident "$Id: config.h.in,v 1.7 2006/03/29 10:32:36 raven Exp $"
+#ident "$Id: config.h.in,v 1.8 2006/04/01 06:48:05 raven Exp $"
 /* -*- c -*-
  *
  * config.h.in: Pattern file for autofs to be filled in by configure
@@ -26,6 +26,8 @@
 
 /* Define this option if mount(8) supports the -s (sloppy) option */
 #undef HAVE_SLOPPY_MOUNT
+
+#undef HAVE_LINUX_PROCFS
 
 #undef ENABLE_EXT_ENV
 

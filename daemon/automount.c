@@ -1,4 +1,4 @@
-#ident "$Id: automount.c,v 1.73 2006/03/31 18:26:15 raven Exp $"
+#ident "$Id: automount.c,v 1.74 2006/04/01 06:48:05 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  automount.c - Linux automounter daemon
@@ -29,12 +29,14 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/ioctl.h>
+#include <ctype.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/resource.h>
 #include <sys/poll.h>
+#include <dirent.h>
 
 #include "automount.h"
 
@@ -412,6 +414,7 @@ int umount_multi(struct autofs_point *ap, const char *path, int incl)
 		if (umount_ent(ap, mptr->path, mptr->fs_type)) {
 			left++;
 		}
+		sched_yield();
 	}
 	free_mnt_list(mnts);
 
@@ -856,7 +859,6 @@ static void *statemachine(void *arg)
 	sigset_t sigset;
 	int sig, status;
 
-
 	sigfillset(&sigset);
 	sigdelset(&sigset, SIGCHLD);
 	sigdelset(&sigset, SIGCONT);
@@ -1106,6 +1108,63 @@ static void key_thread_stdenv_vars_destroy(void *arg)
 	return;
 }
 
+static int is_automount_running(void)
+{
+	FILE *fp;
+	DIR *dir;
+	struct dirent entry;
+	struct dirent *result;
+	char path[PATH_MAX], buf[PATH_MAX];
+	int len;
+
+	if ((dir = opendir("/proc")) == NULL) {
+		printf("cannot opendir(/proc)\n");
+		exit(1);
+	}
+
+	while (readdir_r(dir, &entry, &result) == 0) {
+		if (!result)
+			break;
+
+		if (*entry.d_name == '.')
+			continue;
+
+		if (!strcmp(entry.d_name, "self"))
+			continue;
+
+		if (isdigit(*entry.d_name)) {
+			int me = atoi(entry.d_name);
+
+			if (me == getpid())
+				continue;
+		}
+
+		len = sprintf(path, "/proc/%s/cmdline", entry.d_name);
+		if (len >= PATH_MAX) {
+			fprintf(stderr,
+				"buffer to small for /proc path\n");
+			exit(1);
+		}
+		path[len] = '\0';
+
+		fp = fopen(path, "r");
+		if (fp) {
+			int c, len = 0;
+
+			while (len < 127 && (c = fgetc(fp)) != EOF && c)
+				buf[len++] = c;
+			buf[len] = '\0';
+
+			if (strstr(buf, "automount"))
+				return 1;
+			fclose(fp);
+		}
+	}
+	closedir(dir);
+
+	return 0;
+}
+
 static void usage(void)
 {
 	fprintf(stderr,
@@ -1195,6 +1254,12 @@ int main(int argc, char *argv[])
 	/* Remove the options */
 	argv += optind;
 	argc -= optind;
+
+	if (is_automount_running()) {
+		fprintf(stderr, "%s: program is already running.\n",
+			program);
+		exit(1);
+	}
 
 	rlim.rlim_cur = MAX_OPEN_FILES;
 	rlim.rlim_max = MAX_OPEN_FILES;
