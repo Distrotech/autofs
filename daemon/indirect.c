@@ -1,4 +1,4 @@
-#ident "$Id: indirect.c,v 1.28 2006/04/03 03:58:20 raven Exp $"
+#ident "$Id: indirect.c,v 1.29 2006/04/03 08:15:36 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  indirect.c - Linux automounter indirect mount handling
@@ -256,7 +256,7 @@ int umount_autofs_indirect(struct autofs_point *ap)
 	int status = 1;
 	int left;
 
-	mnts = tree_make_mnt_tree(_PROC_MOUNTS);
+	mnts = tree_make_mnt_tree(_PROC_MOUNTS, ap->path);
 	left = umount_multi(ap, mnts, ap->path, 0);
 	tree_free_mnt_tree(mnts);
 	if (left) {

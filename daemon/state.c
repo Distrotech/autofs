@@ -1,4 +1,4 @@
-#ident "$Id: state.c,v 1.10 2006/04/03 03:58:20 raven Exp $"
+#ident "$Id: state.c,v 1.11 2006/04/03 08:15:36 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  state.c - state machine functions.
@@ -309,7 +309,7 @@ static void *do_readmap(void *arg)
 		status = lookup_ghost(ap);
 	else {
 		struct mapent *me;
-		mnts = tree_make_mnt_tree(_PROC_MOUNTS);
+		mnts = tree_make_mnt_tree(_PROC_MOUNTS, "/");
 		me = cache_enumerate(mc, NULL);
 		while (me) {
 			/* TODO: check return, locking me */

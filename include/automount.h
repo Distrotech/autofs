@@ -1,4 +1,4 @@
-#ident "$Id: automount.h,v 1.47 2006/04/03 03:58:20 raven Exp $"
+#ident "$Id: automount.h,v 1.48 2006/04/03 08:15:36 raven Exp $"
 /*
  * automount.h
  *
@@ -356,7 +356,7 @@ char *get_offset(const char *prefix, char *offset,
                  struct list_head *head, struct list_head **pos);
 void add_ordered_list(struct mnt_list *ent, struct list_head *head);
 void tree_free_mnt_tree(struct mnt_list *tree);
-struct mnt_list *tree_make_mnt_tree(const char *table);
+struct mnt_list *tree_make_mnt_tree(const char *table, const char *path);
 int tree_get_mnt_list(struct mnt_list *mnts, struct list_head *list, const char *path, int include);
 int tree_find_mnt_ents(struct mnt_list *mnts, struct list_head *list, const char *path);
 

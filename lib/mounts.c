@@ -1,4 +1,4 @@
-#ident "$Id: mounts.c,v 1.23 2006/04/03 03:58:20 raven Exp $"
+#ident "$Id: mounts.c,v 1.24 2006/04/03 08:15:36 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  mounts.c - module for Linux automount mount table lookup functions
@@ -483,7 +483,7 @@ void tree_free_mnt_tree(struct mnt_list *tree)
 /*
  * Make tree of system mounts in /proc/mounts.
  */
-struct mnt_list *tree_make_mnt_tree(const char *table)
+struct mnt_list *tree_make_mnt_tree(const char *table, const char *path)
 {
 	FILE *tab;
 	struct mntent mnt_wrk;
@@ -491,7 +491,7 @@ struct mnt_list *tree_make_mnt_tree(const char *table)
 	struct mntent *mnt;
 	struct mnt_list *ent, *mptr;
 	struct mnt_list *tree = NULL;
-	int eq;
+	int eq, plen;
 
 	tab = setmntent(table, "r");
 	if (!tab) {
@@ -500,8 +500,18 @@ struct mnt_list *tree_make_mnt_tree(const char *table)
 		return NULL;
 	}
 
+	plen = strlen(path);
+
 	while ((mnt = getmntent_r(tab, &mnt_wrk, buf, PATH_MAX))) {
 		int len = strlen(mnt->mnt_dir);
+
+		/* Not matching path */
+		if (strncmp(mnt->mnt_dir, path, plen))
+			continue;
+
+		/* Not a subdirectory of requested path */
+		if (plen > 1 && len > plen && mnt->mnt_dir[plen] != '/')
+			continue;
 
 		ent = malloc(sizeof(*ent));
 		if (!ent) {

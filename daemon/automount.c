@@ -1,4 +1,4 @@
-#ident "$Id: automount.c,v 1.75 2006/04/03 03:58:20 raven Exp $"
+#ident "$Id: automount.c,v 1.76 2006/04/03 08:15:36 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  automount.c - Linux automounter daemon
@@ -139,9 +139,6 @@ static int umount_offsets(struct autofs_point *ap, struct mnt_list *mnts, const 
 	INIT_LIST_HEAD(&list);
 	INIT_LIST_HEAD(&head);
 
-	pthread_cleanup_push(cache_lock_cleanup, mc);
-	cache_readlock(mc);
-
 	if (!tree_get_mnt_list(mnts, &list, base, 0))
 		return 0;
 
@@ -156,6 +153,9 @@ static int umount_offsets(struct autofs_point *ap, struct mnt_list *mnts, const 
 		INIT_LIST_HEAD(&this->ordered);
 		add_ordered_list(this, &head);
 	}
+
+	pthread_cleanup_push(cache_lock_cleanup, mc);
+	cache_readlock(mc);
 
 	pos = NULL;
 	while ((offset = get_offset(base, offset, &head, &pos))) {
@@ -442,7 +442,7 @@ static int umount_all(struct autofs_point *ap, int force)
 	struct mnt_list *mnts;
 	int left;
 
-	mnts = tree_make_mnt_tree(_PROC_MOUNTS);
+	mnts = tree_make_mnt_tree(_PROC_MOUNTS, ap->path);
 
 	left = umount_multi(ap, mnts, ap->path, 0);
 	if (force && left)
@@ -602,7 +602,7 @@ int do_expire(struct autofs_point *ap, const char *name, int namelen)
 
 	msg("expiring path %s", buf);
 
-	mnts = tree_make_mnt_tree(_PROC_MOUNTS);
+	mnts = tree_make_mnt_tree(_PROC_MOUNTS, buf);
 
 	ret = umount_multi(ap, mnts, buf, 1);
 	if (ret == 0) {
@@ -996,11 +996,13 @@ static void handle_mounts_cleanup(void *arg)
 	/* If we have been canceled then we may hold the state mutex. */
 	mutex_operation_wait(&ap->state_mutex);
 
+	msg("shut down path %s", ap->path);
+
 	master_free_mapent(ap->entry);
 
 	/* If we are the last tell the state machine to shutdown */
 	if (master_list_empty(master))
-		kill(getpid(), SIGUSR2);
+		kill(getpid(), SIGTERM);
 
 	return;
 }
@@ -1108,8 +1110,6 @@ void *handle_mounts(void *arg)
 				fatal(status);
 		}
 	}
-
-	msg("shuting down path %s", ap->path);
 
 	pthread_cleanup_pop(1);
 

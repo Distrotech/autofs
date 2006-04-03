@@ -1,4 +1,4 @@
-#ident "$Id: direct.c,v 1.31 2006/04/03 04:06:20 raven Exp $"
+#ident "$Id: direct.c,v 1.32 2006/04/03 08:15:36 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  direct.c - Linux automounter direct mount handling
@@ -184,7 +184,7 @@ int umount_autofs_direct(struct autofs_point *ap)
 		ap->kpipefd = -1;
 	}
 
-	mnts = tree_make_mnt_tree(_PROC_MOUNTS);
+	mnts = tree_make_mnt_tree(_PROC_MOUNTS, "/");
 	cache_readlock(mc);
 	me = cache_enumerate(mc, NULL);
 	while (me) {
@@ -245,8 +245,8 @@ int do_mount_autofs_direct(struct autofs_point *ap, struct mnt_list *mnts, struc
 */
 	if (!mp->options) {
 		mp->options = make_options_string(ap->path, ap->kpipefd, "direct");
-		if (!mp->name) {
-			free(mp->name);
+		if (!mp->options) {
+/*			free(mp->name); */
 			mp->name = NULL;
 			return 0;
 		}
@@ -366,7 +366,7 @@ int mount_autofs_direct(struct autofs_point *ap)
 	lookup_prune_cache(ap, now);
 
 	pthread_cleanup_push(cache_lock_cleanup, mc);
-	mnts = tree_make_mnt_tree(_PROC_MOUNTS);
+	mnts = tree_make_mnt_tree(_PROC_MOUNTS, "/");
 	cache_readlock(mc);
 	me = cache_enumerate(mc, NULL);
 	while (me) {

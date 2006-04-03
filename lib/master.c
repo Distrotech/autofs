@@ -1,4 +1,4 @@
-#ident "$Id: master.c,v 1.10 2006/04/01 06:48:05 raven Exp $"
+#ident "$Id: master.c,v 1.11 2006/04/03 08:15:36 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  master.c - master map utility routines.
@@ -53,13 +53,12 @@ int master_add_autofs_point(struct master_mapent *entry,
 	if (!ap)
 		return 0;
 
-/*	memset(ap, 0, sizeof(struct autofs_point)); */
-
 	ap->state = ST_INIT;
 
 	ap->state_pipe[0] = -1;
 	ap->state_pipe[1] = -1;
 
+	ap->mc = NULL;
 	ap->mc = cache_init(ap);
 	if (!ap->mc) {
 		free(ap);
