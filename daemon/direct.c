@@ -1,4 +1,4 @@
-#ident "$Id: direct.c,v 1.30 2006/04/03 03:58:20 raven Exp $"
+#ident "$Id: direct.c,v 1.31 2006/04/03 04:06:20 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  direct.c - Linux automounter direct mount handling
@@ -140,10 +140,10 @@ static int do_umount_autofs_direct(struct autofs_point *ap, struct mnt_list *mnt
 	rv = umount(me->key);
 	if (rv != 0) {
 		if (errno == ENOENT) {
-			error("mount point does not exist");
+			error("mount point %s does not exist", me->key);
 			return 0;
 		} else if (errno == EBUSY) {
-			debug("mount point %s is in use", me->key);
+			error("mount point %s is in use", me->key);
 			if (ap->state != ST_SHUTDOWN_FORCE)
 				return 0;
 		} else if (errno == ENOTDIR) {
