@@ -1,4 +1,4 @@
-#ident "$Id: direct.c,v 1.33 2006/04/03 21:44:34 raven Exp $"
+#ident "$Id: direct.c,v 1.34 2006/04/03 23:00:05 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  direct.c - Linux automounter direct mount handling
@@ -720,6 +720,26 @@ static void kernel_callback_cleanup(void *arg)
 	return;
 }
 
+void pending_cleanup(void *arg)
+{
+	struct pending_args *mt;
+	int status;
+
+	mt = (struct pending_args *) arg;
+
+	status = pthread_mutex_unlock(&mt->mutex);
+	if (status)
+		fatal(status);
+
+	status = pthread_cond_destroy(&mt->cond);
+	if (status)
+		fatal(status);
+
+	status = pthread_mutex_destroy(&mt->mutex);
+	if (status)
+		fatal(status);
+}
+
 static void *do_expire_direct(void *arg)
 {
 	struct pending_args *mt;
@@ -728,12 +748,21 @@ static void *do_expire_direct(void *arg)
 	int status;
 
 	mt = (struct pending_args *) arg;
-	ap = mt->ap;
 
+	status = pthread_mutex_lock(&mt->mutex);
+	if (status)
+		fatal(status);
+
+	ap = mt->ap;
 	mt->status = 1;
 
-	status = pthread_barrier_wait(&mt->barrier);
-	if (status && status != PTHREAD_BARRIER_SERIAL_THREAD)
+	mt->signaled = 1;
+	status = pthread_cond_signal(&mt->cond);
+	if (status)
+		fatal(status);
+
+	status = pthread_mutex_unlock(&mt->mutex);
+	if (status)
 		fatal(status);
 
 	pthread_cleanup_push(kernel_callback_cleanup, mt);
@@ -796,7 +825,15 @@ int handle_packet_expire_direct(struct autofs_point *ap, autofs_packet_expire_di
 		goto done;
 	}
 
-	status = pthread_barrier_init(&mt->barrier, NULL, 2);
+	status = pthread_mutex_init(&mt->mutex, NULL);
+	if (status)
+		fatal(status);
+
+	status = pthread_cond_init(&mt->cond, NULL);
+	if (status)
+		fatal(status);
+
+	status = pthread_mutex_lock(&mt->mutex);
 	if (status)
 		fatal(status);
 
@@ -819,13 +856,16 @@ int handle_packet_expire_direct(struct autofs_point *ap, autofs_packet_expire_di
 		status = 1;
 	}
 
-	status = pthread_barrier_wait(&mt->barrier);
-	if (status && status != PTHREAD_BARRIER_SERIAL_THREAD)
-		fatal(status);
+	pthread_cleanup_push(pending_cleanup, mt);
 
-	status = pthread_barrier_destroy(&mt->barrier);
-	if (status)
-		fatal(status);
+	mt->signaled = 0;
+	while (!mt->signaled) {
+		status = pthread_cond_wait(&mt->cond, &mt->mutex);
+		if (status)
+			fatal(status);
+	}
+
+	pthread_cleanup_pop(1);
 done:
 	cache_unlock(mc);
 	pthread_cleanup_pop(0);
@@ -849,12 +889,21 @@ static void *do_mount_direct(void *arg)
 	int status;
 
 	mt = (struct pending_args *) arg;
-	ap = mt->ap;
 
+	status = pthread_mutex_lock(&mt->mutex);
+	if (status)
+		fatal(status);
+
+	ap = mt->ap;
 	mt->status = 0;
 
-	status = pthread_barrier_wait(&mt->barrier);
-	if (status && status != PTHREAD_BARRIER_SERIAL_THREAD)
+	mt->signaled = 1;
+	status = pthread_cond_signal(&mt->cond);
+	if (status)
+		fatal(status);
+
+	status = pthread_mutex_unlock(&mt->mutex);
+	if (status)
 		fatal(status);
 
 	pthread_cleanup_push(kernel_callback_cleanup, mt);
@@ -1053,7 +1102,15 @@ int handle_packet_missing_direct(struct autofs_point *ap, autofs_packet_missing_
 		goto done;
 	}
 
-	status = pthread_barrier_init(&mt->barrier, NULL, 2);
+	status = pthread_mutex_init(&mt->mutex, NULL);
+	if (status)
+		fatal(status);
+
+	status = pthread_cond_init(&mt->cond, NULL);
+	if (status)
+		fatal(status);
+
+	status = pthread_mutex_lock(&mt->mutex);
 	if (status)
 		fatal(status);
 
@@ -1077,13 +1134,16 @@ int handle_packet_missing_direct(struct autofs_point *ap, autofs_packet_missing_
 		status = 1;
 	}
 
-	status = pthread_barrier_wait(&mt->barrier);
-	if (status && status != PTHREAD_BARRIER_SERIAL_THREAD)
-		fatal(status);
+	pthread_cleanup_push(pending_cleanup, mt);
 
-	status = pthread_barrier_destroy(&mt->barrier);
-	if (status)
-		fatal(status);
+	mt->signaled = 0;
+	while (!mt->signaled) {
+		status = pthread_cond_wait(&mt->cond, &mt->mutex);
+		if (status)
+			fatal(status);
+	}
+
+	pthread_cleanup_pop(1);
 done:
 	cache_unlock(mc);
 	pthread_cleanup_pop(0);

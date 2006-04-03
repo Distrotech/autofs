@@ -1,5 +1,5 @@
 #
-# $Id: Makefile,v 1.11 2006/04/03 21:44:34 raven Exp $
+# $Id: Makefile,v 1.12 2006/04/03 23:00:05 raven Exp $
 #
 -include ../Makefile.conf
 include ../Makefile.rules
@@ -32,7 +32,7 @@ autofs.init:
 	install -c rc.autofs -m 755 $(INSTALLROOT)$(initdir)/autofs
 
 CONFIG = $(shell test -e $(INSTALLROOT)$(autofsconfdir)/autofs.orig || echo "-b --suffix=.orig")
-CEXISTS = $(shell test -e $(INSTALLROOT)$(autofsconfdir)/autofs)
+CEXISTS = $(shell test -e $(INSTALLROOT)$(autofsconfdir)/autofs || echo "no")
 
 .PHONY: autofs.conf
 autofs.conf: autofs.conf.default
@@ -55,7 +55,7 @@ autofs.conf: autofs.conf.default
 	fi
 
 MASTER = $(shell test -e $(INSTALLROOT)$(autofsmapdir)/auto.master.orig || echo "-b --suffix=.orig")
-MEXISTS = $(shell test -e $(INSTALLROOT)$(autofsmapdir)/auto.master)
+MEXISTS = $(shell test -e $(INSTALLROOT)$(autofsmapdir)/auto.master || echo "no")
 
 .PHONY: auto.master
 auto.master:
@@ -78,7 +78,7 @@ auto.master:
 	fi
 
 MISC = $(shell test -e $(INSTALLROOT)$(autofsmapdir)/auto.misc.orig || echo "-b --suffix=.orig")
-IEXISTS = $(shell test -e $(INSTALLROOT)$(autofsmapdir)/auto.misc)
+IEXISTS = $(shell test -e $(INSTALLROOT)$(autofsmapdir)/auto.misc || echo "no")
 
 .PHONY: auto.misc
 auto.misc:
@@ -101,7 +101,7 @@ auto.misc:
 	fi
 
 NET = $(shell test -e $(INSTALLROOT)$(autofsmapdir)/auto.net.orig || echo "-b --suffix=.orig")
-NEXISTS = $(shell test -e $(INSTALLROOT)$(autofsmapdir)/auto.net)
+NEXISTS = $(shell test -e $(INSTALLROOT)$(autofsmapdir)/auto.net || echo "no")
 
 .PHONY: auto.net
 auto.net:
@@ -124,7 +124,7 @@ auto.net:
 	fi
 
 SMB = $(shell test -e $(INSTALLROOT)$(autofsmapdir)/auto.smb.orig || echo "-b --suffix=.orig")
-SEXISTS = $(shell test -e $(INSTALLROOT)$(autofsmapdir)/auto.smb)
+SEXISTS = $(shell test -e $(INSTALLROOT)$(autofsmapdir)/auto.smb || echo "no")
 
 .PHONY: auto.smb
 auto.smb:

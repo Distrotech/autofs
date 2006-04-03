@@ -1,4 +1,4 @@
-#ident "$Id: automount.h,v 1.48 2006/04/03 08:15:36 raven Exp $"
+#ident "$Id: automount.h,v 1.49 2006/04/03 23:00:05 raven Exp $"
 /*
  * automount.h
  *
@@ -385,7 +385,9 @@ struct master_readmap_cond {
 extern struct master_readmap_cond mc;
 
 struct pending_args {
-	pthread_barrier_t barrier;
+	pthread_mutex_t mutex;
+	pthread_cond_t  cond;
+	unsigned int signaled;		/* Condition has been signaled */
 	struct autofs_point *ap;	/* autofs mount we are working on */
 	int status;			/* Return status */
 	int type;			/* Type of packet */
