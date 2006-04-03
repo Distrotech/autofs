@@ -1,4 +1,4 @@
-#ident "$Id: state.c,v 1.9 2006/04/01 06:48:05 raven Exp $"
+#ident "$Id: state.c,v 1.10 2006/04/03 03:58:20 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  state.c - state machine functions.
@@ -22,7 +22,7 @@ struct state {
 	enum states state;
 };
 
-int do_mount_autofs_direct(struct autofs_point *, struct mapent *, int);
+int do_mount_autofs_direct(struct autofs_point *, struct mnt_list *, struct mapent *, int);
 
 void nextstate(int statefd, enum states next)
 {
@@ -267,6 +267,7 @@ static void *do_readmap(void *arg)
 	struct autofs_point *ap;
 	struct mapent_cache *mc;
 	struct readmap_args *ra;
+	struct  mnt_list *mnts;
 	int status;
 	time_t now;
 
@@ -306,8 +307,17 @@ static void *do_readmap(void *arg)
 	cache_readlock(mc);
 	if (ap->type == LKP_INDIRECT)
 		status = lookup_ghost(ap);
-	else
-		status = lookup_enumerate(ap, do_mount_autofs_direct, now);
+	else {
+		struct mapent *me;
+		mnts = tree_make_mnt_tree(_PROC_MOUNTS);
+		me = cache_enumerate(mc, NULL);
+		while (me) {
+			/* TODO: check return, locking me */
+			do_mount_autofs_direct(ap, mnts, me, now);
+			me = cache_enumerate(mc, me);
+		}
+		tree_free_mnt_tree(mnts);
+	}
 	cache_unlock(mc);
 	pthread_cleanup_pop(0);
 

@@ -1,4 +1,4 @@
-#ident "$Id: direct.c,v 1.29 2006/04/01 06:48:05 raven Exp $"
+#ident "$Id: direct.c,v 1.30 2006/04/03 03:58:20 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  direct.c - Linux automounter direct mount handling
@@ -111,13 +111,13 @@ static int autofs_init_direct(struct autofs_point *ap)
 	return 0;
 }
 
-static int do_umount_autofs_direct(struct autofs_point *ap, struct mapent *me)
+static int do_umount_autofs_direct(struct autofs_point *ap, struct mnt_list *mnts, struct mapent *me)
 {
 	char buf[MAX_ERR_BUF];
 	int rv, left;
 	int status = 1;
 
-	left = umount_multi(ap, me->key, 1);
+	left = umount_multi(ap, mnts, me->key, 1);
 	if (left) {
 		warn("could not unmount %d dirs under %s", left, me->key);
 		return -1;
@@ -172,6 +172,7 @@ force_umount:
 int umount_autofs_direct(struct autofs_point *ap)
 {
 	struct mapent_cache *mc = ap->mc;
+	struct mnt_list *mnts;
 	struct mapent *me;
 
 	close(ap->state_pipe[0]);
@@ -183,29 +184,32 @@ int umount_autofs_direct(struct autofs_point *ap)
 		ap->kpipefd = -1;
 	}
 
+	mnts = tree_make_mnt_tree(_PROC_MOUNTS);
 	cache_readlock(mc);
 	me = cache_enumerate(mc, NULL);
 	while (me) {
 		cache_unlock(mc);
 		/* TODO: check return, locking me */
-		do_umount_autofs_direct(ap, me);
+		do_umount_autofs_direct(ap, mnts, me);
 		cache_readlock(mc);
 		me = cache_enumerate(mc, me);
 	}
 	cache_unlock(mc);
+	tree_free_mnt_tree(mnts);
 
 	return 0;
 }
 
 
-int do_mount_autofs_direct(struct autofs_point *ap, struct mapent *me, int now)
+int do_mount_autofs_direct(struct autofs_point *ap, struct mnt_list *mnts, struct mapent *me, int now)
 {
 	struct mnt_params *mp;
 	time_t timeout = ap->exp_timeout;
 	struct stat st;
 	int status, ret;
+	LIST_HEAD(list);
 
-	if (is_mounted(_PROC_MOUNTS, me->key)) {
+	if (tree_find_mnt_ents(mnts, &list, me->key)) {
 		if (ap->state != ST_READMAP)
 			debug("trigger %s already mounted", me->key);
 		return 0;
@@ -232,13 +236,13 @@ int do_mount_autofs_direct(struct autofs_point *ap, struct mapent *me, int now)
 			fatal(status);
 		}
 	}
-
+/*
 	if (!mp->name) {
 		mp->name = make_mnt_name_string(ap->path);
 		if (!mp->name)
 			return 0;
 	}
-
+*/
 	if (!mp->options) {
 		mp->options = make_options_string(ap->path, ap->kpipefd, "direct");
 		if (!mp->name) {
@@ -262,7 +266,7 @@ int do_mount_autofs_direct(struct autofs_point *ap, struct mapent *me, int now)
 		me->dir_created = 1;
 	}
 
-	ret = mount(mp->name, me->key, "autofs", MS_MGC_VAL, mp->options);
+	ret = mount("automount", me->key, "autofs", MS_MGC_VAL, mp->options);
 	if (ret) {
 		crit("failed to mount autofs path %s", me->key);
 		goto out_err;
@@ -341,8 +345,14 @@ out_err:
 int mount_autofs_direct(struct autofs_point *ap)
 {
 	struct mapent_cache *mc = ap->mc;
+	struct mapent *me;
+	struct mnt_list *mnts;
 	time_t now = time(NULL);
-	int map;
+
+	if (strcmp(ap->path, "/-")) {
+		error("expected direct map, exiting");
+		return -1;
+	}
 
 	if (autofs_init_direct(ap))
 		return -1;
@@ -356,18 +366,18 @@ int mount_autofs_direct(struct autofs_point *ap)
 	lookup_prune_cache(ap, now);
 
 	pthread_cleanup_push(cache_lock_cleanup, mc);
+	mnts = tree_make_mnt_tree(_PROC_MOUNTS);
 	cache_readlock(mc);
-	map = lookup_enumerate(ap, do_mount_autofs_direct, now);
-	cache_unlock(mc);
-	pthread_cleanup_pop(0);
-	if (map & LKP_FAIL) {
-		if (map & LKP_INDIRECT) {
-			error("bad map format, found indirect, expected direct exiting");
-		} else {
-			error("failed to load map, exiting");
-		}
-		return -1;
+	me = cache_enumerate(mc, NULL);
+	while (me) {
+		/* TODO: check return, locking me */
+		do_mount_autofs_direct(ap, mnts, me, now);
+		me = cache_enumerate(mc, me);
 	}
+	cache_unlock(mc);
+	tree_free_mnt_tree(mnts);
+	pthread_cleanup_pop(0);
+
 	return 0;
 }
 
@@ -465,13 +475,13 @@ int mount_autofs_offset(struct autofs_point *ap, struct mapent *me, int is_autof
 			fatal(status);
 		}
 	}
-
+/*
 	if (!mp->name) {
 		mp->name = make_mnt_name_string(ap->path);
 		if (!mp->name)
 			return 0;
 	}
-
+*/
 	if (!mp->options) {
 		mp->options = make_options_string(ap->path, ap->kpipefd, "offset");
 		if (!mp->name) {

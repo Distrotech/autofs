@@ -1,4 +1,4 @@
-#ident "$Id: mounts.c,v 1.22 2006/03/31 18:26:16 raven Exp $"
+#ident "$Id: mounts.c,v 1.23 2006/04/03 03:58:20 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  mounts.c - module for Linux automount mount table lookup functions
@@ -361,7 +361,7 @@ char *get_offset(const char *prefix, char *offset,
 	while (next != head) {
 		char *pstart, *pend;
 
-		this = list_entry(next, struct mnt_list, list);
+		this = list_entry(next, struct mnt_list, ordered);
 		*pos = next;
 		next = next->next;
 
@@ -388,7 +388,7 @@ char *get_offset(const char *prefix, char *offset,
 	while (next != head) {
 		char *pstart;
 
-		this = list_entry(next, struct mnt_list, list);
+		this = list_entry(next, struct mnt_list, ordered);
 
 		if (strlen(this->path) <= plen + len)
 			break;
@@ -422,7 +422,7 @@ void add_ordered_list(struct mnt_list *ent, struct list_head *head)
 	list_for_each(p, head) {
 		int eq, tlen;
 
-		this = list_entry(p, struct mnt_list, list);
+		this = list_entry(p, struct mnt_list, ordered);
 		tlen = strlen(this->path);
 
 		eq = strncmp(this->path, ent->path, tlen);
@@ -430,12 +430,257 @@ void add_ordered_list(struct mnt_list *ent, struct list_head *head)
 			return;
 
 		if (eq > 0) {
-			list_add_tail(&ent->list, p);
+			INIT_LIST_HEAD(&ent->ordered);
+			list_add_tail(&ent->ordered, p);
 			return;
 		}
 	}
-	list_add_tail(&ent->list, p);
+	INIT_LIST_HEAD(&ent->ordered);
+	list_add_tail(&ent->ordered, p);
 
 	return;
 }
+
+void tree_free_mnt_tree(struct mnt_list *tree)
+{
+	struct list_head *head, *p;
+
+	if (!tree)
+		return;
+
+	tree_free_mnt_tree(tree->left);
+	tree_free_mnt_tree(tree->right);
+
+	head = &tree->self;
+	p = head->next;
+	while (p != head) {
+		struct mnt_list *this;
+
+		this = list_entry(p, struct mnt_list, self);
+
+		p = p->next;
+
+		list_del(&this->self);
+
+		free(this->path);
+		free(this->fs_type);
+
+		if (this->opts)
+			free(this->opts);
+
+		free(this);
+	}
+
+	free(tree->path);
+	free(tree->fs_type);
+
+	if (tree->opts)
+		free(tree->opts);
+
+	free(tree);
+}
+
+/*
+ * Make tree of system mounts in /proc/mounts.
+ */
+struct mnt_list *tree_make_mnt_tree(const char *table)
+{
+	FILE *tab;
+	struct mntent mnt_wrk;
+	char buf[PATH_MAX * 3];
+	struct mntent *mnt;
+	struct mnt_list *ent, *mptr;
+	struct mnt_list *tree = NULL;
+	int eq;
+
+	tab = setmntent(table, "r");
+	if (!tab) {
+		char *estr = strerror_r(errno, buf, PATH_MAX - 1);
+		printf("setmntent: %s", estr);
+		return NULL;
+	}
+
+	while ((mnt = getmntent_r(tab, &mnt_wrk, buf, PATH_MAX))) {
+		int len = strlen(mnt->mnt_dir);
+
+		ent = malloc(sizeof(*ent));
+		if (!ent) {
+			endmntent(tab);
+			tree_free_mnt_tree(tree);
+			return NULL;
+		}
+
+		ent->left = ent->right = NULL;
+		INIT_LIST_HEAD(&ent->self);
+		INIT_LIST_HEAD(&ent->list);
+		INIT_LIST_HEAD(&ent->ordered);
+
+		ent->path = malloc(len + 1);
+		if (!ent->path) {
+			endmntent(tab);
+			tree_free_mnt_tree(tree);
+			return NULL;
+		}
+		strcpy(ent->path, mnt->mnt_dir);
+
+		ent->fs_type = malloc(strlen(mnt->mnt_type) + 1);
+		if (!ent->fs_type) {
+			free(ent->path);
+			endmntent(tab);
+			tree_free_mnt_tree(tree);
+			return NULL;
+		}
+		strcpy(ent->fs_type, mnt->mnt_type);
+
+		ent->opts = malloc(strlen(mnt->mnt_opts) + 1);
+		if (!ent->opts) {
+			free(ent->fs_type);
+			free(ent->path);
+			endmntent(tab);
+			tree_free_mnt_tree(tree);
+			return NULL;
+		}
+		strcpy(ent->opts, mnt->mnt_opts);
+
+		mptr = tree;
+		while (mptr) {
+			int elen = strlen(ent->path);
+			int mlen = strlen(mptr->path);
+
+			if (elen < mlen) {
+				if (mptr->left) {
+					mptr = mptr->left;
+					continue;
+				} else {
+					mptr->left = ent;
+					break;
+				}
+			} else if (elen > mlen) {
+				if (mptr->right) {
+					mptr = mptr->right;
+					continue;
+				} else {
+					mptr->right = ent;
+					break;
+				}
+			}
+
+			eq = strcmp(ent->path, mptr->path);
+			if (eq < 0) {
+				if (mptr->left)
+					mptr = mptr->left;
+				else {
+					mptr->left = ent;
+					break;
+				}
+			} else if (eq > 0) {
+				if (mptr->right)
+					mptr = mptr->right;
+				else {
+					mptr->right = ent;
+					break;
+				}
+			} else {
+				list_add_tail(&ent->self, &mptr->self);
+				break;
+			}
+		}
+
+		if (!tree)
+			tree = ent;
+	}
+	endmntent(tab);
+
+	return tree;
+}
+
+/*
+ * Get list of mounts under "path" in longest->shortest order
+ */
+int tree_get_mnt_list(struct mnt_list *mnts, struct list_head *list, const char *path, int include)
+{
+	int mlen, plen;
+
+	if (!mnts)
+		return 0;
+
+	plen = strlen(path);
+	mlen = strlen(mnts->path);
+	if (mlen < plen)
+		return tree_get_mnt_list(mnts->right, list, path, include);
+	else {
+		struct list_head *self, *p;
+		int eq;
+
+		tree_get_mnt_list(mnts->left, list, path, include);
+
+		eq = strcmp(mnts->path, path);
+		if ((!include && mlen <= plen) ||
+				strncmp(mnts->path, path, plen))
+			goto skip;
+
+		if (plen > 1 && mlen > plen && mnts->path[plen] != '/')
+			goto skip;
+
+		INIT_LIST_HEAD(&mnts->list);
+		list_add(&mnts->list, list);
+
+		self = &mnts->self;
+		list_for_each(p, self) {
+			struct mnt_list *this;
+
+			this = list_entry(p, struct mnt_list, self);
+			INIT_LIST_HEAD(&this->list);
+			list_add(&this->list, list);
+		}
+skip:
+		tree_get_mnt_list(mnts->right, list, path, include);
+	}
+
+	if (list_empty(list))
+		return 0;
+
+	return 1;
+}
+
+int tree_find_mnt_ents(struct mnt_list *mnts, struct list_head *list, const char *path)
+{
+	int mlen, plen;
+
+	if (!mnts)
+		return 0;
+
+	plen = strlen(path);
+	mlen = strlen(mnts->path);
+	if (mlen < plen)
+		return tree_find_mnt_ents(mnts->right, list, path);
+	else if (mlen > plen)
+		return tree_find_mnt_ents(mnts->left, list, path);
+	else {
+		struct list_head *self, *p;
+
+		if (!strcmp(mnts->path, path)) {
+			INIT_LIST_HEAD(&mnts->list);
+			list_add(&mnts->list, list);
+		}
+
+		self = &mnts->self;
+		list_for_each(p, self) {
+			struct mnt_list *this;
+
+			this = list_entry(p, struct mnt_list, self);
+
+			if (!strcmp(this->path, path)) {
+				INIT_LIST_HEAD(&this->list);
+				list_add(&this->list, list);
+			}
+		}
+
+		if (!list_empty(list))
+			return 1;
+	}
+
+	return 0;
+}
+
 

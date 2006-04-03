@@ -1,4 +1,4 @@
-#ident "$Id: indirect.c,v 1.27 2006/04/01 06:48:05 raven Exp $"
+#ident "$Id: indirect.c,v 1.28 2006/04/03 03:58:20 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  indirect.c - Linux automounter indirect mount handling
@@ -111,10 +111,11 @@ static int do_mount_autofs_indirect(struct autofs_point *ap)
 	if (!options)
 		goto out_err;
 
+/*
 	name = make_mnt_name_string(ap->path);
 	if (!name)
 		goto out_err;
-
+*/
 	/* In case the directory doesn't exist, try to mkdir it */
 	if (mkdir_path(ap->path, 0555) < 0) {
 		if (errno != EEXIST && errno != EROFS) {
@@ -135,7 +136,7 @@ static int do_mount_autofs_indirect(struct autofs_point *ap)
 		goto out_rmdir;
 	}
 
-	free(name);
+/*	free(name); */
 	free(options);
 
 	name = NULL;
@@ -250,11 +251,14 @@ int mount_autofs_indirect(struct autofs_point *ap)
 
 int umount_autofs_indirect(struct autofs_point *ap)
 {
+	struct mnt_list *mnts;
 	int rv;
 	int status = 1;
 	int left;
 
-	left = umount_multi(ap, ap->path, 0);
+	mnts = tree_make_mnt_tree(_PROC_MOUNTS);
+	left = umount_multi(ap, mnts, ap->path, 0);
+	tree_free_mnt_tree(mnts);
 	if (left) {
 		warn("could not unmount %d dirs under %s", left, ap->path);
 		return -1;

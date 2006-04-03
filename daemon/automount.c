@@ -1,4 +1,4 @@
-#ident "$Id: automount.c,v 1.74 2006/04/01 06:48:05 raven Exp $"
+#ident "$Id: automount.c,v 1.75 2006/04/03 03:58:20 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  automount.c - Linux automounter daemon
@@ -126,28 +126,35 @@ int rmdir_path(const char *path)
 	return 0;
 }
 
-static int umount_offsets(struct autofs_point *ap, const char *base)
+static int umount_offsets(struct autofs_point *ap, struct mnt_list *mnts, const char *base)
 {
 	char path[PATH_MAX + 1];
 	char *offset = path;
-	struct list_head head, *pos;
+	struct list_head list, head, *pos, *p;
 	char key[PATH_MAX + 1];
 	struct mapent_cache *mc = ap->mc;
 	struct mapent *me;
-	struct mnt_list *mnts, *next;
 	int ret = 0, status;
 
+	INIT_LIST_HEAD(&list);
 	INIT_LIST_HEAD(&head);
 
 	pthread_cleanup_push(cache_lock_cleanup, mc);
 	cache_readlock(mc);
-	mnts = get_mnt_list(_PROC_MOUNTS, base, 0);
-	for (next = mnts; next; next = next->next) {
-		if (strcmp(next->fs_type, "autofs"))
+
+	if (!tree_get_mnt_list(mnts, &list, base, 0))
+		return 0;
+
+	list_for_each(p, &list) {
+		struct mnt_list *this;
+
+		this = list_entry(p, struct mnt_list, list);
+
+		if (strcmp(this->fs_type, "autofs"))
 			continue;
 
-		INIT_LIST_HEAD(&next->list);
-		add_ordered_list(next, &head);
+		INIT_LIST_HEAD(&this->ordered);
+		add_ordered_list(this, &head);
 	}
 
 	pos = NULL;
@@ -177,7 +184,6 @@ static int umount_offsets(struct autofs_point *ap, const char *base)
 			ret++;
 		}
 	}
-	free_mnt_list(mnts);
 	cache_unlock(mc);
 	pthread_cleanup_pop(0);
 
@@ -386,37 +392,43 @@ static void check_rm_dirs(struct autofs_point *ap, const char *path, int incl)
 
 /* umount all filesystems mounted under path.  If incl is true, then
    it also tries to umount path itself */
-int umount_multi(struct autofs_point *ap, const char *path, int incl)
+int umount_multi(struct autofs_point *ap, struct mnt_list *mnts, const char *path, int incl)
 {
 	int left;
-	struct mnt_list *mnts = NULL;
 	struct mnt_list *mptr;
+	struct list_head *p;
+	LIST_HEAD(list);
 
 	debug("path %s incl %d", path, incl);
 
-	if (umount_offsets(ap, path)) {
+	if (umount_offsets(ap, mnts, path)) {
 		error("could not umount some offsets under %s", path);
 		return 0;
 	}
 
 	debug("umounted offsets");
 
-	mnts = get_mnt_list(_PATH_MOUNTED, path, incl);
-	if (!mnts) {
+	if (!tree_get_mnt_list(mnts, &list, path, incl)) {
 		debug("no mounts found under %s", path);
 /*		check_rm_dirs(ap, path, incl); */
 		return 0;
 	}
 
 	left = 0;
-	for (mptr = mnts; mptr != NULL; mptr = mptr->next) {
+	list_for_each(p, &list) {
+		mptr = list_entry(p, struct mnt_list, list);
+
+		/* We only want real mounts */
+		if (!strcmp(mptr->fs_type, "autofs"))
+			continue;
+
 		debug("unmounting dir = %s", mptr->path);
 		if (umount_ent(ap, mptr->path, mptr->fs_type)) {
 			left++;
 		}
+
 		sched_yield();
 	}
-	free_mnt_list(mnts);
 
 	/* Delete detritus like unwanted mountpoints and symlinks */
 /*	if (left == 0)
@@ -427,11 +439,16 @@ int umount_multi(struct autofs_point *ap, const char *path, int incl)
 
 static int umount_all(struct autofs_point *ap, int force)
 {
+	struct mnt_list *mnts;
 	int left;
 
-	left = umount_multi(ap, ap->path, 0);
+	mnts = tree_make_mnt_tree(_PROC_MOUNTS);
+
+	left = umount_multi(ap, mnts, ap->path, 0);
 	if (force && left)
 		warn("could not unmount %d dirs under %s", left, ap->path);
+
+	tree_free_mnt_tree(mnts);
 
 	return left;
 }
@@ -566,6 +583,7 @@ static int get_pkt(struct autofs_point *ap, union autofs_packet_union *pkt)
 
 int do_expire(struct autofs_point *ap, const char *name, int namelen)
 {
+	struct mnt_list *mnts;
 	char buf[PATH_MAX + 1];
 	int len, ret;
 
@@ -584,12 +602,17 @@ int do_expire(struct autofs_point *ap, const char *name, int namelen)
 
 	msg("expiring path %s", buf);
 
-	ret = umount_multi(ap, buf, 1);
+	mnts = tree_make_mnt_tree(_PROC_MOUNTS);
+
+	ret = umount_multi(ap, mnts, buf, 1);
 	if (ret == 0) {
 		msg("expired %s", buf);
 	} else {
 		error("error while expiring %s", buf);
 	}
+
+	tree_free_mnt_tree(mnts);
+
 	return ret;
 }
 

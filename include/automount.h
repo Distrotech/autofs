@@ -1,4 +1,4 @@
-#ident "$Id: automount.h,v 1.46 2006/04/01 06:48:05 raven Exp $"
+#ident "$Id: automount.h,v 1.47 2006/04/03 03:58:20 raven Exp $"
 /*
  * automount.h
  *
@@ -320,12 +320,28 @@ int rpc_time(const char *host,
 	     long seconds, long micros, unsigned int option, double *result);
 
 /* mount table utilities */
+
 struct mnt_list {
 	char *path;
 	char *fs_type;
 	char *opts;
+	/*
+	 * List operations ie. get_mnt_list.
+	 */
 	struct mnt_list *next;
+	/*
+	 * Tree operations ie. tree_make_tree,
+	 * tree_get_mnt_list etc.
+	 */
+	struct mnt_list *left;
+	struct mnt_list *right;
+	struct list_head self;
 	struct list_head list;
+	/*
+	 * Offset mount handling ie. add_ordered_list
+	 * and get_offset.
+	 */
+	struct list_head ordered;
 };
 
 char *make_options_string(char *path, int kernel_pipefd, char *extra);
@@ -339,6 +355,10 @@ char *find_mnt_ino(const char *table, dev_t dev, ino_t ino);
 char *get_offset(const char *prefix, char *offset,
                  struct list_head *head, struct list_head **pos);
 void add_ordered_list(struct mnt_list *ent, struct list_head *head);
+void tree_free_mnt_tree(struct mnt_list *tree);
+struct mnt_list *tree_make_mnt_tree(const char *table);
+int tree_get_mnt_list(struct mnt_list *mnts, struct list_head *list, const char *path, int include);
+int tree_find_mnt_ents(struct mnt_list *mnts, struct list_head *list, const char *path);
 
 /* Core automount definitions */
 
@@ -426,7 +446,7 @@ struct autofs_point {
 /* Standard functions used by daemon or modules */
 
 void *handle_mounts(void *arg);
-int umount_multi(struct autofs_point *ap, const char *path, int incl);
+int umount_multi(struct autofs_point *ap, struct mnt_list *mnts, const char *path, int incl);
 int send_ready(int ioctlfd, unsigned int wait_queue_token);
 int send_fail(int ioctlfd, unsigned int wait_queue_token);
 int do_expire(struct autofs_point *ap, const char *name, int namelen);

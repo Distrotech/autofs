@@ -65,6 +65,7 @@
 - updated configure to check for libxml2 - required by SASL code.
 - updated configure to provide optional inclusion of SASL auth.
 - add check for automount already running.
+- attempt to fix excessive CPU usage (not quite there yet).
 
 11/4/2005 autofs-4.1.4
 ----------------------
