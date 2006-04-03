@@ -1,4 +1,4 @@
-#ident "$Id: direct.c,v 1.32 2006/04/03 08:15:36 raven Exp $"
+#ident "$Id: direct.c,v 1.33 2006/04/03 21:44:34 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  direct.c - Linux automounter direct mount handling
@@ -484,8 +484,8 @@ int mount_autofs_offset(struct autofs_point *ap, struct mapent *me, int is_autof
 */
 	if (!mp->options) {
 		mp->options = make_options_string(ap->path, ap->kpipefd, "offset");
-		if (!mp->name) {
-			free(mp->name);
+		if (!mp->options) {
+/*			free(mp->name); */
 			mp->name = NULL;
 			return 0;
 		}

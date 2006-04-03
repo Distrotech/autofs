@@ -1,4 +1,4 @@
-#ident "$Id: automount.c,v 1.76 2006/04/03 08:15:36 raven Exp $"
+#ident "$Id: automount.c,v 1.77 2006/04/03 21:44:34 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  automount.c - Linux automounter daemon
@@ -956,7 +956,14 @@ static void mutex_operation_wait(pthread_mutex_t *mutex)
 	status = pthread_mutex_trylock(mutex);
 	if (status) {
 		if (status == EBUSY) {
-			/* Operation in progress - wait */
+			/* Mutex locked - do we own it */
+			status = pthread_mutex_unlock(mutex);
+			if (status) {
+				if (status != EPERM)
+					fatal(status);
+			} else
+				return;
+
 			status = pthread_mutex_lock(mutex);
 			if (status)
 				fatal(status);

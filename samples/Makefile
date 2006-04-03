@@ -1,24 +1,12 @@
 #
-# $Id: Makefile,v 1.10 2006/03/29 10:32:37 raven Exp $
+# $Id: Makefile,v 1.11 2006/04/03 21:44:34 raven Exp $
 #
 -include ../Makefile.conf
 include ../Makefile.rules
 
-#ifeq ($(LDAP), 1)
-#  SRCS = autofs-ldap-auto-master.c
-#  OBJS = autofs-ldap-auto-master.o
-#  BINS = autofs-ldap-auto-master
-#endif
+SAMPLES = auto.master auto.misc auto.net auto.smb
 
-#CFLAGS += -I../include
-#LIBS = -lldap -llber
-
-#all: $(BINS) rc.autofs
 all: rc.autofs autofs.conf.default
-
-#autofs-ldap-auto-master: $(OBJS)
-#	$(CC) $(LDFLAGS) -o autofs-ldap-auto-master $(OBJS) $(LIBS)
-#	$(STRIP) autofs-ldap-auto-master
 
 rc.autofs: rc.autofs.in
 	sed -e "s|@@sbindir@@|$(sbindir)|g" \
@@ -30,28 +18,137 @@ autofs.conf.default: autofs.conf.default.in
 	sed -e "s|@@autofsmapdir@@|$(autofsmapdir)|g" \
 		< autofs.conf.default.in > autofs.conf.default
 
-install: all
-	install -d -m 755 $(INSTALLROOT)$(autofsconfdir)
-	-mv -f $(INSTALLROOT)$(autofsconfdir)/autofs $(INSTALLROOT)$(autofsconfdir)/autofs.conf.old
-	install -c autofs.conf.default -m 755 $(INSTALLROOT)$(autofsconfdir)/autofs
+.PHONY: dirs
+dirs:
 	install -d -m 755 $(INSTALLROOT)$(autofsmapdir)
-	-mv -f $(INSTALLROOT)$(autofsmapdir)/auto.master $(INSTALLROOT)$(autofsmapdir)/auto.master.old
-	install -c auto.master -m 644 $(INSTALLROOT)$(autofsmapdir)
-	-mv -f $(INSTALLROOT)$(autofsmapdir)/auto.misc $(INSTALLROOT)$(autofsmapdir)/auto.misc.old
-	install -c auto.misc   -m 644 $(INSTALLROOT)$(autofsmapdir)
-	-mv -f $(INSTALLROOT)$(autofsmapdir)/auto.net $(INSTALLROOT)$(autofsmapdir)/auto.net.old
-	install -c auto.net    -m 755 $(INSTALLROOT)$(autofsmapdir)
-	-mv -f $(INSTALLROOT)$(autofsmapdir)/auto.smb $(INSTALLROOT)$(autofsmapdir)/auto.smb.old
-	install -c auto.smb    -m 755 $(INSTALLROOT)$(autofsmapdir)
 	install -d -m 755 $(INSTALLROOT)$(initdir)
-	install -c rc.autofs   -m 755 $(INSTALLROOT)$(initdir)/autofs
+	install -d -m 755 $(INSTALLROOT)$(autofsconfdir)
 	install -d -m 755 $(INSTALLROOT)$(autofslibdir)
 	install -d -m 755 $(INSTALLROOT)/var/run/autofs
-#ifeq ($(LDAP), 1)
-#	install -c autofs-ldap-auto-master -m 755 $(INSTALLROOT)$(autofslibdir)
-#endif
+
+.PHONY: autofs.init
+autofs.init:
+	@echo
+	install -c rc.autofs -m 755 $(INSTALLROOT)$(initdir)/autofs
+
+CONFIG = $(shell test -e $(INSTALLROOT)$(autofsconfdir)/autofs.orig || echo "-b --suffix=.orig")
+CEXISTS = $(shell test -e $(INSTALLROOT)$(autofsconfdir)/autofs)
+
+.PHONY: autofs.conf
+autofs.conf: autofs.conf.default
+	@echo
+	@echo "Installing autofs default configuation in $(autofsconfdir)"
+	@if test -z "$(CONFIG)" ; \
+	then \
+		install -v -c autofs.conf.default -m 755 \
+			$(INSTALLROOT)$(autofsconfdir)/autofs.conf.new ; \
+		echo "Found existing backup of configuration file." ; \
+		echo "Installed package default configuration file as \"autofs.conf.new\"." ; \
+	else \
+		install -v -c autofs.conf.default -m 755 $(CONFIG) \
+				$(INSTALLROOT)$(autofsconfdir)/autofs ; \
+		echo "Installed package configuration configuration as \"autofs\"." ; \
+		if test -z "$(CEXISTS)" ; \
+		then \
+			echo "Backup of existing configuration made to \"autofs.orig\"." ; \
+		fi ; \
+	fi
+
+MASTER = $(shell test -e $(INSTALLROOT)$(autofsmapdir)/auto.master.orig || echo "-b --suffix=.orig")
+MEXISTS = $(shell test -e $(INSTALLROOT)$(autofsmapdir)/auto.master)
+
+.PHONY: auto.master
+auto.master:
+	@echo
+	@echo "Installing autofs default master map in $(autofsmapdir)"
+	@if test -z "$(MASTER)" ; \
+	then \
+		install -v -c auto.master -m 644 \
+			$(INSTALLROOT)$(autofsmapdir)/auto.master.new ; \
+		echo "Found existing backup of master map." ; \
+		echo "Installed package default master map as \"auto.master.new\"." ; \
+	else \
+		install -v -c auto.master -m 755 $(MASTER) \
+				$(INSTALLROOT)$(autofsmapdir)/auto.master ; \
+		echo "Installed package master map as \"auto.master\"." ; \
+		if test -z "$(MEXISTS)" ; \
+		then \
+			echo "Backup of existing map made to \"auto.master.orig\"." ; \
+		fi ; \
+	fi
+
+MISC = $(shell test -e $(INSTALLROOT)$(autofsmapdir)/auto.misc.orig || echo "-b --suffix=.orig")
+IEXISTS = $(shell test -e $(INSTALLROOT)$(autofsmapdir)/auto.misc)
+
+.PHONY: auto.misc
+auto.misc:
+	@echo
+	@echo "Installing autofs sample map \"auto.misc\" in $(autofsmapdir)"
+	@if test -z "$(MISC)" ; \
+	then \
+		install -v -c auto.misc -m 644 \
+			$(INSTALLROOT)$(autofsmapdir)/auto.misc.new ; \
+		echo "Found existing backup of sample map \"auto.misc\"." ; \
+		echo "Installed package sample as \"auto.misc.new\"." ; \
+	else \
+		install -v -c auto.misc -m 755 $(MISC) \
+				$(INSTALLROOT)$(autofsmapdir)/auto.misc ; \
+		echo "Installed package sample map as \"auto.misc\"." ; \
+		if test -z "$(MEXISTS)" ; \
+		then \
+			echo "Backup of existing map made to \"auto.misc.orig\"." ; \
+		fi ; \
+	fi
+
+NET = $(shell test -e $(INSTALLROOT)$(autofsmapdir)/auto.net.orig || echo "-b --suffix=.orig")
+NEXISTS = $(shell test -e $(INSTALLROOT)$(autofsmapdir)/auto.net)
+
+.PHONY: auto.net
+auto.net:
+	@echo
+	@echo "Installing autofs sample map \"auto.net\" in $(autofsmapdir)"
+	@if test -z "$(NET)" ; \
+	then \
+		install -v -c auto.net -m 644 \
+			$(INSTALLROOT)$(autofsmapdir)/auto.net.new ; \
+		echo "Found existing backup of sample map \"auto.net\"." ; \
+		echo "Installed package sample as \"auto.net.new\"." ; \
+	else \
+		install -v -c auto.net -m 755 $(NET) \
+				$(INSTALLROOT)$(autofsmapdir)/auto.net ; \
+		echo "Installed package sample map as \"auto.net\"." ; \
+		if test -z "$(NEXISTS)" ; \
+		then \
+			echo "Backup of existing map made to \"auto.net.orig\"." ; \
+		fi ; \
+	fi
+
+SMB = $(shell test -e $(INSTALLROOT)$(autofsmapdir)/auto.smb.orig || echo "-b --suffix=.orig")
+SEXISTS = $(shell test -e $(INSTALLROOT)$(autofsmapdir)/auto.smb)
+
+.PHONY: auto.smb
+auto.smb:
+	@echo
+	@echo "Installing autofs sample map \"auto.smb\" in $(autofsmapdir)"
+	@if test -z "$(SMB)" ; \
+	then \
+		install -v -c auto.smb -m 644 \
+			$(INSTALLROOT)$(autofsmapdir)/auto.smb.new ; \
+		echo "Found existing backup of sample map \"auto.smb\"." ; \
+		echo "Installed package sample as \"auto.smb.new\"." ; \
+	else \
+		install -v -c auto.net -m 755 $(SMB) \
+				$(INSTALLROOT)$(autofsmapdir)/auto.smb ; \
+		echo "Installed package sample map as \"auto.smb\"." ; \
+		if test -z "$(SEXISTS)" ; \
+		then \
+			echo "Backup of existing map made to \"auto.smb.orig\"." ; \
+		fi ; \
+	fi
+
+install: rc.autofs autofs.conf.default dirs autofs.init autofs.conf $(SAMPLES)
+	@echo
 
 clean:
-#	rm -f *.o *.s autofs-ldap-auto-master rc.autofs
 	rm -f *.o *.s rc.autofs autofs.conf.default
 

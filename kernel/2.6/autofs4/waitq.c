@@ -232,7 +232,7 @@ int autofs4_wait(struct autofs_sb_info *sbi, struct dentry *dentry,
 
 	if (!wq) {
 		/* Can't wait for an expire if there's no mount */
-		if (notify == NFY_NONE && !d_mountpoint(dentry)) {
+		if (notify == NFY_NONE && !autofs4_ispending(dentry)) {
 			kfree(name);
 			up(&sbi->wq_sem);
 			return -ENOENT;

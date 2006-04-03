@@ -66,6 +66,7 @@
 - updated configure to provide optional inclusion of SASL auth.
 - add check for automount already running.
 - attempt to fix excessive CPU usage (not quite there yet).
+- make samples install try harder to make backup of existing files.
 
 11/4/2005 autofs-4.1.4
 ----------------------
