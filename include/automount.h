@@ -1,4 +1,4 @@
-#ident "$Id: automount.h,v 1.49 2006/04/03 23:00:05 raven Exp $"
+#ident "$Id: automount.h,v 1.50 2006/04/06 20:02:04 raven Exp $"
 /*
  * automount.h
  *
@@ -205,6 +205,7 @@ int rmdir_path(const char *path);
 
 #define KEY_MAX_LEN    NAME_MAX
 #define MAPENT_MAX_LEN 4095
+#define PARSE_MAX_BUF	KEY_MAX_LEN + MAPENT_MAX_LEN + 2
 
 int lookup_nss_read_master(struct master *master, time_t age);
 int lookup_nss_read_map(struct autofs_point *ap, time_t age);

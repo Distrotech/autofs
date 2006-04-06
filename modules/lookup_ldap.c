@@ -1,4 +1,4 @@
-#ident "$Id: lookup_ldap.c,v 1.39 2006/03/31 18:26:16 raven Exp $"
+#ident "$Id: lookup_ldap.c,v 1.40 2006/04/06 20:02:04 raven Exp $"
 /*
  * lookup_ldap.c - Module for Linux automountd to access automount
  *		   maps in LDAP directories.
@@ -60,11 +60,14 @@ struct lookup_context {
 	char *entry_attr;
 	char *value_attr;
 
-	/* sasl authentication information */
-	char *auth_conf;
-	char *sasl_mech;
-	char *user;
-	char *secret;
+	/* TLS and SASL authentication information */
+	char        *auth_conf;
+	unsigned     use_tls;
+	unsigned     tls_required;
+	unsigned     auth_required;
+	char        *sasl_mech;
+	char        *user;
+	char        *secret;
 
 	struct parse_mod *parse;
 };
@@ -91,19 +94,26 @@ int ldap_bind_anonymous(LDAP *ldap, struct lookup_context *ctxt)
 	return 0;
 }
 
-LDAP *ldap_connection_init(const char *server, int port, int *version)
+LDAP *ldap_connection_init(const char *server, int port,
+			int *version, unsigned use_tls, unsigned tls_required)
 {
-	LDAP *ldap;
+	LDAP *ldap = NULL;
 	int timeout = 8;
+	char *url = NULL;
 	int rv;
 
 	*version = 3;
 
+	if (server) {
+		url = alloca(strlen(server) + 14);
+		sprintf(url, "//%s:%u", server, port);
+	}
+
 	/* Initialize the LDAP context. */
-	ldap = ldap_init(server, port);
-	if (!ldap) {
+	rv = ldap_initialize(&ldap, url);
+	if (rv != LDAP_SUCCESS) {
 		crit(MODPREFIX "couldn't initialize LDAP connection"
-		     " to %s", server ?: "default server");
+		     " to %s", server ? server : "default server");
 		return NULL;
 	}
 
@@ -112,12 +122,11 @@ LDAP *ldap_connection_init(const char *server, int port, int *version)
 	if (rv != LDAP_SUCCESS) {
 		/* fall back to LDAPv2 */
 		ldap_unbind(ldap);
-		ldap = ldap_init(server, port);
-		if (!ldap) {
+		rv = ldap_initialize(&ldap, url);
+		if (rv != LDAP_SUCCESS) {
 			crit(MODPREFIX "couldn't initialize LDAP");
 			return NULL;
 		}
-
 		*version = 2;
 	}
 
@@ -127,6 +136,26 @@ LDAP *ldap_connection_init(const char *server, int port, int *version)
 		info(MODPREFIX "failed to set connection timeout to %d",
 		     timeout);
 
+#if WITH_SASL
+	if (use_tls) {
+		if (*version == 2 && tls_required) {
+			error("TLS required but connection is version 2");
+			ldap_unbind(ldap);
+			return NULL;
+		}
+
+		rv = ldap_start_tls_s(ldap, NULL, NULL);
+		if (rv != LDAP_SUCCESS) {
+			ldap_unbind(ldap);
+			if (tls_required) {
+				error("TLS required but START_TLS failed");
+				return NULL;
+			}
+			ldap = ldap_connection_init(server, port, version,0,0);
+		}
+	}
+#endif
+
 	return ldap;
 }
 
@@ -135,21 +164,23 @@ static LDAP *do_connect(struct lookup_context *ctxt)
 	LDAP *ldap;
 	int rv;
 
-	ldap = ldap_connection_init(ctxt->server, ctxt->port, &ctxt->version);
+	ldap = ldap_connection_init(ctxt->server, ctxt->port,
+			&ctxt->version, ctxt->use_tls, ctxt->tls_required);
 	if (!ldap)
 		return NULL;
 
 #if WITH_SASL
-	if (ctxt->sasl_mech) {
+	if (ctxt->auth_required && ctxt->sasl_mech) {
 		sasl_conn_t *conn;
 
-		debug("attempting sasl bind, mechanism %s, user %s, pass %s",
-		      ctxt->sasl_mech, ctxt->user, ctxt->secret);
+		debug("attempting sasl bind, mechanism %s, user %s",
+		      ctxt->sasl_mech, ctxt->user);
 
-		conn = sasl_bind_mech(ldap, ctxt->server, ctxt->sasl_mech);
+		rv = 1;
+		conn = sasl_bind_mech(ldap, ctxt->sasl_mech);
 		if (conn)
 			rv = 0;
-		rv = 1;
+
 		sasl_dispose(&conn);
 	} else {
 		rv = ldap_bind_anonymous(ldap, ctxt);
@@ -173,8 +204,8 @@ int get_property(xmlNodePtr node, const char *prop, char **value)
 	xmlChar *property = (xmlChar *) prop;
 
 	if (!(ret = xmlGetProp(node, property))) {
-		debug("xmlGetProp failed for prop %s", prop);
-		return -1;
+		*value = NULL;
+		return 0;
 	}
 
 	if (!(*value = strdup((char *) ret))) {
@@ -215,11 +246,14 @@ int authtype_requires_creds(const char *authtype)
  */
 int parse_ldap_config(struct lookup_context *ctxt)
 {
-	int          ret, fallback = 0;
+	int          ret = 0, fallback = 0;
+	unsigned int auth_required = 0, tls_required = 0, use_tls = 0;
 	struct stat  st;
 	xmlDocPtr    doc = NULL;
 	xmlNodePtr   root = NULL;
-	char         *auth_conf, *authtype, *user, *secret;
+	char         *authrequired, *auth_conf, *authtype;
+	char         *user = NULL, *secret = NULL;
+	char	     *usetls, *tlsrequired;
 
 	authtype = user = secret = NULL;
 
@@ -244,7 +278,7 @@ int parse_ldap_config(struct lookup_context *ctxt)
 
 	if (!S_ISREG(st.st_mode) ||
 	    st.st_uid != 0 || st.st_gid != 0 ||
-	    st.st_mode != 0600) {
+	    (st.st_mode & 0x01ff) != 0600) {
 		error(MODPREFIX "Configuration file %s exists, but is not "
 		      "usable. Please make sure that it is "
 		      "owned by root, group is root, and the mode is 0600.",
@@ -272,23 +306,94 @@ int parse_ldap_config(struct lookup_context *ctxt)
 		goto out;
 	}
 
-	ret = get_property(root, "authtype", &authtype);
+	ret = get_property(root, "usetls", &usetls);
 	if (ret != 0) {
+		error(MODPREFIX "Failed read the usetls property from "
+		      "the configuration file %s.", auth_conf);
+		goto out;
+	}
+
+	if (!usetls)
+		use_tls = 0;
+	else {
+		if (!strcasecmp(usetls, "yes"))
+			use_tls = 1;
+		else if (!strcasecmp(usetls, "no"))
+			use_tls = 0;
+		else {
+			error(MODPREFIX "The usetls property "
+				"must have value \"yes\" or \"no\".");
+			ret = -1;
+			goto out;
+		}
+		free(usetls);
+	}
+
+	ret = get_property(root, "tlsrequired", &tlsrequired);
+	if (ret != 0) {
+		error(MODPREFIX "Failed read the tlsrequired property from "
+		      "the configuration file %s.", auth_conf);
+		goto out;
+	}
+
+	if (!tlsrequired)
+		tls_required = 0;
+	else {
+		if (!strcasecmp(tlsrequired, "yes"))
+			tls_required = 1;
+		else if (!strcasecmp(tlsrequired, "no"))
+			tls_required = 0;
+		else {
+			error(MODPREFIX "The tlsrequired property "
+				"must have value \"yes\" or \"no\".");
+			ret = -1;
+			goto out;
+		}
+		free(tlsrequired);
+	}
+
+	ret = get_property(root, "authrequired", &authrequired);
+	if (ret != 0) {
+		error(MODPREFIX "Failed read the authrequired property from "
+		      "the configuration file %s.", auth_conf);
+		goto out;
+	}
+
+	if (!authrequired)
+		auth_required = 0;
+	else {
+		if (!strcasecmp(authrequired, "yes"))
+			auth_required = 1;
+		else if (!strcasecmp(authrequired, "no"))
+			auth_required = 0;
+		else {
+			error(MODPREFIX "The authrequired property "
+				"must have value \"yes\" or \"no\".");
+			ret = -1;
+			goto out;
+		}
+		free(authrequired);
+	}
+
+	ret = get_property(root, "authtype", &authtype);
+	if (ret != 0 || (!authtype && auth_required)) {
 		error(MODPREFIX "Failed read the authtype property from the "
 		      "configuration file %s.", auth_conf);
 		goto out;
 	}
 
-	if (authtype_requires_creds(authtype)) {
+	if (authtype && authtype_requires_creds(authtype)) {
 		ret = get_property(root, "user",  &user);
 		ret |= get_property(root, "secret", &secret);
-		if (ret != 0) {
+		if (ret != 0 || (!user || !secret)) {
 			error(MODPREFIX "%s authentication type requires a "
 			      "username and a secret.  Please fix your "
 			      "configuration in %s.", authtype, auth_conf);
 			free(authtype);
-			free(user);
-			free(secret);
+			if (user)
+				free(user);
+			if (secret)
+				free(secret);
 
 			ret = -1;
 			goto out;
@@ -296,6 +401,9 @@ int parse_ldap_config(struct lookup_context *ctxt)
 	}
 
 	ctxt->auth_conf = auth_conf;
+	ctxt->use_tls = use_tls;
+	ctxt->tls_required = tls_required;
+	ctxt->auth_required = auth_required;
 	ctxt->sasl_mech = authtype;
 	ctxt->user = user;
 	ctxt->secret = secret;
@@ -307,7 +415,7 @@ out:
 	if (fallback)
 		return 0;
 
-	return -1;
+	return ret;
 }
 
 /*
@@ -346,9 +454,13 @@ int ldap_auth_init(struct lookup_context *ctxt)
 	 *  mechanism specified in the configuration file.  Try to auto-
 	 *  select one.
 	 */
-	if (ctxt->sasl_mech == NULL && 
-	    sasl_choose_mech(ctxt->server, ctxt->port, &ctxt->sasl_mech) != 0)
-		return -1;
+	if (ctxt->sasl_mech == NULL) {
+		ret = sasl_choose_mech(ctxt->server, ctxt->port,
+				       ctxt->use_tls, ctxt->tls_required,
+				       &ctxt->sasl_mech);
+		if (ret != 0)
+			return -1;
+	}
 
 	return 0;
 }
@@ -405,17 +517,31 @@ int parse_server_string(const char *url, struct lookup_context *ctxt)
 	/*
 	 * For nss support we can have a map name with no
 	 * type or dn info. If present a base dn must have
-	 * at least one "=" to be functional.
+	 * at least an "=" and a "," to be at all functional.
+	 * If a dn is given it must be fully specified or
+	 * the later LDAP calls will fail.
 	 */
 	l = strlen(ptr);
 	if (strchr(ptr, '=')) {
-		char *base = malloc(l + 1);
+		char *base;
+
+		if (!strchr(ptr, ',')) {
+			debug("LDAP dn not fuly specified");
+			if (ctxt->server)
+				free(ctxt->server);
+			return 0;
+		}
+
+		base = malloc(l + 1);
 		if (!base) {
 			char *estr;
 			estr = strerror_r(errno, buf, MAX_ERR_BUF);
 			crit(MODPREFIX "malloc: %s", estr);
+			if (ctxt->server)
+				free(ctxt->server);
 			return 0;
 		}
+
 		ctxt->base = base;
 		memset(ctxt->base, 0, l + 1);
 		memcpy(ctxt->base, ptr, l);
@@ -425,8 +551,11 @@ int parse_server_string(const char *url, struct lookup_context *ctxt)
 			char *estr;
 			estr = strerror_r(errno, buf, MAX_ERR_BUF);
 			crit(MODPREFIX "malloc: %s", estr);
+			if (ctxt->server)
+				free(ctxt->server);
 			return 0;
 		}
+
 		ctxt->mapname = map;
 		memset(ctxt->mapname, 0, l + 1);
 		memcpy(map, ptr, l);
@@ -510,7 +639,7 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 {
 	struct lookup_context *ctxt = NULL;
 	char buf[MAX_ERR_BUF];
-	int do_auth;
+	int ret;
 	LDAP *ldap = NULL;
 
 	/* If we can't build a context, bail. */
@@ -546,16 +675,22 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 		return 1;
 	}
 
-	do_auth = 0;
 #if WITH_SASL
 	/*
 	 * Determine which authentication mechanism to use.  We sanity-
 	 * check by binding to the server temporarily.
 	 */
-	do_auth = ldap_auth_init(ctxt);
+	ret = ldap_auth_init(ctxt);
+	if (ret) {
+		error(MODPREFIX "cannot initialize auth setup");
+		free_context(ctxt);
+		return 1;
+	}
 #endif
 
-	if (do_auth != 0 && (ldap = do_connect(ctxt)) == NULL) {
+	ldap = do_connect(ctxt);
+	if (!ldap) {
+		error(MODPREFIX "cannot connect to server");
 		free_context(ctxt);
 		return 1;
 	}
@@ -581,7 +716,7 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 	unsigned int timeout = master->default_timeout;
 	unsigned int logging = master->default_logging;
 	int rv, l, count, blen;
-	char buf[MAX_ERR_BUF];
+	char buf[PARSE_MAX_BUF];
 	char *query;
 	LDAPMessage *result, *e;
 	char *class, *key, *info, *entry;
@@ -589,7 +724,6 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 	char **values = NULL;
 	char *attrs[3];
 	LDAP *ldap;
-	char *buffer;
 
 	class = ctxt->entry_obj_class;
 	key = ctxt->map_attr;
@@ -613,7 +747,7 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 	query = alloca(l);
 	if (query == NULL) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		crit(MODPREFIX "malloc: %s", estr);
+		crit(MODPREFIX "alloca: %s", estr);
 		return NSS_STATUS_UNAVAIL;
 	}
 
@@ -705,22 +839,18 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 		}
 
 		blen = strlen(*keyValue) + 1 + strlen(*values) + 1;
-		buffer = malloc(blen);
-		if (!buffer) {
-			error(MODPREFIX "could not malloc parse buffer");
-			ldap_value_free(keyValue);
+		if (blen > PARSE_MAX_BUF) {
+			error(MODPREFIX "map entry too long");
 			ldap_value_free(values);
-			return NSS_STATUS_UNAVAIL;
+			goto next;
 		}
-		memset(buffer, 0, blen);
+		memset(buf, 0, PARSE_MAX_BUF);
 
-		strcpy(buffer, *keyValue);
-		strcat(buffer, " ");
-		strcat(buffer, *values);
+		strcpy(buf, *keyValue);
+		strcat(buf, " ");
+		strcat(buf, *values);
 
-		master_parse_entry(buffer, timeout, logging, age);
-
-		free(buffer);
+		master_parse_entry(buf, timeout, logging, age);
 next:
 		ldap_value_free(keyValue);
 		e = ldap_next_entry(ldap, e);

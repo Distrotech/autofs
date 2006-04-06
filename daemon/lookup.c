@@ -1,4 +1,4 @@
-#ident "$Id: lookup.c,v 1.16 2006/04/01 06:48:05 raven Exp $"
+#ident "$Id: lookup.c,v 1.17 2006/04/06 20:02:04 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup.c - API layer to implement nsswitch semantics for map reading
@@ -98,7 +98,7 @@ int lookup_nss_read_master(struct master *master, time_t age)
 {
 	struct list_head nsslist;
 	struct list_head *head, *p;
-	int result;
+	int result = NSS_STATUS_UNKNOWN;
 
 	/* If it starts with a '/' it has to be a file map */
 	if (*master->name == '/') {
@@ -165,14 +165,10 @@ int lookup_nss_read_master(struct master *master, time_t age)
 		}
 	}
 
-	if (!list_empty(&nsslist)) {
+	if (!list_empty(&nsslist))
 		free_sources(&nsslist);
-		return 1;
-	}
 
-	warn("no sources found in nsswitch");
-
-	return 0;
+	return !result;
 }
 
 static int do_read_map(struct autofs_point *ap, struct map_source *map, time_t age)

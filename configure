@@ -3963,7 +3963,7 @@ fi
 echo "$as_me:$LINENO: result: $ac_cv_lib_ldap_ldap_init" >&5
 echo "${ECHO_T}$ac_cv_lib_ldap_ldap_init" >&6
 if test $ac_cv_lib_ldap_ldap_init = yes; then
-  HAVE_LDAP=1 LIBLDAP="$LIBLDAP -lldap -llber -lresolv"
+  HAVE_LDAP=1 LIBLDAP="$LIBLDAP -lldap_r -llber -lresolv"
 fi
 
 fi

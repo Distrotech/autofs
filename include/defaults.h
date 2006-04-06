@@ -1,4 +1,4 @@
-#ident "$Id: defaults.h,v 1.3 2006/03/30 02:09:51 raven Exp $"
+#ident "$Id: defaults.h,v 1.4 2006/04/06 20:02:04 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  defaults.h - system initialization defaults.
@@ -27,6 +27,8 @@
 #define DEFAULT_BROWSE_MODE	1
 #define DEFAULT_LOGGING		0
 
+#define DEFAULT_LDAP_SERVER		NULL
+
 #define DEFAULT_MAP_OBJ_CLASS		"nisMap"
 #define DEFAULT_ENTRY_OBJ_CLASS		"nisObject"
 #define DEFAULT_MAP_ATTR		"nisMapName"
@@ -40,6 +42,7 @@ const char *defaults_get_master_map(void);
 unsigned int defaults_get_timeout(void);
 unsigned int defaults_get_browse_mode(void);
 unsigned int defaults_get_logging(void);
+const char *defaults_get_ldap_server(void);
 const char *defaults_get_map_obj_class(void);
 const char *defaults_get_entry_obj_class(void);
 const char *defaults_get_map_attr(void);

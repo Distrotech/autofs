@@ -1,4 +1,4 @@
-#ident "$Id: automount.c,v 1.77 2006/04/03 21:44:34 raven Exp $"
+#ident "$Id: automount.c,v 1.78 2006/04/06 20:02:04 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  automount.c - Linux automounter daemon
@@ -1347,7 +1347,7 @@ int main(int argc, char *argv[])
 
 #ifdef _POSIX_THREAD_ATTR_STACKSIZE
 	if (pthread_attr_setstacksize(
-			&thread_attr, PTHREAD_STACK_MIN*32)) {
+			&thread_attr, PTHREAD_STACK_MIN*128)) {
 		crit("%s: failed to set stack size thread attribute!",
 			program);
 		close(start_lockfd);

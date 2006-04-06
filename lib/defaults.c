@@ -1,4 +1,4 @@
-#ident "$Id: defaults.c,v 1.2 2006/03/30 02:09:51 raven Exp $"
+#ident "$Id: defaults.c,v 1.3 2006/04/06 20:02:04 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  defaults.h - system initialization defaults.
@@ -30,6 +30,8 @@
 #define ENV_NAME_BROWSE_MODE		"DEFAULT_BROWSE_MODE"
 #define ENV_NAME_LOGGING		"DEFAULT_LOGGING"
 
+#define ENV_LDAP_SERVER			"DEFAULT_LDAP_SERVER"
+
 #define ENV_NAME_MAP_OBJ_CLASS		"DEFAULT_MAP_OBJ_CLASS"
 #define ENV_NAME_ENTRY_OBJ_CLASS	"DEFAULT_ENTRY_OBJ_CLASS"
 #define ENV_NAME_MAP_ATTR		"DEFAULT_MAP_ATTR"
@@ -39,6 +41,8 @@
 #define ENV_AUTH_CONF_FILE		"DEFAULT_AUTH_CONF_FILE"
 
 static const char *default_master_map_name = DEFAULT_MASTER_MAP_NAME;
+
+static const char *default_ldap_server		= DEFAULT_LDAP_SERVER;
 
 static const char *default_map_obj_class	= DEFAULT_MAP_OBJ_CLASS;
 static const char *default_entry_obj_class	= DEFAULT_ENTRY_OBJ_CLASS;
@@ -159,6 +163,7 @@ unsigned int defaults_read_config(void)
 		    !strcasecmp(res, ENV_NAME_TIMEOUT) ||
 		    !strcasecmp(res, ENV_NAME_BROWSE_MODE) ||
 		    !strcasecmp(res, ENV_NAME_LOGGING) ||
+		    !strcasecmp(res, ENV_LDAP_SERVER) ||
 		    !strcasecmp(res, ENV_NAME_MAP_OBJ_CLASS) ||
 		    !strcasecmp(res, ENV_NAME_ENTRY_OBJ_CLASS) ||
 		    !strcasecmp(res, ENV_NAME_MAP_ATTR) ||
@@ -226,6 +231,17 @@ unsigned int defaults_get_logging(void)
 	}
 
 	return logging;
+}
+
+const char *defaults_get_ldap_server(void)
+{
+	char *server;
+
+	server = get_env_string(ENV_LDAP_SERVER);
+	if (!server)
+		return default_ldap_server;
+
+	return (const char *) server;
 }
 
 const char *defaults_get_map_obj_class(void)

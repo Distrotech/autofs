@@ -116,7 +116,8 @@ getuser_func(void *context, int id, const char **result, unsigned *len)
 	case SASL_CB_USER:
 	case SASL_CB_AUTHNAME:
 		*result = sasl_auth_id;
-		*len = strlen(sasl_auth_id);
+		if (len)
+			*len = strlen(sasl_auth_id);
 		break;
 	default:
 		error("unknown id in request: %d", id);
@@ -198,7 +199,7 @@ get_server_SASL_mechanisms(LDAP *ld)
  */
 int
 do_sasl_bind(LDAP *ld, sasl_conn_t *conn, const char **clientout,
-	     unsigned int clientoutlen, const char *auth_mech, int sasl_result)
+	     unsigned int *clientoutlen, const char *auth_mech, int sasl_result)
 {
 	int ret, msgid, bind_result;
 	struct berval client_cred, *server_cred, temp_cred;
@@ -209,7 +210,7 @@ do_sasl_bind(LDAP *ld, sasl_conn_t *conn, const char **clientout,
 		/* Take whatever client data we have and send it to the
 		 * server. */
 		client_cred.bv_val = (char *)*clientout;
-		client_cred.bv_len = clientoutlen;
+		client_cred.bv_len = *clientoutlen;
 		ret = ldap_sasl_bind(ld, NULL, auth_mech,
 				     (client_cred.bv_len > 0) ?
 				     &client_cred : NULL,
@@ -317,12 +318,12 @@ do_sasl_bind(LDAP *ld, sasl_conn_t *conn, const char **clientout,
 						       temp_cred.bv_len,
 						       NULL,
 						       clientout,
-						       &clientoutlen);
+						       clientoutlen);
 			/* If we have data to send, then the server
 			 * had better be expecting it.  (It's valid
 			 * to send the server no data with a request.)
 			 */
-			if ((clientoutlen > 0) &&
+			if ((*clientoutlen > 0) &&
 			    (bind_result != LDAP_SASL_BIND_IN_PROGRESS)) {
 				printf("We have data for the server, "
 				       "but it thinks we are done!");
@@ -345,38 +346,55 @@ do_sasl_bind(LDAP *ld, sasl_conn_t *conn, const char **clientout,
 
 
 sasl_conn_t *
-sasl_bind_mech(LDAP *ldap, const char *server, const char *mech)
+sasl_bind_mech(LDAP *ldap, const char *mech)
 {
 	sasl_conn_t *conn;
+	char *tmp, *host = NULL;
 	const char *clientout;
 	unsigned int clientoutlen;
 	const char *chosen_mech;
-	int sasl_result;
+	int result;
+
+	result = ldap_get_option(ldap, LDAP_OPT_HOST_NAME, &host);
+	if (result != LDAP_SUCCESS) {
+		debug("failed to get hostname for connection");
+		return NULL;
+	}
+	if ((tmp = strchr(host, ':')))
+		*tmp = '\0';
 
 	/* Create a new authentication context for the service. */
-	if (sasl_client_new("ldap", server,
-			    NULL, NULL, NULL, 0, &conn) != SASL_OK)
+	result = sasl_client_new("ldap", host, NULL, NULL, NULL, 0, &conn);
+	if (result != SASL_OK) {
+		ldap_memfree(host);
 		return NULL;
+	}
 
 	chosen_mech = NULL;
-	sasl_result = sasl_client_start(conn, mech, NULL,
-					&clientout, &clientoutlen,
-					&chosen_mech);
+	result = sasl_client_start(conn, mech, NULL,
+				&clientout, &clientoutlen, &chosen_mech);
 
 	/* OK and CONTINUE are the only non-fatal return codes here. */
-	if ((sasl_result != SASL_OK) && (sasl_result != SASL_CONTINUE)) {
+	if ((result != SASL_OK) && (result != SASL_CONTINUE)) {
 		debug("%s", sasl_errdetail(conn));
+		ldap_memfree(host);
 		if (conn)
 			sasl_dispose(&conn);
 		return NULL;
 	}
 
-	if (do_sasl_bind(ldap, conn, &clientout, clientoutlen,
-			 chosen_mech, sasl_result) == 0)
+	result = do_sasl_bind(ldap, conn,
+			 &clientout, &clientoutlen, chosen_mech, result);
+	if (result == 0) {
+		ldap_memfree(host);
 		return conn;
+	}
+
+	ldap_memfree(host);
 
 	/* sasl bind failed */
 	sasl_dispose(&conn);
+
 	return NULL;
 }
 
@@ -385,7 +403,8 @@ sasl_bind_mech(LDAP *ldap, const char *server, const char *mech)
  *  -1 on error or if no mechanism is supported by both client and server.
  */
 int
-sasl_choose_mech(const char *server, int port, char **mechanism)
+sasl_choose_mech(const char *server, int port,
+		 unsigned use_tls, unsigned tls_required, char **mechanism)
 {
 	LDAP *ldap;
 	sasl_conn_t *conn;
@@ -393,15 +412,19 @@ sasl_choose_mech(const char *server, int port, char **mechanism)
 	int i, version;
 	char **mechanisms;
 
+	/* TODO: what's this here for ? */
 	*mechanism = NULL;
 
-	ldap = ldap_connection_init(server, port, &version);
+	ldap = ldap_connection_init(server, port,
+				&version, use_tls, tls_required);
 	if (!ldap)
 		return -1;
 
 	mechanisms = get_server_SASL_mechanisms(ldap);
-	if (!mechanisms)
+	if (!mechanisms) {
+		ldap_unbind(ldap);
 		return -1;
+	}
 
 	/* Try each supported mechanism in turn. */
 	authenticated = 0;
@@ -415,7 +438,7 @@ sasl_choose_mech(const char *server, int port, char **mechanism)
 		if (authtype_requires_creds(mechanisms[i]))
 			continue;
 
-		conn = sasl_bind_mech(ldap, server, mechanisms[i]);
+		conn = sasl_bind_mech(ldap, mechanisms[i]);
 		if (conn) {
 			sasl_dispose(&conn);
 			authenticated = 1;

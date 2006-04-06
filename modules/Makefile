@@ -1,4 +1,4 @@
-# $Id: Makefile,v 1.10 2006/03/30 02:09:51 raven Exp $
+# $Id: Makefile,v 1.11 2006/04/06 20:02:04 raven Exp $
 #
 # Makefile for autofs
 #
@@ -43,7 +43,7 @@ ifeq ($(LDAP), 1)
   MODS += lookup_ldap.so
   ifeq ($(SASL), 1)
     SASL_OBJ = cyrus-sasl.o
-    LDAP_FLAGS += $(SASL_FLAGS) $(XML_FLAGS)
+    LDAP_FLAGS += $(SASL_FLAGS) $(XML_FLAGS) -DLDAP_THREAD_SAFE
     LIBLDAP += $(LIBSASL) $(XML_LIBS)
   endif
 endif

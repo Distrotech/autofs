@@ -44,11 +44,11 @@ DEFAULT_BROWSE_MODE="no"
 # DEFAULT_AUTH_CONF_FILE - set the default location for the SASL
 #			   authentication configuration file.
 #
-#DEFAULT_AUTH_CONF_FILE="@@autofsmapdir@@/autofs-auth.conf"
+#DEFAULT_AUTH_CONF_FILE="@@autofsmapdir@@/autofs_ldap_auth.conf"
 #
 # General global options
 #
-#OPTIONS="--verbose"
+#OPTIONS=""
 #
 #
 #  UNDERSCORETODOT changes auto_home to auto.home and auto_mnt to auto.mnt
