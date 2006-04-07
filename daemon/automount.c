@@ -749,6 +749,10 @@ static void *do_notify_state(void *arg)
 
 	debug("signal %d", sig);
 
+	status = pthread_mutex_lock(&mc.mutex);
+	if (status)
+		fatal(status);
+
 	master = mc.master;
 
 	mc.signaled = 1;
@@ -812,6 +816,10 @@ static void *do_read_master(void *arg)
 	time_t age;
 	int readall = 1;
 	int status;
+
+	status = pthread_mutex_lock(&mc.mutex);
+	if (status)
+		fatal(status);
 
 	master = mc.master;
 	age = mc.age;

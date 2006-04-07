@@ -620,11 +620,9 @@ int tree_get_mnt_list(struct mnt_list *mnts, struct list_head *list, const char 
 		return tree_get_mnt_list(mnts->right, list, path, include);
 	else {
 		struct list_head *self, *p;
-		int eq;
 
 		tree_get_mnt_list(mnts->left, list, path, include);
 
-		eq = strcmp(mnts->path, path);
 		if ((!include && mlen <= plen) ||
 				strncmp(mnts->path, path, plen))
 			goto skip;
@@ -669,6 +667,8 @@ int tree_find_mnt_ents(struct mnt_list *mnts, struct list_head *list, const char
 	else {
 		struct list_head *self, *p;
 
+		tree_find_mnt_ents(mnts->left, list, path);
+
 		if (!strcmp(mnts->path, path)) {
 			INIT_LIST_HEAD(&mnts->list);
 			list_add(&mnts->list, list);
@@ -685,6 +685,8 @@ int tree_find_mnt_ents(struct mnt_list *mnts, struct list_head *list, const char
 				list_add(&this->list, list);
 			}
 		}
+
+		tree_find_mnt_ents(mnts->right, list, path);
 
 		if (!list_empty(list))
 			return 1;

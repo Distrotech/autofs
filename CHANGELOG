@@ -69,6 +69,7 @@
 - make samples install try harder to make backup of existing files.
 - SASL auth code functional and added START_TLS code.
   - START_TLS doesn't seem to work yet, no idea why.
+- fix mount tree find mounts subroutine.
 
 11/4/2005 autofs-4.1.4
 ----------------------
