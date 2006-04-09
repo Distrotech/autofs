@@ -107,6 +107,9 @@ int lookup_nss_read_master(struct master *master, time_t age)
 		debug("reading master %s %s", master->name, source);
 
 		result = do_read_master(master, source, age);
+
+		debug("completed");
+
 		return !result;
 	} else {
 		char *name = master->name;
@@ -128,8 +131,13 @@ int lookup_nss_read_master(struct master *master, time_t age)
 				strncpy(source, name, tmp - name);
 
 				master->name = tmp + 1;
+
+				debug("reading master %s %s", master->name, source);
+
 				result = do_read_master(master, source, age);
 				master->name = name;
+
+				debug("completed");
 
 				return !result;
 			}
@@ -152,14 +160,17 @@ int lookup_nss_read_master(struct master *master, time_t age)
 
 		this = list_entry(p, struct nss_source, list);
 
-		debug("reading master %s", master->name, this->source);
+		debug("reading master %s %s", master->name, this->source);
 
 		result = do_read_master(master, this->source, age);
-		if (result == NSS_STATUS_UNKNOWN)
+		if (result == NSS_STATUS_UNKNOWN) {
+			debug("no map - continuing to next source");
 			continue;
+		}
 
 		status = check_nss_result(this, result);
 		if (status >= 0) {
+			debug("completed");
 			free_sources(&nsslist);
 			return status;
 		}
@@ -167,6 +178,8 @@ int lookup_nss_read_master(struct master *master, time_t age)
 
 	if (!list_empty(&nsslist))
 		free_sources(&nsslist);
+
+	debug("completed");
 
 	return !result;
 }
@@ -179,9 +192,10 @@ static int do_read_map(struct autofs_point *ap, struct map_source *map, time_t a
 	if (!map->lookup) {
 		lookup = open_lookup(map->type, "",
 				map->format, map->argc, map->argv);
-		if (!lookup)
+		if (!lookup) {
+			debug("lookup module %s failed", map->type);
 			return NSS_STATUS_UNAVAIL;
-
+		}
 		map->lookup = lookup;
 	}
 

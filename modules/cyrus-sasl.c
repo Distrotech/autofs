@@ -56,7 +56,7 @@
 #include <sasl/sasl.h>
 
 #include "automount.h"
-#include "ldap_sasl.h"
+#include "lookup_ldap.h"
 
 #ifndef LDAP_OPT_RESULT_CODE
 #ifdef  LDAP_OPT_ERROR_NUMBER
@@ -403,26 +403,24 @@ sasl_bind_mech(LDAP *ldap, const char *mech)
  *  -1 on error or if no mechanism is supported by both client and server.
  */
 int
-sasl_choose_mech(const char *server, int port,
-		 unsigned use_tls, unsigned tls_required, char **mechanism)
+sasl_choose_mech(struct lookup_context *ctxt, char **mechanism)
 {
 	LDAP *ldap;
 	sasl_conn_t *conn;
 	int authenticated;
-	int i, version;
+	int i;
 	char **mechanisms;
 
 	/* TODO: what's this here for ? */
 	*mechanism = NULL;
 
-	ldap = ldap_connection_init(server, port,
-				&version, use_tls, tls_required);
+	ldap = ldap_connection_init(ctxt);
 	if (!ldap)
 		return -1;
 
 	mechanisms = get_server_SASL_mechanisms(ldap);
 	if (!mechanisms) {
-		ldap_unbind(ldap);
+		ldap_unbind_connection(ldap, ctxt);
 		return -1;
 	}
 

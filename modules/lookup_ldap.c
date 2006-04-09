@@ -35,42 +35,11 @@
 #define MODULE_LOOKUP
 #include "automount.h"
 #include "nsswitch.h"
-#if WITH_SASL
-#include "ldap_sasl.h"
-#endif
+#include "lookup_ldap.h"
 
 #define MAPFMT_DEFAULT "sun"
 
 #define MODPREFIX "lookup(ldap): "
-
-struct lookup_context {
-	char *mapname;
-
-	char *server;
-	int port;
-	char *base;
-
-	/* LDAP version 2 or 3 */
-	int version;
-
-	/* LDAP lookup configuration */
-	char *map_obj_class;
-	char *entry_obj_class;
-	char *map_attr;
-	char *entry_attr;
-	char *value_attr;
-
-	/* TLS and SASL authentication information */
-	char        *auth_conf;
-	unsigned     use_tls;
-	unsigned     tls_required;
-	unsigned     auth_required;
-	char        *sasl_mech;
-	char        *user;
-	char        *secret;
-
-	struct parse_mod *parse;
-};
 
 int lookup_version = AUTOFS_LOOKUP_VERSION;	/* Required by protocol */
 
@@ -94,32 +63,57 @@ int ldap_bind_anonymous(LDAP *ldap, struct lookup_context *ctxt)
 	return 0;
 }
 
-LDAP *ldap_connection_init(const char *server, int port,
-			int *version, unsigned use_tls, unsigned tls_required)
+int ldap_unbind_connection(LDAP *ldap, struct lookup_context *ctxt)
+{
+	int rv;
+
+#if WITH_SASL
+	/*
+	 * The OpenSSL library can't handle having its message and error
+	 * string database loaded multiple times and segfaults if the
+	 * TLS environment is not reset at the right times. As there
+	 * is no ldap_stop_tls call in the openldap library we have
+	 * to do the job ourselves, here and in lookup_done when the
+	 * module is closed.
+	 */
+	if (ctxt->use_tls == LDAP_TLS_RELEASE) {
+		ERR_remove_state(0);
+		ctxt->use_tls = LDAP_TLS_INIT;
+	}
+#endif
+
+	rv = ldap_unbind(ldap);
+	if (rv != LDAP_SUCCESS)
+		error("unbind failed: %s", ldap_err2string(rv));
+
+	return rv;
+}
+
+LDAP *ldap_connection_init(struct lookup_context *ctxt)
 {
 	LDAP *ldap = NULL;
 	int timeout = 8;
 	char *url = NULL;
 	int rv;
 
-	*version = 3;
+	ctxt->version = 3;
 
-	if (server) {
-		url = alloca(strlen(server) + 14);
-		sprintf(url, "//%s:%u", server, port);
+	if (ctxt->server) {
+		url = alloca(strlen(ctxt->server) + 14);
+		sprintf(url, "ldap://%s:%u", ctxt->server, ctxt->port);
 	}
 
 	/* Initialize the LDAP context. */
 	rv = ldap_initialize(&ldap, url);
-	if (rv != LDAP_SUCCESS) {
+	if (rv != LDAP_SUCCESS || !ldap) {
 		crit(MODPREFIX "couldn't initialize LDAP connection"
-		     " to %s", server ? server : "default server");
+		     " to %s", ctxt->server ? ctxt->server : "default server");
 		return NULL;
 	}
 
 	/* Use LDAPv3 */
-	rv = ldap_set_option(ldap, LDAP_OPT_PROTOCOL_VERSION, version);
-	if (rv != LDAP_SUCCESS) {
+	rv = ldap_set_option(ldap, LDAP_OPT_PROTOCOL_VERSION, &ctxt->version);
+	if (rv != LDAP_OPT_SUCCESS) {
 		/* fall back to LDAPv2 */
 		ldap_unbind(ldap);
 		rv = ldap_initialize(&ldap, url);
@@ -127,32 +121,40 @@ LDAP *ldap_connection_init(const char *server, int port,
 			crit(MODPREFIX "couldn't initialize LDAP");
 			return NULL;
 		}
-		*version = 2;
+		ctxt->version = 2;
 	}
 
 	/* Sane network connection timeout */
 	rv = ldap_set_option(ldap, LDAP_OPT_NETWORK_TIMEOUT, &timeout);
-	if (rv != LDAP_SUCCESS)
+	if (rv != LDAP_OPT_SUCCESS)
 		info(MODPREFIX "failed to set connection timeout to %d",
 		     timeout);
 
 #if WITH_SASL
-	if (use_tls) {
-		if (*version == 2 && tls_required) {
-			error("TLS required but connection is version 2");
-			ldap_unbind(ldap);
-			return NULL;
+	if (ctxt->use_tls) {
+		if (ctxt->version == 2) {
+			if (ctxt->tls_required) {
+				error("TLS required but connection is version 2");
+				ldap_unbind(ldap);
+				return NULL;
+			}
+			return ldap;
 		}
 
 		rv = ldap_start_tls_s(ldap, NULL, NULL);
 		if (rv != LDAP_SUCCESS) {
-			ldap_unbind(ldap);
-			if (tls_required) {
-				error("TLS required but START_TLS failed");
+			ldap_unbind_connection(ldap, ctxt);
+			if (ctxt->tls_required) {
+				error("TLS required but START_TLS failed: %s",
+					ldap_err2string(rv));
 				return NULL;
 			}
-			ldap = ldap_connection_init(server, port, version,0,0);
+			ctxt->use_tls = LDAP_TLS_DONT_USE;
+			ldap = ldap_connection_init(ctxt);
+			ctxt->use_tls = LDAP_TLS_INIT;
+			return ldap;
 		}
+		ctxt->use_tls = LDAP_TLS_RELEASE;
 	}
 #endif
 
@@ -164,8 +166,7 @@ static LDAP *do_connect(struct lookup_context *ctxt)
 	LDAP *ldap;
 	int rv;
 
-	ldap = ldap_connection_init(ctxt->server, ctxt->port,
-			&ctxt->version, ctxt->use_tls, ctxt->tls_required);
+	ldap = ldap_connection_init(ctxt);
 	if (!ldap)
 		return NULL;
 
@@ -176,10 +177,12 @@ static LDAP *do_connect(struct lookup_context *ctxt)
 		debug("attempting sasl bind, mechanism %s, user %s",
 		      ctxt->sasl_mech, ctxt->user);
 
-		rv = 1;
+		rv = 0;
 		conn = sasl_bind_mech(ldap, ctxt->sasl_mech);
-		if (conn)
-			rv = 0;
+		if (!conn) {
+			debug("sasl bind failed");
+			rv = 1;
+		}
 
 		sasl_dispose(&conn);
 	} else {
@@ -314,12 +317,12 @@ int parse_ldap_config(struct lookup_context *ctxt)
 	}
 
 	if (!usetls)
-		use_tls = 0;
+		use_tls = LDAP_TLS_DONT_USE;
 	else {
 		if (!strcasecmp(usetls, "yes"))
-			use_tls = 1;
+			use_tls = LDAP_TLS_INIT;
 		else if (!strcasecmp(usetls, "no"))
-			use_tls = 0;
+			use_tls = LDAP_TLS_DONT_USE;
 		else {
 			error(MODPREFIX "The usetls property "
 				"must have value \"yes\" or \"no\".");
@@ -337,12 +340,12 @@ int parse_ldap_config(struct lookup_context *ctxt)
 	}
 
 	if (!tlsrequired)
-		tls_required = 0;
+		tls_required = LDAP_TLS_DONT_USE;
 	else {
 		if (!strcasecmp(tlsrequired, "yes"))
-			tls_required = 1;
+			tls_required = LDAP_TLS_REQUIRED;
 		else if (!strcasecmp(tlsrequired, "no"))
-			tls_required = 0;
+			tls_required = LDAP_TLS_DONT_USE;
 		else {
 			error(MODPREFIX "The tlsrequired property "
 				"must have value \"yes\" or \"no\".");
@@ -455,9 +458,7 @@ int ldap_auth_init(struct lookup_context *ctxt)
 	 *  select one.
 	 */
 	if (ctxt->sasl_mech == NULL) {
-		ret = sasl_choose_mech(ctxt->server, ctxt->port,
-				       ctxt->use_tls, ctxt->tls_required,
-				       &ctxt->sasl_mech);
+		ret = sasl_choose_mech(ctxt, &ctxt->sasl_mech);
 		if (ret != 0)
 			return -1;
 	}
@@ -696,7 +697,7 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 	}
 
 	/* Okay, we're done here. */
-	ldap_unbind(ldap);
+	ldap_unbind_connection(ldap, ctxt);
 
 	/* Open the parser, if we can. */
 	ctxt->parse = open_parse(mapfmt, MODPREFIX, argc - 1, argv + 1);
@@ -782,7 +783,7 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 
 	if ((rv != LDAP_SUCCESS) || !result) {
 		debug(MODPREFIX "query failed for %s: %s", query, ldap_err2string(rv));
-		ldap_unbind(ldap);
+		ldap_unbind_connection(ldap, ctxt);
 		return NSS_STATUS_NOTFOUND;
 	}
 
@@ -790,7 +791,7 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 	if (!e) {
 		debug(MODPREFIX "query succeeded, no matches for %s", query);
 		ldap_msgfree(result);
-		ldap_unbind(ldap);
+		ldap_unbind_connection(ldap, ctxt);
 		return NSS_STATUS_NOTFOUND;
 	} else
 		debug(MODPREFIX "examining entries");
@@ -858,7 +859,7 @@ next:
 
 	/* Clean up. */
 	ldap_msgfree(result);
-	ldap_unbind(ldap);
+	ldap_unbind_connection(ldap, ctxt);
 
 	return NSS_STATUS_SUCCESS;
 }
@@ -938,7 +939,7 @@ static int read_one_map(struct autofs_point *ap,
 
 	if ((rv != LDAP_SUCCESS) || !result) {
 		debug(MODPREFIX "query failed for %s: %s", query, ldap_err2string(rv));
-		ldap_unbind(ldap);
+		ldap_unbind_connection(ldap, ctxt);
 		*result_ldap = rv;
 		return NSS_STATUS_NOTFOUND;
 	}
@@ -947,7 +948,7 @@ static int read_one_map(struct autofs_point *ap,
 	if (!e) {
 		debug(MODPREFIX "query succeeded, no matches for %s", query);
 		ldap_msgfree(result);
-		ldap_unbind(ldap);
+		ldap_unbind_connection(ldap, ctxt);
 		return NSS_STATUS_NOTFOUND;
 	} else
 		debug(MODPREFIX "examining entries");
@@ -1054,7 +1055,7 @@ next:
 
 	/* Clean up. */
 	ldap_msgfree(result);
-	ldap_unbind(ldap);
+	ldap_unbind_connection(ldap, ctxt);
 
 	return NSS_STATUS_SUCCESS;
 }
@@ -1174,7 +1175,7 @@ static int lookup_one(struct autofs_point *ap,
 
 	if ((rv != LDAP_SUCCESS) || !result) {
 		crit(MODPREFIX "query failed for %s", query);
-		ldap_unbind(ldap);
+		ldap_unbind_connection(ldap, ctxt);
 		return CHE_FAIL;
 	}
 
@@ -1184,7 +1185,7 @@ static int lookup_one(struct autofs_point *ap,
 	if (!e) {
 		crit(MODPREFIX "got answer, but no entry for %s", query);
 		ldap_msgfree(result);
-		ldap_unbind(ldap);
+		ldap_unbind_connection(ldap, ctxt);
 		return CHE_MISSING;
 	}
 
@@ -1195,7 +1196,7 @@ static int lookup_one(struct autofs_point *ap,
 		error("key %s has duplicate entries", *keyValue);
 		ldap_value_free(keyValue);
 		ldap_msgfree(result);
-		ldap_unbind(ldap);
+		ldap_unbind_connection(ldap, ctxt);
 		return CHE_FAIL;
 	}
 
@@ -1206,7 +1207,7 @@ static int lookup_one(struct autofs_point *ap,
 		debug(MODPREFIX "no %s defined for %s", info, query);
 		ldap_value_free(keyValue);
 		ldap_msgfree(result);
-		ldap_unbind(ldap);
+		ldap_unbind_connection(ldap, ctxt);
 		return CHE_MISSING;
 	}
 
@@ -1265,7 +1266,7 @@ done:
 	/* Clean up. */
 	ldap_value_free(keyValue);
 	ldap_msgfree(result);
-	ldap_unbind(ldap);
+	ldap_unbind_connection(ldap, ctxt);
 
 	return ret;
 }
@@ -1418,6 +1419,10 @@ int lookup_done(void *context)
 {
 	struct lookup_context *ctxt = (struct lookup_context *) context;
 	int rv = close_parse(ctxt->parse);
+#if WITH_SASL
+	EVP_cleanup();
+	ERR_free_strings();
+#endif
 	free_context(ctxt);
 	return rv;
 }
