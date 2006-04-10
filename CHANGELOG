@@ -71,6 +71,7 @@
   - START_TLS doesn't seem to work yet, no idea why.
 - fix mount tree find mounts subroutine.
 - get START_TLS code working.
+- cleanup map parsing and nsswitch lookup in lookup.c.
 
 11/4/2005 autofs-4.1.4
 ----------------------

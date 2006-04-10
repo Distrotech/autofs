@@ -93,19 +93,13 @@ LDAP *ldap_connection_init(struct lookup_context *ctxt)
 {
 	LDAP *ldap = NULL;
 	int timeout = 8;
-	char *url = NULL;
 	int rv;
 
 	ctxt->version = 3;
 
-	if (ctxt->server) {
-		url = alloca(strlen(ctxt->server) + 14);
-		sprintf(url, "ldap://%s:%u", ctxt->server, ctxt->port);
-	}
-
 	/* Initialize the LDAP context. */
-	rv = ldap_initialize(&ldap, url);
-	if (rv != LDAP_SUCCESS || !ldap) {
+	ldap = ldap_init(ctxt->server, LDAP_PORT);
+	if (!ldap) {
 		crit(MODPREFIX "couldn't initialize LDAP connection"
 		     " to %s", ctxt->server ? ctxt->server : "default server");
 		return NULL;
@@ -116,8 +110,8 @@ LDAP *ldap_connection_init(struct lookup_context *ctxt)
 	if (rv != LDAP_OPT_SUCCESS) {
 		/* fall back to LDAPv2 */
 		ldap_unbind(ldap);
-		rv = ldap_initialize(&ldap, url);
-		if (rv != LDAP_SUCCESS) {
+		ldap = ldap_init(ctxt->server, LDAP_PORT);
+		if (!ldap) {
 			crit(MODPREFIX "couldn't initialize LDAP");
 			return NULL;
 		}
@@ -473,7 +467,7 @@ int ldap_auth_init(struct lookup_context *ctxt)
  */
 int parse_server_string(const char *url, struct lookup_context *ctxt)
 {
-	char buf[MAX_ERR_BUF];
+	char buf[MAX_ERR_BUF], *tmp = NULL;
 	const char *ptr;
 	int l;
 
@@ -484,36 +478,57 @@ int parse_server_string(const char *url, struct lookup_context *ctxt)
 
 	if (!strncmp(ptr, "//", 2)) {
 		const char *s = ptr + 2;
-		const char *p = NULL, *q = NULL;
+		const char *q = NULL;
 
 		/*
-		 * Isolate the server's name and possibly port.  The ':'
-		 * breaks the SUN parser for submounts, so we can't actually
+		 * Isolate the server(s).  The ':' breaks the SUN
+		 * parser for submounts, so we can't actually
 		 * use it.
 		 */
 		if ((q = strchr(s, '/'))) {
-			if ((p = strchr(s, ':'))) {
-				l = p - s;
-				p++;
-				ctxt->port = atoi(p);
-			} else {
-				l = q - s;
+			l = q - s;
+			tmp = malloc(l + 1);
+			if (!tmp) {
+				char *estr;
+				estr = strerror_r(errno, buf, MAX_ERR_BUF);
+				crit(MODPREFIX "malloc: %s", estr);
+				return 0;
 			}
-
-			ctxt->server = malloc(l + 1);
+			ctxt->server = tmp;
 			memset(ctxt->server, 0, l + 1);
 			memcpy(ctxt->server, s, l);
-
 			ptr = q + 1;
+		} else {
+			l = strlen(ptr);
+			tmp = malloc(l + 1);
+			if (!tmp) {
+				char *estr;
+				estr = strerror_r(errno, buf, MAX_ERR_BUF);
+				crit(MODPREFIX "malloc: %s", estr);
+				return 0;
+			}
+			ctxt->server = tmp;
+			memset(ctxt->server, 0, l + 1);
+			memcpy(ctxt->server, s, l);
 		}
 	} else if (strchr(ptr, ':') != NULL) {
 		l = strchr(ptr, ':') - ptr;
 		/* Isolate the server's name. */
-		ctxt->server = malloc(l + 1);
+		tmp = malloc(l + 1);
+		if (!tmp) {
+			char *estr;
+			estr = strerror_r(errno, buf, MAX_ERR_BUF);
+			crit(MODPREFIX "malloc: %s", estr);
+			return 0;
+		}
+		ctxt->server = tmp;
 		memset(ctxt->server, 0, l + 1);
 		memcpy(ctxt->server, ptr, l);
-		ptr += l+1;
+		ptr += l + 1;
 	}
+
+	if (!ptr)
+		goto done;
 
 	/*
 	 * For nss support we can have a map name with no
@@ -542,7 +557,6 @@ int parse_server_string(const char *url, struct lookup_context *ctxt)
 				free(ctxt->server);
 			return 0;
 		}
-
 		ctxt->base = base;
 		memset(ctxt->base, 0, l + 1);
 		memcpy(ctxt->base, ptr, l);
@@ -556,18 +570,17 @@ int parse_server_string(const char *url, struct lookup_context *ctxt)
 				free(ctxt->server);
 			return 0;
 		}
-
 		ctxt->mapname = map;
 		memset(ctxt->mapname, 0, l + 1);
 		memcpy(map, ptr, l);
 	}
-
+done:
 	if (ctxt->mapname)
 		debug(MODPREFIX "mapname %s", ctxt->mapname);
 	else
-		debug(MODPREFIX "server \"%s\", port %d, base dn \"%s\"",
+		debug(MODPREFIX "server \"%s\", base dn \"%s\"",
 			ctxt->server ? ctxt->server : "(default)",
-			ctxt->port, ctxt->base);
+			ctxt->base);
 
 	return 1;
 }
@@ -658,11 +671,9 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 		mapfmt = MAPFMT_DEFAULT;
 
 	/*
-	 * Parse out the server name, port, and base dn, and fill them
+	 * Parse out the server name and base dn, and fill them
 	 * into the proper places in the lookup context structure.
 	 */
-	ctxt->port = LDAP_PORT;
-
 	if (!parse_server_string(argv[0], ctxt)) {
 		error(MODPREFIX "cannot parse server string");
 		free_context(ctxt);
@@ -1408,7 +1419,7 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 	if (ret)
 		return NSS_STATUS_TRYAGAIN;
 
-	return NSS_STATUS_SUCCESS;;
+	return NSS_STATUS_SUCCESS;
 }
 
 /*

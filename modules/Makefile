@@ -62,6 +62,8 @@ install: all
 	install -d -m 755 $(INSTALLROOT)$(autofslibdir)
 	install -c $(MODS) -m 755 $(INSTALLROOT)$(autofslibdir)
 	-rm -f $(INSTALLROOT)$(autofslibdir)/mount_smbfs.so
+	ln -fs lookup_file.so $(INSTALLROOT)$(autofslibdir)/lookup_files.so
+	ln -fs lookup_yp.so $(INSTALLROOT)$(autofslibdir)/lookup_nis.so
 ifeq ($(EXT2FS), 1)
  ifeq ($(EXT3FS), 1)
 	ln -fs mount_ext2.so $(INSTALLROOT)$(autofslibdir)/mount_ext3.so

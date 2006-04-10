@@ -13,7 +13,6 @@ struct lookup_context {
 	char *mapname;
 
 	char *server;
-	int port;
 	char *base;
 
 	/* LDAP version 2 or 3 */

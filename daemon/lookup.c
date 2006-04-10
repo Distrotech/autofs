@@ -94,20 +94,60 @@ static int do_read_master(struct master *master, char *type, time_t age)
 	return status;
 }
 
+static int read_master_map(struct master *master, char *type, time_t age)
+{
+	char *path, *save_name;
+	int result;
+
+	if (strcasecmp(type, "files")) {
+		return do_read_master(master, type, age);
+	}
+
+	/* 
+	 * This is a special case as we need to append the
+	 * normal location to the map name.
+	 * note: It's invalid to specify a relative path.
+	 */
+
+	if (strchr(master->name, '/')) {
+		error("relative path invalid in files map name");
+		return NSS_STATUS_NOTFOUND;
+	}
+
+	path = malloc(strlen(AUTOFS_MAP_DIR) + strlen(master->name) + 2);
+	if (!path)
+		return NSS_STATUS_UNKNOWN;
+
+	strcpy(path, AUTOFS_MAP_DIR);
+	strcat(path, "/");
+	strcat(path, master->name);
+
+	save_name = master->name;
+	master->name = path;
+
+	result = do_read_master(master, type, age);
+
+	master->name = save_name;
+	free(path);
+
+	return result;
+}
+
 int lookup_nss_read_master(struct master *master, time_t age)
 {
 	struct list_head nsslist;
 	struct list_head *head, *p;
 	int result = NSS_STATUS_UNKNOWN;
 
-	/* If it starts with a '/' it has to be a file map */
+	/* If it starts with a '/' it has to be a file or LDAP map */
 	if (*master->name == '/') {
-		char source[] = "file";
-
-		debug("reading master %s %s", master->name, source);
-
-		result = do_read_master(master, source, age);
-
+		if (*(master->name + 1) == '/') {
+			debug("reading master %s ldap", master->name);
+			result = do_read_master(master, "ldap", age);
+		} else {
+			debug("reading master %s file", master->name);
+			result = do_read_master(master, "file", age);
+		}
 		debug("completed");
 
 		return !result;
@@ -162,7 +202,7 @@ int lookup_nss_read_master(struct master *master, time_t age)
 
 		debug("reading master %s %s", master->name, this->source);
 
-		result = do_read_master(master, this->source, age);
+		result = read_master_map(master, this->source, age);
 		if (result == NSS_STATUS_UNKNOWN) {
 			debug("no map - continuing to next source");
 			continue;
@@ -293,7 +333,6 @@ static enum nsswitch_status read_map_source(struct nss_source *this,
 	if (instance)
 		return read_file_source_instance(ap, map, age);
 
-	this->source[4] = '\0';
 	tmap.type = this->source;
 	tmap.format = map->format;
 	tmap.argc = 0;
@@ -360,18 +399,25 @@ int lookup_nss_read_map(struct autofs_point *ap, time_t age)
 		entry->current = map;
 
 		if (map->type) {
-			result = !do_read_map(ap, map, age);
+			result = do_read_map(ap, map, age);
 			map = map->next;
 			continue;
-/*			return !result; */
 		}
 
-		/* If it starts with a '/' it has to be a file map */
+		/* If it starts with a '/' it has to be a file or LDAP map */
 		if (map->argv && *map->argv[0] == '/') {
-			result = !read_file_source_instance(ap, map, age);
+			if (*(map->argv[0] + 1) == '/') {
+				char *tmp = strdup("ldap");
+				if (!tmp) {
+					map = map->next;
+					continue;
+				}
+				map->type = tmp;
+				result = do_read_map(ap, map, age);
+			} else
+				result = read_file_source_instance(ap, map, age);
 			map = map->next;
 			continue;
-/*			return !result; */
 		}
 
 		INIT_LIST_HEAD(&nsslist);
@@ -379,7 +425,6 @@ int lookup_nss_read_map(struct autofs_point *ap, time_t age)
 		result = nsswitch_parse(&nsslist);
 		if (result) {
 			error("can't to read name service switch config.");
-			result = 0;
 			goto done;
 		}
 
@@ -396,7 +441,7 @@ int lookup_nss_read_map(struct autofs_point *ap, time_t age)
 			status = check_nss_result(this, result);
 			if (status >= 0) {
 				free_sources(&nsslist);
-				result = status;
+				result = !status;
 				goto done;
 			}
 		}
@@ -410,7 +455,7 @@ done:
 	entry->current = NULL;
 	pthread_cleanup_pop(1);
 
-	return result;
+	return !result;
 }
 
 int lookup_enumerate(struct autofs_point *ap,
@@ -653,24 +698,32 @@ int lookup_nss_mount(struct autofs_point *ap, const char *name, int name_len)
 		sched_yield();
 		entry->current = map;
 		if (map->type) {
-			result = !do_lookup_mount(ap, map, name, name_len);
-			if (result)
+			result = do_lookup_mount(ap, map, name, name_len);
+			if (result == NSS_STATUS_SUCCESS)
 				goto done;
 
 			map = map->next;
 			continue;
-/*			return !result; */
 		}
 
-		/* If it starts with a '/' it has to be a file map */
+		/* If it starts with a '/' it has to be a file or LDAP map */
 		if (*map->argv[0] == '/') {
-			result = !lookup_name_file_source_instance(ap, map, name, name_len);
-			if (result)
+			if (*(map->argv[0] + 1) == '/') {
+				char *tmp = strdup("ldap");
+				if (!tmp) {
+					map = map->next;
+					continue;
+				}
+				map->type = tmp;
+				result = do_lookup_mount(ap, map, name, name_len);
+			} else
+				result = lookup_name_file_source_instance(ap, map, name, name_len);
+
+			if (result == NSS_STATUS_SUCCESS)
 				goto done;
 
 			map = map->next;
 			continue;
-/*			return !result; */
 		}
 
 		INIT_LIST_HEAD(&nsslist);
@@ -678,14 +731,13 @@ int lookup_nss_mount(struct autofs_point *ap, const char *name, int name_len)
 		result = nsswitch_parse(&nsslist);
 		if (result) {
 			error("can't to read name service switch config.");
-			result = 0;
+			result = 1;
 			goto done;
 		}
 
 		head = &nsslist;
 		list_for_each(p, head) {
 			enum nsswitch_status status;
-			int result;
 
 			this = list_entry(p, struct nss_source, list);
 
@@ -696,7 +748,6 @@ int lookup_nss_mount(struct autofs_point *ap, const char *name, int name_len)
 			status = check_nss_result(this, result);
 			if (status >= 0) {
 				free_sources(&nsslist);
-				result = status;
 				goto done;
 			}
 		}
@@ -710,7 +761,7 @@ done:
 	entry->current = NULL;
 	pthread_cleanup_pop(1);
 
-	return result;
+	return !result;
 }
 
 static char *make_fullpath(const char *root, const char *key)
