@@ -9,7 +9,7 @@ GENFILES = $(patsubst %.in, %, $(wildcard *.[58].in))
 
 .in:
 	sed -e 's|@@initdir@@|$(initdir)|g' \
-	    -e 's|@@autofsmapdir@@i|$(autofsmapdir)|g' \
+	    -e 's|@@autofsmapdir@@|$(autofsmapdir)|g' \
 	    -e "s|@@autofsconfdir@@|$(autofsconfdir)|g" \
 	< $< > $@
 
