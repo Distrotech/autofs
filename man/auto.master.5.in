@@ -134,6 +134,7 @@ Treat errors when mounting file systems as fatal. This is important when
 multiple file systems should be mounted (`multimounts'). If this option
 is given, no file system is mounted at all if at least one file system
 can't be mounted.
+<<<<<<< master
 .SH GENERAL SYSTEM DEFAULTS CONFIGURATION
 .P
 The default value of several general settings may be changed in the
@@ -151,6 +152,26 @@ Maps are browsable by default (program default "yes").
 .TP
 .B DEFAULT_LOGGING
 set default log level "none", "verbose" or "debug" (program default "none").
+=======
+.SH GENERAL SYSTEM DEFAULTS CONFIGURATION
+.P
+The default value of several general settings may be changed in the
+configuration file
+.nh
+.BR @@autofsconfdir@@/autofs .
+.hy
+.P
+They are:
+.TP
+.B DEFAULT_TIMEOUT
+sets the default mount timeout (program default 600).
+.TP
+.B DEFAULT_BROWSE_MODE
+Maps are browsable by default (program default "yes").
+.TP
+.B DEFAULT_LOGGING
+set default log level "none", "verbose" or "debug" (program default "none").
+>>>>>>> origin
 .SH LDAP MAPS
 If the map type \fBldap\fP is specified the mapname is of the form
 \fB[//servername/]dn\fP, where the optional \fBservername\fP is
