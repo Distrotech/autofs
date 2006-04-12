@@ -1,9 +1,9 @@
 .\" $Id: autofs.8.in,v 1.4 2005/01/05 10:12:42 raven Exp $
 .TH AUTOFS 8 "9 Sep 1997"
 .SH NAME
-@@INIT.D@@/autofs \- Control Script for automounter
+@@initdir@@/autofs \- Control Script for automounter
 .SH SYNOPSIS
-.B @@INIT.D@@/autofs
+.B @@initdir@@/autofs
 .I start|stop|reload|status
 .SH "DESCRIPTION"
 .B autofs
@@ -30,7 +30,7 @@ to find mount points on the system. For each of those mount points a
 .BR automount (8)
 process is started with the appropriate parameters. You can check the
 active mount points for the automounter with the
-.B @@INIT.D@@/autofs status
+.B @@initdir@@/autofs status
 command. If the
 .I auto.master
 configuration file contains a line of the form
@@ -42,7 +42,7 @@ then the script will check for an NIS map with the same name.  If such a
 map exists then that map will be processed in the same way as the
 auto.master map, with any optional arguments.
 .P
-.B @@INIT.D@@/autofs reload
+.B @@initdir@@/autofs reload
 will check the current auto.master map against running daemons. It will kill
 those daemons whose entries have changed and then start daemons for new or  
 changed entries.
@@ -54,7 +54,7 @@ map is modified then the
 .B autofs
 script must be rerun to activate the changes.
 .P
-.B @@INIT.D@@/autofs status
+.B @@initdir@@/autofs status
 will display the current configuration and a list of currently running
 automount daemons.
 .SH "SEE ALSO"

@@ -1,6 +1,4 @@
 
-ident $id$
-
 This README describes the purpose the autofs4 patches, how to
 apply them, and where to get the most up to date release of the
 kernel module.

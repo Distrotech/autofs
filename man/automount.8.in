@@ -1,0 +1,86 @@
+.\" Linux man page by B. James Phillippe, 1997 <bryan@Terran.ORG>
+.\"
+.\" This page was written to contribute to the Linux kernel autofs
+.\" implementation by H. Peter Anvin (1997).  It is loosly based on
+.\" the documentation for mount(8) and amd(8) Linux manpages.
+.\"
+.\" This is free documentation.
+.\"
+.\" $Id: automount.8,v 1.8 2004/11/20 13:54:39 raven Exp $
+.\"
+.TH AUTOMOUNT 8 "12 Apr 2006"
+.SH NAME
+automount \- manage autofs mount points
+.SH SYNOPSIS
+\fBautomount\fP [\fIoptions\fP] \fImaster_map\fP
+.SH DESCRIPTION
+The \fBautomount\fP program is used to manage mount points for
+autofs, the inlined Linux automounter.  \fBautomount\fP works by
+reading the
+.nh
+.BR auto.master (8)
+.hy
+map and sets up mount points for each entry in the master map allowing
+mount entries within each of the maps to be automatically mounted
+when thay are accessed. The filesystems are then automatically
+umounted after a period of inactivity.
+.SH OPTIONS
+.TP
+.I "\-h, \-\-help"
+Print brief help on program usage.
+.TP
+.I "\-p, \-\-pid-file"
+Write the pid of the daemon to the specified file.
+.TP
+.I "\-t, \-\-timeout"
+Set the global minimum timeout, in seconds, until directories
+are unmounted. The default is 10 minutes. Setting the timeout
+to zero disables umounts completely.
+.TP
+.I "\-v, \-\-verbose"
+Enables logging of general status and progress messages for all
+autofs managed mounts.
+.TP
+.I "\-d, \-\-debug"
+Enables logging of general status and progress messages as well as
+debuging messages for all autofs managed mounts.
+.TP
+.I "\-V, \-\-version"
+Display the version number, then exit.
+.SH ARGUMENTS
+\fBautomount\fP takes one optional argument, the name of the master map to
+use.
+.TP
+\fBmaster_map\fP
+Location for autofs master map that defines autofs managed mount points
+and the mount maps they will use. The default is
+.nh
+\fB@@autofsmapdir@@/auto.master\fP.
+.hy
+.RE
+.SH NOTES
+If the \fBautomount\fP daemon catches a USR1 signal, it will umount all
+currently unused autofs managed mounted filesystems and continue running
+(forced expire).  If it catches the TERM signal it will umount
+all unused autofs managed mounted filesystems and exit if all filesystems
+were umounted.  Busy filesystems will not be umounted.
+The daemon also responds to a HUP signal which triggers an update of
+the maps for each mount point.
+.P
+If the autofs directory itself is busy when the daemon is signalled
+with an exit signal then the daemon will exit without umounting the
+autofs filesystem.  The filesystem is left in a catatonic
+(non-functional) state, and can be unmounted when it becomes unused.
+.SH "SEE ALSO"
+.BR autofs (5),
+.BR mount (8).
+.SH BUGS
+A whole slew of things I don't yet know about.
+
+The documentation leaves a lot to be desired.
+
+Please report other bugs along with a detailed description to
+<autofs@linux.kernel.org>. For instructions on how to join the list
+and for archives visit http://linux.kernel.org/mailman/listinfo/autofs
+.SH AUTHOR
+H. Peter Anvin <hpa@transmeta.com>. Edited by Ian Kent <raven@themaw.net>.

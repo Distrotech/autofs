@@ -72,6 +72,7 @@
 - fix mount tree find mounts subroutine.
 - get START_TLS code working.
 - cleanup map parsing and nsswitch lookup in lookup.c.
+- first pass documentation update.
 
 11/4/2005 autofs-4.1.4
 ----------------------

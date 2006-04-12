@@ -1,0 +1,297 @@
+.\" t
+.\" $Id: auto.master.5,v 1.2 2003/09/29 08:22:35 raven Exp $
+.TH AUTO.MASTER 5 "11 Apr 2006"
+.SH NAME
+auto.master \- Master Map for automounter
+.SH "DESCRIPTION"
+The
+.B auto.master
+map is consulted to set up automounter managed mount points when the
+.nh
+.BR autofs (8)
+.hy
+script is invoked or the
+.nh
+.BR automount (8)
+.hy
+program is run. Each line describes a mount point and refers to an
+autofs map describing file systems to be mounted under the mount
+point.
+.P
+The default location of the master map is
+.nh
+.B @@autofsmapdir@@/auto.master
+.hy
+but an alternate name may be given on the command line when running
+the automounter and the default master map may changed by setting the
+.nh
+.B "DEFAULT_MASTER_MAP_NAME"
+.hy
+configuration variable in
+.nh
+.B @@autofsconfdir@@/autofs.
+.hy
+If the master map name has no path then the system Name Service Switch configuration
+will be consulted and each of the sources searched in line with the rules
+given in the Name Service Switch configuration.
+.P
+Access to mounts in maps is governed by a key.
+.P
+For direct maps the mount point is always specified as:
+.P
+/-
+.P
+and the key used within the direct map is the full path to the mount point.
+.P
+For indirect maps access is by using the path scheme:
+.P
+.RI / mount-point / key 
+.P
+where
+.I mount-point
+is one of the entries listed in the master map. The
+.I key
+is a single directory component and is matched against entries in the
+map given in the entry (See
+.BR autofs (5)).
+.P
+Additionally, a map may be included from its source as if it were itself
+present in the master map by including an entry beginning with a plus (+)
+followed by a map name.
+.SH "FORMAT"
+Master map entries have three fields separated by an arbitrary number
+of spaces or tabs. Lines beginning with # are comments. The first field
+is the mount point described above and the second field is the name of
+the map to be consulted for the mount point followed by the third field
+which contains options to be applied to all entries in the map.
+.P
+The format of a master map entry is:
+.TP
+.IR mount-point\  [ map-type [, format ]:] mapname\  [ options ]
+.TP
+\fBmount-point\fP
+Base location for the \fBautofs\fP filesystem to be mounted.  For
+indirect maps this directory will be created (as with \fBmkdir \-p\fP)
+and is removed when the \fBautofs\fP filesystem is umounted.
+.TP
+\fBmap-type\fP
+Type of map used for this mount point.  The following are
+valid map types:
+.RS
+.TP
+.B file
+The map is a regular text file.
+.TP
+.B program
+The map is an executable program, which is passed a key on the command
+line and returns an entry (everything besides the key) on stdout if successful.
+.TP
+.B yp
+The map is a NIS (YP) database.
+.TP
+.B nisplus
+The map is a NIS+ database.
+.TP
+.B hesiod
+The map is a hesiod database whose
+.B filsys
+entries are used for maps.
+.TP
+.B ldap
+The map is stored in an LDAP directory.
+.RE
+.TP
+\fBformat\fP
+Format of the map data; currently the only formats
+recognized are \fBsun\fP, which is a subset of the Sun automounter map
+format, and \fBhesiod\fP, for hesiod filesys entries.  If the format is
+left unspecified, it defaults to \fBsun\fP for all map types except
+\fBhesiod\fP.
+.TP
+\fBmap\fP
+Name of the map to use.  This is an absolute UNIX pathname
+for maps of types \fBfile\fP or \fBprogram\fP, and the name of a database
+in the case for maps of type \fByp\fP, \fBnisplus\fP, or \fBhesiod\fP or
+the \fBdn\fP of an LDAP entry for maps of type \fBldap\fP.
+.TP
+\fBoptions\fP
+Any remaining command line arguments without leading dashes (\-) are
+taken as options (\fI\-o\fP) to \fBmount\fP.  Arguments with leading
+dashes are considered options for the maps.
+.sp
+The \fBsun\fP format supports the following options:
+.RS
+.TP
+.I "\-Dvariable=value"
+Replace \fIvariable\fP with \fIvalue\fP in map substitutions.
+.TP
+.I "\-strict"
+Treat errors when mounting file systems as fatal. This is important when
+multiple file systems should be mounted (`multimounts'). If this option
+is given, no file system is mounted at all if at least one file system
+can't be mounted.
+.SH LDAP MAPS
+If the map type \fBldap\fP is specified the mapname is of the form
+\fB[//servername/]dn\fP, where the optional \fBservername\fP is
+the name of the LDAP server to query, and \fBdn\fP is the Distinguished
+Name of a subtree to search for map entries.
+The old style
+.nh
+\fBldap:servername:mapname\fP
+.hy
+is also understood. Alternatively, the type can be obtained from the Name Service Switch
+configuration, in which case the map name alone must be given.
+.P
+The default LDAP schema is the NIS schema described in RFC 2307.
+Entries in the nisMap schema are \fBnisObject\fP objects in
+the specified subtree, where the \fBcn\fP attribute is the key
+(the wildcard key is "/"), and the \fBnisMapEntry\fP attribute
+contains the information used by the automounter.
+.P
+Entries in the automountMap schema are \fBautomount\fP objects in
+the specified subtree, where the \fBcn\fP or \fBautomountKey\fP attribute
+(depending on local usage) is the key (the wildcard key is "/"), and the
+\fBautomountInformation\fP attribute contains the information used by the
+automounter.
+.P
+The object classes and attributes used for accessing automount maps in
+LDAP can be changed by setting entries in the autofs configuration
+located in
+.nh
+.B @@autofsconfdir@@/autofs
+.hy
+\.
+.P
+The configuration settings available are:
+.TP
+\fBDEFAULT_MAP_OBJECT_CLASS\fP
+The map object class. Its Default value is "nisMap". In the
+.nh
+automountMap
+.hy
+schema this corresponds to the class
+.nh
+\fBautomountMap\fP.
+.hy
+.TP
+\fBDEFAULT_ENTRY_OBJECT_CLASS\fP
+The map entry object class. Its default value is \fBnisObject\fP.
+In the automountMap schema this corresponds to the class
+.nh
+\fBautomount\fP.
+.hy
+.TP
+\fBDEFAULT_MAP_ATTRIBUTE\fP
+The attribute used to identify the name of the map to which this
+entry belongs. Its default value is
+.nh
+\fBnisMapName\fP.
+.hy
+In the
+.nh
+automountMap
+.hy
+schema this corresponds to the attributes \fBou\fP or
+.nh
+\fBautomountMapName\fP.
+.hy
+.TP
+\fBDEFAULT_ENTRY_ATTRIBUTE\fP
+The attribute used to identify a map key. Its default value is
+In the
+.nh
+automountMap
+.hy
+schema this corresponds to the attribute
+.nh
+\fBautomountKey\fP.
+.hy
+.TP
+\fBDEFAULT_VALUE_ATTRIBUTE\fP
+The attribute used to identify the value of the map entry. Its default
+value is
+.nh
+\fBnisMapEntry\fP.
+.hy
+In the automountMap schema this corresponds to the attribute
+.nh
+\fBautomountInformation\fP.
+.SH LDAP AUTHENTICATION, ENCRYPTED AND CERTIFIED CONNECTIONS
+LDAP authenticated binds, TLS encrypted connections and certification
+may be used by setting appropriate values in the autofs authentication
+configuration file and configuring the LDAP client with appropriate
+settings.  The default location of this file is
+.nh
+@@autofsmapdir@@/autofs_ldap_auth.conf.
+.hy
+If this file exists it will be used to establish whether TLS or authentication
+should be used.
+.P
+An example of this file is:
+.sp
+.RS +.2i
+.ta 1.0i
+.nf
+<?xml version="1.0" ?>
+<autofs_ldap_sasl_conf
+        usetls="yes"
+        tlsrequired="no"
+        authrequired="no"
+        authtype="DIGEST-MD5"
+        user="xyz"
+        secret="abc"
+/>
+.fi
+.RE
+.sp
+If TLS encryption is to be used the location of the Certificate Authority
+certificate must be set within the LDAP client configuration in 
+order to validate the server certificate. If, in addition, a certified
+connection is to be used then the client certificate and private key file
+locations must also be configured within the LDAP client.
+.P
+In OpenLDAP these may be configured in the \fBldap.conf\fP file or in the
+per-user configuration. For example it may be sensible to use the system
+wide configuration for the location of the Certificate Authority certificate
+and set the location of the client certificate and private key
+in the per-user configuration. The location of these files and the configuration
+entry requirements is system dependent so consult the documentation for your
+installation to get further information.
+.SH EXAMPLE
+.sp
+.RS +.2i
+.ta 1.0i
+.nf
+/-	auto.data
+/home	/etc/auto.home
+/mnt	yp:mnt.map
+.fi
+.RE
+.sp
+This will generate two mountpoints for 
+.IR /home
+and
+.IR /mnt
+and install direct mount triggers for each entry in the direct mount map
+.IR auto.data.
+All accesses to
+.I /home
+will lead to the consultation of the map in
+.IR /etc/auto.home
+and all accesses to
+.I /mnt
+will consult the NIS map
+.IR mnt.map .
+All accesses to paths in the map
+.IR auto.data
+will trigger mounts when they are accessed and the Name Service Switch
+configuration will be used to locate the source of the map
+.IR auto.data .
+.SH "SEE ALSO"
+.BR automount (8),
+.BR autofs (5),
+.BR autofs (8).
+.SH AUTHOR
+This manual page was written by Christoph Lameter <chris@waterf.org>,
+for the Debian GNU/Linux system.  Edited by <hpa@transmeta.com> and
+Ian Kent <raven@themaw.net> .
