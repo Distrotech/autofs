@@ -37,3 +37,4 @@
 
 #undef WITH_SASL
 
+#undef ENABLE_FORCED_SHUTDOWN

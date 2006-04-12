@@ -31,16 +31,7 @@ to find mount points on the system. For each of those mount points a
 process is started with the appropriate parameters. You can check the
 active mount points for the automounter with the
 .B @@initdir@@/autofs status
-command. If the
-.I auto.master
-configuration file contains a line of the form
-.P
-.I +map
-.B [options]
-.P
-then the script will check for an NIS map with the same name.  If such a
-map exists then that map will be processed in the same way as the
-auto.master map, with any optional arguments.
+command.
 .P
 .B @@initdir@@/autofs reload
 will check the current auto.master map against running daemons. It will kill

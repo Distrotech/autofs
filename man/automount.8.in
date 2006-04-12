@@ -21,9 +21,8 @@ reading the
 .BR auto.master (8)
 .hy
 map and sets up mount points for each entry in the master map allowing
-mount entries within each of the maps to be automatically mounted
-when thay are accessed. The filesystems are then automatically
-umounted after a period of inactivity.
+them to be automatically mounted when accessed. The filesystems are
+then automatically umounted after a period of inactivity.
 .SH OPTIONS
 .TP
 .I "\-h, \-\-help"
