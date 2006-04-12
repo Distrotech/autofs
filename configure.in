@@ -273,6 +273,16 @@ if test x$enable_mount_locking = xyes -o x$enableval = xyes; then
 fi
 
 #
+# Enable forced shutdown (unlink umounts all mounts).
+#
+AC_ARG_ENABLE(forced-shutdown,
+[  --enable-forced-shutdown enable USR1 signal to force unlink umount of all mounts],,
+	enableval=no)
+if test x$enable_forced_shutdown = xyes -o x$enableval = xyes; then
+	AC_DEFINE(ENABLE_FORCED_SHUTDOWN, 1)
+fi
+
+#
 # Write Makefile.conf and include/config.h
 #
 AC_CONFIG_HEADER(include/config.h)

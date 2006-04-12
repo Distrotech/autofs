@@ -774,7 +774,7 @@ void master_notify_state_change(struct master *master, int sig)
 				nextstate(state_pipe, next);
 			}
 			break;
-/*
+#ifdef ENABLE_FORCED_SHUTDOWN
 		case SIGUSR2:
 			if (ap->state != ST_SHUTDOWN) {
 				next = ST_SHUTDOWN_FORCE;
@@ -782,7 +782,7 @@ void master_notify_state_change(struct master *master, int sig)
 				nextstate(state_pipe, next);
 			}
 			break;
-*/
+#endif
 		case SIGUSR1:
 			assert(ap->state == ST_READY);
 			next = ST_PRUNE;
