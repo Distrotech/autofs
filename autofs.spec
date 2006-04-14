@@ -50,7 +50,9 @@ inkludera nätfilsystem, CD-ROM, floppydiskar, och så vidare.
 echo %{version}-%{release} > .version
 
 %build
-CFLAGS="$RPM_OPT_FLAGS -Wall" ./configure --disable-mount-locking --libdir=%{_libdir}
+CFLAGS="$RPM_OPT_FLAGS -Wall" ./configure --libdir=%{_libdir} \
+					--disable-mount-locking \
+					--enable-ignore-busy
 CFLAGS="$RPM_OPT_FLAGS -Wall" DEBUG=1 make initdir=/etc/rc.d/init.d
 
 %install
@@ -62,9 +64,6 @@ mkdir -p -m755 $RPM_BUILD_ROOT%{_mandir}/{man5,man8}
 mkdir -p -m755 $RPM_BUILD_ROOT/etc/sysconfig
 
 make install mandir=%{_mandir} initdir=/etc/rc.d/init.d INSTALLROOT=$RPM_BUILD_ROOT
-install -m 755 -d $RPM_BUILD_ROOT/misc
-install -m 755 -d $RPM_BUILD_ROOT/net
-install -m 755 -d $RPM_BUILD_ROOT/smb
 #install -m 644 redhat/autofs.init $RPM_BUILD_ROOT/etc/rc.d/init.d/autofs
 #install -m 644 redhat/autofs.sysconfig $RPM_BUILD_ROOT/etc/sysconfig/autofs
 
@@ -98,9 +97,6 @@ fi
 %dir %{_libdir}/autofs
 %{_libdir}/autofs/*
 %{_mandir}/*/*
-%dir /misc
-%dir /net
-%dir /smb
 
 %changelog
 * Sat Nov 26 2005 Ian Kent <raven@themaw.net>

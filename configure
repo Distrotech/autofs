@@ -843,7 +843,10 @@ Optional Features:
   --enable-FEATURE[=ARG]  include FEATURE [ARG=yes]
   --disable-ext-env	  disable search in environment for substitution variable
   --disable-mount-locking disable use of locking when spawning mount command
-  --enable-forced-shutdown enable USR1 signal to force unlink umount of all mounts
+  --enable-force-shutdown enable USR1 signal to force unlink umount of any
+			  busy mounts during shutdown
+  --enable-ignore-busy	  enable exit without umounting busy mounts during
+			  shutdown
 
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
@@ -4919,7 +4922,7 @@ _ACEOF
 fi
 
 #
-# Enable forced shutdown (unlink umounts all mounts).
+# Enable forced shutdown on USR1 signal (unlink umounts all mounts).
 #
 # Check whether --enable-forced-shutdown or --disable-forced-shutdown was given.
 if test "${enable_forced_shutdown+set}" = set; then
@@ -4931,6 +4934,23 @@ fi;
 if test x$enable_forced_shutdown = xyes -o x$enableval = xyes; then
 	cat >>confdefs.h <<\_ACEOF
 #define ENABLE_FORCED_SHUTDOWN 1
+_ACEOF
+
+fi
+
+#
+# Enable exit, ignoring busy mounts.
+#
+# Check whether --enable-ignore-busy or --disable-ignore-busy was given.
+if test "${enable_ignore_busy+set}" = set; then
+  enableval="$enable_ignore_busy"
+
+else
+  enableval=no
+fi;
+if test x$enable_ignore_busy_mounts = xyes -o x$enableval = xyes; then
+	cat >>confdefs.h <<\_ACEOF
+#define ENABLE_IGNORE_BUSY_MOUNTS 1
 _ACEOF
 
 fi

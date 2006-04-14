@@ -74,6 +74,8 @@
 - cleanup map parsing and nsswitch lookup in lookup.c.
 - first pass documentation update.
 - strugle with FSM problems again.
+- add recovery of existing automounts at startup.
+- add configure option to enable exit leaving busy mounts mounted.
 
 11/4/2005 autofs-4.1.4
 ----------------------

@@ -263,7 +263,7 @@ static int do_spawn(logger *log, int use_lock, const char *prog, const char *con
 	pid_t f;
 	int status, pipefd[2];
 	char errbuf[ERRBUFSIZ + 1], *p, *sp;
-	int errp, errn, cancel_state;
+	int errp, errn;
 
 	if (pipe(pipefd))
 		return -1;

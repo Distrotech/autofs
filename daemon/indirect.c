@@ -76,6 +76,59 @@ static int autofs_init_indirect(struct autofs_point *ap)
 	return 0;
 }
 
+static int unlink_mount_tree(struct mnt_list *mnts, const char *mount)
+{
+	struct mnt_list *this;
+	int rv, ret, need_umount;
+
+	need_umount = 0;
+	this = mnts;
+	while (this) {
+		if (strcmp(mount, this->path)) {
+			this = this->next;
+			continue;
+		}
+
+		if (!strstr(this->opts, "indirect")) {
+			this = this->next;
+			continue;
+		}
+
+		need_umount = 1;
+		break;
+	}
+
+	if (!need_umount)
+		return 0;
+
+	ret = 1;
+	this = mnts;
+	while (this) {
+		if (strcmp(this->fs_type, "autofs"))
+			rv = spawnll(log_debug,
+			    PATH_UMOUNT, PATH_UMOUNT, "-l", this->path, NULL);
+		else
+			rv = umount2(this->path, MNT_DETACH);
+		if (rv == -1) {
+			ret = 0;
+			debug("can't unlink %s from mount tree", this->path);
+
+			switch (errno) {
+			case EINVAL:
+				debug("bad superblock or not mounted");
+				break;
+
+			case ENOENT:
+			case EFAULT:
+				debug("bad path for mount");
+				break;
+			}
+		}
+		this = this->next;
+	}
+	return ret;
+}
+
 static int do_mount_autofs_indirect(struct autofs_point *ap)
 {
 	time_t timeout = ap->exp_timeout;
@@ -86,24 +139,13 @@ static int do_mount_autofs_indirect(struct autofs_point *ap)
 
 	mnts = get_mnt_list(_PROC_MOUNTS, ap->path, 1);
 	if (mnts) {
-		struct mnt_list *ent;
-
-		for (ent = mnts; ent; ent = ent->next) {
-			if (strcmp(ent->path, ap->path))
-				continue;
-
-			if (strstr(ent->opts, "direct"))
-				continue;
-
-			if (strstr(ent->opts, "offset"))
-				continue;
-
-			error("%s already mounted", ap->path);
-
-			free_mnt_list(mnts);
+		int ret = unlink_mount_tree(mnts, ap->path);
+		free_mnt_list(mnts);
+		if (!ret) {
+			debug("already mounted as other than autofs"
+				" or failed to unlink entry in tree");
 			goto out_err;
 		}
-		free_mnt_list(mnts);
 	}
 
 	options = make_options_string(ap->path, ap->kpipefd, NULL);
@@ -191,7 +233,7 @@ out_rmdir:
 		rmdir_path(ap->path);
 out_err:
 	if (options)
-	free(options);
+		free(options);
 	close(ap->state_pipe[0]);
 	close(ap->state_pipe[1]);
 	close(ap->pipefd);
@@ -349,6 +391,8 @@ void *expire_proc_indirect(void *arg)
 		if (!strcmp(next->fs_type, "autofs"))
 			continue;
 
+		sched_yield();
+
 		debug("expire %s", next->path);
 
 		/*
@@ -374,11 +418,9 @@ void *expire_proc_indirect(void *arg)
 		if (ret < 0 && errno != EAGAIN) {
 			debug("failed to expire mount %s", next->path);
 			ea->status = 1;
-			goto done;
-		} else
-			sched_yield();
+			break;
+		}
 	}
-done:
 	free_mnt_list(mnts);
 
 	count = offsets = 0;
@@ -392,7 +434,7 @@ done:
 	}
 
 	/*
-	 * If there are no more real mounts left the we could still
+	 * If there are no more real mounts left we could still
 	 * have some offset mounts with no '/' offset so we need to
 	 * umount them here.
 	 */
@@ -427,7 +469,6 @@ done:
 			if (!ret) {
 				debug("mount still busy %s", ap->path);
 				ea->status = 1;
-				pthread_exit(NULL);
 			}
 		}
 	}

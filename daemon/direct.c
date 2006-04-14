@@ -197,6 +197,58 @@ int umount_autofs_direct(struct autofs_point *ap)
 	return 0;
 }
 
+static int unlink_mount_tree(struct list_head *list, const char *mount)
+{
+	struct list_head *p;
+	int rv, ret, need_umount;
+
+	need_umount = 0;
+	list_for_each(p, list) {
+		struct mnt_list *mnt;
+
+		mnt = list_entry(p, struct mnt_list, list);
+
+		if (strcmp(mount, mnt->path))
+			continue;
+
+		if (!strstr(mnt->opts, "direct"))
+			continue;
+
+		need_umount = 1;
+	}
+
+	if (!need_umount)
+		return 0;
+
+	ret = 1;
+	list_for_each(p, list) {
+		struct mnt_list *mnt;
+
+		mnt = list_entry(p, struct mnt_list, list);
+
+		if (strcmp(mnt->fs_type, "autofs"))
+			rv = spawnll(log_debug,
+			     PATH_UMOUNT, PATH_UMOUNT, "-l", mnt->path, NULL);
+		else
+			rv = umount2(mnt->path, MNT_DETACH);
+		if (rv == -1) {
+			ret = 0;
+			debug("can't unlink %s from mount tree", mnt->path);
+
+			switch (errno) {
+			case EINVAL:
+				debug("bad superblock or not mounted");
+				break;
+
+			case ENOENT:
+			case EFAULT:
+				debug("bad path for mount");
+				break;
+			}
+		}
+	}
+	return ret;
+}
 
 int do_mount_autofs_direct(struct autofs_point *ap, struct mnt_list *mnts, struct mapent *me, int now)
 {
@@ -207,9 +259,13 @@ int do_mount_autofs_direct(struct autofs_point *ap, struct mnt_list *mnts, struc
 	LIST_HEAD(list);
 
 	if (tree_find_mnt_ents(mnts, &list, me->key)) {
-		if (ap->state != ST_READMAP)
-			debug("trigger %s already mounted", me->key);
-		return 0;
+		if (ap->state == ST_READMAP)
+			return 0;
+		if (!unlink_mount_tree(&list, me->key)) {
+			debug("already mounted as other than autofs"
+				" or failed to unlink entry in tree");
+			return -1;
+		}
 	}
 
 	status = pthread_once(&key_mnt_params_once, key_mnt_params_init);
@@ -224,7 +280,6 @@ int do_mount_autofs_direct(struct autofs_point *ap, struct mnt_list *mnts, struc
 				ap->path);
 			return 0;
 		}
-		mp->name = NULL;
 		mp->options = NULL;
 
 		status = pthread_setspecific(key_mnt_direct_params, mp);
@@ -382,13 +437,13 @@ int umount_autofs_offset(struct autofs_point *ap, struct mapent *me)
 
 		ioctl(me->ioctlfd, AUTOFS_IOC_ASKUMOUNT, &status);
 		if (!status) {
-			if (ap->state == ST_SHUTDOWN) {
+			if (ap->state != ST_SHUTDOWN_FORCE) {
+				debug("ask umount returned busy");
+				return 1;
+			} else {
 				ioctl(me->ioctlfd, AUTOFS_IOC_CATATONIC, 0);
 				close(me->ioctlfd);
 				goto force_umount;
-			} else {
-				debug("ask umount returned busy");
-				return 1;
 			}
 		}
 		ioctl(me->ioctlfd, AUTOFS_IOC_CATATONIC, 0);
@@ -404,8 +459,9 @@ int umount_autofs_offset(struct autofs_point *ap, struct mapent *me)
 			error("mount point does not exist");
 			return 0;
 		} else if (errno == EBUSY) {
-			debug("path %s already mounted", me->key);
-			return 0;
+			error("mount point %s is in use", me->key);
+			if (ap->state != ST_SHUTDOWN_FORCE)
+				return 0;
 		} else if (errno == ENOTDIR) {
 			error("mount point is not a directory");
 			return 0;
@@ -416,7 +472,7 @@ int umount_autofs_offset(struct autofs_point *ap, struct mapent *me)
 force_umount:
 	if (rv != 0) {
 		msg("forcing umount of %s", me->key);
-		rv = umount2(me->key, MNT_FORCE);
+		rv = umount2(me->key, MNT_DETACH);
 	} else
 		msg("umounted %s", me->key);
 
@@ -454,7 +510,6 @@ int mount_autofs_offset(struct autofs_point *ap, struct mapent *me, int is_autof
 				me->key);
 			return 0;
 		}
-		mp->name = NULL;
 		mp->options = NULL;
 
 		status = pthread_setspecific(key_mnt_offset_params, mp);
@@ -463,20 +518,11 @@ int mount_autofs_offset(struct autofs_point *ap, struct mapent *me, int is_autof
 			fatal(status);
 		}
 	}
-/*
-	if (!mp->name) {
-		mp->name = make_mnt_name_string(ap->path);
-		if (!mp->name)
-			return 0;
-	}
-*/
+
 	if (!mp->options) {
 		mp->options = make_options_string(ap->path, ap->kpipefd, "offset");
-		if (!mp->options) {
-/*			free(mp->name); */
-			mp->name = NULL;
+		if (!mp->options)
 			return 0;
-		}
 	}
 
 	if (is_autofs_fs) {
@@ -510,8 +556,8 @@ int mount_autofs_offset(struct autofs_point *ap, struct mapent *me, int is_autof
 			return 0;
 	}
 
-	debug("calling mount -t autofs " SLOPPY "-o %s %s %s",
-		mp->options, mp->name, me->key);
+	debug("calling mount -t autofs " SLOPPY " -o %s automount %s",
+		mp->options, me->key);
 
 	ret = mount("automount", me->key, "autofs", MS_MGC_VAL, mp->options);
 	if (ret) {
@@ -607,6 +653,8 @@ void *expire_proc_direct(void *arg)
 		if (strstr(next->opts, "indirect"))
 			continue;
 
+		sched_yield();
+
 		/*
 		 * All direct mounts must be present in the map
 		 * entry cache.
@@ -636,8 +684,7 @@ void *expire_proc_direct(void *arg)
 			debug("failed to expire mount %s", next->path);
 			ea->status = 1;
 			break;
-		} else
-			sched_yield();
+		}
 	}
 	free_mnt_list(mnts);
 
@@ -645,6 +692,8 @@ void *expire_proc_direct(void *arg)
 	cache_readlock(mc);
 	me = cache_enumerate(mc, NULL);
 	while (me) {
+		sched_yield();
+
 		if (me->ioctlfd >= 0)
 			/* Real mounts have an open ioctl fd */
 			ioctlfd = me->ioctlfd;
@@ -658,11 +707,10 @@ void *expire_proc_direct(void *arg)
 				ea->status = 1;
 				break;
 			}
-		} else
-			sched_yield();
-
+		}
 		me = cache_enumerate(mc, me);
 	}
+
 	pthread_cleanup_pop(1);
 
 	pthread_cleanup_pop(1);

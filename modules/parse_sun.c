@@ -805,8 +805,6 @@ static int mount_multi_triggers(struct autofs_point *ap, char *root, struct mape
 	while (offset) {
 		int plen = fs_path_len + strlen(offset);
 
-		count++;
-
 		if (plen > PATH_MAX) {
 			warn("path loo long");
 			goto cont;
@@ -831,14 +829,12 @@ static int mount_multi_triggers(struct autofs_point *ap, char *root, struct mape
 
 		if (mount_autofs_offset(ap, oe, is_autofs_fs) < 0)
 			warn("failed to mount offset");
-		else
-			at_least_one++;
 cont:
 		offset = cache_get_offset(base,
 				offset, start, &me->multi_list, &pos);
 	}
 
-	return count ? at_least_one : 1;
+	return 1;
 }
 
 static void parse_sun_cleanup(struct mapent_cache *mc, const char *name,

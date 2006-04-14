@@ -123,21 +123,28 @@ void expire_cleanup(void *arg)
 
 		case ST_SHUTDOWN_PENDING:
 			next = ST_SHUTDOWN;
-			if (success == 0)
-				break;
-
-			/* Failed shutdown returns to ready */
-			warn("filesystem %s still busy", ap->path);
 			if (ap->submount) {
 				status = pthread_mutex_unlock(&ap->parent->state_mutex);
 				if (status)
 					fatal(status);
 			}
+#ifndef ENABLE_IGNORE_BUSY_MOUNTS
+			if (success == 0)
+				break;
+
+			/* Failed shutdown returns to ready */
+			warn("filesystem %s still busy", ap->path);
 			alarm_add(ap, ap->exp_runfreq);
 			next = ST_READY;
+#endif
 			break;
 
 		case ST_SHUTDOWN_FORCE:
+			if (ap->submount) {
+				status = pthread_mutex_unlock(&ap->parent->state_mutex);
+				if (status)
+					fatal(status);
+			}
 			next = ST_SHUTDOWN;
 			break;
 
@@ -596,6 +603,11 @@ int st_add_task(struct autofs_point *ap, enum states state)
 	INIT_LIST_HEAD(&new->list);
 	INIT_LIST_HEAD(&new->pending);
 
+	/* If we are shutting down get rid on all tasks */
+/*	if (ap->state == ST_SHUTDOWN_PENDING ||
+	    ap->state == ST_SHUTDOWN_FORCE)
+		st_remove_tasks(ap);
+*/
 	status = pthread_mutex_lock(&mutex);
 	if (status)
 		fatal(status);
@@ -683,7 +695,7 @@ static int run_state_task(struct state_queue *task)
 	struct autofs_point *ap;
 	enum states state;
 	enum states next_state;
-	int ret, status;
+	int status, ret = 1;
 
 	ap = task->ap;
 	status = pthread_mutex_lock(&ap->state_mutex);
@@ -718,6 +730,7 @@ static int run_state_task(struct state_queue *task)
 			break;
 
 		default:
+			ret = 0;
 			error("bad next state %d", next_state);
 		}
 	}
@@ -769,11 +782,17 @@ static void *st_queue_handler(void *arg)
 			struct state_queue *task;
 
 			task = list_entry(p, struct state_queue, list);
-
+/*
 			error("task %p ap %p state %d next %d busy %d",
-				task, task->ap, task->ap->state, task->state, task->busy);
+				task, task->ap, task->ap->state,
+				task->state, task->busy);
+*/
 
 			task->busy = 1;
+			/*
+			 * TODO: field return code and delete immediately
+			 * 	 on fail
+			 */
 			/* TODO: field return code and delete immediately on fail */
 			run_state_task(task);
 		}
@@ -781,7 +800,7 @@ static void *st_queue_handler(void *arg)
 		while (1) {
 			struct timespec wait;
 
-			wait.tv_sec = time(NULL) + 2;
+			wait.tv_sec = time(NULL) + 1;
 			wait.tv_nsec = 0;
 
 			while (!signaled) {
@@ -800,14 +819,18 @@ static void *st_queue_handler(void *arg)
 
 				task = list_entry(p, struct state_queue, list);
 				p = p->next;
-
-				error("task %p ap %p state %d next %d busy %d",
-					task, task->ap, task->ap->state, task->state, task->busy);
-
+/*
+				debug("task %p ap %p state %d next %d busy %d",
+					task, task->ap, task->ap->state,
+					task->state, task->busy);
+*/
 				if (!task->busy) {
 					/* Start a new task */
 					task->busy = 1;
-					/* TODO: field return code and delete immediately on fail */
+					/*
+					 * TODO: field return code and delete
+					 *	 immediately on fail
+					 */
 					run_state_task(task);
 					continue;
 				}
@@ -825,7 +848,7 @@ static void *st_queue_handler(void *arg)
 				/* No more tasks for this queue */
 				if (list_empty(&task->pending)) {
 					list_del(&task->list);
-					error("task complete %p", task);
+					/* debug("task complete %p", task); */
 					free(task);
 					continue;
 				}
@@ -838,7 +861,7 @@ static void *st_queue_handler(void *arg)
 				list_add_tail(&next->list, head);
 
 				list_del(&task->list);
-				error("task complete %p", task);
+				/* debug("task complete %p", task); */
 				free(task);
 			}
 

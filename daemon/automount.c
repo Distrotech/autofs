@@ -1089,12 +1089,11 @@ void *handle_mounts(void *arg)
 				break;
 			}
 
-			ret = ioctl(ap->ioctlfd, AUTOFS_IOC_ASKUMOUNT, &status);
 			/*
 			 * If the ioctl fails assume the kernel doesn't have
 			 * AUTOFS_IOC_ASKUMOUNT and just continue.
 			 */
-
+			ret = ioctl(ap->ioctlfd, AUTOFS_IOC_ASKUMOUNT, &status);
 			if (ret == -1) {
 				status = pthread_mutex_unlock(&ap->state_mutex);
 				if (status)
