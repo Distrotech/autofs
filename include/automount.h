@@ -433,7 +433,6 @@ struct autofs_point {
 	pthread_t exp_thread;		/* Thread that is expiring */
 	pthread_t readmap_thread;	/* Thread that is reading maps */
 	pthread_mutex_t state_mutex;	/* Protect state changes */
-	pthread_cond_t state_cond;	/* Condition to serialise state changes */
 	struct list_head state_queue;	/* Pending state transitions */
 	enum states state;		/* Current state */
 	int state_pipe[2];		/* State change router pipe */

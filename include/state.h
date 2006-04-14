@@ -72,6 +72,8 @@ void expire_cleanup(void *);
 void expire_proc_cleanup(void *);
 void nextstate(int, enum states);
 
-enum states st_next(struct autofs_point *api, enum states state);
+int st_add_task(struct autofs_point *, enum states);
+void st_remove_tasks(struct autofs_point *);
+int st_start_handler(void);
 
 #endif

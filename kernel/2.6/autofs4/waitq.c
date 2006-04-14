@@ -189,6 +189,21 @@ static int autofs4_getpath(struct autofs_sb_info *sbi,
 	return len;
 }
 
+static struct autofs_wait_queue *
+autofs4_find_wait(struct autofs_sb_info *sbi,
+		  char *name, unsigned int hash, unsigned int len)
+{
+	struct autofs_wait_queue *wq = NULL;
+
+	for (wq = sbi->queues ; wq ; wq = wq->next) {
+		if (wq->hash == hash &&
+		    wq->len == len &&
+		    wq->name && !memcmp(wq->name, name, len))
+			break;
+	}
+	return wq;
+}
+
 int autofs4_wait(struct autofs_sb_info *sbi, struct dentry *dentry,
 		enum autofs_notify notify)
 {
@@ -196,7 +211,7 @@ int autofs4_wait(struct autofs_sb_info *sbi, struct dentry *dentry,
 	char *name;
 	unsigned int len = 0;
 	unsigned int hash = 0;
-	int status;
+	int status, type;
 
 	/* In catatonic mode, we don't wait for nobody */
 	if (sbi->catatonic)
@@ -223,21 +238,49 @@ int autofs4_wait(struct autofs_sb_info *sbi, struct dentry *dentry,
 		return -EINTR;
 	}
 
-	for (wq = sbi->queues ; wq ; wq = wq->next) {
-		if (wq->hash == dentry->d_name.hash &&
-		    wq->len == len &&
-		    wq->name && !memcmp(wq->name, name, len))
-			break;
+	wq = autofs4_find_wait(sbi, name, hash, len);
+	if (!wq && notify == NFY_NONE) {
+		struct autofs_info *ino;
+
+		/*
+		 * Either we've betean the pending expire to post it's
+		 * wait or it finished while we waited on the mutex. So
+		 * we need to wait till either, the wait appears or the
+		 * expire is no longer pending.
+		 */
+		spin_lock(&dcache_lock);
+		ino = autofs4_dentry_ino(dentry);
+		while (!wq && ino) {
+			if (!(ino->flags & AUTOFS_INF_EXPIRING)) {
+				spin_unlock(&dcache_lock);
+				kfree(name);
+				return 0;
+			}
+			spin_unlock(&dcache_lock);
+			up(&sbi->wq_sem);
+			set_current_state(TASK_INTERRUPTIBLE);
+			schedule_timeout(HZ/10);
+			if (down_interruptible(&sbi->wq_sem)) {
+				kfree(name);
+				return -EINTR;
+			}
+			wq = autofs4_find_wait(sbi, name, hash, len);
+			spin_lock(&dcache_lock);
+		}
+		spin_unlock(&dcache_lock);
+
+		/*
+		 * Not ideal but the status has already gone. Of the two
+		 * cases where we wait on NFY_NONE neither depend on the
+		 * return status of the wait.
+		 */
+		if (!wq) {
+			kfree(name);
+			return 0;
+		}
 	}
 
 	if (!wq) {
-		/* Can't wait for an expire if there's no mount */
-		if (notify == NFY_NONE && !autofs4_ispending(dentry)) {
-			kfree(name);
-			up(&sbi->wq_sem);
-			return -ENOENT;
-		}
-
 		/* Create a new wait queue */
 		wq = kmalloc(sizeof(struct autofs_wait_queue),GFP_KERNEL);
 		if (!wq) {
@@ -263,20 +306,7 @@ int autofs4_wait(struct autofs_sb_info *sbi, struct dentry *dentry,
 		wq->tgid = current->tgid;
 		wq->status = -EINTR; /* Status return if interrupted */
 		atomic_set(&wq->wait_ctr, 2);
-		atomic_set(&wq->notify, 1);
 		up(&sbi->wq_sem);
-	} else {
-		atomic_inc(&wq->wait_ctr);
-		up(&sbi->wq_sem);
-		kfree(name);
-		DPRINTK("existing wait id = 0x%08lx, name = %.*s, nfy=%d",
-			(unsigned long) wq->wait_queue_token, wq->len, wq->name, notify);
-	}
-
-	if (notify != NFY_NONE && atomic_read(&wq->notify)) {
-		int type;
-
-		atomic_dec(&wq->notify);
 
 		if (sbi->version < 5) {
 			if (notify == NFY_MOUNT)
@@ -299,6 +329,12 @@ int autofs4_wait(struct autofs_sb_info *sbi, struct dentry *dentry,
 
 		/* autofs4_notify_daemon() may block */
 		autofs4_notify_daemon(sbi, wq, type);
+	} else {
+		atomic_inc(&wq->wait_ctr);
+		up(&sbi->wq_sem);
+		kfree(name);
+		DPRINTK("existing wait id = 0x%08lx, name = %.*s, nfy=%d",
+			(unsigned long) wq->wait_queue_token, wq->len, wq->name, notify);
 	}
 
 	/* wq->name is NULL if and only if the lock is already released */

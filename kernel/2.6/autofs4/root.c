@@ -326,7 +326,7 @@ static int try_to_fill_dentry(struct dentry *dentry, int flags)
 	return status;
 }
 
-#if 0
+#if 1
 /* For autofs direct mounts the follow link triggers the mount */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,13)
 static void *autofs4_follow_link(struct dentry *dentry, struct nameidata *nd)
@@ -335,6 +335,7 @@ static int autofs4_follow_link(struct dentry *dentry, struct nameidata *nd)
 #endif
 {
 	struct autofs_sb_info *sbi = autofs4_sbi(dentry->d_sb);
+	struct autofs_info *ino = autofs4_dentry_ino(dentry);
 	int oz_mode = autofs4_oz_mode(sbi);
 	unsigned int lookup_type;
 	int status;
@@ -354,8 +355,8 @@ static int autofs4_follow_link(struct dentry *dentry, struct nameidata *nd)
 	 * a liitle later and if it's an expire then we might need
 	 * to mount it again.
 	 */
-	if (autofs4_ispending(dentry)) {
-		DPRINTK("waiting for active request %p name=%.*s",
+	if (ino && (ino->flags & AUTOFS_INF_EXPIRING)) {
+		DPRINTK("waiting for expire %p name=%.*s",
 			 dentry, dentry->d_name.len, dentry->d_name.name);
 
 		status = autofs4_wait(sbi, dentry, NFY_NONE);
@@ -369,32 +370,29 @@ static int autofs4_follow_link(struct dentry *dentry, struct nameidata *nd)
 	 * try to mount it again.
 	 */
 	spin_lock(&dcache_lock);
-	if (!list_empty(&dentry->d_subdirs)) {
+	if (!d_mountpoint(dentry) && list_empty(&dentry->d_subdirs)) {
 		spin_unlock(&dcache_lock);
+
+		status = try_to_fill_dentry(dentry, 0);
+		if (status)
+			goto out_error;
+
+		/*
+		 * The mount succeeded but if there is no root mount
+		 * it must be an autofs multi-mount with no root offset
+		 * so we don't need to follow the mount.
+		 */
+		if (d_mountpoint(dentry)) {
+			if (!autofs4_follow_mount(&nd->mnt, &nd->dentry)) {
+				status = -ENOENT;
+				goto out_error;
+			}
+		}
+
 		goto done;
 	}
 	spin_unlock(&dcache_lock);
 
-	status = try_to_fill_dentry(dentry, 0);
-	if (status)
-		goto out_error;
-
-	/*
-	 * The mount succeeded but if there is no root mount
-	 * and directories have been created so it must
-	 * be an autofs multi-mount with no root offset.
-	 */
-	spin_lock(&dcache_lock);
-	if (!d_mountpoint(dentry) && !list_empty(&dentry->d_subdirs)) {
-		spin_unlock(&dcache_lock);
-		goto done;
-	}
-	spin_unlock(&dcache_lock);
-
-	if (!autofs4_follow_mount(&nd->mnt, &nd->dentry)) {
-		status = -ENOENT;
-		goto out_error;
-	}
 done:
 	return NULL;
 
@@ -408,7 +406,7 @@ out_error:
 }
 #endif
 
-#if 1
+#if 0
 static struct vfsmount *autofs4_get_vfsmount(struct nameidata *nd, struct dentry *dentry)
 {
 	struct vfsmount *this;
@@ -643,9 +641,17 @@ static struct dentry *autofs4_lookup(struct inode *dir, struct dentry *dentry, s
 	d_add(dentry, NULL);
 
 	if (dentry->d_op && dentry->d_op->d_revalidate) {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,16)
+		mutex_unlock(&dir->i_mutex);
+#else
 		up(&dir->i_sem);
+#endif
 		(dentry->d_op->d_revalidate)(dentry, nd);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,16)
+		mutex_lock(&dir->i_mutex);
+#else
 		down(&dir->i_sem);
+#endif
 	}
 
 	/*
@@ -917,7 +923,7 @@ static inline int autofs4_ask_umount(struct vfsmount *mnt, int __user *p)
 {
 	int status = 0;
 
-#if LINUX_VERSION_CODE > KERNEL_VERSION(2,6,16)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,16)
 	if (may_umount(mnt))
 #else
 	if (may_umount(mnt) == 0)

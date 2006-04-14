@@ -73,8 +73,8 @@ struct autofs_wait_queue {
 	struct autofs_wait_queue *next;
 	autofs_wqt_t wait_queue_token;
 	/* We use the following to see what we are waiting for */
-	int hash;
-	int len;
+	unsigned int hash;
+	unsigned int len;
 	char *name;
 	u64 dev;
 	u64 ino;
@@ -84,7 +84,6 @@ struct autofs_wait_queue {
 	pid_t tgid;
 	/* This is for status reporting upon return */
 	int status;
-	atomic_t notify;
 	atomic_t wait_ctr;
 };
 
@@ -224,7 +223,11 @@ static inline int __simple_empty(struct dentry *dentry)
 	struct dentry *child;
 	int ret = 0;
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,16)
+	list_for_each_entry(child, &dentry->d_subdirs, d_u.d_child)
+#else
 	list_for_each_entry(child, &dentry->d_subdirs, d_child)
+#endif
 		if (simple_positive(child))
 			goto out;
 	ret = 1;

@@ -95,19 +95,8 @@ int master_add_autofs_point(struct master_mapent *entry,
 	INIT_LIST_HEAD(&ap->mounts);
 	INIT_LIST_HEAD(&ap->submounts);
 
-	status = pthread_cond_init(&ap->state_cond, NULL);
-	if (status) {
-		free(ap->path);
-		free(ap->mc);
-		free(ap);
-		return 0;
-	}
-
 	status = pthread_mutex_init(&ap->state_mutex, NULL);
 	if (status) {
-		status = pthread_cond_destroy(&ap->state_cond);
-		if (status)
-			fatal(status);
 		free(ap->path);
 		free(ap->mc);
 		free(ap);
@@ -118,9 +107,6 @@ int master_add_autofs_point(struct master_mapent *entry,
 	status = pthread_mutex_init(&ap->mounts_mutex, NULL);
 	if (status) {
 		status = pthread_mutex_destroy(&ap->state_mutex);
-		if (status)
-			fatal(status);
-		status = pthread_cond_destroy(&ap->state_cond);
 		if (status)
 			fatal(status);
 		free(ap->path);
@@ -149,9 +135,6 @@ void master_free_autofs_point(struct autofs_point *ap)
 	}
 	cache_release(ap);
 	free(ap->path);
-	status = pthread_cond_destroy(&ap->state_cond);
-	if (status)
-		fatal(status);
 	status = pthread_mutex_destroy(&ap->state_mutex);
 	if (status)
 		fatal(status);

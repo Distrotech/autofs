@@ -143,6 +143,7 @@ struct mnt_list *get_mnt_list(const char *table, const char *path, int include)
 			free_mnt_list(list);
 			return NULL;
 		}
+		memset(ent, 0, sizeof(*ent));
 
 		mptr = list;
 		last = NULL;
@@ -519,8 +520,8 @@ struct mnt_list *tree_make_mnt_tree(const char *table, const char *path)
 			tree_free_mnt_tree(tree);
 			return NULL;
 		}
+		memset(ent, 0, sizeof(*ent));
 
-		ent->left = ent->right = NULL;
 		INIT_LIST_HEAD(&ent->self);
 		INIT_LIST_HEAD(&ent->list);
 		INIT_LIST_HEAD(&ent->ordered);

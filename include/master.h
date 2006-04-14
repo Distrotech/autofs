@@ -53,8 +53,6 @@ struct master {
 	struct list_head mounts;
 };
 
-struct state_cond;
-
 /* From the yacc master map parser */
 
 void master_init_scan(void);
@@ -64,10 +62,6 @@ int master_parse_entry(const char *, unsigned int, unsigned int, time_t);
 
 void master_set_default_timeout(void);
 void master_set_default_ghost_mode(void);
-/*
-int master_state_cond_init(struct autofs_point *);
-void master_state_cond_destroy(struct autofs_point *);
-*/
 int master_add_autofs_point(struct master_mapent *, time_t, unsigned, unsigned, int);
 void master_free_autofs_point(struct autofs_point *);
 struct map_source *

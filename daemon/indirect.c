@@ -80,7 +80,6 @@ static int do_mount_autofs_indirect(struct autofs_point *ap)
 {
 	time_t timeout = ap->exp_timeout;
 	char *options = NULL;
-	char *name = NULL;
 	struct stat st;
 	struct mnt_list *mnts;
 	int ret;
@@ -111,11 +110,6 @@ static int do_mount_autofs_indirect(struct autofs_point *ap)
 	if (!options)
 		goto out_err;
 
-/*
-	name = make_mnt_name_string(ap->path);
-	if (!name)
-		goto out_err;
-*/
 	/* In case the directory doesn't exist, try to mkdir it */
 	if (mkdir_path(ap->path, 0555) < 0) {
 		if (errno != EEXIST && errno != EROFS) {
@@ -136,10 +130,8 @@ static int do_mount_autofs_indirect(struct autofs_point *ap)
 		goto out_rmdir;
 	}
 
-/*	free(name); */
 	free(options);
 
-	name = NULL;
 	options = NULL;
 
 	/* Root directory for ioctl()'s */
@@ -200,8 +192,6 @@ out_rmdir:
 out_err:
 	if (options)
 	free(options);
-	if (name)
-		free(name);
 	close(ap->state_pipe[0]);
 	close(ap->state_pipe[1]);
 	close(ap->pipefd);

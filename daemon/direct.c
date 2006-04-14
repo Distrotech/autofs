@@ -43,7 +43,6 @@
 extern pthread_attr_t thread_attr;
 
 struct mnt_params {
-	char *name;
 	char *options;
 };
 
@@ -56,8 +55,6 @@ static void key_mnt_params_destroy(void *arg)
 	struct mnt_params *mp;
 
 	mp = (struct mnt_params *) arg;
-	if (mp->name)
-		free(mp->name);
 	if (mp->options)
 		free(mp->options);
 	free(mp);
@@ -236,20 +233,11 @@ int do_mount_autofs_direct(struct autofs_point *ap, struct mnt_list *mnts, struc
 			fatal(status);
 		}
 	}
-/*
-	if (!mp->name) {
-		mp->name = make_mnt_name_string(ap->path);
-		if (!mp->name)
-			return 0;
-	}
-*/
+
 	if (!mp->options) {
 		mp->options = make_options_string(ap->path, ap->kpipefd, "direct");
-		if (!mp->options) {
-/*			free(mp->name); */
-			mp->name = NULL;
+		if (!mp->options)
 			return 0;
-		}
 	}
 
 	/* In case the directory doesn't exist, try to mkdir it */
@@ -647,11 +635,10 @@ void *expire_proc_direct(void *arg)
 		if (ret < 0 && errno != EAGAIN) {
 			debug("failed to expire mount %s", next->path);
 			ea->status = 1;
-			goto done;
+			break;
 		} else
 			sched_yield();
 	}
-done:
 	free_mnt_list(mnts);
 
 	pthread_cleanup_push(cache_lock_cleanup, mc);

@@ -17,12 +17,48 @@
 
 extern pthread_attr_t thread_attr;
 
-struct state {
-	struct list_head queue;
+struct state_queue {
+	pthread_t thid;
+	struct list_head list;
+	struct list_head pending;
+	struct autofs_point *ap;
 	enum states state;
+	unsigned int busy;
+	unsigned int cancel;
 };
 
+static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
+static LIST_HEAD(state_queue);
+
+static unsigned int signaled = 0;
+static void st_set_thid(struct autofs_point *, pthread_t);
+
 int do_mount_autofs_direct(struct autofs_point *, struct mnt_list *, struct mapent *, int);
+
+void dump_state_queue(void)
+{
+	struct list_head *head = &state_queue;
+	struct list_head *p, *q;
+
+	debug("dumping queue");
+
+	list_for_each(p, head) {
+		struct state_queue *entry;
+
+		entry = list_entry(p, struct state_queue, list);
+		debug("queue list head path %s state %d busy %d",
+			entry->ap->path, entry->state, entry->busy);
+
+		list_for_each(q, &entry->pending) {
+			struct state_queue *this;
+
+			this = list_entry(q, struct state_queue, pending);
+			debug("queue list entry path %s state %d busy %d",
+				this->ap->path, this->state, this->busy);
+		}
+	}
+}
 
 void nextstate(int statefd, enum states next)
 {
@@ -218,6 +254,7 @@ static enum expire expire_proc(struct autofs_point *ap, int now)
 		return EXP_ERROR;
 	}
 	ap->exp_thread = thid;
+	st_set_thid(ap, thid);
 
 	pthread_cleanup_push(expire_proc_cleanup, ea);
 
@@ -391,6 +428,7 @@ static unsigned int st_readmap(struct autofs_point *ap)
 		return 0;
 	}
 	ap->readmap_thread = thid;
+	st_set_thid(ap, thid);
 
 	ra->signaled = 0;
 	while (!ra->signaled) {
@@ -518,168 +556,307 @@ static unsigned int st_expire(struct autofs_point *ap)
 	return 0;
 }
 
-static unsigned int st_queue(struct autofs_point *ap, enum states state)
+/* Insert alarm entry on ordered list. */
+int st_add_task(struct autofs_point *ap, enum states state)
 {
-	struct state *st;
+	struct list_head *head = &state_queue;
+	struct list_head *p;
+	struct state_queue *new;
+	unsigned int empty = 1;
+	int status;
 
-	st = malloc(sizeof(struct state));
-	if (!st)
+	/* Task termination marker, poke state machine */
+	if (state == ST_READY) {
+		status = pthread_mutex_lock(&mutex);
+		if (status)
+			fatal(status);
+
+		st_ready(ap);
+
+		signaled = 1;
+		status = pthread_cond_signal(&cond);
+		if (status)
+			fatal(status);
+
+		status = pthread_mutex_unlock(&mutex);
+		if (status)
+			fatal(status);
+
+		return 1;
+	}
+
+	new = malloc(sizeof(struct state_queue));
+	if (!new)
 		return 0;
+	memset(new, 0, sizeof(struct state_queue));
 
-	st->state = state;
-	INIT_LIST_HEAD(&st->queue);
+	new->ap = ap;
+	new->state = state;
 
-	list_add_tail(&st->queue, &ap->state_queue);
+	INIT_LIST_HEAD(&new->list);
+	INIT_LIST_HEAD(&new->pending);
+
+	status = pthread_mutex_lock(&mutex);
+	if (status)
+		fatal(status);
+
+	/* Add to task queue for autofs_point ? */
+	list_for_each(p, head) {
+		struct state_queue *task;
+
+		task = list_entry(p, struct state_queue, list);
+
+		if (task->ap == ap) {
+			empty = 0;
+			list_add_tail(&new->pending, &task->pending);
+			break;
+		}
+	}
+
+	if (empty)
+		list_add(&new->list, head);
+
+	/* Added task, encourage state machine */
+	signaled = 1;
+	status = pthread_cond_signal(&cond);
+	if (status)
+		fatal(status);
+
+	status = pthread_mutex_unlock(&mutex);
+	if (status)
+		fatal(status);
 
 	return 1;
 }
 
-static enum states st_dequeue(struct autofs_point *ap)
+void st_remove_tasks(struct autofs_point *ap)
 {
-	struct list_head *queue;
-	enum states next;
-	struct state *st;
+	struct list_head *head = &state_queue;
+	struct list_head *p, *q;
+	struct state_queue *task, *waiting;
+	int status;
 
-	if (list_empty(&ap->state_queue))
-		return ST_READY;
+	status = pthread_mutex_lock(&mutex);
+	if (status)
+		fatal(status);
 
-	queue = (&ap->state_queue)->next;
-
-	st = list_entry(queue, struct state, queue);
-
-	list_del(&st->queue);
-	next = st->state;
-	free(st);
-
-	return next;
-}
-
-static void st_dequeue_all(struct autofs_point *ap)
-{
-	struct list_head *queue, *head;
-	struct state *st;
-
-	if (list_empty(&ap->state_queue))
+	if (list_empty(head)) {
+		status = pthread_mutex_unlock(&mutex);
+		if (status)
+			fatal(status);
 		return;
-
-	head = &ap->state_queue;
-	queue = head->next;
-	while (queue != head) {
-		st = list_entry(queue, struct state, queue);
-		queue = queue->next;
-		list_del(&st->queue);
-		free(st);
 	}
 
+	p = head->next;
+	while (p != head) {
+		task = list_entry(p, struct state_queue, list);
+		p = p->next;
+
+		if (task->ap != ap)
+			continue;
+
+		if (task->busy)
+			task->cancel = 1;
+
+		q = (&task->pending)->next;
+		while(q != &task->pending) {
+			waiting = list_entry(q, struct state_queue, pending);
+			q = q->next;
+
+			list_del(&waiting->pending);
+			free(waiting);
+		}
+	}
+
+	signaled = 1;
+	status = pthread_cond_signal(&cond);
+	if (status)
+		fatal(status);
+
+	status = pthread_mutex_unlock(&mutex);
+	if (status)
+		fatal(status);
+}
+
+static int run_state_task(struct state_queue *task)
+{
+	struct autofs_point *ap;
+	enum states state;
+	enum states next_state;
+	int ret, status;
+
+	ap = task->ap;
+	status = pthread_mutex_lock(&ap->state_mutex);
+	if (status)
+		fatal(status);
+
+	state = ap->state;
+	next_state = task->state;
+
+	error("task %p state %d next %d", task, state, task->state);
+
+	if (next_state != state) {
+		switch (next_state) {
+		case ST_PRUNE:
+			ret = st_prune(ap);
+			break;
+
+		case ST_EXPIRE:
+			ret = st_expire(ap);
+			break;
+
+		case ST_READMAP:
+			ret = st_readmap(ap);
+			break;
+
+		case ST_SHUTDOWN_PENDING:
+			ret = st_prepare_shutdown(ap);
+			break;
+
+		case ST_SHUTDOWN_FORCE:
+			ret = st_force_shutdown(ap);
+			break;
+
+		default:
+			error("bad next state %d", next_state);
+		}
+	}
+
+	status = pthread_mutex_unlock(&ap->state_mutex);
+	if (status)
+		fatal(status);
+
+	return ret;
+}
+
+static void st_set_thid(struct autofs_point *ap, pthread_t thid)
+{
+	struct list_head *p, *head = &state_queue;
+	struct state_queue *task;
+
+	list_for_each(p, head) {
+		task = list_entry(p, struct state_queue, list);
+		if (task->ap == ap) {
+			task->thid = thid;
+			break;
+		}
+	}
 	return;
 }
 
-static void st_cancel_pending(struct autofs_point *ap)
+static void *st_queue_handler(void *arg)
 {
-	if (ap->exp_thread) {
-		debug("cancel expire thid %lu",
-			(unsigned long) ap->exp_thread);
-		while (pthread_cancel(ap->exp_thread) != ESRCH)
-			sleep(1);
-		alarm_delete(ap);
-		debug("done");
-	}
-			
-	if (ap->readmap_thread) {
-		debug("cancel readmap thid %lu",
-			(unsigned long) ap->readmap_thread);
-		while (pthread_cancel(ap->readmap_thread) != ESRCH)
-			sleep(1);
-		debug("done");
+	struct list_head *head = &state_queue;
+	struct list_head *p;
+	int status;
+
+	status = pthread_mutex_lock(&mutex);
+	if (status)
+		fatal(status);
+
+	while (1) {
+		/*
+		 * If the state queue list is empty, wait until an
+		 * entry is added.
+		 */
+		while (list_empty(head)) {
+			status = pthread_cond_wait(&cond, &mutex);
+			if (status)
+				fatal(status);
+		}
+
+		list_for_each(p, head) {
+			struct state_queue *task;
+
+			task = list_entry(p, struct state_queue, list);
+
+			error("task %p ap %p state %d next %d busy %d",
+				task, task->ap, task->ap->state, task->state, task->busy);
+
+			task->busy = 1;
+			/* TODO: field return code and delete immediately on fail */
+			run_state_task(task);
+		}
+
+		while (1) {
+			struct timespec wait;
+
+			wait.tv_sec = time(NULL) + 2;
+			wait.tv_nsec = 0;
+
+			while (!signaled) {
+				status = pthread_cond_timedwait(&cond, &mutex, &wait);
+				if (status) {
+					if (status == ETIMEDOUT)
+						break;
+					fatal(status);
+				}
+			}
+			signaled = 0;
+
+			p = head->next;
+			while (p != head) {
+				struct state_queue *task, *next;
+
+				task = list_entry(p, struct state_queue, list);
+				p = p->next;
+
+				error("task %p ap %p state %d next %d busy %d",
+					task, task->ap, task->ap->state, task->state, task->busy);
+
+				if (!task->busy) {
+					/* Start a new task */
+					task->busy = 1;
+					/* TODO: field return code and delete immediately on fail */
+					run_state_task(task);
+					continue;
+				}
+
+				if (task->cancel)
+					pthread_cancel(task->thid);
+
+				/* Still busy */
+				if (task->thid) {
+					status = pthread_kill(task->thid, 0);
+					if (status != ESRCH)
+						continue;
+				}
+
+				/* No more tasks for this queue */
+				if (list_empty(&task->pending)) {
+					list_del(&task->list);
+					error("task complete %p", task);
+					free(task);
+					continue;
+				}
+
+				/* Next task */
+				next = list_entry((&task->pending)->next,
+							struct state_queue, pending);
+
+				list_del_init(&next->pending);
+				list_add_tail(&next->list, head);
+
+				list_del(&task->list);
+				error("task complete %p", task);
+				free(task);
+			}
+
+			if (list_empty(head))
+				break;
+		}
 	}
 }
 
-/*
- * autofs_point state_mutex must be held when calling
- * this function.
- */
-enum states st_next(struct autofs_point *ap, enum states state)
+int st_start_handler(void)
 {
-	enum states next;
-	unsigned int ret = 1;
+	pthread_t thid;
+	int status;
 
-	next = state;
+	status = pthread_create(&thid, &thread_attr, st_queue_handler, NULL);
+	if (status)
+		return 0;
 
-	switch (state) {
-	case ST_READY:
-		if (!list_empty(&ap->state_queue)) {
-			st_ready(ap);
-			next = st_dequeue(ap);
-		}
-		break;
-
-	case ST_EXPIRE:
-	case ST_PRUNE:
-	case ST_READMAP:
-		if (ap->state != ST_READY) {
-			st_queue(ap, state);
-			return ap->state;
-		}
-		break;
-
-	case ST_SHUTDOWN_PENDING:
-	case ST_SHUTDOWN_FORCE:
-	/*	st_dequeue_all(ap);
-		if (ap->state != ST_READY &&
-		    ap->state != ST_SHUTDOWN_PENDING &&
-		    ap->state != ST_SHUTDOWN_FORCE)
-			st_cancel_pending(ap); */
-		break;
-
-	case ST_SHUTDOWN:
-		break;
-
-	default:
-		error("bad next state %d", next);
-		return ST_INVAL;
-	}
-
-	debug("state %d, next %d path %s", ap->state, next, ap->path);
-
-	switch (next) {
-	case ST_READY:
-		ret = st_ready(ap);
-		break;
-
-	case ST_EXPIRE:
-		ret = st_expire(ap);
-		break;
-
-	case ST_PRUNE:
-		ret = st_prune(ap);
-		break;
-
-	case ST_READMAP:
-		ret = st_readmap(ap);
-		break;
-
-	case ST_SHUTDOWN_PENDING:
-		ret = st_prepare_shutdown(ap);
-		break;
-
-	case ST_SHUTDOWN_FORCE:
-		ret = st_force_shutdown(ap);
-		break;
-
-	case ST_SHUTDOWN:
-		assert(ap->state == ST_SHUTDOWN ||
-			ap->state == ST_SHUTDOWN_FORCE ||
-			ap->state == ST_SHUTDOWN_PENDING);
-		ap->state = ST_SHUTDOWN;
-		break;
-
-	default:
-		error("bad next state %d", next);
-	}
-
-	if (!ret)
-		warn("error during state transition");
-
-	return next;
+	return 1;
 }
 

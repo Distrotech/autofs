@@ -64,7 +64,7 @@ static int autofs4_mount_busy(struct vfsmount *mnt, struct dentry *dentry)
 		goto done;
 
 	/* Update the expiry counter if fs is busy */
-#if LINUX_VERSION_CODE > KERNEL_VERSION(2,6,16)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,16)
 	if (!may_umount_tree(mnt)) {
 #else
 	if (may_umount_tree(mnt)) {
@@ -94,13 +94,21 @@ static struct dentry *next_dentry(struct dentry *p, struct dentry *root)
 		while (1) {
 			if (p == root)
 				return NULL;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,16)
+			next = p->d_u.d_child.next;
+#else
 			next = p->d_child.next;
+#endif
 			if (next != &p->d_parent->d_subdirs)
 				break;
 			p = p->d_parent;
 		}
 	}
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,16)
+	return list_entry(next, struct dentry, d_u.d_child);
+#else
 	return list_entry(next, struct dentry, d_child);
+#endif
 }
 
 /*
@@ -120,7 +128,7 @@ static int autofs4_direct_busy(struct vfsmount *mnt,
 		top, (int) top->d_name.len, top->d_name.name);
 
 	/* If it's busy update the expiry counters */
-#if LINUX_VERSION_CODE > KERNEL_VERSION(2,6,16)
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,16)
 	if (!may_umount_tree(mnt)) {
 #else
 	if (may_umount_tree(mnt)) {
@@ -311,7 +319,11 @@ static struct dentry *autofs4_expire_indirect(struct super_block *sb,
 	/* On exit from the loop expire is set to a dgot dentry
 	 * to expire or it's NULL */
 	while ( next != &root->d_subdirs ) {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,16)
+		struct dentry *dentry = list_entry(next, struct dentry, d_u.d_child);
+#else
 		struct dentry *dentry = list_entry(next, struct dentry, d_child);
+#endif
 
 		/* Negative dentry - give up */
 		if (!simple_positive(dentry)) {
@@ -383,7 +395,11 @@ next:
 			expired, (int)expired->d_name.len, expired->d_name.name);
 		spin_lock(&dcache_lock);
 		list_del(&expired->d_parent->d_subdirs);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,6,16)
+		list_add(&expired->d_parent->d_subdirs, &expired->d_u.d_child);
+#else
 		list_add(&expired->d_parent->d_subdirs, &expired->d_child);
+#endif
 		spin_unlock(&dcache_lock);
 		return expired;
 	}

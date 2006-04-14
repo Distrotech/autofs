@@ -553,7 +553,7 @@ static int get_pkt(struct autofs_point *ap, union autofs_packet_union *pkt)
 		}
 
 		if (fds[1].revents & POLLIN) {
-			enum states state = ST_INVAL, next_state;
+			enum states next_state;
 			int status;
 
 			status = pthread_mutex_lock(&ap->state_mutex);
@@ -563,14 +563,18 @@ static int get_pkt(struct autofs_point *ap, union autofs_packet_union *pkt)
 			if (fullread(ap->state_pipe[0], &next_state, sizeof(next_state)))
 				continue;
 
-			if (next_state != ap->state)
-				state = st_next(ap, next_state);
+			if (next_state != ap->state) {
+				if (next_state != ST_SHUTDOWN)
+					st_add_task(ap, next_state);
+				else
+					ap->state = ST_SHUTDOWN;
+			}
 
 			status = pthread_mutex_unlock(&ap->state_mutex);
 			if (status)
 				fatal(status);
 
-			if (state == ST_SHUTDOWN)
+			if (ap->state == ST_SHUTDOWN)
 				return -1;
 		}
 
@@ -893,7 +897,6 @@ static void *statemachine(void *arg)
 	sigfillset(&sigset);
 	sigdelset(&sigset, SIGCHLD);
 	sigdelset(&sigset, SIGCONT);
-	sigdelset(&sigset, SIGPROF);
 
 	while (1) {
 		sigwait(&sigset, &sig);
@@ -1237,6 +1240,9 @@ int main(int argc, char *argv[])
 		{0, 0, 0, 0}
 	};
 
+	sigfillset(&allsigs);
+	sigprocmask(SIG_BLOCK, &allsigs, NULL);
+
 	program = argv[0];
 
 	defaults_read_config();
@@ -1385,9 +1391,13 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
-	sigfillset(&allsigs);
-	sigdelset(&allsigs, SIGPROF);
-	pthread_sigmask(SIG_BLOCK, &allsigs, NULL);
+	if (!st_start_handler()) {
+		crit("failed to create FSM handler thread!");
+		master_kill(master, 1);
+		close(start_lockfd);
+		unlink(start_lockf);
+		exit(1);
+	}
 
 	if (!sigchld_start_handler()) {
 		crit("failed to create SIGCHLD handler thread!");
