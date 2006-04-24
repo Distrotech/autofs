@@ -139,8 +139,8 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 {
 	struct lookup_context *ctxt = (struct lookup_context *) context;
-	struct mapent_cache *mc = ap->mc;
 	struct map_source *source = ap->entry->current;
+	struct mapent_cache *mc = source->mc;
 	char tablename[strlen(ctxt->mapname) +
 		       strlen(ctxt->domainname) + 20];
 	nis_result *result;
@@ -201,8 +201,8 @@ static int lookup_one(struct autofs_point *ap,
 		      const char *key, int key_len,
 		      struct lookup_context *ctxt)
 {
-	struct mapent_cache *mc = ap->mc;
 	struct map_source *source = ap->entry->current;
+	struct mapent_cache *mc = source->mc;
 	char tablename[strlen(key) + strlen(ctxt->mapname) +
 		       strlen(ctxt->domainname) + 20];
 	nis_result *result;
@@ -238,8 +238,8 @@ static int lookup_one(struct autofs_point *ap,
 
 static int lookup_wild(struct autofs_point *ap, struct lookup_context *ctxt)
 {
-	struct mapent_cache *mc = ap->mc;
 	struct map_source *source = ap->entry->current;
+	struct mapent_cache *mc = source->mc;
 	char tablename[strlen(ctxt->mapname) +
 		       strlen(ctxt->domainname) + 20];
 	nis_result *result;
@@ -276,7 +276,8 @@ static int check_map_indirect(struct autofs_point *ap,
 			      char *key, int key_len,
 			      struct lookup_context *ctxt)
 {
-	struct mapent_cache *mc = ap->mc;
+	struct map_source *source = ap->entry->current;
+	struct mapent_cache *mc = source->mc;
 	struct mapent *me, *exists;
 	time_t now = time(NULL);
 	time_t t_last_read;
@@ -354,11 +355,12 @@ static int check_map_indirect(struct autofs_point *ap,
 int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *context)
 {
 	struct lookup_context *ctxt = (struct lookup_context *) context;
+	struct map_source *source = ap->entry->current;
+	struct mapent_cache *mc = source->mc;
 	char key[KEY_MAX_LEN + 1];
 	int key_len;
 	char *mapent = NULL;
 	int mapent_len;
-	struct mapent_cache *mc = ap->mc;
 	struct mapent *me;
 	int status;
 	int ret = 1;

@@ -168,8 +168,8 @@ int yp_all_callback(int status, char *ypkey, int ypkeylen,
 {
 	struct callback_data *cbdata = (struct callback_data *) ypcb_data;
 	struct autofs_point *ap = cbdata->ap;
-	struct mapent_cache *mc = ap->mc;
 	struct map_source *source = ap->entry->current;
+	struct mapent_cache *mc = source->mc;
 	time_t age = cbdata->age;
 	char *key;
 	char *mapent;
@@ -236,8 +236,8 @@ static int lookup_one(struct autofs_point *ap,
 		      const char *key, int key_len,
 		      struct lookup_context *ctxt)
 {
-	struct mapent_cache *mc = ap->mc;
 	struct map_source *source = ap->entry->current;
+	struct mapent_cache *mc = source->mc;
 	char *mapent;
 	int mapent_len;
 	time_t age = time(NULL);
@@ -268,8 +268,8 @@ static int lookup_one(struct autofs_point *ap,
 
 static int lookup_wild(struct autofs_point *ap, struct lookup_context *ctxt)
 {
-	struct mapent_cache *mc = ap->mc;
 	struct map_source *source = ap->entry->current;
+	struct mapent_cache *mc = source->mc;
 	char *mapent;
 	int mapent_len;
 	time_t age = time(NULL);
@@ -300,7 +300,8 @@ static int check_map_indirect(struct autofs_point *ap,
 			      char *key, int key_len,
 			      struct lookup_context *ctxt)
 {
-	struct mapent_cache *mc = ap->mc;
+	struct map_source *source = ap->entry->current;
+	struct mapent_cache *mc = source->mc;
 	struct mapent *me, *exists;
 	time_t now = time(NULL);
 	time_t t_last_read;
@@ -381,11 +382,12 @@ static int check_map_indirect(struct autofs_point *ap,
 int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *context)
 {
 	struct lookup_context *ctxt = (struct lookup_context *) context;
+	struct map_source *source = ap->entry->current;
+	struct mapent_cache *mc = source->mc;
 	char key[KEY_MAX_LEN + 1];
 	int key_len;
 	char *mapent = NULL;
 	int mapent_len;
-	struct mapent_cache *mc = ap->mc;
 	struct mapent *me;
 	int status = 0;
 	int ret = 1;

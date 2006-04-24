@@ -432,8 +432,8 @@ static struct autofs_point *prepare_plus_include(struct autofs_point *ap, time_t
 int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 {
 	struct lookup_context *ctxt = (struct lookup_context *) context;
-	struct mapent_cache *mc = ap->mc;
 	struct map_source *source = ap->entry->current;
+	struct mapent_cache *mc = source->mc;
 	char *key;
 	char *mapent;
 	struct stat st;
@@ -526,8 +526,8 @@ static int lookup_one(struct autofs_point *ap,
 		      const char *key, int key_len,
 		      struct lookup_context *ctxt)
 {
-	struct mapent_cache *mc = ap->mc;
 	struct map_source *source = ap->entry->current;
+	struct mapent_cache *mc = source->mc;
 	char mkey[KEY_MAX_LEN + 1];
 	char mapent[MAPENT_MAX_LEN + 1];
 	time_t age = time(NULL);
@@ -584,8 +584,8 @@ static int lookup_one(struct autofs_point *ap,
 
 static int lookup_wild(struct autofs_point *ap, struct lookup_context *ctxt)
 {
-	struct mapent_cache *mc = ap->mc;
 	struct map_source *source = ap->entry->current;
+	struct mapent_cache *mc = source->mc;
 	char mkey[KEY_MAX_LEN + 1];
 	char mapent[MAPENT_MAX_LEN + 1];
 	time_t age = time(NULL);
@@ -648,7 +648,8 @@ static int check_map_indirect(struct autofs_point *ap,
 			      char *key, int key_len,
 			      struct lookup_context *ctxt)
 {
-	struct mapent_cache *mc = ap->mc;
+	struct map_source *source = ap->entry->current;
+	struct mapent_cache *mc = source->mc;
 	struct mapent *exists;
 	int need_map = 0;
 	int ret = CHE_OK;
@@ -695,7 +696,7 @@ static int check_map_indirect(struct autofs_point *ap,
 	if (need_map) {
 		int status;
 
-		ap->entry->current->stale = 1;
+		source->stale = 1;
 
 		status = pthread_mutex_lock(&ap->state_mutex);
 		if (status)
@@ -717,7 +718,8 @@ static int check_map_indirect(struct autofs_point *ap,
 int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *context)
 {
 	struct lookup_context *ctxt = (struct lookup_context *) context;
-	struct mapent_cache *mc = ap->mc;
+	struct map_source *source = ap->entry->current;
+	struct mapent_cache *mc = source->mc;
 	struct mapent *me;
 	char key[KEY_MAX_LEN + 1];
 	int key_len;

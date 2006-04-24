@@ -68,6 +68,8 @@ int load_autofs4_module(void);
 #define SLOPPY
 #endif
 
+#define AUTOFS_SUPER_MAGIC 0x0187L
+
 /* This sould be enough for at least 20 host aliases */
 #define HOST_ENT_BUF_SIZE	2048
 
@@ -149,7 +151,7 @@ void cache_lock_cleanup(void *arg);
 void cache_readlock(struct mapent_cache *mc);
 void cache_writelock(struct mapent_cache *mc);
 void cache_unlock(struct mapent_cache *mc);
-struct mapent_cache *cache_init(struct autofs_point *ap);
+struct mapent_cache *cache_init(struct map_source *map);
 int cache_set_ino_index(struct mapent_cache *mc, const char *key, dev_t dev, ino_t ino);
 /* void cache_set_ino(struct mapent *me, dev_t dev, ino_t ino); */
 struct mapent *cache_lookup_ino(struct mapent_cache *mc, dev_t dev, ino_t ino);
@@ -166,7 +168,7 @@ int cache_update(struct mapent_cache *mc, struct map_source *source,
 			const char *key, const char *mapent, time_t age);
 int cache_delete(struct mapent_cache *mc, const char *key);
 int cache_delete_offset_list(struct mapent_cache *mc, const char *key);
-void cache_release(struct autofs_point *ap);
+void cache_release(struct map_source *map);
 struct mapent *cache_enumerate(struct mapent_cache *mc, struct mapent *me);
 char *cache_get_offset(const char *prefix, char *offset, int start, struct list_head *head, struct list_head **pos);
 
@@ -393,6 +395,7 @@ struct pending_args {
 	int status;			/* Return status */
 	int type;			/* Type of packet */
 	int ioctlfd;			/* Mount ioctl fd */
+	struct mapent_cache *mc;	/* Cache Containing entry */
 	char name[KEY_MAX_LEN];		/* Name field of the request */
 	dev_t dev;			/* device number of mount */
 	unsigned int len;		/* Name field len */
@@ -437,12 +440,13 @@ struct autofs_point {
 	enum states state;		/* Current state */
 	int state_pipe[2];		/* State change router pipe */
 	unsigned dir_created;		/* Directory created for this mount? */
-	unsigned int submount;		/* Is this a submount */
 	struct autofs_point *parent;	/* Owner of mounts list for submount */
 	pthread_mutex_t mounts_mutex;	/* Protect mount lists */
-	struct list_head mounts;	/* List of autofs mounts */
+	pthread_cond_t mounts_cond;	/* Submounts condition variable */
+	struct list_head mounts;	/* List of autofs mounts at current level */
+	unsigned int submount;		/* Is this a submount */
+	unsigned int submnt_count;	/* Number of submounts */
 	struct list_head submounts;	/* List of child submounts */
-	struct mapent_cache *mc;	/* Mapentry lookup table for this path */
 };
 
 /* Standard functions used by daemon or modules */

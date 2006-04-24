@@ -58,16 +58,8 @@ int master_add_autofs_point(struct master_mapent *entry,
 	ap->state_pipe[0] = -1;
 	ap->state_pipe[1] = -1;
 
-	ap->mc = NULL;
-	ap->mc = cache_init(ap);
-	if (!ap->mc) {
-		free(ap);
-		return 0;
-	}
-
 	ap->path = strdup(entry->path);
 	if (!ap->path) {
-		free(ap->mc);
 		free(ap);
 		return 0;
 	}
@@ -91,6 +83,7 @@ int master_add_autofs_point(struct master_mapent *entry,
 	ap->logopt = logopt;
 
 	ap->parent = NULL;
+	ap->submnt_count = 0;
 	ap->submount = submount;
 	INIT_LIST_HEAD(&ap->mounts);
 	INIT_LIST_HEAD(&ap->submounts);
@@ -98,7 +91,6 @@ int master_add_autofs_point(struct master_mapent *entry,
 	status = pthread_mutex_init(&ap->state_mutex, NULL);
 	if (status) {
 		free(ap->path);
-		free(ap->mc);
 		free(ap);
 		return 0;
 	}
@@ -110,11 +102,22 @@ int master_add_autofs_point(struct master_mapent *entry,
 		if (status)
 			fatal(status);
 		free(ap->path);
-		free(ap->mc);
 		free(ap);
 		return 0;
 	}
 
+	status = pthread_cond_init(&ap->mounts_cond, NULL);
+	if (status) {
+		status = pthread_mutex_destroy(&ap->mounts_mutex);
+		if (status)
+			fatal(status);
+		status = pthread_mutex_destroy(&ap->state_mutex);
+		if (status)
+			fatal(status);
+		free(ap->path);
+		free(ap);
+		return 0;
+	}
 	entry->ap = ap;
 
 	return 1;
@@ -127,21 +130,19 @@ void master_free_autofs_point(struct autofs_point *ap)
 	if (!ap)
 		return;
 
-	if (ap->submount) {
-		pthread_mutex_lock(&ap->parent->mounts_mutex);
-		if (!list_empty(&ap->mounts))
-			list_del(&ap->mounts);
-		pthread_mutex_unlock(&ap->parent->mounts_mutex);
-	}
-	cache_release(ap);
-	free(ap->path);
 	status = pthread_mutex_destroy(&ap->state_mutex);
 	if (status)
 		fatal(status);
+
 	status = pthread_mutex_destroy(&ap->mounts_mutex);
 	if (status)
 		fatal(status);
 
+	status = pthread_cond_destroy(&ap->mounts_cond);
+	if (status)
+		fatal(status);
+
+	free(ap->path);
 	free(ap);
 }
 
@@ -179,6 +180,13 @@ master_add_map_source(struct master_mapent *entry,
 
 	source->age = age;
 	source->stale = 1;
+
+	source->mc = cache_init(source);
+	if (!source->mc) {
+		master_free_map_source(source);
+		return NULL;
+	}
+
 
 	tmpargv = copy_argv(argc, argv);
 	if (!tmpargv) {
@@ -310,6 +318,8 @@ void master_free_map_source(struct map_source *source)
 		free(source->type);
 	if (source->format)
 		free(source->format);
+	if (source->mc)
+		cache_release(source);
 	if (source->lookup)
 		close_lookup(source->lookup);
 	if (source->argv)

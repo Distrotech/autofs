@@ -80,7 +80,9 @@ static int unlink_mount_tree(struct mnt_list *mnts, const char *mount)
 {
 	struct mnt_list *this;
 	int rv, ret, need_umount;
-
+	pid_t pgrp = getpgrp();
+	char spgrp[10];
+/*
 	need_umount = 0;
 	this = mnts;
 	while (this) {
@@ -99,11 +101,19 @@ static int unlink_mount_tree(struct mnt_list *mnts, const char *mount)
 	}
 
 	if (!need_umount)
-		return 0;
+		return 1;
+*/
+
+	sprintf(spgrp, "%d", pgrp);
 
 	ret = 1;
 	this = mnts;
 	while (this) {
+		if (strstr(this->opts, spgrp)) {
+			this = this->next;
+			continue;
+		}
+
 		if (strcmp(this->fs_type, "autofs"))
 			rv = spawnll(log_debug,
 			    PATH_UMOUNT, PATH_UMOUNT, "-l", this->path, NULL);
@@ -288,6 +298,7 @@ int umount_autofs_indirect(struct autofs_point *ap)
 	int status = 1;
 	int left;
 
+/*
 	mnts = tree_make_mnt_tree(_PROC_MOUNTS, ap->path);
 	left = umount_multi(ap, mnts, ap->path, 0);
 	tree_free_mnt_tree(mnts);
@@ -295,9 +306,35 @@ int umount_autofs_indirect(struct autofs_point *ap)
 		warn("could not unmount %d dirs under %s", left, ap->path);
 		return -1;
 	}
+*/
+	/*
+	 * Since submounts look after themselves the parent never knows
+	 * it needs to close the ioctlfd for offset mounts so we have
+	 * to do it here. If the cache entry isn't found then there aren't
+	 * any offset mounts.
+	 */
+	if (ap->submount) {
+		struct master_mapent *entry = ap->parent->entry;
+		struct map_source *map = entry->first;
+		struct mapent_cache *mc;
+		struct mapent *me;
+
+		while (map) {
+			mc = map->mc;
+			cache_readlock(mc);
+			me = cache_lookup(mc, ap->path);
+			if (me) {
+				close(me->ioctlfd);
+				me->ioctlfd = -1;
+				cache_unlock(mc);
+				break;
+			}
+			cache_unlock(mc);
+			map = map->next;
+		}
+	}
 
 	if (ap->ioctlfd >= 0) {
-		ioctl(ap->ioctlfd, AUTOFS_IOC_ASKUMOUNT, &status);
 		ioctl(ap->ioctlfd, AUTOFS_IOC_CATATONIC, 0);
 		close(ap->ioctlfd);
 		close(ap->state_pipe[0]);
@@ -312,11 +349,6 @@ int umount_autofs_indirect(struct autofs_point *ap)
 	if (ap->kpipefd >= 0)
 		close(ap->kpipefd);
 
-	if (!status) {
-		rv = 1;
-		goto force_umount;
-	}
-
 	rv = umount(ap->path);
 	if (rv == -1) {
 		if (errno == ENOENT) {
@@ -324,7 +356,9 @@ int umount_autofs_indirect(struct autofs_point *ap)
 			return 0;
 		} else if (errno == EBUSY) {
 			debug("mount point %s is in use", ap->path);
-			if (ap->state != ST_SHUTDOWN_FORCE)
+			if (ap->state == ST_SHUTDOWN_FORCE)
+				goto force_umount;
+			else
 				return 0;
 		} else if (errno == ENOTDIR) {
 			error("mount point is not a directory");
@@ -348,13 +382,14 @@ force_umount:
 
 void *expire_proc_indirect(void *arg)
 {
+	struct map_source *map;
+	struct autofs_point *ap;
+	struct mapent_cache *mc = NULL;
+	struct mapent *me = NULL;
 	struct mnt_list *mnts, *next;
 	struct expire_args *ea;
-	struct autofs_point *ap;
-	struct mapent_cache *mc;
-	struct mapent *me;
 	unsigned int now;
-	int offsets, count, ret;
+	int offsets, submnts, count, ret;
 	int ioctlfd;
 	int status;
 
@@ -365,7 +400,6 @@ void *expire_proc_indirect(void *arg)
 		fatal(status);
 
 	ap = ea->ap;
-	mc = ap->mc;
 	now = ea->when;
 	ea->status = 0;
 
@@ -405,14 +439,24 @@ void *expire_proc_indirect(void *arg)
 		 * won't be found by a cache_lookup, never the less it's
 		 * a mount under ap->path.
 		 */
-		pthread_cleanup_push(cache_lock_cleanup, mc);
-		cache_readlock(mc);
-		me = cache_lookup(mc, next->path);
-		if (me && *me->key == '/')
+		master_source_readlock(ap->entry);
+		map = ap->entry->first;
+		while (map) {
+			mc = map->mc;
+			cache_readlock(mc);
+			me = cache_lookup(mc, next->path);
+			if (me)
+				break;
+			cache_unlock(mc);
+			map = map->next;
+		}
+		master_source_unlock(ap->entry);
+
+		if (me && *me->key == '/') {
 			ioctlfd = me->ioctlfd;
-		else
+			cache_unlock(mc);
+		} else
 			ioctlfd = ap->ioctlfd;
-		pthread_cleanup_pop(1);
 
 		ret = ioctl(ioctlfd, AUTOFS_IOC_EXPIRE_MULTI, &now);
 		if (ret < 0 && errno != EAGAIN) {
@@ -423,14 +467,18 @@ void *expire_proc_indirect(void *arg)
 	}
 	free_mnt_list(mnts);
 
-	count = offsets = 0;
+	count = offsets = submnts = 0;
 	mnts = get_mnt_list(_PROC_MOUNTS, ap->path, 0);
 	/* Are there any real mounts left */
 	for (next = mnts; next; next = next->next) {
 		if (strcmp(next->fs_type, "autofs"))
 			count++;
-		else
-			offsets++;
+		else {
+			if (strstr(next->opts, "indirect"))
+				submnts++;
+			else
+				offsets++;
+		}
 	}
 
 	/*
@@ -452,6 +500,12 @@ void *expire_proc_indirect(void *arg)
 	}
 	free_mnt_list(mnts);
 
+	if (submnts) {
+		debug("%d submounts remaining in %s", submnts, ap->path);
+		ea->status = 1;
+		pthread_exit(NULL);
+	}
+
 	/* 
 	 * EXPIRE_MULTI is synchronous, so we can be sure (famous last
 	 * words) the umounts are done by the time we reach here
@@ -463,8 +517,13 @@ void *expire_proc_indirect(void *arg)
 	}
 
 	/* If we are trying to shutdown make sure we can umount */
+	status = pthread_mutex_lock(&ap->mounts_mutex);
+	if (status)
+		fatal(status);
 
-	if (ap->state == ST_SHUTDOWN_PENDING) {
+	if (!list_empty(&ap->submounts)) {
+		ea->status = 1;
+	} else {
 		if (!ioctl(ap->ioctlfd, AUTOFS_IOC_ASKUMOUNT, &ret)) {
 			if (!ret) {
 				debug("mount still busy %s", ap->path);
@@ -472,6 +531,10 @@ void *expire_proc_indirect(void *arg)
 			}
 		}
 	}
+
+	status = pthread_mutex_unlock(&ap->mounts_mutex);
+	if (status)
+		fatal(status);
 
 	pthread_cleanup_pop(1);
 
@@ -519,6 +582,7 @@ static void *do_expire_indirect(void *arg)
 	status = pthread_mutex_unlock(&mt->mutex);
 	if (status)
 		fatal(status);
+
 	pthread_cleanup_push(kernel_callback_cleanup, mt);
 
 	status = do_expire(mt->ap, mt->name, mt->len);

@@ -770,7 +770,7 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 	memset(query, '\0', l);
 	if (ctxt->mapname) {
 		if (sprintf(query, "(&(objectclass=%s)(%s=%.*s))", class,
-			    key, strlen(ctxt->mapname), ctxt->mapname) >= l) {
+		     key, (int) strlen(ctxt->mapname), ctxt->mapname) >= l) {
 			debug(MODPREFIX "error forming query string");
 		}
 	} else {
@@ -880,8 +880,8 @@ static int read_one_map(struct autofs_point *ap,
 			struct lookup_context *ctxt,
 			time_t age, int *result_ldap)
 {
-	struct mapent_cache *mc = ap->mc;
 	struct map_source *source = ap->entry->current;
+	struct mapent_cache *mc = source->mc;
 	int rv, i, l, count;
 	char buf[MAX_ERR_BUF];
 	char *query;
@@ -1101,8 +1101,8 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 static int lookup_one(struct autofs_point *ap,
 		char *qKey, int qKey_len, struct lookup_context *ctxt)
 {
-	struct mapent_cache *mc = ap->mc;
 	struct map_source *source = ap->entry->current;
+	struct mapent_cache *mc = source->mc;
 	int rv, i, l, ql, count;
 	char buf[MAX_ERR_BUF];
 	time_t age = time(NULL);
@@ -1286,7 +1286,8 @@ static int check_map_indirect(struct autofs_point *ap,
 			      char *key, int key_len,
 			      struct lookup_context *ctxt)
 {
-	struct mapent_cache *mc = ap->mc;
+	struct map_source *source = ap->entry->current;
+	struct mapent_cache *mc = source->mc;
 	struct mapent *me, *exists;
 	time_t now = time(NULL);
 	time_t t_last_read;
@@ -1357,7 +1358,8 @@ static int check_map_indirect(struct autofs_point *ap,
 int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *context)
 {
 	struct lookup_context *ctxt = (struct lookup_context *) context;
-	struct mapent_cache *mc = ap->mc;
+	struct map_source *source = ap->entry->current;
+	struct mapent_cache *mc = source->mc;
 	struct mapent *me;
 	char key[KEY_MAX_LEN + 1];
 	int key_len;

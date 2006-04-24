@@ -213,6 +213,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 
 	pthread_mutex_lock(&ap->mounts_mutex);
 	nap->parent = ap;
+	ap->submnt_count++;
 	list_add(&nap->mounts, &ap->submounts);
 	pthread_mutex_unlock(&ap->mounts_mutex);
 

@@ -335,6 +335,8 @@ static enum nsswitch_status read_map_source(struct nss_source *this,
 
 	tmap.type = this->source;
 	tmap.format = map->format;
+	tmap.lookup = map->lookup;
+	tmap.mc = map->mc;
 	tmap.argc = 0;
 	tmap.argv = NULL;
 
@@ -458,30 +460,10 @@ done:
 	return !result;
 }
 
-int lookup_enumerate(struct autofs_point *ap,
-	int (*fn)(struct autofs_point *ap, struct mapent *, int),
-	time_t now)
-{
-	struct mapent_cache *mc = ap->mc;
-	struct mapent *me;
-
-	/* TODO: more sensible status return */
-	if (strcmp(ap->path, "/-"))
-		return LKP_FAIL | LKP_INDIRECT;
-
-	me = cache_enumerate(mc, NULL);
-	while (me) {
-		/* TODO: check return */
-		fn(ap, me, now);
-		me = cache_enumerate(mc, me);
-	}
-
-	return LKP_DIRECT;
-}
-
 int lookup_ghost(struct autofs_point *ap)
 {
-	struct mapent_cache *mc = ap->mc;
+	struct map_source *map;
+	struct mapent_cache *mc;
 	struct mapent *me;
 	char buf[MAX_ERR_BUF];
 	struct stat st;
@@ -494,46 +476,57 @@ int lookup_ghost(struct autofs_point *ap)
 	if (!ap->ghost)
 		return LKP_INDIRECT;
 
-	me = cache_enumerate(mc, NULL);
-	while (me) {
-		if (*me->key == '*')
-			goto next;
+	pthread_cleanup_push(master_source_lock_cleanup, ap->entry);
+	master_source_readlock(ap->entry);
+	map = ap->entry->first;
+	while (map) {
+		mc = map->mc;
+		pthread_cleanup_push(cache_lock_cleanup, mc);
+		cache_readlock(mc);
+		me = cache_enumerate(mc, NULL);
+		while (me) {
+			if (*me->key == '*')
+				goto next;
 
-		if (*me->key == '/') {
-			/* It's a busy multi-mount - leave till next time */
-			if (list_empty(&me->multi_list))
-				error("invalid key %s", me->key);
-			goto next;
-		}
+			if (*me->key == '/') {
+				/* It's a busy multi-mount - leave till next time */
+				if (list_empty(&me->multi_list))
+					error("invalid key %s", me->key);
+				goto next;
+			}
 
-		fullpath = alloca(strlen(me->key) + strlen(ap->path) + 3);
-		if (!fullpath) {
-			warn("failed to allocate full path");
-			goto next;
-		}
-		sprintf(fullpath, "%s/%s", ap->path, me->key);
+			fullpath = alloca(strlen(me->key) + strlen(ap->path) + 3);
+			if (!fullpath) {
+				warn("failed to allocate full path");
+				goto next;
+			}
+			sprintf(fullpath, "%s/%s", ap->path, me->key);
 
-		ret = stat(fullpath, &st);
-		if (ret == -1 && errno != ENOENT) {
-			char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-			warn("stat error %s", estr);
-			goto next;
-		}
+			ret = stat(fullpath, &st);
+			if (ret == -1 && errno != ENOENT) {
+				char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+				warn("stat error %s", estr);
+				goto next;
+			}
 
-		ret = mkdir_path(fullpath, 0555);
-		if (ret < 0 && errno != EEXIST) {
-			char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-			warn("mkdir_path %s failed: %s", fullpath, estr);
-			goto next;
-		}
+			ret = mkdir_path(fullpath, 0555);
+			if (ret < 0 && errno != EEXIST) {
+				char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+				warn("mkdir_path %s failed: %s", fullpath, estr);
+				goto next;
+			}
 
-		if (stat(fullpath, &st) != -1) {
-			me->dev = st.st_dev;
-			me->ino = st.st_ino;
-		}
+			if (stat(fullpath, &st) != -1) {
+				me->dev = st.st_dev;
+				me->ino = st.st_ino;
+			}
 next:
-		me = cache_enumerate(mc, me);
+			me = cache_enumerate(mc, me);
+		}
+		pthread_cleanup_pop(1);
+		map = map->next;
 	}
+	pthread_cleanup_pop(1);
 
 	return LKP_INDIRECT;
 }
@@ -641,6 +634,7 @@ static enum nsswitch_status lookup_map_name(struct nss_source *this,
 	this->source[4] = '\0';
 	tmap.type = this->source;
 	tmap.format = map->format;
+	tmap.mc = map->mc;
 	tmap.argc = 0;
 	tmap.argv = NULL;
 
@@ -742,8 +736,10 @@ int lookup_nss_mount(struct autofs_point *ap, const char *name, int name_len)
 			this = list_entry(p, struct nss_source, list);
 
 			result = lookup_map_name(this, ap, map, name, name_len);
-			if (result == NSS_STATUS_UNKNOWN)
+			if (result == NSS_STATUS_UNKNOWN) {
+				map = map->next;
 				continue;
+			}
 
 			status = check_nss_result(this, result);
 			if (status >= 0) {
@@ -787,73 +783,73 @@ static char *make_fullpath(const char *root, const char *key)
 
 int lookup_prune_cache(struct autofs_point *ap, time_t age)
 {
-	struct mapent_cache *mc = ap->mc;
+	struct map_source *map;
+	struct mapent_cache *mc;
 	struct mapent *me, *this;
 	struct master_mapent *entry = ap->entry;
-	struct map_source *next;
 	char *key, *next_key;
 	char *path;
 	int status = CHE_FAIL;
 
 	master_source_readlock(entry);
 
-	cache_readlock(mc);
-	me = cache_enumerate(mc, NULL);
-	while (me) {
-		if (!me->source->stale || me->age >= age) {
-			me = cache_enumerate(mc, me);
-			continue;
-		}
-
-		key = strdup(me->key);
-		me = cache_enumerate(mc, me);
-		if (!key)
-			continue;
-
-		if (!me) {
-			free(key);
-			continue;
-		}
-
-		next_key = strdup(me->key);
-		if (!next_key) {
-			free(key);
-			me = cache_enumerate(mc, me);
-			continue;
-		}
-
-		cache_unlock(mc);
-
-		cache_writelock(mc);
-		this = cache_lookup(mc, key);
-		if (!this) {
-			cache_unlock(mc);
-			goto next;
-		}
-		status = cache_delete(mc, key);
-		cache_unlock(mc);
-
-		if (status != CHE_FAIL) {
-			path = make_fullpath(ap->path, key);
-			if (!path)
-				warn("can't malloc storage for path"); 
-			else {
-				rmdir_path(path);
-				free(path);
-			}
-		}
-next:
+	map = ap->entry->first;
+	while (map) {
+		mc = map->mc;
 		cache_readlock(mc);
-		me = cache_lookup(mc, next_key);
-		free(key);
-		free(next_key);
-	}
-	cache_unlock(mc);
+		me = cache_enumerate(mc, NULL);
+		while (me) {
+			if (!me->source->stale || me->age >= age) {
+				me = cache_enumerate(mc, me);
+				continue;
+			}
 
-	next = entry->maps;
-	while (next) {
-		next->stale = 0;
-		next = next->next;
+			key = strdup(me->key);
+			me = cache_enumerate(mc, me);
+			if (!key)
+				continue;
+
+			if (!me) {
+				free(key);
+				continue;
+			}
+
+			next_key = strdup(me->key);
+			if (!next_key) {
+				free(key);
+				me = cache_enumerate(mc, me);
+				continue;
+			}
+
+			cache_unlock(mc);
+
+			cache_writelock(mc);
+			this = cache_lookup(mc, key);
+			if (!this) {
+				cache_unlock(mc);
+				goto next;
+			}
+			status = cache_delete(mc, key);
+			cache_unlock(mc);
+
+			if (status != CHE_FAIL) {
+				path = make_fullpath(ap->path, key);
+				if (!path)
+					warn("can't malloc storage for path"); 
+				else {
+					rmdir_path(path);
+					free(path);
+				}
+			}
+next:
+			cache_readlock(mc);
+			me = cache_lookup(mc, next_key);
+			free(key);
+			free(next_key);
+		}
+		cache_unlock(mc);
+		map->stale = 0;
+		map = map->next;
 	}
 
 	master_source_unlock(entry);

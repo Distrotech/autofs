@@ -66,8 +66,8 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 
 int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 {
-	struct mapent_cache *mc = ap->mc;
 	struct map_source *source = ap->entry->current;
+	struct mapent_cache *mc = source->mc;
 	struct hostent *host;
 	int status;
 
@@ -97,8 +97,8 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *context)
 {
 	struct lookup_context *ctxt = (struct lookup_context *) context;
-	struct mapent_cache *mc = ap->mc;
 	struct map_source *source = ap->entry->current;
+	struct mapent_cache *mc = source->mc;
 	struct mapent *me;
 	char buf[MAX_ERR_BUF];
 	char *mapent = NULL;

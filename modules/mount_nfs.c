@@ -26,6 +26,7 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/vfs.h>
 #include <netinet/in.h>
 #include <linux/nfs.h>
 #include <linux/nfs2.h>
@@ -241,7 +242,6 @@ int get_best_mount(char *what, const char *original, int longtimeout)
 		/* Find lowest weight whose server is alive */
 		if (*delim == '(') {
 			char *weight = delim + 1;
-			unsigned int alive;
 
 			*delim = '\0';
 
@@ -549,8 +549,8 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 			existed = 0;
 
 		if (is_mounted(_PATH_MOUNTED, fullpath)) {
-			error(MODPREFIX 
-			  "warning: %s is already mounted", fullpath);
+			error(MODPREFIX
+			 "warning: %s is already mounted", fullpath);
 			return 0;
 		}
 

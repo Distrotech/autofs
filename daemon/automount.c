@@ -132,8 +132,10 @@ static int umount_offsets(struct autofs_point *ap, struct mnt_list *mnts, const 
 	char *offset = path;
 	struct list_head list, head, *pos, *p;
 	char key[PATH_MAX + 1];
-	struct mapent_cache *mc = ap->mc;
-	struct mapent *me;
+	struct map_source *map;
+	struct mapent_cache *mc = NULL;
+	struct mapent *me = NULL;
+	char *ind_key;
 	int ret = 0, status;
 
 	INIT_LIST_HEAD(&list);
@@ -154,11 +156,37 @@ static int umount_offsets(struct autofs_point *ap, struct mnt_list *mnts, const 
 		add_ordered_list(this, &head);
 	}
 
-	pthread_cleanup_push(cache_lock_cleanup, mc);
-	cache_readlock(mc);
+	/*
+	 * If it's a direct mount it's base is the key otherwise
+	 * the last path component is the indirect entry key.
+	 */
+	ind_key = strrchr(base, '/');
+	if (ind_key)
+		ind_key++;
+
+	master_source_readlock(ap->entry);
+	map = ap->entry->first;
+	while (map) {
+		mc = map->mc;
+		cache_writelock(mc);
+		me = cache_lookup(mc, base);
+		if (!me)
+			me = cache_lookup(mc, ind_key);
+		if (me)
+			break;
+		cache_unlock(mc);
+		map = map->next;
+	}
+	ap->entry->current = map;
+	master_source_unlock(ap->entry);
+
+	if (!me)
+		return 0;
 
 	pos = NULL;
 	while ((offset = get_offset(base, offset, &head, &pos))) {
+		struct mapent *oe;
+
 		if (strlen(base) + strlen(offset) >= PATH_MAX) {
 			warn("can't umount - mount path too long");
 			ret++;
@@ -169,8 +197,9 @@ static int umount_offsets(struct autofs_point *ap, struct mnt_list *mnts, const 
 
 		strcpy(key, base);
 		strcat(key, offset);
-		me = cache_lookup(mc, key);
-		if (!me) {
+		oe = cache_lookup(mc, key);
+
+		if (!oe) {
 			debug("offset key %s not found", key);
 			continue;
 		}
@@ -179,35 +208,21 @@ static int umount_offsets(struct autofs_point *ap, struct mnt_list *mnts, const 
 		 * We're in trouble if umounting the triggers fails.
 		 * It should always succeed due to the expire design.
 		 */
-		if (umount_autofs_offset(ap, me)) {
-			crit("failed to umount offset %s", me->key);
+		pthread_cleanup_push(cache_lock_cleanup, mc);
+		if (umount_autofs_offset(ap, oe)) {
+			crit("failed to umount offset %s", key);
 			ret++;
 		}
-	}
-	cache_unlock(mc);
-	pthread_cleanup_pop(0);
-
-	cache_writelock(mc);
-	/*
-	 * If it's a direct mount it's base is the key otherwise
-	 * the last path componemt is the indirect entry key.
-	 */
-	me = cache_lookup(mc, base);
-	if (!me) {
-		char *ind_key = strrchr(base, '/');
-
-		if (ind_key) {
-			ind_key++;
-			me = cache_lookup(mc, ind_key);
-		}
+		pthread_cleanup_pop(0);
 	}
 
-	if (!ret && me && me->multi == me) {
+	if (!ret && me->multi == me) {
 		status = cache_delete_offset_list(mc, me->key);
 		if (status != CHE_OK)
 			warn("couldn't delete offset list");
 	}
 	cache_unlock(mc);
+	ap->entry->current = NULL;
 
 	return ret;
 }
@@ -237,22 +252,41 @@ static int umount_ent(struct autofs_point *ap, const char *path, const char *typ
 		rv = spawnll(log_debug, PATH_UMOUNT, PATH_UMOUNT, path, NULL);
 	}
 
+	status = pthread_mutex_lock(&ap->state_mutex);
+	if (status)
+		fatal(status);
+
 	/* We are doing a forced shutcwdown down so unlink busy mounts */
 	if (rv && (ap->state == ST_SHUTDOWN_FORCE || ap->state == ST_SHUTDOWN)) {
 		ret = stat(path, &st);
 		if (ret == -1 && errno == ENOENT) {
 			error("mount point does not exist");
+			status = pthread_mutex_unlock(&ap->state_mutex);
+			if (status)
+				fatal(status);
 			return 0;
 		}
 
 		if (ret == 0 && !S_ISDIR(st.st_mode)) {
 			error("mount point is not a directory");
+			status = pthread_mutex_unlock(&ap->state_mutex);
+			if (status)
+				fatal(status);
 			return 0;
 		}
 
-		msg("forcing umount of %s", path);
-		rv = spawnll(log_debug, PATH_UMOUNT, PATH_UMOUNT, "-l", path, NULL);
+		if (ap->state == ST_SHUTDOWN_FORCE) {
+			msg("forcing umount of %s", path);
+			rv = spawnll(log_debug, PATH_UMOUNT, PATH_UMOUNT, "-l", path, NULL);
+			status = pthread_mutex_unlock(&ap->state_mutex);
+			if (status)
+				fatal(status);
+		}
 	}
+
+	status = pthread_mutex_unlock(&ap->state_mutex);
+	if (status)
+		fatal(status);
 
 	return rv;
 }
@@ -401,13 +435,6 @@ int umount_multi(struct autofs_point *ap, struct mnt_list *mnts, const char *pat
 
 	debug("path %s incl %d", path, incl);
 
-	if (umount_offsets(ap, mnts, path)) {
-		error("could not umount some offsets under %s", path);
-		return 0;
-	}
-
-	debug("umounted offsets");
-
 	if (!tree_get_mnt_list(mnts, &list, path, incl)) {
 		debug("no mounts found under %s", path);
 /*		check_rm_dirs(ap, path, incl); */
@@ -422,6 +449,12 @@ int umount_multi(struct autofs_point *ap, struct mnt_list *mnts, const char *pat
 		if (!strcmp(mptr->fs_type, "autofs"))
 			continue;
 
+		debug("umounting offsets");
+
+		if (umount_offsets(ap, mnts, mptr->path))
+			error("could not umount some offsets under %s",
+				mptr->path);
+
 		debug("unmounting dir = %s", mptr->path);
 		if (umount_ent(ap, mptr->path, mptr->fs_type)) {
 			left++;
@@ -429,7 +462,14 @@ int umount_multi(struct autofs_point *ap, struct mnt_list *mnts, const char *pat
 
 		sched_yield();
 	}
+/*
+	if (umount_offsets(ap, mnts, path)) {
+		error("could not umount some offsets under %s", path);
+		return 0;
+	}
 
+	debug("umounted offsets");
+*/
 	/* Delete detritus like unwanted mountpoints and symlinks */
 /*	if (left == 0)
 		check_rm_dirs(ap, path, incl); */
@@ -455,10 +495,24 @@ static int umount_all(struct autofs_point *ap, int force)
 
 int umount_autofs(struct autofs_point *ap, int force)
 {
+	struct map_source *map = ap->entry->maps;
 	int status = 0;
 
 	if (ap->state == ST_INIT)
 		return -1;
+
+	/*
+	 * Since lookup.c is lazy about closing lookup modules
+	 * to prevent unneeded opens, we need to clean them up
+	 * before umount or the fs will be busy.
+	 */
+	while (map) {
+		if (map->lookup) {
+			close_lookup(map->lookup);
+			map->lookup = NULL;
+		}
+		map = map->next;
+	}
 
 	if (ap->type == LKP_INDIRECT) {
 		if (umount_all(ap, force) && !force)
@@ -470,9 +524,19 @@ int umount_autofs(struct autofs_point *ap, int force)
 	}
 
 	if (ap->submount) {
-		pthread_mutex_lock(&ap->parent->mounts_mutex);
+		int status;
+
+		status = pthread_mutex_lock(&ap->parent->mounts_mutex);
+		if (status)
+			fatal(status);
+		ap->parent->submnt_count--;
 		list_del_init(&ap->mounts);
-		pthread_mutex_unlock(&ap->parent->mounts_mutex);
+		status = pthread_cond_signal(&ap->parent->mounts_cond);
+		if (status)
+			error("failed to signal submount umount notify condition");
+		status = pthread_mutex_unlock(&ap->parent->mounts_mutex);
+		if (status)
+			fatal(status);
 	}
 
 	return status;
@@ -997,19 +1061,25 @@ static void mutex_operation_wait(pthread_mutex_t *mutex)
 static void handle_mounts_cleanup(void *arg)
 {
 	struct autofs_point *ap;
+	int status;
 
 	ap = (struct autofs_point *) arg;
 
-	umount_autofs(ap, 1);
+	status = pthread_mutex_lock(&ap->mounts_mutex);
+	if (status)
+		fatal(status);
 
-	if (ap->submount) {
-		/*
-		 * We're a submount, possibly holding the parent state
-		 * mutex so if we own it we need to unlock it so the
-		 * parent can continue.
-		 */
-		mutex_operation_wait(&ap->parent->state_mutex);
+	while (ap->submnt_count) {
+		status = pthread_cond_wait(&ap->mounts_cond, &ap->mounts_mutex);
+		if (status)
+			fatal(status);
 	}
+
+	status = pthread_mutex_unlock(&ap->mounts_mutex);
+	if (status)
+		fatal(status);
+
+	umount_autofs(ap, 1);
 
 	/* If we have been canceled then we may hold the state mutex. */
 	mutex_operation_wait(&ap->state_mutex);

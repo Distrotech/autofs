@@ -99,13 +99,13 @@ void cache_lock_cleanup(void *arg)
 	cache_unlock(mc);
 }
 
-struct mapent_cache *cache_init(struct autofs_point *ap)
+struct mapent_cache *cache_init(struct map_source *map)
 {
 	struct mapent_cache *mc;
 	int i, status;
 
-	if (ap->mc)
-		cache_release(ap);
+	if (map->mc)
+		cache_release(map);
 
 	mc = malloc(sizeof(struct mapent_cache));
 	if (!mc)
@@ -615,14 +615,14 @@ int cache_delete_offset_list(struct mapent_cache *mc, const char *key)
 	return CHE_OK;
 }
 
-void cache_release(struct autofs_point *ap)
+void cache_release(struct map_source *map)
 {
 	struct mapent_cache *mc;
 	struct mapent *me, *next;
 	int status;
 	int i;
 
-	mc = ap->mc;
+	mc = map->mc;
 
 	cache_writelock(mc);
 
@@ -646,7 +646,7 @@ void cache_release(struct autofs_point *ap)
 		}
 	}
 
-	ap->mc = NULL;
+	map->mc = NULL;
 
 	cache_unlock(mc);
 

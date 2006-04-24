@@ -25,6 +25,7 @@ struct map_source {
 	char *type;
 	char *format;
 	time_t age;
+	struct mapent_cache *mc;
 	unsigned int stale;
 	struct lookup_mod *lookup;
 	int argc;

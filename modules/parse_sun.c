@@ -740,7 +740,8 @@ add_offset_entry(struct autofs_point *ap, const char *name,
 		 const char *path, const char *myoptions, const char *loc,
 		 time_t age)
 {
-	struct mapent_cache *mc = ap->mc;
+	struct map_source *source = ap->entry->current;
+	struct mapent_cache *mc = source->mc;
 	char m_key[PATH_MAX + 1];
 	char m_mapent[MAPENT_MAX_LEN + 1];
 	int m_key_len, m_mapent_len;
@@ -773,8 +774,6 @@ add_offset_entry(struct autofs_point *ap, const char *name,
 	return ret;
 }
 
-#define AUTOFS_SUPER_MAGIC 0x0187L
-
 static int mount_multi_triggers(struct autofs_point *ap, char *root, struct mapent *me, const char *base)
 {
 	char path[PATH_MAX + 1];
@@ -786,7 +785,6 @@ static int mount_multi_triggers(struct autofs_point *ap, char *root, struct mape
 	struct stat st;
 	unsigned int is_autofs_fs;
 	int ret, start;
-	int count = 0, at_least_one = 0;
 
 	fs_path_len = strlen(root) + strlen(base);
 	if (fs_path_len > PATH_MAX)
@@ -871,8 +869,8 @@ int parse_mount(struct autofs_point *ap, const char *name,
 {
 	struct parse_context *ctxt = (struct parse_context *) context;
 	char buf[MAX_ERR_BUF];
-	struct mapent_cache *mc = ap->mc;
 	struct map_source *source = ap->entry->current;
+	struct mapent_cache *mc = source->mc;
 	struct mapent *me;
 	char *pmapent, *options;
 	const char *p;

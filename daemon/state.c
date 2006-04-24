@@ -107,7 +107,6 @@ void expire_cleanup(void *arg)
 		case ST_EXPIRE:
 			/* FALLTHROUGH */
 		case ST_PRUNE:
-			alarm_add(ap, ap->exp_runfreq);
 			/* If we're a submount and we've just
 			   pruned or expired everything away,
 			   try to shut down */
@@ -115,6 +114,7 @@ void expire_cleanup(void *arg)
 				next = ST_SHUTDOWN_PENDING;
 				break;
 			}
+			alarm_add(ap, ap->exp_runfreq);
 			/* FALLTHROUGH */
 
 		case ST_READY:
@@ -123,11 +123,6 @@ void expire_cleanup(void *arg)
 
 		case ST_SHUTDOWN_PENDING:
 			next = ST_SHUTDOWN;
-			if (ap->submount) {
-				status = pthread_mutex_unlock(&ap->parent->state_mutex);
-				if (status)
-					fatal(status);
-			}
 #ifndef ENABLE_IGNORE_BUSY_MOUNTS
 			if (success == 0)
 				break;
@@ -140,11 +135,6 @@ void expire_cleanup(void *arg)
 			break;
 
 		case ST_SHUTDOWN_FORCE:
-			if (ap->submount) {
-				status = pthread_mutex_unlock(&ap->parent->state_mutex);
-				if (status)
-					fatal(status);
-			}
 			next = ST_SHUTDOWN;
 			break;
 
@@ -309,6 +299,7 @@ static void do_readmap_cleanup(void *arg)
 static void *do_readmap(void *arg)
 {
 	struct autofs_point *ap;
+	struct map_source *map;
 	struct mapent_cache *mc;
 	struct readmap_args *ra;
 	struct  mnt_list *mnts;
@@ -323,7 +314,6 @@ static void *do_readmap(void *arg)
 
 	ap = ra->ap;
 	now = ra->now;
-	mc = ap->mc;
 
 	ra->signaled = 1;
 	status = pthread_cond_signal(&ra->cond);
@@ -347,23 +337,30 @@ static void *do_readmap(void *arg)
 
 	lookup_prune_cache(ap, now);
 
-	pthread_cleanup_push(cache_lock_cleanup, mc);
-	cache_readlock(mc);
 	if (ap->type == LKP_INDIRECT)
 		status = lookup_ghost(ap);
 	else {
 		struct mapent *me;
 		mnts = tree_make_mnt_tree(_PROC_MOUNTS, "/");
-		me = cache_enumerate(mc, NULL);
-		while (me) {
-			/* TODO: check return, locking me */
-			do_mount_autofs_direct(ap, mnts, me, now);
-			me = cache_enumerate(mc, me);
+		pthread_cleanup_push(master_source_lock_cleanup, ap->entry);
+		master_source_readlock(ap->entry);
+		map = ap->entry->first;
+		mc = map->mc;
+		while (map) {
+			pthread_cleanup_push(cache_lock_cleanup, mc);
+			cache_readlock(mc);
+			me = cache_enumerate(mc, NULL);
+			while (me) {
+				/* TODO: check return, locking me */
+				do_mount_autofs_direct(ap, mnts, me, now);
+				me = cache_enumerate(mc, me);
+			}
+			pthread_cleanup_pop(1);
+			map = map->next;
 		}
+		pthread_cleanup_pop(1);
 		tree_free_mnt_tree(mnts);
 	}
-	cache_unlock(mc);
-	pthread_cleanup_pop(0);
 
 	debug("path %s status %d", ap->path, status);
 
@@ -449,7 +446,6 @@ static unsigned int st_readmap(struct autofs_point *ap)
 
 static unsigned int st_prepare_shutdown(struct autofs_point *ap)
 {
-	int status;
 	int exp;
 
 	debug("state %d path %s", ap->state, ap->path);
@@ -459,12 +455,6 @@ static unsigned int st_prepare_shutdown(struct autofs_point *ap)
 
 	assert(ap->state == ST_READY || ap->state == ST_EXPIRE);
 	ap->state = ST_SHUTDOWN_PENDING;
-
-	if (ap->submount) {
-		status = pthread_mutex_lock(&ap->parent->state_mutex);
-		if (status)
-			fatal(status);
-	}
 
 	/* Unmount everything */
 	exp = expire_proc(ap, 1);
@@ -484,7 +474,6 @@ static unsigned int st_prepare_shutdown(struct autofs_point *ap)
 
 static unsigned int st_force_shutdown(struct autofs_point *ap)
 {
-	int status;
 	int exp;
 
 	debug("state %d path %s", ap->state, ap->path);
@@ -494,12 +483,6 @@ static unsigned int st_force_shutdown(struct autofs_point *ap)
 
 	assert(ap->state == ST_READY || ap->state == ST_EXPIRE);
 	ap->state = ST_SHUTDOWN_FORCE;
-
-	if (ap->submount) {
-		status = pthread_mutex_lock(&ap->parent->state_mutex);
-		if (status)
-			fatal(status);
-	}
 
 	/* Unmount everything */
 	exp = expire_proc(ap, 1);
@@ -705,7 +688,7 @@ static int run_state_task(struct state_queue *task)
 	state = ap->state;
 	next_state = task->state;
 
-	error("task %p state %d next %d", task, state, task->state);
+/*	debug("task %p state %d next %d", task, state, task->state); */
 
 	if (next_state != state) {
 		switch (next_state) {
@@ -783,7 +766,7 @@ static void *st_queue_handler(void *arg)
 
 			task = list_entry(p, struct state_queue, list);
 /*
-			error("task %p ap %p state %d next %d busy %d",
+			debug("task %p ap %p state %d next %d busy %d",
 				task, task->ap, task->ap->state,
 				task->state, task->busy);
 */
