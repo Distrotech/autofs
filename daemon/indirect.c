@@ -261,17 +261,17 @@ int mount_autofs_indirect(struct autofs_point *ap)
         if (autofs_init_indirect(ap))
 		return -1;
 
-	status = do_mount_autofs_indirect(ap);
-	if (status < 0)
-		return -1;
-
 	/* TODO: read map, determine map type is OK */
-	if (!lookup_nss_read_map(ap, now)) {
+	if (lookup_nss_read_map(ap, now))
+		lookup_prune_cache(ap, now);
+	else {
 		error("failed to read map for %s", ap->path);
 		return -1;
 	}
 
-	lookup_prune_cache(ap, now);
+	status = do_mount_autofs_indirect(ap);
+	if (status < 0)
+		return -1;
 
 	map = lookup_ghost(ap);
 	if (map & LKP_FAIL) {

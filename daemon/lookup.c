@@ -277,10 +277,9 @@ static int read_file_source_instance(struct autofs_point *ap, struct map_source 
 
 	format = map->format;
 
-	instance = master_find_source_instance(map,
-				type, format, map->argc, map->argv);
+	instance = master_add_source_instance(map, type, format, age);
 	if (!instance)
-		instance = master_add_source_instance(map, type, format, age);
+		return NSS_STATUS_UNAVAIL;
 
 	return do_read_map(ap, instance, age);
 }
@@ -292,10 +291,9 @@ static int read_source_instance(struct autofs_point *ap, struct map_source *map,
 
 	format = map->format;
 
-	instance = master_find_source_instance(map,
-				type, format, map->argc, map->argv);
+	instance = master_add_source_instance(map, type, format, age);
 	if (!instance)
-		instance = master_add_source_instance(map, type, format, age);
+		return NSS_STATUS_UNAVAIL;
 
 	return do_read_map(ap, instance, age);
 }
@@ -333,10 +331,12 @@ static enum nsswitch_status read_map_source(struct nss_source *this,
 	if (instance)
 		return read_file_source_instance(ap, map, age);
 
+	this->source[4] = '\0';
 	tmap.type = this->source;
 	tmap.format = map->format;
 	tmap.lookup = map->lookup;
 	tmap.mc = map->mc;
+	tmap.instance = map->instance;
 	tmap.argc = 0;
 	tmap.argv = NULL;
 
@@ -576,10 +576,9 @@ static int lookup_name_file_source_instance(struct autofs_point *ap, struct map_
 
 	format = map->format;
 
-	instance = master_find_source_instance(map,
-				type, format, map->argc, map->argv);
+	instance = master_add_source_instance(map, type, format, age);
 	if (!instance)
-		instance = master_add_source_instance(map, type, format, age);
+		return NSS_STATUS_NOTFOUND;
 
 	return do_lookup_mount(ap, instance, name, name_len);
 }
@@ -635,6 +634,7 @@ static enum nsswitch_status lookup_map_name(struct nss_source *this,
 	tmap.type = this->source;
 	tmap.format = map->format;
 	tmap.mc = map->mc;
+	tmap.instance = map->instance;
 	tmap.argc = 0;
 	tmap.argv = NULL;
 

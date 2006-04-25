@@ -53,7 +53,7 @@ int do_mount(struct autofs_point *ap, const char *root, const char *name, int na
 	}
 
 	if (is_log_debug()) {
-		if (ap->path[1] == '-')
+		if (ap->type == LKP_DIRECT)
 			debug("%s %s type %s options %s using module %s",
 				what, name, fstype, options, modstr);
 		else

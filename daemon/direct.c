@@ -418,12 +418,12 @@ int mount_autofs_direct(struct autofs_point *ap)
 		return -1;
 
 	/* TODO: check map type */
-	if (!lookup_nss_read_map(ap, now)) {
+	if (lookup_nss_read_map(ap, now))
+		lookup_prune_cache(ap, now);
+	else {
 		error("failed to read direct map");
 		return -1;
 	}
-
-	lookup_prune_cache(ap, now);
 
 	mnts = tree_make_mnt_tree(_PROC_MOUNTS, "/");
 	pthread_cleanup_push(master_source_lock_cleanup, ap->entry);

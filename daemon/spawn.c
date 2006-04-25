@@ -264,6 +264,9 @@ static int do_spawn(logger *log, int use_lock, const char *prog, const char *con
 	int status, pipefd[2];
 	char errbuf[ERRBUFSIZ + 1], *p, *sp;
 	int errp, errn;
+#ifdef ENABLE_MOUNT_LOCKING
+	int cancel_state;
+#endif
 
 	if (pipe(pipefd))
 		return -1;

@@ -636,7 +636,7 @@ static int sun_mount(struct autofs_point *ap, const char *root,
 	what = alloca(loclen + 1);
 	memcpy(what, loc, loclen);
 	what[loclen] = '\0';
-
+/*
 	if (!strcmp(fstype, "autofs") && strchr(loc, ':') == NULL) {
 		char mtype[7];
 		int mtype_len;
@@ -657,10 +657,11 @@ static int sun_mount(struct autofs_point *ap, const char *root,
 		memcpy(what + mtype_len, loc, loclen);
 		what[loclen + mtype_len] = '\0';
 	} else {
+*/
 		what = alloca(loclen + 1);
 		memcpy(what, loc, loclen);
 		what[loclen] = '\0';
-	}
+/*	} */
 
 	debug(MODPREFIX
 	    "mounting root %s, mountpoint %s, what %s, fstype %s, options %s",

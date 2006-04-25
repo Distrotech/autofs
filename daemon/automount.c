@@ -1061,23 +1061,8 @@ static void mutex_operation_wait(pthread_mutex_t *mutex)
 static void handle_mounts_cleanup(void *arg)
 {
 	struct autofs_point *ap;
-	int status;
 
 	ap = (struct autofs_point *) arg;
-
-	status = pthread_mutex_lock(&ap->mounts_mutex);
-	if (status)
-		fatal(status);
-
-	while (ap->submnt_count) {
-		status = pthread_cond_wait(&ap->mounts_cond, &ap->mounts_mutex);
-		if (status)
-			fatal(status);
-	}
-
-	status = pthread_mutex_unlock(&ap->mounts_mutex);
-	if (status)
-		fatal(status);
 
 	umount_autofs(ap, 1);
 
@@ -1098,16 +1083,16 @@ static void handle_mounts_cleanup(void *arg)
 void *handle_mounts(void *arg)
 {
 	struct autofs_point *ap;
-	int status = 0;
+	int cancel_state, status = 0;
 
 	ap = (struct autofs_point *) arg;
+
+	pthread_cleanup_push(return_start_status, &sc);
+	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cancel_state);
 
 	status = pthread_mutex_lock(&ap->state_mutex);
 	if (status)
 		fatal(status);
-
-	pthread_cleanup_push(handle_mounts_cleanup, ap);
-	pthread_cleanup_push(return_start_status, &sc);
 
 	status = pthread_mutex_lock(&sc.mutex);
 	if (status) {
@@ -1121,6 +1106,8 @@ void *handle_mounts(void *arg)
 		status = pthread_mutex_unlock(&ap->state_mutex);
 		if (status)
 			fatal(status);
+		umount_autofs(ap, 1);
+		master_free_mapent(ap->entry);
 		pthread_exit(NULL);
 	}
 
@@ -1138,6 +1125,9 @@ void *handle_mounts(void *arg)
 	status = pthread_mutex_unlock(&ap->state_mutex);
 	if (status)
 		fatal(status);
+
+	pthread_cleanup_push(handle_mounts_cleanup, ap);
+	pthread_setcancelstate(cancel_state, &cancel_state);
 
 	while (ap->state != ST_SHUTDOWN) {
 		if (handle_packet(ap)) {
@@ -1197,6 +1187,20 @@ void *handle_mounts(void *arg)
 				fatal(status);
 		}
 	}
+
+	status = pthread_mutex_lock(&ap->mounts_mutex);
+	if (status)
+		fatal(status);
+
+	while (ap->submnt_count) {
+		status = pthread_cond_wait(&ap->mounts_cond, &ap->mounts_mutex);
+		if (status)
+			fatal(status);
+	}
+
+	status = pthread_mutex_unlock(&ap->mounts_mutex);
+	if (status)
+		fatal(status);
 
 	pthread_cleanup_pop(1);
 

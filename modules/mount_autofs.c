@@ -125,6 +125,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 		return 1;
 	}
 	nap = entry->ap;
+	nap->parent = ap;
 
 	argc = 1;
 
@@ -185,8 +186,11 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 	sc.done = 0;
 	sc.status = 0;
 
+	pthread_mutex_lock(&ap->mounts_mutex);
+
 	if (pthread_create(&thid, &thread_attr, handle_mounts, nap)) {
 		crit("failed to create mount handler thread for %s", fullpath);
+		pthread_mutex_unlock(&ap->mounts_mutex);
 		status = pthread_mutex_unlock(&sc.mutex);
 		if (status)
 			fatal(status);
@@ -198,6 +202,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 	while (!sc.done) {
 		status = pthread_cond_wait(&sc.cond, &sc.mutex);
 		if (status) {
+			pthread_mutex_unlock(&ap->mounts_mutex);
 			pthread_mutex_unlock(&sc.mutex);
 			fatal(status);
 		}
@@ -205,16 +210,16 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 
 	if (sc.status) {
 		crit("failed to create submount for %s", fullpath);
+		pthread_mutex_unlock(&ap->mounts_mutex);
 		status = pthread_mutex_unlock(&sc.mutex);
 		if (status)
 			fatal(status);
 		return 1;
 	}
 
-	pthread_mutex_lock(&ap->mounts_mutex);
-	nap->parent = ap;
 	ap->submnt_count++;
 	list_add(&nap->mounts, &ap->submounts);
+
 	pthread_mutex_unlock(&ap->mounts_mutex);
 
 	status = pthread_mutex_unlock(&sc.mutex);
