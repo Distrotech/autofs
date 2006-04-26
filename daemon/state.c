@@ -335,11 +335,10 @@ static void *do_readmap(void *arg)
 	if (!status)
 		pthread_exit(NULL);
 
-	lookup_prune_cache(ap, now);
-
-	if (ap->type == LKP_INDIRECT)
+	if (ap->type == LKP_INDIRECT) {
+		lookup_prune_cache(ap, now);
 		status = lookup_ghost(ap);
-	else {
+	} else {
 		struct mapent *me;
 		mnts = tree_make_mnt_tree(_PROC_MOUNTS, "/");
 		pthread_cleanup_push(master_source_lock_cleanup, ap->entry);
@@ -347,12 +346,20 @@ static void *do_readmap(void *arg)
 		map = ap->entry->first;
 		mc = map->mc;
 		while (map) {
+			if (!map->stale) {
+				map = map->next;
+				continue;
+			}
+			ap->entry->current = map;
 			pthread_cleanup_push(cache_lock_cleanup, mc);
 			cache_readlock(mc);
 			me = cache_enumerate(mc, NULL);
 			while (me) {
 				/* TODO: check return, locking me */
-				do_mount_autofs_direct(ap, mnts, me, now);
+				if (me->age < now)
+					do_umount_autofs_direct(ap, mnts, me);
+				else
+					do_mount_autofs_direct(ap, mnts, me, now);
 				me = cache_enumerate(mc, me);
 			}
 			pthread_cleanup_pop(1);
@@ -360,7 +367,10 @@ static void *do_readmap(void *arg)
 		}
 		pthread_cleanup_pop(1);
 		tree_free_mnt_tree(mnts);
+		ap->entry->current = NULL;
+		lookup_prune_cache(ap, now);
 	}
+
 
 	debug("path %s status %d", ap->path, status);
 

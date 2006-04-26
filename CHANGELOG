@@ -78,6 +78,7 @@
 - add configure option to enable exit leaving busy mounts mounted.
 - sort out code for multiple maps per mount point.
 - fix side effects on multi-mounts and submounts from above.
+- test and fix basic map reread functions.
 
 11/4/2005 autofs-4.1.4
 ----------------------

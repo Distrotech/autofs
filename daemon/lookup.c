@@ -795,11 +795,17 @@ int lookup_prune_cache(struct autofs_point *ap, time_t age)
 
 	map = ap->entry->first;
 	while (map) {
+		if (!map->stale) {
+			map = map->next;
+			continue;
+		}
 		mc = map->mc;
 		cache_readlock(mc);
 		me = cache_enumerate(mc, NULL);
 		while (me) {
-			if (!me->source->stale || me->age >= age) {
+			char *key = NULL, *next_key = NULL;
+
+			if (me->age >= age) {
 				me = cache_enumerate(mc, me);
 				continue;
 			}
@@ -809,17 +815,8 @@ int lookup_prune_cache(struct autofs_point *ap, time_t age)
 			if (!key)
 				continue;
 
-			if (!me) {
-				free(key);
-				continue;
-			}
-
-			next_key = strdup(me->key);
-			if (!next_key) {
-				free(key);
-				me = cache_enumerate(mc, me);
-				continue;
-			}
+			if (me)
+				next_key = strdup(me->key);
 
 			cache_unlock(mc);
 
@@ -840,6 +837,12 @@ int lookup_prune_cache(struct autofs_point *ap, time_t age)
 					rmdir_path(path);
 					free(path);
 				}
+			}
+
+			if (!next_key) {
+				free(key);
+				cache_readlock(mc);
+				continue;
 			}
 next:
 			cache_readlock(mc);

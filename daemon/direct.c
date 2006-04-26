@@ -108,7 +108,7 @@ static int autofs_init_direct(struct autofs_point *ap)
 	return 0;
 }
 
-static int do_umount_autofs_direct(struct autofs_point *ap, struct mnt_list *mnts, struct mapent *me)
+int do_umount_autofs_direct(struct autofs_point *ap, struct mnt_list *mnts, struct mapent *me)
 {
 	char buf[MAX_ERR_BUF];
 	int rv, left;
@@ -131,20 +131,25 @@ static int do_umount_autofs_direct(struct autofs_point *ap, struct mnt_list *mnt
 
 	rv = umount(me->key);
 	if (rv != 0) {
-		if (errno == ENOENT) {
+		switch (errno) {
+		case ENOENT:
+		case EINVAL:
 			error("mount point %s does not exist", me->key);
 			return 0;
-		} else if (errno == EBUSY) {
+			break;
+		case EBUSY:
 			error("mount point %s is in use", me->key);
 			if (ap->state == ST_SHUTDOWN_FORCE)
 				goto force_umount;
 			else
 				return 0;
-		} else if (errno == ENOTDIR) {
+			break;
+		case ENOTDIR:
 			error("mount point is not a directory");
 			return 0;
+			break;
 		}
-		goto force_umount;
+		return 1;
 	}
 
 force_umount:
@@ -184,6 +189,7 @@ int umount_autofs_direct(struct autofs_point *ap)
 	master_source_readlock(ap->entry);
 	map = ap->entry->first;
 	while (map) {
+		ap->entry->current = map;
 		mc = map->mc;
 		pthread_cleanup_push(cache_lock_cleanup, mc);
 		cache_readlock(mc);
@@ -200,6 +206,7 @@ int umount_autofs_direct(struct autofs_point *ap)
 	}
 	pthread_cleanup_pop(1);
 	tree_free_mnt_tree(mnts);
+	ap->entry->current = NULL;
 
 	return 0;
 }

@@ -351,18 +351,23 @@ int umount_autofs_indirect(struct autofs_point *ap)
 
 	rv = umount(ap->path);
 	if (rv == -1) {
-		if (errno == ENOENT) {
-			error("mount point does not exist");
+		switch (errno) {
+		case ENOENT:
+		case EINVAL:
+			error("mount point %s does not exist", ap->path);
 			return 0;
-		} else if (errno == EBUSY) {
-			debug("mount point %s is in use", ap->path);
+			break;
+		case EBUSY:
+			error("mount point %s is in use", ap->path);
 			if (ap->state == ST_SHUTDOWN_FORCE)
 				goto force_umount;
 			else
 				return 0;
-		} else if (errno == ENOTDIR) {
+			break;
+		case ENOTDIR:
 			error("mount point is not a directory");
 			return 0;
+			break;
 		}
 		return 1;
 	}
@@ -370,7 +375,7 @@ int umount_autofs_indirect(struct autofs_point *ap)
 force_umount:
 	if (rv != 0) {
 		warn("forcing umount of %s", ap->path);
-		rv = umount2(ap->path, MNT_FORCE);
+		rv = umount2(ap->path, MNT_DETACH);
 	} else {
 		msg("umounted %s", ap->path);
 		if (ap->submount)

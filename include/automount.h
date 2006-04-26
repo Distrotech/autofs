@@ -464,6 +464,7 @@ int mount_autofs_direct(struct autofs_point *ap);
 int mount_autofs_offset(struct autofs_point *ap, struct mapent *me, int is_autofs_fs);
 int umount_autofs(struct autofs_point *ap, int force);
 int umount_autofs_indirect(struct autofs_point *ap);
+int do_umount_autofs_direct(struct autofs_point *ap, struct mnt_list *mnts, struct mapent *me);
 int umount_autofs_direct(struct autofs_point *ap);
 int umount_autofs_offset(struct autofs_point *ap, struct mapent *me);
 int handle_packet_expire_indirect(struct autofs_point *ap, autofs_packet_expire_indirect_t *pkt);
