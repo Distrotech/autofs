@@ -79,6 +79,8 @@
 - sort out code for multiple maps per mount point.
 - fix side effects on multi-mounts and submounts from above.
 - test and fix basic map reread functions.
+- remove need to read entire map when browsing is disabled.
+- fix lookup context not being released.
 
 11/4/2005 autofs-4.1.4
 ----------------------

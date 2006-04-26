@@ -8,7 +8,7 @@ autofs \- Format of the automounter maps
 The automounter maps are FILE, NIS, NISPLUS or LDAP maps referred to by
 the master map of the automounter (see
 .BR auto.master (5)).
-These maps describe how file systems below the mountpoint of the map
+These maps describe how file systems below the mount point of the map
 (given in the master map) are to be mounted.  This page describes the
 .B sun
 map format; if another map format is specified (e.g. \fBhesiod\fP),
@@ -26,12 +26,12 @@ ignored. The basic format of one line in such maps is:
 .BI "key [" -options "] location"
 
 .SS key
-For indirect mounts this is the part of the pathname between the mountpoint
+For indirect mounts this is the part of the path name between the mount point
 and the path into the filesystem when it is mounted. Usually you can think about the
-key as a subdirectory name below the autofs managed mountpoint.
+key as a sub-directory name below the autofs managed mount point.
 
-For direct mounts this is the full path of the each mountpoint. This map is always
-associated with the /- mountpoint in the master map. 
+For direct mounts this is the full path of the each mount point. This map is always
+associated with the /- mount point in the master map. 
 
 .SS options
 Options are optional.  Options can also be given in the 
@@ -47,7 +47,7 @@ NFS type.  This option is processed by the automounter and not by the mount
 command.
 .I -strict
 is used to treat errors when mounting file systems as fatal. This is important when
-multiple file systems should be mounted (`multimounts'). If this option
+multiple file systems should be mounted (`multi-mounts'). If this option
 is given, no file system is mounted at all if at least one file system
 can't be mounted.
 
@@ -136,11 +136,11 @@ is the following entry:
 .sp
 This will enable you to access all the home directory of local hosts using
 the path
-.RI / mountpoint / hostname / local-path .
+.RI / mount-point / hostname / local-path .
 .SS Variable Substitution
 The following special variables will be substituted in the key and location
 fields of an automounter map if prefixed with $ as customary from shell
-scripts (Curly braces can be used to separate the fieldname):
+scripts (Curly braces can be used to separate the field name):
 .sp
 .RS +.2i
 .ta 1.5i
@@ -182,7 +182,7 @@ return no lines of output if there's an error, or one or more lines
 containing a map entry (with \\ quoting line breaks). The map entry
 corresponds to what would normally follow a map key.
 .P
-A executable map can return an errorcode to indicate the failure in addition
+A executable map can return an error code to indicate the failure in addition
 to no output at all.  All output sent to stderr is logged into the system
 logs.
 .SS Multiple Mounts
@@ -193,7 +193,7 @@ can be used to name multiple filesystems to mount.  It takes the form:
 .RS +.2i
 .ta 1.0i
 .nf
-.BI "key [" -options "] [mountpoint [" -options "] location...]..."
+.BI "key [" -options "] [mount-point [" -options "] location...]..."
 .fi
 .RE
 .sp
@@ -236,6 +236,6 @@ and LDAP only.
 .BR mount (8).
 .SH AUTHOR
 This manual page was written by Christoph Lameter <chris@waterf.org>,
-for the Debian GNU/Linux system.  Edited by H. Peter Anvin
+for the Debian GNU/Linux system.  Edited by H. Peter Avian
 <hpa@transmeta.com>, Jeremy Fitzhardinge <jeremy@goop.org> and
 Ian Kent <raven@themaw.net>.

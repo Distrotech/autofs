@@ -693,7 +693,7 @@ static int check_map_indirect(struct autofs_point *ap,
 
 	/* Have parent update its map ? */
 	/* TODO: update specific map */
-	if (need_map) {
+	if (ap->ghost && need_map) {
 		int status;
 
 		source->stale = 1;

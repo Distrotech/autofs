@@ -495,7 +495,6 @@ static int umount_all(struct autofs_point *ap, int force)
 
 int umount_autofs(struct autofs_point *ap, int force)
 {
-	struct map_source *map = ap->entry->maps;
 	int status = 0;
 
 	if (ap->state == ST_INIT)
@@ -506,13 +505,7 @@ int umount_autofs(struct autofs_point *ap, int force)
 	 * to prevent unneeded opens, we need to clean them up
 	 * before umount or the fs will be busy.
 	 */
-	while (map) {
-		if (map->lookup) {
-			close_lookup(map->lookup);
-			map->lookup = NULL;
-		}
-		map = map->next;
-	}
+	lookup_close_lookup(ap);
 
 	if (ap->type == LKP_INDIRECT) {
 		if (umount_all(ap, force) && !force)

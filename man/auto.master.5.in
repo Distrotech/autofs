@@ -56,7 +56,7 @@ map given in the entry (See
 .BR autofs (5)).
 .P
 Additionally, a map may be included from its source as if it were itself
-present in the master map by including ial line of the form:
+present in the master map by including a line of the form:
 .BR +\ [ maptype , format :] map [ options ]
 and 
 .BR automount (8)
@@ -334,5 +334,5 @@ configuration will be used to locate the source of the map
 .BR autofs (8).
 .SH AUTHOR
 This manual page was written by Christoph Lameter <chris@waterf.org>,
-for the Debian GNU/Linux system.  Edited by <hpa@transmeta.com> and
+for the Dean GNU/Linux system.  Edited by <hpa@transmeta.com> and
 Ian Kent <raven@themaw.net> .

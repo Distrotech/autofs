@@ -320,8 +320,17 @@ void master_free_map_source(struct map_source *source)
 		free(source->format);
 	if (source->mc)
 		cache_release(source);
-	if (source->lookup)
+	if (source->lookup) {
+		struct map_source *instance;
+
+		instance = source->instance;
+		while (instance) {
+			if (instance->lookup)
+			close_lookup(instance->lookup);
+			instance = instance->next;
+		}
 		close_lookup(source->lookup);
+	}
 	if (source->argv)
 		free_argv(source->argc, source->argv);
 	if (source->instance) {

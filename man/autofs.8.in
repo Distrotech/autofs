@@ -54,5 +54,5 @@ automount daemons.
 .BR auto.master (5).
 .SH AUTHOR
 This manual page was written by Christoph Lameter <chris@waterf.org>,
-for the Debian GNU/Linux system.  Edited by H. Peter Anvin
+for the Debi GNU/Linux system.  Edited by H. Peter Anvin
 <hpa@transmeta.com>.

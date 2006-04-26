@@ -241,6 +241,17 @@ static int do_read_map(struct autofs_point *ap, struct map_source *map, time_t a
 
 	lookup = map->lookup;
 
+	/* If we don't need to create directories then there's no use
+	 * reading the map. We just need to test that the map is valid
+	 * for the fail cases to function correctly and to cache the
+	 * lookup handle.
+	 *
+	 * We always need to whole map for direct mounts in order to
+	 * mount the triggers.
+	 */
+	if (!ap->ghost && ap->type != LKP_DIRECT)
+		return NSS_STATUS_SUCCESS;
+
 	status = lookup->lookup_read_map(ap, age, lookup->context);
 
 	/*
@@ -760,6 +771,35 @@ done:
 	return !result;
 }
 
+void lookup_close_lookup(struct autofs_point *ap)
+{
+	struct map_source *map;
+
+	map = ap->entry->first;
+	if (!map)
+		return;
+
+	while (map) {
+		struct map_source *instance;
+
+		instance = map->instance;
+		while (instance) {
+			if (instance->lookup) {
+				close_lookup(instance->lookup);
+				instance->lookup = NULL;
+			}
+			instance = instance->next;
+		}
+
+		if (map->lookup) {
+			close_lookup(map->lookup);
+			map->lookup = NULL;
+		}
+		map = map->next;
+	}
+	return;
+}
+
 static char *make_fullpath(const char *root, const char *key)
 {
 	int l;
@@ -787,7 +827,6 @@ int lookup_prune_cache(struct autofs_point *ap, time_t age)
 	struct mapent_cache *mc;
 	struct mapent *me, *this;
 	struct master_mapent *entry = ap->entry;
-	char *key, *next_key;
 	char *path;
 	int status = CHE_FAIL;
 

@@ -21,7 +21,7 @@ reading the
 .BR auto.master (8)
 .hy
 map and sets up mount points for each entry in the master map allowing
-them to be automatically mounted when accessed. The filesystems are
+them to be automatically mounted when accessed. The file systems are
 then automatically umounted after a period of inactivity.
 .SH OPTIONS
 .TP
@@ -59,15 +59,24 @@ and the mount maps they will use. The default is
 .RE
 .SH NOTES
 If the \fBautomount\fP daemon catches a USR1 signal, it will umount all
-currently unused autofs managed mounted filesystems and continue running
+currently unused autofs managed mounted file systems and continue running
 (forced expire).  If it catches the TERM signal it will umount
-all unused autofs managed mounted filesystems and exit if all filesystems
-were umounted.  Busy filesystems will not be umounted.
+all unused autofs managed mounted file systems and exit if there are
+no remaining busy file systems. If autofs has been compiled with the
+option to ignore busy mounts on exit it will exit leaving any busy
+mounts in place otherwise busy file systems will not be umounted
+and autofs will not exit.
+Alternatively, if autofs has been compiled with the option to enable
+forced shutdown then a USR2 signal to the daemon will cause all
+mounts to be umounted and any busy mounts to be forcibly umounted,
+including autofs mount point directories (summary execution). Note
+that the forced umount is an unlink operation and the actual umount
+will not happen in the kernel until active file handles are released.
 The daemon also responds to a HUP signal which triggers an update of
 the maps for each mount point.
 .P
-If the autofs directory itself is busy when the daemon is signalled
-with an exit signal then the daemon will exit without umounting the
+If any autofs mount point directories are busy when the daemon is sent
+an exit signal then the daemon will not exit unless  without umounting the
 autofs filesystem.  The filesystem is left in a catatonic
 (non-functional) state, and can be unmounted when it becomes unused.
 .SH "SEE ALSO"

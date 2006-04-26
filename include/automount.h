@@ -215,6 +215,7 @@ int lookup_enumerate(struct autofs_point *ap,
 	int (*fn)(struct autofs_point *,struct mapent *, int), time_t now);
 int lookup_ghost(struct autofs_point *ap);
 int lookup_nss_mount(struct autofs_point *ap, const char *name, int name_len);
+void lookup_close_lookup(struct autofs_point *ap);
 int lookup_prune_cache(struct autofs_point *ap, time_t age);
 
 #ifdef MODULE_LOOKUP
