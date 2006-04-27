@@ -291,8 +291,8 @@ MTYPE           ((file|program|yp|nis|nisplus|ldap|hesiod|userdir)(,(sun|hesiod)
 		return(NUMBER);
 	}
 
-	nobrowse		{ return(OPT_NOGHOST); }
-	-g|--ghost|browse	{ return(OPT_GHOST); }
+	-?nobrowse		{ return(OPT_NOGHOST); }
+	-g|--ghost|-?browse	{ return(OPT_GHOST); }
 	-v|--verbose		{ return(OPT_VERBOSE); }
 	-d|--debug		{ return(OPT_DEBUG); }
 
