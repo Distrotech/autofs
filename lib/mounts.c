@@ -442,6 +442,17 @@ void add_ordered_list(struct mnt_list *ent, struct list_head *head)
 	return;
 }
 
+/*
+ * Since we have to look at the entire mount tree for direct
+ * mounts (all mounts under "/") and we may have a large number
+ * of entries to traverse again and again we need to
+ * use a more efficient method than the routines above.
+ *
+ * Thre tree_... routines allow us to read the mount tree
+ * once and pass it to subsequent functions for use. Since
+ * it's a tree structure searching should be a low overhead
+ * operation.
+ */
 void tree_free_mnt_tree(struct mnt_list *tree)
 {
 	struct list_head *head, *p;
@@ -696,4 +707,27 @@ int tree_find_mnt_ents(struct mnt_list *mnts, struct list_head *list, const char
 	return 0;
 }
 
+int tree_is_mounted(struct mnt_list *mnts, const char *path)
+{
+	struct list_head *p;
+	LIST_HEAD(list);
+	int is_mounted = 0;
+
+	if (!tree_find_mnt_ents(mnts, &list, path))
+		return 0;
+
+	list_for_each(p, &list) {
+		struct mnt_list *mptr;
+
+		mptr = list_entry(p, struct mnt_list, list);
+
+		/* We only want real mounts */
+		if (!strcmp(mptr->fs_type, "autofs"))
+			continue;
+
+		is_mounted++;
+	}
+
+	return is_mounted;
+}
 

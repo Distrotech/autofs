@@ -854,6 +854,20 @@ int lookup_prune_cache(struct autofs_point *ap, time_t age)
 			if (!key)
 				continue;
 
+			path = make_fullpath(ap->path, key);
+			if (!path) {
+				warn("can't malloc storage for path");
+				free(key);
+				continue;
+			}
+
+			if (is_mounted(_PATH_MOUNTED, path)) {
+				debug("prune posponed, %s is mounted", path);
+				free(key);
+				free(path);
+				continue;
+			}
+
 			if (me)
 				next_key = strdup(me->key);
 
@@ -863,23 +877,21 @@ int lookup_prune_cache(struct autofs_point *ap, time_t age)
 			this = cache_lookup(mc, key);
 			if (!this) {
 				cache_unlock(mc);
+				free(key);
+				if (next_key)
+					free(next_key);
+				free(path);
 				goto next;
 			}
 			status = cache_delete(mc, key);
 			cache_unlock(mc);
 
-			if (status != CHE_FAIL) {
-				path = make_fullpath(ap->path, key);
-				if (!path)
-					warn("can't malloc storage for path"); 
-				else {
-					rmdir_path(path);
-					free(path);
-				}
-			}
+			if (status != CHE_FAIL)
+				rmdir_path(path);
 
 			if (!next_key) {
 				free(key);
+				free(path);
 				cache_readlock(mc);
 				continue;
 			}
@@ -887,6 +899,7 @@ next:
 			cache_readlock(mc);
 			me = cache_lookup(mc, next_key);
 			free(key);
+			free(path);
 			free(next_key);
 		}
 		cache_unlock(mc);

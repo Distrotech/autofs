@@ -344,21 +344,24 @@ static void *do_readmap(void *arg)
 		pthread_cleanup_push(master_source_lock_cleanup, ap->entry);
 		master_source_readlock(ap->entry);
 		map = ap->entry->first;
-		mc = map->mc;
 		while (map) {
 			if (!map->stale) {
 				map = map->next;
 				continue;
 			}
 			ap->entry->current = map;
+			mc = map->mc;
 			pthread_cleanup_push(cache_lock_cleanup, mc);
 			cache_readlock(mc);
 			me = cache_enumerate(mc, NULL);
 			while (me) {
-				/* TODO: check return, locking me */
-				if (me->age < now)
-					do_umount_autofs_direct(ap, mnts, me);
-				else
+				/* TODO: check return of do_... */
+				if (me->age < now) {
+					if (!tree_is_mounted(mnts, me->key))
+						do_umount_autofs_direct(ap, mnts, me);
+					else
+                                		debug("%s id mounted", me->key);
+				} else
 					do_mount_autofs_direct(ap, mnts, me, now);
 				me = cache_enumerate(mc, me);
 			}

@@ -363,6 +363,7 @@ void tree_free_mnt_tree(struct mnt_list *tree);
 struct mnt_list *tree_make_mnt_tree(const char *table, const char *path);
 int tree_get_mnt_list(struct mnt_list *mnts, struct list_head *list, const char *path, int include);
 int tree_find_mnt_ents(struct mnt_list *mnts, struct list_head *list, const char *path);
+int tree_is_mounted(struct mnt_list *mnts, const char *path);
 
 /* Core automount definitions */
 

@@ -293,20 +293,8 @@ int mount_autofs_indirect(struct autofs_point *ap)
 
 int umount_autofs_indirect(struct autofs_point *ap)
 {
-	struct mnt_list *mnts;
 	int rv;
-	int status = 1;
-	int left;
 
-/*
-	mnts = tree_make_mnt_tree(_PROC_MOUNTS, ap->path);
-	left = umount_multi(ap, mnts, ap->path, 0);
-	tree_free_mnt_tree(mnts);
-	if (left) {
-		warn("could not unmount %d dirs under %s", left, ap->path);
-		return -1;
-	}
-*/
 	/*
 	 * Since submounts look after themselves the parent never knows
 	 * it needs to close the ioctlfd for offset mounts so we have

@@ -112,7 +112,6 @@ int do_umount_autofs_direct(struct autofs_point *ap, struct mnt_list *mnts, stru
 {
 	char buf[MAX_ERR_BUF];
 	int rv, left;
-	int status = 1;
 
 	left = umount_multi(ap, mnts, me->key, 1);
 	if (left) {
