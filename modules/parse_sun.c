@@ -794,10 +794,14 @@ static int mount_multi_triggers(struct autofs_point *ap, char *root, struct mape
 	strcpy(path, root);
 	strcat(path, base);
 	ret = statfs(path, &fs);
-	if (ret == -1)
-		return 0;
-
-	is_autofs_fs = fs.f_type == AUTOFS_SUPER_MAGIC ? 1 : 0;
+	if (ret == -1) {
+		/* There's no mount yet - it must be autofs */
+		if (errno == ENOENT)
+			is_autofs_fs = 1;
+		else
+			return 0;
+	} else
+		is_autofs_fs = fs.f_type == AUTOFS_SUPER_MAGIC ? 1 : 0;
 
 	start = strlen(root);
 	offset = cache_get_offset(base, offset, start, &me->multi_list, &pos);

@@ -449,8 +449,6 @@ int umount_multi(struct autofs_point *ap, struct mnt_list *mnts, const char *pat
 		if (!strcmp(mptr->fs_type, "autofs"))
 			continue;
 
-		debug("umounting offsets");
-
 		if (umount_offsets(ap, mnts, mptr->path))
 			error("could not umount some offsets under %s",
 				mptr->path);
@@ -462,14 +460,13 @@ int umount_multi(struct autofs_point *ap, struct mnt_list *mnts, const char *pat
 
 		sched_yield();
 	}
-/*
+
+	/* Lastly check for offsets with no root mount */
 	if (umount_offsets(ap, mnts, path)) {
 		error("could not umount some offsets under %s", path);
 		return 0;
 	}
 
-	debug("umounted offsets");
-*/
 	/* Delete detritus like unwanted mountpoints and symlinks */
 /*	if (left == 0)
 		check_rm_dirs(ap, path, incl); */
