@@ -83,6 +83,8 @@
 - fix lookup context not being released.
 - test and fix map re-read for master map entries with multiple entries.
 - fix "[no]browse" not recognised in master map.
+- fix auto.net not failing on sort command.
+- fix expire of rootless mounts such as auto.net multi-mounts (again).
 
 11/4/2005 autofs-4.1.4
 ----------------------
