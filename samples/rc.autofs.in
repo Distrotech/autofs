@@ -5,39 +5,17 @@
 # rc file for automount using a Sun-style "master map".
 #
 # On most distributions, this file should be called:
-# /etc/rc.d/init.d/autofs or /etc/init.d/autofs
+# /etc/rc.d/init.d/autofs or /etc/init.d/autofs or /etc/rc.d/rc.autofs
 #
-
-# For Redhat-ish systems
-#
-# chkconfig: 345 28 72
-# processname: /usr/sbin/automount
-# config: /etc/auto.master
-# description: Automounts filesystems on demand
-
-# This is used in the Debian distribution to determine the proper
-# location for the S- and K-links to this init file.
-# The following value is extracted by debstd to figure out how to
-# generate the postinst script. Edit the field to change the way the
-# script is registered through update-rc.d (see the manpage for
-# update-rc.d!)
-#
-FLAGS="defaults 21"
 
 #
 # Location of the automount daemon and the init directory
 #
 DAEMON=@@sbindir@@/automount
 prog=`basename $DAEMON`
-initdir=@@initdir@@
 confdir=@@autofsconfdir@@
 
 test -e $DAEMON || exit 0
-
-if [ -x $initdir/functions ]; then
-	. $initdir/functions
-fi
-
 
 PATH=/sbin:/usr/sbin:/bin:/usr/bin
 export PATH
@@ -50,40 +28,32 @@ if [ -x $confdir/autofs ]; then
 fi
 
 function start() {
-	echo -n $"Starting autofs: "
-	automount $OPTIONS 
+	echo -n "Starting $prog: "
+	$prog $OPTIONS 
 	RETVAL=$?
 	if [ $RETVAL -eq 0 ] ; then
-		success "$prog startup"
+		echo "done."
 	else
-		failure "$prog startup"
+		echo "failed."
 	fi
-	[ $RETVAL -eq 0 ] && touch /var/lock/subsys/autofs
-	echo
 	return $RETVAL
 }
 
 function stop() {
 	echo -n $"Stopping $prog: "
 	count=0
-	while [ -n "`/sbin/pidof $DAEMON`" -a $count -lt 10 ] ; do
-		killproc automount -TERM >& /dev/null
+	while [ -n "`pidof $DAEMON`" -a $count -lt 15 ] ; do
+		killall -TERM $prog >& /dev/null
 		RETVAL=$?
-		[ $RETVAL = 0 -a -z "`/sbin/pidof $DAEMON`" ] || sleep 3
+		[ $RETVAL = 0 -a -z "`pidof $DAEMON`" ] || sleep 3
 		count=`expr $count + 1`
 	done
-	[ $RETVAL -eq 0 ] && rm -f /var/lock/subsys/autofs
-	if [ -n "`/sbin/pidof $DAEMON`" ] ; then
-		failure "$prog shutdown"
+	if [ -n "`pidof $DAEMON`" ] ; then
+		echo "done."
 	else
-		success "$prog shutdown"
+		echo "failed."
 	fi
-	echo
 	return $RETVAL
-}
-
-function status() {
-	status
 }
 
 function restart() {
@@ -92,12 +62,7 @@ function restart() {
 }
 
 function reload() {
-	if [ ! -f /var/lock/subsys/autofs -o -n $pid ]; then
-		echo $"$prog not running"
-		RETVAL=1
-		return $RETVAL
-	fi
-	pid=`/sbin/pidof $DAEMON`
+	pid=`pidof $DAEMON`
 	if [ -z $pid ]; then
 		echo $"$prog not running"
 		RETVAL=1
@@ -118,9 +83,6 @@ case "$1" in
 	stop)
 		stop
 		;;
-	status)
-		status
-		;;
 	restart)
 		restart
 		;;
@@ -128,7 +90,7 @@ case "$1" in
 		reload
 		;;
 	*)
-		echo $"Usage: $0 {start|stop|status|restart|reload}"
+		echo $"Usage: $0 {start|stop|restart|reload}"
 		exit 1;
 		;;
 esac

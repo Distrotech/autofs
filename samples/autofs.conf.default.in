@@ -54,9 +54,3 @@ DEFAULT_BROWSE_MODE="no"
 #  UNDERSCORETODOT changes auto_home to auto.home and auto_mnt to auto.mnt
 UNDERSCORETODOT=1
 
-# Using a good number of maps can cause autofs to take
-# some time to exit. If you get init script stop fails
-# but find that a little while latter it's gone increase
-# this value.
-DAEMON_EXIT_WAIT=10
-

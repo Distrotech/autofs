@@ -21,7 +21,6 @@ autofs.conf.default: autofs.conf.default.in
 .PHONY: dirs
 dirs:
 	install -d -m 755 $(INSTALLROOT)$(autofsmapdir)
-	install -d -m 755 $(INSTALLROOT)$(initdir)
 	install -d -m 755 $(INSTALLROOT)$(autofsconfdir)
 	install -d -m 755 $(INSTALLROOT)$(autofslibdir)
 	install -d -m 755 $(INSTALLROOT)/var/run/autofs
@@ -29,7 +28,14 @@ dirs:
 .PHONY: autofs.init
 autofs.init:
 	@echo
+ifneq ($(initdir),)
+	install -d -m 755 $(INSTALLROOT)$(initdir)
 	install -c rc.autofs -m 755 $(INSTALLROOT)$(initdir)/autofs
+else
+	if test -d $(INSTALLROOT)/etc/rc.d ; then \
+		install -c rc.autofs -m 755 $(INSTALLROOT)/etc/rc.d ; \
+	fi
+endif
 
 CONFIG = $(shell test -e $(INSTALLROOT)$(autofsconfdir)/autofs.orig || echo "-b --suffix=.orig")
 CEXISTS = $(shell test -e $(INSTALLROOT)$(autofsconfdir)/autofs || echo "no")
