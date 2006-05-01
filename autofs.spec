@@ -1,9 +1,18 @@
 #
 # $Id: autofs.spec,v 1.35 2006/03/30 02:09:51 raven Exp $
 #
+
+%ifarch sparc i386 i586 i686
+%define _lib lib
+%endif
+
+%ifarch x86_64 sparc64
+%define _lib lib64
+%endif
+
 Summary: A tool from automatically mounting and umounting filesystems.
 Name: autofs
-%define version 5.0.0_alpha1
+%define version 5.0.0_beta1
 %define release 1
 Version: %{version}
 Release: %{release}
@@ -50,9 +59,7 @@ inkludera nätfilsystem, CD-ROM, floppydiskar, och så vidare.
 echo %{version}-%{release} > .version
 
 %build
-CFLAGS="$RPM_OPT_FLAGS -Wall" ./configure --libdir=%{_libdir} \
-					--disable-mount-locking \
-					--enable-ignore-busy
+CFLAGS="$RPM_OPT_FLAGS -Wall" ./configure --libdir=%{_libdir}
 CFLAGS="$RPM_OPT_FLAGS -Wall" DEBUG=1 make initdir=/etc/rc.d/init.d
 
 %install
@@ -100,8 +107,8 @@ fi
 %{_mandir}/*/*
 
 %changelog
-* Sat Nov 26 2005 Ian Kent <raven@themaw.net>
-- Update package to version 5.0.0_alpha1.
+* Mon May 1 2006 Ian Kent <raven@themaw.net>
+- Update package to version 5.0.0_beta1.
 
 * Wed Apr 6 2005 Ian Kent <raven@themaw.net>
 - Update package to version 4.1.4.
