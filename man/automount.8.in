@@ -12,7 +12,7 @@
 .SH NAME
 automount \- manage autofs mount points
 .SH SYNOPSIS
-\fBautomount\fP [\fIoptions\fP] \fImaster_map\fP
+\fBautomount\fP [\fIoptions\fP] [\fImaster_map\fP]
 .SH DESCRIPTION
 The \fBautomount\fP program is used to manage mount points for
 autofs, the inlined Linux automounter.  \fBautomount\fP works by

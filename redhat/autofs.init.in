@@ -1,0 +1,117 @@
+#!/bin/bash
+#
+# $Id: rc.autofs.in,v 1.63 2006/03/30 02:09:51 raven Exp $
+#
+# rc file for automount using a Sun-style "master map".
+#
+# chkconfig: 345 28 72
+# processname: /usr/sbin/automount
+# config: /etc/auto.master
+# description: Automounts filesystems on demand
+
+#
+# Location of the automount daemon and the init directory
+#
+DAEMON=@@sbindir@@/automount
+prog=`basename $DAEMON`
+initdir=@@initdir@@
+confdir=@@autofsconfdir@@
+
+test -e $DAEMON || exit 0
+
+if [ -x $initdir/functions ]; then
+	. $initdir/functions
+fi
+
+PATH=/sbin:/usr/sbin:/bin:/usr/bin
+export PATH
+
+#
+# load customized configuation settings
+#
+if [ -x $confdir/autofs ]; then
+	. $confdir/autofs
+fi
+
+function start() {
+	echo -n $"Starting $prog: "
+	$prog $OPTIONS 
+	RETVAL=$?
+	if [ $RETVAL -eq 0 ] ; then
+		success "$prog startup"
+	else
+		failure "$prog startup"
+	fi
+	[ $RETVAL -eq 0 ] && touch /var/lock/subsys/autofs
+	echo
+	return $RETVAL
+}
+
+function stop() {
+	echo -n $"Stopping $prog: "
+	count=0
+	while [ -n "`pidof $DAEMON`" -a $count -lt 15 ] ; do
+		killproc $prog -TERM >& /dev/null
+		RETVAL=$?
+		[ $RETVAL = 0 -a -z "`pidof $DAEMON`" ] || sleep 3
+		count=`expr $count + 1`
+	done
+	[ $RETVAL -eq 0 ] && rm -f /var/lock/subsys/autofs
+	if [ -n "`pidof $DAEMON`" ] ; then
+		failure "$prog shutdown"
+	else
+		success "$prog shutdown"
+	fi
+	echo
+	return $RETVAL
+}
+
+function restart() {
+	stop
+	start
+}
+
+function reload() {
+	if [ ! -f /var/lock/subsys/autofs ]; then
+		echo $"$prog not running"
+		RETVAL=1
+		return $RETVAL
+	fi
+	pid=`pidof $DAEMON`
+	if [ -z $pid ]; then
+		echo $"$prog not running"
+		RETVAL=1
+	else
+		kill -HUP $pid 2> /dev/null
+		echo $"Reloadiing maps"
+		RETVAL=0
+	fi
+	return $RETVAL
+}
+
+RETVAL=0
+
+case "$1" in
+	start)
+		start
+		;;
+	stop)
+		stop
+		;;
+	status)
+		status $prog
+		;;
+	restart)
+		restart
+		;;
+	reload)
+		reload
+		;;
+	*)
+		echo $"Usage: $0 {start|stop|status|restart|reload}"
+		exit 1;
+		;;
+esac
+
+exit $?
+
