@@ -56,6 +56,19 @@ New in 5.0.0 is:
     refinment. It just iterates through the host table and addes any host
     names it finds to the internal map.
 
-NOTE: I have no way to test the Gentoo setup here anymore so it is unlikey
-      to work. Patches welcome from anyone who needs this are welcome.
+Things not yet done
+===================
+
+- I have no way to test the Gentoo setup here anymore so it is unlikey
+  to work. Patches from anyone who needs this are welcome.
+
+- the underscore to dot translation has not been added yet.
+
+- there's a problen with the calcuation of the best host in replicated
+  server selection.
+
+- all the things I've broken and not re-tested after further development!
+
+
+Ian
 
