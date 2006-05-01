@@ -17,6 +17,9 @@ Differences between version 4 and version 5.
   map and link /etc/mtab to /proc/mounts you may see performance
   degradation.
 
+- `autofs' version 5.0.0 will refuse to run if it cannot find an
+   autofs4 kernel module that supports protocol version 5.00 or above.
+
 New in 5.0.0 is:
 
 - improved direct mount map support

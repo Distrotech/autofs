@@ -12,7 +12,8 @@ Requirements
 How to build and install
 ========================
 
-To configure, compile, and install the package, follow these steps.
+To configure, compile, and install the package directly from the
+tar distribution, follow these steps.
 
   1. Make sure you have the latest version of the package available
      from http://www.kernel.org/pub/linux/daemons/autofs/v4.
@@ -24,6 +25,12 @@ To configure, compile, and install the package, follow these steps.
   3. Build the package by typing `make'
 
   4. Install the package by typing `make install'.
+
+To build an `rpm' from the tar distribution use:
+
+rpmbuild -tb autofs-5.0.0_beta1.tar.gz
+
+and install the resulting rpm package.
 
 Configure options for autofs
 ============================
