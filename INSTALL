@@ -99,9 +99,10 @@ Patches that can be applied to the kernel are located in the
 `patches' directory. If you have installed autofs from an rpm
 then they can be found in the packages' doc directory after
 install. They consist of a kernel patch for each kernel from
-2.6.9 thru 2.6.16. If you need a patch for an older 2.6 kernel
-then post to the autofs mailing list and ask for one to be
-done.
+2.6.9 thru 2.6.16 (the patches are in the 2.6.17-rc series so
+patching a 2.6.17 or above kernel shouldn't be needed). If
+you need a patch for an older 2.6 kernel then post to the
+autofs mailing list and ask for one to be done.
 
 To apply one of these patches:
 
