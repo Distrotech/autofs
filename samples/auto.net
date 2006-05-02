@@ -42,4 +42,4 @@ $SHOWMOUNT | LC_ALL=C sort -k 1 | \
 	BEGIN	{ ORS=""; first=1 }
 		{ if (first) { print opts; first=0 }; print " \\\n\t" $1, key ":" $1 }
 	END	{ if (!first) print "\n"; else exit 1 }
-	'
+	' | sed 's/#/\\#/g'
