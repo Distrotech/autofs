@@ -953,6 +953,7 @@ int handle_packet_expire_direct(struct autofs_point *ap, autofs_packet_expire_di
 		free(mt);
 		send_fail(mt->ioctlfd, pkt->wait_queue_token);
 		status = 1;
+		goto done;
 	}
 
 	pthread_cleanup_push(pending_cleanup, mt);
@@ -965,8 +966,11 @@ int handle_packet_expire_direct(struct autofs_point *ap, autofs_packet_expire_di
 	}
 
 	pthread_cleanup_pop(1);
-done:
 	pthread_cleanup_pop(1);
+	return status;
+
+done:
+	cache_lock_cleanup(mc);
 	return status;
 }
 
@@ -1256,8 +1260,11 @@ int handle_packet_missing_direct(struct autofs_point *ap, autofs_packet_missing_
 	}
 
 	pthread_cleanup_pop(1);
-done:
 	pthread_cleanup_pop(1);
+	return status;
+
+done:
+	cache_lock_cleanup(mc);
 	return status;
 }
 
