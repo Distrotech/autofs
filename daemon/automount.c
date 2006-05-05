@@ -44,8 +44,9 @@ const char *program;		/* Initialized with argv[0] */
 const char *version = VERSION_STRING;	/* Program version */
 
 static char *pid_file = NULL;	/* File in which to keep pid */
-static char start_lockf[] = "/tmp/autofsXXXXXX";
-static int start_lockfd = -1;
+static int start_pipefd[2];
+static int st_stat = 0;
+static int *pst_stat = &st_stat;
 
 /* Attribute to create detached thread */
 pthread_attr_t thread_attr;
@@ -725,22 +726,35 @@ static void become_daemon(unsigned foreground)
 	pid_t pid;
 
 	/* Don't BUSY any directories unnecessarily */
-	chdir("/");
+	if (chdir("/")) {
+		fprintf(stderr, "%s: failed change working directory.\n",
+			program);
+		exit(0);
+	}
+
+	if (pipe(start_pipefd) < 0) {
+		fprintf(stderr, "%s: failed to create start_pipefd.\n",
+			program);
+		exit(0);
+	}
 
 	/* Detach from foreground process */
 	if (!foreground) {
 		pid = fork();
 		if (pid > 0) {
-			struct stat st;
-			close(start_lockfd);
-			while (stat(start_lockf, &st) != -1)
-				sleep(2);
-			exit(0);
+			int r;
+			close(start_pipefd[1]);
+			r = read(start_pipefd[0], pst_stat, sizeof(pst_stat));
+			if (r < 0)
+				exit(1);
+			exit(*pst_stat);
 		} else if (pid < 0) {
 			fprintf(stderr, "%s: Could not detach process\n",
 				program);
 			exit(1);
 		}
+		close(start_pipefd[0]);
+
 		/*
 		 * Make our own process group for "magic" reason: processes that share
 		 * our pgrp see the raw filesystem behind the magic.
@@ -1382,8 +1396,6 @@ int main(int argc, char *argv[])
 		warn("can't increase core file limit - continuing");
 #endif
 
-	start_lockfd = mkstemp(start_lockf);
-
 	become_daemon(foreground);
 
 	if (argc == 0) {
@@ -1400,16 +1412,14 @@ int main(int argc, char *argv[])
 	if (!master) {
 		crit("%s: can't create master map %s",
 			program, argv[0]);
-		close(start_lockfd);
-		unlink(start_lockf);
+		close(start_pipefd[1]);
 		exit(1);
 	}
 
 	if (pthread_attr_init(&thread_attr)) {
 		crit("%s: failed to init thread attribute struct!",
 			program);
-		close(start_lockfd);
-		unlink(start_lockf);
+		close(start_pipefd[1]);
 		exit(1);
 	}
 
@@ -1417,8 +1427,7 @@ int main(int argc, char *argv[])
 			&thread_attr, PTHREAD_CREATE_DETACHED)) {
 		crit("%s: failed to set detached thread attribute!",
 			program);
-		close(start_lockfd);
-		unlink(start_lockf);
+		close(start_pipefd[1]);
 		exit(1);
 	}
 
@@ -1427,8 +1436,7 @@ int main(int argc, char *argv[])
 			&thread_attr, PTHREAD_STACK_MIN*128)) {
 		crit("%s: failed to set stack size thread attribute!",
 			program);
-		close(start_lockfd);
-		unlink(start_lockf);
+		close(start_pipefd[1]);
 		exit(1);
 	}
 #endif
@@ -1441,32 +1449,28 @@ int main(int argc, char *argv[])
 	if (status) {
 		crit("failed to create thread data key for std env vars!");
 		master_kill(master, 1);
-		close(start_lockfd);
-		unlink(start_lockf);
+		close(start_pipefd[1]);
 		exit(1);
 	}
 
 	if (!alarm_start_handler()) {
 		crit("failed to create alarm handler thread!");
 		master_kill(master, 1);
-		close(start_lockfd);
-		unlink(start_lockf);
+		close(start_pipefd[1]);
 		exit(1);
 	}
 
 	if (!st_start_handler()) {
 		crit("failed to create FSM handler thread!");
 		master_kill(master, 1);
-		close(start_lockfd);
-		unlink(start_lockf);
+		close(start_pipefd[1]);
 		exit(1);
 	}
 
 	if (!sigchld_start_handler()) {
 		crit("failed to create SIGCHLD handler thread!");
 		master_kill(master, 1);
-		close(start_lockfd);
-		unlink(start_lockf);
+		close(start_pipefd[1]);
 		exit(1);
 	}
 
@@ -1474,20 +1478,22 @@ int main(int argc, char *argv[])
 		crit("%s: can't load %s filesystem module",
 			program, FS_MODULE_NAME);
 		master_kill(master, 1);
-		close(start_lockfd);
-		unlink(start_lockf);
+		*pst_stat = 2;
+		res = write(start_pipefd[1], pst_stat, sizeof(pst_stat));
+		close(start_pipefd[1]);
 		exit(2);
 	}
 
 	if (!master_read_master(master, age, 0)) {
 		master_kill(master, 1);
-		close(start_lockfd);
-		unlink(start_lockf);
+		*pst_stat = 3;
+		res = write(start_pipefd[1], pst_stat, sizeof(pst_stat));
+		close(start_pipefd[1]);
 		exit(3);
 	}
 
-	close(start_lockfd);
-	unlink(start_lockf);
+	res = write(start_pipefd[1], pst_stat, sizeof(pst_stat));
+	close(start_pipefd[1]);
 
 	statemachine(NULL);
 

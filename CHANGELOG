@@ -1,3 +1,9 @@
+??/??/2006 autofs-5.0.0_beta2
+-----------------------------
+- re-organize functions for direct mount and expire to eliminate
+  pthread compile error.
+- reap return code from child at startup.
+
 1/5/2006 autofs-5.0.0_beta1
 ------------------------------
 - Initial update.
@@ -85,8 +91,6 @@
 - fix "[no]browse" not recognised in master map.
 - fix auto.net not failing on sort command.
 - fix expire of rootless mounts such as auto.net multi-mounts (again).
-- re-organize functions for direct mount and expire to eliminate
-  pthread compile error.
 
 11/4/2005 autofs-4.1.4
 ----------------------
