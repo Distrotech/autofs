@@ -3,6 +3,9 @@
 - re-organize functions for direct mount and expire to eliminate
   pthread compile error.
 - reap return code from child at startup.
+- add check for self inclusion when including maps.
+- add plus map inclusion depth limit.
+- fix logic to check if map update is needed.
 
 1/5/2006 autofs-5.0.0_beta1
 ------------------------------

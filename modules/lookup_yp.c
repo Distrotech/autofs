@@ -309,8 +309,9 @@ static int check_map_indirect(struct autofs_point *ap,
 	int ret = 0;
 
 	cache_readlock(mc);
-	/* First check to see if this entry exists in the cache */
 	exists = cache_lookup(mc, key);
+	if (exists && exists->source != source)
+		exists = NULL;
 	cache_unlock(mc);
 
 	/* check map and if change is detected re-read map */
@@ -325,9 +326,6 @@ static int check_map_indirect(struct autofs_point *ap,
 	}
 
 	cache_readlock(mc);
-	/* First check to see if this entry exists in the cache */
-	exists = cache_lookup(mc, key);
-
 	me = cache_lookup_first(mc);
 	t_last_read = me ? now - me->age : ap->exp_runfreq + 1;
 	cache_unlock(mc);
@@ -341,19 +339,14 @@ static int check_map_indirect(struct autofs_point *ap,
 		int wild = CHE_MISSING;
 
 		wild = lookup_wild(ap, ctxt);
-		if (wild == CHE_MISSING) {
-			cache_writelock(mc);
-			cache_delete(mc, "*");
-			cache_unlock(mc);
-		}
-
 		pthread_cleanup_push(cache_lock_cleanup, mc);
 		cache_writelock(mc);
-		if (cache_delete(mc, key) &&
-				wild & (CHE_MISSING | CHE_FAIL))
+		if (wild == CHE_MISSING)
+			cache_delete(mc, "*");
+
+		if (cache_delete(mc, key) && wild & (CHE_MISSING | CHE_FAIL))
 			rmdir_path(key);
-		cache_unlock(mc);
-		pthread_cleanup_pop(0);
+		pthread_cleanup_pop(1);
 	}
 
 	/* Have parent update its map */

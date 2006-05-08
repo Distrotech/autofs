@@ -34,6 +34,8 @@
 
 #define MODPREFIX "lookup(file): "
 
+#define MAX_INCLUDE_DEPTH	16
+
 typedef enum {
 	st_begin, st_compare, st_star, st_badent, st_entspc, st_getent
 } LOOKUP_STATE;
@@ -240,6 +242,33 @@ static int read_one(FILE *f, char *key, char *mapent)
 	return 0;
 }
 
+static int check_master_self_include(struct master *master, struct lookup_context *ctxt)
+{
+	char *m_path, *m_base, *i_path, *i_base;
+
+	i_path = strdup(ctxt->mapname);
+	if (!i_path)
+		return 0;
+	i_base = basename(i_path);
+
+	m_path = strdup(master->name);
+	if (!m_path) {
+		free(i_path);
+		return 0;
+	}
+	m_base = basename(m_path);
+
+	if (!strcmp(m_base, i_base)) {
+		free(i_path);
+		free(m_path);
+		return  1;
+	}
+	free(i_path);
+	free(m_path);
+
+	return 0;
+}
+
 int lookup_read_master(struct master *master, time_t age, void *context)
 {
 	struct lookup_context *ctxt = (struct lookup_context *) context;
@@ -253,6 +282,13 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 	FILE *f;
 	int entry;
 
+	if (master->recurse)
+		return NSS_STATUS_UNAVAIL;
+
+	if (master->depth > MAX_INCLUDE_DEPTH) {
+		error("maximum include depth exceeded %s", master->name);
+		return NSS_STATUS_UNAVAIL;
+	}
 
 	path = malloc(KEY_MAX_LEN + 1);
 	if (!path) {
@@ -292,15 +328,22 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 		 */
 		if (*path == '+') {
 			char *save_name;
+			unsigned int inc;
 			int status;
 
 			save_name = master->name;
 			master->name = path + 1;
 
+			inc = check_master_self_include(master, ctxt);
+			if (inc) 
+				master->recurse = 1;;
+			master->depth++;
 			status = lookup_nss_read_master(master, age);
 			if (!status)
 				warn(MODPREFIX "failed to read included master map %s",
 				     master->name);
+			master->depth--;
+			master->recurse = 0;
 
 			master->name = save_name;
 		} else {
@@ -344,9 +387,38 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 	return NSS_STATUS_SUCCESS;
 }
 
-static struct autofs_point *prepare_plus_include(struct autofs_point *ap, time_t age, char *key)
+static int check_self_include(const char *key, struct lookup_context *ctxt)
 {
-	struct master_mapent *entry;
+	char *m_key, *m_base, *i_key, *i_base;
+
+	i_key = strdup(key + 1);
+	if (!i_key)
+		return 0;
+	i_base = basename(i_key);
+
+	m_key = strdup(ctxt->mapname);
+	if (!m_key) {
+		free(i_key);
+		return 0;
+	}
+	m_base = basename(m_key);
+
+	if (!strcmp(m_base, i_base)) {
+		free(i_key);
+		free(m_key);
+		return 1;
+	}
+	free(i_key);
+	free(m_key);
+
+	return 0;
+}
+
+static struct autofs_point *
+prepare_plus_include(struct autofs_point *ap, time_t age, char *key, unsigned int inc)
+{
+	struct master_mapent *entry = ap->entry;
+	struct map_source *current = ap->entry->current;
 	struct map_source *source;
 	struct autofs_point *iap;
 	char *type, *map, *fmt;
@@ -370,8 +442,6 @@ static struct autofs_point *prepare_plus_include(struct autofs_point *ap, time_t
 		return NULL;
 	}
 	iap = entry->ap;
-
-	entry = ap->entry;
 
 	/*
 	 * TODO:
@@ -423,10 +493,14 @@ static struct autofs_point *prepare_plus_include(struct autofs_point *ap, time_t
 		free(buf);
 		return NULL;
 	}
+	source->mc = current->mc;
+	source->depth = current->depth + 1;
+	if (inc)
+		source->recurse = 1;
 
 	free(buf);
 
-	return ap;
+	return iap;
 }
 
 int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
@@ -439,6 +513,14 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 	struct stat st;
 	FILE *f;
 	int entry;
+
+	if (source->recurse)
+		return NSS_STATUS_UNAVAIL;
+
+	if (source->depth > MAX_INCLUDE_DEPTH) {
+		error("maximum include depth exceeded %s", ctxt->mapname);
+		return NSS_STATUS_UNAVAIL;
+	}
 
 	key = malloc(KEY_MAX_LEN + 1);
 	if (!key) {
@@ -475,11 +557,16 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 		 */
 		if (*key == '+') {
 			struct autofs_point *iap;
+			unsigned int inc;
 			int status;
 
-			iap = prepare_plus_include(ap, age, key);
+			debug("read included map %s", key);
+
+			inc = check_self_include(key, ctxt);
+
+			iap = prepare_plus_include(ap, age, key, inc);
 			if (!iap) {
-				warn("failed to include map %s", key);
+				debug("failed to select included map %s", key);
 				continue;
 			}
 
@@ -488,6 +575,7 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 			if (!status)
 				warn("failed to read included map %s", key);
 
+			master_free_mapent_sources(iap->entry, 0);
 			master_free_mapent(iap->entry);
 		} else {
 			if (ap->type == LKP_INDIRECT && *key == '/')
@@ -549,17 +637,23 @@ static int lookup_one(struct autofs_point *ap,
 			 */
 			if (*mkey == '+') {
 				struct autofs_point *iap;
+				unsigned int inc;
 				int status;
 
-				iap = prepare_plus_include(ap, age, mkey);
+				debug("lookup included map %s", key);
+
+				inc = check_self_include(mkey, ctxt);
+
+				iap = prepare_plus_include(ap, age, mkey, inc);
 				if (!iap) {
-					warn("failed to select included map %s", mkey);
+					debug("failed to select included map %s", key);
 					continue;
 				}
 
 				/* Gim'ee some o' that 16k stack baby !! */
 				status = lookup_nss_mount(iap, key, key_len);
 
+				master_free_mapent_sources(iap->entry, 0);
 				master_free_mapent(iap->entry);
 
 				if (status)
@@ -611,17 +705,21 @@ static int lookup_wild(struct autofs_point *ap, struct lookup_context *ctxt)
 			 */
 			if (*mkey == '+') {
 				struct autofs_point *iap;
+				unsigned int inc;
 				int status;
 
-				iap = prepare_plus_include(ap, age, mkey);
+				inc = check_self_include(mkey, ctxt);
+
+				iap = prepare_plus_include(ap, age, mkey, inc);
 				if (!iap) {
-					warn("failed to select included map %s", mkey);
+					debug("failed to select included map %s", mkey);
 					continue;
 				}
 
 				/* Gim'ee some o' that 16k stack baby !! */
 				status = lookup_nss_mount(iap, "*", 1);
 
+				master_free_mapent_sources(iap->entry, 0);
 				master_free_mapent(iap->entry);
 
 				if (status)
@@ -656,11 +754,13 @@ static int check_map_indirect(struct autofs_point *ap,
 
 	cache_readlock(mc);
 	exists = cache_lookup(mc, key);
+	if (exists && exists->source != source)
+		exists = NULL;
 	cache_unlock(mc);
 
 	ret = lookup_one(ap, key, key_len, ctxt);
 	if (ret == CHE_COMPLETED)
-		return NSS_STATUS_SUCCESS;
+		return NSS_STATUS_COMPLETED;
 
 	if (ret == CHE_FAIL)
 		return NSS_STATUS_NOTFOUND;
@@ -675,20 +775,18 @@ static int check_map_indirect(struct autofs_point *ap,
 		wild = lookup_wild(ap, ctxt);
 		if (wild == CHE_COMPLETED)
 			return NSS_STATUS_SUCCESS;
-
+/*
 		if (wild == CHE_FAIL)
 			return NSS_STATUS_NOTFOUND;
-
+*/
+		pthread_cleanup_push(cache_lock_cleanup, mc);
 		cache_writelock(mc);
 		if (wild == CHE_MISSING)
 			cache_delete(mc, "*");
 
-		pthread_cleanup_push(cache_lock_cleanup, mc);
-		if (cache_delete(mc, key) &&
-			wild & (CHE_MISSING | CHE_FAIL))
+		if (cache_delete(mc, key) && wild & (CHE_MISSING | CHE_FAIL))
 			rmdir_path(key);
-		cache_unlock(mc);
-		pthread_cleanup_pop(0);
+		pthread_cleanup_pop(1);
 	}
 
 	/* Have parent update its map ? */
@@ -728,6 +826,14 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 	int status = 0;
 	int ret = 1;
 
+	if (source->recurse)
+		return NSS_STATUS_UNAVAIL;
+
+	if (source->depth > MAX_INCLUDE_DEPTH) {
+		error("maximum include depth exceeded %s", ctxt->mapname);
+		return NSS_STATUS_SUCCESS;
+	}
+
 	debug(MODPREFIX "looking up %s", name);
 
 	key_len = snprintf(key, KEY_MAX_LEN, "%s", name);
@@ -756,6 +862,9 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 		status = check_map_indirect(ap, lkp_key, strlen(lkp_key), ctxt);
 		free(lkp_key);
 		if (status) {
+			if (status == NSS_STATUS_COMPLETED)
+				return NSS_STATUS_SUCCESS;
+
 			debug(MODPREFIX "check indirect map lookup failed");
 			return NSS_STATUS_NOTFOUND;
 		}

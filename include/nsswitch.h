@@ -36,6 +36,9 @@ enum nsswitch_status {
 	NSS_STATUS_MAX
 };
 
+/* Internal NSS STATUS for map inclusion lookups */
+#define NSS_STATUS_COMPLETED    NSS_STATUS_MAX
+
 enum nsswitch_action {
 	NSS_ACTION_UNKNOWN = 0,
 	NSS_ACTION_CONTINUE,

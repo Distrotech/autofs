@@ -1075,6 +1075,8 @@ static void handle_mounts_cleanup(void *arg)
 
 	msg("shut down path %s", ap->path);
 
+	master_remove_mapent(ap->entry);
+	master_free_mapent_sources(ap->entry, 1);
 	master_free_mapent(ap->entry);
 
 	/* If we are the last tell the state machine to shutdown */
@@ -1111,6 +1113,7 @@ void *handle_mounts(void *arg)
 		if (status)
 			fatal(status);
 		umount_autofs(ap, 1);
+		master_free_mapent_sources(ap->entry, 1);
 		master_free_mapent(ap->entry);
 		pthread_exit(NULL);
 	}
@@ -1241,6 +1244,8 @@ static int is_automount_running(void)
 	}
 
 	while (readdir_r(dir, &entry, &result) == 0) {
+		int pid = 0;
+
 		if (!result)
 			break;
 
@@ -1251,9 +1256,9 @@ static int is_automount_running(void)
 			continue;
 
 		if (isdigit(*entry.d_name)) {
-			int me = atoi(entry.d_name);
+			pid = atoi(entry.d_name);
 
-			if (me == getpid())
+			if (pid == getpid())
 				continue;
 		}
 
@@ -1261,7 +1266,7 @@ static int is_automount_running(void)
 		if (len >= PATH_MAX) {
 			fprintf(stderr,
 				"buffer to small for /proc path\n");
-			exit(1);
+			return -1;
 		}
 		path[len] = '\0';
 
@@ -1274,7 +1279,7 @@ static int is_automount_running(void)
 			buf[len] = '\0';
 
 			if (strstr(buf, "automount"))
-				return 1;
+				return pid;
 			fclose(fp);
 		}
 	}
@@ -1376,7 +1381,7 @@ int main(int argc, char *argv[])
 	argv += optind;
 	argc -= optind;
 
-	if (is_automount_running()) {
+	if (is_automount_running() > 0) {
 		fprintf(stderr, "%s: program is already running.\n",
 			program);
 		exit(1);

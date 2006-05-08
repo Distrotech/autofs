@@ -27,6 +27,8 @@ struct map_source {
 	time_t age;
 	struct mapent_cache *mc;
 	unsigned int stale;
+	unsigned int recurse;
+	unsigned int depth;
 	struct lookup_mod *lookup;
 	int argc;
 	const char **argv;
@@ -48,6 +50,8 @@ struct master_mapent {
 
 struct master {
 	char *name;
+	unsigned int recurse;
+	unsigned int depth;
 	unsigned int default_ghost;
 	unsigned int default_logging;
 	unsigned int default_timeout;
@@ -69,7 +73,7 @@ struct map_source *
 master_add_map_source(struct master_mapent *, char *, char *, time_t, int, const char **);
 struct map_source *
 master_find_map_source(struct master_mapent *, const char *, const char *, int, const char **);
-void master_free_map_source(struct map_source *);
+void master_free_map_source(struct map_source *, unsigned int);
 struct map_source *
 master_find_source_instance(struct map_source *, const char *, const char *, int, const char **);
 struct map_source *
@@ -81,6 +85,8 @@ void master_source_lock_cleanup(void *);
 struct master_mapent *master_find_mapent(struct master *, const char *);
 struct master_mapent *master_new_mapent(const char *, time_t);
 void master_add_mapent(struct master *, struct master_mapent *);
+void master_remove_mapent(struct master_mapent *);
+void master_free_mapent_sources(struct master_mapent *, unsigned int);
 void master_free_mapent(struct master_mapent *);
 struct master *master_new(const char *, unsigned int, unsigned int);
 int master_read_master(struct master *, time_t, int);

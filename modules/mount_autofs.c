@@ -176,9 +176,17 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 		return 1;
 	}
 
+	source->mc = cache_init(source);
+	if (!source->mc) {
+		error(MODPREFIX "failed to init source cache");
+		master_free_mapent(entry);
+		return 1;
+	}
+
 	status = pthread_mutex_lock(&sc.mutex);
 	if (status) {
 		crit("failed to lock startup condition mutex!");
+		cache_release(source);
 		master_free_mapent(entry);
 		return 1;
 	}
@@ -194,6 +202,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 		status = pthread_mutex_unlock(&sc.mutex);
 		if (status)
 			fatal(status);
+		cache_release(source);
 		master_free_mapent(entry);
 		return 1;
 	}

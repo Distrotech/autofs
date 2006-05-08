@@ -142,13 +142,12 @@ int lookup_nss_read_master(struct master *master, time_t age)
 	/* If it starts with a '/' it has to be a file or LDAP map */
 	if (*master->name == '/') {
 		if (*(master->name + 1) == '/') {
-			debug("reading master %s ldap", master->name);
+			debug("reading master ldap %s", master->name);
 			result = do_read_master(master, "ldap", age);
 		} else {
-			debug("reading master %s file", master->name);
+			debug("reading master file %s", master->name);
 			result = do_read_master(master, "file", age);
 		}
-		debug("completed");
 
 		return !result;
 	} else {
@@ -172,12 +171,10 @@ int lookup_nss_read_master(struct master *master, time_t age)
 
 				master->name = tmp + 1;
 
-				debug("reading master %s %s", master->name, source);
+				debug("reading master %s %s", source, master->name);
 
 				result = do_read_master(master, source, age);
 				master->name = name;
-
-				debug("completed");
 
 				return !result;
 			}
@@ -200,7 +197,7 @@ int lookup_nss_read_master(struct master *master, time_t age)
 
 		this = list_entry(p, struct nss_source, list);
 
-		debug("reading master %s %s", master->name, this->source);
+		debug("reading master %s %s", this->source, master->name);
 
 		result = read_master_map(master, this->source, age);
 		if (result == NSS_STATUS_UNKNOWN) {
@@ -210,7 +207,6 @@ int lookup_nss_read_master(struct master *master, time_t age)
 
 		status = check_nss_result(this, result);
 		if (status >= 0) {
-			debug("completed");
 			free_sources(&nsslist);
 			return status;
 		}
@@ -218,8 +214,6 @@ int lookup_nss_read_master(struct master *master, time_t age)
 
 	if (!list_empty(&nsslist))
 		free_sources(&nsslist);
-
-	debug("completed");
 
 	return !result;
 }
@@ -412,6 +406,7 @@ int lookup_nss_read_map(struct autofs_point *ap, time_t age)
 		entry->current = map;
 
 		if (map->type) {
+			debug("reading map %s %s", map->type, map->argv[0]);
 			result = do_read_map(ap, map, age);
 			map = map->next;
 			continue;
@@ -426,9 +421,12 @@ int lookup_nss_read_map(struct autofs_point *ap, time_t age)
 					continue;
 				}
 				map->type = tmp;
+				debug("reading map %s %s", tmp, map->argv[0]);
 				result = do_read_map(ap, map, age);
-			} else
+			} else {
+				debug("reading map file %s", map->argv[0]);
 				result = read_file_source_instance(ap, map, age);
+			}
 			map = map->next;
 			continue;
 		}
@@ -446,6 +444,8 @@ int lookup_nss_read_map(struct autofs_point *ap, time_t age)
 			int status;
 
 			this = list_entry(p, struct nss_source, list);
+
+			debug("reading map %s %s", this->source, map->argv[0]);
 
 			result = read_map_source(this, ap, map, age);
 			if (result == NSS_STATUS_UNKNOWN)

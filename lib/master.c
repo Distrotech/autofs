@@ -163,7 +163,7 @@ master_add_map_source(struct master_mapent *entry,
 	if (type) {
 		ntype = strdup(type);
 		if (!ntype) {
-			master_free_map_source(source);
+			master_free_map_source(source, 0);
 			return NULL;
 		}
 		source->type = ntype;
@@ -172,7 +172,7 @@ master_add_map_source(struct master_mapent *entry,
 	if (format) {
 		nformat = strdup(format);
 		if (!nformat) {
-			master_free_map_source(source);
+			master_free_map_source(source, 0);
 			return NULL;
 		}
 		source->format = nformat;
@@ -180,17 +180,16 @@ master_add_map_source(struct master_mapent *entry,
 
 	source->age = age;
 	source->stale = 1;
-
+/*
 	source->mc = cache_init(source);
 	if (!source->mc) {
 		master_free_map_source(source);
 		return NULL;
 	}
-
-
+*/
 	tmpargv = copy_argv(argc, argv);
 	if (!tmpargv) {
-		master_free_map_source(source);
+		master_free_map_source(source, 0);
 		return NULL;
 	}
 	source->argc = argc;
@@ -213,7 +212,7 @@ master_add_map_source(struct master_mapent *entry,
 		this = __master_find_map_source(entry, type, format, argc, tmpargv);
 		if (this) {
 			this->age = age;
-			master_free_map_source(source);
+			master_free_map_source(source, 0);
 			master_source_unlock(entry);
 			return this;
 		}
@@ -310,7 +309,7 @@ struct map_source *master_find_map_source(struct master_mapent *entry,
 	return source;
 }
 
-void master_free_map_source(struct map_source *source)
+void master_free_map_source(struct map_source *source, unsigned int free_cache)
 {
 	int status;
 
@@ -318,7 +317,7 @@ void master_free_map_source(struct map_source *source)
 		free(source->type);
 	if (source->format)
 		free(source->format);
-	if (source->mc)
+	if (free_cache && source->mc)
 		cache_release(source);
 	if (source->lookup) {
 		struct map_source *instance;
@@ -343,7 +342,7 @@ void master_free_map_source(struct map_source *source)
 		instance = source->instance;
 		while (instance) {
 			next = instance->next;
-			master_free_map_source(instance);
+			master_free_map_source(instance, free_cache);
 			instance = next;
 		}
 
@@ -419,7 +418,7 @@ master_add_source_instance(struct map_source *source, const char *type, const ch
 
 	ntype = strdup(type);
 	if (!ntype) {
-		master_free_map_source(new);
+		master_free_map_source(new, 0);
 		return NULL;
 	}
 	new->type = ntype;
@@ -427,7 +426,7 @@ master_add_source_instance(struct map_source *source, const char *type, const ch
 	if (format) {
 		nformat = strdup(format);
 		if (!nformat) {
-			master_free_map_source(new);
+			master_free_map_source(new, 0);
 			return NULL;
 		}
 		new->format = nformat;
@@ -437,7 +436,7 @@ master_add_source_instance(struct map_source *source, const char *type, const ch
 
 	tmpargv = copy_argv(source->argc, source->argv);
 	if (!tmpargv) {
-		master_free_map_source(new);
+		master_free_map_source(new, 0);
 		return NULL;
 	}
 	new->argc = source->argc;
@@ -594,7 +593,7 @@ void master_add_mapent(struct master *master, struct master_mapent *entry)
 	return;
 }
 
-void master_free_mapent(struct master_mapent *entry)
+void master_remove_mapent(struct master_mapent *entry)
 {
 	int status;
 
@@ -608,6 +607,11 @@ void master_free_mapent(struct master_mapent *entry)
 	status = pthread_mutex_unlock(&master_mutex);
 	if (status)
 		fatal(status);
+}
+
+void master_free_mapent_sources(struct master_mapent *entry, unsigned int free_cache)
+{
+	int status;
 
 	master_source_writelock(entry);
 
@@ -617,7 +621,7 @@ void master_free_mapent(struct master_mapent *entry)
 		m = entry->maps;
 		while (m) {
 			n = m->next;
-			master_free_map_source(m);
+			master_free_map_source(m, free_cache);
 			m = n;
 		}
 		entry->maps = NULL;
@@ -625,14 +629,19 @@ void master_free_mapent(struct master_mapent *entry)
 
 	master_source_unlock(entry);
 
+	status = pthread_rwlock_destroy(&entry->source_lock);
+	if (status)
+		fatal(status);
+
+	return;
+}
+
+void master_free_mapent(struct master_mapent *entry)
+{
 	if (entry->path)
 		free(entry->path);
 
 	master_free_autofs_point(entry->ap);
-
-	status = pthread_rwlock_destroy(&entry->source_lock);
-	if (status)
-		fatal(status);
 
 	free(entry);
 
@@ -658,6 +667,8 @@ struct master *master_new(const char *name, unsigned int timeout, unsigned int g
 
 	master->name = tmp;
 
+	master->recurse = 0;
+	master->depth = 0;
 	master->default_ghost = ghost;
 	master->default_timeout = timeout;
 	master->default_logging = defaults_get_logging();
@@ -907,7 +918,7 @@ static void check_update_map_sources(struct master_mapent *entry, time_t age, in
 
 		/* Map source has gone away */
 		if (source->age < age) {
-			master_free_map_source(source);
+			master_free_map_source(source, 1);
 			map_stale = 1;
 		} else if (source->type) {
 			if (!strcmp(source->type, "null")) {
