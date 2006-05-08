@@ -21,7 +21,30 @@
 
 int load_autofs4_module(void)
 {
+	FILE *fp;
+	char buf[PATH_MAX];
 	int ret;
+
+	/*
+	 * Check if module already loaded or compiled in.
+	 * If both autofs v3 and v4 are coplied in and
+	 * the v3 module registers first or the v4 module
+	 * is an older version we will catch it at mount
+	 * time.
+	 */
+	fd = fopen("/proc/filesystems", "r");
+	if (!fp) {
+		error("cannot open /proc/filesystems\n");
+		return 0;
+	}
+
+	while (fgets(fp, buf, PATH_MAX - 1)) {
+		if (strstr(buf, "autofs")) {
+			fclose(fp);
+			return 1;
+		}
+	}
+	fclose(fp);
 
 	ret = spawnl(log_debug, PATH_MODPROBE, PATH_MODPROBE,
 				"-q", FS_MODULE_NAME, NULL);
