@@ -1238,8 +1238,30 @@ static int is_automount_running(void)
 	char path[PATH_MAX], buf[PATH_MAX];
 	int len;
 
+	/*
+	 * Check if module already loaded or compiled in.
+	 * If both autofs v3 and v4 are coplied in and
+	 * the v3 module registers first or the v4 module
+	 * is an older version we will catch it at mount
+	 * time.
+	 */
+
+	fp = fopen("/proc/filesystems", "r");
+	if (!fp) {
+		fprintf(stderr, "cannot open /proc/filesystems\n");
+		exit(1);
+	}
+
+	while (fgets(fp, buf, PATH_MAX - 1)) {
+		if (strstr(buf, "autofs")) {
+			fclose(fp);
+			return 1;
+		}
+	}
+	fclose(fp);
+
 	if ((dir = opendir("/proc")) == NULL) {
-		printf("cannot opendir(/proc)\n");
+		fprintf(stderr, "cannot opendir(/proc)\n");
 		exit(1);
 	}
 
