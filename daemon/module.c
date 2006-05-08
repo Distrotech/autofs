@@ -32,13 +32,13 @@ int load_autofs4_module(void)
 	 * is an older version we will catch it at mount
 	 * time.
 	 */
-	fd = fopen("/proc/filesystems", "r");
+	fp = fopen("/proc/filesystems", "r");
 	if (!fp) {
 		error("cannot open /proc/filesystems\n");
 		return 0;
 	}
 
-	while (fgets(fp, buf, PATH_MAX - 1)) {
+	while (fgets(buf, PATH_MAX - 1, fp)) {
 		if (strstr(buf, "autofs")) {
 			fclose(fp);
 			return 1;
