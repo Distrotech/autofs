@@ -7,9 +7,9 @@ Howto do an ebuild from the distribution for Gentoo
 In the distribution directory:
 
 cd gentoo
-PORTDIR_OVERLAY=`pwd` ebuild net-fs/autofs/autofs-4.1.4.ebuild digest
-PORTDIR_OVERLAY=`pwd` ebuild net-fs/autofs/autofs-4.1.4.ebuild clean install
-PORTDIR_OVERLAY=`pwd` ebuild net-fs/autofs/autofs-4.1.4.ebuild qmerge
+PORTDIR_OVERLAY=`pwd` ebuild net-fs/autofs/autofs-5.0.0_beta1.ebuild digest
+PORTDIR_OVERLAY=`pwd` ebuild net-fs/autofs/autofs-5.0.0_beta1.ebuild clean install
+PORTDIR_OVERLAY=`pwd` ebuild net-fs/autofs/autofs-5.0.0_beta1.ebuild qmerge
 
 and you should have a working autofs.
 

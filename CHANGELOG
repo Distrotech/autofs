@@ -9,6 +9,7 @@
 - fix shutdown wait for submounts again (and again ...).
 - add check for filesystem autofs in /proc/filesystems in case
   it's complied in the kernel.
+- update Gentoo ebuild.
 
 1/5/2006 autofs-5.0.0_beta1
 ------------------------------

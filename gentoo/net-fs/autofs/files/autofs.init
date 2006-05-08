@@ -42,7 +42,6 @@ start() {
 stop() {
 	ebegin "Stopping automounter"
 
-#	any=0
 	for file in `ls /var/run/autofs/*.pid 2>/dev/null`
 	do
 		if [ -e "$file" ]
