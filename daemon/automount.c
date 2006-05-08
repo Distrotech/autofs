@@ -1194,7 +1194,7 @@ void *handle_mounts(void *arg)
 				fatal(status);
 		}
 	}
-
+/*
 	status = pthread_mutex_lock(&ap->mounts_mutex);
 	if (status)
 		fatal(status);
@@ -1208,7 +1208,7 @@ void *handle_mounts(void *arg)
 	status = pthread_mutex_unlock(&ap->mounts_mutex);
 	if (status)
 		fatal(status);
-
+*/
 	pthread_cleanup_pop(1);
 
 	return NULL;

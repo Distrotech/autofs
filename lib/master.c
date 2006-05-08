@@ -729,14 +729,15 @@ static void notify_submounts(struct autofs_point *ap, enum states state)
 
 		empty = list_empty(&this->submounts);
 
-		pthread_mutex_unlock(&ap->mounts_mutex);
-
 		status = pthread_mutex_lock(&this->state_mutex);
 		if (status)
 			fatal(status);
 
-		if (!empty)
+		if (!empty) {
+			pthread_mutex_unlock(&ap->mounts_mutex);
 			notify_submounts(this, state);
+			pthread_mutex_lock(&ap->mounts_mutex);
+		}
 
 		nextstate(this->state_pipe[1], state);
 
@@ -744,7 +745,11 @@ static void notify_submounts(struct autofs_point *ap, enum states state)
 		if (status)
 			fatal(status);
 
-		pthread_mutex_lock(&ap->mounts_mutex);
+		status = pthread_cond_wait(&ap->mounts_cond, &ap->mounts_mutex);
+		if (status) {
+			error("wait for submount failed");
+			fatal(status);
+		}
 	}
 
 	status = pthread_mutex_unlock(&ap->mounts_mutex);

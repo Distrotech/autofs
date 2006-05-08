@@ -6,6 +6,7 @@
 - add check for self inclusion when including maps.
 - add plus map inclusion depth limit.
 - fix logic to check if map update is needed.
+- fix shutdown wait for submounts again (and again ...).
 
 1/5/2006 autofs-5.0.0_beta1
 ------------------------------

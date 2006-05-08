@@ -167,6 +167,22 @@ static unsigned int st_ready(struct autofs_point *ap)
 
 	ap->state = ST_READY;
 
+	if (ap->submount) {
+		int status;
+
+		status = pthread_mutex_lock(&ap->parent->mounts_mutex);
+		if (status)
+			fatal(status);
+
+		status = pthread_cond_signal(&ap->parent->mounts_cond);
+		if (status)
+			error("failed to signal submount notify condition");
+
+		status = pthread_mutex_unlock(&ap->parent->mounts_mutex);
+		if (status)
+			fatal(status);
+	}
+
 	return 1;
 }
 
