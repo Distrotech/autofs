@@ -1,5 +1,5 @@
-??/??/2006 autofs-5.0.0_beta2
------------------------------
+9/5/2006 autofs-5.0.0_beta2
+---------------------------
 - re-organize functions for direct mount and expire to eliminate
   pthread compile error.
 - reap return code from child at startup.
@@ -13,7 +13,7 @@
 - updated man pages based on feedback from Jeff Moyer.
 
 1/5/2006 autofs-5.0.0_beta1
-------------------------------
+---------------------------
 - Initial update.
   - direct mounts.
   - lazy multi-mounts.
