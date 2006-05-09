@@ -30,11 +30,11 @@ For indirect mounts this is the part of the path name between the mount point
 and the path into the filesystem when it is mounted. Usually you can think about the
 key as a sub-directory name below the autofs managed mount point.
 
-For direct mounts this is the full path of the each mount point. This map is always
+For direct mounts this is the full path of each mount point. This map is always
 associated with the /- mount point in the master map. 
 
 .SS options
-Options are optional.  Options can also be given in the 
+Zero or more options may be given.  Options can also be given in the 
 .B auto.master
 file in which case both values are cumulative (this is a difference
 from SunOS).  The options are a list of comma separated options as
@@ -80,7 +80,7 @@ server	-rw,hard,intr	/ -ro myserver.me.org:/ \\
 .sp
 In the first line we have a NFS remote mount of the kernel directory on
 .IR ftp.kernel.org .
-This is mounted read-only.  The second line mounts an ext2 volume on a
+This is mounted read-only.  The second line mounts an ext2 volume from a
 local ide drive.  The third makes a share exported from a Windows
 machine available for automounting.  The rest should be fairly
 self-explanatory. The last entry (the last three lines) is an example
@@ -122,21 +122,20 @@ is expanded to the value of the
 field that matched the line (which probably only makes sense together with
 a wildcard key).
 .SS Wildcard Key
-A * in the
-.B key
-field of indirect maps matches all keys.  An example for the usefulness
-is the following entry:
+A map key of * denotes a wild-card entry. This entry is consulted
+if the specified key does not exist in the map.  A typical wild-card
+entry looks like this:
 .sp
 .RS +.2i
 .ta 1.0i
 .nf
-*	&:/home/&
+*	server:i/export/home/&
 .fi
 .RE
 .sp
-This will enable you to access all the home directory of local hosts using
-the path
-.RI / mount-point / hostname / local-path .
+The special character '&' will be replaced by the provided key.  So,
+in the example above, a lookup for the key 'foo' would yield a mount
+of server:/export/home/foo.
 .SS Variable Substitution
 The following special variables will be substituted in the key and location
 fields of an automounter map if prefixed with $ as customary from shell
@@ -172,17 +171,14 @@ HOST	Hostname (uname -n)
 Additional entries can be defined with the -Dvariable=Value map-option to
 .BR automount (8).
 .SS Executable Maps
-A map can be marked as executable.  The init script that parses the
-auto.master map will pass this as a
-.B program
-map to the automounter.  A
+A map can be marked as executable. A
 .B program
 map will be called with the key as an argument.  It may
 return no lines of output if there's an error, or one or more lines
 containing a map entry (with \\ quoting line breaks). The map entry
 corresponds to what would normally follow a map key.
 .P
-A executable map can return an error code to indicate the failure in addition
+An executable map can return an error code to indicate the failure in addition
 to no output at all.  All output sent to stderr is logged into the system
 logs.
 .SS Multiple Mounts

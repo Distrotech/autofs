@@ -76,19 +76,27 @@ The daemon also responds to a HUP signal which triggers an update of
 the maps for each mount point.
 .P
 If any autofs mount point directories are busy when the daemon is sent
-an exit signal then the daemon will not exit unless  without umounting the
-autofs filesystem.  The filesystem is left in a catatonic
-(non-functional) state, and can be unmounted when it becomes unused.
+an exit signal the daemon will not exit. The exception to this is
+if autofs has been built with configure options to either ignore busy
+mounts at exit or force umount at exit. If the ignore busy mounts at
+exit option is used the filesystems will be left in a catatonic
+(non-functional) state and can be manually umounted when they become
+unused. If the force umount at exit option is used the filesystems
+will be umounted but the mount will not be released by the kernel
+until they are no longer in use by the processes that held them busy.
+If automount managed filesystems are found mounted when autofs is
+started they will be recoverd unless they are no longer present in
+the map in which case they need to umounted manually.
 .SH "SEE ALSO"
 .BR autofs (5),
 .BR mount (8).
 .SH BUGS
-A whole slew of things I don't yet know about.
+Don't know, I've fixed everything I know about.
 
-The documentation leaves a lot to be desired.
+The documentation could be better.
 
 Please report other bugs along with a detailed description to
 <autofs@linux.kernel.org>. For instructions on how to join the list
 and for archives visit http://linux.kernel.org/mailman/listinfo/autofs
 .SH AUTHOR
-H. Peter Anvin <hpa@transmeta.com>. Edited by Ian Kent <raven@themaw.net>.
+H. Peter Anvin <hpa@transmeta.com> and Ian Kent <raven@themaw.net>.
