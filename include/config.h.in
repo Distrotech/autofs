@@ -35,6 +35,10 @@
 
 #undef WITH_DMALLOC
 
+#undef WITH_HESIOD
+
+#undef WITH_LDAP
+
 #undef WITH_SASL
 
 #undef ENABLE_FORCED_SHUTDOWN

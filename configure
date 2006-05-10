@@ -3236,6 +3236,13 @@ if test $ac_cv_lib_hesiod_hes_resolve = yes; then
   HAVE_HESIOD=1 LIBHESIOD="$LIBHESIOD -lhesiod"
 fi
 
+	if test "$HAVE_HESIOD" == "1"; then
+
+cat >>confdefs.h <<\_ACEOF
+#define WITH_HESIOD 1
+_ACEOF
+
+	fi
 fi
 
 
@@ -3970,6 +3977,13 @@ if test $ac_cv_lib_ldap_ldap_init = yes; then
   HAVE_LDAP=1 LIBLDAP="$LIBLDAP -lldap_r -llber -lresolv"
 fi
 
+	if test "$HAVE_LDAP" == "1"; then
+
+cat >>confdefs.h <<\_ACEOF
+#define WITH_LDAP 1
+_ACEOF
+
+	fi
 fi
 
 

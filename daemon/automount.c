@@ -42,6 +42,9 @@
 
 const char *program;		/* Initialized with argv[0] */
 const char *version = VERSION_STRING;	/* Program version */
+const char *libdir = AUTOFS_LIB_DIR;	/* Location of library modules */
+const char *mapdir = AUTOFS_MAP_DIR;	/* Location of mount maps */
+const char *confdir = AUTOFS_CONF_DIR;	/* Location of autofs config file */
 
 static char *pid_file = NULL;	/* File in which to keep pid */
 static int start_pipefd[2];
@@ -1298,8 +1301,85 @@ static void usage(void)
 		"	-v --verbose	be verbose\n"
 		"	-d --debug	log debuging info\n"
 		/*"	-f --foreground do not fork into background\n" */
-		"	-V --version	print version and exit\n"
+		"	-V --version	print version, build config and exit\n"
 		, program);
+}
+
+static void show_build_info(void)
+{
+	char buf[2048];
+	int count = 0;
+
+	printf("\nLinux automount version %s\n", version);
+
+	printf("\nDirectories:\n");
+	printf("\tconfig dir:\t%s\n", confdir);
+	printf("\tmaps dir:\t%s\n", mapdir);
+	printf("\tmodules dir:\t%s\n", libdir);
+
+	printf("\nCompile options:\n  ");
+
+	memset(buf, 0, 2048);
+
+#ifndef ENABLE_MOUNT_LOCKING
+	printf("DISABLE_MOUNT_LOCKING ");
+	count = 22;
+#endif
+
+#ifdef ENABLE_FORCED_SHUTDOWN
+	printf("ENABLE_FORCED_SHUTDOWN ");
+	count = count + 23;
+#endif
+
+#ifdef ENABLE_IGNORE_BUSY_MOUNTS
+	printf("ENABLE_IGNORE_BUSY_MOUNTS ");
+	count = count + 26;
+
+	if (count > 60) {
+		printf("\n  ");
+		count = 0;
+	}
+#endif
+
+
+#ifdef WITH_HESIOD
+	printf("WITH_HESIOD ");
+	count = count + 12;
+
+	if (count > 60) {
+		printf("\n  ");
+		count = 0;
+	}
+#endif
+
+#ifdef WITH_LDAP
+	printf("WITH_LDAP ");
+	count = count + 10;
+
+	if (count > 60) {
+		printf("\n  ");
+		count = 0;
+	}
+#endif
+
+#ifdef WITH_SASL
+	printf("WITH_SASL ");
+	count = count + 10;
+
+	if (count > 60) {
+		printf("\n  ");
+		count = 0;
+	}
+#endif
+
+#ifdef WITH_DMALLOC
+	printf("WITH_DMALLOC ");
+	count = count + 13;
+#endif
+
+	printf("\n\n");
+
+	return;
 }
 
 int main(int argc, char *argv[])
@@ -1361,7 +1441,7 @@ int main(int argc, char *argv[])
 			break;
 
 		case 'V':
-			printf("Linux automount version %s\n", version);
+			show_build_info();
 			exit(0);
 
 		case '?':

@@ -145,6 +145,10 @@ then
 	HAVE_HESIOD=0
 	AC_CHECK_LIB(hesiod, hes_resolve, HAVE_HESIOD=1 LIBHESIOD="$LIBHESIOD -lhesiod", ,
 		     $LIBRESOLV)
+	if test "$HAVE_HESIOD" == "1"; then
+		AC_DEFINE(WITH_HESIOD,1,
+			[Define if using Hesiod as a source of automount maps])
+	fi
 fi
 AC_SUBST(HAVE_HESIOD)
 AC_SUBST(LIBHESIOD)
@@ -181,6 +185,10 @@ if test -z "$HAVE_LDAP"; then
 	LDAP_FLAGS="$LDAP_FLAGS -DLDAP_DEPRECATED=1"
 	AC_CHECK_LIB(ldap, ldap_init, HAVE_LDAP=1 LIBLDAP="$LIBLDAP -lldap_r -llber -lresolv", ,
 		     -llber -lresolv $LIBS)
+	if test "$HAVE_LDAP" == "1"; then
+		AC_DEFINE(WITH_LDAP,1,
+			[Define if using LDAP as a source of automount maps])
+	fi
 fi
 
 AC_SUBST(LDAP_FLAGS)
