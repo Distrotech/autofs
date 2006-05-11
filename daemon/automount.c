@@ -1300,6 +1300,7 @@ static void usage(void)
 		"	-t --timeout n	auto-unmount in n seconds (0-disable)\n"
 		"	-v --verbose	be verbose\n"
 		"	-d --debug	log debuging info\n"
+		"	-D --define	define global macro variable\n"
 		/*"	-f --foreground do not fork into background\n" */
 		"	-V --version	print version, build config and exit\n"
 		, program);
@@ -1397,6 +1398,7 @@ int main(int argc, char *argv[])
 		{"timeout", 1, 0, 't'},
 		{"verbose", 0, 0, 'v'},
 		{"debug", 0, 0, 'd'},
+		{"define", 1, 0, 'D'},
 		{"foreground", 0, 0, 'f'},
 		{"version", 0, 0, 'V'},
 		{0, 0, 0, 0}
@@ -1414,7 +1416,7 @@ int main(int argc, char *argv[])
 	foreground = 0;
 
 	opterr = 0;
-	while ((opt = getopt_long(argc, argv, "+hp:t:vdfV", long_options, NULL)) != EOF) {
+	while ((opt = getopt_long(argc, argv, "+hp:t:vdD:fV", long_options, NULL)) != EOF) {
 		switch (opt) {
 		case 'h':
 			usage();
@@ -1434,6 +1436,10 @@ int main(int argc, char *argv[])
 
 		case 'd':
 			set_log_debug();
+			break;
+
+		case 'D':
+			macro_parse_globalvar(optarg);
 			break;
 
 		case 'f':

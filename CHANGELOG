@@ -1,3 +1,9 @@
+?/?/2006 autofs-5.0.0_beta3
+---------------------------
+- add config and compile time info to output of -V.
+- add "-Dvar=value" comand line option to define global
+  macro definitions.
+
 9/5/2006 autofs-5.0.0_beta2
 ---------------------------
 - re-organize functions for direct mount and expire to eliminate

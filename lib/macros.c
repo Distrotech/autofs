@@ -22,7 +22,6 @@
 #include <sys/utsname.h>
 
 #include "automount.h"
-#include "macros.h"
 
 static struct utsname un;
 static char processor[65];		/* Not defined on Linux, so we make our own */
@@ -155,6 +154,33 @@ done:
 		fatal(status);
 
 	return ret;
+}
+
+int macro_parse_globalvar(const char *define)
+{
+	char buf[MAX_MACRO_STRING];
+	char *pbuf, *value;
+
+	if (strlen(define) > MAX_MACRO_STRING)
+		return 0;
+
+	strcpy(buf, define);
+
+	pbuf = buf;
+	while (pbuf) {
+		if (*pbuf == '=') {
+			*pbuf = '\0';
+			value = pbuf + 1;
+			break;
+		}
+		pbuf++;
+	}
+
+	/* Macro must have value */
+	if (!pbuf)
+		return 0;
+
+	return macro_global_addvar(buf, strlen(buf), value);
 }
 
 struct substvar *
@@ -379,18 +405,18 @@ macro_findvar(const struct substvar *table, const char *str, int len)
 	char etmp[512];
 #endif
 
-	/* First look in the system wide table */
-	while (sv) {
-		if (!strncmp(str, sv->def, len) && sv->def[len] == '\0')
-			return sv;
-		sv = sv->next;
-	}
-
-	/* Then try the passed in local table */
+	/* First try the passed in local table */
 	while (lv) {
 		if (!strncmp(str, lv->def, len) && lv->def[len] == '\0')
 			return lv;
 		lv = lv->next;
+	}
+
+	/* Then look in the system wide table */
+	while (sv) {
+		if (!strncmp(str, sv->def, len) && sv->def[len] == '\0')
+			return sv;
+		sv = sv->next;
 	}
 
 #ifdef ENABLE_EXT_ENV

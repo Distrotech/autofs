@@ -44,6 +44,11 @@ autofs managed mounts.
 Enables logging of general status and progress messages as well as
 debuging messages for all autofs managed mounts.
 .TP
+.I "\-Dvariable=value"
+Define a global macro substitution variable. Global definitions
+are over-ridden macro definitions of the same name specified in
+mount entries.
+.TP
 .I "\-V, \-\-version"
 Display the version number, then exit.
 .SH ARGUMENTS

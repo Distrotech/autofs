@@ -35,7 +35,6 @@
 
 #define MODULE_PARSE
 #include "automount.h"
-#include "macros.h"
 
 #define MODPREFIX "parse(sun): "
 

@@ -26,6 +26,7 @@
 #include "defaults.h"
 #include "state.h"
 #include "master.h"
+#include "macros.h"
 #include "log.h"
 
 #if WITH_DMALLOC
