@@ -20,7 +20,7 @@ License: GPL
 Group: System Environment/Daemons
 Source: ftp://ftp.kernel.org/pub/linux/daemons/autofs/v4/autofs-%{version}.tar.gz
 Buildroot: %{_tmppath}/%{name}-tmp
-BuildPrereq: autoconf, hesiod-devel, openldap-devel, perl
+BuildPrereq: autoconf, hesiod-devel, openldap-devel, bison, flex
 Prereq: chkconfig
 Requires: /bin/bash mktemp sed textutils sh-utils grep /bin/ps
 Obsoletes: autofs-ldap
