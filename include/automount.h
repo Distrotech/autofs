@@ -28,6 +28,7 @@
 #include "master.h"
 #include "macros.h"
 #include "log.h"
+#include "rpc_subs.h"
 
 #if WITH_DMALLOC
 #include <dmalloc.h>
@@ -304,25 +305,6 @@ int _strlen(const char *str, size_t max);
 int cat_path(char *buf, size_t len, const char *dir, const char *base);
 int ncat_path(char *buf, size_t len,
               const char *dir, const char *base, size_t blen);
-
-/* rpc helper subs */
-#define RPC_PING_FAIL           0x0000
-#define RPC_PING_V2             NFS2_VERSION
-#define RPC_PING_V3             NFS3_VERSION
-#define RPC_PING_UDP            0x0100
-#define RPC_PING_TCP            0x0200
-/*
- * Close options to allow some choice in how and where the TIMED_WAIT
- *  happens.
- */
-#define RPC_CLOSE_DEFAULT	0x0000
-#define RPC_CLOSE_ACTIVE	RPC_CLOSE_DEFAULT
-#define RPC_CLOSE_NOLINGER	0x0001
-
-int rpc_ping(const char *host, long seconds, long micros, unsigned int option);
-int rpc_time(const char *host, 
-	     unsigned int ping_vers, unsigned int ping_proto,
-	     long seconds, long micros, unsigned int option, double *result);
 
 /* mount table utilities */
 

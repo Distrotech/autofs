@@ -17,34 +17,18 @@
 #include <rpc/types.h>
 #include <rpc/rpc.h>
 #include <rpc/pmap_prot.h>
-#include <nfs/nfs.h>
-#include <linux/nfs2.h>
-#include <linux/nfs3.h>
 #include <rpc/xdr.h>
 
 #include <unistd.h>
 #include <sys/socket.h>
 #include <netdb.h>
 #include <netinet/in.h>
+#include <arpa/inet.h>
 #include <sys/fcntl.h>
 
 #include "automount.h"
 #include "mount.h"
-
-#define PMAP_TOUT_UDP	3
-#define PMAP_TOUT_TCP	5
-
-struct conn_info {
-	const char *host;
-	unsigned short port;
-	unsigned long program;
-	unsigned long version;
-	struct protoent *proto;
-	unsigned int send_sz;
-	unsigned int recv_sz;
-	struct timeval timeout;
-	unsigned int close_option;
-};
+#include "rpc_subs.h"
 
 /*
  * Create a UDP RPC client
@@ -65,17 +49,22 @@ static CLIENT* create_udp_client(struct conn_info *info)
 	memset(&laddr, 0, sizeof(laddr));
 	memset(&raddr, 0, sizeof(raddr));
 
+	raddr.sin_family = AF_INET;
+	if (inet_aton(info->host, &raddr.sin_addr))
+		goto got_addr;
+
 	ret = gethostbyname_r(info->host, php,
 			buf, HOST_ENT_BUF_SIZE, &result, &h_errno);
-	if (ret) {
-		char *estr =  strerror_r(h_errno, buf, HOST_ENT_BUF_SIZE);
+	if (ret || !result) {
+		int err = h_errno == -1 ? errno : h_errno;
+		char *estr =  strerror_r(err, buf, HOST_ENT_BUF_SIZE);
 		error("hostname lookup failed: %s", estr);
 		return NULL;
 	}
-
-	raddr.sin_family = AF_INET;
-	raddr.sin_port = htons(info->port);
 	memcpy(&raddr.sin_addr.s_addr, php->h_addr, php->h_length);
+
+got_addr:
+	raddr.sin_port = htons(info->port);
 
 	/*
 	 * bind to any unused port.  If we left this up to the rpc
@@ -194,17 +183,22 @@ static CLIENT* create_tcp_client(struct conn_info *info)
 
 	memset(&addr, 0, sizeof(addr));
 
+	addr.sin_family = AF_INET;
+	if (inet_aton(info->host, &addr.sin_addr))
+		goto got_addr;
+
 	ret = gethostbyname_r(info->host, php,
 			buf, HOST_ENT_BUF_SIZE, &result, &h_errno);
-	if (ret) {
-		char *estr =  strerror_r(h_errno, buf, HOST_ENT_BUF_SIZE);
+	if (ret || !result) {
+		int err = h_errno == -1 ? errno : h_errno;
+		char *estr =  strerror_r(err, buf, HOST_ENT_BUF_SIZE);
 		error("hostname lookup failed: %s", estr);
 		return NULL;
 	}
-
-	addr.sin_family = AF_INET;
-	addr.sin_port = htons(info->port);
 	memcpy(&addr.sin_addr.s_addr, php->h_addr, php->h_length);
+
+got_addr:
+	addr.sin_port = htons(info->port);
 
 	fd = socket(PF_INET, SOCK_STREAM, info->proto->p_proto);
 	if (fd < 0)
@@ -233,7 +227,7 @@ out_close:
 	return NULL;
 }
 
-static unsigned short portmap_getport(struct conn_info *info)
+unsigned short portmap_getport(struct conn_info *info)
 {
 	struct conn_info pmap_info;
 	unsigned short port = 0;

@@ -5,6 +5,8 @@
   macro definitions.
 - remove "fg" and "bg" options as they aren't relevant for
   autofs.
+- fix handling of numeric ip address strings in name translation.
+- fix error handling for gethostbyname_r.
 
 9/5/2006 autofs-5.0.0_beta2
 ---------------------------
