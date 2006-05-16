@@ -589,6 +589,9 @@ static int sun_mount(struct autofs_point *ap, const char *root,
 				nonstrict = 0;
 			} else if (strncmp("nonstrict", cp, 9) == 0) {
 				nonstrict = 1;
+			} else if (strncmp("bg", cp, 2) == 0 ||
+				   strncmp("fg", cp, 2) == 0) {
+				continue;
 			} else {
 				memcpy(np, cp, comma - cp + 1);
 				np += comma - cp + 1;
