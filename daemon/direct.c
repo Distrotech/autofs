@@ -194,10 +194,9 @@ int umount_autofs_direct(struct autofs_point *ap)
 		cache_readlock(mc);
 		me = cache_enumerate(mc, NULL);
 		while (me) {
-		/*	cache_unlock(mc); */
+			sched_yield();
 			/* TODO: check return, locking me */
 			do_umount_autofs_direct(ap, mnts, me);
-		/*	cache_readlock(mc); */
 			me = cache_enumerate(mc, me);
 		}
 		pthread_cleanup_pop(1);

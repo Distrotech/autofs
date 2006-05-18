@@ -197,6 +197,8 @@ static int umount_offsets(struct autofs_point *ap, struct mnt_list *mnts, const 
 			continue;
 		}
 
+		sched_yield();
+
 		debug("umount offset %s", offset);
 
 		strcpy(key, base);
