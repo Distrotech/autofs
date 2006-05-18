@@ -3,10 +3,13 @@
 - add config and compile time info to output of -V.
 - add "-Dvar=value" comand line option to define global
   macro definitions.
-- remove "fg" and "bg" options as they aren't relevant for
+- remove "nofg" and "bg" options as they aren't relevant for
   autofs.
 - fix handling of numeric ip address strings in name translation.
 - fix error handling for gethostbyname_r.
+- change option processing to be inline with standard automount
+  option processing. ie. mount entry options override global
+  mount options.
 
 9/5/2006 autofs-5.0.0_beta2
 ---------------------------

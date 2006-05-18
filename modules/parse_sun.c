@@ -923,19 +923,26 @@ int parse_mount(struct autofs_point *ap, const char *name,
 
 	/* Deal with 0 or more options */
 	if (*p == '-') {
+		char *mnt_options = NULL;
+
 		do {
 			char *noptions = NULL;
 
 			p = parse_options(p, &noptions);
-			options = concat_options(options, noptions);
+			mnt_options = concat_options(mnt_options, noptions);
 
-			if (options == NULL) {
+			if (mnt_options == NULL) {
 				char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
 				error(MODPREFIX "concat_options: %s", estr);
 				return 1;
 			}
 			p = skipspace(p);
 		} while (*p == '-');
+
+		if (options)
+			free(options);
+
+		options = mnt_options;
 	}
 
 	debug(MODPREFIX "gathered options: %s", options);
