@@ -590,7 +590,7 @@ static int sun_mount(struct autofs_point *ap, const char *root,
 			} else if (strncmp("nonstrict", cp, 9) == 0) {
 				nonstrict = 1;
 			} else if (strncmp("bg", cp, 2) == 0 ||
-				   strncmp("fg", cp, 2) == 0) {
+				   strncmp("nofg", cp, 4) == 0) {
 				continue;
 			} else {
 				memcpy(np, cp, comma - cp + 1);
