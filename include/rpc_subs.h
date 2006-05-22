@@ -2,8 +2,8 @@
  *   
  *  rpc_subs.h - header file for rpc discovery
  *
- *   Copyright 2004 Ian Kent <raven@themaw.net> - All Rights Reserved
  *   Copyright 2004 Jeff Moyer <jmoyer@redaht.com> - All Rights Reserved
+ *   Copyright 2004-2006 Ian Kent <raven@themaw.net> - All Rights Reserved
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -16,6 +16,8 @@
 #ifndef _RPC_SUBS_H
 #define _RPC_SUBS_H
 
+#include <rpc/rpc.h>
+#include <rpc/pmap_prot.h>
 #include <nfs/nfs.h>
 #include <linux/nfs2.h>
 #include <linux/nfs3.h>
@@ -52,10 +54,18 @@ struct conn_info {
 	unsigned int recv_sz;
 	struct timeval timeout;
 	unsigned int close_option;
+	CLIENT *client;
 };
 
-unsigned short portmap_getport(struct conn_info *);
+int rpc_udp_getclient(struct conn_info *, unsigned int, unsigned int);
+void rpc_destroy_udp_client(struct conn_info *);
+int rpc_tcp_getclient(struct conn_info *, unsigned int, unsigned int);
+void rpc_destroy_tcp_client(struct conn_info *);
+int rpc_portmap_getclient(struct conn_info *, const char *, const char *, unsigned int);
+unsigned short rpc_portmap_getport(struct conn_info *, struct pmap *);
+int rpc_ping_proto(struct conn_info *);
 int rpc_ping(const char *, long, long, unsigned int);
+double elapsed(struct timeval, struct timeval);
 int rpc_time(const char *, unsigned int, unsigned int, long, long, unsigned int, double *);
 
 #endif

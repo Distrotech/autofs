@@ -99,3 +99,8 @@ lookup_ldap.so: lookup_ldap.c $(SASL_OBJ)
 		lookup_ldap.c $(SASL_OBJ) $(AUTOFS_LIB) $(LIBLDAP)
 	$(STRIP) lookup_ldap.so
 
+mount_nfs.so: mount_nfs.c replicated.o
+	$(CC) $(SOLDFLAGS) $(CFLAGS) -o mount_nfs.so \
+		mount_nfs.c replicated.o $(AUTOFS_LIB)
+	$(STRIP) mount_nfs.so
+

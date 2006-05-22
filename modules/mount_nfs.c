@@ -34,31 +34,16 @@
 
 #define MODULE_MOUNT
 #include "automount.h"
+#include "replicated.h"
 
 #define MODPREFIX "mount(nfs): "
 
 int mount_version = AUTOFS_MOUNT_VERSION;	/* Required by protocol */
 
-static int udpproto;
-static short port_discard;
-
 static struct mount_mod *mount_bind = NULL;
 
 int mount_init(void **context)
 {
-	struct protoent *udp;
-	struct servent *port_dis;
-
-	/* These are context independent */
-	udp = getprotobyname("udp");
-	udpproto = udp ? udp->p_proto : 0;
-	port_dis = getservbyname("discard", "udp");
-
-	if (port_dis)
-		port_discard = port_dis->s_port;
-	else
-		port_discard = htons(9);	/* 9 is the standard discard port */
-
 	/* Make sure we have the local mount method available */
 	if (!mount_bind)
 		mount_bind = open_mount("bind", MODPREFIX);
@@ -66,366 +51,27 @@ int mount_init(void **context)
 	return !mount_bind;
 }
 
-int is_local_addr(const char *host, const char *host_addr, int addr_len)
-{
-	struct sockaddr_in src_addr, local_addr;
-	int src_len = sizeof(src_addr);
-	socklen_t local_len = sizeof(local_addr);
-	char buf[MAX_ERR_BUF];
-	int sock, ret;
-
-	sock = socket(AF_INET, SOCK_DGRAM, udpproto);
-	if (sock < 0) {
-		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		error(MODPREFIX "socket creation failed: %s", estr);
-		return -1;
-	}
-
-	src_addr.sin_family = AF_INET;
-	memcpy(&src_addr.sin_addr, host_addr, addr_len);
-	src_addr.sin_port = port_discard;
-
-	ret = connect(sock, (struct sockaddr *) &src_addr, src_len);
-	if (ret < 0 ) {
-		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		error(MODPREFIX "connect failed for %s: %s", host, estr);
-		close(sock);
-		return 0;
-	}
-
-	ret = getsockname(sock, (struct sockaddr *) &local_addr, &local_len);
-	if (ret < 0) {
-		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		error(MODPREFIX "getsockname failed: %s", estr);
-		close(sock);
-		return 0;
-	}
-
-	close(sock);
-
-	ret = memcmp(&src_addr.sin_addr, &local_addr.sin_addr, addr_len);
-	if (ret)
-		return 0;
-	
-	return 1;
-}
-
-/*
- * If the entry doesn't contain a ',' or doesn't contain more than
- * one ':' then @what is not a replicated server entry.
- */
-static int inline is_replicated_entry(char *what)
-{
-	return strchr(what, ',') ||
-		(strchr(what, ':') != strrchr(what, ':'));
-}
-
-/*
- *  Check to see if the 'host:path' or 'host' is on the local machine
- *  Returns < 0 if there is a host lookup problem, otherwise returns 0
- *  if it's not a local mount, and returns > 0 if it is a local mount.
- */
-int is_local_mount(const char *hostpath)
-{
-	struct hostent he;
-	struct hostent *phe = &he;
-	struct hostent *result;
-	char buf[HOST_ENT_BUF_SIZE];
-	char **haddr;
-	char *delim;
-	char *hostname;
-	int hostnamelen, h_errno;
-	int ret, local = 0;
-
-	debug(MODPREFIX "%s", hostpath);
-
-	delim = strpbrk(hostpath,":");
-	if (delim) 
-		hostnamelen = delim - hostpath; 
-	else 
-		hostnamelen = strlen(hostpath);
-
-	hostname = alloca(hostnamelen + 1);
-	strncpy(hostname, hostpath, hostnamelen);
-	hostname[hostnamelen] = '\0';
-
-	ret = gethostbyname_r(hostname, phe,
-			buf, HOST_ENT_BUF_SIZE, &result, &h_errno);
-	if (ret) {
-		error(MODPREFIX "host %s: lookup failure", hostname);
-		return -1;
-	}
-
-	for (haddr = phe->h_addr_list; *haddr; haddr++) {
-		local = is_local_addr(hostname, *haddr, phe->h_length);
-		if (local < 0)
-			return local;
-
- 		if (local) {
-			debug(MODPREFIX "host %s: is localhost", hostname);
-			return local;
-		}
-	}
-
-	return 0;
-}
-
-/*
- * Given a mount string, return (in the same string) the
- * best mount to use based on locality/weight/rpctime.
- *
- * If longtimeout is set to 0 then we only do 100 ms pings to hosts.  In
- * the event that this fails, we call ourself recursively with the
- * longtimeout option set to 1.  In this case we ping for up to 10s and
- * skip logic for detecting if a localhost has been passed. (if a local
- * host had been passed, we would have returned that mount as the best
- * mount.  The skipping of local maps in this case is an optimization).
- *
- * - return -1 and what = '\0' on error,
- *           1 and what = local mount path if local bind,
- *     else  0 and what = remote mount path
- */
-int get_best_mount(char *what, const char *original, int longtimeout)
-{
-	char *p = what;
-	char *winner = NULL;
-	int winner_weight = INT_MAX, local = 0;
-	double winner_time = 0;
-	char *delim, *pstrip;
-	int sec = (longtimeout) ? 8 : 0;
-	int micros = (longtimeout) ? 0 : 100000;
-	int skiplocal = longtimeout; /* clearly local is not available */
-
-	if (!p) {
-		*what = '\0';
-		return -1;
-	}
-
-	/*
-	 *  If only one mountpoint has been passed in, we don't need to
-	 *  do anything except strip whitespace from the end of the string.
-	 */
-	if (!is_replicated_entry(p)) {
-		int ret;
-		for (pstrip = p+strlen(p) - 1; pstrip >= p; pstrip--) 
-			if (isspace(*pstrip))
-				*pstrip = '\0';
-
-		/* Check if the host is the localhost */
-		ret = is_local_mount(p);
-		if (ret > 0) {
-			debug(MODPREFIX "host %s: is localhost", p);
-
-			/* Strip off hostname and ':' */
-			delim = strchr(p,':');
-			while (delim && *delim != '\0') {
-				delim++;
-				*what = *delim;
-				what++;
-			}
-			return 1;
-		} else if (ret < 0)
-			*what = '\0';
-
-		return 0;
-	}
-
-	while (p && *p) {
-		char *next;
-		int ping_stat = -1;
-
-		p += strspn(p, " \t,");
-		delim = strpbrk(p, "(, \t:");
-		if (!delim)
-			break;
-
-		/* Find lowest weight whose server is alive */
-		if (*delim == '(') {
-			char *weight = delim + 1;
-
-			*delim = '\0';
-
-			delim = strchr(weight, ')');
-			if (delim) {
-				int w;
-
-				*delim = '\0';
-				w = atoi(weight);
-
-				ping_stat = rpc_ping(p, sec, micros, RPC_CLOSE_NOLINGER);
-				if (w < winner_weight && ping_stat) {
-					winner_weight = w;
-					winner = p;
-				}
-			}
-			delim++;
-		}
-
-		if (*delim == ':') {
-			*delim = '\0';
-			next = strpbrk(delim + 1, " \t");
-		} else if (*delim != '\0') {
-			*delim = '\0';
-			next = delim + 1;
-		} else
-			break;
-
-		/* p points to a server, "next is our next parse point */
-		if (!skiplocal) {
-			/* Check if it's localhost */
-			local = is_local_mount(p);
-			if (local < 0) {
-				local = 0;
-				p = next;
-				continue;
-			}
-
-			if (local) {
-				winner = p;
-				break;
-			}
-		}
-
-		/* ping each (or the) entry to see if it's alive. */
-		if (ping_stat == -1)
-			ping_stat = rpc_ping(p, sec, micros, RPC_CLOSE_NOLINGER);
-		if (!ping_stat) {
-			p = next;
-			continue;
-		}
-
-		/* First unweighted or only host is alive so set winner */
-		if (!winner) {
-			winner = p;
-			winner_time = 1;
-			/* No more to check, return it */
-			if (!next || !*next)
-				break;
-		}
-
-		/* Multiple entries and no weighted hosts so compare times */
-		if (winner_weight == INT_MAX) {
-			int status;
-			double resp_time;
-			unsigned int vers = NFS2_VERSION;
-			unsigned int proto = RPC_PING_UDP;
-
-			if (!ping_stat) {
-				p = next;
-				continue;
-			}
-			vers = ping_stat & 0x00ff;
-			proto = ping_stat & 0xff00;
-
-			status = rpc_time(p, vers, proto, sec, micros,
-					      RPC_CLOSE_NOLINGER, &resp_time);
-			/* did we time the first winner? */
-			if (winner_time == 0) {
-				if (status) {
-					winner = p;
-					winner_time = resp_time;
-				} else
-					winner_time = 501;
-			} else {
-				if (status && (resp_time < winner_time)) {
-					winner = p;
-					winner_time = resp_time;
-				}
-			}
-		}
-		p = next;
-	}
-
-	debug(MODPREFIX "winner = %s local = %d", winner, local);
-
-	/*
-	 * We didn't find a weighted winner or local
-	 */
-	if (!local && winner_weight == INT_MAX) {
-		/* We had more than one contender and none responded in time */
-		if (winner_time == 0 || winner_time > 500) {
-			/* We've already tried a longer timeout */
-			if (!longtimeout) {
-				/* Reset string and try again */
-				strcpy(what, original);
-
-				debug(MODPREFIX 
-				      "all hosts timed out for '%s', "
-				      "retrying with longer timeout",
-				      original);
-
-				return get_best_mount(what, original, 1);
-			}
-		}
-	}
-
-	/* No winner found so return first */
-	/* No - this will lead to mount hanging if the first host
-	 *	is not available. Since we tried to ping it and
-	 *	failed that's likely the case.
-	 */
-	if (!winner) {
-		*what = '\0';
-		return 0;
-	}
-
-	/*
-	 * We now have our winner, copy it to the front of the string,
-	 * followed by the next :string<delim>
-	 */
-	
-	/* if it's local */
-	if (!local)
-		strcpy(what, winner);
-	else
-		what[0] = '\0';
-
-	/* We know we're only reading from p, so discard const */
-	p = (char *) original + (winner - what);
-	delim = what + strlen(what);
-
-	/* Find the colon (in the original string) */
-	while (*p && *p != ':')
-		p++;
-
-	/* skip : for local paths */
-	if (local)
-		p++;
-
-	/* copy to next space or end of string */
-	while (*p && *p != ' ' && *p != '\t')
-		*delim++ = *p++;
-
-	*delim = '\0';
-
-	return local;
-}
-
 int mount_mount(struct autofs_point *ap, const char *root, const char *name, int name_len,
 		const char *what, const char *fstype, const char *options,
 		void *context)
 {
-	char *colon, *fullpath;
-	char buf[MAX_ERR_BUF];
-	char *whatstr;
+	char *fullpath, buf[MAX_ERR_BUF];
+	struct host *this, *hosts = NULL;
+	unsigned int vers;
 	char *nfsoptions = NULL;
-	int local, err;
+	int len, rlen, status, existed = 1;
 	int nosymlink = 0;
 	int ro = 0;            /* Set if mount bind should be read-only */
 
 	debug(MODPREFIX "root=%s name=%s what=%s, fstype=%s, options=%s",
 	      root, name, what, fstype, options);
 
-	whatstr = alloca(strlen(what) + 1);
-	if (!whatstr) {
-		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		error(MODPREFIX "alloca: %s", estr);
-		return 1;
-	}
-	strcpy(whatstr, what);
-
 	/* Extract "nosymlink" pseudo-option which stops local filesystems
-	   from being symlinked */
+	 * from being symlinked.
+	 *
+	 * "nosymlink" is not used anymore. It is left for compatibility
+	 * only (so we don't choke on it).
+	 */
 	if (options) {
 		const char *comma;
 		char *nfsp;
@@ -457,13 +103,6 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 			while (*comma == ' ' || *comma == '\t')
 				end--;
 
-#if 0
-			debug(MODPREFIX "*comma=%x %c  comma=%p %s cp=%p %s "
-			      "nfsoptions=%p nfsp=%p end=%p used=%d len=%d",
-			      *comma, *comma, comma, comma, cp, cp,
-			      nfsoptions, nfsp, nfsoptions + len,
-			      nfsp - nfsoptions, len);
-#endif
 			if (strncmp("nosymlink", cp, end - cp + 1) == 0)
 				nosymlink = 1;
 			else {
@@ -481,107 +120,134 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 		      nfsoptions, nosymlink, ro);
 	}
 
-	local = 0;
+	vers = NFS_VERS_MASK | NFS_PROTO_MASK;
+	if (!parse_location(&hosts, what)) {
+		warn(MODPREFIX "no hosts available");
+		return 1;
+	}
+	prune_host_list(&hosts, vers);
 
-	colon = strchr(whatstr, ':');
-	if (!colon) {
-		/* No colon, take this as a bind (local) entry */
-		local = 1;
-	} else if (!nosymlink) {
-		local = get_best_mount(whatstr, what, 0);
-		if (!*whatstr) {
-			warn(MODPREFIX "no host elected");
-			return 1;
-		}
-		debug(MODPREFIX "from %s elected %s", what, whatstr);
+	if (!hosts) {
+		warn(MODPREFIX "no hosts available");
+		return 1;
 	}
 
-	if (local) {
-		/* Local host -- do a "bind" */
+	/* Construct and perhaps create mount point directory */
 
-		const char *bind_options = ro ? "ro" : "";
+	/* Root offset of multi-mount */
+	if (*name == '/' && name_len == 1) {
+		rlen = strlen(root);
+		name_len = 0;
+	/* Direct mount name is absolute path so don't use root */
+	} else if (*name == '/')
+		rlen = 0;
+	else
+		rlen = strlen(root);
 
-		debug(MODPREFIX "%s is local, doing bind", name);
+	fullpath = alloca(rlen + name_len + 2);
+	if (!fullpath) {
+		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+		error(MODPREFIX "alloca: %s", estr);
+		free_host_list(&hosts);
+		return 1;
+	}
 
-		return mount_bind->mount_mount(ap, root, name, name_len,
-					       whatstr, "bind", bind_options,
-					       mount_bind->context);
-	} else {
-		/* Not a local host - do an NFS mount */
-		int len, rlen, status, existed = 1;
-
-		/* Root offset of multi-mount */
-		if (*name == '/' && name_len == 1) {
-			rlen = strlen(root);
-			name_len = 0;
-		/* Direct mount name is absolute path so don't use root */
-		} else if (*name == '/')
-			rlen = 0;
+	if (name_len) {
+		if (rlen)
+			len = sprintf(fullpath, "%s/%s", root, name);
 		else
-			rlen = strlen(root);
+			len = sprintf(fullpath, "%s", name);
+	} else
+		len = sprintf(fullpath, "%s", root);
+	fullpath[len] = '\0';
 
-		fullpath = alloca(rlen + name_len + 2);
-		if (!fullpath) {
-			char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-			error(MODPREFIX "alloca: %s", estr);
-			return 1;
-		}
+	debug(MODPREFIX "calling mkdir_path %s", fullpath);
 
-		if (name_len) {
-			if (rlen)
-				len = sprintf(fullpath, "%s/%s", root, name);
-			else
-				len = sprintf(fullpath, "%s", name);
-		} else
-			len = sprintf(fullpath, "%s", root);
-		fullpath[len] = '\0';
+	status = mkdir_path(fullpath, 0555);
+	if (status && errno != EEXIST) {
+		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+		error(MODPREFIX "mkdir_path %s failed: %s", fullpath, estr);
+		return 1;
+	}
 
-		debug(MODPREFIX "calling mkdir_path %s", fullpath);
+	if (!status)
+		existed = 0;
 
-		status = mkdir_path(fullpath, 0555);
-		if (status && errno != EEXIST) {
-			char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-			error(MODPREFIX "mkdir_path %s failed: %s", fullpath, estr);
-			return 1;
-		}
-
-		if (!status)
-			existed = 0;
+	this = hosts;
+	while (this) {
+		int err;
+		char *loc;
 
 		if (is_mounted(_PATH_MOUNTED, fullpath)) {
 			error(MODPREFIX
 			 "warning: %s is already mounted", fullpath);
-			return 0;
+			free_host_list(&hosts);
+			break;
 		}
+
+		if (this->proximity == PROXIMITY_LOCAL) {
+			/* Local host -- do a "bind" */
+			const char *bind_options = ro ? "ro" : "";
+
+			debug(MODPREFIX "%s is local, attempt bind mount", name);
+
+			err = mount_bind->mount_mount(ap, root, name, name_len,
+					       this->path, "bind", bind_options,
+					       mount_bind->context);
+
+			/* Success - we're done */
+			if (!err) {
+				free_host_list(&hosts);
+				return 0;
+			}
+
+			this = this->next;
+			continue;
+		}
+
+		/* Not a local host - do an NFS mount */
+
+		loc = malloc(strlen(this->name) + 1 + strlen(this->path) + 1);
+		strcpy(loc, this->name);
+		strcat(loc, ":");
+		strcat(loc, this->path);
 
 		if (nfsoptions && *nfsoptions) {
 			debug(MODPREFIX "calling mount -t nfs " SLOPPY 
-			      "-o %s %s %s", nfsoptions, whatstr, fullpath);
+			      "-o %s %s %s", nfsoptions, loc, fullpath);
 
 			err = spawnll(log_debug,
 				     PATH_MOUNT, PATH_MOUNT, "-t",
 				     "nfs", SLOPPYOPT "-o", nfsoptions,
-				     whatstr, fullpath, NULL);
+				     loc, fullpath, NULL);
 		} else {
 			debug(MODPREFIX "calling mount -t nfs %s %s",
-			      whatstr, fullpath);
+			      loc, fullpath);
 			err = spawnll(log_debug,
 				     PATH_MOUNT, PATH_MOUNT, "-t",
-				     "nfs", whatstr, fullpath, NULL);
+				     "nfs", loc, fullpath, NULL);
 		}
 
-		if (err) {
-			if ((!ap->ghost && name_len) || !existed)
-				rmdir_path(name);
-
-			error(MODPREFIX "nfs: mount failure %s on %s",
-			      whatstr, fullpath);
-			return 1;
-		} else {
-			debug(MODPREFIX "mounted %s on %s", whatstr, fullpath);
+		if (!err) {
+			debug(MODPREFIX "mounted %s on %s", loc, fullpath);
+			free(loc);
+			free_host_list(&hosts);
 			return 0;
 		}
+
+		free(loc);
+		this = this->next;
 	}
+
+	free_host_list(&hosts);
+
+	/* If we get here we've failed to complete the mount */
+	if ((!ap->ghost && name_len) || !existed)
+		rmdir_path(name);
+
+	error(MODPREFIX "nfs: mount failure %s on %s", what, fullpath);
+
+	return 1;
 }
 
 int mount_done(void *context)

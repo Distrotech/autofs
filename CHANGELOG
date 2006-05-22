@@ -10,6 +10,7 @@
 - change option processing to be inline with standard automount
   option processing. ie. mount entry options override global
   mount options.
+- replicated server selection re-write.
 
 9/5/2006 autofs-5.0.0_beta2
 ---------------------------
