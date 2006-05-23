@@ -1,5 +1,5 @@
 
-autofs-5.0.0 beta2 release notes
+autofs-5.0.0 beta3 release notes
 ================================
 
 Differences between version 4 and version 5.
@@ -19,6 +19,10 @@ Differences between version 4 and version 5.
 
 - `autofs' version 5.0.0 will refuse to run if it cannot find an
    autofs4 kernel module that supports protocol version 5.00 or above.
+
+- mount options present in the master map are now overridden by mount
+  options in map entries instead of being accumulated. This behaviour
+  is in line with other industry automount implementations.
 
 New in 5.0.0 is:
 
@@ -63,12 +67,6 @@ Things not yet done
   to work. Patches from anyone who needs this are welcome.
 
 - the underscore to dot translation has not been added yet.
-
-- there's a problen with the calcuation of the best host in replicated
-  server selection.
-
-- all the things I've broken and not re-tested after further development!
-
 
 Ian
 
