@@ -82,8 +82,6 @@ static unsigned int get_proximity(const char *host_addr, int addr_len)
 	int sock, ret, i;
 	uint32_t mask, ha, ia;
 
-	debug("sizeof(h_addr) %d addr_len %d", sizeof(h_addr), addr_len);
-
 	memcpy(tmp, host_addr, addr_len);
 	h_addr = (struct in_addr *) tmp;
 
