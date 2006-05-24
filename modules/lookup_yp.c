@@ -143,7 +143,14 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 	struct lookup_context *ctxt = (struct lookup_context *) context;
 	struct ypall_callback ypcb;
 	struct callback_master_data ypcb_data;
+	char *mapname;
 	int err;
+
+	mapname = alloca(strlen(ctxt->mapname) + 1);
+	if (!mapname)
+		return 0;
+
+	strcpy(mapname, ctxt->mapname);
 
 	ypcb_data.timeout = master->default_timeout;
 	ypcb_data.logging = master->default_logging;
@@ -152,11 +159,24 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 	ypcb.foreach = yp_all_master_callback;
 	ypcb.data = (char *) &ypcb_data;
 
-	err = yp_all((char *) ctxt->domainname, (char *) ctxt->mapname, &ypcb);
+	err = yp_all((char *) ctxt->domainname, mapname, &ypcb);
 
 	if (err != YPERR_SUCCESS) {
+		if (err == YPERR_MAP) {
+			char *usc;
+
+			while ((usc = strchr(mapname, '_')))
+				*usc = '.';
+
+			err = yp_all((char *) ctxt->domainname, mapname, &ypcb);
+		}
+
+		if (err == YPERR_SUCCESS)
+			return NSS_STATUS_SUCCESS;
+
 		warn(MODPREFIX "read of master map %s failed: %s",
-		       ctxt->mapname, yperr_string(err));
+		       mapname, yperr_string(err));
+
 		return NSS_STATUS_NOTFOUND;
 	}
 
@@ -213,7 +233,14 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 	struct lookup_context *ctxt = (struct lookup_context *) context;
 	struct ypall_callback ypcb;
 	struct callback_data ypcb_data;
+	char *mapname;
 	int err;
+
+	mapname = alloca(strlen(ctxt->mapname) + 1);
+	if (!mapname)
+		return 0;
+
+	strcpy(mapname, ctxt->mapname);
 
 	ypcb_data.ap = ap;
 	ypcb_data.age = age;
@@ -221,11 +248,24 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 	ypcb.foreach = yp_all_callback;
 	ypcb.data = (char *) &ypcb_data;
 
-	err = yp_all((char *) ctxt->domainname, (char *) ctxt->mapname, &ypcb);
+	err = yp_all((char *) ctxt->domainname, mapname, &ypcb);
 
 	if (err != YPERR_SUCCESS) {
+		if (err == YPERR_MAP) {
+			char *usc;
+
+			while ((usc = strchr(mapname, '_')))
+				*usc = '.';
+
+			err = yp_all((char *) ctxt->domainname, mapname, &ypcb);
+		}
+
+		if (err == YPERR_SUCCESS)
+			return NSS_STATUS_SUCCESS;
+
 		warn(MODPREFIX "read of map %s failed: %s",
 		       ap->path, yperr_string(err));
+
 		return NSS_STATUS_NOTFOUND;
 	}
 
@@ -238,10 +278,21 @@ static int lookup_one(struct autofs_point *ap,
 {
 	struct map_source *source = ap->entry->current;
 	struct mapent_cache *mc = source->mc;
+	char *mapname;
 	char *mapent;
 	int mapent_len;
 	time_t age = time(NULL);
 	int ret;
+
+	mapname = alloca(strlen(ctxt->mapname) + 1);
+	if (!mapname)
+		return 0;
+
+	strcpy(mapname, ctxt->mapname);
+
+	mapent = alloca(MAPENT_MAX_LEN + 1);
+	if (!mapent)
+		return 0;
 
 	/*
 	 * For reasons unknown, the standard YP definitions doesn't
@@ -249,14 +300,26 @@ static int lookup_one(struct autofs_point *ap,
 	 * understanding is that they will not be modified by the
 	 * library.
 	 */
-	ret = yp_match((char *) ctxt->domainname, (char *) ctxt->mapname,
+	ret = yp_match((char *) ctxt->domainname, mapname,
 		       (char *) key, key_len, &mapent, &mapent_len);
 
 	if (ret != YPERR_SUCCESS) {
-		if (ret == YPERR_KEY)
-			return CHE_MISSING;
+		if (ret == YPERR_MAP) {
+			char *usc;
 
-		return -ret;
+			while ((usc = strchr(mapname, '_')))
+				*usc = '.';
+
+			ret = yp_match((char *) ctxt->domainname,
+				mapname, key, key_len, &mapent, &mapent_len);
+		}
+
+		if (ret != YPERR_SUCCESS) {
+			if (ret == YPERR_KEY)
+				return CHE_MISSING;
+
+			return -ret;
+		}
 	}
 
 	cache_writelock(mc);
@@ -270,23 +333,42 @@ static int lookup_wild(struct autofs_point *ap, struct lookup_context *ctxt)
 {
 	struct map_source *source = ap->entry->current;
 	struct mapent_cache *mc = source->mc;
+	char *mapname;
 	char *mapent;
 	int mapent_len;
 	time_t age = time(NULL);
 	int ret;
+
+	mapname = alloca(strlen(ctxt->mapname) + 1);
+	if (!mapname)
+		return 0;
+
+	strcpy(mapname, ctxt->mapname);
 
 	mapent = alloca(MAPENT_MAX_LEN + 1);
 	if (!mapent)
 		return 0;
 
 	ret = yp_match((char *) ctxt->domainname,
-		       (char *) ctxt->mapname, "*", 1, &mapent, &mapent_len);
+		       mapname, "*", 1, &mapent, &mapent_len);
 
 	if (ret != YPERR_SUCCESS) {
-		if (ret == YPERR_KEY)
-			return CHE_MISSING;
+		if (ret == YPERR_MAP) {
+			char *usc;
 
-		return -ret;
+			while ((usc = strchr(mapname, '_')))
+				*usc = '.';
+
+			ret = yp_match((char *) ctxt->domainname,
+				mapname, "*", 1, &mapent, &mapent_len);
+		}
+
+		if (ret != YPERR_SUCCESS) {
+			if (ret == YPERR_KEY)
+				return CHE_MISSING;
+
+			return -ret;
+		}
 	}
 
 	cache_writelock(mc);

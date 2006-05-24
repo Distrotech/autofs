@@ -1,3 +1,8 @@
+?/?/2006 autofs-5.0.0
+---------------------
+- fix memory alloc error in nis lookup module.
+- add "_" to "." mapname translation to nis lookup module.
+
 23/5/2006 autofs-5.0.0_beta3
 ----------------------------
 - add config and compile time info to output of -V.
