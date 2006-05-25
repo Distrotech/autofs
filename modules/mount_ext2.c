@@ -113,7 +113,13 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 		err = spawnl(log_debug, fsck_prog, fsck_prog, "-p", what, NULL);
 	}
 
-	if (err & ~6) {
+	/*
+	 * spawnl returns the error code, left shifted by 8 bits.  We are
+	 * interested in the following error bits from the fsck program:
+	 *    2 - File system errors corrected, system should be rebooted
+	 *    4 - File system errors left uncorrected
+	 */
+	if ((err >> 8) & 6) {
 		error(MODPREFIX "%s: filesystem needs repair, won't mount",
 		      what);
 		return 1;
