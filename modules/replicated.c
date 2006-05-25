@@ -808,21 +808,31 @@ int parse_location(struct host **hosts, const char *list)
 			}
 
 			if (*delim == ':') {
+				char *path;
 				int len;
 
 				*delim = '\0';
-				next = strpbrk(delim + 1, " ,\t");
-				if (next)
-					len = next - delim - 1;
-				else
-					len = strlen(delim + 1);
+				path = delim + 1;
+
+				/* Oh boy - might have spaces in the path */
+				next = path;
+				while (*next && *next != ':')
+					next++;
+
+				/* No spaces in host names at least */
+				if (*next == ':') {
+					while (*next &&
+					      (*next != ' ' || *next != '\t'))
+						next--;
+					*next++ = '\0';
+				}
 
 				if (!add_host_addrs(hosts, p, weight)) {
 					p = next;
 					continue;
 				}
 
-				if (!add_path(*hosts, delim + 1, len)) {
+				if (!add_path(*hosts, path, strlen(path))) {
 					free_host_list(hosts);
 					free(str);
 					return 0;
