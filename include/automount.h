@@ -312,6 +312,7 @@ struct mnt_list {
 	char *path;
 	char *fs_type;
 	char *opts;
+	pid_t owner;
 	/*
 	 * List operations ie. get_mnt_list.
 	 */

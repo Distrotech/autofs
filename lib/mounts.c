@@ -112,6 +112,7 @@ struct mnt_list *get_mnt_list(const char *table, const char *path, int include)
 	struct mnt_list *ent, *mptr, *last;
 	struct mnt_list *list = NULL;
 	unsigned long count = 0;
+	char *pgrp;
 	int len;
 
 	if (!path || !pathlen || pathlen > PATH_MAX)
@@ -187,6 +188,15 @@ struct mnt_list *get_mnt_list(const char *table, const char *path, int include)
 			return NULL;
 		}
 		strcpy(ent->opts, mnt->mnt_opts);
+
+		ent->owner = 0;
+		pgrp = strstr(mnt->mnt_opts, "pgrp=");
+		if (pgrp) {
+			char *end = strchr(pgrp, ',');
+			if (end)
+				*end = '\0';
+			sscanf(pgrp, "pgrp=%d", &ent->owner);
+		}
 
 		if (count++ % 100)
 			sched_yield();
@@ -503,6 +513,7 @@ struct mnt_list *tree_make_mnt_tree(const char *table, const char *path)
 	struct mntent *mnt;
 	struct mnt_list *ent, *mptr;
 	struct mnt_list *tree = NULL;
+	char *pgrp;
 	int eq, plen;
 
 	tab = setmntent(table, "r");
@@ -563,6 +574,15 @@ struct mnt_list *tree_make_mnt_tree(const char *table, const char *path)
 			return NULL;
 		}
 		strcpy(ent->opts, mnt->mnt_opts);
+
+		ent->owner = 0;
+		pgrp = strstr(mnt->mnt_opts, "pgrp=");
+		if (pgrp) {
+			char *end = strchr(pgrp, ',');
+			if (end)
+				*end = '\0';
+			sscanf(pgrp, "pgrp=%d", &ent->owner);
+		}
 
 		mptr = tree;
 		while (mptr) {
