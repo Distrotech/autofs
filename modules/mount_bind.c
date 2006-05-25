@@ -152,7 +152,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 
 		if (err) {
 			if ((!ap->ghost && name_len) || !existed)
-				rmdir_path(name);
+				rmdir_path(ap, name);
 			return 1;
 		} else {
 			debug(MODPREFIX "mounted %s type %s on %s",
@@ -192,7 +192,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 			if (ap->ghost && !status)
 				mkdir_path(fullpath, 0555);
 			else
-				rmdir_path(fullpath);
+				rmdir_path(ap, fullpath);
 
 			return 1;
 		} else {

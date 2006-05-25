@@ -243,7 +243,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 
 	/* If we get here we've failed to complete the mount */
 	if ((!ap->ghost && name_len) || !existed)
-		rmdir_path(name);
+		rmdir_path(ap, name);
 
 	error(MODPREFIX "nfs: mount failure %s on %s", what, fullpath);
 

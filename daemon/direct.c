@@ -634,7 +634,7 @@ out_umount:
 	umount(me->key);
 out_err:
 	if (me->dir_created)
-		rmdir_path(me->key);
+		rmdir_path(ap, me->key);
 
 	return -1;
 }

@@ -887,7 +887,7 @@ int lookup_prune_cache(struct autofs_point *ap, time_t age)
 			cache_unlock(mc);
 
 			if (status != CHE_FAIL)
-				rmdir_path(path);
+				rmdir_path(ap, path);
 
 			if (!next_key) {
 				free(key);

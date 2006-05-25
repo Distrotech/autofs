@@ -135,7 +135,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 
 	if (err) {
 		if ((!ap->ghost && name_len) || !existed)
-			rmdir_path(name);
+			rmdir_path(ap, name);
 		error(MODPREFIX "failed to mount %s (type %s) on %s",
 		      what, fstype, fullpath);
 		return 1;

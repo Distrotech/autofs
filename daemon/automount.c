@@ -106,12 +106,13 @@ int mkdir_path(const char *path, mode_t mode)
 }
 
 /* Remove as much as possible of a path */
-int rmdir_path(const char *path)
+int rmdir_path(struct autofs_point *ap, const char *path)
 {
 	int len = strlen(path);
 	char *buf = alloca(len + 1);
 	char *cp;
 	int first = 1;
+	struct stat st;
 
 	strcpy(buf, path);
 	cp = buf + len;
@@ -119,10 +120,53 @@ int rmdir_path(const char *path)
 	do {
 		*cp = '\0';
 
-		/* Last element of path may be non-dir;
-		   all others are directories */
-		if (rmdir(buf) == -1 && (!first || unlink(buf) == -1))
+		/*
+		 *  Before removing anything, perform some sanity checks to
+		 *  ensure that we are looking at files in the automount
+		 *  file system.
+		 */
+		memset(&st, 0, sizeof(st));
+		if (lstat(buf, &st) != 0) {
+			crit("lstat of %s failed.", buf);
 			return -1;
+		}
+
+		if (st.st_dev != ap->dev) {
+			crit("attempt to remove files from a "
+			     "mounted file system!");
+			crit("ap->dev == %llu, \"%s\" dev == %llu", ap->dev,
+			     buf, st.st_dev);
+			return -1;
+		}
+
+		/*
+		 * Last element of path may be a symbolic link; all others
+		 * are directories (and the last directory element is
+		 * processed first, hence the variable name)
+		 */
+		if (rmdir(buf) == -1) {
+			if (first && errno == ENOTDIR) {
+				/*
+				 *  Ensure that we will only remove
+				 *  symbolic links.
+				 */
+				if (S_ISLNK(st.st_mode)) {
+					if (unlink(buf) == -1)
+						return -1;
+				} else {
+					crit("file \"%s\" is neither a "
+					     "directory nor a symbolic link. "
+					     "mode %d", buf, st.st_mode);
+					return -1;
+				}
+			}
+
+			/*
+			 *  If we fail to remove a directory for any reason,
+			 *  we need to return an error.
+			 */
+			return -1;
+		}
 
 		first = 0;
 	} while ((cp = strrchr(buf, '/')) != NULL && cp != buf);
@@ -244,6 +288,9 @@ static int umount_ent(struct autofs_point *ap, const char *path, const char *typ
 	status = lstat(path, &st);
 	sav_errno = errno;
 
+	if (status < 0)
+		warn("lstat of %s failed with %d", path, status);
+
 	/*
 	 * lstat failed and we're an smbfs fs returning an error that is not
 	 * EIO or EBADSLT or the lstat failed so it's a bad path. Return
@@ -288,6 +335,24 @@ static int umount_ent(struct autofs_point *ap, const char *path, const char *typ
 			if (status)
 				fatal(status);
 		}
+
+		/*
+		 * Verify that we actually unmounted the thing.  This is a
+		 * belt and suspenders approach to not eating user data.
+		 * We have seen cases where umount succeeds, but there is
+		 * still a file system mounted on the mount point.  How
+		 * this happens has not yet been determined, but we want to
+		 * make sure to return failure here, if that is the case,
+		 * so that we do not try to call rmdir_path on the
+		 * directory.
+		 */
+		if (!rv && is_mounted(_PATH_MOUNTED, path)) {
+			crit("the umount binary reported that %s was "
+			     "unmounted, but there is still something "
+			     "mounted on this path.", path);
+			rv = -1;
+		}
+
 	}
 
 	status = pthread_mutex_unlock(&ap->state_mutex);
@@ -373,7 +438,8 @@ static int rm_unwanted_fn(const char *file, const struct stat *st, int when, voi
 			return 0;
 		}
 	} else if (S_ISREG(newst.st_mode)) {
-		crit("attempting to remove files from a mounted directory");
+		crit("attempting to remove files from a mounted directory. "
+		     "file %s", file);
 		return 0;
 	} else if (S_ISLNK(newst.st_mode)) {
 		debug("removing symlink %s", file);
