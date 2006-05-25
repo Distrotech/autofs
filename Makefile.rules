@@ -26,9 +26,15 @@ CFLAGS    ?= -g -Wall -DDEBUG
 LDFLAGS   = -g
 STRIP     = :
 else
+ifdef DONTSCRIP
+CFLAGS    = -O2 -g
+LDFLAGS   = -g
+STRIP     = :
+else
 CFLAGS    ?= -O2 -Wall
 LDFLAGS   = -s
 STRIP     = strip --strip-debug
+endif
 endif
 
 CC        = gcc

@@ -3,6 +3,7 @@
 - fix memory alloc error in nis lookup module.
 - add "_" to "." mapname translation to nis lookup module.
 - fix white space handling in replicated server selection code.
+- merge don't strip debug info macro patch (Jeff Moyer).
 
 23/5/2006 autofs-5.0.0_beta3
 ----------------------------
