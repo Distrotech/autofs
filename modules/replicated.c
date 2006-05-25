@@ -354,7 +354,7 @@ static unsigned int get_nfs_info(struct host *host,
 		return 0;
 
 	parms.pm_prot = rpc_info->proto->p_proto;
-
+#if 0
 	if (!(version & NFS4_REQUESTED))
 		goto v3_ver;
 
@@ -375,6 +375,7 @@ static unsigned int get_nfs_info(struct host *host,
 	}
 
 v3_ver:
+#endif
 	if (!(version & NFS3_REQUESTED))
 		goto v2_ver;
 
