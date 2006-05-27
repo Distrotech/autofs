@@ -6,6 +6,10 @@
 - merge don't strip debug info macro patch (Jeff Moyer).
 - merge patch to add sanity checks on rmdir_path and unlink (Jeff Moyer).
 - merge patch fix e2fsck error code check (Jeff Moyer).
+- update hesiod module (Jeff Moyer).
+  - add mutex to protect against overlapping mount requests.
+  - update return from mount request to give more sensible NSS_*
+    values.
 
 23/5/2006 autofs-5.0.0_beta3
 ----------------------------

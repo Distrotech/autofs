@@ -29,7 +29,10 @@
 
 struct lookup_context {
 	struct parse_mod *parser;
+	void *hesiod_context;
 };
+
+static pthread_mutex_t hesiod_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 int lookup_version = AUTOFS_LOOKUP_VERSION;	/* Required by protocol */
 
@@ -51,6 +54,13 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 	/* Initialize the resolver. */
 	res_init();
 
+	/* Initialize the hesiod context. */
+	if (hesiod_init(&(ctxt->hesiod_context)) != 0) {
+		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+		crit(MODPREFIX "hesiod_init(): %s", estr);
+		return 1;
+	}
+
 	/* If a map type isn't explicitly given, parse it as hesiod entries. */
 	if (!mapfmt)
 		mapfmt = MAPFMT_DEFAULT;
@@ -69,15 +79,17 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 	return NSS_STATUS_UNKNOWN;
 }
 
-/* Lookup and act on a filesystem name.  In this case, lookup the "filsys"
-   record in hesiod.  If it's an AFS or NFS filesyste, parse it out.  If
-   it's an ERR filesystem, it's an error message we should log.  Otherwise,
-   assume it's something we know how to deal with already (generic). */
+/*
+ * Lookup and act on a filesystem name.  In this case, lookup the "filsys"
+ * record in hesiod.  If it's an AFS or NFS filesystem, parse it out.  If
+ * it's an ERR filesystem, it's an error message we should log.  Otherwise,
+ * assume it's something we know how to deal with already (generic).
+ */
 int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *context)
 {
 	char **hes_result;
 	struct lookup_context *ctxt = (struct lookup_context *) context;
-	int rv;
+	int status, rv;
 	char **record, *best_record = NULL, *p;
 	int priority, lowest_priority = INT_MAX;	
 
@@ -86,11 +98,16 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 	chdir("/");		/* If this is not here the filesystem stays
 				   busy, for some reason... */
 
-	hes_result = hes_resolve(name, "filsys");
+	status = pthread_mutex_lock(&hesiod_mutex);
+	if (status)
+		fatal(status);
 
+	hes_result = hesiod_resolve(ctxt->hesiod_context, name, "filsys");
 	if (!hes_result || !hes_result[0]) {
+		/* Note: it is not clear to me how to distinguish between
+		 * the "no search results" case and other failures.  --JM */
 		warn(MODPREFIX "entry \"%s\" not found in map", name);
-		return NSS_STATUS_UNAVAIL;
+		return NSS_STATUS_NOTFOUND;
 	}
 
 	/* autofs doesn't support falling back to alternate records, so just
@@ -113,8 +130,21 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 
 	rv = ctxt->parser->parse_mount(ap, name, name_len, best_record,
 				       ctxt->parser->context);
-	free(hes_result);
-	return rv;
+
+	hesiod_free_list(ctxt->hesiod_context, hes_result);
+
+	status = pthread_mutex_unlock(&hesiod_mutex);
+	if (status)
+		fatal(status);
+
+	/*
+	 * Unavailable due to error such as module load fail 
+	 * or out of memory, etc.
+	 */
+	if (rv == 1 || rv == -1)
+		return NSS_STATUS_UNAVAIL;
+
+	return NSS_STATUS_SUCCESS;
 }
 
 /* This destroys a context for queries to this module.  It releases the parser
@@ -123,6 +153,8 @@ int lookup_done(void *context)
 {
 	struct lookup_context *ctxt = (struct lookup_context *) context;
 	int rv = close_parse(ctxt->parser);
+
+	hesiod_end(ctxt->hesiod_context);
 	free(ctxt);
 	return rv;
 }
