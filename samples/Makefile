@@ -74,7 +74,7 @@ auto.master:
 		echo "Found existing backup of master map." ; \
 		echo "Installed package default master map as \"auto.master.new\"." ; \
 	else \
-		install -v -c auto.master -m 755 $(MASTER) \
+		install -v -c auto.master -m 644 $(MASTER) \
 				$(INSTALLROOT)$(autofsmapdir)/auto.master ; \
 		echo "Installed package master map as \"auto.master\"." ; \
 		if test -z "$(MEXISTS)" ; \
@@ -97,7 +97,7 @@ auto.misc:
 		echo "Found existing backup of sample map \"auto.misc\"." ; \
 		echo "Installed package sample as \"auto.misc.new\"." ; \
 	else \
-		install -v -c auto.misc -m 755 $(MISC) \
+		install -v -c auto.misc -m 644 $(MISC) \
 				$(INSTALLROOT)$(autofsmapdir)/auto.misc ; \
 		echo "Installed package sample map as \"auto.misc\"." ; \
 		if test -z "$(MEXISTS)" ; \
@@ -115,7 +115,7 @@ auto.net:
 	@echo "Installing autofs sample map \"auto.net\" in $(autofsmapdir)"
 	@if test -z "$(NET)" ; \
 	then \
-		install -v -c auto.net -m 644 \
+		install -v -c auto.net -m 755 \
 			$(INSTALLROOT)$(autofsmapdir)/auto.net.new ; \
 		echo "Found existing backup of sample map \"auto.net\"." ; \
 		echo "Installed package sample as \"auto.net.new\"." ; \
@@ -138,7 +138,7 @@ auto.smb:
 	@echo "Installing autofs sample map \"auto.smb\" in $(autofsmapdir)"
 	@if test -z "$(SMB)" ; \
 	then \
-		install -v -c auto.smb -m 644 \
+		install -v -c auto.smb -m 755 \
 			$(INSTALLROOT)$(autofsmapdir)/auto.smb.new ; \
 		echo "Found existing backup of sample map \"auto.smb\"." ; \
 		echo "Installed package sample as \"auto.smb.new\"." ; \
