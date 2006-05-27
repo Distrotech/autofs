@@ -107,6 +107,9 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 		/* Note: it is not clear to me how to distinguish between
 		 * the "no search results" case and other failures.  --JM */
 		warn(MODPREFIX "entry \"%s\" not found in map", name);
+		status = pthread_mutex_unlock(&hesiod_mutex);
+		if (status)
+			fatal(status);
 		return NSS_STATUS_NOTFOUND;
 	}
 
