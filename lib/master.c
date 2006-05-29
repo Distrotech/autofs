@@ -824,7 +824,7 @@ void master_notify_state_change(struct master *master, int sig)
 	return;
 }
 
-static void master_do_mount(struct master_mapent *entry)
+static int master_do_mount(struct master_mapent *entry)
 {
 	struct autofs_point *ap;
 	pthread_t thid;
@@ -846,6 +846,7 @@ static void master_do_mount(struct master_mapent *entry)
 		status = pthread_mutex_unlock(&sc.mutex);
 		if (status)
 			fatal(status);
+		return 0;
 	}
 	entry->thid = thid;
 
@@ -856,17 +857,18 @@ static void master_do_mount(struct master_mapent *entry)
 	}
 
 	if (sc.status) {
-		error("failed to startup mount %s", entry->path);
+		error("failed to startup mount");
 		status = pthread_mutex_unlock(&sc.mutex);
 		if (status)
 			fatal(status);
+		return 0;
 	}
 
 	status = pthread_mutex_unlock(&sc.mutex);
 	if (status)
 		fatal(status);
 
-	return;
+	return 1;
 }
 
 static void shutdown_entry(struct master_mapent *entry)
@@ -960,14 +962,16 @@ static void check_update_map_sources(struct master_mapent *entry, time_t age, in
 
 int master_mount_mounts(struct master *master, time_t age, int readall)
 {
-	struct list_head *p;
+	struct list_head *p, *head;
 	int status;
 
 	status = pthread_mutex_lock(&master_mutex);
 	if (status)
 		fatal(status);
 
-	list_for_each(p, &master->mounts) {
+	head = &master->mounts;
+	p = head->next;
+	while (p != head) {
 		struct master_mapent *this;
 		struct autofs_point *ap;
 		struct stat st;
@@ -975,6 +979,7 @@ int master_mount_mounts(struct master *master, time_t age, int readall)
 		int ret;
 
 		this = list_entry(p, struct master_mapent, list);
+		p = p->next;
 
 		ap = this->ap;
 
@@ -1001,7 +1006,11 @@ int master_mount_mounts(struct master *master, time_t age, int readall)
 			fatal(status);
 
 		if (ret == -1 && save_errno == EBADF)
-			master_do_mount(this);
+			if (!master_do_mount(this)) {
+				list_del_init(&this->list);
+				master_free_mapent_sources(ap->entry, 1);
+				master_free_mapent(ap->entry);
+		}
 	}
 
 	status = pthread_mutex_unlock(&master_mutex);

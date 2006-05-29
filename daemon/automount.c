@@ -1184,8 +1184,6 @@ void *handle_mounts(void *arg)
 		if (status)
 			fatal(status);
 		umount_autofs(ap, 1);
-		master_free_mapent_sources(ap->entry, 1);
-		master_free_mapent(ap->entry);
 		pthread_exit(NULL);
 	}
 
