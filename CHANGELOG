@@ -11,6 +11,9 @@
   - update return from mount request to give more sensible NSS_*
     values.
 - fix handling of autofs filesystem mount fail on init.
+- add back test test for nested mount in program map lookup.
+  - I must have commented this out for a reason. I guess we'll
+    find out soon enough.
 
 23/5/2006 autofs-5.0.0_beta3
 ----------------------------

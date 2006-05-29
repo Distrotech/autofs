@@ -96,8 +96,10 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *context)
 {
 	struct lookup_context *ctxt = (struct lookup_context *) context;
+	struct map_source *source = ap->entry->current;
+	struct mapent_cache *mc = source->mc;
 	char *mapent = NULL, *mapp, *tmp;
-/*	struct mapent *me; */
+	struct mapent *me;
 	char buf[MAX_ERR_BUF];
 	char errbuf[1024], *errp;
 	char ch;
@@ -116,7 +118,7 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 	debug(MODPREFIX "looking up %s", name);
 
 	/* Catch installed direct offset triggers */
-/*	me = cache_lookup(ap->mc, name);
+	me = cache_lookup(mc, name);
 	if (me) {
 		debug(MODPREFIX "%s -> %s", name, me->mapent);
 
@@ -124,7 +126,7 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 				      me->mapent, ctxt->parse->context);
 		goto out_free;
 	}
-*/
+
 	mapent = (char *) malloc(MAPENT_MAX_LEN + 1);
 	if (!mapent) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
