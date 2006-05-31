@@ -111,6 +111,13 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 	cache_readlock(mc);
 	me = cache_lookup(mc, name);
 	if (!me) {
+		/*
+		 * We haven't read the list of hosts into the
+		 * cache so go straight to the lookup.
+		 */
+		if (!ap->ghost)
+			goto done;
+
 		pthread_cleanup_push(cache_lock_cleanup, mc);
 		if (*name == '/')
 			error(MODPREFIX
