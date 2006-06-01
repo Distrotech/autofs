@@ -809,7 +809,6 @@ int parse_location(struct host **hosts, const char *list)
 
 			if (*delim == ':') {
 				char *path;
-				int len;
 
 				*delim = '\0';
 				path = delim + 1;

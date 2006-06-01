@@ -68,7 +68,7 @@ function reload() {
 		RETVAL=1
 	else
 		kill -HUP $pid 2> /dev/null
-		echo $"Reloadiing maps"
+		echo $"Reloading maps"
 		RETVAL=0
 	fi
 	return $RETVAL
