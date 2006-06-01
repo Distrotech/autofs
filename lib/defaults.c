@@ -216,7 +216,7 @@ unsigned int defaults_get_logging(void)
 	char *res;
 	unsigned int logging = DEFAULT_LOGGING;
 
-	res = get_env_string(ENV_NAME_BROWSE_MODE);
+	res = get_env_string(ENV_NAME_LOGGING);
 	if (!res)
 		return logging;
 

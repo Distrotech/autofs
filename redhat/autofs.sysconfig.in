@@ -13,7 +13,7 @@ DEFAULT_TIMEOUT=300
 #
 DEFAULT_BROWSE_MODE="no"
 #
-# DEFAULT_LOGGING - set default log level "none", "verbode" or "debug"
+# DEFAULT_LOGGING - set default log level "none", "verbose" or "debug"
 #
 #DEFAULT_LOGGING="none"
 #

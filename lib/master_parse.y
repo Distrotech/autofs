@@ -459,7 +459,7 @@ int master_parse_entry(const char *buffer, unsigned int default_timeout, unsigne
 	}
 
 	if (debug || verbose) {
-		logopt = (debug ? LOGOPT_DEBUG : 0);
+		logopt |= (debug ? LOGOPT_DEBUG : 0);
 		logopt |= (verbose ? LOGOPT_VERBOSE : 0);
 	}
 
