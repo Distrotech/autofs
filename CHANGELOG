@@ -14,7 +14,8 @@
 - add back test test for nested mount in program map lookup.
   - I must have commented this out for a reason. I guess we'll
     find out soon enough.
-- fix "-hosts" map inot finding entry for the "nobrowse" case.
+- fix "-hosts" map not finding entry for the "nobrowse" case.
+- update man page with description of "-hosts" map type.
 
 23/5/2006 autofs-5.0.0_beta3
 ----------------------------
