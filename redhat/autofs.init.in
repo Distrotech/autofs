@@ -19,7 +19,7 @@ confdir=@@autofsconfdir@@
 
 test -e $DAEMON || exit 0
 
-if [ -x $initdir/functions ]; then
+if [ -r $initdir/functions ]; then
 	. $initdir/functions
 fi
 
