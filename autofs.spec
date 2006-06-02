@@ -12,7 +12,7 @@
 
 Summary: A tool from automatically mounting and umounting filesystems.
 Name: autofs
-%define version 5.0.0_beta3
+%define version 5.0.0_beta4
 %define release 1
 Version: %{version}
 Release: %{release}
@@ -94,7 +94,7 @@ fi
 
 %files
 %defattr(-,root,root)
-%doc CREDITS CHANGELOG COPY* README* samples/ldap* samples/autofs.schema samples/autofs_ldap_auth.conf
+%doc CREDITS CHANGELOG INSTALL COPY* README* samples/ldap* samples/autofs.schema samples/autofs_ldap_auth.conf
 %config /etc/rc.d/init.d/autofs
 %config(noreplace) /etc/auto.master
 %config(noreplace,missingok) /etc/auto.misc
@@ -107,6 +107,9 @@ fi
 %{_mandir}/*/*
 
 %changelog
+* Fri Jun 2 2006 Ian Kent <raven@themaw.net>
+- Update package to version 5.0.0_beta4.
+
 * Tue May 23 2006 Ian Kent <raven@themaw.net>
 - Update package to version 5.0.0_beta3.
 

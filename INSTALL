@@ -28,7 +28,7 @@ tar distribution, follow these steps.
 
 To build an `rpm' from the tar distribution use:
 
-rpmbuild -tb autofs-5.0.0_beta3.tar.gz
+rpmbuild -tb autofs-5.0.0_beta4.tar.gz
 
 and install the resulting rpm package.
 
