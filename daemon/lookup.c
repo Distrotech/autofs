@@ -99,9 +99,8 @@ static int read_master_map(struct master *master, char *type, time_t age)
 	char *path, *save_name;
 	int result;
 
-	if (strcasecmp(type, "files")) {
+	if (strcasecmp(type, "files"))
 		return do_read_master(master, type, age);
-	}
 
 	/* 
 	 * This is a special case as we need to append the
@@ -138,6 +137,7 @@ int lookup_nss_read_master(struct master *master, time_t age)
 	struct list_head nsslist;
 	struct list_head *head, *p;
 	int result = NSS_STATUS_UNKNOWN;
+	char *save_master_name = NULL;
 
 	/* If it starts with a '/' it has to be a file or LDAP map */
 	if (*master->name == '/') {
@@ -145,13 +145,24 @@ int lookup_nss_read_master(struct master *master, time_t age)
 			debug(LOGOPT_NONE,
 			      "reading master ldap %s", master->name);
 			result = do_read_master(master, "ldap", age);
+			return !result;
 		} else {
-			debug(LOGOPT_NONE,
-			      "reading master file %s", master->name);
-			result = do_read_master(master, "file", age);
-		}
+			struct stat st;
+			int ret;
 
-		return !result;
+			/*
+			 * If the default file map doesn't exist then
+			 * we need to look to nsswitch and exclude the
+			 * files source.
+			 */
+			ret = stat(master->name, &st);
+			if (ret == 0) {
+				debug(LOGOPT_NONE,
+				      "reading master file %s", master->name);
+				result = do_read_master(master, "file", age);
+				return !result;
+			}
+		}
 	} else {
 		char *name = master->name;
 		char *tmp;
@@ -193,6 +204,27 @@ int lookup_nss_read_master(struct master *master, time_t age)
 		return 0;
 	}
 
+	/*
+	 * A master map file path was specified but didn't exist
+	 * so for good measure we save the path and use the name
+	 * to look in nsswitch sources other that the files source.
+	 * This is possibly non-standard but will likely be
+	 * appreciated because it gives similar semantics to the
+	 * old version.
+	 */
+	if (*master->name == '/') {
+		char *tmp, *start;
+		int len;
+
+		start = strrchr(master->name, '/') + 1;
+		len = strlen(start);
+		tmp = alloca(len + 1);
+		if (len && tmp) {
+			save_master_name = master->name;
+			master->name = tmp;
+		}
+	}
+
 	/* First one gets it */
 	head = &nsslist;
 	list_for_each(p, head) {
@@ -200,6 +232,16 @@ int lookup_nss_read_master(struct master *master, time_t age)
 		int status;
 
 		this = list_entry(p, struct nss_source, list);
+
+		/*
+		 * If the default file master map has been changed
+		 * to something without a leading "/" or it didn't
+		 * exist (see above) so we probably should ignore
+		 * the files source in nsswitch. Again, this should
+		 * be closer to the semantics of the older version.
+		 */
+		if (!strcasecmp(this->source, "files"))
+			continue;
 
 		debug(LOGOPT_NONE,
 		      "reading master %s %s", this->source, master->name);
@@ -214,12 +256,17 @@ int lookup_nss_read_master(struct master *master, time_t age)
 		status = check_nss_result(this, result);
 		if (status >= 0) {
 			free_sources(&nsslist);
+			if (save_master_name)
+				master->name = save_master_name;
 			return status;
 		}
 	}
 
 	if (!list_empty(&nsslist))
 		free_sources(&nsslist);
+
+	if (save_master_name)
+		master->name = save_master_name;
 
 	return !result;
 }

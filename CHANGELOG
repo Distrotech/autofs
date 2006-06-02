@@ -23,6 +23,9 @@
 - fix lookup of wildcard map entry for several map types.
 - fix fail to realease cache read lock on indirect map expire.
 - fix incorrect cache update of wildcard map entry.
+- alter master map lookup semantics to be a little more like
+  version 4. The way we should locate the master map needs
+  more investigation and may change again.
 
 23/5/2006 autofs-5.0.0_beta3
 ----------------------------

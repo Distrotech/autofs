@@ -8,6 +8,13 @@ Differences between version 4 and version 5.
   - the parameters for the `automount' daemon are now very different.
     See automount(8).
 
+- Master map default is /etc/auto.master. If it exists it will be
+  used. This can be overridden by setting the DEFAULT_MASTER_MAP_NAME
+  configuration variable. If the default master map can't be used
+  nsswitch sources are tried. Since the default master map is a file
+  the nsswitch source "files" is not checked even if it is present
+  in the nsswitch configuration.
+
 - The `automount' daemon is now a multi-threaded application and so
   appears as a single process (unless a thread process display option
   is used).
