@@ -1004,6 +1004,7 @@ int parse_mount(struct autofs_point *ap, const char *name,
 			 */
 			ret = cache_add(mc, source, name, mapent, time(NULL));
 			if (ret == CHE_FAIL) {
+				cache_unlock(mc);
 				free(options);
 				return 1;
 			}
@@ -1276,6 +1277,7 @@ int parse_mount(struct autofs_point *ap, const char *name,
 				pthread_cleanup_pop(0);
 				if (!m_root) {
 					char *estr;
+					cache_unlock(mc);
 					estr = strerror_r(errno, buf, MAX_ERR_BUF);
 					error(ap->logopt,
 					      MODPREFIX "alloca: %s", estr);

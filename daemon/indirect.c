@@ -431,8 +431,6 @@ void *expire_proc_indirect(void *arg)
 
 		sched_yield();
 
-		debug(ap->logopt, "expire %s", next->path);
-
 		/*
 		 * If me->key starts with a '/' and it's not an autofs
 		 * filesystem it's a nested mount and we need to use
@@ -456,11 +454,18 @@ void *expire_proc_indirect(void *arg)
 		}
 		master_source_unlock(ap->entry);
 
+		if (!me)
+			continue;
+
 		if (me && *me->key == '/') {
 			ioctlfd = me->ioctlfd;
 			cache_unlock(mc);
-		} else
+		} else {
 			ioctlfd = ap->ioctlfd;
+			cache_unlock(mc);
+		}
+
+		debug(ap->logopt, "expire %s", next->path);
 
 		ret = ioctl(ioctlfd, AUTOFS_IOC_EXPIRE_MULTI, &now);
 		if (ret < 0 && errno != EAGAIN) {

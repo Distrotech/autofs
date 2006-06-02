@@ -489,7 +489,7 @@ int cache_update(struct mapent_cache *mc, struct map_source *source,
 	int ret = CHE_OK;
 
 	me = cache_lookup(mc, key);
-	if (!me || *me->key == '*') {
+	if (!me) {
 		ret = cache_add(mc, source, key, mapent, age);
 		if (!ret) {
 			debug(LOGOPT_NONE, "failed for %s", key);

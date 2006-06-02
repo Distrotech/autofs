@@ -708,12 +708,8 @@ static int lookup_wild(struct autofs_point *ap, struct lookup_context *ctxt)
 	char mkey[KEY_MAX_LEN + 1];
 	char mapent[MAPENT_MAX_LEN + 1];
 	time_t age = time(NULL);
-	char *mapname;
 	FILE *f;
 	int entry, ret;
-
-	mapname = alloca(strlen(ctxt->mapname) + 6);
-	sprintf(mapname, "file:%s", ctxt->mapname);
 
 	f = fopen(ctxt->mapname, "r");
 	if (!f) {
@@ -802,7 +798,7 @@ static int check_map_indirect(struct autofs_point *ap,
 		int wild = CHE_MISSING;
 
 		wild = lookup_wild(ap, ctxt);
-		if (wild == CHE_COMPLETED)
+		if (wild == CHE_COMPLETED || CHE_UPDATED || CHE_OK)
 			return NSS_STATUS_SUCCESS;
 /*
 		if (wild == CHE_FAIL)

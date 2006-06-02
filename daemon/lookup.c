@@ -139,8 +139,6 @@ int lookup_nss_read_master(struct master *master, time_t age)
 	struct list_head *head, *p;
 	int result = NSS_STATUS_UNKNOWN;
 
-	debug(LOGOPT_ANY, "logging %u", master->default_logging);
-
 	/* If it starts with a '/' it has to be a file or LDAP map */
 	if (*master->name == '/') {
 		if (*(master->name + 1) == '/') {

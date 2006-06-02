@@ -20,6 +20,9 @@
   - still needs some more work but that will need to wait.
 - change init script to check for read on config file instead
   of execute.
+- fix lookup of wildcard map entry for several map types.
+- fix fail to realease cache read lock on indirect map expire.
+- fix incorrect cache update of wildcard map entry.
 
 23/5/2006 autofs-5.0.0_beta3
 ----------------------------

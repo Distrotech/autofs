@@ -127,8 +127,6 @@ static void syslog_debug(unsigned int logopt, const char *msg, ...)
 {
 	va_list ap;
 
-	syslog(LOG_DEBUG, "do_debug %u logopt %u", do_debug, logopt);
-
 	if (!do_debug && !(logopt & LOGOPT_DEBUG))
 		return;
 

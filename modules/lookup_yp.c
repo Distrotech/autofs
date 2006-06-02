@@ -424,6 +424,9 @@ static int check_map_indirect(struct autofs_point *ap,
 		int wild = CHE_MISSING;
 
 		wild = lookup_wild(ap, ctxt);
+		if (wild == CHE_UPDATED || CHE_OK)
+			return NSS_STATUS_SUCCESS;
+
 		pthread_cleanup_push(cache_lock_cleanup, mc);
 		cache_writelock(mc);
 		if (wild == CHE_MISSING)
