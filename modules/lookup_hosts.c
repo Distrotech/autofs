@@ -50,7 +50,7 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 
 	if (!(*context = ctxt = malloc(sizeof(struct lookup_context)))) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		crit(MODPREFIX "malloc: %s", estr);
+		crit(LOGOPT_ANY, MODPREFIX "malloc: %s", estr);
 		return 1;
 	}
 
@@ -73,7 +73,7 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 
 	status = pthread_mutex_lock(&hostent_mutex);
 	if (status) {
-		error("failed to lock hostent mutex");
+		error(LOGOPT_ANY, MODPREFIX "failed to lock hostent mutex");
 		return NSS_STATUS_UNAVAIL;
 	}
 
@@ -89,7 +89,7 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 
 	status = pthread_mutex_unlock(&hostent_mutex);
 	if (status)
-		error("failed to unlock hostent mutex");
+		error(LOGOPT_ANY, MODPREFIX "failed to unlock hostent mutex");
 
 	return NSS_STATUS_SUCCESS;
 }
@@ -120,10 +120,10 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 
 		pthread_cleanup_push(cache_lock_cleanup, mc);
 		if (*name == '/')
-			error(MODPREFIX
+			error(ap->logopt, MODPREFIX
 			      "can't find path in hosts map %s", name);
 		else
-			error(MODPREFIX
+			error(ap->logopt, MODPREFIX
 			      "can't find path in hosts map %s/%s",
 			      ap->path, name);
 		pthread_cleanup_pop(0);
@@ -149,7 +149,7 @@ done:
 		return status;
 
 	if (mapent) {
-		debug(MODPREFIX "%s -> %s", name, me->mapent);
+		debug(ap->logopt, MODPREFIX "%s -> %s", name, me->mapent);
 		ret = ctxt->parse->parse_mount(ap, name, name_len,
 				 mapent, ctxt->parse->context);
 
@@ -163,7 +163,7 @@ done:
 	 * Otherwise we need to get the exports list and add then
 	 * the cache.
 	 */
-	debug(MODPREFIX "fetchng export list for %s", name);
+	debug(ap->logopt, MODPREFIX "fetchng export list for %s", name);
 
 	exp = rpc_get_exports(name, 10, 0, RPC_CLOSE_NOLINGER);
 
@@ -179,7 +179,7 @@ done:
 			if (!mapent) {
 				char *estr;
 				estr = strerror_r(errno, buf, MAX_ERR_BUF);
-				crit(MODPREFIX "malloc: %s", estr);
+				crit(ap->logopt, MODPREFIX "malloc: %s", estr);
 				rpc_exports_free(exp);
 				return NSS_STATUS_UNAVAIL;
 			}
@@ -192,7 +192,7 @@ done:
 			if (!mapent) {
 				char *estr;
 				estr = strerror_r(errno, buf, MAX_ERR_BUF);
-				crit(MODPREFIX "malloc: %s", estr);
+				crit(ap->logopt, MODPREFIX "malloc: %s", estr);
 				rpc_exports_free(exp);
 				return NSS_STATUS_UNAVAIL;
 			}
@@ -209,11 +209,11 @@ done:
 
 	/* Exports lookup failed so we're outa here */
 	if (!mapent) {
-		error("exports lookup failed for %s", name);
+		error(ap->logopt, "exports lookup failed for %s", name);
 		return NSS_STATUS_UNAVAIL;
 	}
 
-	debug(MODPREFIX "%s -> %s", name, mapent);
+	debug(ap->logopt, MODPREFIX "%s -> %s", name, mapent);
 
 	cache_writelock(mc);
 	cache_update(mc, source, name, mapent, now);

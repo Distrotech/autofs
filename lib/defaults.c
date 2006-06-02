@@ -172,7 +172,8 @@ unsigned int defaults_read_config(void)
 		    !strcasecmp(res, ENV_AUTH_CONF_FILE)) {
 			ret = setenv(res, value, 0);
 			if (ret)
-				warn("can't set config value for %s", res);
+				fprintf(stderr,
+				        "can't set config value for %s", res);
 		}
 	}
 	return 1;
@@ -223,10 +224,10 @@ unsigned int defaults_get_logging(void)
 	if (!strcasecmp(res, "none"))
 		logging = DEFAULT_LOGGING;
 	else {
-		if (strcasecmp(res, "verbose"))
+		if (!strcasecmp(res, "verbose"))
 			logging |= LOGOPT_VERBOSE;
 
-		if (strcasecmp(res, "debug"))
+		if (!strcasecmp(res, "debug"))
 			logging |= LOGOPT_DEBUG;
 	}
 

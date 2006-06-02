@@ -55,7 +55,7 @@ int lookup_init(const char *my_mapfmt, int argc, const char *const *argv, void *
 	memset(ctxt, 0, sizeof(struct lookup_context));
 
 	if (argc < 1) {
-		crit(MODPREFIX "No map list");
+		crit(LOGOPT_ANY, MODPREFIX "No map list");
 		goto error_out;
 	}
 
@@ -87,7 +87,7 @@ int lookup_init(const char *my_mapfmt, int argc, const char *const *argv, void *
 
 	for (i = 0; i < ctxt->n; i++) {
 		if (!ctxt->m[i].argv[0]) {
-			crit(MODPREFIX "missing module name");
+			crit(LOGOPT_ANY, MODPREFIX "missing module name");
 			goto error_out;
 		}
 		map = strdup(ctxt->m[i].argv[0]);
@@ -101,7 +101,7 @@ int lookup_init(const char *my_mapfmt, int argc, const char *const *argv, void *
 						   mapfmt ? mapfmt : my_mapfmt,
 						   ctxt->m[i].argc - 1,
 						   ctxt->m[i].argv + 1)))
-			error(MODPREFIX "error opening module");
+			error(LOGOPT_ANY, MODPREFIX "error opening module");
 			goto error_out;
 	}
 
@@ -110,7 +110,7 @@ int lookup_init(const char *my_mapfmt, int argc, const char *const *argv, void *
 
 nomem:
 	estr = strerror_r(errno, buf, MAX_ERR_BUF);
-	crit(MODPREFIX "error: %s", estr);
+	crit(LOGOPT_ANY, MODPREFIX "error: %s", estr);
 error_out:
 	if (ctxt) {
 		for (i = 0; i < ctxt->n; i++)

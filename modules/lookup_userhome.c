@@ -51,25 +51,25 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 	struct passwd *pw;
 	char buf[MAX_ERR_BUF];
 
-	debug(MODPREFIX "looking up %s", name);
+	debug(ap->logopt, MODPREFIX "looking up %s", name);
 
 	/* Get the equivalent username */
 	pw = getpwnam(name);
 	if (!pw) {
-		info(MODPREFIX "not found: %s", name);
+		warn(ap->logopt, MODPREFIX "not found: %s", name);
 		return NSS_STATUS_NOTFOUND;	/* Unknown user or error */
 	}
 
 	/* Create the appropriate symlink */
 	if (chdir(ap->path)) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		error(MODPREFIX "chdir failed: %s", estr);
+		error(ap->logopt, MODPREFIX "chdir failed: %s", estr);
 		return NSS_STATUS_UNAVAIL;
 	}
 
 	if (symlink(pw->pw_dir, name) && errno != EEXIST) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		error(MODPREFIX "symlink failed: %s", estr);
+		error(ap->logopt, MODPREFIX "symlink failed: %s", estr);
 		return NSS_STATUS_UNAVAIL;
 	}
 

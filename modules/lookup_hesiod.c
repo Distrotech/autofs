@@ -47,7 +47,7 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 	if ((*context = ctxt = (struct lookup_context *)
 	     malloc(sizeof(struct lookup_context))) == NULL) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		crit(MODPREFIX "malloc: %s", estr);
+		crit(LOGOPT_ANY, MODPREFIX "malloc: %s", estr);
 		return 1;
 	}
 
@@ -57,7 +57,7 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 	/* Initialize the hesiod context. */
 	if (hesiod_init(&(ctxt->hesiod_context)) != 0) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		crit(MODPREFIX "hesiod_init(): %s", estr);
+		crit(LOGOPT_ANY, MODPREFIX "hesiod_init(): %s", estr);
 		return 1;
 	}
 
@@ -93,7 +93,9 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 	char **record, *best_record = NULL, *p;
 	int priority, lowest_priority = INT_MAX;	
 
-	debug(MODPREFIX "looking up root=\"%s\", name=\"%s\"", ap->path, name);
+	debug(ap->logopt,
+	      MODPREFIX "looking up root=\"%s\", name=\"%s\"",
+	      ap->path, name);
 
 	chdir("/");		/* If this is not here the filesystem stays
 				   busy, for some reason... */
@@ -106,7 +108,8 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 	if (!hes_result || !hes_result[0]) {
 		/* Note: it is not clear to me how to distinguish between
 		 * the "no search results" case and other failures.  --JM */
-		warn(MODPREFIX "entry \"%s\" not found in map", name);
+		warn(ap->logopt,
+		     MODPREFIX "entry \"%s\" not found in map", name);
 		status = pthread_mutex_unlock(&hesiod_mutex);
 		if (status)
 			fatal(status);
@@ -129,7 +132,9 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 	    }
 	}
 
-	debug(MODPREFIX "lookup for \"%s\" gave \"%s\"", name, best_record);
+	debug(ap->logopt,
+	      MODPREFIX "lookup for \"%s\" gave \"%s\"",
+	      name, best_record);
 
 	rv = ctxt->parser->parse_mount(ap, name, name_len, best_record,
 				       ctxt->parser->context);

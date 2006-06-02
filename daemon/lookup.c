@@ -110,7 +110,7 @@ static int read_master_map(struct master *master, char *type, time_t age)
 	 */
 
 	if (strchr(master->name, '/')) {
-		error("relative path invalid in files map name");
+		error(LOGOPT_ANY, "relative path invalid in files map name");
 		return NSS_STATUS_NOTFOUND;
 	}
 
@@ -139,13 +139,17 @@ int lookup_nss_read_master(struct master *master, time_t age)
 	struct list_head *head, *p;
 	int result = NSS_STATUS_UNKNOWN;
 
+	debug(LOGOPT_ANY, "logging %u", master->default_logging);
+
 	/* If it starts with a '/' it has to be a file or LDAP map */
 	if (*master->name == '/') {
 		if (*(master->name + 1) == '/') {
-			debug("reading master ldap %s", master->name);
+			debug(LOGOPT_NONE,
+			      "reading master ldap %s", master->name);
 			result = do_read_master(master, "ldap", age);
 		} else {
-			debug("reading master file %s", master->name);
+			debug(LOGOPT_NONE,
+			      "reading master file %s", master->name);
 			result = do_read_master(master, "file", age);
 		}
 
@@ -171,7 +175,9 @@ int lookup_nss_read_master(struct master *master, time_t age)
 
 				master->name = tmp + 1;
 
-				debug("reading master %s %s", source, master->name);
+				debug(LOGOPT_NONE,
+				      "reading master %s %s",
+				      source, master->name);
 
 				result = do_read_master(master, source, age);
 				master->name = name;
@@ -185,7 +191,7 @@ int lookup_nss_read_master(struct master *master, time_t age)
 
 	result = nsswitch_parse(&nsslist);
 	if (result) {
-		error("can't to read name service switch config.");
+		error(LOGOPT_ANY, "can't to read name service switch config.");
 		return 0;
 	}
 
@@ -197,11 +203,13 @@ int lookup_nss_read_master(struct master *master, time_t age)
 
 		this = list_entry(p, struct nss_source, list);
 
-		debug("reading master %s %s", this->source, master->name);
+		debug(LOGOPT_NONE,
+		      "reading master %s %s", this->source, master->name);
 
 		result = read_master_map(master, this->source, age);
 		if (result == NSS_STATUS_UNKNOWN) {
-			debug("no map - continuing to next source");
+			debug(LOGOPT_NONE,
+			      "no map - continuing to next source");
 			continue;
 		}
 
@@ -227,7 +235,7 @@ static int do_read_map(struct autofs_point *ap, struct map_source *map, time_t a
 		lookup = open_lookup(map->type, "",
 				map->format, map->argc, map->argv);
 		if (!lookup) {
-			debug("lookup module %s failed", map->type);
+			debug(ap->logopt, "lookup module %s failed", map->type);
 			return NSS_STATUS_UNAVAIL;
 		}
 		map->lookup = lookup;
@@ -268,7 +276,7 @@ static int read_file_source_instance(struct autofs_point *ap, struct map_source 
 	char *type, *format;
 
 	if (stat(map->argv[0], &st) == -1) {
-		warn("file map %s not found", map->argv[0]);
+		warn(ap->logopt, "file map %s not found", map->argv[0]);
 		return NSS_STATUS_NOTFOUND;
 	}
 
@@ -323,7 +331,7 @@ static enum nsswitch_status read_map_source(struct nss_source *this,
 	 */
 
 	if (strchr(map->argv[0], '/')) {
-		error("relative path invalid in files map name");
+		error(ap->logopt, "relative path invalid in files map name");
 		return NSS_STATUS_NOTFOUND;
 	}
 
@@ -357,7 +365,7 @@ static enum nsswitch_status read_map_source(struct nss_source *this,
 		tmap.argc = map->argc;
 		tmap.argv = copy_argv(map->argc, map->argv);
 		if (!tmap.argv) {
-			error("failed to copy args");
+			error(ap->logopt, "failed to copy args");
 			free(path);
 			return NSS_STATUS_UNKNOWN;
 		}
@@ -365,7 +373,7 @@ static enum nsswitch_status read_map_source(struct nss_source *this,
 			free((char *) tmap.argv[0]);
 		tmap.argv[0] = path;
 	} else {
-		error("invalid arguments for autofs_point");
+		error(ap->logopt, "invalid arguments for autofs_point");
 		free(path);
 		return NSS_STATUS_UNKNOWN;
 	}
@@ -406,7 +414,8 @@ int lookup_nss_read_map(struct autofs_point *ap, time_t age)
 		entry->current = map;
 
 		if (map->type) {
-			debug("reading map %s %s", map->type, map->argv[0]);
+			debug(ap->logopt,
+			      "reading map %s %s", map->type, map->argv[0]);
 			result = do_read_map(ap, map, age);
 			map = map->next;
 			continue;
@@ -421,10 +430,12 @@ int lookup_nss_read_map(struct autofs_point *ap, time_t age)
 					continue;
 				}
 				map->type = tmp;
-				debug("reading map %s %s", tmp, map->argv[0]);
+				debug(ap->logopt,
+				      "reading map %s %s", tmp, map->argv[0]);
 				result = do_read_map(ap, map, age);
 			} else {
-				debug("reading map file %s", map->argv[0]);
+				debug(ap->logopt,
+				      "reading map file %s", map->argv[0]);
 				result = read_file_source_instance(ap, map, age);
 			}
 			map = map->next;
@@ -435,7 +446,8 @@ int lookup_nss_read_map(struct autofs_point *ap, time_t age)
 
 		result = nsswitch_parse(&nsslist);
 		if (result) {
-			error("can't to read name service switch config.");
+			error(ap->logopt,
+			      "can't to read name service switch config.");
 			goto done;
 		}
 
@@ -445,7 +457,8 @@ int lookup_nss_read_map(struct autofs_point *ap, time_t age)
 
 			this = list_entry(p, struct nss_source, list);
 
-			debug("reading map %s %s", this->source, map->argv[0]);
+			debug(ap->logopt,
+			      "reading map %s %s", this->source, map->argv[0]);
 
 			result = read_map_source(this, ap, map, age);
 			if (result == NSS_STATUS_UNKNOWN)
@@ -502,13 +515,14 @@ int lookup_ghost(struct autofs_point *ap)
 			if (*me->key == '/') {
 				/* It's a busy multi-mount - leave till next time */
 				if (list_empty(&me->multi_list))
-					error("invalid key %s", me->key);
+					error(ap->logopt,
+					      "invalid key %s", me->key);
 				goto next;
 			}
 
 			fullpath = alloca(strlen(me->key) + strlen(ap->path) + 3);
 			if (!fullpath) {
-				warn("failed to allocate full path");
+				warn(ap->logopt, "failed to allocate full path");
 				goto next;
 			}
 			sprintf(fullpath, "%s/%s", ap->path, me->key);
@@ -516,14 +530,15 @@ int lookup_ghost(struct autofs_point *ap)
 			ret = stat(fullpath, &st);
 			if (ret == -1 && errno != ENOENT) {
 				char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-				warn("stat error %s", estr);
+				warn(ap->logopt, "stat error %s", estr);
 				goto next;
 			}
 
 			ret = mkdir_path(fullpath, 0555);
 			if (ret < 0 && errno != EEXIST) {
 				char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-				warn("mkdir_path %s failed: %s", fullpath, estr);
+				warn(ap->logopt,
+				     "mkdir_path %s failed: %s", fullpath, estr);
 				goto next;
 			}
 
@@ -548,9 +563,11 @@ int do_lookup_mount(struct autofs_point *ap, struct map_source *map, const char 
 	int status;
 
 	if (!map->lookup) {
-		lookup = open_lookup(map->type, "", map->format, map->argc, map->argv);
+		lookup = open_lookup(map->type, "",
+				     map->format, map->argc, map->argv);
 		if (!lookup) {
-			debug("lookup module %s failed", map->type);
+			debug(ap->logopt,
+			      "lookup module %s failed", map->type);
 			return NSS_STATUS_UNAVAIL;
 		}
 		map->lookup = lookup;
@@ -573,7 +590,7 @@ static int lookup_name_file_source_instance(struct autofs_point *ap, struct map_
 	char *type, *format;
 
 	if (stat(map->argv[0], &st) == -1) {
-		warn("file map not found");
+		warn(ap->logopt, "file map not found");
 		return NSS_STATUS_NOTFOUND;
 	}
 
@@ -630,7 +647,7 @@ static enum nsswitch_status lookup_map_name(struct nss_source *this,
 	 *       path.
 	 */
 	if (strchr(map->argv[0], '/')) {
-		error("relative path invalid in files map name");
+		error(ap->logopt, "relative path invalid in files map name");
 		return NSS_STATUS_NOTFOUND;
 	}
 
@@ -661,7 +678,7 @@ static enum nsswitch_status lookup_map_name(struct nss_source *this,
 		tmap.argc = map->argc;
 		tmap.argv = copy_argv(map->argc, map->argv);
 		if (!tmap.argv) {
-			error("failed to copy args");
+			error(ap->logopt, "failed to copy args");
 			free(path);
 			return NSS_STATUS_UNKNOWN;
 		}
@@ -669,7 +686,7 @@ static enum nsswitch_status lookup_map_name(struct nss_source *this,
 			free((char *) tmap.argv[0]);
 		tmap.argv[0] = path;
 	} else {
-		error("invalid arguments for autofs_point");
+		error(ap->logopt, "invalid arguments for autofs_point");
 		free(path);
 		return NSS_STATUS_UNKNOWN;
 	}
@@ -735,7 +752,8 @@ int lookup_nss_mount(struct autofs_point *ap, const char *name, int name_len)
 
 		result = nsswitch_parse(&nsslist);
 		if (result) {
-			error("can't to read name service switch config.");
+			error(ap->logopt,
+			      "can't to read name service switch config.");
 			result = 1;
 			goto done;
 		}
@@ -856,13 +874,15 @@ int lookup_prune_cache(struct autofs_point *ap, time_t age)
 
 			path = make_fullpath(ap->path, key);
 			if (!path) {
-				warn("can't malloc storage for path");
+				warn(ap->logopt,
+				     "can't malloc storage for path");
 				free(key);
 				continue;
 			}
 
 			if (is_mounted(_PATH_MOUNTED, path)) {
-				debug("prune posponed, %s is mounted", path);
+				debug(ap->logopt,
+				      "prune posponed, %s is mounted", path);
 				free(key);
 				free(path);
 				continue;

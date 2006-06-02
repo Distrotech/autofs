@@ -87,18 +87,18 @@ sasl_log_func(void *context, int level, const char *message)
 	switch (level) {
 	case SASL_LOG_ERR:
 	case SASL_LOG_FAIL:
-		error("%s", message);
+		error(LOGOPT_ANY, "%s", message);
 		break;
 	case SASL_LOG_WARN:
-		warn("%s", message);
+		warn(LOGOPT_ANY, "%s", message);
 		break;
 	case SASL_LOG_NOTE:
-		info("%s", message);
+		info(LOGOPT_ANY, "%s", message);
 		break;
 	case SASL_LOG_DEBUG:
 	case SASL_LOG_TRACE:
 	case SASL_LOG_PASS:
-		debug("%s", message);
+		debug(LOGOPT_NONE, "%s", message);
 		break;
 	default:
 		break;
@@ -110,7 +110,7 @@ sasl_log_func(void *context, int level, const char *message)
 static int
 getuser_func(void *context, int id, const char **result, unsigned *len)
 {
-	debug("called with context %p, id %d.", context, id);
+	debug(LOGOPT_NONE, "called with context %p, id %d.", context, id);
 
 	switch (id) {
 	case SASL_CB_USER:
@@ -120,7 +120,7 @@ getuser_func(void *context, int id, const char **result, unsigned *len)
 			*len = strlen(sasl_auth_id);
 		break;
 	default:
-		error("unknown id in request: %d", id);
+		error(LOGOPT_ANY, "unknown id in request: %d", id);
 		return SASL_FAIL;
 	}
 
@@ -137,7 +137,7 @@ getpass_func(sasl_conn_t *conn, void *context, int id, sasl_secret_t **psecret)
 {
 	int len = strlen(sasl_auth_secret);
 
-	debug("context %p, id %d", context, id);
+	debug(LOGOPT_NONE, "context %p, id %d", context, id);
 
 	*psecret = (sasl_secret_t *) malloc(sizeof(sasl_secret_t) + len);
 	if (!*psecret)
@@ -169,7 +169,7 @@ get_server_SASL_mechanisms(LDAP *ld)
 				NULL, NULL,
 				NULL, LDAP_NO_LIMIT, &results);
 	if (ret != LDAP_SUCCESS) {
-		debug("%s", ldap_err2string(ret));
+		error(LOGOPT_ANY, "%s", ldap_err2string(ret));
 		return NULL;
 	}
 
@@ -177,7 +177,8 @@ get_server_SASL_mechanisms(LDAP *ld)
 	if (entry == NULL) {
 		/* No root DSE. (!) */
 		ldap_msgfree(results);
-		debug("a lookup of \"supportedSASLmechanisms\" returned "
+		debug(LOGOPT_NONE,
+		      "a lookup of \"supportedSASLmechanisms\" returned "
 		      "no results.");
 		return NULL;
 	}
@@ -186,7 +187,8 @@ get_server_SASL_mechanisms(LDAP *ld)
 	ldap_msgfree(results);
 	if (mechanisms == NULL) {
 		/* Well, that was a waste of time. */
-		info("No SASL authentication mechanisms are supported"
+		info(LOGOPT_ANY,
+		     "No SASL authentication mechanisms are supported"
 		     " by the LDAP server.\n");
 		return NULL;
 	}
@@ -216,7 +218,8 @@ do_sasl_bind(LDAP *ld, sasl_conn_t *conn, const char **clientout,
 				     &client_cred : NULL,
 				     NULL, NULL, &msgid);
 		if (ret != LDAP_SUCCESS) {
-			crit("Error sending sasl_bind request to "
+			crit(LOGOPT_ANY,
+			     "Error sending sasl_bind request to "
 			     "the server: %s", ldap_err2string(ret));
 			return -1;
 		}
@@ -225,7 +228,8 @@ do_sasl_bind(LDAP *ld, sasl_conn_t *conn, const char **clientout,
 		results = NULL;
 		ret = ldap_result(ld, msgid, LDAP_MSG_ALL, NULL, &results);
 		if (ret != LDAP_RES_BIND) {
-			crit("Error while waiting for response to "
+			crit(LOGOPT_ANY,
+			     "Error while waiting for response to "
 			     "sasl_bind request: %s", ldap_err2string(ret));
 			return -1;
 		}
@@ -252,7 +256,8 @@ do_sasl_bind(LDAP *ld, sasl_conn_t *conn, const char **clientout,
 			ret = ldap_get_option(ld, LDAP_OPT_RESULT_CODE,
 					      &bind_result);
 			if (ret != LDAP_SUCCESS) {
-				crit("Error retrieving response to sasl_bind "
+				crit(LOGOPT_ANY,
+				     "Error retrieving response to sasl_bind "
 				     "request: %s", ldap_err2string(ret));
 				ret = -1;
 				break;
@@ -264,7 +269,8 @@ do_sasl_bind(LDAP *ld, sasl_conn_t *conn, const char **clientout,
 				bind_result = ret;
 				break;
 			default:
-				warn("Error parsing response to sasl_bind "
+				warn(LOGOPT_ANY,
+				     "Error parsing response to sasl_bind "
 				     "request: %s.", ldap_err2string(ret));
 				break;
 			}
@@ -285,7 +291,8 @@ do_sasl_bind(LDAP *ld, sasl_conn_t *conn, const char **clientout,
 		expected_data = sasl_result == SASL_CONTINUE;
 
 		if (have_data && !expected_data) {
-			warn("The LDAP server sent data in response to our "
+			warn(LOGOPT_ANY,
+			     "The LDAP server sent data in response to our "
 			     "bind request, but indicated that the bind was "
 			     "complete. LDAP SASL bind with mechansim %s "
 			     "failed.", auth_mech);
@@ -294,7 +301,8 @@ do_sasl_bind(LDAP *ld, sasl_conn_t *conn, const char **clientout,
 			break;
 		}
 		if (expected_data && !have_data) {
-			warn("The LDAP server indicated that the LDAP SASL "
+			warn(LOGOPT_ANY,
+			     "The LDAP server indicated that the LDAP SASL "
 			     "bind was incomplete, but did not provide the "
 			     "required data to proceed. LDAP SASL bind with "
 			     "mechanism %s failed.", auth_mech);
@@ -325,8 +333,9 @@ do_sasl_bind(LDAP *ld, sasl_conn_t *conn, const char **clientout,
 			 */
 			if ((*clientoutlen > 0) &&
 			    (bind_result != LDAP_SASL_BIND_IN_PROGRESS)) {
-				printf("We have data for the server, "
-				       "but it thinks we are done!");
+				warn(LOGOPT_ANY,
+				     "We have data for the server, "
+				     "but it thinks we are done!");
 				/* XXX should print out debug data here */
 				ret = -1;
 			}
@@ -357,7 +366,7 @@ sasl_bind_mech(LDAP *ldap, const char *mech)
 
 	result = ldap_get_option(ldap, LDAP_OPT_HOST_NAME, &host);
 	if (result != LDAP_SUCCESS) {
-		debug("failed to get hostname for connection");
+		debug(LOGOPT_NONE, "failed to get hostname for connection");
 		return NULL;
 	}
 	if ((tmp = strchr(host, ':')))
@@ -376,7 +385,7 @@ sasl_bind_mech(LDAP *ldap, const char *mech)
 
 	/* OK and CONTINUE are the only non-fatal return codes here. */
 	if ((result != SASL_OK) && (result != SASL_CONTINUE)) {
-		debug("%s", sasl_errdetail(conn));
+		error(LOGOPT_ANY, "%s", sasl_errdetail(conn));
 		ldap_memfree(host);
 		if (conn)
 			sasl_dispose(&conn);

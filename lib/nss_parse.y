@@ -125,7 +125,7 @@ int nsswitch_parse(struct list_head *list)
 
 	nsswitch = fopen(NSSWITCH_FILE, "r");
 	if (!nsswitch) {
-		error("couldn't open %s\n", NSSWITCH_FILE);
+		error(LOGOPT_ANY, "couldn't open %s\n", NSSWITCH_FILE);
 		return 1;
 	}
 	nss_in = nsswitch;

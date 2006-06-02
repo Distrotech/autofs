@@ -127,14 +127,15 @@ int rmdir_path(struct autofs_point *ap, const char *path)
 		 */
 		memset(&st, 0, sizeof(st));
 		if (lstat(buf, &st) != 0) {
-			crit("lstat of %s failed.", buf);
+			crit(ap->logopt, "lstat of %s failed.", buf);
 			return -1;
 		}
 
 		if (st.st_dev != ap->dev) {
-			crit("attempt to remove files from a "
+			crit(ap->logopt, "attempt to remove files from a "
 			     "mounted file system!");
-			crit("ap->dev == %llu, \"%s\" dev == %llu", ap->dev,
+			crit(ap->logopt,
+			    "ap->dev == %llu, \"%s\" dev == %llu", ap->dev,
 			     buf, st.st_dev);
 			return -1;
 		}
@@ -154,9 +155,10 @@ int rmdir_path(struct autofs_point *ap, const char *path)
 					if (unlink(buf) == -1)
 						return -1;
 				} else {
-					crit("file \"%s\" is neither a "
-					     "directory nor a symbolic link. "
-					     "mode %d", buf, st.st_mode);
+					crit(ap->logopt,
+					   "file \"%s\" is neither a directory"
+					   " nor a symbolic link. mode %d",
+					   buf, st.st_mode);
 					return -1;
 				}
 			}
@@ -236,21 +238,21 @@ static int umount_offsets(struct autofs_point *ap, struct mnt_list *mnts, const 
 		struct mapent *oe;
 
 		if (strlen(base) + strlen(offset) >= PATH_MAX) {
-			warn("can't umount - mount path too long");
+			warn(ap->logopt, "can't umount - mount path too long");
 			ret++;
 			continue;
 		}
 
 		sched_yield();
 
-		debug("umount offset %s", offset);
+		debug(ap->logopt, "umount offset %s", offset);
 
 		strcpy(key, base);
 		strcat(key, offset);
 		oe = cache_lookup(mc, key);
 
 		if (!oe) {
-			debug("offset key %s not found", key);
+			debug(ap->logopt, "offset key %s not found", key);
 			continue;
 		}
 
@@ -260,7 +262,7 @@ static int umount_offsets(struct autofs_point *ap, struct mnt_list *mnts, const 
 		 */
 		pthread_cleanup_push(cache_lock_cleanup, mc);
 		if (umount_autofs_offset(ap, oe)) {
-			crit("failed to umount offset %s", key);
+			crit(ap->logopt, "failed to umount offset %s", key);
 			ret++;
 		}
 		pthread_cleanup_pop(0);
@@ -269,7 +271,7 @@ static int umount_offsets(struct autofs_point *ap, struct mnt_list *mnts, const 
 	if (!ret && me->multi == me) {
 		status = cache_delete_offset_list(mc, me->key);
 		if (status != CHE_OK)
-			warn("couldn't delete offset list");
+			warn(ap->logopt, "couldn't delete offset list");
 	}
 	cache_unlock(mc);
 	ap->entry->current = NULL;
@@ -289,7 +291,7 @@ static int umount_ent(struct autofs_point *ap, const char *path, const char *typ
 	sav_errno = errno;
 
 	if (status < 0)
-		warn("lstat of %s failed with %d", path, status);
+		warn(ap->logopt, "lstat of %s failed with %d", path, status);
 
 	/*
 	 * lstat failed and we're an smbfs fs returning an error that is not
@@ -313,7 +315,7 @@ static int umount_ent(struct autofs_point *ap, const char *path, const char *typ
 	if (rv && (ap->state == ST_SHUTDOWN_FORCE || ap->state == ST_SHUTDOWN)) {
 		ret = stat(path, &st);
 		if (ret == -1 && errno == ENOENT) {
-			error("mount point does not exist");
+			error(ap->logopt, "mount point does not exist");
 			status = pthread_mutex_unlock(&ap->state_mutex);
 			if (status)
 				fatal(status);
@@ -321,7 +323,7 @@ static int umount_ent(struct autofs_point *ap, const char *path, const char *typ
 		}
 
 		if (ret == 0 && !S_ISDIR(st.st_mode)) {
-			error("mount point is not a directory");
+			error(ap->logopt, "mount point is not a directory");
 			status = pthread_mutex_unlock(&ap->state_mutex);
 			if (status)
 				fatal(status);
@@ -347,7 +349,8 @@ static int umount_ent(struct autofs_point *ap, const char *path, const char *typ
 		 * directory.
 		 */
 		if (!rv && is_mounted(_PATH_MOUNTED, path)) {
-			crit("the umount binary reported that %s was "
+			crit(ap->logopt,
+			     "the umount binary reported that %s was "
 			     "unmounted, but there is still something "
 			     "mounted on this path.", path);
 			rv = -1;
@@ -421,28 +424,32 @@ static int rm_unwanted_fn(const char *file, const struct stat *st, int when, voi
 	}
 
 	if (lstat(file, &newst)) {
-		crit("unable to stat file, possible race condition");
+		crit(LOGOPT_ANY,
+		     "unable to stat file, possible race condition");
 		return 0;
 	}
 
 	if (newst.st_dev != dev) {
-		crit("file %s has the wrong device, possible race condition",
-			file);
+		crit(LOGOPT_ANY,
+		     "file %s has the wrong device, possible race condition",
+		     file);
 		return 0;
 	}
 
 	if (S_ISDIR(newst.st_mode)) {
-		debug("removing directory %s", file);
+		debug(LOGOPT_ANY, "removing directory %s", file);
 		if (rmdir(file)) {
-			info("unable to remove directory %s", file);
+			error(LOGOPT_ANY,
+			      "unable to remove directory %s", file);
 			return 0;
 		}
 	} else if (S_ISREG(newst.st_mode)) {
-		crit("attempting to remove files from a mounted directory. "
-		     "file %s", file);
+		crit(LOGOPT_ANY,
+		     "attempting to remove files from a mounted "
+		     "directory. file %s", file);
 		return 0;
 	} else if (S_ISLNK(newst.st_mode)) {
-		debug("removing symlink %s", file);
+		debug(LOGOPT_ANY, "removing symlink %s", file);
 		unlink(file);
 	}
 	return 1;
@@ -505,10 +512,10 @@ int umount_multi(struct autofs_point *ap, struct mnt_list *mnts, const char *pat
 	struct list_head *p;
 	LIST_HEAD(list);
 
-	debug("path %s incl %d", path, incl);
+	debug(ap->logopt, "path %s incl %d", path, incl);
 
 	if (!tree_get_mnt_list(mnts, &list, path, incl)) {
-		debug("no mounts found under %s", path);
+		debug(ap->logopt, "no mounts found under %s", path);
 /*		check_rm_dirs(ap, path, incl); */
 		return 0;
 	}
@@ -522,10 +529,11 @@ int umount_multi(struct autofs_point *ap, struct mnt_list *mnts, const char *pat
 			continue;
 
 		if (umount_offsets(ap, mnts, mptr->path))
-			error("could not umount some offsets under %s",
+			error(ap->logopt, "could not umount some offsets under %s",
 				mptr->path);
 
-		debug("unmounting dir = %s", mptr->path);
+		debug(ap->logopt, "unmounting dir = %s", mptr->path);
+
 		if (umount_ent(ap, mptr->path, mptr->fs_type)) {
 			left++;
 		}
@@ -535,7 +543,7 @@ int umount_multi(struct autofs_point *ap, struct mnt_list *mnts, const char *pat
 
 	/* Lastly check for offsets with no root mount */
 	if (umount_offsets(ap, mnts, path)) {
-		error("could not umount some offsets under %s", path);
+		error(ap->logopt, "could not umount some offsets under %s", path);
 		return 0;
 	}
 
@@ -555,7 +563,8 @@ static int umount_all(struct autofs_point *ap, int force)
 
 	left = umount_multi(ap, mnts, ap->path, 0);
 	if (force && left)
-		warn("could not unmount %d dirs under %s", left, ap->path);
+		warn(ap->logopt, "could not unmount %d dirs under %s",
+		     left, ap->path);
 
 	tree_free_mnt_tree(mnts);
 
@@ -595,7 +604,8 @@ int umount_autofs(struct autofs_point *ap, int force)
 		list_del_init(&ap->mounts);
 		status = pthread_cond_signal(&ap->parent->mounts_cond);
 		if (status)
-			error("failed to signal submount umount notify condition");
+			error(ap->logopt,
+			  "failed to signal submount umount notify condition");
 		status = pthread_mutex_unlock(&ap->parent->mounts_mutex);
 		if (status)
 			fatal(status);
@@ -611,11 +621,11 @@ int send_ready(int ioctlfd, unsigned int wait_queue_token)
 	if (wait_queue_token == 0)
 		return 0;
 
-	debug("token = %d", wait_queue_token);
+	debug(LOGOPT_NONE, "token = %d", wait_queue_token);
 
 	if (ioctl(ioctlfd, AUTOFS_IOC_READY, wait_queue_token) < 0) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		error("AUTOFS_IOC_READY: error %s", estr);
+		error(LOGOPT_ANY, "AUTOFS_IOC_READY: error %s", estr);
 		return 1;
 	}
 	return 0;
@@ -628,11 +638,11 @@ int send_fail(int ioctlfd, unsigned int wait_queue_token)
 	if (wait_queue_token == 0)
 		return 0;
 
-	debug("token = %d", wait_queue_token);
+	debug(LOGOPT_NONE, "token = %d", wait_queue_token);
 
 	if (ioctl(ioctlfd, AUTOFS_IOC_FAIL, wait_queue_token) < 0) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		error("AUTOFS_IOC_FAIL: error %s", estr);
+		error(LOGOPT_ANY, "AUTOFS_IOC_FAIL: error %s", estr);
 		return 1;
 	}
 	return 0;
@@ -674,7 +684,7 @@ static int get_pkt(struct autofs_point *ap, union autofs_packet_union *pkt)
 			if (errno == EINTR)
 				continue;
 			estr = strerror_r(errno, buf, MAX_ERR_BUF);
-			error("poll failed: %s", estr);
+			error(ap->logopt, "poll failed: %s", estr);
 			return -1;
 		}
 
@@ -726,7 +736,7 @@ int do_expire(struct autofs_point *ap, const char *name, int namelen)
 	}
 
 	if (!len) {
-		crit("path to long for buffer");
+		crit(ap->logopt, "path to long for buffer");
 		return 1;
 	}
 
@@ -738,7 +748,7 @@ int do_expire(struct autofs_point *ap, const char *name, int namelen)
 	if (ret == 0) {
 		msg("expired %s", buf);
 	} else {
-		error("error while expiring %s", buf);
+		error(ap->logopt, "error while expiring %s", buf);
 	}
 
 	tree_free_mnt_tree(mnts);
@@ -770,7 +780,7 @@ static int handle_packet(struct autofs_point *ap)
 	if (get_pkt(ap, &pkt))
 		return -1;
 
-	debug("type = %d", pkt.hdr.type);
+	debug(ap->logopt, "type = %d", pkt.hdr.type);
 
 	switch (pkt.hdr.type) {
 	case autofs_ptype_missing_indirect:
@@ -785,7 +795,7 @@ static int handle_packet(struct autofs_point *ap)
 	case autofs_ptype_expire_direct:
 		return handle_packet_expire_direct(ap, &pkt.v5_packet);
 	}
-	error("unknown packet type %d", pkt.hdr.type);
+	error(ap->logopt, "unknown packet type %d", pkt.hdr.type);
 	return -1;
 }
 
@@ -850,7 +860,9 @@ static void become_daemon(unsigned foreground)
 			fclose(pidfp);
 		} else {
 			char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-			warn("failed to write pid file %s: %s", pid_file, estr);
+			warn(LOGOPT_ANY,
+			     "failed to write pid file %s: %s",
+			     pid_file, estr);
 			pid_file = NULL;
 		}
 	}
@@ -890,18 +902,19 @@ static void *do_notify_state(void *arg)
 
 	sig = *(int *) arg;
 
-	debug("signal %d", sig);
-
 	status = pthread_mutex_lock(&mc.mutex);
 	if (status)
 		fatal(status);
 
 	master = mc.master;
 
+	debug(master->default_logging, "signal %d", sig);
+
 	mc.signaled = 1;
 	status = pthread_cond_signal(&mc.cond);
 	if (status) {
-		error("failed to signal state notify condition");
+		error(master->default_logging,
+		      "failed to signal state notify condition");
 		status = pthread_mutex_unlock(&mc.mutex);
 		if (status)
 			fatal(status);
@@ -929,7 +942,8 @@ static int do_signals(struct master *master, int signal)
 
 	status = pthread_create(&thid, &thread_attr, do_notify_state, &sig);
 	if (status) {
-		error("maount state notify thread create failed");
+		error(master->default_logging,
+		      "mount state notify thread create failed");
 		status = pthread_mutex_unlock(&mc.mutex);
 		if (status)
 			fatal(status);
@@ -970,7 +984,8 @@ static void *do_read_master(void *arg)
 	mc.signaled = 1;
 	status = pthread_cond_signal(&mc.cond);
 	if (status) {
-		error("failed to signal master read map condition");
+		error(master->default_logging,
+		      "failed to signal master read map condition");
 		status = pthread_mutex_unlock(&mc.mutex);
 		if (status)
 			fatal(status);
@@ -982,8 +997,6 @@ static void *do_read_master(void *arg)
 		fatal(status);
 
 	status = master_read_master(master, age, readall);
-
-	debug("status %d", status);
 
 	return NULL;
 }
@@ -999,7 +1012,8 @@ static int do_hup_signal(struct master *master, time_t age)
 
 	status = pthread_create(&thid, &thread_attr, do_read_master, NULL);
 	if (status) {
-		error("master read map thread create failed");
+		error(master->default_logging,
+		      "master read map thread create failed");
 		status = pthread_mutex_unlock(&mc.mutex);
 		if (status)
 			fatal(status);
@@ -1022,7 +1036,7 @@ static int do_hup_signal(struct master *master, time_t age)
 
 	pthread_cleanup_pop(1);
 
-	debug("started master map read"); 
+	debug(master->default_logging, "started master map read"); 
 
 	return 1;
 }
@@ -1067,7 +1081,8 @@ static void *statemachine(void *arg)
 			break;
 
 		default:
-			error("got unexpected signal %d!", sig);
+			error(master->default_logging,
+			      "got unexpected signal %d!", sig);
 			continue;
 		}
 	}
@@ -1173,12 +1188,12 @@ void *handle_mounts(void *arg)
 
 	status = pthread_mutex_lock(&sc.mutex);
 	if (status) {
-		crit("failed to lock startup condition mutex!");
+		crit(ap->logopt, "failed to lock startup condition mutex!");
 		fatal(status);
 	}
 
 	if (mount_autofs(ap) < 0) {
-		crit("mount of %s failed!", ap->path);
+		crit(ap->logopt, "mount of %s failed!", ap->path);
 		sc.status = 1;
 		status = pthread_mutex_unlock(&ap->state_mutex);
 		if (status)
@@ -1253,8 +1268,9 @@ void *handle_mounts(void *arg)
 			}
 
 			/* Failed shutdown returns to ready */
-			warn("can't shutdown: filesystem %s still busy",
-					ap->path);
+			warn(ap->logopt,
+			     "can't shutdown: filesystem %s still busy",
+			     ap->path);
 			alarm_add(ap, ap->exp_runfreq);
 			nextstate(ap->state_pipe[1], ST_READY);
 
@@ -1452,7 +1468,7 @@ static void show_build_info(void)
 int main(int argc, char *argv[])
 {
 	int res, opt, status;
-	unsigned ghost;
+	unsigned ghost, logging;
 	unsigned foreground;
 	time_t timeout;
 	time_t age = time(NULL);
@@ -1479,6 +1495,7 @@ int main(int argc, char *argv[])
 
 	timeout = defaults_get_timeout();
 	ghost = defaults_get_browse_mode();
+	logging = defaults_get_logging();
 	foreground = 0;
 
 	opterr = 0;
@@ -1497,11 +1514,11 @@ int main(int argc, char *argv[])
 			break;
 
 		case 'v':
-			set_log_verbose();
+			logging |= LOGOPT_VERBOSE;
 			break;
 
 		case 'd':
-			set_log_debug();
+			logging |= LOGOPT_DEBUG;
 			break;
 
 		case 'D':
@@ -1523,6 +1540,12 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	if (logging & LOGOPT_VERBOSE)
+		set_log_verbose();
+
+	if (logging & LOGOPT_DEBUG)
+		set_log_debug();
+
 	if (geteuid() != 0) {
 		fprintf(stderr, "%s: this program must be run by root.\n",
 			program);
@@ -1543,14 +1566,16 @@ int main(int argc, char *argv[])
 	rlim.rlim_max = MAX_OPEN_FILES;
 	res = setrlimit(RLIMIT_NOFILE, &rlim);
 	if (res)
-		warn("can't increase open file limit - continuing");
+		warn(LOGOPT_NONE,
+		     "can't increase open file limit - continuing");
 
 #if ENABLE_CORES
 	rlim.rlim_cur = RLIM_INFINITY;
 	rlim.rlim_max = RLIM_INFINITY;
 	res = setrlimit(RLIMIT_CORE, &rlim);
 	if (res)
-		warn("can't increase core file limit - continuing");
+		warn(LOGOPT_NONE,
+		     "can't increase core file limit - continuing");
 #endif
 
 	become_daemon(foreground);
@@ -1567,23 +1592,25 @@ int main(int argc, char *argv[])
 		master = master_new(argv[0], timeout, ghost);
 
 	if (!master) {
-		crit("%s: can't create master map %s",
+		crit(LOGOPT_ANY, "%s: can't create master map %s",
 			program, argv[0]);
 		close(start_pipefd[1]);
 		exit(1);
 	}
 
 	if (pthread_attr_init(&thread_attr)) {
-		crit("%s: failed to init thread attribute struct!",
-			program);
+		crit(LOGOPT_ANY,
+		     "%s: failed to init thread attribute struct!",
+		     program);
 		close(start_pipefd[1]);
 		exit(1);
 	}
 
 	if (pthread_attr_setdetachstate(
 			&thread_attr, PTHREAD_CREATE_DETACHED)) {
-		crit("%s: failed to set detached thread attribute!",
-			program);
+		crit(LOGOPT_ANY,
+		     "%s: failed to set detached thread attribute!",
+		     program);
 		close(start_pipefd[1]);
 		exit(1);
 	}
@@ -1591,8 +1618,9 @@ int main(int argc, char *argv[])
 #ifdef _POSIX_THREAD_ATTR_STACKSIZE
 	if (pthread_attr_setstacksize(
 			&thread_attr, PTHREAD_STACK_MIN*128)) {
-		crit("%s: failed to set stack size thread attribute!",
-			program);
+		crit(LOGOPT_ANY,
+		     "%s: failed to set stack size thread attribute!",
+		     program);
 		close(start_pipefd[1]);
 		exit(1);
 	}
@@ -1604,35 +1632,36 @@ int main(int argc, char *argv[])
 	status = pthread_key_create(&key_thread_stdenv_vars,
 				key_thread_stdenv_vars_destroy);
 	if (status) {
-		crit("failed to create thread data key for std env vars!");
+		crit(LOGOPT_ANY,
+		     "failed to create thread data key for std env vars!");
 		master_kill(master, 1);
 		close(start_pipefd[1]);
 		exit(1);
 	}
 
 	if (!alarm_start_handler()) {
-		crit("failed to create alarm handler thread!");
+		crit(LOGOPT_ANY, "failed to create alarm handler thread!");
 		master_kill(master, 1);
 		close(start_pipefd[1]);
 		exit(1);
 	}
 
 	if (!st_start_handler()) {
-		crit("failed to create FSM handler thread!");
+		crit(LOGOPT_ANY, "failed to create FSM handler thread!");
 		master_kill(master, 1);
 		close(start_pipefd[1]);
 		exit(1);
 	}
 
 	if (!sigchld_start_handler()) {
-		crit("failed to create SIGCHLD handler thread!");
+		crit(LOGOPT_ANY, "failed to create SIGCHLD handler thread!");
 		master_kill(master, 1);
 		close(start_pipefd[1]);
 		exit(1);
 	}
 
 	if (!load_autofs4_module()) {
-		crit("%s: can't load %s filesystem module",
+		crit(LOGOPT_ANY, "%s: can't load %s filesystem module",
 			program, FS_MODULE_NAME);
 		master_kill(master, 1);
 		*pst_stat = 2;

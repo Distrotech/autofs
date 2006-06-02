@@ -41,7 +41,7 @@ char *make_options_string(char *path, int pipefd, char *extra)
 
 	options = malloc(MAX_OPTIONS_LEN + 1);
 	if (!options) {
-		crit("can't malloc options string");
+		crit(LOGOPT_ANY, "can't malloc options string");
 		return NULL;
 	}
 
@@ -56,12 +56,13 @@ char *make_options_string(char *path, int pipefd, char *extra)
 			AUTOFS_MAX_PROTO_VERSION);
 
 	if (len >= MAX_OPTIONS_LEN) {
-		crit("buffer to small for options - truncated");
+		crit(LOGOPT_ANY, "buffer to small for options - truncated");
 		len = MAX_OPTIONS_LEN - 1;
 	}
 
 	if (len < 0) {
-		crit("failed to malloc autofs mount options for %s", path);
+		crit(LOGOPT_ANY,
+		     "failed to malloc autofs mount options for %s", path);
 		free(options);
 		return NULL;
 	}
@@ -77,7 +78,7 @@ char *make_mnt_name_string(char *path)
 
 	mnt_name = malloc(MAX_MNT_NAME_LEN + 1);
 	if (!mnt_name) {
-		crit("can't malloc mnt_name string");
+		crit(LOGOPT_ANY, "can't malloc mnt_name string");
 		return NULL;
 	}
 
@@ -85,12 +86,13 @@ char *make_mnt_name_string(char *path)
 			mnt_name_template, (unsigned) getpid());
 
 	if (len >= MAX_MNT_NAME_LEN) {
-		crit("buffer to small for mnt_name - truncated");
+		crit(LOGOPT_ANY, "buffer to small for mnt_name - truncated");
 		len = MAX_MNT_NAME_LEN - 1;
 	}
 
 	if (len < 0) {
-		crit("failed setting up mnt_name for autofs path %s", path);
+		crit(LOGOPT_ANY,
+		     "failed setting up mnt_name for autofs path %s", path);
 		free(mnt_name);
 		return NULL;
 	}
@@ -121,7 +123,7 @@ struct mnt_list *get_mnt_list(const char *table, const char *path, int include)
 	tab = setmntent(table, "r");
 	if (!tab) {
 		char *estr = strerror_r(errno, buf, PATH_MAX - 1);
-		error("setmntent: %s", estr);
+		error(LOGOPT_ANY, "setmntent: %s", estr);
 		return NULL;
 	}
 
@@ -268,7 +270,7 @@ int is_mounted(const char *table, const char *path)
 	tab = setmntent(table, "r");
 	if (!tab) {
 		char *estr = strerror_r(errno, buf, PATH_MAX - 1);
-		error("setmntent: %s", estr);
+		error(LOGOPT_ANY, "setmntent: %s", estr);
 		return 0;
 	}
 
@@ -299,7 +301,7 @@ int has_fstab_option(const char *path, const char *opt)
 	tab = setmntent(_PATH_MNTTAB, "r");
 	if (!tab) {
 		char *estr = strerror_r(errno, buf, PATH_MAX - 1);
-		error("setmntent: %s", estr);
+		error(LOGOPT_ANY, "setmntent: %s", estr);
 		return 0;
 	}
 
@@ -327,7 +329,7 @@ char *find_mnt_ino(const char *table, dev_t dev, ino_t ino)
 	tab = setmntent(table, "r");
 	if (!tab) {
 		char *estr = strerror_r(errno, buf, PATH_MAX - 1);
-		error("setmntent: %s", estr);
+		error(LOGOPT_ANY, "setmntent: %s", estr);
 		return 0;
 	}
 
@@ -519,7 +521,7 @@ struct mnt_list *tree_make_mnt_tree(const char *table, const char *path)
 	tab = setmntent(table, "r");
 	if (!tab) {
 		char *estr = strerror_r(errno, buf, PATH_MAX - 1);
-		printf("setmntent: %s", estr);
+		error(LOGOPT_ANY, "setmntent: %s", estr);
 		return NULL;
 	}
 

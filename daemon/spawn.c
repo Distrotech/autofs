@@ -113,16 +113,19 @@ void *sigchld(void *dummy)
 		if (!sm.catch) {
 			status = pthread_cond_wait(&sm.ready, &sm.mutex);
 			if (status)
-				error("SIGCHLD condition wait failed");
+				error(LOGOPT_ANY,
+				      "SIGCHLD condition wait failed");
 		}
 
 		if (sig != SIGCONT)
 			while ((pid = waitpid(-1, NULL, WNOHANG)) > 0)
-				debug("received SIGCHLD from %d", pid);
+				debug(LOGOPT_NONE,
+				      "received SIGCHLD from %d", pid);
 
 		status = pthread_mutex_unlock(&sm.mutex);
 		if (status)
-			error("failed to unlock SIGCHLD handler mutex");
+			error(LOGOPT_ANY,
+			      "failed to unlock SIGCHLD handler mutex");
 	}
 }
 
@@ -155,7 +158,7 @@ int sigchld_block(void)
 
 	status = pthread_mutex_lock(&sm.mutex);
 	if (status) {
-		error("failed to lock SIGCHLD mutex");
+		error(LOGOPT_ANY, "failed to lock SIGCHLD mutex");
 		return 0;
 	}
 
@@ -172,7 +175,7 @@ int sigchld_block(void)
 
 	status = pthread_mutex_unlock(&sm.mutex);
 	if (status)
-		error("failed to unlock SIGCHLD mutex");
+		error(LOGOPT_ANY, "failed to unlock SIGCHLD mutex");
 
 	return 1;
 }
@@ -183,7 +186,7 @@ int sigchld_unblock(void)
 
 	status = pthread_mutex_lock(&sm.mutex);
 	if (status) {
-		error("failed to lock SIGCHLD mutex");
+		error(LOGOPT_ANY, "failed to lock SIGCHLD mutex");
 		return 0;
 	}
 
@@ -197,12 +200,12 @@ int sigchld_unblock(void)
 		sm.catch = 1;
 		status = pthread_cond_signal(&sm.ready);
 		if (status)
-			error("SIGCHLD condition signal failed");
+			error(LOGOPT_ANY, "SIGCHLD condition signal failed");
 	}
 
 	status = pthread_mutex_unlock(&sm.mutex);
 	if (status)
-		error("failed to unlock SIGCHLD mutex");
+		error(LOGOPT_ANY, "failed to unlock SIGCHLD mutex");
 	
 	return 1;
 }
@@ -252,7 +255,7 @@ void spawn_unlock(void *arg)
 
 	if (*use_lock) {
 		if (pthread_mutex_unlock(&spawn_mutex))
-			warn("failed to unlock spawn_mutex");
+			warn(LOGOPT_NONE, "failed to unlock spawn_mutex");
 	}
 	return;
 }
@@ -277,7 +280,7 @@ static int do_spawn(logger *log, int use_lock, const char *prog, const char *con
 	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cancel_state);
 	if (use_lock) {
 		if (pthread_mutex_lock(&spawn_mutex)) {
-			warn("failed to lock spawn_mutex");
+			log(LOGOPT_ANY, "failed to lock spawn_mutex");
 			return -1;
 		}
 	}
@@ -318,7 +321,7 @@ static int do_spawn(logger *log, int use_lock, const char *prog, const char *con
 				while (errp && (p = memchr(sp, '\n', errp))) {
 					*p++ = '\0';
 					if (sp[0])	/* Don't output empty lines */
-						log(">> %s", sp);
+						log(LOGOPT_ANY, ">> %s", sp);
 					errp -= (p - sp);
 					sp = p;
 				}
@@ -329,7 +332,7 @@ static int do_spawn(logger *log, int use_lock, const char *prog, const char *con
 				if (errp >= ERRBUFSIZ) {
 					/* Line too long, split */
 					errbuf[errp] = '\0';
-					log(">> %s", errbuf);
+					log(LOGOPT_ANY, ">> %s", errbuf);
 					errp = 0;
 				}
 			}
@@ -340,7 +343,7 @@ static int do_spawn(logger *log, int use_lock, const char *prog, const char *con
 		if (errp > 0) {
 			/* End of file without \n */
 			errbuf[errp] = '\0';
-			log(">> %s", errbuf);
+			log(LOGOPT_ANY, ">> %s", errbuf);
 		}
 
 		if (waitpid(f, &status, 0) != f)

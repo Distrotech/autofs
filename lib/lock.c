@@ -303,11 +303,15 @@ int aquire_lock(void)
 			status = wait_for_lockf(LOCK_FILE);
 			if (status < 0) {
 				release_lock();
-				crit("can't lock lock file %s: timed out", LOCK_FILE);
+				crit(LOGOPT_ANY,
+				     "can't lock lock file %s: timed out",
+				     LOCK_FILE);
 				return 0;
 			} else if (!status) {
 				release_lock();
-				crit("can't lock lock file %s: interrupted", LOCK_FILE);
+				crit(LOGOPT_ANY,
+				     "can't lock lock file %s: interrupted",
+				     LOCK_FILE);
 				return 0;
 			}
 		}

@@ -396,13 +396,13 @@ static char *master_strdup(char *str)
 
 static int master_error(const char *s)
 {
-	error("%s while parsing map.", s);
+	error(LOGOPT_ANY, "%s while parsing map.", s);
 	return 0;
 }
 
 static int master_notify(const char *s)
 {
-	warn("syntax error in map near [ %s ]", s);
+	warn(LOGOPT_ANY, "syntax error in map near [ %s ]", s);
 	return(0);
 }
 
@@ -459,7 +459,7 @@ int master_parse_entry(const char *buffer, unsigned int default_timeout, unsigne
 	}
 
 	if (debug || verbose) {
-		logopt |= (debug ? LOGOPT_DEBUG : 0);
+		logopt = (debug ? LOGOPT_DEBUG : 0);
 		logopt |= (verbose ? LOGOPT_VERBOSE : 0);
 	}
 
@@ -479,11 +479,12 @@ int master_parse_entry(const char *buffer, unsigned int default_timeout, unsigne
 	if (!entry->ap) {
 		ret = master_add_autofs_point(entry, timeout, logopt, ghost, 0);
 		if (!ret) {
-			error("failed to add autofs_point");
+			error(LOGOPT_ANY, "failed to add autofs_point");
 			if (new)
 				master_free_mapent(new);
 			return 0;
 		}
+		set_mnt_logging(entry->ap);
 	} else {
 /*		struct autofs_point *ap = entry->ap;
 		unsigned int tout = timeout; */
@@ -521,7 +522,7 @@ int master_parse_entry(const char *buffer, unsigned int default_timeout, unsigne
 
 	source->mc = cache_init(source);
 	if (!source->mc) {
-		error("failed to init source cache");
+		error(LOGOPT_ANY, "failed to init source cache");
 		if (new)
 			master_free_mapent(new);
 		return 0;

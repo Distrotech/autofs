@@ -49,12 +49,12 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 
 	if (!(*context = ctxt = malloc(sizeof(struct lookup_context)))) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		crit(MODPREFIX "malloc: %s", estr);
+		crit(LOGOPT_ANY, MODPREFIX "malloc: %s", estr);
 		return 1;
 	}
 
 	if (argc < 1) {
-		crit(MODPREFIX "No map name");
+		crit(LOGOPT_ANY, MODPREFIX "No map name");
 		free(ctxt);
 		*context = NULL;
 		return 1;
@@ -62,16 +62,18 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 	ctxt->mapname = argv[0];
 
 	if (ctxt->mapname[0] != '/') {
-		crit(MODPREFIX "program map %s is not an absolute pathname",
-		       ctxt->mapname);
+		crit(LOGOPT_ANY,
+		     MODPREFIX "program map %s is not an absolute pathname",
+		     ctxt->mapname);
 		free(ctxt);
 		*context = NULL;
 		return 1;
 	}
 
 	if (access(ctxt->mapname, X_OK)) {
-		warn(MODPREFIX "program map %s missing or not executable",
-		       ctxt->mapname);
+		crit(LOGOPT_ANY,
+		     MODPREFIX "program map %s missing or not executable",
+		     ctxt->mapname);
 		free(ctxt);
 		*context = NULL;
 		return 1;
@@ -115,12 +117,12 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 	int distance;
 	int alloci = 1;
 
-	debug(MODPREFIX "looking up %s", name);
+	debug(ap->logopt, MODPREFIX "looking up %s", name);
 
 	/* Catch installed direct offset triggers */
 	me = cache_lookup(mc, name);
 	if (me) {
-		debug(MODPREFIX "%s -> %s", name, me->mapent);
+		debug(ap->logopt, MODPREFIX "%s -> %s", name, me->mapent);
 
 		ret = ctxt->parse->parse_mount(ap, name, name_len,
 				      me->mapent, ctxt->parse->context);
@@ -130,7 +132,7 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 	mapent = (char *) malloc(MAPENT_MAX_LEN + 1);
 	if (!mapent) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		error(MODPREFIX "malloc: %s", estr);
+		error(ap->logopt, MODPREFIX "malloc: %s", estr);
 		return NSS_STATUS_UNAVAIL;
 	}
 
@@ -144,7 +146,7 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 
 	if (pipe(pipefd)) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		error(MODPREFIX "pipe: %s", estr);
+		error(ap->logopt, MODPREFIX "pipe: %s", estr);
 		sigchld_unblock();
 		goto out_free;
 	}
@@ -158,7 +160,7 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 	f = fork();
 	if (f < 0) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		error(MODPREFIX "fork: %s", estr);
+		error(ap->logopt, MODPREFIX "fork: %s", estr);
 		close(pipefd[0]);
 		close(pipefd[1]);
 		close(epipefd[0]);
@@ -238,7 +240,8 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 						       ++alloci));
 					if (!tmp) {
 						alloci--;
-						error(MODPREFIX "realloc: %s",
+						error(ap->logopt,
+						      MODPREFIX "realloc: %s",
 						      strerror(errno));
 						break;
 					}
@@ -274,12 +277,12 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 			} else if (ch == '\n') {
 				*errp = '\0';
 				if (errbuf[0])
-					error(">> %s", errbuf);
+					error(ap->logopt, ">> %s", errbuf);
 				errp = errbuf;
 			} else {
 				if (errp >= &errbuf[1023]) {
 					*errp = '\0';
-					error(">> %s", errbuf);
+					error(ap->logopt, ">> %s", errbuf);
 					errp = errbuf;
 				}
 				*(errp++) = ch;
@@ -291,7 +294,7 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 		*mapp = '\0';
 	if (errp > errbuf) {
 		*errp = '\0';
-		error(">> %s", errbuf);
+		error(ap->logopt, ">> %s", errbuf);
 	}
 
 	close(pipefd[0]);
@@ -299,18 +302,18 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 
 	if (waitpid(f, &status, 0) != f) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		error(MODPREFIX "waitpid: %s", estr);
+		error(ap->logopt, MODPREFIX "waitpid: %s", estr);
 		goto out_free;
 	}
 
 	sigchld_unblock();
 
 	if (mapp == mapent || !WIFEXITED(status) || WEXITSTATUS(status) != 0) {
-		error(MODPREFIX "lookup for %s failed", name);
+		error(ap->logopt, MODPREFIX "lookup for %s failed", name);
 		goto out_free;
 	}
 
-	debug(MODPREFIX "%s -> %s", name, mapent);
+	debug(ap->logopt, MODPREFIX "%s -> %s", name, mapent);
 
 	ret = ctxt->parse->parse_mount(ap, name, name_len,
 				       mapent, ctxt->parse->context);

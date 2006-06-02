@@ -41,7 +41,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 	if (dest[strlen(dest)-1] == '/')
 	    dest[strlen(dest)-1] = '\0';
 
-	debug(MODPREFIX "mounting AFS %s -> %s", dest, what);
+	debug(ap->logopt, MODPREFIX "mounting AFS %s -> %s", dest, what);
 
 	return symlink(what, dest);	/* Try it.  If it fails, return the error. */
 }

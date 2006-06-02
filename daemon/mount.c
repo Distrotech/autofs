@@ -46,20 +46,21 @@ int do_mount(struct autofs_point *ap, const char *root, const char *name, int na
 		if (!*ngp)
 			mod = open_mount(modstr = "generic", NULL);
 		if (!mod) {
-			error("cannot find mount method for filesystem %s",
-			       fstype);
+			error(ap->logopt,
+			      "cannot find mount method for filesystem %s",
+			      fstype);
 			return -1;
 		}
 	}
 
-	if (is_log_debug()) {
-		if (ap->type == LKP_DIRECT)
-			debug("%s %s type %s options %s using module %s",
-				what, name, fstype, options, modstr);
-		else
-			debug("%s %s/%s type %s options %s using module %s",
-				what, root, name, fstype, options, modstr);
-	}
+	if (ap->type == LKP_DIRECT)
+		debug(ap->logopt,
+		      "%s %s type %s options %s using module %s",
+		      what, name, fstype, options, modstr);
+	else
+		debug(ap->logopt,
+		      "%s %s/%s type %s options %s using module %s",
+		      what, root, name, fstype, options, modstr);
 
 	rv = mod->mount_mount(ap, root, name, name_len, what, fstype, options, mod->context);
 	close_mount(mod);

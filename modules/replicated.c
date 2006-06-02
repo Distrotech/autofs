@@ -90,7 +90,7 @@ static unsigned int get_proximity(const char *host_addr, int addr_len)
 	sock = socket(AF_INET, SOCK_DGRAM, 0);
 	if (sock < 0) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		error("socket creation failed: %s", estr);
+		error(LOGOPT_ANY, "socket creation failed: %s", estr);
 		return PROXIMITY_ERROR;
 	}
 
@@ -99,7 +99,7 @@ static unsigned int get_proximity(const char *host_addr, int addr_len)
 	ret = ioctl(sock, SIOCGIFCONF, &ifc);
 	if (ret == -1) {
 		estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		error("ioctl: %s", estr);
+		error(LOGOPT_ANY, "ioctl: %s", estr);
 		close(sock);
 		return PROXIMITY_ERROR;
 	}
@@ -148,7 +148,7 @@ static unsigned int get_proximity(const char *host_addr, int addr_len)
 			ret = ioctl(sock, SIOCGIFNETMASK, &nmptr);
 			if (ret == -1) {
 				estr = strerror_r(errno, buf, MAX_ERR_BUF);
-				error("ioctl: %s", estr);
+				error(LOGOPT_ANY, "ioctl: %s", estr);
 				return PROXIMITY_ERROR;
 			}
 
@@ -724,9 +724,11 @@ static int add_host_addrs(struct host **list, const char *host, unsigned int wei
 			buf, MAX_IFC_BUF, &result, &h_errno);
 	if (ret || !result) {
 		if (h_errno == -1)
-			error("host %s: lookup failure %d", host, errno);
+			error(LOGOPT_ANY,
+			      "host %s: lookup failure %d", host, errno);
 		else
-			error("host %s: lookup failure %d", host, h_errno);
+			error(LOGOPT_ANY,
+			      "host %s: lookup failure %d", host, h_errno);
 		return 0;
 	}
 
@@ -868,9 +870,10 @@ void dump_host_list(struct host *hosts)
 
 	this = hosts;
 	while (this) {
-		debug("name %s path %s version %x proximity %u weight %u cost %u",
-			this->name, this->path, this->version,
-			this->proximity, this->weight, this->cost);
+		debug(LOGOPT_ANY,
+		      "name %s path %s version %x proximity %u weight %u cost %u",
+		      this->name, this->path, this->version,
+		      this->proximity, this->weight, this->cost);
 		this = this->next;
 	}
 	return;

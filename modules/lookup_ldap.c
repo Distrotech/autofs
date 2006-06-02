@@ -54,7 +54,8 @@ int ldap_bind_anonymous(LDAP *ldap, struct lookup_context *ctxt)
 
 	if (rv != LDAP_SUCCESS) {
 		ldap_unbind(ldap);
-		crit(MODPREFIX "Unable to bind to the LDAP server: "
+		crit(LOGOPT_ANY,
+		     MODPREFIX "Unable to bind to the LDAP server: "
 		     "%s, error %s", ctxt->server ?: "(default)",
 		     ldap_err2string(rv));
 		return -1;
@@ -84,7 +85,8 @@ int ldap_unbind_connection(LDAP *ldap, struct lookup_context *ctxt)
 
 	rv = ldap_unbind(ldap);
 	if (rv != LDAP_SUCCESS)
-		error("unbind failed: %s", ldap_err2string(rv));
+		error(LOGOPT_ANY,
+		     "unbind failed: %s", ldap_err2string(rv));
 
 	return rv;
 }
@@ -100,8 +102,9 @@ LDAP *ldap_connection_init(struct lookup_context *ctxt)
 	/* Initialize the LDAP context. */
 	ldap = ldap_init(ctxt->server, LDAP_PORT);
 	if (!ldap) {
-		crit(MODPREFIX "couldn't initialize LDAP connection"
-		     " to %s", ctxt->server ? ctxt->server : "default server");
+		crit(LOGOPT_ANY,
+		     MODPREFIX "couldn't initialize LDAP connection to %s",
+		     ctxt->server ? ctxt->server : "default server");
 		return NULL;
 	}
 
@@ -112,7 +115,7 @@ LDAP *ldap_connection_init(struct lookup_context *ctxt)
 		ldap_unbind(ldap);
 		ldap = ldap_init(ctxt->server, LDAP_PORT);
 		if (!ldap) {
-			crit(MODPREFIX "couldn't initialize LDAP");
+			crit(LOGOPT_ANY, MODPREFIX "couldn't initialize LDAP");
 			return NULL;
 		}
 		ctxt->version = 2;
@@ -121,14 +124,17 @@ LDAP *ldap_connection_init(struct lookup_context *ctxt)
 	/* Sane network connection timeout */
 	rv = ldap_set_option(ldap, LDAP_OPT_NETWORK_TIMEOUT, &timeout);
 	if (rv != LDAP_OPT_SUCCESS)
-		info(MODPREFIX "failed to set connection timeout to %d",
+		info(LOGOPT_ANY,
+		     MODPREFIX "failed to set connection timeout to %d",
 		     timeout);
 
 #if WITH_SASL
 	if (ctxt->use_tls) {
 		if (ctxt->version == 2) {
 			if (ctxt->tls_required) {
-				error("TLS required but connection is version 2");
+				error(LOGOPT_ANY,
+				    MODPREFIX
+				    "TLS required but connection is version 2");
 				ldap_unbind(ldap);
 				return NULL;
 			}
@@ -139,8 +145,10 @@ LDAP *ldap_connection_init(struct lookup_context *ctxt)
 		if (rv != LDAP_SUCCESS) {
 			ldap_unbind_connection(ldap, ctxt);
 			if (ctxt->tls_required) {
-				error("TLS required but START_TLS failed: %s",
-					ldap_err2string(rv));
+				error(LOGOPT_ANY,
+				      MODPREFIX
+				      "TLS required but START_TLS failed: %s",
+				      ldap_err2string(rv));
 				return NULL;
 			}
 			ctxt->use_tls = LDAP_TLS_DONT_USE;
@@ -168,24 +176,27 @@ static LDAP *do_connect(struct lookup_context *ctxt)
 	if (ctxt->auth_required && ctxt->sasl_mech) {
 		sasl_conn_t *conn;
 
-		debug("attempting sasl bind, mechanism %s, user %s",
+		debug(LOGOPT_NONE,
+		      MODPREFIX
+		      "attempting sasl bind, mechanism %s, user %s",
 		      ctxt->sasl_mech, ctxt->user);
 
 		rv = 0;
 		conn = sasl_bind_mech(ldap, ctxt->sasl_mech);
 		if (!conn) {
-			debug("sasl bind failed");
+			error(LOGOPT_ANY, MODPREFIX "sasl bind failed");
 			rv = 1;
 		}
 
 		sasl_dispose(&conn);
 	} else {
 		rv = ldap_bind_anonymous(ldap, ctxt);
-		debug("doing anonymous bind, ret %d", rv);
+		debug(LOGOPT_NONE,
+		      MODPREFIX "doing anonymous bind, ret %d", rv);
 	}
 #else
 	rv = ldap_bind_anonymous(ldap, ctxt);
-	debug("doing anonymous bind, ret %d", rv);
+	debug(LOGOPT_NONE, MODPREFIX "doing anonymous bind, ret %d", rv);
 #endif
 
 	if (rv != 0)
@@ -206,7 +217,8 @@ int get_property(xmlNodePtr node, const char *prop, char **value)
 	}
 
 	if (!(*value = strdup((char *) ret))) {
-		error("strdup failed with %d", errno);
+		error(LOGOPT_ANY,
+		      MODPREFIX "strdup failed with %d", errno);
 		xmlFree(ret);
 		return -1;
 	}
@@ -256,7 +268,8 @@ int parse_ldap_config(struct lookup_context *ctxt)
 
 	auth_conf = (char *) defaults_get_auth_conf_file();
 	if (!auth_conf) {
-		debug(MODPREFIX "failed to get auth config file name.");
+		error(LOGOPT_ANY,
+		      MODPREFIX "failed to get auth config file name.");
 		return 0;
 	}
 
@@ -268,7 +281,8 @@ int parse_ldap_config(struct lookup_context *ctxt)
 	 */
 	memset(&st, 0, sizeof(st));
 	if (stat(auth_conf, &st) == -1 || st.st_size == 0) {
-		debug(MODPREFIX "stat(2) failed with error %s.",
+		error(LOGOPT_ANY,
+		      MODPREFIX "stat(2) failed with error %s.",
 		      strerror(errno));
 		return 0;
 	}
@@ -276,9 +290,11 @@ int parse_ldap_config(struct lookup_context *ctxt)
 	if (!S_ISREG(st.st_mode) ||
 	    st.st_uid != 0 || st.st_gid != 0 ||
 	    (st.st_mode & 0x01ff) != 0600) {
-		error(MODPREFIX "Configuration file %s exists, but is not "
-		      "usable. Please make sure that it is "
-		      "owned by root, group is root, and the mode is 0600.",
+		error(LOGOPT_ANY,
+		      MODPREFIX
+		      "Configuration file %s exists, but is not usable. "
+		      "Please make sure that it is owned by root, group "
+		      "is root, and the mode is 0600.",
 		      auth_conf);
 		return -1;
 	}
@@ -286,26 +302,32 @@ int parse_ldap_config(struct lookup_context *ctxt)
 	xmlInitParser();
 	doc = xmlParseFile(auth_conf);
 	if (!doc) {
-		warn(MODPREFIX "xmlParseFile failed for %s.", auth_conf);
+		warn(LOGOPT_ANY,
+		     MODPREFIX "xmlParseFile failed for %s.", auth_conf);
 		goto out;
 	}
 
 	root = xmlDocGetRootElement(doc);
 	if (!root) {
-		debug(MODPREFIX "empty xml document (%s).", auth_conf);
+		debug(LOGOPT_ANY,
+		      MODPREFIX "empty xml document (%s).", auth_conf);
 		fallback = 1;
 		goto out;
 	}
 
 	if (xmlStrcmp(root->name, (const xmlChar *)"autofs_ldap_sasl_conf")) {
-		error(MODPREFIX "The root node of the XML document %s is not "
+		error(LOGOPT_ANY,
+		      MODPREFIX
+		      "The root node of the XML document %s is not "
 		      "autofs_ldap_sasl_conf.", auth_conf);
 		goto out;
 	}
 
 	ret = get_property(root, "usetls", &usetls);
 	if (ret != 0) {
-		error(MODPREFIX "Failed read the usetls property from "
+		error(LOGOPT_ANY,
+		      MODPREFIX
+		      "Failed read the usetls property from "
 		      "the configuration file %s.", auth_conf);
 		goto out;
 	}
@@ -318,8 +340,10 @@ int parse_ldap_config(struct lookup_context *ctxt)
 		else if (!strcasecmp(usetls, "no"))
 			use_tls = LDAP_TLS_DONT_USE;
 		else {
-			error(MODPREFIX "The usetls property "
-				"must have value \"yes\" or \"no\".");
+			error(LOGOPT_ANY,
+			      MODPREFIX
+			      "The usetls property must have value "
+			      "\"yes\" or \"no\".");
 			ret = -1;
 			goto out;
 		}
@@ -328,7 +352,9 @@ int parse_ldap_config(struct lookup_context *ctxt)
 
 	ret = get_property(root, "tlsrequired", &tlsrequired);
 	if (ret != 0) {
-		error(MODPREFIX "Failed read the tlsrequired property from "
+		error(LOGOPT_ANY,
+		      MODPREFIX
+		      "Failed read the tlsrequired property from "
 		      "the configuration file %s.", auth_conf);
 		goto out;
 	}
@@ -341,8 +367,10 @@ int parse_ldap_config(struct lookup_context *ctxt)
 		else if (!strcasecmp(tlsrequired, "no"))
 			tls_required = LDAP_TLS_DONT_USE;
 		else {
-			error(MODPREFIX "The tlsrequired property "
-				"must have value \"yes\" or \"no\".");
+			error(LOGOPT_ANY,
+			      MODPREFIX
+			      "The tlsrequired property must have value "
+			      "\"yes\" or \"no\".");
 			ret = -1;
 			goto out;
 		}
@@ -351,7 +379,9 @@ int parse_ldap_config(struct lookup_context *ctxt)
 
 	ret = get_property(root, "authrequired", &authrequired);
 	if (ret != 0) {
-		error(MODPREFIX "Failed read the authrequired property from "
+		error(LOGOPT_ANY,
+		      MODPREFIX
+		      "Failed read the authrequired property from "
 		      "the configuration file %s.", auth_conf);
 		goto out;
 	}
@@ -364,8 +394,10 @@ int parse_ldap_config(struct lookup_context *ctxt)
 		else if (!strcasecmp(authrequired, "no"))
 			auth_required = 0;
 		else {
-			error(MODPREFIX "The authrequired property "
-				"must have value \"yes\" or \"no\".");
+			error(LOGOPT_ANY,
+			      MODPREFIX
+			      "The authrequired property must have value "
+			      "\"yes\" or \"no\".");
 			ret = -1;
 			goto out;
 		}
@@ -374,7 +406,9 @@ int parse_ldap_config(struct lookup_context *ctxt)
 
 	ret = get_property(root, "authtype", &authtype);
 	if (ret != 0 || (!authtype && auth_required)) {
-		error(MODPREFIX "Failed read the authtype property from the "
+		error(LOGOPT_ANY,
+		      MODPREFIX
+		      "Failed read the authtype property from the "
 		      "configuration file %s.", auth_conf);
 		goto out;
 	}
@@ -383,9 +417,11 @@ int parse_ldap_config(struct lookup_context *ctxt)
 		ret = get_property(root, "user",  &user);
 		ret |= get_property(root, "secret", &secret);
 		if (ret != 0 || (!user || !secret)) {
-			error(MODPREFIX "%s authentication type requires a "
-			      "username and a secret.  Please fix your "
-			      "configuration in %s.", authtype, auth_conf);
+			error(LOGOPT_ANY,
+			      MODPREFIX
+			      "%s authentication type requires a username "
+			      "and a secret.  Please fix your configuration "
+			      "in %s.", authtype, auth_conf);
 			free(authtype);
 			if (user)
 				free(user);
@@ -465,7 +501,7 @@ int ldap_auth_init(struct lookup_context *ctxt)
  *  Take an input string as specified in the master map, and break it
  *  down into a basedn, servername, and port.
  */
-int parse_server_string(const char *url, struct lookup_context *ctxt)
+static int parse_server_string(const char *url, struct lookup_context *ctxt)
 {
 	char buf[MAX_ERR_BUF], *tmp = NULL;
 	const char *ptr;
@@ -473,8 +509,9 @@ int parse_server_string(const char *url, struct lookup_context *ctxt)
 
 	ptr = url;
 
-	debug(MODPREFIX "Attempting to parse LDAP information from string "
-	      "\"%s\".", ptr);
+	debug(LOGOPT_NONE,
+	      MODPREFIX
+	      "Attempting to parse LDAP information from string \"%s\".", ptr);
 
 	if (!strncmp(ptr, "//", 2)) {
 		const char *s = ptr + 2;
@@ -491,7 +528,7 @@ int parse_server_string(const char *url, struct lookup_context *ctxt)
 			if (!tmp) {
 				char *estr;
 				estr = strerror_r(errno, buf, MAX_ERR_BUF);
-				crit(MODPREFIX "malloc: %s", estr);
+				crit(LOGOPT_ANY, MODPREFIX "malloc: %s", estr);
 				return 0;
 			}
 			ctxt->server = tmp;
@@ -504,7 +541,7 @@ int parse_server_string(const char *url, struct lookup_context *ctxt)
 			if (!tmp) {
 				char *estr;
 				estr = strerror_r(errno, buf, MAX_ERR_BUF);
-				crit(MODPREFIX "malloc: %s", estr);
+				crit(LOGOPT_ANY, MODPREFIX "malloc: %s", estr);
 				return 0;
 			}
 			ctxt->server = tmp;
@@ -518,7 +555,7 @@ int parse_server_string(const char *url, struct lookup_context *ctxt)
 		if (!tmp) {
 			char *estr;
 			estr = strerror_r(errno, buf, MAX_ERR_BUF);
-			crit(MODPREFIX "malloc: %s", estr);
+			crit(LOGOPT_ANY, MODPREFIX "malloc: %s", estr);
 			return 0;
 		}
 		ctxt->server = tmp;
@@ -542,7 +579,8 @@ int parse_server_string(const char *url, struct lookup_context *ctxt)
 		char *base;
 
 		if (!strchr(ptr, ',')) {
-			debug("LDAP dn not fuly specified");
+			debug(LOGOPT_NONE,
+			      MODPREFIX "LDAP dn not fuly specified");
 			if (ctxt->server)
 				free(ctxt->server);
 			return 0;
@@ -552,7 +590,7 @@ int parse_server_string(const char *url, struct lookup_context *ctxt)
 		if (!base) {
 			char *estr;
 			estr = strerror_r(errno, buf, MAX_ERR_BUF);
-			crit(MODPREFIX "malloc: %s", estr);
+			crit(LOGOPT_ANY, MODPREFIX "malloc: %s", estr);
 			if (ctxt->server)
 				free(ctxt->server);
 			return 0;
@@ -565,7 +603,7 @@ int parse_server_string(const char *url, struct lookup_context *ctxt)
 		if (!map) {
 			char *estr;
 			estr = strerror_r(errno, buf, MAX_ERR_BUF);
-			crit(MODPREFIX "malloc: %s", estr);
+			crit(LOGOPT_ANY, MODPREFIX "malloc: %s", estr);
 			if (ctxt->server)
 				free(ctxt->server);
 			return 0;
@@ -576,9 +614,9 @@ int parse_server_string(const char *url, struct lookup_context *ctxt)
 	}
 done:
 	if (ctxt->mapname)
-		debug(MODPREFIX "mapname %s", ctxt->mapname);
+		debug(LOGOPT_NONE, MODPREFIX "mapname %s", ctxt->mapname);
 	else
-		debug(MODPREFIX "server \"%s\", base dn \"%s\"",
+		debug(LOGOPT_NONE, MODPREFIX "server \"%s\", base dn \"%s\"",
 			ctxt->server ? ctxt->server : "(default)",
 			ctxt->base);
 
@@ -661,7 +699,7 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 	ctxt = (struct lookup_context *) malloc(sizeof(struct lookup_context));
 	if (ctxt == NULL) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		crit(MODPREFIX "malloc: %s", estr);
+		crit(LOGOPT_ANY, MODPREFIX "malloc: %s", estr);
 		return 1;
 	}
 	memset(ctxt, 0, sizeof(struct lookup_context));
@@ -675,14 +713,14 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 	 * into the proper places in the lookup context structure.
 	 */
 	if (!parse_server_string(argv[0], ctxt)) {
-		error(MODPREFIX "cannot parse server string");
+		error(LOGOPT_ANY, MODPREFIX "cannot parse server string");
 		free_context(ctxt);
 		return 1;
 	}
 
 	/* Get default schema for queries */
 	if (!get_default_schema(ctxt)) {
-		error(MODPREFIX "cannot set default schema");
+		error(LOGOPT_ANY, MODPREFIX "cannot set default schema");
 		free_context(ctxt);
 		return 1;
 	}
@@ -694,7 +732,7 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 	 */
 	ret = ldap_auth_init(ctxt);
 	if (ret) {
-		error(MODPREFIX "cannot initialize auth setup");
+		error(LOGOPT_ANY, MODPREFIX "cannot initialize auth setup");
 		free_context(ctxt);
 		return 1;
 	}
@@ -702,7 +740,7 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 
 	ldap = do_connect(ctxt);
 	if (!ldap) {
-		error(MODPREFIX "cannot connect to server");
+		error(LOGOPT_ANY, MODPREFIX "cannot connect to server");
 		free_context(ctxt);
 		return 1;
 	}
@@ -747,7 +785,7 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 	attrs[2] = NULL;
 
 	if (!ctxt->mapname && !ctxt->base) {
-		error(MODPREFIX "no master map to lookup");
+		error(LOGOPT_ANY, MODPREFIX "no master map to lookup");
 		return NSS_STATUS_UNAVAIL;
 	}
 
@@ -759,7 +797,7 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 	query = alloca(l);
 	if (query == NULL) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		crit(MODPREFIX "alloca: %s", estr);
+		crit(LOGOPT_ANY, MODPREFIX "alloca: %s", estr);
 		return NSS_STATUS_UNAVAIL;
 	}
 
@@ -771,11 +809,13 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 	if (ctxt->mapname) {
 		if (sprintf(query, "(&(objectclass=%s)(%s=%.*s))", class,
 		     key, (int) strlen(ctxt->mapname), ctxt->mapname) >= l) {
-			debug(MODPREFIX "error forming query string");
+			debug(LOGOPT_NONE,
+			      MODPREFIX "error forming query string");
 		}
 	} else {
 		if (sprintf(query, "(objectclass=%s)", class) >= l) {
-			debug(MODPREFIX "error forming query string");
+			debug(LOGOPT_NONE,
+			      MODPREFIX "error forming query string");
 		}
 	}
 	query[l] = '\0';
@@ -786,26 +826,31 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 		return NSS_STATUS_UNAVAIL;
 
 	/* Look around. */
-	debug(MODPREFIX "searching for \"%s\" under \"%s\"",
-			query, ctxt->base ? ctxt->base : "(default)");
+	debug(LOGOPT_NONE,
+	      MODPREFIX "searching for \"%s\" under \"%s\"",
+	      query, ctxt->base ? ctxt->base : "(default)");
 
 	rv = ldap_search_s(ldap, ctxt->base, LDAP_SCOPE_SUBTREE,
 			   query, attrs, 0, &result);
 
 	if ((rv != LDAP_SUCCESS) || !result) {
-		debug(MODPREFIX "query failed for %s: %s", query, ldap_err2string(rv));
+		error(LOGOPT_NONE,
+		      MODPREFIX "query failed for %s: %s",
+		      query, ldap_err2string(rv));
 		ldap_unbind_connection(ldap, ctxt);
 		return NSS_STATUS_NOTFOUND;
 	}
 
 	e = ldap_first_entry(ldap, result);
 	if (!e) {
-		debug(MODPREFIX "query succeeded, no matches for %s", query);
+		debug(LOGOPT_NONE,
+		      MODPREFIX "query succeeded, no matches for %s",
+		      query);
 		ldap_msgfree(result);
 		ldap_unbind_connection(ldap, ctxt);
 		return NSS_STATUS_NOTFOUND;
 	} else
-		debug(MODPREFIX "examining entries");
+		debug(LOGOPT_NONE, MODPREFIX "examining entries");
 
 	while (e) {
 		keyValue = ldap_get_values(ldap, e, entry);
@@ -820,8 +865,10 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 		 * each map entry
 		 */
 		if (ldap_count_values(keyValue) > 1) {
-			error("key %s has duplicate entries - ignoring",
-				*keyValue);
+			error(LOGOPT_ANY,
+			      MODPREFIX
+			      "key %s has duplicate entries - ignoring",
+			      *keyValue);
 			goto next;
 		}
 
@@ -830,13 +877,16 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 		 * inclusion is only valid in file maps.
 		 */
 		if (**keyValue == '+') {
-			debug("ignoreing '+' map entry - not in file map");
+			warn(LOGOPT_ANY,
+			     MODPREFIX
+			     "ignoreing '+' map entry - not in file map");
 			goto next;
 		}
 
 		values = ldap_get_values(ldap, e, info);
 		if (!values || !*values) {
-			debug(MODPREFIX "no %s defined for %s", info, query);
+			debug(LOGOPT_NONE,
+			      MODPREFIX "no %s defined for %s", info, query);
 			goto next;
 		}
 
@@ -845,14 +895,16 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 		 */
 		count = ldap_count_values(values);
 		if (count > 1) {
-			error(MODPREFIX "one value per key allowed in master map");
+			error(LOGOPT_ANY,
+			      MODPREFIX
+			      "one value per key allowed in master map");
 			ldap_value_free(values);
 			goto next;
 		}
 
 		blen = strlen(*keyValue) + 1 + strlen(*values) + 1;
 		if (blen > PARSE_MAX_BUF) {
-			error(MODPREFIX "map entry too long");
+			error(LOGOPT_ANY, MODPREFIX "map entry too long");
 			ldap_value_free(values);
 			goto next;
 		}
@@ -893,7 +945,7 @@ static int read_one_map(struct autofs_point *ap,
 	LDAP *ldap;
 
 	if (ctxt == NULL) {
-		crit(MODPREFIX "context was NULL");
+		crit(ap->logopt, MODPREFIX "context was NULL");
 		return NSS_STATUS_UNAVAIL;
 	}
 
@@ -915,7 +967,7 @@ static int read_one_map(struct autofs_point *ap,
 	query = alloca(l);
 	if (query == NULL) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		crit(MODPREFIX "malloc: %s", estr);
+		crit(LOGOPT_ANY, MODPREFIX "malloc: %s", estr);
 		return NSS_STATUS_UNAVAIL;
 	}
 
@@ -927,11 +979,13 @@ static int read_one_map(struct autofs_point *ap,
 	if (keyvallen > 0) {
 		if (sprintf(query, "(&(objectclass=%s)(%s=%.*s))", class,
 			    key, keyvallen, keyval) >= l) {
-			debug(MODPREFIX "error forming query string");
+			error(ap->logopt,
+			      MODPREFIX "error forming query string");
 		}
 	} else {
 		if (sprintf(query, "(objectclass=%s)", class) >= l) {
-			debug(MODPREFIX "error forming query string");
+			error(ap->logopt,
+			      MODPREFIX "error forming query string");
 		}
 	}
 	query[l] = '\0';
@@ -942,14 +996,17 @@ static int read_one_map(struct autofs_point *ap,
 		return NSS_STATUS_UNAVAIL;
 
 	/* Look around. */
-	debug(MODPREFIX "searching for \"%s\" under \"%s\"",
-			query, ctxt->base ? ctxt->base : "(default)");
+	debug(ap->logopt,
+	      MODPREFIX "searching for \"%s\" under \"%s\"",
+	      query, ctxt->base ? ctxt->base : "(default)");
 
 	rv = ldap_search_s(ldap, ctxt->base, LDAP_SCOPE_SUBTREE,
 			   query, attrs, 0, &result);
 
 	if ((rv != LDAP_SUCCESS) || !result) {
-		debug(MODPREFIX "query failed for %s: %s", query, ldap_err2string(rv));
+		debug(ap->logopt,
+		      MODPREFIX "query failed for %s: %s",
+		      query, ldap_err2string(rv));
 		ldap_unbind_connection(ldap, ctxt);
 		*result_ldap = rv;
 		return NSS_STATUS_NOTFOUND;
@@ -957,12 +1014,13 @@ static int read_one_map(struct autofs_point *ap,
 
 	e = ldap_first_entry(ldap, result);
 	if (!e) {
-		debug(MODPREFIX "query succeeded, no matches for %s", query);
+		debug(ap->logopt,
+		      MODPREFIX "query succeeded, no matches for %s", query);
 		ldap_msgfree(result);
 		ldap_unbind_connection(ldap, ctxt);
 		return NSS_STATUS_NOTFOUND;
 	} else
-		debug(MODPREFIX "examining entries");
+		debug(ap->logopt, MODPREFIX "examining entries");
 
 	while (e) {
 		char *mapent = NULL;
@@ -979,8 +1037,10 @@ static int read_one_map(struct autofs_point *ap,
 		 * each map entry
 		 */
 		if (ldap_count_values(keyValue) > 1) {
-			error("key %s has duplicate entries - ignoring",
-				*keyValue);
+			error(ap->logopt,
+			      MODPREFIX
+			      "key %s has duplicate entries - ignoring",
+			      *keyValue);
 			goto next;
 		}
 
@@ -989,13 +1049,16 @@ static int read_one_map(struct autofs_point *ap,
 		 * inclusion is only valid in file maps.
 		 */
 		if (**keyValue == '+') {
-			debug("ignoreing '+' map entry - not in file map");
+			warn(ap->logopt,
+			     MODPREFIX
+			     "ignoreing '+' map entry - not in file map");
 			goto next;
 		}
 
 		values = ldap_get_values(ldap, e, info);
 		if (!values || !*values) {
-			debug(MODPREFIX "no %s defined for %s", info, query);
+			debug(ap->logopt,
+			      MODPREFIX "no %s defined for %s", info, query);
 			goto next;
 		}
 
@@ -1019,7 +1082,8 @@ static int read_one_map(struct autofs_point *ap,
 				if (!mapent) {
 					char *estr;
 					estr = strerror_r(errno, buf, MAX_ERR_BUF);
-					error("malloc: %s", estr);
+					error(ap->logopt,
+					      MODPREFIX "malloc: %s", estr);
 					goto next;
 				}
 				strcpy(mapent, values[i]);
@@ -1034,7 +1098,8 @@ static int read_one_map(struct autofs_point *ap,
 				} else {
 					char *estr;
 					estr = strerror_r(errno, buf, MAX_ERR_BUF);
-					error("realloc: %s", estr);
+					error(ap->logopt,
+					      MODPREFIX "realloc: %s", estr);
 				}
 			}
 		}
@@ -1062,7 +1127,7 @@ next:
 		e = ldap_next_entry(ldap, e);
 	}
 
-	debug(MODPREFIX "done updating map");
+	debug(ap->logopt, MODPREFIX "done updating map");
 
 	/* Clean up. */
 	ldap_msgfree(result);
@@ -1117,7 +1182,7 @@ static int lookup_one(struct autofs_point *ap,
 	int ret = CHE_OK;
 
 	if (ctxt == NULL) {
-		crit(MODPREFIX "context was NULL");
+		crit(ap->logopt, MODPREFIX "context was NULL");
 		return CHE_FAIL;
 	}
 
@@ -1145,7 +1210,7 @@ static int lookup_one(struct autofs_point *ap,
 	query = alloca(l);
 	if (query == NULL) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		crit(MODPREFIX "malloc: %s", estr);
+		crit(ap->logopt, MODPREFIX "malloc: %s", estr);
 		return CHE_FAIL;
 	}
 
@@ -1168,13 +1233,15 @@ static int lookup_one(struct autofs_point *ap,
 			 "(&(objectclass=%s)(%s=%s))", class, entry, qKey);
 	}
 	if (ql >= l) {
-		debug(MODPREFIX "error forming query string");
+		error(ap->logopt,
+		      MODPREFIX "error forming query string");
 		return CHE_FAIL;
 	}
 	query[ql] = '\0';
 
-	debug(MODPREFIX "searching for \"%s\" under \"%s\"",
-			query, ctxt->base ? ctxt->base : "(default)");
+	debug(ap->logopt,
+	      MODPREFIX "searching for \"%s\" under \"%s\"",
+	      query, ctxt->base ? ctxt->base : "(default)");
 
 	/* Initialize the LDAP context. */
 	ldap = do_connect(ctxt);
@@ -1185,16 +1252,18 @@ static int lookup_one(struct autofs_point *ap,
 			   query, attrs, 0, &result);
 
 	if ((rv != LDAP_SUCCESS) || !result) {
-		crit(MODPREFIX "query failed for %s", query);
+		crit(ap->logopt, MODPREFIX "query failed for %s", query);
 		ldap_unbind_connection(ldap, ctxt);
 		return CHE_FAIL;
 	}
 
-	debug(MODPREFIX "getting first entry for %s=\"%s\"", entry, qKey);
+	debug(ap->logopt,
+	      MODPREFIX "getting first entry for %s=\"%s\"", entry, qKey);
 
 	e = ldap_first_entry(ldap, result);
 	if (!e) {
-		crit(MODPREFIX "got answer, but no entry for %s", query);
+		crit(ap->logopt,
+		     MODPREFIX "got answer, but no entry for %s", query);
 		ldap_msgfree(result);
 		ldap_unbind_connection(ldap, ctxt);
 		return CHE_MISSING;
@@ -1204,18 +1273,20 @@ static int lookup_one(struct autofs_point *ap,
 
 	/* By definition keys must be unique within each map entry */
 	if (ldap_count_values(keyValue) > 1) {
-		error("key %s has duplicate entries", *keyValue);
+		error(ap->logopt,
+		      MODPREFIX "key %s has duplicate entries", *keyValue);
 		ldap_value_free(keyValue);
 		ldap_msgfree(result);
 		ldap_unbind_connection(ldap, ctxt);
 		return CHE_FAIL;
 	}
 
-	debug(MODPREFIX "examining first entry");
+	debug(ap->logopt, MODPREFIX "examining first entry");
 
 	values = ldap_get_values(ldap, e, info);
 	if (!values || !*values) {
-		debug(MODPREFIX "no %s defined for %s", info, query);
+		debug(ap->logopt,
+		      MODPREFIX "no %s defined for %s", info, query);
 		ldap_value_free(keyValue);
 		ldap_msgfree(result);
 		ldap_unbind_connection(ldap, ctxt);
@@ -1231,7 +1302,8 @@ static int lookup_one(struct autofs_point *ap,
 			if (!mapent) {
 				char *estr;
 				estr = strerror_r(errno, buf, MAX_ERR_BUF);
-				error("malloc: %s", estr);
+				error(ap->logopt,
+				      MODPREFIX "malloc: %s", estr);
 				continue;
 			}
 			strcpy(mapent, values[i]);
@@ -1246,7 +1318,8 @@ static int lookup_one(struct autofs_point *ap,
 			} else {
 				char *estr;
 				estr = strerror_r(errno, buf, MAX_ERR_BUF);
-				error("realloc: %s", estr);
+				error(ap->logopt,
+				      MODPREFIX "realloc: %s", estr);
 			}
 		}
 	}
@@ -1365,7 +1438,7 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 	int status = 0;
 	int ret = 1;
 
-	debug(MODPREFIX "looking up %s", name);
+	debug(ap->logopt, MODPREFIX "looking up %s", name);
 
 	key_len = snprintf(key, KEY_MAX_LEN, "%s", name);
 	if (key_len > KEY_MAX_LEN)
@@ -1393,7 +1466,8 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 		status = check_map_indirect(ap, lkp_key, strlen(lkp_key), ctxt);
 		free(lkp_key);
 		if (status) {
-			debug(MODPREFIX "check indirect map failure");
+			debug(ap->logopt,
+			      MODPREFIX "check indirect map failure");
 			return status;
 		}
 	}
@@ -1410,7 +1484,7 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 	cache_unlock(mc);
 
 	if (mapent) {
-		debug(MODPREFIX "%s -> %s", key, mapent);
+		debug(ap->logopt, MODPREFIX "%s -> %s", key, mapent);
 		ret = ctxt->parse->parse_mount(ap, key, key_len,
 					 mapent, ctxt->parse->context);
 	}

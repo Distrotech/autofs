@@ -35,7 +35,7 @@
 
 #define STANDALONE
 #ifdef STANDALONE
-#define error(msg, args...)	fprintf(stderr, msg "\n", ##args)
+#define error(logopt, msg, args...)	fprintf(stderr, msg "\n", ##args)
 #endif
 
 /*
@@ -79,7 +79,7 @@ static CLIENT *create_udp_client(struct conn_info *info)
 	if (ret || !result) {
 		int err = h_errno == -1 ? errno : h_errno;
 		char *estr = strerror_r(err, buf, HOST_ENT_BUF_SIZE);
-		error("hostname lookup failed: %s", estr);
+		error(LOGOPT_ANY, "hostname lookup failed: %s", estr);
 		return NULL;
 	}
 	memcpy(&raddr.sin_addr.s_addr, php->h_addr, php->h_length);
@@ -267,7 +267,7 @@ static CLIENT *create_tcp_client(struct conn_info *info)
 	if (ret || !result) {
 		int err = h_errno == -1 ? errno : h_errno;
 		char *estr =  strerror_r(err, buf, HOST_ENT_BUF_SIZE);
-		error("hostname lookup failed: %s", estr);
+		error(LOGOPT_ANY, "hostname lookup failed: %s", estr);
 		return NULL;
 	}
 	memcpy(&addr.sin_addr.s_addr, php->h_addr, php->h_length);

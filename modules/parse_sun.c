@@ -343,7 +343,7 @@ int parse_init(int argc, const char *const *argv, void **context)
 
 	if (!(ctxt = (struct parse_context *) malloc(sizeof(struct parse_context)))) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		crit(MODPREFIX "malloc: %s", estr);
+		crit(LOGOPT_ANY, MODPREFIX "malloc: %s", estr);
 		return 1;
 	}
 	*context = (void *) ctxt;
@@ -367,7 +367,7 @@ int parse_init(int argc, const char *const *argv, void **context)
 
 				if (!def) {
 					char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-					error(MODPREFIX "strdup: %s", estr);
+					error(LOGOPT_ANY, MODPREFIX "strdup: %s", estr);
 					break;
 				}
 
@@ -419,12 +419,14 @@ int parse_init(int argc, const char *const *argv, void **context)
 				if (!strmcmp(xopt, "slashify-colons", 1))
 					ctxt->slashify_colons = bval;
 				else
-					error(MODPREFIX "unknown option: %s",
+					error(LOGOPT_ANY,
+					      MODPREFIX "unknown option: %s",
 					      argv[i]);
 				break;
 
 			default:
-				error(MODPREFIX "unknown option: %s", argv[i]);
+				error(LOGOPT_ANY,
+				      MODPREFIX "unknown option: %s", argv[i]);
 				break;
 			}
 		} else {
@@ -446,11 +448,12 @@ int parse_init(int argc, const char *const *argv, void **context)
 			if (!noptstr) {
 				char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
 				kill_context(ctxt);
-				crit(MODPREFIX "%s", estr);
+				crit(LOGOPT_ANY, MODPREFIX "%s", estr);
 				return 1;
 			}
 			ctxt->optstr = noptstr;
-			debug(MODPREFIX "init gathered options: %s",
+			debug(LOGOPT_NONE,
+			      MODPREFIX "init gathered options: %s",
 			      ctxt->optstr);
 		}
 	}
@@ -471,7 +474,7 @@ int parse_init(int argc, const char *const *argv, void **context)
 	}
 }
 
-static char *dequote(const char *str, int strlen)
+static char *dequote(const char *str, int strlen, unsigned int logopt)
 {
 	char *ret = malloc(strlen + 1);
 	char *cp = ret;
@@ -492,12 +495,13 @@ static char *dequote(const char *str, int strlen)
 	}
 	*cp = '\0';
 
-	debug(MODPREFIX "dequote(\"%.*s\") -> %s", origlen, str, ret);
+	debug(logopt,
+	      MODPREFIX "dequote(\"%.*s\") -> %s", origlen, str, ret);
 
 	return ret;
 }
 
-static const char *parse_options(const char *str, char **ret)
+static const char *parse_options(const char *str, char **ret, unsigned int logopt)
 {
 	const char *cp = str;
 	int len;
@@ -508,7 +512,8 @@ static const char *parse_options(const char *str, char **ret)
 	if (*ret != NULL)
 		free(*ret);
 
-	*ret = dequote(cp, len = chunklen(cp, 0));
+	len = chunklen(cp, 0);
+	*ret = dequote(cp, len, logopt);
 
 	return cp + len;
 }
@@ -533,7 +538,7 @@ static char *concat_options(char *left, char *right)
 
 	if (ret == NULL) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		error(MODPREFIX "concat_options malloc: %s", estr);
+		error(LOGOPT_ANY, MODPREFIX "malloc: %s", estr);
 		return NULL;
 	}
 
@@ -599,7 +604,7 @@ static int sun_mount(struct autofs_point *ap, const char *root,
 		}
 
 		if (np > noptions + len) {
-			warn(MODPREFIX "options string truncated");
+			warn(ap->logopt, MODPREFIX "options string truncated");
 			np[len] = '\0';
 		} else
 			*(np - 1) = '\0';
@@ -628,7 +633,8 @@ static int sun_mount(struct autofs_point *ap, const char *root,
 			strcat(noptions, ctxt->macros);
 			options = noptions;
 		} else {
-			error(MODPREFIX "alloca failed for options");
+			error(ap->logopt,
+			      MODPREFIX "alloca failed for options");
 		}
 	}
 
@@ -665,7 +671,8 @@ static int sun_mount(struct autofs_point *ap, const char *root,
 		what[loclen] = '\0';
 /*	} */
 
-	debug(MODPREFIX
+	debug(ap->logopt,
+	    MODPREFIX
 	    "mounting root %s, mountpoint %s, what %s, fstype %s, options %s",
 	    root, mountpoint, what, fstype, options);
 
@@ -695,7 +702,8 @@ static int check_is_multi(const char *mapent)
 	int not_first_chunk = 0;
 
 	if (!p) {
-		crit("check_is_multi: unexpected NULL map entry pointer");
+		crit(LOGOPT_ANY,
+		     MODPREFIX "unexpected NULL map entry pointer");
 		return 0;
 	}
 	
@@ -752,7 +760,8 @@ add_offset_entry(struct autofs_point *ap, const char *name,
 
 	m_key_len = m_root_len + strlen(path) + 1;
 	if (m_key_len > PATH_MAX) {
-		error(MODPREFIX "multi mount key too long - ignored");
+		error(ap->logopt,
+		      MODPREFIX "multi mount key too long - ignored");
 		return CHE_FAIL;
 	}
 	strcpy(m_key, m_root);
@@ -760,7 +769,8 @@ add_offset_entry(struct autofs_point *ap, const char *name,
 
 	m_mapent_len = strlen(myoptions) + strlen(loc) + 3;
 	if (m_mapent_len > MAPENT_MAX_LEN) {
-		error(MODPREFIX "multi mount mapent too long - ignored");
+		error(ap->logopt,
+		      MODPREFIX "multi mount mapent too long - ignored");
 		return CHE_FAIL;
 	}
 	strcpy(m_mapent, "-");
@@ -768,7 +778,9 @@ add_offset_entry(struct autofs_point *ap, const char *name,
 	strcat(m_mapent, " ");
 	strcat(m_mapent, loc);
 
-	debug("adding multi-mount offset %s -> %s", path, m_mapent);
+	debug(ap->logopt,
+	      MODPREFIX
+	      "adding multi-mount offset %s -> %s", path, m_mapent);
 
 	cache_writelock(mc);
 	ret = cache_add_offset(mc, name, m_key, m_mapent, age);
@@ -811,7 +823,7 @@ static int mount_multi_triggers(struct autofs_point *ap, char *root, struct mape
 		int plen = fs_path_len + strlen(offset);
 
 		if (plen > PATH_MAX) {
-			warn("path loo long");
+			warn(ap->logopt, MODPREFIX "path loo long");
 			goto cont;
 		}
 
@@ -830,10 +842,10 @@ static int mount_multi_triggers(struct autofs_point *ap, char *root, struct mape
 				goto cont;
 		}
 
-		debug("mount offset %s", oe->key);
+		debug(ap->logopt, MODPREFIX "mount offset %s", oe->key);
 
 		if (mount_autofs_offset(ap, oe, is_autofs_fs) < 0)
-			warn("failed to mount offset");
+			warn(ap->logopt, MODPREFIX "failed to mount offset");
 cont:
 		offset = cache_get_offset(base,
 				offset, start, &me->multi_list, &pos);
@@ -886,7 +898,7 @@ int parse_mount(struct autofs_point *ap, const char *name,
 	int slashify = ctxt->slashify_colons;
 
 	if (!mapent) {
-		error(MODPREFIX "error: empty map entry");
+		error(ap->logopt, MODPREFIX "error: empty map entry");
 		return 1;
 	}
 
@@ -894,14 +906,14 @@ int parse_mount(struct autofs_point *ap, const char *name,
 
 	mapent_len = expandsunent(mapent, NULL, name, ctxt->subst, slashify);
 	if (mapent_len == 0) {
-		error("failed to expand map entry");
+		error(ap->logopt, MODPREFIX "failed to expand map entry");
 		return 1;
 	}
 
 	pmapent = alloca(mapent_len + 1);
 	if (!pmapent) {	
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		error(MODPREFIX "alloca: %s", estr);
+		error(ap->logopt, MODPREFIX "alloca: %s", estr);
 		return 1;
 	}
 	pmapent[mapent_len] = '\0';
@@ -909,12 +921,12 @@ int parse_mount(struct autofs_point *ap, const char *name,
 	expandsunent(mapent, pmapent, name, ctxt->subst, slashify);
 	ctxt->subst = removestdenv(ctxt->subst);
 
-	debug(MODPREFIX "expanded entry: %s", pmapent);
+	debug(ap->logopt, MODPREFIX "expanded entry: %s", pmapent);
 
 	options = strdup(ctxt->optstr ? ctxt->optstr : "");
 	if (!options) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		error(MODPREFIX "strdup: %s", estr);
+		error(ap->logopt, MODPREFIX "strdup: %s", estr);
 		return 1;
 	}
 	optlen = strlen(options);
@@ -928,12 +940,13 @@ int parse_mount(struct autofs_point *ap, const char *name,
 		do {
 			char *noptions = NULL;
 
-			p = parse_options(p, &noptions);
+			p = parse_options(p, &noptions, ap->logopt);
 			mnt_options = concat_options(mnt_options, noptions);
 
 			if (mnt_options == NULL) {
 				char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-				error(MODPREFIX "concat_options: %s", estr);
+				error(ap->logopt,
+				      MODPREFIX "concat_options: %s", estr);
 				return 1;
 			}
 			p = skipspace(p);
@@ -945,7 +958,7 @@ int parse_mount(struct autofs_point *ap, const char *name,
 		options = mnt_options;
 	}
 
-	debug(MODPREFIX "gathered options: %s", options);
+	debug(ap->logopt, MODPREFIX "gathered options: %s", options);
 
 	if (check_is_multi(p)) {
 		char *m_root = NULL;
@@ -962,7 +975,7 @@ int parse_mount(struct autofs_point *ap, const char *name,
 			m_root = alloca(m_root_len + 1);
 			if (!m_root) {
 				char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-				error(MODPREFIX "alloca: %s", estr);
+				error(ap->logopt, MODPREFIX "alloca: %s", estr);
 				free(options);
 				return 1;
 			}
@@ -972,7 +985,7 @@ int parse_mount(struct autofs_point *ap, const char *name,
 			m_root = alloca(m_root_len + 1);
 			if (!m_root) {
 				char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-				error(MODPREFIX "alloca: %s", estr);
+				error(ap->logopt, MODPREFIX "alloca: %s", estr);
 				free(options);
 				return 1;
 			}
@@ -1005,7 +1018,8 @@ int parse_mount(struct autofs_point *ap, const char *name,
 		cache_unlock(mc);
 
 		if (!me) {
-			error(MODPREFIX "can't find multi root %s", name);
+			error(ap->logopt,
+			      MODPREFIX "can't find multi root %s", name);
 			free(options);
 			return 1;
 		}
@@ -1018,19 +1032,21 @@ int parse_mount(struct autofs_point *ap, const char *name,
 
 			if (myoptions == NULL) {
 				char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-				error(MODPREFIX "multi strdup: %s", estr);
+				error(ap->logopt, MODPREFIX "multi strdup: %s", estr);
 				parse_sun_cleanup(mc, name, options, NULL, NULL);
 				return 1;
 			}
 
 			if (*p != '/') {
 				l = 0;
-				path = dequote("/", 1);
-			} else
-				path = dequote(p, l = chunklen(p, 0));
+				path = dequote("/", 1, ap->logopt);
+			} else {
+				l = chunklen(p, 0);
+				path = dequote(p, l, ap->logopt);
+			}
 
 			if (!path) {
-				error(MODPREFIX "out of memory");
+				error(ap->logopt, MODPREFIX "out of memory");
 				parse_sun_cleanup(mc, name, options, NULL, myoptions);
 				return 1;
 			}
@@ -1043,14 +1059,14 @@ int parse_mount(struct autofs_point *ap, const char *name,
 				do {
 					char *newopt = NULL;
 
-					p = parse_options(p, &newopt);
+					p = parse_options(p, &newopt, ap->logopt);
 					myoptions = concat_options(myoptions, newopt);
 
 					if (myoptions == NULL) {
 						char *estr;
 						estr = strerror_r(errno, buf, MAX_ERR_BUF);
-						error(MODPREFIX
-						    "multi concat_options: %s", estr);
+						error(ap->logopt, MODPREFIX
+						      "multi concat_options: %s", estr);
 						parse_sun_cleanup(mc, name,
 							options, NULL, NULL);
 						return 1;
@@ -1063,9 +1079,10 @@ int parse_mount(struct autofs_point *ap, const char *name,
 			if (*p == ':')
 				p++;
 
-			loc = dequote(p, l = chunklen(p, check_colon(p)));
+			l = chunklen(p, check_colon(p));
+			loc = dequote(p, l, ap->logopt);
 			if (!loc) {
-				error(MODPREFIX "out of memory");
+				error(ap->logopt, MODPREFIX "out of memory");
 				parse_sun_cleanup(mc, name, options, path, myoptions);
 				return 1;
 			}
@@ -1076,9 +1093,10 @@ int parse_mount(struct autofs_point *ap, const char *name,
 			while (*p && *p != '/') {
 				char *ent;
 
-				ent = dequote(p, l = chunklen(p, check_colon(p)));
+				l = chunklen(p, check_colon(p));
+				ent = dequote(p, l, ap->logopt);
 				if (!ent) {
-					error(MODPREFIX "out of memory");
+					error(ap->logopt, MODPREFIX "out of memory");
 					parse_sun_cleanup(mc, name,
 						options, path, myoptions);
 					return 1;
@@ -1086,7 +1104,7 @@ int parse_mount(struct autofs_point *ap, const char *name,
 
 				loc = realloc(loc, strlen(loc) + l + 2);
 				if (!loc) {
-					error(MODPREFIX "out of memory");
+					error(ap->logopt, MODPREFIX "out of memory");
 					parse_sun_cleanup(mc, name,
 						options, path, myoptions);
 					free(ent);
@@ -1109,14 +1127,14 @@ int parse_mount(struct autofs_point *ap, const char *name,
 			if (!strcmp(path, "/")) {
 				root_path = strdup(path);
 				if (!root_path) {
-					error(MODPREFIX "out of memory");
+					error(ap->logopt, MODPREFIX "out of memory");
 					parse_sun_cleanup(mc, name,
 						options, path, myoptions);
 					return 1;
 				}
 				root_loc = strdup(loc);
 				if (!root_loc) {
-					error(MODPREFIX "out of memory");
+					error(ap->logopt, MODPREFIX "out of memory");
 					parse_sun_cleanup(mc, name,
 						options, path, myoptions);
 					free(root_path);
@@ -1124,7 +1142,7 @@ int parse_mount(struct autofs_point *ap, const char *name,
 				}
 				root_options = strdup(myoptions);
 				if (!root_options) {
-					error(MODPREFIX "out of memory");
+					error(ap->logopt, MODPREFIX "out of memory");
 					parse_sun_cleanup(mc, name,
 						options, path, myoptions);
 					free(root_loc);
@@ -1146,7 +1164,9 @@ int parse_mount(struct autofs_point *ap, const char *name,
 			free(root_options);
 
 			if (rv < 0) {
-				error("mount multi-mount root %s failed", name);
+				error(ap->logopt,
+				      MODPREFIX
+				      "mount multi-mount root %s failed", name);
 				cache_writelock(mc);
 				cache_delete_offset_list(mc, name);
 				cache_unlock(mc);
@@ -1156,7 +1176,8 @@ int parse_mount(struct autofs_point *ap, const char *name,
 
 		cache_readlock(mc);
 		if (!mount_multi_triggers(ap, m_root, me, "/")) {
-			error("failed to mount offset triggers");
+			error(ap->logopt,
+			      MODPREFIX "failed to mount offset triggers");
 			rv = 1;
 		}
 		cache_unlock(mc);
@@ -1173,9 +1194,10 @@ int parse_mount(struct autofs_point *ap, const char *name,
 		if (*p == ':')
 			p++;	/* Sun escape for entries starting with / */
 
-		loc = dequote(p, l = chunklen(p, check_colon(p)));
+		l = chunklen(p, check_colon(p));
+		loc = dequote(p, l, ap->logopt);
 		if (!loc) {
-			error(MODPREFIX "out of memory");
+			error(ap->logopt, MODPREFIX "out of memory");
 			free(options);
 			return 1;
 		}
@@ -1186,16 +1208,17 @@ int parse_mount(struct autofs_point *ap, const char *name,
 		while (*p) {
 			char *ent;
 
-			ent = dequote(p, l = chunklen(p, check_colon(p)));
+			l = chunklen(p, check_colon(p));
+			ent = dequote(p, l, ap->logopt);
 			if (!ent) {
-				error(MODPREFIX "out of memory");
+				error(ap->logopt, MODPREFIX "out of memory");
 				free(options);
 				return 1;
 			}
 
 			loc = realloc(loc, strlen(loc) + l + 2);
 			if (!loc) {
-				error(MODPREFIX "out of memory");
+				error(ap->logopt, MODPREFIX "out of memory");
 				free(ent);
 				free(options);
 				return 1;
@@ -1212,13 +1235,15 @@ int parse_mount(struct autofs_point *ap, const char *name,
 
 		loclen = strlen(loc);
 		if (loclen == 0) {
-			error(MODPREFIX "entry %s is empty!", name);
+			error(ap->logopt,
+			      MODPREFIX "entry %s is empty!", name);
 			free(loc);
 			free(options);
 			return 1;
 		}
 
-		debug(MODPREFIX "core of entry: options=%s, loc=%.*s",
+		debug(ap->logopt,
+		      MODPREFIX "core of entry: options=%s, loc=%.*s",
 		      options, loclen, loc);
 
 		rv = sun_mount(ap, ap->path, name, name_len, loc, loclen, options, ctxt);
@@ -1252,7 +1277,8 @@ int parse_mount(struct autofs_point *ap, const char *name,
 				if (!m_root) {
 					char *estr;
 					estr = strerror_r(errno, buf, MAX_ERR_BUF);
-					error(MODPREFIX "alloca: %s", estr);
+					error(ap->logopt,
+					      MODPREFIX "alloca: %s", estr);
 					return 1;
 				}
 				strcpy(m_root, ap->path);
@@ -1263,7 +1289,8 @@ int parse_mount(struct autofs_point *ap, const char *name,
 			base = &me->key[start];
 
 			if (!mount_multi_triggers(ap, m_root, me->multi, base)) {
-				error("failed to mount offset triggers");
+				error(ap->logopt,
+				      MODPREFIX "failed to mount offset triggers");
 				rv = 1;
 			}
 		}

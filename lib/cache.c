@@ -35,7 +35,7 @@ void cache_dump_multi(struct list_head *list)
 
 	list_for_each(p, list) {
 		me = list_entry(p, struct mapent, multi_list);
-		info("key=%s", me->key);
+		msg("key=%s", me->key);
 	}
 }
 
@@ -49,7 +49,7 @@ void cache_dump_cache(struct mapent_cache *mc)
 		if (me == NULL)
 			continue;
 		while (me) {
-			info("me->key=%s me->multi=%p dev=%ld ino=%ld",
+			msg("me->key=%s me->multi=%p dev=%ld ino=%ld",
 				me->key, me->multi, me->dev, me->ino);
 			me = me->next;
 		}
@@ -62,7 +62,7 @@ void cache_readlock(struct mapent_cache *mc)
 
 	status = pthread_rwlock_rdlock(&mc->rwlock);
 	if (status) {
-		error("mapent cache rwlock lock failed");
+		error(LOGOPT_ANY, "mapent cache rwlock lock failed");
 		fatal(status);
 	}
 	return;
@@ -74,7 +74,7 @@ void cache_writelock(struct mapent_cache *mc)
 
 	status = pthread_rwlock_wrlock(&mc->rwlock);
 	if (status) {
-		error("mapent cache rwlock lock failed");
+		error(LOGOPT_ANY, "mapent cache rwlock lock failed");
 		fatal(status);
 	}
 	return;
@@ -86,7 +86,7 @@ void cache_unlock(struct mapent_cache *mc)
 
 	status = pthread_rwlock_unlock(&mc->rwlock);
 	if (status) {
-		error("mapent cache rwlock unlock failed");
+		error(LOGOPT_ANY, "mapent cache rwlock unlock failed");
 		fatal(status);
 	}
 	return;
@@ -465,7 +465,7 @@ int cache_add_offset(struct mapent_cache *mc, const char *mkey, const char *key,
 
 	ret = cache_update(mc, owner->source, key, mapent, age);
 	if (ret == CHE_FAIL) {
-		warn("failed to add key %s to cache", key);
+		warn(LOGOPT_ANY, "failed to add key %s to cache", key);
 		return CHE_FAIL;
 	}
 
@@ -492,7 +492,7 @@ int cache_update(struct mapent_cache *mc, struct map_source *source,
 	if (!me || *me->key == '*') {
 		ret = cache_add(mc, source, key, mapent, age);
 		if (!ret) {
-			debug("failed for %s", key);
+			debug(LOGOPT_NONE, "failed for %s", key);
 			return CHE_FAIL;
 		}
 		ret = CHE_UPDATED;
@@ -594,10 +594,11 @@ int cache_delete_offset_list(struct mapent_cache *mc, const char *key)
 		next = next->next;
 		list_del_init(&this->multi_list);
 		this->multi = NULL;
-		debug("deleting offset key %s", this->key);
+		debug(LOGOPT_NONE, "deleting offset key %s", this->key);
 		status = cache_delete(mc, this->key);
 		if (status == CHE_FAIL) {
-			warn("failed to delete offset %s", this->key);
+			warn(LOGOPT_ANY,
+			     "failed to delete offset %s", this->key);
 			this->multi = me;
 			/* TODO: add list back in */
 			remain++;

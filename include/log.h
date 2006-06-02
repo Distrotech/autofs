@@ -23,55 +23,59 @@
 #define LOGOPT_NONE	0x0000
 #define LOGOPT_DEBUG	0x0001
 #define LOGOPT_VERBOSE	0x0002
+#define LOGOPT_ANY	(LOGOPT_DEBUG | LOGOPT_VERBOSE)
+
+struct autofs_point;
 
 extern void set_log_norm(void);
 extern void set_log_verbose(void);
-extern unsigned int is_log_verbose(void);
 extern void set_log_debug(void);
-extern unsigned int is_log_debug(void);
+extern void set_mnt_logging(struct autofs_point *);
 
 extern void log_to_syslog(void);
 extern void log_to_stderr(void);
  
-typedef void logger(const char* msg, ...);
+typedef void logger(unsigned int logopt, const char* msg, ...);
 
-extern void (*log_info)(const char* msg, ...);
-extern void (*log_notice)(const char* msg, ...);
-extern void (*log_warn)(const char* msg, ...);
-extern void (*log_error)(const char* msg, ...);
-extern void (*log_crit)(const char* msg, ...);
-extern void (*log_debug)(const char* msg, ...);
+extern void (*log_info)(unsigned int, const char* msg, ...);
+extern void (*log_notice)(unsigned int, const char* msg, ...);
+extern void (*log_warn)(unsigned int, const char* msg, ...);
+extern void (*log_error)(unsigned int, const char* msg, ...);
+extern void (*log_crit)(unsigned int, const char* msg, ...);
+extern void (*log_debug)(unsigned int, const char* msg, ...);
 
 #define msg(msg, args...)	\
-	do { log_info(msg, ##args); } while (0)
+	do { log_info(LOGOPT_NONE, msg, ##args); } while (0)
 
-#define debug(msg, args...)	\
-	do { log_debug("%s: " msg,  __FUNCTION__, ##args); } while (0)
+#define debug(opt, msg, args...)	\
+	do { log_debug(opt, "%s: " msg,  __FUNCTION__, ##args); } while (0)
 
-#define info(msg, args...)	\
-	do { log_info("%s: " msg,  __FUNCTION__, ##args); } while (0)
+#define info(opt, msg, args...)	\
+	do { log_info(opt, "%s: " msg,  __FUNCTION__, ##args); } while (0)
 
-#define notice(msg, args...)	\
-	do { log_notice("%s: " msg,  __FUNCTION__, ##args); } while (0)
+#define notice(opt, msg, args...)	\
+	do { log_notice(opt, "%s: " msg,  __FUNCTION__, ##args); } while (0)
 
-#define warn(msg, args...)	\
-	do { log_warn("%s: " msg,  __FUNCTION__, ##args); } while (0)
+#define warn(opt, msg, args...)	\
+	do { log_warn(opt, "%s: " msg,  __FUNCTION__, ##args); } while (0)
 
-#define error(msg, args...)	\
-	do { log_error("%s: " msg,  __FUNCTION__, ##args); } while (0)
+#define error(opt, msg, args...)	\
+	do { log_error(opt, "%s: " msg,  __FUNCTION__, ##args); } while (0)
 
-#define crit(msg, args...)	\
-	do { log_crit("%s: " msg,  __FUNCTION__, ##args); } while (0)
+#define crit(opt, msg, args...)	\
+	do { log_crit(opt, "%s: " msg,  __FUNCTION__, ##args); } while (0)
 
 #define fatal(status)						    \
 	do {							    \
 		if (status == EDEADLK) {			    \
-			log_crit("%s: deadlock detected "	    \
+			log_crit(LOGOPT_ANY,			    \
+				 "%s: deadlock detected "	    \
 				 "at line %d in %s, dumping core.", \
 				 __FUNCTION__, __LINE__, __FILE__); \
 			dump_core();				    \
 		}						    \
-		log_crit("unexpected pthreads error: %d at %d "	    \
+		log_crit(LOGOPT_ANY,				    \
+			 "unexpected pthreads error: %d at %d "	    \
 			 "in %s", status, __LINE__, __FILE__);	    \
 		abort();					    \
 	} while(0)
@@ -80,7 +84,8 @@ extern void (*log_debug)(const char* msg, ...);
 #define assert(x)							\
 do {									\
 	if (!(x)) {							\
-		crit(__FILE__ ":%d: assertion failed: " #x, __LINE__);	\
+		log_crit(LOGOPT_ANY, __FILE__				\
+			 ":%d: assertion failed: " #x, __LINE__);	\
 	}								\
 } while(0)
 #else

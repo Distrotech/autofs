@@ -64,24 +64,24 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 
 	if (!(*context = ctxt = malloc(sizeof(struct lookup_context)))) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		crit(MODPREFIX "%s", estr);
+		crit(LOGOPT_ANY, MODPREFIX "%s", estr);
 		return 1;
 	}
 
 	if (argc < 1) {
-		crit(MODPREFIX "no map name");
+		crit(LOGOPT_ANY, MODPREFIX "no map name");
 		free(ctxt);
 		*context = NULL;
 		return 1;
 	}
 	ctxt->mapname = argv[0];
 
-	debug(MODPREFIX "ctxt->mapname=%s", ctxt->mapname);
+	debug(LOGOPT_NONE, MODPREFIX "ctxt->mapname=%s", ctxt->mapname);
 
 	/* This should, but doesn't, take a const char ** */
 	err = yp_get_default_domain((char **) &ctxt->domainname);
 	if (err) {
-		debug(MODPREFIX "map %s: %s", ctxt->mapname,
+		debug(LOGOPT_NONE, MODPREFIX "map %s: %s", ctxt->mapname,
 		       yperr_string(err));
 		free(ctxt);
 		*context = NULL;
@@ -122,7 +122,7 @@ int yp_all_master_callback(int status, char *ypkey, int ypkeylen,
 
 	buffer = malloc(len);
 	if (!buffer) {
-		error(MODPREFIX "could not malloc parse buffer");
+		error(LOGOPT_ANY, MODPREFIX "could not malloc parse buffer");
 		return 0;
 	}
 	memset(buffer, 0, len);
@@ -174,8 +174,9 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 		if (err == YPERR_SUCCESS)
 			return NSS_STATUS_SUCCESS;
 
-		warn(MODPREFIX "read of master map %s failed: %s",
-		       mapname, yperr_string(err));
+		warn(LOGOPT_ANY,
+		     MODPREFIX "read of master map %s failed: %s",
+		     mapname, yperr_string(err));
 
 		return NSS_STATUS_NOTFOUND;
 	}
@@ -263,8 +264,9 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 		if (err == YPERR_SUCCESS)
 			return NSS_STATUS_SUCCESS;
 
-		warn(MODPREFIX "read of map %s failed: %s",
-		       ap->path, yperr_string(err));
+		warn(ap->logopt,
+		     MODPREFIX "read of map %s failed: %s",
+		     ap->path, yperr_string(err));
 
 		return NSS_STATUS_NOTFOUND;
 	}
@@ -402,8 +404,9 @@ static int check_map_indirect(struct autofs_point *ap,
 		return NSS_STATUS_NOTFOUND;
 
 	if (ret < 0) {
-		warn(MODPREFIX 
-		     "lookup for %s failed: %s", key, yperr_string(-ret));
+		warn(ap->logopt,
+		     MODPREFIX "lookup for %s failed: %s",
+		     key, yperr_string(-ret));
 		return NSS_STATUS_UNAVAIL;
 	}
 
@@ -467,7 +470,7 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 	int status = 0;
 	int ret = 1;
 
-	debug(MODPREFIX "looking up %s", name);
+	debug(ap->logopt, MODPREFIX "looking up %s", name);
 
 	key_len = snprintf(key, KEY_MAX_LEN, "%s", name);
 	if (key_len > KEY_MAX_LEN)
@@ -495,7 +498,8 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 		status = check_map_indirect(ap, lkp_key, strlen(lkp_key), ctxt);
 		free(lkp_key);
 		if (status) {
-			debug(MODPREFIX "check indirect map lookup failed");
+			debug(ap->logopt,
+			      MODPREFIX "check indirect map lookup failed");
 			return status;
 		}
 	}
@@ -512,7 +516,7 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 	cache_unlock(mc);
 
 	if (mapent) {
-		debug(MODPREFIX "%s -> %s", key, mapent);
+		debug(ap->logopt, MODPREFIX "%s -> %s", key, mapent);
 		ret = ctxt->parse->parse_mount(ap, key, key_len,
 					       mapent, ctxt->parse->context);
 	}

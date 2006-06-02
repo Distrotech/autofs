@@ -39,12 +39,12 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 
 	if (!(*context = ctxt = malloc(sizeof(struct lookup_context)))) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		crit(MODPREFIX "%s", estr);
+		crit(LOGOPT_ANY, MODPREFIX "%s", estr);
 		return 1;
 	}
 
 	if (argc < 1) {
-		crit(MODPREFIX "No map name");
+		crit(LOGOPT_ANY, MODPREFIX "No map name");
 		free(ctxt);
 		*context = NULL;
 		return 1;
@@ -57,7 +57,7 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 	 */
 	ctxt->domainname = nis_local_directory();
 	if (!ctxt->domainname) {
-		debug("NIS+ domain not set");
+		crit(LOGOPT_ANY, "NIS+ domain not set");
 		free(ctxt);
 		*context = NULL;
 		return 1;
@@ -88,7 +88,8 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 	result = nis_lookup(tablename, FOLLOW_PATH | FOLLOW_LINKS);
 	if (result->status != NIS_SUCCESS && result->status != NIS_S_SUCCESS) {
 		nis_freeresult(result);
-		crit(MODPREFIX "couldn't locat nis+ table %s", ctxt->mapname);
+		crit(LOGOPT_ANY,
+		     MODPREFIX "couldn't locat nis+ table %s", ctxt->mapname);
 		return NSS_STATUS_NOTFOUND;
 	}
 
@@ -97,7 +98,8 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 	result = nis_list(tablename, FOLLOW_PATH | FOLLOW_LINKS, NULL, NULL);
 	if (result->status != NIS_SUCCESS && result->status != NIS_S_SUCCESS) {
 		nis_freeresult(result);
-		crit(MODPREFIX "couldn't enumrate nis+ map %s", ctxt->mapname);
+		crit(LOGOPT_ANY,
+		     MODPREFIX "couldn't enumrate nis+ map %s", ctxt->mapname);
 		return NSS_STATUS_UNAVAIL;
 	}
 
@@ -118,7 +120,8 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 
 		buffer = malloc(ENTRY_LEN(this, 0) + 1 + ENTRY_LEN(this, 1) + 1);
 		if (!buffer) {
-			error(MODPREFIX "could not malloc parse buffer");
+			error(LOGOPT_ANY,
+			      MODPREFIX "could not malloc parse buffer");
 			continue;
 		}
 
@@ -154,7 +157,8 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 	result = nis_lookup(tablename, FOLLOW_PATH | FOLLOW_LINKS);
 	if (result->status != NIS_SUCCESS && result->status != NIS_S_SUCCESS) {
 		nis_freeresult(result);
-		crit(MODPREFIX "couldn't locat nis+ table %s", ctxt->mapname);
+		crit(ap->logopt,
+		     MODPREFIX "couldn't locat nis+ table %s", ctxt->mapname);
 		return NSS_STATUS_NOTFOUND;
 	}
 
@@ -163,7 +167,8 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 	result = nis_list(tablename, FOLLOW_PATH | FOLLOW_LINKS, NULL, NULL);
 	if (result->status != NIS_SUCCESS && result->status != NIS_S_SUCCESS) {
 		nis_freeresult(result);
-		crit(MODPREFIX "couldn't enumrate nis+ map %s", ctxt->mapname);
+		crit(ap->logopt,
+		     MODPREFIX "couldn't enumrate nis+ map %s", ctxt->mapname);
 		return NSS_STATUS_UNAVAIL;
 	}
 
@@ -296,8 +301,9 @@ static int check_map_indirect(struct autofs_point *ap,
 		return NSS_STATUS_NOTFOUND;
 
 	if (ret < 0) {
-		warn(MODPREFIX
-		     "lookup for %s failed: %s", key, nis_sperrno(-ret));
+		warn(ap->logopt,
+		     MODPREFIX "lookup for %s failed: %s",
+		     key, nis_sperrno(-ret));
 		return NSS_STATUS_UNAVAIL;
 	}
 
@@ -361,7 +367,7 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 	int status;
 	int ret = 1;
 
-	debug(MODPREFIX "looking up %s", name);
+	debug(ap->logopt, MODPREFIX "looking up %s", name);
 
 	key_len = snprintf(key, KEY_MAX_LEN, "%s", name);
 	if (key_len > KEY_MAX_LEN)
@@ -388,7 +394,8 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 
 		status = check_map_indirect(ap, lkp_key, strlen(lkp_key), ctxt);
 		if (status) {
-			debug(MODPREFIX "check indirect map failure");
+			debug(ap->logopt,
+			      MODPREFIX "check indirect map failure");
 			return status;
 		}
 	}
@@ -404,7 +411,7 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 	cache_unlock(mc);
 
 	if (mapent) {
-		debug(MODPREFIX "%s -> %s", key, mapent);
+		debug(ap->logopt, MODPREFIX "%s -> %s", key, mapent);
 		ret = ctxt->parse->parse_mount(ap, key, key_len,
 					       mapent, ctxt->parse->context);
 	}

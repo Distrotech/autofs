@@ -67,7 +67,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 	fullpath = alloca(rlen + name_len + 2);
 	if (!fullpath) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		error(MODPREFIX "alloca: %s", estr);
+		error(ap->logopt, MODPREFIX "alloca: %s", estr);
 		return 1;
 	}
 
@@ -79,45 +79,51 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 	} else
 		sprintf(fullpath, "%s", root);
 
-	debug(MODPREFIX "calling umount %s", what);
+	debug(ap->logopt, MODPREFIX "calling umount %s", what);
 
 	err = spawnll(log_debug,
 		     PATH_UMOUNT, PATH_UMOUNT, what, NULL);
 	if (err) {
-		error(MODPREFIX "umount of %s failed (all may be unmounted)",
+		error(ap->logopt,
+		      MODPREFIX
+		      "umount of %s failed (all may be unmounted)",
 		      what);
 	}
 
-	debug(MODPREFIX "calling mkdir_path %s", fullpath);
+	debug(ap->logopt, MODPREFIX "calling mkdir_path %s", fullpath);
 
 	status = mkdir_path(fullpath, 0555);
 	if (status && errno != EEXIST) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		error(MODPREFIX "mkdir_path %s failed: %s", fullpath, estr);
+		error(ap->logopt,
+		      MODPREFIX "mkdir_path %s failed: %s", fullpath, estr);
 		return 1;
 	}
 
 	if (!status)
 		existed = 0;
 
-	debug(MODPREFIX "Swapping CD to slot %s", name);
+	debug(ap->logopt, MODPREFIX "Swapping CD to slot %s", name);
 
 	err = swapCD(what, name);
 	if (err) {
-		error(MODPREFIX "failed to swap CD to slot %s", name);
+		error(ap->logopt,
+		      MODPREFIX "failed to swap CD to slot %s", name);
 		return 1;
 	}
 
 	if (options && options[0]) {
-		debug(MODPREFIX "calling mount -t %s " SLOPPY "-o %s %s %s",
-		    fstype, options, what, fullpath);
+		debug(ap->logopt,
+		      MODPREFIX "calling mount -t %s " SLOPPY "-o %s %s %s",
+		      fstype, options, what, fullpath);
 
 		err = spawnll(log_debug,
 			     PATH_MOUNT, PATH_MOUNT, "-t", fstype,
 			     SLOPPYOPT "-o", options, what, fullpath, NULL);
 	} else {
-		debug(MODPREFIX "calling mount -t %s %s %s",
-			  fstype, what, fullpath);
+		debug(ap->logopt,
+		      MODPREFIX "calling mount -t %s %s %s",
+		      fstype, what, fullpath);
 
 		err = spawnll(log_debug, PATH_MOUNT, PATH_MOUNT,
 			     "-t", fstype, what, fullpath, NULL);
@@ -127,12 +133,14 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 		if ((!ap->ghost && name_len) || !existed)
 			rmdir_path(ap, name);
 
-		error(MODPREFIX "failed to mount %s (type %s) on %s",
+		error(ap->logopt,
+		      MODPREFIX "failed to mount %s (type %s) on %s",
 		      what, fstype, fullpath);
 		return 1;
 	} else {
-		debug(MODPREFIX "mounted %s type %s on %s",
-			  what, fstype, fullpath);
+		debug(ap->logopt,
+		      MODPREFIX "mounted %s type %s on %s",
+		      what, fstype, fullpath);
 		return 0;
 	}
 }
@@ -154,7 +162,7 @@ int swapCD(const char *device, const char *slotName)
 	/* open device */
 	fd = open(device, O_RDONLY | O_NONBLOCK);
 	if (fd < 0) {
-		error(MODPREFIX "Opening device %s failed : %s",
+		error(LOGOPT_ANY, MODPREFIX "Opening device %s failed : %s",
 		      device, strerror(errno));
 		return 1;
 	}
@@ -162,7 +170,7 @@ int swapCD(const char *device, const char *slotName)
 	/* Check CD player status */
 	total_slots_available = ioctl(fd, CDROM_CHANGER_NSLOTS);
 	if (total_slots_available <= 1) {
-		error(MODPREFIX
+		error(LOGOPT_ANY, MODPREFIX
 		      "Device %s is not an ATAPI compliant CD changer.",
 		      device);
 		return 1;
@@ -171,14 +179,14 @@ int swapCD(const char *device, const char *slotName)
 	/* load */
 	slot = ioctl(fd, CDROM_SELECT_DISC, slot);
 	if (slot < 0) {
-		error(MODPREFIX "CDROM_SELECT_DISC failed");
+		error(LOGOPT_ANY, MODPREFIX "CDROM_SELECT_DISC failed");
 		return 1;
 	}
 
 	/* close device */
 	status = close(fd);
 	if (status != 0) {
-		error(MODPREFIX "close failed for `%s': %s",
+		error(LOGOPT_ANY, MODPREFIX "close failed for `%s': %s",
 		      device, strerror(errno));
 		return 1;
 	}

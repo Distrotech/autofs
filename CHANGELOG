@@ -16,6 +16,8 @@
     find out soon enough.
 - fix "-hosts" map not finding entry for the "nobrowse" case.
 - update man page with description of "-hosts" map type.
+- complete logging, including per mount logging.
+  - still needs some more work but that will need to wait.
 
 23/5/2006 autofs-5.0.0_beta3
 ----------------------------

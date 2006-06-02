@@ -472,7 +472,8 @@ void master_source_writelock(struct master_mapent *entry)
 
 	status = pthread_rwlock_wrlock(&entry->source_lock);
 	if (status) {
-		error("master_mapent source write lock failed");
+		error(LOGOPT_ANY,
+		      "master_mapent source write lock failed");
 		fatal(status);
 	}
 	return;
@@ -484,7 +485,8 @@ void master_source_readlock(struct master_mapent *entry)
 
 	status = pthread_rwlock_rdlock(&entry->source_lock);
 	if (status) {
-		error("master_mapent source read lock failed");
+		error(LOGOPT_ANY,
+		      "master_mapent source read lock failed");
 		fatal(status);
 	}
 	return;
@@ -496,7 +498,8 @@ void master_source_unlock(struct master_mapent *entry)
 
 	status = pthread_rwlock_unlock(&entry->source_lock);
 	if (status) {
-		error("master_mapent source unlock failed");
+		error(LOGOPT_ANY,
+		      "master_mapent source unlock failed");
 		fatal(status);
 	}
 	return;
@@ -683,7 +686,8 @@ int master_read_master(struct master *master, time_t age, int readall)
 	int status;
 
 	if (!lookup_nss_read_master(master, age)) {
-		error("can't read master map %s", master->name);
+		error(LOGOPT_ANY,
+		      "can't read master map %s", master->name);
 		return 0;
 	}
 
@@ -694,7 +698,7 @@ int master_read_master(struct master *master, time_t age, int readall)
 		fatal(status);
 
 	if (list_empty(&master->mounts)) {
-		error("no mounts in table");
+		error(LOGOPT_ANY, "no mounts in table");
 		status = pthread_mutex_unlock(&master_mutex);
 		if (status)
 			fatal(status);
@@ -747,7 +751,7 @@ static void notify_submounts(struct autofs_point *ap, enum states state)
 
 		status = pthread_cond_wait(&ap->mounts_cond, &ap->mounts_mutex);
 		if (status) {
-			error("wait for submount failed");
+			error(LOGOPT_ANY, "wait for submount failed");
 			fatal(status);
 		}
 	}
@@ -809,8 +813,9 @@ void master_notify_state_change(struct master *master, int sig)
 			break;
 		}
 
-		debug("sig %d switching %s from %d to %d",
-			sig, ap->path, ap->state, next);
+		debug(ap->logopt,
+		      "sig %d switching %s from %d to %d",
+		      sig, ap->path, ap->state, next);
 
 		status = pthread_mutex_unlock(&ap->state_mutex);
 		if (status)
@@ -830,8 +835,6 @@ static int master_do_mount(struct master_mapent *entry)
 	pthread_t thid;
 	int status;
 
-	debug("mounting %s", entry->path);
-
 	status = pthread_mutex_lock(&sc.mutex);
 	if (status)
 		fatal(status);
@@ -840,9 +843,13 @@ static int master_do_mount(struct master_mapent *entry)
 	sc.status = 0;
 
 	ap = entry->ap;
+
+	debug(ap->logopt, "mounting %s", entry->path);
+
 	if (pthread_create(&thid, &thread_attr, handle_mounts, ap)) {
-		crit("failed to create mount handler thread for %s",
-				entry->path);
+		crit(ap->logopt,
+		     "failed to create mount handler thread for %s",
+		     entry->path);
 		status = pthread_mutex_unlock(&sc.mutex);
 		if (status)
 			fatal(status);
@@ -857,7 +864,7 @@ static int master_do_mount(struct master_mapent *entry)
 	}
 
 	if (sc.status) {
-		error("failed to startup mount");
+		error(ap->logopt, "failed to startup mount");
 		status = pthread_mutex_unlock(&sc.mutex);
 		if (status)
 			fatal(status);
@@ -880,7 +887,7 @@ static void shutdown_entry(struct master_mapent *entry)
 
 	ap = entry->ap;
 
-	debug("shutting down %s", entry->path);
+	debug(ap->logopt, "shutting down %s", entry->path);
 
 	status = pthread_mutex_lock(&ap->state_mutex);
 	if (status)
@@ -1051,5 +1058,4 @@ int master_kill(struct master *master, unsigned int mode)
 
 	return 1;
 }
-
 

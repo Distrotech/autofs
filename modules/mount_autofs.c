@@ -73,7 +73,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 	fullpath = alloca(rlen + name_len + 2);
 	if (!fullpath) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		error(MODPREFIX "alloca: %s", estr);
+		error(ap->logopt, MODPREFIX "alloca: %s", estr);
 		return 1;
 	}
 
@@ -83,8 +83,10 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 		sprintf(fullpath, "%s", name);
 
 	if (is_mounted(_PATH_MOUNTED, fullpath)) {
-		error(MODPREFIX 
-		 "warning: about to mount over %s, continuing", fullpath);
+		error(ap->logopt,
+		      MODPREFIX 
+		      "warning: about to mount over %s, continuing",
+		      fullpath);
 		return 0;
 	}
 
@@ -92,7 +94,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 		options = alloca(strlen(c_options) + 1);
 		if (!options) {
 			char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-			error(MODPREFIX "alloca: %s", estr);
+			error(ap->logopt, MODPREFIX "alloca: %s", estr);
 			return 1;
 		}
 		strcpy(options, c_options);
@@ -100,8 +102,9 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 		options = NULL;
 	}
 
-	debug(MODPREFIX "fullpath=%s what=%s options=%s",
-		  fullpath, what, options);
+	debug(ap->logopt,
+	      MODPREFIX "fullpath=%s what=%s options=%s",
+	      fullpath, what, options);
 
 	/* TODO: options processing needs more work */
 
@@ -114,18 +117,21 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 
 	entry = master_new_mapent(fullpath, ap->entry->age);
 	if (!entry) {
-		error(MODPREFIX "failed to malloc master_mapent struct");
+		error(ap->logopt,
+		      MODPREFIX "failed to malloc master_mapent struct");
 		return 1;
 	}
 
 	ret = master_add_autofs_point(entry, timeout, logopt, ghost, 1);
 	if (!ret) {
-		error(MODPREFIX "failed to add autofs_point to entry");
+		error(ap->logopt,
+		      MODPREFIX "failed to add autofs_point to entry");
 		master_free_mapent(entry);
 		return 1;
 	}
 	nap = entry->ap;
 	nap->parent = ap;
+	set_mnt_logging(nap);
 
 	argc = 1;
 
@@ -171,21 +177,23 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 
 	source = master_add_map_source(entry, type, format, time(NULL), argc, argv);
 	if (!source) {
-		error(MODPREFIX "failed to add map source to entry");
+		error(ap->logopt,
+		      MODPREFIX "failed to add map source to entry");
 		master_free_mapent(entry);
 		return 1;
 	}
 
 	source->mc = cache_init(source);
 	if (!source->mc) {
-		error(MODPREFIX "failed to init source cache");
+		error(ap->logopt, MODPREFIX "failed to init source cache");
 		master_free_mapent(entry);
 		return 1;
 	}
 
 	status = pthread_mutex_lock(&sc.mutex);
 	if (status) {
-		crit("failed to lock startup condition mutex!");
+		crit(ap->logopt,
+		     MODPREFIX "failed to lock startup condition mutex!");
 		cache_release(source);
 		master_free_mapent(entry);
 		return 1;
@@ -197,7 +205,10 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 	pthread_mutex_lock(&ap->mounts_mutex);
 
 	if (pthread_create(&thid, &thread_attr, handle_mounts, nap)) {
-		crit("failed to create mount handler thread for %s", fullpath);
+		crit(ap->logopt,
+		     MODPREFIX
+		     "failed to create mount handler thread for %s",
+		     fullpath);
 		pthread_mutex_unlock(&ap->mounts_mutex);
 		status = pthread_mutex_unlock(&sc.mutex);
 		if (status)
@@ -218,7 +229,8 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 	}
 
 	if (sc.status) {
-		crit("failed to create submount for %s", fullpath);
+		crit(ap->logopt,
+		     MODPREFIX "failed to create submount for %s", fullpath);
 		pthread_mutex_unlock(&ap->mounts_mutex);
 		status = pthread_mutex_unlock(&sc.mutex);
 		if (status)

@@ -63,7 +63,8 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 	int nosymlink = 0;
 	int ro = 0;            /* Set if mount bind should be read-only */
 
-	debug(MODPREFIX "root=%s name=%s what=%s, fstype=%s, options=%s",
+	debug(ap->logopt,
+	      MODPREFIX "root=%s name=%s what=%s, fstype=%s, options=%s",
 	      root, name, what, fstype, options);
 
 	/* Extract "nosymlink" pseudo-option which stops local filesystems
@@ -116,19 +117,20 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 			}
 		}
 
-		debug(MODPREFIX "nfs options=\"%s\", nosymlink=%d, ro=%d",
+		debug(ap->logopt, 
+		      MODPREFIX "nfs options=\"%s\", nosymlink=%d, ro=%d",
 		      nfsoptions, nosymlink, ro);
 	}
 
 	vers = NFS_VERS_MASK | NFS_PROTO_MASK;
 	if (!parse_location(&hosts, what)) {
-		warn(MODPREFIX "no hosts available");
+		warn(ap->logopt, MODPREFIX "no hosts available");
 		return 1;
 	}
 	prune_host_list(&hosts, vers);
 
 	if (!hosts) {
-		warn(MODPREFIX "no hosts available");
+		warn(ap->logopt, MODPREFIX "no hosts available");
 		return 1;
 	}
 
@@ -147,7 +149,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 	fullpath = alloca(rlen + name_len + 2);
 	if (!fullpath) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		error(MODPREFIX "alloca: %s", estr);
+		error(ap->logopt, MODPREFIX "alloca: %s", estr);
 		free_host_list(&hosts);
 		return 1;
 	}
@@ -161,12 +163,13 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 		len = sprintf(fullpath, "%s", root);
 	fullpath[len] = '\0';
 
-	debug(MODPREFIX "calling mkdir_path %s", fullpath);
+	debug(ap->logopt, MODPREFIX "calling mkdir_path %s", fullpath);
 
 	status = mkdir_path(fullpath, 0555);
 	if (status && errno != EEXIST) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		error(MODPREFIX "mkdir_path %s failed: %s", fullpath, estr);
+		error(ap->logopt,
+		      MODPREFIX "mkdir_path %s failed: %s", fullpath, estr);
 		return 1;
 	}
 
@@ -179,8 +182,9 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 		char *loc;
 
 		if (is_mounted(_PATH_MOUNTED, fullpath)) {
-			error(MODPREFIX
-			 "warning: %s is already mounted", fullpath);
+			error(ap->logopt,
+			      MODPREFIX
+			      "warning: %s is already mounted", fullpath);
 			free_host_list(&hosts);
 			break;
 		}
@@ -189,7 +193,9 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 			/* Local host -- do a "bind" */
 			const char *bind_options = ro ? "ro" : "";
 
-			debug(MODPREFIX "%s is local, attempt bind mount", name);
+			debug(ap->logopt,
+			      MODPREFIX "%s is local, attempt bind mount",
+			      name);
 
 			err = mount_bind->mount_mount(ap, root, name, name_len,
 					       this->path, "bind", bind_options,
@@ -213,7 +219,8 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 		strcat(loc, this->path);
 
 		if (nfsoptions && *nfsoptions) {
-			debug(MODPREFIX "calling mount -t nfs " SLOPPY 
+			debug(ap->logopt,
+			      MODPREFIX "calling mount -t nfs " SLOPPY 
 			      "-o %s %s %s", nfsoptions, loc, fullpath);
 
 			err = spawnll(log_debug,
@@ -221,7 +228,8 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 				     "nfs", SLOPPYOPT "-o", nfsoptions,
 				     loc, fullpath, NULL);
 		} else {
-			debug(MODPREFIX "calling mount -t nfs %s %s",
+			debug(ap->logopt,
+			      MODPREFIX "calling mount -t nfs %s %s",
 			      loc, fullpath);
 			err = spawnll(log_debug,
 				     PATH_MOUNT, PATH_MOUNT, "-t",
@@ -229,7 +237,8 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 		}
 
 		if (!err) {
-			debug(MODPREFIX "mounted %s on %s", loc, fullpath);
+			debug(ap->logopt,
+			      MODPREFIX "mounted %s on %s", loc, fullpath);
 			free(loc);
 			free_host_list(&hosts);
 			return 0;
@@ -245,7 +254,8 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 	if ((!ap->ghost && name_len) || !existed)
 		rmdir_path(ap, name);
 
-	error(MODPREFIX "nfs: mount failure %s on %s", what, fullpath);
+	error(ap->logopt,
+	      MODPREFIX "nfs: mount failure %s on %s", what, fullpath);
 
 	return 1;
 }

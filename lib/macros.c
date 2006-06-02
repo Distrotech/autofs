@@ -50,7 +50,9 @@ void dump_table(struct substvar *table)
 		fatal(status);
 
 	while (lv) {
-		debug("lv->def %s lv->val %s lv->next %p", lv->def, lv->val, lv->next);
+		debug(LOGOPT_NONE,
+		      "lv->def %s lv->val %s lv->next %p",
+		      lv->def, lv->val, lv->next);
 		lv = lv->next;
 	}
 

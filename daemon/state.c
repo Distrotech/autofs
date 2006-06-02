@@ -15,6 +15,8 @@
 
 #include "automount.h"
 
+extern struct master *master;
+
 extern pthread_attr_t thread_attr;
 
 struct state_queue {
@@ -41,21 +43,23 @@ void dump_state_queue(void)
 	struct list_head *head = &state_queue;
 	struct list_head *p, *q;
 
-	debug("dumping queue");
+	debug(LOGOPT_ANY, "dumping queue");
 
 	list_for_each(p, head) {
 		struct state_queue *entry;
 
 		entry = list_entry(p, struct state_queue, list);
-		debug("queue list head path %s state %d busy %d",
-			entry->ap->path, entry->state, entry->busy);
+		debug(LOGOPT_ANY,
+		      "queue list head path %s state %d busy %d",
+		      entry->ap->path, entry->state, entry->busy);
 
 		list_for_each(q, &entry->pending) {
 			struct state_queue *this;
 
 			this = list_entry(q, struct state_queue, pending);
-			debug("queue list entry path %s state %d busy %d",
-				this->ap->path, this->state, this->busy);
+			debug(LOGOPT_ANY,
+			      "queue list entry path %s state %d busy %d",
+			      this->ap->path, this->state, this->busy);
 		}
 	}
 }
@@ -66,7 +70,7 @@ void nextstate(int statefd, enum states next)
 
 	if (write(statefd, &next, sizeof(next)) != sizeof(next)) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		error("write failed %s", estr);
+		error(LOGOPT_ANY, "write failed %s", estr);
 	}
 }
 
@@ -90,12 +94,14 @@ void expire_cleanup(void *arg)
 
 	status = pthread_mutex_lock(&ap->state_mutex);
 	if (status) {
-		error("state mutex lock failed");
+		error(ap->logopt, "state mutex lock failed");
 		free(ea);
 		return;
 	}
 
-	debug("got thid %lu path %s stat %d", (unsigned long) thid, ap->path, success);
+	debug(ap->logopt,
+	      "got thid %lu path %s stat %d",
+	      (unsigned long) thid, ap->path, success);
 
 	statefd = ap->state_pipe[1];
 
@@ -128,7 +134,7 @@ void expire_cleanup(void *arg)
 				break;
 
 			/* Failed shutdown returns to ready */
-			warn("filesystem %s still busy", ap->path);
+			warn(ap->logopt, "filesystem %s still busy", ap->path);
 			alarm_add(ap, ap->exp_runfreq);
 			next = ST_READY;
 #endif
@@ -139,13 +145,13 @@ void expire_cleanup(void *arg)
 			break;
 
 		default:
-			error("bad state %d", ap->state);
+			error(ap->logopt, "bad state %d", ap->state);
 		}
 
 		if (next != ST_INVAL) {
-			debug("sigchld: exp "
-				"%lu finished, switching from %d to %d",
-				(unsigned long) thid, ap->state, next);
+			debug(ap->logopt,
+			  "sigchld: exp %lu finished, switching from %d to %d",
+			  (unsigned long) thid, ap->state, next);
 		}
 	}
 
@@ -154,7 +160,7 @@ void expire_cleanup(void *arg)
 
 	status = pthread_mutex_unlock(&ap->state_mutex);
 	if (status)
-		error("state mutex unlock failed");
+		error(ap->logopt, "state mutex unlock failed");
 
 	free(ea);
 
@@ -163,7 +169,8 @@ void expire_cleanup(void *arg)
 
 static unsigned int st_ready(struct autofs_point *ap)
 {
-	debug("st_ready(): state = %d path %s", ap->state, ap->path);
+	debug(ap->logopt,
+	      "st_ready(): state = %d path %s", ap->state, ap->path);
 
 	ap->state = ST_READY;
 
@@ -176,7 +183,8 @@ static unsigned int st_ready(struct autofs_point *ap)
 
 		status = pthread_cond_signal(&ap->parent->mounts_cond);
 		if (status)
-			error("failed to signal submount notify condition");
+			error(ap->logopt,
+			      "failed to signal submount notify condition");
 
 		status = pthread_mutex_unlock(&ap->parent->mounts_mutex);
 		if (status)
@@ -234,7 +242,7 @@ static enum expire expire_proc(struct autofs_point *ap, int now)
 
 	ea = malloc(sizeof(struct expire_args));
 	if (!ea) {
-		error("failed to malloc expire cond struct");
+		error(ap->logopt, "failed to malloc expire cond struct");
 		return EXP_ERROR;
 	}
 
@@ -261,7 +269,8 @@ static enum expire expire_proc(struct autofs_point *ap, int now)
 
 	status = pthread_create(&thid, &thread_attr, expire, ea);
 	if (status) {
-		error("expire thread create for %s failed", ap->path);
+		error(ap->logopt,
+		      "expire thread create for %s failed", ap->path);
 		expire_proc_cleanup((void *) ea);
 		free(ea);
 		return EXP_ERROR;
@@ -271,7 +280,7 @@ static enum expire expire_proc(struct autofs_point *ap, int now)
 
 	pthread_cleanup_push(expire_proc_cleanup, ea);
 
-	debug("exp_proc = %lu path %s",
+	debug(ap->logopt, "exp_proc = %lu path %s",
 		(unsigned long) ap->exp_thread, ap->path);
 
 	ea->signaled = 0;
@@ -334,7 +343,7 @@ static void *do_readmap(void *arg)
 	ra->signaled = 1;
 	status = pthread_cond_signal(&ra->cond);
 	if (status) {
-		error("failed to signal expire condition");
+		error(ap->logopt, "failed to signal expire condition");
 		status = pthread_mutex_unlock(&ra->mutex);
 		if (status)
 			fatal(status);
@@ -376,7 +385,8 @@ static void *do_readmap(void *arg)
 					if (!tree_is_mounted(mnts, me->key))
 						do_umount_autofs_direct(ap, mnts, me);
 					else
-                                		debug("%s id mounted", me->key);
+                                		debug(ap->logopt,
+						      "%s id mounted", me->key);
 				} else
 					do_mount_autofs_direct(ap, mnts, me, now);
 				me = cache_enumerate(mc, me);
@@ -389,9 +399,6 @@ static void *do_readmap(void *arg)
 		ap->entry->current = NULL;
 		lookup_prune_cache(ap, now);
 	}
-
-
-	debug("path %s status %d", ap->path, status);
 
 	pthread_cleanup_pop(1);
 
@@ -427,14 +434,14 @@ static unsigned int st_readmap(struct autofs_point *ap)
 	int status;
 	int now = time(NULL);
 
-	debug("state %d path %s", ap->state, ap->path);
+	debug(ap->logopt, "state %d path %s", ap->state, ap->path);
 
 	assert(ap->state == ST_READY);
 	ap->state = ST_READMAP;
 
 	ra = malloc(sizeof(struct readmap_args));
 	if (!ra) {
-		error("failed to malloc reamap cond struct");
+		error(ap->logopt, "failed to malloc reamap cond struct");
 		return 0;
 	}
 
@@ -455,7 +462,7 @@ static unsigned int st_readmap(struct autofs_point *ap)
 
 	status = pthread_create(&thid, &thread_attr, do_readmap, ra);
 	if (status) {
-		error("read map thread create failed");
+		error(ap->logopt, "read map thread create failed");
 		st_readmap_cleanup(ra);
 		free(ra);
 		return 0;
@@ -477,7 +484,7 @@ static unsigned int st_prepare_shutdown(struct autofs_point *ap)
 {
 	int exp;
 
-	debug("state %d path %s", ap->state, ap->path);
+	debug(ap->logopt, "state %d path %s", ap->state, ap->path);
 
 	/* Turn off timeouts for this mountpoint */
 	alarm_delete(ap);
@@ -505,7 +512,7 @@ static unsigned int st_force_shutdown(struct autofs_point *ap)
 {
 	int exp;
 
-	debug("state %d path %s", ap->state, ap->path);
+	debug(ap->logopt, "state %d path %s", ap->state, ap->path);
 
 	/* Turn off timeouts for this mountpoint */
 	alarm_delete(ap);
@@ -531,7 +538,7 @@ static unsigned int st_force_shutdown(struct autofs_point *ap)
 
 static unsigned int st_prune(struct autofs_point *ap)
 {
-	debug("state %d path %s", ap->state, ap->path);
+	debug(ap->logopt, "state %d path %s", ap->state, ap->path);
 
 	assert(ap->state == ST_READY);
 	ap->state = ST_PRUNE;
@@ -554,7 +561,7 @@ static unsigned int st_prune(struct autofs_point *ap)
 
 static unsigned int st_expire(struct autofs_point *ap)
 {
-	debug("state %d path %s", ap->state, ap->path);
+	debug(ap->logopt, "state %d path %s", ap->state, ap->path);
 
 	assert(ap->state == ST_READY);
 	ap->state = ST_EXPIRE;
@@ -743,7 +750,7 @@ static int run_state_task(struct state_queue *task)
 
 		default:
 			ret = 0;
-			error("bad next state %d", next_state);
+			error(ap->logopt, "bad next state %d", next_state);
 		}
 	}
 
@@ -795,9 +802,10 @@ static void *st_queue_handler(void *arg)
 
 			task = list_entry(p, struct state_queue, list);
 /*
-			debug("task %p ap %p state %d next %d busy %d",
-				task, task->ap, task->ap->state,
-				task->state, task->busy);
+			debug(LOGOPT_NONE,
+			      "task %p ap %p state %d next %d busy %d",
+			      task, task->ap, task->ap->state,
+			      task->state, task->busy);
 */
 
 			task->busy = 1;
@@ -832,9 +840,10 @@ static void *st_queue_handler(void *arg)
 				task = list_entry(p, struct state_queue, list);
 				p = p->next;
 /*
-				debug("task %p ap %p state %d next %d busy %d",
-					task, task->ap, task->ap->state,
-					task->state, task->busy);
+				debug(LOGOPT_NONE,
+				      "task %p ap %p state %d next %d busy %d",
+				      task, task->ap, task->ap->state,
+				      task->state, task->busy);
 */
 				if (!task->busy) {
 					/* Start a new task */

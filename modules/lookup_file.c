@@ -60,12 +60,12 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 
 	if (!(*context = ctxt = malloc(sizeof(struct lookup_context)))) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		crit(MODPREFIX "malloc: %s", estr);
+		crit(LOGOPT_ANY, MODPREFIX "malloc: %s", estr);
 		return 1;
 	}
 
 	if (argc < 1) {
-		crit(MODPREFIX "No map name");
+		crit(LOGOPT_ANY, MODPREFIX "No map name");
 		free(ctxt);
 		return 1;
 	}
@@ -73,22 +73,24 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 	ctxt->mapname = argv[0];
 
 	if (ctxt->mapname[0] != '/') {
-		debug(MODPREFIX "file map %s is not an absolute pathname",
-		       ctxt->mapname);
+		debug(LOGOPT_NONE,
+		      MODPREFIX "file map %s is not an absolute pathname",
+		      ctxt->mapname);
 		free(ctxt);
 		return 1;
 	}
 
 	if (access(ctxt->mapname, R_OK)) {
-		warn(MODPREFIX "file map %s missing or not readable",
-		       ctxt->mapname);
+		warn(LOGOPT_ANY,
+		     MODPREFIX "file map %s missing or not readable",
+		     ctxt->mapname);
 		free(ctxt);
 		return 1;
 	}
 
 	if (stat(ctxt->mapname, &st)) {
-		crit(MODPREFIX "file map %s, could not stat",
-		       ctxt->mapname);
+		crit(LOGOPT_ANY, MODPREFIX "file map %s, could not stat",
+		     ctxt->mapname);
 		free(ctxt);
 		return 1;
 	}
@@ -286,26 +288,32 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 		return NSS_STATUS_UNAVAIL;
 
 	if (master->depth > MAX_INCLUDE_DEPTH) {
-		error("maximum include depth exceeded %s", master->name);
+		error(LOGOPT_ANY,
+		      MODPREFIX
+		      "maximum include depth exceeded %s", master->name);
 		return NSS_STATUS_UNAVAIL;
 	}
 
 	path = malloc(KEY_MAX_LEN + 1);
 	if (!path) {
-		error(MODPREFIX "could not malloc storage for path");
+		error(LOGOPT_ANY,
+		      MODPREFIX "could not malloc storage for path");
 		return NSS_STATUS_UNAVAIL;
 	}
 
 	ent = malloc(MAPENT_MAX_LEN + 1);
 	if (!ent) {
-		error(MODPREFIX "could not malloc storage for mapent");
+		error(LOGOPT_ANY,
+		      MODPREFIX "could not malloc storage for mapent");
 		free(path);
 		return NSS_STATUS_UNAVAIL;
 	}
 
 	f = fopen(ctxt->mapname, "r");
 	if (!f) {
-		error(MODPREFIX "could not open master map file %s", ctxt->mapname);
+		error(LOGOPT_ANY,
+		      MODPREFIX "could not open master map file %s",
+		      ctxt->mapname);
 		free(path);
 		free(ent);
 		return NSS_STATUS_UNAVAIL;
@@ -320,7 +328,7 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 			continue;
 		}
 
-		debug(MODPREFIX "read entry %s", path);
+		debug(LOGOPT_NONE, MODPREFIX "read entry %s", path);
 
 		/*
 		 * If key starts with '+' it has to be an
@@ -340,7 +348,9 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 			master->depth++;
 			status = lookup_nss_read_master(master, age);
 			if (!status)
-				warn(MODPREFIX "failed to read included master map %s",
+				warn(LOGOPT_ANY,
+				     MODPREFIX
+				     "failed to read included master map %s",
 				     master->name);
 			master->depth--;
 			master->recurse = 0;
@@ -350,7 +360,8 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 			blen = strlen(path) + 1 + strlen(ent) + 1;
 			buffer = malloc(blen);
 			if (!buffer) {
-				error(MODPREFIX "could not malloc parse buffer");
+				error(LOGOPT_ANY,
+				      MODPREFIX "could not malloc parse buffer");
 				free(path);
 				free(ent);
 				return NSS_STATUS_UNAVAIL;
@@ -371,7 +382,7 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 	}
 
 	if (fstat(fileno(f), &st)) {
-		crit(MODPREFIX "file map %s, could not stat",
+		crit(LOGOPT_ANY, MODPREFIX "file map %s, could not stat",
 		       ctxt->mapname);
 		free(path);
 		free(ent);
@@ -431,17 +442,19 @@ prepare_plus_include(struct autofs_point *ap, time_t age, char *key, unsigned in
 
 	entry = master_new_mapent(ap->path, ap->entry->age);
 	if (!entry) {
-		error(MODPREFIX "malloc failed for entry");
+		error(ap->logopt, MODPREFIX "malloc failed for entry");
 		return NULL;
 	}
 
 	ret = master_add_autofs_point(entry, timeout, logopt, ghost, 0);
 	if (!ret) {
-		error(MODPREFIX "failed to add autofs_point to entry");
+		error(ap->logopt,
+		      MODPREFIX "failed to add autofs_point to entry");
 		master_free_mapent(entry);
 		return NULL;
 	}
 	iap = entry->ap;
+	set_mnt_logging(iap);
 
 	/*
 	 * TODO:
@@ -455,7 +468,7 @@ prepare_plus_include(struct autofs_point *ap, time_t age, char *key, unsigned in
 	/* skip plus */
 	buf = strdup(key + 1);
 	if (!buf) {
-		error(MODPREFIX "failed to strdup key");
+		error(ap->logopt, MODPREFIX "failed to strdup key");
 		master_free_mapent(entry);
 		return NULL;
 	}
@@ -488,7 +501,7 @@ prepare_plus_include(struct autofs_point *ap, time_t age, char *key, unsigned in
 
 	source = master_add_map_source(entry, type, fmt, age, argc, argv);
 	if (!source) {
-		error("failed to creat map_source");
+		error(ap->logopt, "failed to creat map_source");
 		master_free_mapent(entry);
 		free(buf);
 		return NULL;
@@ -518,26 +531,30 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 		return NSS_STATUS_UNAVAIL;
 
 	if (source->depth > MAX_INCLUDE_DEPTH) {
-		error("maximum include depth exceeded %s", ctxt->mapname);
+		error(ap->logopt,
+		      "maximum include depth exceeded %s", ctxt->mapname);
 		return NSS_STATUS_UNAVAIL;
 	}
 
 	key = malloc(KEY_MAX_LEN + 1);
 	if (!key) {
-		error(MODPREFIX "could not malloc storage for key");
+		error(ap->logopt,
+		      MODPREFIX "could not malloc storage for key");
 		return NSS_STATUS_UNAVAIL;
 	}
 
 	mapent = malloc(MAPENT_MAX_LEN + 1);
 	if (!mapent) {
-		error(MODPREFIX "could not malloc storage for mapent");
+		error(ap->logopt,
+		      MODPREFIX "could not malloc storage for mapent");
 		free(key);
 		return NSS_STATUS_UNAVAIL;
 	}
 
 	f = fopen(ctxt->mapname, "r");
 	if (!f) {
-		error(MODPREFIX "could not open map file %s", ctxt->mapname);
+		error(ap->logopt,
+		      MODPREFIX "could not open map file %s", ctxt->mapname);
 		free(key);
 		free(mapent);
 		return NSS_STATUS_UNAVAIL;
@@ -560,20 +577,22 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 			unsigned int inc;
 			int status;
 
-			debug("read included map %s", key);
+			debug(ap->logopt, "read included map %s", key);
 
 			inc = check_self_include(key, ctxt);
 
 			iap = prepare_plus_include(ap, age, key, inc);
 			if (!iap) {
-				debug("failed to select included map %s", key);
+				debug(ap->logopt,
+				      "failed to select included map %s", key);
 				continue;
 			}
 
 			/* Gim'ee some o' that 16k stack baby !! */
 			status = lookup_nss_read_map(iap, age);
 			if (!status)
-				warn("failed to read included map %s", key);
+				warn(ap->logopt,
+				     "failed to read included map %s", key);
 
 			master_free_mapent_sources(iap->entry, 0);
 			master_free_mapent(iap->entry);
@@ -594,8 +613,9 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 	}
 
 	if (fstat(fileno(f), &st)) {
-		crit(MODPREFIX "file map %s, could not stat",
-		       ctxt->mapname);
+		crit(ap->logopt,
+		     MODPREFIX "file map %s, could not stat",
+		     ctxt->mapname);
 		free(key);
 		free(mapent);
 		return NSS_STATUS_UNAVAIL;
@@ -624,7 +644,8 @@ static int lookup_one(struct autofs_point *ap,
 
 	f = fopen(ctxt->mapname, "r");
 	if (!f) {
-		error(MODPREFIX "could not open map file %s", ctxt->mapname);
+		error(ap->logopt,
+		      MODPREFIX "could not open map file %s", ctxt->mapname);
 		return CHE_FAIL;
 	}
 
@@ -640,13 +661,17 @@ static int lookup_one(struct autofs_point *ap,
 				unsigned int inc;
 				int status;
 
-				debug("lookup included map %s", key);
+				debug(ap->logopt,
+				      MODPREFIX "lookup included map %s", key);
 
 				inc = check_self_include(mkey, ctxt);
 
 				iap = prepare_plus_include(ap, age, mkey, inc);
 				if (!iap) {
-					debug("failed to select included map %s", key);
+					debug(ap->logopt,
+					      MODPREFIX
+					      "failed to select included map %s",
+					      key);
 					continue;
 				}
 
@@ -692,7 +717,8 @@ static int lookup_wild(struct autofs_point *ap, struct lookup_context *ctxt)
 
 	f = fopen(ctxt->mapname, "r");
 	if (!f) {
-		error(MODPREFIX "could not open map file %s", ctxt->mapname);
+		error(ap->logopt,
+		      MODPREFIX "could not open map file %s", ctxt->mapname);
 		return CHE_FAIL;
 	}
 
@@ -712,7 +738,10 @@ static int lookup_wild(struct autofs_point *ap, struct lookup_context *ctxt)
 
 				iap = prepare_plus_include(ap, age, mkey, inc);
 				if (!iap) {
-					debug("failed to select included map %s", mkey);
+					debug(ap->logopt,
+					      MODPREFIX
+					      "failed to select included map %s",
+					       mkey);
 					continue;
 				}
 
@@ -830,11 +859,13 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 		return NSS_STATUS_UNAVAIL;
 
 	if (source->depth > MAX_INCLUDE_DEPTH) {
-		error("maximum include depth exceeded %s", ctxt->mapname);
+		error(ap->logopt,
+		      MODPREFIX
+		      "maximum include depth exceeded %s", ctxt->mapname);
 		return NSS_STATUS_SUCCESS;
 	}
 
-	debug(MODPREFIX "looking up %s", name);
+	debug(ap->logopt, MODPREFIX "looking up %s", name);
 
 	key_len = snprintf(key, KEY_MAX_LEN, "%s", name);
 	if (key_len > KEY_MAX_LEN)
@@ -865,7 +896,8 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 			if (status == NSS_STATUS_COMPLETED)
 				return NSS_STATUS_SUCCESS;
 
-			debug(MODPREFIX "check indirect map lookup failed");
+			debug(ap->logopt,
+			      MODPREFIX "check indirect map lookup failed");
 			return NSS_STATUS_NOTFOUND;
 		}
 	}
@@ -882,7 +914,7 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 	cache_unlock(mc);
 
 	if (mapent) {
-		debug(MODPREFIX "%s -> %s", key, mapent);
+		debug(ap->logopt, MODPREFIX "%s -> %s", key, mapent);
 		ret = ctxt->parse->parse_mount(ap, key, key_len,
 					mapent, ctxt->parse->context);
 	}

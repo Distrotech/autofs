@@ -66,7 +66,7 @@ int mount_init(void **context)
 		bind_works = 1;
 	}
 
-	debug(MODPREFIX "bind_works = %d", bind_works);
+	debug(LOGOPT_NONE, MODPREFIX "bind_works = %d", bind_works);
 	spawnl(log_debug,
 	       PATH_UMOUNT, PATH_UMOUNT, "-n", tmp2, NULL);
 
@@ -101,7 +101,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 	fullpath = alloca(rlen + name_len + 2);
 	if (!fullpath) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		error(MODPREFIX "alloca: %s", estr);
+		error(ap->logopt, MODPREFIX "alloca: %s", estr);
 		return 1;
 	}
 
@@ -123,12 +123,14 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 	if (bind_works) {
 		int status, existed = 1;
 
-		debug(MODPREFIX "calling mkdir_path %s", fullpath);
+		debug(ap->logopt, MODPREFIX "calling mkdir_path %s", fullpath);
 
 		status = mkdir_path(fullpath, 0555);
 		if (status && errno != EEXIST) {
 			char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-			error(MODPREFIX "mkdir_path %s failed: %s", fullpath, estr);
+			error(ap->logopt,
+			      MODPREFIX "mkdir_path %s failed: %s",
+			      fullpath, estr);
 			return 1;
 		}
 
@@ -136,12 +138,14 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 			existed = 0;
 
 		if (is_mounted(_PATH_MOUNTED, fullpath)) {
-			error(MODPREFIX 
-			  "warning: %s is already mounted", fullpath);
+			error(ap->logopt,
+			      MODPREFIX "warning: %s is already mounted",
+			      fullpath);
 			return 0;
 		}
 
-		debug(MODPREFIX
+		debug(ap->logopt,
+		      MODPREFIX
 		      "calling mount --bind " SLOPPY " -o %s %s %s",
 		      options, what, fullpath);
 
@@ -155,8 +159,9 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 				rmdir_path(ap, name);
 			return 1;
 		} else {
-			debug(MODPREFIX "mounted %s type %s on %s",
-				  what, fstype, fullpath);
+			debug(ap->logopt,
+			      MODPREFIX "mounted %s type %s on %s",
+			      what, fstype, fullpath);
 			return 0;
 		}
 	} else {
@@ -175,18 +180,21 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 			if (S_ISDIR(st.st_mode))
 				rmdir(fullpath);
 		} else {
-			debug(MODPREFIX "calling mkdir_path %s", basepath);
+			debug(ap->logopt,
+			      MODPREFIX "calling mkdir_path %s", basepath);
 			if (mkdir_path(basepath, 0555) && errno != EEXIST) {
 				char *estr;
 				estr = strerror_r(errno, buf, MAX_ERR_BUF);
-				error(MODPREFIX "mkdir_path %s failed: %s",
+				error(ap->logopt,
+				      MODPREFIX "mkdir_path %s failed: %s",
 				      basepath, estr);
 				return 1;
 			}
 		}
 
 		if (symlink(what, fullpath) && errno != EEXIST) {
-			error(MODPREFIX
+			error(ap->logopt,
+			      MODPREFIX
 			      "failed to create local mount %s -> %s",
 			      fullpath, what);
 			if (ap->ghost && !status)
@@ -196,7 +204,8 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 
 			return 1;
 		} else {
-			debug(MODPREFIX "symlinked %s -> %s", fullpath, what);
+			debug(ap->logopt,
+			      MODPREFIX "symlinked %s -> %s", fullpath, what);
 			return 0;
 		}
 	}

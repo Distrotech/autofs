@@ -417,7 +417,7 @@ struct autofs_point {
 	time_t exp_timeout;		/* Timeout for expiring mounts */
 	time_t exp_runfreq;		/* Frequency for polling for timeouts */
 	unsigned ghost;			/* Enable/disable gohsted directories */
-	unsigned logopt;		/* Per map loggin */
+	unsigned logopt;		/* Per map logging */
 	struct kernel_mod_version kver;	/* autofs kernel module version */
 	pthread_t exp_thread;		/* Thread that is expiring */
 	pthread_t readmap_thread;	/* Thread that is reading maps */

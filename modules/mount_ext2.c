@@ -59,7 +59,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 	fullpath = alloca(rlen + name_len + 2);
 	if (!fullpath) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		error(MODPREFIX "alloca: %s", estr);
+		error(ap->logopt, MODPREFIX "alloca: %s", estr);
 		return 1;
 	}
 
@@ -71,12 +71,13 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 	} else
 		sprintf(fullpath, "%s", root);
 
-	debug(MODPREFIX "calling mkdir_path %s", fullpath);
+	debug(ap->logopt, MODPREFIX "calling mkdir_path %s", fullpath);
 
 	status = mkdir_path(fullpath, 0555);
 	if (status && errno != EEXIST) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		error(MODPREFIX "mkdir_path %s failed: %s", fullpath, estr);
+		error(ap->logopt,
+		      MODPREFIX "mkdir_path %s failed: %s", fullpath, estr);
 		return 1;
 	}
 
@@ -84,8 +85,8 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 		existed = 0;
 
 	if (is_mounted(_PATH_MOUNTED, fullpath)) {
-		error(MODPREFIX 
-		  "warning: %s is already mounted", fullpath);
+		error(ap->logopt,
+		      MODPREFIX "warning: %s is already mounted", fullpath);
 		return 0;
 	}
 
@@ -106,10 +107,12 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 	fsck_prog = PATH_E2FSCK;
 #endif
 	if (ro) {
-		debug(MODPREFIX "calling %s -n %s", fsck_prog, what);
+		debug(ap->logopt,
+		      MODPREFIX "calling %s -n %s", fsck_prog, what);
 		err = spawnl(log_debug, fsck_prog, fsck_prog, "-n", what, NULL);
 	} else {
-		debug(MODPREFIX "calling %s -p %s", fsck_prog, what);
+		debug(ap->logopt,
+		      MODPREFIX "calling %s -p %s", fsck_prog, what);
 		err = spawnl(log_debug, fsck_prog, fsck_prog, "-p", what, NULL);
 	}
 
@@ -120,19 +123,22 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 	 *    4 - File system errors left uncorrected
 	 */
 	if ((err >> 8) & 6) {
-		error(MODPREFIX "%s: filesystem needs repair, won't mount",
+		error(ap->logopt,
+		      MODPREFIX "%s: filesystem needs repair, won't mount",
 		      what);
 		return 1;
 	}
 
 	if (options) {
-		debug(MODPREFIX "calling mount -t %s " SLOPPY "-o %s %s %s",
+		debug(ap->logopt,
+		      MODPREFIX "calling mount -t %s " SLOPPY "-o %s %s %s",
 		      fstype, options, what, fullpath);
 		err = spawnll(log_debug,
 		             PATH_MOUNT, PATH_MOUNT, "-t", fstype,
 			     SLOPPYOPT "-o", options, what, fullpath, NULL);
 	} else {
-		debug(MODPREFIX "calling mount -t %s %s %s",
+		debug(ap->logopt,
+		      MODPREFIX "calling mount -t %s %s %s",
 		      fstype, what, fullpath);
 		err = spawnll(log_debug,
 			     PATH_MOUNT, PATH_MOUNT, "-t", fstype,
@@ -142,11 +148,13 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 	if (err) {
 		if ((!ap->ghost && name_len) || !existed)
 			rmdir_path(ap, name);
-		error(MODPREFIX "failed to mount %s (type %s) on %s",
+		error(ap->logopt,
+		      MODPREFIX "failed to mount %s (type %s) on %s",
 		      what, fstype, fullpath);
 		return 1;
 	} else {
-		debug(MODPREFIX "mounted %s type %s on %s",
+		debug(ap->logopt,
+		      MODPREFIX "mounted %s type %s on %s",
 		      what, fstype, fullpath);
 		return 0;
 	}

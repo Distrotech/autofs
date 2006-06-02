@@ -25,7 +25,8 @@ int parse_version = AUTOFS_PARSE_VERSION;	/* Required by protocol */
 
 /* Break out the fields in an AFS record of the form:
    "AFS /afs/athena/mit/tytso w /mit/tytso-afs" */
-static int parse_afs(const char *filsysline, const char *name, int name_len,
+static int parse_afs(struct autofs_point *ap,
+		     const char *filsysline, const char *name, int name_len,
 		     char *source, int source_len, char *options, int options_len)
 {
 	const char *p;
@@ -70,7 +71,8 @@ static int parse_afs(const char *filsysline, const char *name, int name_len,
 	if (!strcmp(options, "w"))
 		strcpy(options, "rw");
 
-	debug(MODPREFIX
+	debug(ap->logopt,
+	      MODPREFIX
 	      "parsing AFS record gives '%s'->'%s' with options" " '%s'",
 	      name, source, options);
 
@@ -81,7 +83,8 @@ static int parse_afs(const char *filsysline, const char *name, int name_len,
  * Break out the fields in an NFS record of the form:
  * "NFS /export/src nelson.tx.ncsu.edu w /ncsu/tx-src"
  */
-static int parse_nfs(const char *filsysline, const char *name,
+static int parse_nfs(struct autofs_point *ap,
+		     const char *filsysline, const char *name,
 		     int name_len, char *source, int source_len,
 		     char *options, int options_len)
 {
@@ -144,7 +147,8 @@ static int parse_nfs(const char *filsysline, const char *name,
 	if (!strcmp(options, "w"))
 		strcpy(options, "rw");
 
-	debug(MODPREFIX
+	debug(ap->logopt,
+	      MODPREFIX
 	      "parsing NFS record gives '%s'->'%s' with options" "'%s'",
 	      name, source, options);
 
@@ -153,7 +157,8 @@ static int parse_nfs(const char *filsysline, const char *name,
 
 /* Break out the fields in a generic record of the form:
    "UFS /dev/ra0g w /site" */
-static int parse_generic(const char *filsysline, const char *name, int name_len,
+static int parse_generic(struct autofs_point *ap,
+			 const char *filsysline, const char *name, int name_len,
 			 char *source, int source_len, char *options, int options_len)
 {
 	const char *p;
@@ -198,7 +203,8 @@ static int parse_generic(const char *filsysline, const char *name, int name_len,
 	if (!strcmp(options, "w"))
 		strcpy(options, "rw");
 
-	debug(MODPREFIX
+	debug(ap->logopt,
+	      MODPREFIX
 	      "parsing generic record gives '%s'->'%s' with options '%s'",
 	      name, source, options);
 
@@ -239,22 +245,23 @@ int parse_mount(struct autofs_point *ap, const char *name,
 
 	/* If it's an error message... */
 	if (!strcasecmp(fstype, "err")) {
-		error(MODPREFIX "%s", mapent);
+		error(ap->logopt, MODPREFIX "%s", mapent);
 		return 1;
 	/* If it's an AFS fs... */
 	} else if (!strcasecmp(fstype, "afs"))
-		parse_afs(mapent, name, name_len,
+		parse_afs(ap, mapent, name, name_len,
 			  source, sizeof(source), options, sizeof(options));
 	/* If it's NFS... */
 	else if (!strcasecmp(fstype, "nfs"))
-		parse_nfs(mapent, name, name_len,
+		parse_nfs(ap, mapent, name, name_len,
 			  source, sizeof(source), options, sizeof(options));
 	/* Punt. */
 	else
-		parse_generic(mapent, name, name_len, source, sizeof(source),
+		parse_generic(ap, mapent, name, name_len, source, sizeof(source),
 			      options, sizeof(options));
 
-	debug(MODPREFIX "mount %s is type %s from %s", name, fstype, source);
+	debug(ap->logopt,
+	      MODPREFIX "mount %s is type %s from %s", name, fstype, source);
 
 	return do_mount(ap, ap->path, name, name_len, source, fstype, options);
 }
