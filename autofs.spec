@@ -60,7 +60,7 @@ echo %{version}-%{release} > .version
 
 %build
 CFLAGS="$RPM_OPT_FLAGS -Wall" ./configure --libdir=%{_libdir} --enable-ignore-busy
-CFLAGS="$RPM_OPT_FLAGS -Wall" DEBUG=1 make initdir=/etc/rc.d/init.d DONTSTRIP=1
+CFLAGS="$RPM_OPT_FLAGS -Wall" make initdir=/etc/rc.d/init.d DONTSTRIP=1
 
 %install
 rm -rf $RPM_BUILD_ROOT

@@ -26,7 +26,7 @@ CFLAGS    ?= -g -Wall -DDEBUG
 LDFLAGS   = -g
 STRIP     = :
 else
-ifdef DONTSCRIP
+ifdef DONTSTRIP
 CFLAGS    = -O2 -g
 LDFLAGS   = -g
 STRIP     = :
