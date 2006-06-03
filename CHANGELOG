@@ -1,3 +1,7 @@
+?/6/2006 autofs-5.0.0_beta5
+---------------------------
+- re-instate v4 directory cleanup.
+
 2/6/2006 autofs-5.0.0_beta4
 ---------------------------
 - fix memory alloc error in nis lookup module.

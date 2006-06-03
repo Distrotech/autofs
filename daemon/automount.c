@@ -333,9 +333,6 @@ static int umount_ent(struct autofs_point *ap, const char *path, const char *typ
 		if (ap->state == ST_SHUTDOWN_FORCE) {
 			msg("forcing umount of %s", path);
 			rv = spawnll(log_debug, PATH_UMOUNT, PATH_UMOUNT, "-l", path, NULL);
-			status = pthread_mutex_unlock(&ap->state_mutex);
-			if (status)
-				fatal(status);
 		}
 
 		/*
@@ -516,7 +513,7 @@ int umount_multi(struct autofs_point *ap, struct mnt_list *mnts, const char *pat
 
 	if (!tree_get_mnt_list(mnts, &list, path, incl)) {
 		debug(ap->logopt, "no mounts found under %s", path);
-/*		check_rm_dirs(ap, path, incl); */
+		check_rm_dirs(ap, path, incl);
 		return 0;
 	}
 
@@ -548,8 +545,8 @@ int umount_multi(struct autofs_point *ap, struct mnt_list *mnts, const char *pat
 	}
 
 	/* Delete detritus like unwanted mountpoints and symlinks */
-/*	if (left == 0)
-		check_rm_dirs(ap, path, incl); */
+	if (left == 0)
+		check_rm_dirs(ap, path, incl);
 
 	return left;
 }
