@@ -1,6 +1,11 @@
 ?/6/2006 autofs-5.0.0_beta5
 ---------------------------
 - re-instate v4 directory cleanup.
+- backout master map lookup changes made to beta3.
+- change default master map from /etc/auto.master to auto.master
+  so that we always use nsswitch to locate master map.
+- change default installed master map to include "+auto.master"
+  to pickup NIS master map.
 
 2/6/2006 autofs-5.0.0_beta4
 ---------------------------

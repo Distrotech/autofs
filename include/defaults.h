@@ -21,7 +21,7 @@
 #ifndef DEFAULTS_H
 #define DEFAULTS_H
 
-#define DEFAULT_MASTER_MAP_NAME	"/etc/auto.master"
+#define DEFAULT_MASTER_MAP_NAME	"auto.master"
 
 #define DEFAULT_TIMEOUT		600
 #define DEFAULT_BROWSE_MODE	1
