@@ -11,6 +11,7 @@
   its offsets.
 - fix replicated mount parse for case where last name in list
   fails lookup.
+- correct indirect mount expire broken by the wildcard lookup fix.
 
 2/6/2006 autofs-5.0.0_beta4
 ---------------------------

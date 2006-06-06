@@ -426,10 +426,20 @@ void *expire_proc_indirect(void *arg)
 	/* Get a list of real mounts and expire them if possible */
 	mnts = get_mnt_list(_PROC_MOUNTS, ap->path, 0);
 	for (next = mnts; next; next = next->next) {
+		char *ind_key;
+
 		if (!strcmp(next->fs_type, "autofs"))
 			continue;
 
 		sched_yield();
+
+		/*
+		 * If the mount corresponds to an offset trigger then
+		 * the key is the path, otherwise it's the last component.
+		 */
+		ind_key = strrchr(next->path, '/');
+		if (ind_key)
+			ind_key++;
 
 		/*
 		 * If me->key starts with a '/' and it's not an autofs
@@ -437,9 +447,6 @@ void *expire_proc_indirect(void *arg)
 		 * the ioctlfd of the mount to send the expire.
 		 * Otherwise it's a top level indirect mount (possibly
 		 * with offsets in it) and we use the usual ioctlfd.
-		 * The next->path is the full path so an indirect mount
-		 * won't be found by a cache_lookup, never the less it's
-		 * a mount under ap->path.
 		 */
 		master_source_readlock(ap->entry);
 		map = ap->entry->first;
@@ -447,6 +454,8 @@ void *expire_proc_indirect(void *arg)
 			mc = map->mc;
 			cache_readlock(mc);
 			me = cache_lookup(mc, next->path);
+			if (!me)
+				me = cache_lookup(mc, ind_key);
 			if (me)
 				break;
 			cache_unlock(mc);
