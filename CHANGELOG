@@ -7,6 +7,8 @@
 - change default installed master map to include "+auto.master"
   to pickup NIS master map.
 - correct config names in default.c (jpro@bas.ac.uk).
+- check base of offset mount tree is not a mount before umounting
+  its offsets.
 
 2/6/2006 autofs-5.0.0_beta4
 ---------------------------

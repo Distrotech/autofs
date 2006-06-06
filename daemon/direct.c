@@ -129,6 +129,11 @@ int do_umount_autofs_direct(struct autofs_point *ap, struct mnt_list *mnts, stru
 		ioctl(me->ioctlfd, AUTOFS_IOC_CATATONIC, 0);
 		close(me->ioctlfd);
 		me->ioctlfd = -1;
+	} else {
+		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+		error(ap->logopt,
+		      "couldn't get ioctl fd for offset %s", me->key);
+		debug(ap->logopt, "open: %s", estr);
 	}
 
 	rv = umount(me->key);
@@ -492,8 +497,10 @@ int umount_autofs_offset(struct autofs_point *ap, struct mapent *me)
 		close(me->ioctlfd);
 		me->ioctlfd = -1;
 	} else {
+		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
 		error(ap->logopt,
 		      "couldn't get ioctl fd for offset %s", me->key);
+		debug(ap->logopt, "open: %s", estr);
 		goto force_umount;
 	}
 
@@ -518,8 +525,8 @@ force_umount:
 		msg("forcing umount of %s", me->key);
 		rv = umount2(me->key, MNT_DETACH);
 	} else
-		msg("umounted %s", me->key);
-
+		msg("umounted offset %s", me->key);
+/*
 	if (!rv && me->dir_created) {
 		if  (rmdir(me->key) == -1) {
 			char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
@@ -527,6 +534,7 @@ force_umount:
 			     "failed to remove dir %s: %s", me->key, estr);
 		}
 	}
+*/
 	return rv;
 }
 

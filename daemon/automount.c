@@ -539,9 +539,12 @@ int umount_multi(struct autofs_point *ap, struct mnt_list *mnts, const char *pat
 	}
 
 	/* Lastly check for offsets with no root mount */
-	if (umount_offsets(ap, mnts, path)) {
-		error(ap->logopt, "could not umount some offsets under %s", path);
-		return 0;
+	if (!tree_is_mounted(mnts, path)) {
+		if (umount_offsets(ap, mnts, path)) {
+			error(ap->logopt,
+			      "could not umount some offsets under %s", path);
+			return 0;
+		}
 	}
 
 	/* Delete detritus like unwanted mountpoints and symlinks */
