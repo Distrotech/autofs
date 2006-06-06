@@ -778,6 +778,7 @@ static int add_path(struct host *hosts, const char *path, int len)
 int parse_location(struct host **hosts, const char *list)
 {
 	char *str, *p, *delim;
+	unsigned int list_empty = 1;
 
 	if (!list)
 		return 0;
@@ -829,8 +830,10 @@ int parse_location(struct host **hosts, const char *list)
 				}
 
 				if (!add_host_addrs(hosts, p, weight)) {
-					p = next;
-					continue;
+					if (list_empty) {
+						p = next;
+						continue;
+					}
 				}
 
 				if (!add_path(*hosts, path, strlen(path))) {
@@ -846,6 +849,8 @@ int parse_location(struct host **hosts, const char *list)
 					p = next;
 					continue;
 				}
+
+				list_empty = 0;
 			}
 		} else {
 			/* syntax error - no mount path */
