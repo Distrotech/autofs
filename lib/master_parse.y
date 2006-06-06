@@ -78,9 +78,9 @@ static int master_fprintf(FILE *, char *, ...);
 }
 
 %token COMMENT
-%token PATH MAP MAPTYPE MAPNAME DNNAME
-%token OPT_TIMEOUT OPT_NOGHOST OPT_GHOST OPT_VERBOSE OPT_DEBUG OPTION
-%token QUOTE NILL COLON EQUAL COMMA SPACE NUMBER NL
+%token MAP
+%token OPT_TIMEOUT OPT_NOGHOST OPT_GHOST OPT_VERBOSE OPT_DEBUG
+%token COLON COMMA NL
 %type <strtype> map
 %type <strtype> options
 %type <strtype> dn
