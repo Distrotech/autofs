@@ -161,6 +161,7 @@ struct mapent *cache_lookup_first(struct mapent_cache *mc);
 struct mapent *cache_lookup_next(struct mapent_cache *mc, struct mapent *me);
 struct mapent *cache_lookup_key_next(struct mapent *me);
 struct mapent *cache_lookup(struct mapent_cache *mc, const char *key);
+struct mapent *cache_lookup_distinct(struct mapent_cache *mc, const char *key);
 struct mapent *cache_lookup_offset(const char *prefix, const char *offset, int start, struct list_head *head);
 struct mapent *cache_partial_match(struct mapent_cache *mc, const char *prefix);
 int cache_add(struct mapent_cache *mc, struct map_source *source,

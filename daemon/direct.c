@@ -726,7 +726,7 @@ void *expire_proc_direct(void *arg)
 		while (map) {
 			mc = map->mc;
 			cache_readlock(mc);
-			me = cache_lookup(mc, next->path);
+			me = cache_lookup_distinct(mc, next->path);
 			if (me)
 				break;
 			cache_unlock(mc);
@@ -812,7 +812,7 @@ static void kernel_callback_cleanup(void *arg)
 		if (mt->type == NFY_EXPIRE) {
 			close(mt->ioctlfd);
 			cache_writelock(mc);
-			me = cache_lookup(mc, mt->name);
+			me = cache_lookup_distinct(mc, mt->name);
 			if (me)
 				me->ioctlfd = -1;
 			cache_unlock(mc);
@@ -822,7 +822,7 @@ static void kernel_callback_cleanup(void *arg)
 		if (mt->type == NFY_MOUNT) {
 			close(mt->ioctlfd);
 			cache_writelock(mc);
-			me = cache_lookup(mc, mt->name);
+			me = cache_lookup_distinct(mc, mt->name);
 			if (me)
 				me->ioctlfd = -1;
 			cache_unlock(mc);

@@ -319,7 +319,7 @@ int umount_autofs_indirect(struct autofs_point *ap)
 		while (map) {
 			mc = map->mc;
 			cache_readlock(mc);
-			me = cache_lookup(mc, ap->path);
+			me = cache_lookup_distinct(mc, ap->path);
 			if (me) {
 				close(me->ioctlfd);
 				me->ioctlfd = -1;
@@ -453,9 +453,9 @@ void *expire_proc_indirect(void *arg)
 		while (map) {
 			mc = map->mc;
 			cache_readlock(mc);
-			me = cache_lookup(mc, next->path);
+			me = cache_lookup_distinct(mc, next->path);
 			if (!me)
-				me = cache_lookup(mc, ind_key);
+				me = cache_lookup_distinct(mc, ind_key);
 			if (me)
 				break;
 			cache_unlock(mc);

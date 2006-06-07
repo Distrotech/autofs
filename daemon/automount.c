@@ -219,9 +219,9 @@ static int umount_offsets(struct autofs_point *ap, struct mnt_list *mnts, const 
 	while (map) {
 		mc = map->mc;
 		cache_writelock(mc);
-		me = cache_lookup(mc, base);
+		me = cache_lookup_distinct(mc, base);
 		if (!me)
-			me = cache_lookup(mc, ind_key);
+			me = cache_lookup_distinct(mc, ind_key);
 		if (me)
 			break;
 		cache_unlock(mc);
@@ -249,7 +249,7 @@ static int umount_offsets(struct autofs_point *ap, struct mnt_list *mnts, const 
 
 		strcpy(key, base);
 		strcat(key, offset);
-		oe = cache_lookup(mc, key);
+		oe = cache_lookup_distinct(mc, key);
 
 		if (!oe) {
 			debug(ap->logopt, "offset key %s not found", key);

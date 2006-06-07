@@ -1367,7 +1367,7 @@ static int check_map_indirect(struct autofs_point *ap,
 	int ret, need_map = 0;
 
 	cache_readlock(mc);
-	exists = cache_lookup(mc, key);
+	exists = cache_lookup_distinct(mc, key);
 	if (exists && exists->source != source)
 		exists = NULL;
 	cache_unlock(mc);
@@ -1456,7 +1456,7 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 		char *lkp_key;
 
 		cache_readlock(mc);
-		me = cache_lookup(mc, key);
+		me = cache_lookup_distinct(mc, key);
 		if (me && me->multi)
 			lkp_key = strdup(me->multi->key);
 		else

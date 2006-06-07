@@ -892,7 +892,7 @@ int lookup_prune_cache(struct autofs_point *ap, time_t age)
 			cache_unlock(mc);
 
 			cache_writelock(mc);
-			this = cache_lookup(mc, key);
+			this = cache_lookup_distinct(mc, key);
 			if (!this) {
 				cache_unlock(mc);
 				free(key);
@@ -915,7 +915,7 @@ int lookup_prune_cache(struct autofs_point *ap, time_t age)
 			}
 next:
 			cache_readlock(mc);
-			me = cache_lookup(mc, next_key);
+			me = cache_lookup_distinct(mc, next_key);
 			free(key);
 			free(path);
 			free(next_key);

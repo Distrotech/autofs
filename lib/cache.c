@@ -167,7 +167,7 @@ int cache_set_ino_index(struct mapent_cache *mc, const char *key, dev_t dev, ino
 	unsigned int ino_index = ino_hash(dev, ino);
 	struct mapent *me;
 
-	me = cache_lookup(mc, key);
+	me = cache_lookup_distinct(mc, key);
 	if (!me)
 		return 0;
 
@@ -309,6 +309,19 @@ done:
 	return me;
 }
 
+/* cache must be read locked by caller */
+struct mapent *cache_lookup_distinct(struct mapent_cache *mc, const char *key)
+{
+	struct mapent *me;
+
+	for (me = mc->hash[hash(key)]; me != NULL; me = me->next) {
+		if (strcmp(key, me->key) == 0)
+			return me;
+	}
+
+	return NULL;
+}
+
 /* Lookup an offset within a multi-mount entry */
 struct mapent *cache_lookup_offset(const char *prefix, const char *offset, int start, struct list_head *head)
 {
@@ -407,8 +420,8 @@ int cache_add(struct mapent_cache *mc, struct map_source *source,
 	 * We need to add to the end if values exist in order to
 	 * preserve the order in which the map was read on lookup.
 	 */
-	existing = cache_lookup(mc, key);
-	if (!existing || *existing->key == '*') {
+	existing = cache_lookup_distinct(mc, key);
+	if (!existing) {
 		me->next = mc->hash[hashval];
 		mc->hash[hashval] = me;
 	} else {
@@ -459,7 +472,7 @@ int cache_add_offset(struct mapent_cache *mc, const char *mkey, const char *key,
 	struct mapent *me, *owner;
 	int ret = CHE_OK;
 
-	owner = cache_lookup(mc, mkey);
+	owner = cache_lookup_distinct(mc, mkey);
 	if (!owner)
 		return CHE_FAIL;
 
@@ -469,7 +482,7 @@ int cache_add_offset(struct mapent_cache *mc, const char *mkey, const char *key,
 		return CHE_FAIL;
 	}
 
-	me = cache_lookup(mc, key);
+	me = cache_lookup_distinct(mc, key);
 	if (me) {
 		cache_add_ordered_offset(me, &owner->multi_list);
 		me->multi = owner;
@@ -489,7 +502,7 @@ int cache_update(struct mapent_cache *mc, struct map_source *source,
 	int ret = CHE_OK;
 
 	me = cache_lookup(mc, key);
-	if (!me) {
+	if (!me || (*me->key == '*' && *key != '*')) {
 		ret = cache_add(mc, source, key, mapent, age);
 		if (!ret) {
 			debug(LOGOPT_NONE, "failed for %s", key);
@@ -579,7 +592,7 @@ int cache_delete_offset_list(struct mapent_cache *mc, const char *key)
 	int remain = 0;
 	int status;
 
-	me = cache_lookup(mc, key);
+	me = cache_lookup_distinct(mc, key);
 	if (!me)
 		return CHE_FAIL;
 

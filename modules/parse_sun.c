@@ -995,7 +995,7 @@ int parse_mount(struct autofs_point *ap, const char *name,
 		}
 
 		cache_writelock(mc);
-		me = cache_lookup(mc, name);
+		me = cache_lookup_distinct(mc, name);
 		if (!me) {
 			int ret;
 			/*
@@ -1010,7 +1010,7 @@ int parse_mount(struct autofs_point *ap, const char *name,
 			}
 		}
 
-		me = cache_lookup(mc, name);
+		me = cache_lookup_distinct(mc, name);
 		if (me) {
 			/* So we know we're the multi-mount root */
 			if (!me->multi)
@@ -1261,7 +1261,7 @@ int parse_mount(struct autofs_point *ap, const char *name,
 		 * These are always direct mount triggers so root = ""
 		 */
 		cache_readlock(mc);
-		me = cache_lookup(mc, name);
+		me = cache_lookup_distinct(mc, name);
 		if (me && me->multi) {
 			char *m_key = me->multi->key;
 			int start;

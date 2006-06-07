@@ -109,7 +109,7 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 	int ret;
 
 	cache_readlock(mc);
-	me = cache_lookup(mc, name);
+	me = cache_lookup_distinct(mc, name);
 	if (!me) {
 		/*
 		 * We haven't read the list of hosts into the
