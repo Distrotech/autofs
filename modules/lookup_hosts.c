@@ -115,15 +115,23 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 		 * We haven't read the list of hosts into the
 		 * cache so go straight to the lookup.
 		 */
-		if (!ap->ghost)
+		if (!ap->ghost) {
+			/*
+			 * If name contains a '/' we're searching for an
+			 * offset that doesn't exist in the export list
+			 * so it's NOTFOUND otherwise this could be a
+			 * lookup for a new host.
+			 */
+			if (strchr(name, '/'))
+				status = NSS_STATUS_NOTFOUND;
 			goto done;
 
 		pthread_cleanup_push(cache_lock_cleanup, mc);
 		if (*name == '/')
-			error(ap->logopt, MODPREFIX
+			msg(ap->logopt, MODPREFIX
 			      "can't find path in hosts map %s", name);
 		else
-			error(ap->logopt, MODPREFIX
+			msg(ap->logopt, MODPREFIX
 			      "can't find path in hosts map %s/%s",
 			      ap->path, name);
 		pthread_cleanup_pop(0);
