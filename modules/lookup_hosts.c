@@ -125,6 +125,7 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 			if (strchr(name, '/'))
 				status = NSS_STATUS_NOTFOUND;
 			goto done;
+		}
 
 		pthread_cleanup_push(cache_lock_cleanup, mc);
 		if (*name == '/')
