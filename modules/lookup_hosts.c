@@ -128,10 +128,10 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 
 		pthread_cleanup_push(cache_lock_cleanup, mc);
 		if (*name == '/')
-			msg(ap->logopt, MODPREFIX
+			msg(MODPREFIX
 			      "can't find path in hosts map %s", name);
 		else
-			msg(ap->logopt, MODPREFIX
+			msg(MODPREFIX
 			      "can't find path in hosts map %s/%s",
 			      ap->path, name);
 		pthread_cleanup_pop(0);
