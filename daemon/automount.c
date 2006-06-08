@@ -1151,6 +1151,9 @@ static void handle_mounts_cleanup(void *arg)
 
 	ap = (struct autofs_point *) arg;
 
+	/* Make sure alarms are cleared */
+	alarm_delete(ap);
+
 	umount_autofs(ap, 1);
 
 	/* If we have been canceled then we may hold the state mutex. */
