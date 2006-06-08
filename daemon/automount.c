@@ -1031,12 +1031,9 @@ static int do_hup_signal(struct master *master, time_t age)
 		status = pthread_cond_wait(&mc.cond, &mc.mutex);
 		if (status)
 			fatal(status);
-		return 0;
 	}
 
 	pthread_cleanup_pop(1);
-
-	debug(master->default_logging, "started master map read"); 
 
 	return 1;
 }
