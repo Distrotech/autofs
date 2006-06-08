@@ -33,9 +33,11 @@
 #include "mount.h"
 #include "rpc_subs.h"
 
-#define STANDALONE
+/* #define STANDALONE */
 #ifdef STANDALONE
 #define error(logopt, msg, args...)	fprintf(stderr, msg "\n", ##args)
+#else
+#include "log.h"
 #endif
 
 /*

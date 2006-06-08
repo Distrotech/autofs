@@ -14,6 +14,7 @@
 - correct indirect mount expire broken by the wildcard lookup fix.
 - fix up multi-mount handling when wildcard map entry present.
 - fix mutex not being unlocked on map read.
+- fix rpc routines not logging errors.
 
 2/6/2006 autofs-5.0.0_beta4
 ---------------------------
