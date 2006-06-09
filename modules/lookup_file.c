@@ -58,15 +58,17 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 	char buf[MAX_ERR_BUF];
 	struct stat st;
 
-	if (!(*context = ctxt = malloc(sizeof(struct lookup_context)))) {
+	if (!(ctxt = malloc(sizeof(struct lookup_context)))) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
 		crit(LOGOPT_ANY, MODPREFIX "malloc: %s", estr);
+		*context = NULL;
 		return 1;
 	}
 
 	if (argc < 1) {
 		crit(LOGOPT_ANY, MODPREFIX "No map name");
 		free(ctxt);
+		*context = NULL;
 		return 1;
 	}
 
@@ -77,6 +79,7 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 		      MODPREFIX "file map %s is not an absolute pathname",
 		      ctxt->mapname);
 		free(ctxt);
+		*context = NULL;
 		return 1;
 	}
 
@@ -85,6 +88,7 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 		     MODPREFIX "file map %s missing or not readable",
 		     ctxt->mapname);
 		free(ctxt);
+		*context = NULL;
 		return 1;
 	}
 
@@ -92,6 +96,7 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 		crit(LOGOPT_ANY, MODPREFIX "file map %s, could not stat",
 		     ctxt->mapname);
 		free(ctxt);
+		*context = NULL;
 		return 1;
 	}
 		
@@ -100,7 +105,16 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 	if (!mapfmt)
 		mapfmt = MAPFMT_DEFAULT;
 
-	return !(ctxt->parse = open_parse(mapfmt, MODPREFIX, argc - 1, argv + 1));
+	ctxt->parse = open_parse(mapfmt, MODPREFIX, argc - 1, argv + 1);
+	if (!ctxt->parse) {
+		crit(LOGOPT_ANY, MODPREFIX "failed to open parse context");
+		free(ctxt);
+		*context = NULL;
+		return 1;
+	}
+	*context = ctxt;
+
+	return 0;
 }
 
 static int read_one(FILE *f, char *key, char *mapent)

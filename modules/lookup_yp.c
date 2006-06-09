@@ -62,9 +62,10 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 	char buf[MAX_ERR_BUF];
 	int err;
 
-	if (!(*context = ctxt = malloc(sizeof(struct lookup_context)))) {
+	if (!(ctxt = malloc(sizeof(struct lookup_context)))) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
 		crit(LOGOPT_ANY, MODPREFIX "%s", estr);
+		*context = NULL;
 		return 1;
 	}
 
@@ -91,7 +92,15 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 	if (!mapfmt)
 		mapfmt = MAPFMT_DEFAULT;
 
-	return !(ctxt->parse = open_parse(mapfmt, MODPREFIX, argc - 1, argv + 1));
+	ctxt->parse = open_parse(mapfmt, MODPREFIX, argc - 1, argv + 1);
+	if (!ctxt->parse) {
+		crit(LOGOPT_ANY, MODPREFIX "failed to open parse context");
+		free(ctxt);
+		*context = NULL;
+		return 1;
+	}
+
+	return 0;
 }
 
 int yp_all_master_callback(int status, char *ypkey, int ypkeylen,

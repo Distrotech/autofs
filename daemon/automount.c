@@ -385,8 +385,10 @@ static int walk_tree(const char *base, int (*fn) (const char *file,
 				int ret, size;
 
 				if (strcmp(de[n]->d_name, ".") == 0 ||
-				    strcmp(de[n]->d_name, "..") == 0)
+				    strcmp(de[n]->d_name, "..") == 0) {
+					free(de[n]);
 					continue;
+				}
 
 				size = sizeof(buf);
 				ret = cat_path(buf, size, base, de[n]->d_name);

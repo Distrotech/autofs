@@ -41,12 +41,16 @@
 int mount_version = AUTOFS_MOUNT_VERSION;	/* Required by protocol */
 
 static struct mount_mod *mount_bind = NULL;
+static int init_ctr = 0;
 
 int mount_init(void **context)
 {
 	/* Make sure we have the local mount method available */
-	if (!mount_bind)
-		mount_bind = open_mount("bind", MODPREFIX);
+	if (!mount_bind) {
+		if (mount_bind = open_mount("bind", MODPREFIX));
+			init_ctr++;
+	} else
+		init_ctr++;
 
 	return !mount_bind;
 }
@@ -262,7 +266,11 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 
 int mount_done(void *context)
 {
-	int rv = mount_bind->mount_done(mount_bind->context);
-	mount_bind = NULL;
+	int rv = 0;
+
+	if (--init_ctr == 0) {
+		rv = close_mount(mount_bind);
+		mount_bind = NULL;
+	}
 	return rv;
 }

@@ -344,6 +344,7 @@ int parse_init(int argc, const char *const *argv, void **context)
 	if (!(ctxt = (struct parse_context *) malloc(sizeof(struct parse_context)))) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
 		crit(LOGOPT_ANY, MODPREFIX "malloc: %s", estr);
+		*context = NULL;
 		return 1;
 	}
 	*context = (void *) ctxt;
@@ -449,6 +450,7 @@ int parse_init(int argc, const char *const *argv, void **context)
 				char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
 				kill_context(ctxt);
 				crit(LOGOPT_ANY, MODPREFIX "%s", estr);
+				*context = NULL;
 				return 1;
 			}
 			ctxt->optstr = noptstr;
@@ -460,7 +462,7 @@ int parse_init(int argc, const char *const *argv, void **context)
 
 	/* We only need this once.  NFS mounts are so common that we cache
 	   this module. */
-	if (!mount_nfs)
+	if (!mount_nfs) {
 		if ((mount_nfs = open_mount("nfs", MODPREFIX))) {
 			init_ctr++;
 			return 0;
@@ -468,6 +470,7 @@ int parse_init(int argc, const char *const *argv, void **context)
 			kill_context(ctxt);
 			*context = NULL;
 			return 1;
+		}
 	} else {
 		init_ctr++;
 		return 0;

@@ -20,6 +20,9 @@
 - add free for working var in get_default_logging.
 - add inialisation for kver in autofs_point struct.
 - fix sources list corruption in check_update_map_sources.
+- fix memory leak in walk_tree.
+- fix memory leak in rpc_portmap_getport and rpc_ping_proto.
+- fix memory leak in initialisation of lookup modules.
 
 2/6/2006 autofs-5.0.0_beta4
 ---------------------------
