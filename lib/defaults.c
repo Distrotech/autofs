@@ -231,6 +231,8 @@ unsigned int defaults_get_logging(void)
 			logging |= LOGOPT_DEBUG;
 	}
 
+	free(res);
+
 	return logging;
 }
 

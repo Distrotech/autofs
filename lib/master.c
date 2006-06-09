@@ -54,6 +54,8 @@ int master_add_autofs_point(struct master_mapent *entry,
 		return 0;
 
 	ap->state = ST_INIT;
+	ap->kver.major = 0;
+	ap->kver.minor = 0;
 
 	ap->state_pipe[0] = -1;
 	ap->state_pipe[1] = -1;

@@ -17,6 +17,8 @@
 - fix rpc routines not logging errors.
 - fix handling of invalid directory for nobrowse hosts map
   lookup.
+- add free for working var in get_default_logging.
+- add inialisation for kver in autofs_point struct.
 
 2/6/2006 autofs-5.0.0_beta4
 ---------------------------
