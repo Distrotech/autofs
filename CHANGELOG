@@ -19,6 +19,7 @@
   lookup.
 - add free for working var in get_default_logging.
 - add inialisation for kver in autofs_point struct.
+- fix sources list corruption in check_update_map_sources.
 
 2/6/2006 autofs-5.0.0_beta4
 ---------------------------

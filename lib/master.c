@@ -934,8 +934,14 @@ static void check_update_map_sources(struct master_mapent *entry, time_t age, in
 
 		/* Map source has gone away */
 		if (source->age < age) {
+			struct map_source *next;
+			if (last)
+				last->next = source->next;
+			next = source->next;
 			master_free_map_source(source, 1);
+			source = next;
 			map_stale = 1;
+			continue;
 		} else if (source->type) {
 			if (!strcmp(source->type, "null")) {
 /*				entry->ap->mc = cache_init(entry->ap); */
@@ -944,6 +950,7 @@ static void check_update_map_sources(struct master_mapent *entry, time_t age, in
 				map_stale = 1;
 			}
 		}
+		last = source;
 		source = source->next;
 	}
 
