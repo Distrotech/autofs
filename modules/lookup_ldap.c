@@ -760,7 +760,6 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 		*context = NULL;
 		return 1;
 	}
-
 	*context = ctxt;
 
 	return 0;
