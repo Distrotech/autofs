@@ -185,7 +185,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 		int err;
 		char *loc;
 
-		if (is_mounted(_PATH_MOUNTED, fullpath)) {
+		if (is_mounted(_PATH_MOUNTED, fullpath, MNTS_REAL)) {
 			error(ap->logopt,
 			      MODPREFIX
 			      "warning: %s is already mounted", fullpath);

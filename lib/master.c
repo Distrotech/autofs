@@ -630,23 +630,26 @@ void master_free_mapent_sources(struct master_mapent *entry, unsigned int free_c
 			m = n;
 		}
 		entry->maps = NULL;
+		entry->first = NULL;
 	}
 
 	master_source_unlock(entry);
-
-	status = pthread_rwlock_destroy(&entry->source_lock);
-	if (status)
-		fatal(status);
 
 	return;
 }
 
 void master_free_mapent(struct master_mapent *entry)
 {
+	int status;
+
 	if (entry->path)
 		free(entry->path);
 
 	master_free_autofs_point(entry->ap);
+
+	status = pthread_rwlock_destroy(&entry->source_lock);
+	if (status)
+		fatal(status);
 
 	free(entry);
 
@@ -926,22 +929,37 @@ static void check_update_map_sources(struct master_mapent *entry, time_t age, in
 
 	master_source_writelock(entry);
 
-	source = entry->maps;
 	last = NULL;
+	source = entry->maps;
 	while (source) {
 		if (readall)
 			source->stale = 1;
 
-		/* Map source has gone away */
-		if (source->age < age) {
-			struct map_source *next;
-			if (last)
-				last->next = source->next;
-			next = source->next;
-			master_free_map_source(source, 1);
-			source = next;
-			map_stale = 1;
-			continue;
+		/*
+		 * If a map source is no longer valid and all it's
+		 * entries have expired away we can get rid of it.
+		 */
+		if (entry->age > source->age) {
+			struct mapent *me;
+			cache_readlock(source->mc);
+			me = cache_lookup_first(source->mc);
+			cache_unlock(source->mc);
+			if (!me) {
+				struct map_source *next = source->next;
+
+				if (!last)
+					entry->maps = next;
+				else
+					last->next = next;
+
+				if (entry->first == source)
+					entry->first = next;
+
+				master_free_map_source(source, 1);
+
+				source = next;
+				continue;
+			}
 		} else if (source->type) {
 			if (!strcmp(source->type, "null")) {
 /*				entry->ap->mc = cache_init(entry->ap); */

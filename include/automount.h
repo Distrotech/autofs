@@ -309,6 +309,10 @@ int ncat_path(char *buf, size_t len,
 
 /* mount table utilities */
 
+#define MNTS_ALL	0x0000
+#define MNTS_REAL	0x0001
+#define MNTS_AUTOFS	0x0002
+
 struct mnt_list {
 	char *path;
 	char *fs_type;
@@ -338,7 +342,7 @@ char *make_mnt_name_string(char *path);
 struct mnt_list *get_mnt_list(const char *table, const char *path, int include);
 struct mnt_list *reverse_mnt_list(struct mnt_list *list);
 void free_mnt_list(struct mnt_list *list);
-int is_mounted(const char *table, const char *path);
+int is_mounted(const char *table, const char *path, unsigned int type);
 int has_fstab_option(const char *path, const char *opt);
 char *find_mnt_ino(const char *table, dev_t dev, ino_t ino);
 char *get_offset(const char *prefix, char *offset,

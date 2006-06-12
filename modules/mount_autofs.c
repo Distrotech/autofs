@@ -82,7 +82,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 	else
 		sprintf(fullpath, "%s", name);
 
-	if (is_mounted(_PATH_MOUNTED, fullpath)) {
+	if (is_mounted(_PATH_MOUNTED, fullpath, MNTS_REAL)) {
 		error(ap->logopt,
 		      MODPREFIX 
 		      "warning: about to mount over %s, continuing",

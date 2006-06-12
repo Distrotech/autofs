@@ -442,7 +442,7 @@ static int check_self_include(const char *key, struct lookup_context *ctxt)
 static struct autofs_point *
 prepare_plus_include(struct autofs_point *ap, time_t age, char *key, unsigned int inc)
 {
-	struct master_mapent *entry = ap->entry;
+	struct master_mapent *entry;
 	struct map_source *current = ap->entry->current;
 	struct map_source *source;
 	struct autofs_point *iap;

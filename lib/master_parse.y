@@ -473,8 +473,7 @@ int master_parse_entry(const char *buffer, unsigned int default_timeout, unsigne
 		if (!new)
 			return 0;
 		entry = new;
-	} else
-		entry->age = age;
+	}
 
 	if (!entry->ap) {
 		ret = master_add_autofs_point(entry, timeout, logopt, ghost, 0);
@@ -520,13 +519,19 @@ int master_parse_entry(const char *buffer, unsigned int default_timeout, unsigne
 		return 0;
 	}
 
-	source->mc = cache_init(source);
 	if (!source->mc) {
-		error(LOGOPT_ANY, "failed to init source cache");
-		if (new)
-			master_free_mapent(new);
-		return 0;
+		source->mc = cache_init(source);
+		if (!source->mc) {
+			error(LOGOPT_ANY, "failed to init source cache");
+			if (new)
+				master_free_mapent(new);
+			return 0;
+		}
 	}
+
+	entry->age = age;
+	entry->first = entry->maps;
+	entry->current = NULL;
 
 	if (new)
 		master_add_mapent(master, entry);

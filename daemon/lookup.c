@@ -402,7 +402,8 @@ int lookup_nss_read_map(struct autofs_point *ap, time_t age)
 	master_source_readlock(entry);
 	map = entry->first;
 	while (map) {
-		if (!map->stale) {
+		/* Is map source up to date or no longer valid */
+		if (!map->stale || entry->age > map->age) {
 			map = map->next;
 			continue;
 		}
@@ -484,6 +485,7 @@ done:
 
 int lookup_ghost(struct autofs_point *ap)
 {
+	struct master_mapent *entry = ap->entry;
 	struct map_source *map;
 	struct mapent_cache *mc;
 	struct mapent *me;
@@ -498,10 +500,19 @@ int lookup_ghost(struct autofs_point *ap)
 	if (!ap->ghost)
 		return LKP_INDIRECT;
 
-	pthread_cleanup_push(master_source_lock_cleanup, ap->entry);
-	master_source_readlock(ap->entry);
-	map = ap->entry->first;
+	pthread_cleanup_push(master_source_lock_cleanup, entry);
+	master_source_readlock(entry);
+	map = entry->first;
 	while (map) {
+		/*
+		 * Only consider map sources that have been read since 
+		 * the map entry was last updated.
+		 */
+		if (entry->age > map->age) {
+			map = map->next;
+			continue;
+		}
+
 		mc = map->mc;
 		pthread_cleanup_push(cache_lock_cleanup, mc);
 		cache_readlock(mc);
@@ -715,6 +726,15 @@ int lookup_nss_mount(struct autofs_point *ap, const char *name, int name_len)
 	master_source_readlock(entry);
 	map = entry->first;
 	while (map) {
+		/*
+		 * Only consider map sources that have been read since 
+		 * the map entry was last updated.
+		 */
+		if (entry->age > map->age) {
+			map = map->next;
+			continue;
+		}
+
 		sched_yield();
 		entry->current = map;
 		if (map->type) {
@@ -839,16 +859,16 @@ static char *make_fullpath(const char *root, const char *key)
 
 int lookup_prune_cache(struct autofs_point *ap, time_t age)
 {
+	struct master_mapent *entry = ap->entry;
 	struct map_source *map;
 	struct mapent_cache *mc;
 	struct mapent *me, *this;
-	struct master_mapent *entry = ap->entry;
 	char *path;
 	int status = CHE_FAIL;
 
 	master_source_readlock(entry);
 
-	map = ap->entry->first;
+	map = entry->first;
 	while (map) {
 		if (!map->stale) {
 			map = map->next;
@@ -878,7 +898,7 @@ int lookup_prune_cache(struct autofs_point *ap, time_t age)
 				continue;
 			}
 
-			if (is_mounted(_PATH_MOUNTED, path)) {
+			if (is_mounted(_PATH_MOUNTED, path, MNTS_REAL)) {
 				debug(ap->logopt,
 				      "prune posponed, %s is mounted", path);
 				free(key);
@@ -904,8 +924,10 @@ int lookup_prune_cache(struct autofs_point *ap, time_t age)
 			status = cache_delete(mc, key);
 			cache_unlock(mc);
 
-			if (status != CHE_FAIL)
-				rmdir_path(ap, path);
+			if (status != CHE_FAIL) {
+				if (!is_mounted(_PROC_MOUNTS, path, MNTS_AUTOFS))
+					rmdir_path(ap, path);
+			}
 
 			if (!next_key) {
 				free(key);

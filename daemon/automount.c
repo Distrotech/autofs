@@ -345,7 +345,7 @@ static int umount_ent(struct autofs_point *ap, const char *path, const char *typ
 		 * so that we do not try to call rmdir_path on the
 		 * directory.
 		 */
-		if (!rv && is_mounted(_PATH_MOUNTED, path)) {
+		if (!rv && is_mounted(_PATH_MOUNTED, path, MNTS_REAL)) {
 			crit(ap->logopt,
 			     "the umount binary reported that %s was "
 			     "unmounted, but there is still something "
@@ -502,6 +502,44 @@ static void check_rm_dirs(struct autofs_point *ap, const char *path, int incl)
 		rm_unwanted(path, 0, ap->dev);
 }
 
+/* Try to purge cache entries kept around due to existing mounts */
+static void update_map_cache(struct autofs_point *ap, const char *path)
+{
+	struct map_source *map;
+	struct mapent_cache *mc;
+	const char *key;
+
+	if (ap->type == LKP_INDIRECT)
+		key = strrchr(path, '/') + 1;
+	else
+		key = path;
+
+	pthread_cleanup_push(master_source_lock_cleanup, ap->entry);
+	master_source_readlock(ap->entry);
+	map = ap->entry->first;
+	while (map) {
+		struct mapent *me = NULL;
+
+		/* Skip current, in-use cache */
+		if (ap->entry->age <= map->age) {
+			map = map->next;
+			continue;
+		}
+
+		mc = map->mc;
+		cache_writelock(mc);
+		me = cache_lookup_distinct(mc, key);
+		if (me)
+			cache_delete(mc, key);
+		cache_unlock(mc);
+
+		map = map->next;
+	}
+	pthread_cleanup_pop(1);
+
+	return;
+}
+
 /* umount all filesystems mounted under path.  If incl is true, then
    it also tries to umount path itself */
 int umount_multi(struct autofs_point *ap, struct mnt_list *mnts, const char *path, int incl)
@@ -550,8 +588,10 @@ int umount_multi(struct autofs_point *ap, struct mnt_list *mnts, const char *pat
 	}
 
 	/* Delete detritus like unwanted mountpoints and symlinks */
-	if (left == 0)
+	if (left == 0) {
+		update_map_cache(ap, path);
 		check_rm_dirs(ap, path, incl);
+	}
 
 	return left;
 }

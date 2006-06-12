@@ -370,7 +370,8 @@ static void *do_readmap(void *arg)
 		master_source_readlock(ap->entry);
 		map = ap->entry->first;
 		while (map) {
-			if (!map->stale) {
+			/* Is map source up to date or no longer valid */
+			if (!map->stale || ap->entry->age > map->age) {
 				map = map->next;
 				continue;
 			}

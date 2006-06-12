@@ -451,6 +451,15 @@ int mount_autofs_direct(struct autofs_point *ap)
 	master_source_readlock(ap->entry);
 	map = ap->entry->first;
 	while (map) {
+		/*
+		 * Only consider map sources that have been read since
+		 * the map entry was last updated.
+		 */
+		if (ap->entry->age > map->age) {
+			map = map->next;
+			continue;
+		}
+
 		ap->entry->current = map;
 		mc = map->mc;
 		pthread_cleanup_push(cache_lock_cleanup, mc);
@@ -546,7 +555,7 @@ int mount_autofs_offset(struct autofs_point *ap, struct mapent *me, int is_autof
 	struct stat st;
 	int status, ret;
 
-	if (is_mounted(_PROC_MOUNTS, me->key)) {
+	if (is_mounted(_PROC_MOUNTS, me->key, MNTS_AUTOFS)) {
 		if (ap->state != ST_READMAP)
 			debug(ap->logopt,
 			      "trigger %s already mounted", me->key);
@@ -1191,6 +1200,15 @@ int handle_packet_missing_direct(struct autofs_point *ap, autofs_packet_missing_
 	master_source_readlock(ap->entry);
 	map = ap->entry->first;
 	while (map) {
+		/*
+		 * Only consider map sources that have been read since
+		 * the map entry was last updated.
+		 */
+		if (ap->entry->age > map->age) {
+			map = map->next;
+			continue;
+		}
+
 		mc = map->mc;
 		cache_readlock(mc);
 		me = cache_lookup_ino(mc, pkt->dev, pkt->ino);
