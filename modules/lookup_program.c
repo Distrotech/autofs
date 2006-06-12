@@ -117,11 +117,23 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 	int distance;
 	int alloci = 1;
 
-	debug(ap->logopt, MODPREFIX "looking up %s", name);
-
 	/* Catch installed direct offset triggers */
-	me = cache_lookup(mc, name);
-	if (me) {
+	cache_readlock(mc);
+	me = cache_lookup_distinct(mc, name);
+	if (!me) {
+		cache_unlock(mc);
+		/*
+		 * If there's a '/' in the name and the offset is not in
+		 * the cache then it's not a valid path in the mount tree.
+		 */
+		if (strchr(name, '/')) {
+			debug(ap->logopt,
+			      MODPREFIX "offset %s not found", name);
+			return NSS_STATUS_NOTFOUND;
+		}
+	} else {
+		cache_unlock(mc);
+		/* Otherwise we found a valid offset so try mount it */
 		debug(ap->logopt, MODPREFIX "%s -> %s", name, me->mapent);
 
 		ret = ctxt->parse->parse_mount(ap, name, name_len,
@@ -135,6 +147,8 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 		error(ap->logopt, MODPREFIX "malloc: %s", estr);
 		return NSS_STATUS_UNAVAIL;
 	}
+
+	debug(ap->logopt, MODPREFIX "looking up %s", name);
 
 	/*
 	 * We don't use popen because we don't want to run /bin/sh plus we
