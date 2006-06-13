@@ -25,6 +25,7 @@
 - fix memory leak in initialisation of lookup modules.
 - fix handling of master map entry update.
 - fix program map handling of iinvalid multi-mount offsets.
+- move autofs4 module loading back to init script.
 
 2/6/2006 autofs-5.0.0_beta4
 ---------------------------

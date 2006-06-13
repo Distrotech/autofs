@@ -1701,7 +1701,7 @@ int main(int argc, char *argv[])
 		close(start_pipefd[1]);
 		exit(1);
 	}
-
+#if 0
 	if (!load_autofs4_module()) {
 		crit(LOGOPT_ANY, "%s: can't load %s filesystem module",
 			program, FS_MODULE_NAME);
@@ -1711,7 +1711,7 @@ int main(int argc, char *argv[])
 		close(start_pipefd[1]);
 		exit(2);
 	}
-
+#endif
 	if (!master_read_master(master, age, 0)) {
 		master_kill(master, 1);
 		*pst_stat = 3;

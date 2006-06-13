@@ -14,6 +14,7 @@
 #
 DAEMON=@@sbindir@@/automount
 prog=`basename $DAEMON`
+MODULE="autofs4"
 initdir=@@initdir@@
 confdir=@@autofsconfdir@@
 
@@ -35,6 +36,28 @@ fi
 
 function start() {
 	echo -n $"Starting $prog: "
+
+	# Make sure autofs4 module is loaded
+	if ! grep -q autofs /proc/filesystems
+	then
+		echo -n "Loading $MODULE: "
+		# Try load the autofs4 module fail if we can't
+		modprobe $MODULE >/dev/null 2>&1
+		RETVAL=$?
+	elif ([ -f /proc/modules ] && lsmod) | grep -q autofs[^4]
+	then
+		RETVAL=1
+	fi
+	if [ $RETVAL -eq 1 ]
+	then
+		failure "Load $MODULE"
+		echo
+		return $RETVAL
+	else
+		success "Load $MODULE"
+		echo
+	fi
+
 	$prog $OPTIONS 
 	RETVAL=$?
 	if [ $RETVAL -eq 0 ] ; then

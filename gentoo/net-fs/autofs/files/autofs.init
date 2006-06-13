@@ -21,6 +21,13 @@ opts="start stop status reload restart"
 start() {
 	ebegin "Starting automounter"
 
+	# ensure autofs support is loaded
+	grep -q autofs /proc/filesystems || modprobe -k autofs4 2>/dev/null
+	if [ $? -ne 0 ]
+		eend 1 "No autofs support available"
+		exit 1
+	fi
+
 	# ensure pid file directory exists
 	if [ ! -e /var/run/autofs ]
 	then

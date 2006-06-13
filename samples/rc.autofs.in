@@ -13,6 +13,7 @@
 #
 DAEMON=@@sbindir@@/automount
 prog=`basename $DAEMON`
+MODULE="autofs4"
 confdir=@@autofsconfdir@@
 
 test -e $DAEMON || exit 0
@@ -29,6 +30,25 @@ fi
 
 function start() {
 	echo -n "Starting $prog: "
+
+	# Make sure autofs4 module is loaded
+	if ! grep -q autofs /proc/filesystems
+	then
+		# Try load the autofs4 module fail if we can't
+		modprobe $MODULE >/dev/null 2>&1
+		if [ $? -eq 1 ]
+		then
+			echo "Error: failed to load autofs4 module."
+			return 1
+		fi
+	elif ([ -f /proc/modules ] && lsmod) | grep -q autofs[^4]
+	then
+		# wrong autofs filesystem module loaded
+		echo
+		echo "Error: autofs kernel module is loaded, autofs4 required"
+		return 1
+	fi
+
 	$prog $OPTIONS 
 	RETVAL=$?
 	if [ $RETVAL -eq 0 ] ; then
