@@ -77,15 +77,6 @@ endif
 #
 # Ad hoc compilation rules for modules which need auxilliary libraries
 #
-lookup_yp.so: lookup_yp.c
-	$(CC) $(SOLDFLAGS) $(CFLAGS) -o lookup_yp.so lookup_yp.c $(AUTOFS_LIB) $(LIBNSL)
-	$(STRIP) lookup_yp.so
-
-lookup_nisplus.so: lookup_nisplus.c
-	$(CC) $(SOLDFLAGS) $(CFLAGS) -o lookup_nisplus.so lookup_nisplus.c \
-		$(AUTOFS_LIB) $(LIBNSL)
-	$(STRIP) lookup_nisplus.so
-
 lookup_hesiod.so: lookup_hesiod.c
 	$(CC) $(SOLDFLAGS) $(CFLAGS) $(HESIOD_FLAGS) -o lookup_hesiod.so \
 		lookup_hesiod.c $(AUTOFS_LIB) $(LIBHESIOD) $(LIBRESOLV)
@@ -101,6 +92,6 @@ lookup_ldap.so: lookup_ldap.c $(SASL_OBJ)
 
 mount_nfs.so: mount_nfs.c replicated.o
 	$(CC) $(SOLDFLAGS) $(CFLAGS) -o mount_nfs.so \
-		mount_nfs.c replicated.o $(AUTOFS_LIB)
+		mount_nfs.c replicated.o $(AUTOFS_LIB) $(LIBNSL)
 	$(STRIP) mount_nfs.so
 

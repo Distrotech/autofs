@@ -712,32 +712,204 @@ void rpc_exports_free(exports list)
 	return;
 }
 
-static int rpc_export_allowed(groups grouplist)
+static int masked_match(const char *myname, const char *addr, const char *mask)
 {
-	groups grp = grouplist;
-	char myname[MAXHOSTNAMELEN + 1];
+	struct hostent he;
+	struct hostent *phe = &he;
+	struct hostent *result;
+	char buf[HOST_ENT_BUF_SIZE], **haddr;
+	struct sockaddr_in saddr, maddr;
+	int h_errno, ret;
+
+	memset(buf, 0, HOST_ENT_BUF_SIZE);
+	memset(&he, 0, sizeof(struct hostent));
+
+	ret = gethostbyname_r(myname, phe,
+			buf, HOST_ENT_BUF_SIZE, &result, &h_errno);
+	if (ret || !result)
+		return 0;
+
+	ret = inet_aton(addr, &saddr.sin_addr);
+	if (!ret)
+		return 0;
+
+	if (strchr(mask, '.')) {
+		ret = inet_aton(mask, &maddr.sin_addr);
+		if (!ret)
+			return 0;
+	} else {
+		uint32_t m = -1;
+		int msize = atoi(mask);
+
+		m = m << (32 - msize);
+		maddr.sin_addr.s_addr = htonl(m);
+	}
+
+	for (haddr = phe->h_addr_list; *haddr; haddr++) {
+		uint32_t ca, ma, ha;
+
+		ca = (uint32_t) saddr.sin_addr.s_addr;
+		ma = (uint32_t) maddr.sin_addr.s_addr;
+		ha = (uint32_t) ((struct in_addr *) *haddr)->s_addr;
+
+		ret = ((ca & ma) == (ha & ma));
+		if (ret)
+			return 1;
+	}
+	return 0;
+}
+
+/*
+ * This function has been adapted from the match_patern function
+ * found in OpenSSH and is used in accordance with the copyright
+ * notice found their.
+ *
+ * Copyright (c) 1995 Tatu Ylonen <ylo@cs.hut.fi>, Espoo, Finland.
+ */
+/*
+ * Returns true if the given string matches the pattern (which
+ * may contain ? and * as wildcards), and zero if it does not
+ * match.
+ */
+static int pattern_match(const char *s, const char *pattern)
+{
+	for (;;) {
+		/* If at end of pattern, accept if also at end of string. */
+		if (!*pattern)
+			return !*s;
+
+		if (*pattern == '*') {
+			/* Skip the asterisk. */
+			pattern++;
+
+			/* If at end of pattern, accept immediately. */
+			if (!*pattern)
+				return 1;
+
+			/* If next character in pattern is known, optimize. */
+			if (*pattern != '?' && *pattern != '*') {
+				/*
+				 * Look instances of the next character in
+				 * pattern, and try to match starting from
+				 * those.
+				 */
+				for (; *s; s++)
+					if (*s == *pattern &&
+					    pattern_match(s + 1, pattern + 1))
+						return 1;
+
+				/* Failed. */
+				return 0;
+			}
+			/*
+			 * Move ahead one character at a time and try to
+			 * match at each position.
+			 */
+			for (; *s; s++)
+				if (pattern_match(s, pattern))
+					return 1;
+			/* Failed. */
+			return 0;
+		}
+		/*
+		 * There must be at least one more character in the string.
+		 * If we are at the end, fail.
+		 */
+		if (!*s)
+			return 0;
+
+		/* Check if the next character of the string is acceptable. */
+		if (*pattern != '?' && *pattern != *s)
+			return 0;
+
+		/* Move to the next character, both in string and in pattern. */
+		s++;
+		pattern++;
+	}
+	/* NOTREACHED */
+}
+
+static int string_match(const char *myname, const char *pattern)
+{
 	struct hostent he;
 	struct hostent *phe = &he;
 	struct hostent *result;
 	char buf[HOST_ENT_BUF_SIZE];
 	int ret;
 
+	memset(buf, 0, HOST_ENT_BUF_SIZE);
+	memset(&he, 0, sizeof(struct hostent));
+
+	ret = gethostbyname_r(myname, phe,
+			buf, HOST_ENT_BUF_SIZE, &result, &h_errno);
+	if (ret || !result)
+		return 0;
+
+	if (strchr(pattern, '*') || strchr(pattern, '?')) {
+		ret = pattern_match(myname, pattern);
+		if (!ret)
+			ret = pattern_match(phe->h_name, pattern);
+	} else {
+		if (strchr(pattern, '.'))
+			ret = !memcmp(phe->h_name, pattern, strlen(pattern));
+		else
+			ret = !memcmp(myname, pattern, strlen(pattern));
+	}
+	return ret;
+}
+
+static int host_match(char *pattern)
+{
+	static char *ypdomain = NULL;
+	static char myname[MAXHOSTNAMELEN + 1] = "\0";
+	struct in_addr tmp;
+	int ret = 0;
+
+	if (!*myname)
+		if (gethostname(myname, MAXHOSTNAMELEN))
+			return 0;
+
+	if (*pattern == '@') {
+		if (!ypdomain)
+			if (yp_get_default_domain(&ypdomain))
+				return 0;
+		ret = innetgr(pattern + 1, myname, (char *) 0, ypdomain);
+	} else if (inet_aton(pattern, &tmp) || strchr(pattern, '/')) {
+		int len = strlen(pattern) + 1;
+		char *addr, *mask;
+
+		addr = alloca(len);
+		if (!addr)
+			return 0;
+
+		memset(addr, 0, len);
+		memcpy(addr, pattern, len - 1);
+		mask = strchr(addr, '/');
+		if (mask) {
+			*mask++ = '\0';
+			ret = masked_match(myname, addr, mask);
+		} else
+			ret = masked_match(myname, addr, "32");
+	} else if (!strcmp(pattern, "gss/krb5")) {
+		/* Leave this to the GSS layer */
+		ret = 1;
+	} else
+		ret = string_match(myname, pattern);
+
+	return ret;
+}
+
+static int rpc_export_allowed(groups grouplist)
+{
+	groups grp = grouplist;
+
 	/* NULL group list => everyone */
 	if (!grp)
 		return 1;
 
-	if (gethostname(myname, MAXHOSTNAMELEN))
-		return 0;
-
 	while (grp) {
-		if (*grp->gr_name == '*')
+		if (host_match(grp->gr_name))
 			return 1;
-		ret = gethostbyname_r(grp->gr_name, phe,
-				buf, HOST_ENT_BUF_SIZE, &result, &h_errno);
-		if (!ret) {
-			if (!strcmp(myname, phe->h_name))
-				return 1;
-		}
 		grp = grp->gr_next;
 	}
 	return 0;
