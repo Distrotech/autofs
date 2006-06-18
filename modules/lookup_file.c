@@ -190,8 +190,17 @@ static int read_one(FILE *f, char *key, char *mapent)
 				if (gotten == got_plus)
 					goto got_it;
 			} else if (escape == esc_char);
-			else
-				*(kptr++) = ch;
+			else {
+				if (kptr - key == KEY_MAX_LEN) {
+					state = st_badent;
+					error(LOGOPT_ANY,
+					      MODPREFIX "Map key \"%s...\" "
+					      "is too long.  The maximum key "
+					      "length is %d\n", key,
+					      KEY_MAX_LEN);
+				} else
+					*(kptr++) = ch;
+			}
 			break;
 
 		case st_star:
@@ -234,6 +243,13 @@ static int read_one(FILE *f, char *key, char *mapent)
 				   (gotten == got_real || gotten == getting))
 				   	goto got_it;
 				ungetc(nch, f);
+			} else {
+				error(LOGOPT_ANY,
+				      MODPREFIX "Map entry \"%s...\" for key "
+				      "\"%s\" is too long.  The maximum entry"
+				      " size is %d\n", mapent, key,
+				      MAPENT_MAX_LEN);
+				state = st_badent;
 			}
 			break;
 		}

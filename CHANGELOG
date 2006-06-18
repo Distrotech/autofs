@@ -27,6 +27,7 @@
 - fix program map handling of invalid multi-mount offsets.
 - move autofs4 module loading back to init script.
 - add export access list matching to "hosts" lookup module.
+- add check for key length to long (Jeff Moyer).
 
 2/6/2006 autofs-5.0.0_beta4
 ---------------------------
