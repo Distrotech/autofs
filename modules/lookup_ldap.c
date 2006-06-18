@@ -1267,7 +1267,7 @@ static int lookup_one(struct autofs_point *ap,
 
 	e = ldap_first_entry(ldap, result);
 	if (!e) {
-		crit(ap->logopt,
+		debug(ap->logopt,
 		     MODPREFIX "got answer, but no entry for %s", query);
 		ldap_msgfree(result);
 		ldap_unbind_connection(ldap, ctxt);
