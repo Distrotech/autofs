@@ -155,18 +155,27 @@ Example of how to add the update patch:
  # END OF PATCH APPLICATIONS
  
 Some Fedora Core kernels have autofs4 bug fix patches, such as
-2.6.16-1.2080_FC5. The update patch supersedes all previous patches
+2.6.16-1.2096_FC5. The update patch supersedes all previous patches
 so any additional autofs4 patches should be removed and the update
-patch added. For example 2.6.16-1.2080_FC5 needs this change:
+patch added. For example 2.6.16-1.2096_FC5 needs this change:
 
---- kernel-2.6.spec.orig	2006-05-01 10:36:12.000000000 +0800
-+++ kernel-2.6.spec	2006-05-01 10:36:32.000000000 +0800
-@@ -361,7 +361,6 @@
+--- kernel-2.6.spec.orig	2006-06-18 14:56:27.000000000 +0800
++++ kernel-2.6.spec	2006-06-18 14:56:52.000000000 +0800
+@@ -359,7 +359,7 @@
  Patch1630: linux-2.6-radeon-backlight.patch
  Patch1640: linux-2.6-ide-tune-locking.patch
  Patch1641: linux-2.6-ide-cd-shutup.patch
 -Patch1650: linux-2.6-autofs-pathlookup.patch
++#Patch1650: linux-2.6-autofs-pathlookup.patch
  Patch1660: linux-2.6-valid-ether-addr.patch
  Patch1670: linux-2.6-softcursor-persistent-alloc.patch
  Patch1680: linux-2.6-pwc-powerup-by-default.patch
-
+@@ -983,7 +983,7 @@
+ # Silence noisy CD drive spew
+ %patch1641 -p1
+ # autofs4 looks up wrong path element when ghosting is enabled
+-%patch1650 -p1
++#%patch1650 -p1
+ # 
+ %patch1660 -p1
+ # Use persistent allocation in softcursor
