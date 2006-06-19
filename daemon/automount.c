@@ -1362,7 +1362,7 @@ static int is_automount_running(void)
 	DIR *dir;
 	struct dirent entry;
 	struct dirent *result;
-	char path[PATH_MAX], buf[PATH_MAX];
+	char path[PATH_MAX + 1], buf[PATH_MAX];
 	int len;
 
 	if ((dir = opendir("/proc")) == NULL) {
@@ -1382,12 +1382,12 @@ static int is_automount_running(void)
 		if (!strcmp(entry.d_name, "self"))
 			continue;
 
-		if (isdigit(*entry.d_name)) {
-			pid = atoi(entry.d_name);
+		if (!isdigit(*entry.d_name))
+			continue;
 
-			if (pid == getpid())
-				continue;
-		}
+		pid = atoi(entry.d_name);
+		if (pid == getpid())
+			continue;
 
 		len = sprintf(path, "/proc/%s/cmdline", entry.d_name);
 		if (len >= PATH_MAX) {
