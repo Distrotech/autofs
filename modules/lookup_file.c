@@ -120,7 +120,7 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 static int read_one(FILE *f, char *key, char *mapent)
 {
 	char *kptr, *p;
-	int mapent_len;
+	int mapent_len, key_len;
 	int ch, nch;
 	LOOKUP_STATE state;
 	FOUND_STATE getting, gotten;
@@ -128,7 +128,7 @@ static int read_one(FILE *f, char *key, char *mapent)
 
 	kptr = key;
 	p = NULL;
-	mapent_len = 0;
+	mapent_len = key_len = 0;
 	state = st_begin;
 	memset(key, 0, KEY_MAX_LEN + 1);
 	memset(mapent, 0, MAPENT_MAX_LEN + 1);
@@ -168,11 +168,13 @@ static int read_one(FILE *f, char *key, char *mapent)
 				else if (ch == '*') {
 					state = st_star;
 					*(kptr++) = ch;
+					key_len++;
 				} else {
 					if (ch == '+')
 						gotten = got_plus;
 					state = st_compare;
 					*(kptr++) = ch;
+					key_len++;
 				}
 			} else if (escape == esc_char);
 			else
@@ -191,15 +193,17 @@ static int read_one(FILE *f, char *key, char *mapent)
 					goto got_it;
 			} else if (escape == esc_char);
 			else {
-				if (kptr - key == KEY_MAX_LEN) {
+				if (key_len == KEY_MAX_LEN) {
 					state = st_badent;
 					error(LOGOPT_ANY,
 					      MODPREFIX "Map key \"%s...\" "
 					      "is too long.  The maximum key "
 					      "length is %d\n", key,
 					      KEY_MAX_LEN);
-				} else
+				} else {
 					*(kptr++) = ch;
+					key_len++;
+				}
 			}
 			break;
 
@@ -264,7 +268,7 @@ static int read_one(FILE *f, char *key, char *mapent)
 	      next:
 		kptr = key;
 		p = NULL;
-		mapent_len = 0;
+		mapent_len = key_len = 0;
 		memset(key, 0, KEY_MAX_LEN + 1);
 		memset(mapent, 0, MAPENT_MAX_LEN + 1);
 		getting = gotten = got_nothing;
