@@ -29,6 +29,7 @@
 - add export access list matching to "hosts" lookup module.
 - add check for key length to long (Jeff Moyer).
 - add patch to restrict /proc lookup to pid directories (Jeff Moyer).
+- fix directory cleanup at exit.
 
 2/6/2006 autofs-5.0.0_beta4
 ---------------------------
