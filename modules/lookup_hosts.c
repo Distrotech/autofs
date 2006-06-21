@@ -48,7 +48,10 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 	struct lookup_context *ctxt;
 	char buf[MAX_ERR_BUF];
 
-	if (!(*context = ctxt = malloc(sizeof(struct lookup_context)))) {
+	*context = NULL;
+
+	ctxt = malloc(sizeof(struct lookup_context));
+	if (!ctxt) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
 		crit(LOGOPT_ANY, MODPREFIX "malloc: %s", estr);
 		return 1;
@@ -56,7 +59,15 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 
 	mapfmt = MAPFMT_DEFAULT;
 
-	return !(ctxt->parse = open_parse(mapfmt, MODPREFIX, argc, argv));
+	ctxt->parse = open_parse(mapfmt, MODPREFIX, argc, argv);
+	if (!ctxt->parse) {
+		crit(LOGOPT_ANY, MODPREFIX "failed to open parse context");
+		free(ctxt);
+		return 1;
+	}
+	*context = ctxt;
+
+	return 0;
 }
 
 int lookup_read_master(struct master *master, time_t age, void *context)

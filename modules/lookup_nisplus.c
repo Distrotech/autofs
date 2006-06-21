@@ -37,17 +37,18 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 	struct lookup_context *ctxt;
 	char buf[MAX_ERR_BUF];
 
-	if (!(ctxt = malloc(sizeof(struct lookup_context)))) {
+	*context = NULL;
+
+	ctxt = malloc(sizeof(struct lookup_context));
+	if (!ctxt) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
 		crit(LOGOPT_ANY, MODPREFIX "%s", estr);
-		*context = NULL;
 		return 1;
 	}
 
 	if (argc < 1) {
 		crit(LOGOPT_ANY, MODPREFIX "No map name");
 		free(ctxt);
-		*context = NULL;
 		return 1;
 	}
 	ctxt->mapname = argv[0];
@@ -60,7 +61,6 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 	if (!ctxt->domainname) {
 		crit(LOGOPT_ANY, MODPREFIX "NIS+ domain not set");
 		free(ctxt);
-		*context = NULL;
 		return 1;
 	}
 
@@ -71,7 +71,6 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 	if (!ctxt->parse) {
 		crit(LOGOPT_ANY, MODPREFIX "failed to open parse context");
 		free(ctxt);
-		*context = NULL;
 		return 1;
 	}
 	*context = ctxt;

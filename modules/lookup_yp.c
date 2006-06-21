@@ -62,17 +62,19 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 	char buf[MAX_ERR_BUF];
 	int err;
 
-	if (!(ctxt = malloc(sizeof(struct lookup_context)))) {
+	*context = NULL;
+
+	ctxt = malloc(sizeof(struct lookup_context));
+	if (!ctxt) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
 		crit(LOGOPT_ANY, MODPREFIX "%s", estr);
-		*context = NULL;
 		return 1;
 	}
+	memset(ctxt, 0, sizeof(struct lookup_context));
 
 	if (argc < 1) {
 		crit(LOGOPT_ANY, MODPREFIX "no map name");
 		free(ctxt);
-		*context = NULL;
 		return 1;
 	}
 	ctxt->mapname = argv[0];
@@ -85,7 +87,6 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 		debug(LOGOPT_NONE, MODPREFIX "map %s: %s", ctxt->mapname,
 		       yperr_string(err));
 		free(ctxt);
-		*context = NULL;
 		return 1;
 	}
 
@@ -96,7 +97,6 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 	if (!ctxt->parse) {
 		crit(LOGOPT_ANY, MODPREFIX "failed to open parse context");
 		free(ctxt);
-		*context = NULL;
 		return 1;
 	}
 	*context = ctxt;

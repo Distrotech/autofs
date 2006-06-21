@@ -694,12 +694,13 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 	int ret;
 	LDAP *ldap = NULL;
 
+	*context = NULL;
+
 	/* If we can't build a context, bail. */
-	ctxt = (struct lookup_context *) malloc(sizeof(struct lookup_context));
+	ctxt = malloc(sizeof(struct lookup_context));
 	if (!ctxt) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
 		crit(LOGOPT_ANY, MODPREFIX "malloc: %s", estr);
-		*context = NULL;
 		return 1;
 	}
 	memset(ctxt, 0, sizeof(struct lookup_context));
@@ -715,7 +716,6 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 	if (!parse_server_string(argv[0], ctxt)) {
 		error(LOGOPT_ANY, MODPREFIX "cannot parse server string");
 		free_context(ctxt);
-		*context = NULL;
 		return 1;
 	}
 
@@ -723,7 +723,6 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 	if (!get_default_schema(ctxt)) {
 		error(LOGOPT_ANY, MODPREFIX "cannot set default schema");
 		free_context(ctxt);
-		*context = NULL;
 		return 1;
 	}
 
@@ -736,7 +735,6 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 	if (ret) {
 		error(LOGOPT_ANY, MODPREFIX "cannot initialize auth setup");
 		free_context(ctxt);
-		*context = NULL;
 		return 1;
 	}
 #endif
@@ -745,7 +743,6 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 	if (!ldap) {
 		error(LOGOPT_ANY, MODPREFIX "cannot connect to server");
 		free_context(ctxt);
-		*context = NULL;
 		return 1;
 	}
 
@@ -757,7 +754,6 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 	if (!ctxt->parse) {
 		crit(LOGOPT_ANY, MODPREFIX "failed to open parse context");
 		free_context(ctxt);
-		*context = NULL;
 		return 1;
 	}
 	*context = ctxt;

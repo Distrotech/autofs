@@ -49,7 +49,8 @@ int lookup_init(const char *my_mapfmt, int argc, const char *const *argv, void *
 	int i, j, an;
 	char *estr;
 
-	if (!(*context = ctxt = malloc(sizeof(struct lookup_context))))
+	ctxt = malloc(sizeof(struct lookup_context));
+	if (!ctxt)
 		goto nomem;
 
 	memset(ctxt, 0, sizeof(struct lookup_context));
@@ -121,7 +122,6 @@ error_out:
 		if (ctxt->argl)
 			free(ctxt->argl);
 		free(ctxt);
-		*context = NULL;
 	}
 	return 1;
 }

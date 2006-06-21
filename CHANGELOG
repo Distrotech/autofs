@@ -1,4 +1,8 @@
-?/6/2006 autofs-5.0.0_beta5
+?/6/2006 autofs-5.0.0
+---------------------
+- lookup_init cleanup and fix missed memory leak.
+
+20/6/2006 autofs-5.0.0_beta5
 ---------------------------
 - re-instate v4 directory cleanup.
 - backout master map lookup changes made to beta3.
