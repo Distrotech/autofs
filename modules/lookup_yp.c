@@ -87,6 +87,7 @@ static unsigned int get_map_order(const char *domain, const char *map)
 				return 0;
 
 			last_changed = atol(order);
+			free(order);
 
 			return (unsigned int) last_changed;
 		}
@@ -347,10 +348,6 @@ static int lookup_one(struct autofs_point *ap,
 
 	strcpy(mapname, ctxt->mapname);
 
-	mapent = alloca(MAPENT_MAX_LEN + 1);
-	if (!mapent)
-		return 0;
-
 	/*
 	 * For reasons unknown, the standard YP definitions doesn't
 	 * define input strings as const char *.  However, my
@@ -382,6 +379,7 @@ static int lookup_one(struct autofs_point *ap,
 	cache_writelock(mc);
 	ret = cache_update(mc, source, key, mapent, age);
 	cache_unlock(mc);
+	free(mapent);
 
 	return ret;
 }
@@ -401,10 +399,6 @@ static int lookup_wild(struct autofs_point *ap, struct lookup_context *ctxt)
 		return 0;
 
 	strcpy(mapname, ctxt->mapname);
-
-	mapent = alloca(MAPENT_MAX_LEN + 1);
-	if (!mapent)
-		return 0;
 
 	ret = yp_match((char *) ctxt->domainname,
 		       mapname, "*", 1, &mapent, &mapent_len);
@@ -431,6 +425,7 @@ static int lookup_wild(struct autofs_point *ap, struct lookup_context *ctxt)
 	cache_writelock(mc);
 	ret = cache_update(mc, source, "*", mapent, age);
 	cache_unlock(mc);
+	free(mapent);
 
 	return ret;
 }
