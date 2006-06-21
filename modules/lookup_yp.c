@@ -39,7 +39,7 @@
 struct lookup_context {
 	const char *domainname;
 	const char *mapname;
-	unsigned long yplast_modified;
+	unsigned long order;
 	struct parse_mod *parse;
 };
 
@@ -55,6 +55,49 @@ struct callback_data {
 };
 
 int lookup_version = AUTOFS_LOOKUP_VERSION;	/* Required by protocol */
+
+static unsigned int get_map_order(const char *domain, const char *map)
+{
+	char key[] = "YP_LAST_MODIFIED";
+	int key_len = strlen(key);
+	char *order;
+	int order_len;
+	char *mapname;
+	long last_changed;
+	int err;
+
+	mapname = alloca(strlen(map) + 1);
+	if (!mapname)
+		return 0;
+
+	strcpy(mapname, map);
+
+	err = yp_match(domain, mapname, key, key_len, &order, &order_len);
+	if (err != YPERR_SUCCESS) {
+		if (err == YPERR_MAP) {
+			char *usc;
+
+			while ((usc = strchr(mapname, '_')))
+				*usc = '.';
+
+			err = yp_match(domain, mapname,
+				       key, key_len, &order, &order_len);
+
+			if (err != YPERR_SUCCESS)
+				return 0;
+
+			last_changed = atol(order);
+
+			return (unsigned int) last_changed;
+		}
+		return 0;
+	}
+
+	last_changed = atol(order);
+	free(order);
+
+	return (unsigned int) last_changed;
+}
 
 int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **context)
 {
@@ -89,6 +132,8 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 		free(ctxt);
 		return 1;
 	}
+
+	ctxt->order = get_map_order(ctxt->domainname, ctxt->mapname);
 
 	if (!mapfmt)
 		mapfmt = MAPFMT_DEFAULT;
@@ -397,8 +442,7 @@ static int check_map_indirect(struct autofs_point *ap,
 	struct map_source *source = ap->entry->current;
 	struct mapent_cache *mc = source->mc;
 	struct mapent *me, *exists;
-	time_t now = time(NULL);
-	time_t t_last_read;
+	unsigned int map_order;
 	int need_map = 0;
 	int ret = 0;
 
@@ -420,15 +464,12 @@ static int check_map_indirect(struct autofs_point *ap,
 		return NSS_STATUS_UNAVAIL;
 	}
 
-	cache_readlock(mc);
-	me = cache_lookup_first(mc);
-	t_last_read = me ? now - me->age : ap->exp_runfreq + 1;
-	cache_unlock(mc);
-
-	if (t_last_read > ap->exp_runfreq)
-		if ((ret & CHE_UPDATED) ||
-		    (exists && (ret & CHE_MISSING)))
-			need_map = 1;
+	/* Only read map if it has been modified */
+	map_order = get_map_order(ctxt->domainname, ctxt->mapname);
+	if (map_order > ctxt->order) {
+		ctxt->order = map_order;
+		need_map = 1;
+	}
 
 	if (ret == CHE_MISSING) {
 		int wild = CHE_MISSING;
@@ -447,7 +488,7 @@ static int check_map_indirect(struct autofs_point *ap,
 		pthread_cleanup_pop(1);
 	}
 
-	/* Have parent update its map */
+	/* Have parent update its map if needed */
 	if (ap->ghost && need_map) {
 		int status;
 
