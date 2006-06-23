@@ -824,7 +824,7 @@ int parse_location(struct host **hosts, const char *list)
 				/* No spaces in host names at least */
 				if (*next == ':') {
 					while (*next &&
-					      (*next != ' ' || *next != '\t'))
+					      (*next != ' ' && *next != '\t'))
 						next--;
 					*next++ = '\0';
 				}
