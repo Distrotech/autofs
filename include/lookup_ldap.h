@@ -14,6 +14,7 @@ struct lookup_context {
 
 	char *server;
 	char *base;
+	char *qdn;
 
 	/* LDAP version 2 or 3 */
 	int version;
