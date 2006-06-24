@@ -4,6 +4,7 @@
 - use nis map order to check if update is needed.
 - fix couple of memory leaks in lookup_yp.c.
 - fix pasre error in replicated server module.
+- correct spelling error in default config.
 
 20/6/2006 autofs-5.0.0_beta5
 ---------------------------
