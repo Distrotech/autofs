@@ -251,7 +251,7 @@ int authtype_requires_creds(const char *authtype)
  *  The idea is that a -1 return value should abort the program.  A 0
  *  return value requires more checking.  If ctxt->authtype is filled in,
  *  then no further action is necessary.  If it is not, the caller is free
- *  to then use another method to determine how to connec to the server.
+ *  to then use another method to determine how to connect to the server.
  */
 int parse_ldap_config(struct lookup_context *ctxt)
 {
@@ -281,6 +281,17 @@ int parse_ldap_config(struct lookup_context *ctxt)
 	 */
 	memset(&st, 0, sizeof(st));
 	if (stat(auth_conf, &st) == -1 || st.st_size == 0) {
+		/* Auth config doesn't exist so disable TLS and auth */
+		if (errno == EEXIST) {
+			ctxt->auth_conf = auth_conf;
+			ctxt->use_tls = LDAP_TLS_DONT_USE;
+			ctxt->tls_required = LDAP_TLS_DONT_USE;
+			ctxt->auth_required = 0;
+			ctxt->sasl_mech = NULL;
+			ctxt->user = NULL;
+			ctxt->secret = NULL;
+			return 0;
+		}
 		error(LOGOPT_ANY,
 		      MODPREFIX "stat(2) failed with error %s.",
 		      strerror(errno));
@@ -485,9 +496,9 @@ int ldap_auth_init(struct lookup_context *ctxt)
 	/*
 	 *  If sasl_mech was not filled in, it means that there was no
 	 *  mechanism specified in the configuration file.  Try to auto-
-	 *  select one.
+	 *  select one if there are credentials.
 	 */
-	if (ctxt->sasl_mech == NULL) {
+	if (ctxt->sasl_mech == NULL && ctxt->user != NULL) {
 		ret = sasl_choose_mech(ctxt, &ctxt->sasl_mech);
 		if (ret != 0)
 			return -1;
@@ -666,6 +677,14 @@ free_moc:
 
 static void free_context(struct lookup_context *ctxt)
 {
+	if (ctxt->map_obj_class) {
+		free(ctxt->map_obj_class);
+		free(ctxt->entry_obj_class);
+		free(ctxt->map_attr);
+		free(ctxt->entry_attr);
+	}
+	if (ctxt->auth_conf)
+		free(ctxt->auth_conf);
 	if (ctxt->sasl_mech)
 		free(ctxt->sasl_mech);
 	if (ctxt->user)

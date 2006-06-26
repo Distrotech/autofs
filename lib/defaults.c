@@ -185,7 +185,7 @@ const char *defaults_get_master_map(void)
 
 	master = get_env_string(ENV_NAME_MASTER_MAP);
 	if (!master)
-		return default_master_map_name;
+		return strdup(default_master_map_name);
 
 	return (const char *) master;
 }
@@ -253,7 +253,7 @@ const char *defaults_get_map_obj_class(void)
 
 	moc = get_env_string(ENV_NAME_MAP_OBJ_CLASS);
 	if (!moc)
-		return default_map_obj_class;
+		return strdup(default_map_obj_class);
 
 	return (const char *) moc;
 }
@@ -264,7 +264,7 @@ const char *defaults_get_entry_obj_class(void)
 
 	eoc = get_env_string(ENV_NAME_ENTRY_OBJ_CLASS);
 	if (!eoc)
-		return default_entry_obj_class;
+		return strdup(default_entry_obj_class);
 
 	return (const char *) eoc;
 }
@@ -275,7 +275,7 @@ const char *defaults_get_map_attr(void)
 
 	ma = get_env_string(ENV_NAME_MAP_ATTR);
 	if (!ma)
-		return default_map_attr;
+		return strdup(default_map_attr);
 
 	return (const char *) ma;
 }
@@ -286,7 +286,7 @@ const char *defaults_get_entry_attr(void)
 
 	ea = get_env_string(ENV_NAME_ENTRY_ATTR);
 	if (!ea)
-		return default_entry_attr;
+		return strdup(default_entry_attr);
 
 	return (const char *) ea;
 }
@@ -297,7 +297,7 @@ const char *defaults_get_value_attr(void)
 
 	va = get_env_string(ENV_NAME_VALUE_ATTR);
 	if (!va)
-		return default_value_attr;
+		return strdup(default_value_attr);
 
 	return (const char *) va;
 }
@@ -308,7 +308,7 @@ const char *defaults_get_auth_conf_file(void)
 
 	cf = get_env_string(ENV_AUTH_CONF_FILE);
 	if (!cf)
-		return default_auth_conf_file;
+		return strdup(default_auth_conf_file);
 
 	return (const char *) cf;
 }

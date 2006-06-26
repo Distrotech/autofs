@@ -666,7 +666,7 @@ struct master *master_new(const char *name, unsigned int timeout, unsigned int g
 		return NULL;
 
 	if (!name)
-		tmp = strdup(defaults_get_master_map());
+		tmp = defaults_get_master_map();
 	else
 		tmp = strdup(name);
 
