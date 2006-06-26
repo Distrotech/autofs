@@ -436,7 +436,7 @@ static int check_map_indirect(struct autofs_point *ap,
 {
 	struct map_source *source = ap->entry->current;
 	struct mapent_cache *mc = source->mc;
-	struct mapent *me, *exists;
+	struct mapent *exists;
 	unsigned int map_order;
 	int need_map = 0;
 	int ret = 0;

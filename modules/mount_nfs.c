@@ -47,7 +47,7 @@ int mount_init(void **context)
 {
 	/* Make sure we have the local mount method available */
 	if (!mount_bind) {
-		if (mount_bind = open_mount("bind", MODPREFIX));
+		if ((mount_bind = open_mount("bind", MODPREFIX)));
 			init_ctr++;
 	} else
 		init_ctr++;

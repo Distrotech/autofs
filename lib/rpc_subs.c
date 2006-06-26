@@ -28,6 +28,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <sys/fcntl.h>
+#include <rpcsvc/ypclnt.h>
 #include <errno.h>
 
 #include "mount.h"

@@ -616,8 +616,6 @@ void master_remove_mapent(struct master_mapent *entry)
 
 void master_free_mapent_sources(struct master_mapent *entry, unsigned int free_cache)
 {
-	int status;
-
 	master_source_writelock(entry);
 
 	if (entry->maps) {
@@ -659,7 +657,7 @@ void master_free_mapent(struct master_mapent *entry)
 struct master *master_new(const char *name, unsigned int timeout, unsigned int ghost)
 {
 	struct master *master;
-	char *tmp;
+	const char *tmp;
 
 	master = malloc(sizeof(struct master));
 	if (!master)

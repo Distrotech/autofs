@@ -1227,8 +1227,6 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 {
 	struct lookup_context *ctxt = (struct lookup_context *) context;
 	int rv = LDAP_SUCCESS;
-	char *key;
-	int keylen;
 	int ret;
 
 	ret = read_one_map(ap, ctxt, age, &rv);
