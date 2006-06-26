@@ -514,6 +514,7 @@ int master_parse_entry(const char *buffer, unsigned int default_timeout, unsigne
 	source = master_add_map_source(entry, type, format, age, 
 					local_argc, (const char **) local_argv);
 	if (!source) {
+		error(LOGOPT_ANY, "failed to add source");
 		if (new)
 			master_free_mapent(new);
 		return 0;

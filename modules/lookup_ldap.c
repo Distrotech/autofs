@@ -510,7 +510,7 @@ int ldap_auth_init(struct lookup_context *ctxt)
 
 /*
  *  Take an input string as specified in the master map, and break it
- *  down into a basedn, servername, and port.
+ *  down into a server name and basedn.
  */
 static int parse_server_string(const char *url, struct lookup_context *ctxt)
 {
@@ -528,11 +528,7 @@ static int parse_server_string(const char *url, struct lookup_context *ctxt)
 		const char *s = ptr + 2;
 		const char *q = NULL;
 
-		/*
-		 * Isolate the server(s).  The ':' breaks the SUN
-		 * parser for submounts, so we can't actually
-		 * use it.
-		 */
+		/* Isolate the server(s). */
 		if ((q = strchr(s, '/'))) {
 			l = q - s;
 			tmp = malloc(l + 1);
@@ -547,6 +543,10 @@ static int parse_server_string(const char *url, struct lookup_context *ctxt)
 			memcpy(ctxt->server, s, l);
 			ptr = q + 1;
 		} else {
+			crit(LOGOPT_ANY,
+			     MODPREFIX "invalid LDAP map syntax %s", ptr);
+			return 0;
+/* TODO: why did I put this here, the parser shouldn't let this by
 			l = strlen(ptr);
 			tmp = malloc(l + 1);
 			if (!tmp) {
@@ -558,9 +558,24 @@ static int parse_server_string(const char *url, struct lookup_context *ctxt)
 			ctxt->server = tmp;
 			memset(ctxt->server, 0, l + 1);
 			memcpy(ctxt->server, s, l);
+*/
 		}
 	} else if (strchr(ptr, ':') != NULL) {
-		l = strchr(ptr, ':') - ptr;
+		char *q = NULL;
+
+		/* Isolate the server(s). Include the port spec */
+		q = strchr(ptr, ':');
+		if (isdigit(*q))
+			while (isdigit(*q))
+				q++;
+
+		if (*q != ':') {
+			crit(LOGOPT_ANY,
+			     MODPREFIX "invalid LDAP map syntax %s", ptr);
+			return 0;
+		}
+
+		l = q - ptr;
 		/* Isolate the server's name. */
 		tmp = malloc(l + 1);
 		if (!tmp) {
@@ -575,6 +590,7 @@ static int parse_server_string(const char *url, struct lookup_context *ctxt)
 		ptr += l + 1;
 	}
 
+	/* TODO: why did I do this - how can the map name "and" base dn be missing? */
 	if (!ptr)
 		goto done;
 

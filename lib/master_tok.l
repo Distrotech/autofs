@@ -80,7 +80,9 @@ OPTIONSTR	([\-]?([[:alpha:]_]([[:alnum:]_\-])*(=([[:alnum:]_\-])+)*)+)
 MACROSTR	(-D{OPTWS}([[:alpha:]_]([[:alnum:]_\-])*)=([[:alnum:]_\-])+)
 NUMBER		[0-9]+
 
-DNSERVERSTR	(\/\/[[:alpha:]][[:alnum:]\-.]*(:[0-9])?\/)
+DNSERVSTR1	([[:alpha:]][[:alnum:]\-.]*(:[0-9]+)?:)
+DNSERVSTR2	(\/\/[[:alpha:]][[:alnum:]\-.]*(:[0-9]+)?\/)
+DNSERVERSTR	{DNSERVSTR1}|{DNSERVSTR2}
 DNATTRSTR	(ou|cn|nisMapName|automountMapName|dc)
 DNNAMESTR	([[:alnum:]_.\-]+)
 
@@ -194,6 +196,11 @@ MTYPE           ((file|program|yp|nis|nisplus|ldap|hesiod|userdir)(,(sun|hesiod)
 	}
 
 	"//" {
+		BEGIN(DNSTR);
+		yyless(0);
+	}
+
+	{DNSERVERSTR} {
 		BEGIN(DNSTR);
 		yyless(0);
 	}

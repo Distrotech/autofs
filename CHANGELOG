@@ -8,6 +8,7 @@
 - fix default auth config not being installed.
 - change LDAP query method as my test db was incorrect.
 - change ldap defaults code to handle missing auth config.
+- fix mistake in parsing old style LDAP specs.
 
 20/6/2006 autofs-5.0.0_beta5
 ---------------------------
