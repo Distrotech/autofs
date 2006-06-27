@@ -1637,15 +1637,9 @@ int main(int argc, char *argv[])
 
 	become_daemon(foreground);
 
-	if (argc == 0) {
-		const char *name;
-
-		name = defaults_get_master_map();
-		if (!name)
-			master = master_new(NULL, timeout, ghost);
-		else
-			master = master_new(name, timeout, ghost);
-	} else
+	if (argc == 0)
+		master = master_new(NULL, timeout, ghost);
+	else
 		master = master_new(argv[0], timeout, ghost);
 
 	if (!master) {

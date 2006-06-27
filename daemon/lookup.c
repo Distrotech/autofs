@@ -189,6 +189,8 @@ int lookup_nss_read_master(struct master *master, time_t age)
 
 	result = nsswitch_parse(&nsslist);
 	if (result) {
+		if (!list_empty(&nsslist))
+			free_sources(&nsslist);
 		error(LOGOPT_ANY, "can't to read name service switch config.");
 		return 0;
 	}

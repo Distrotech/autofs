@@ -229,12 +229,14 @@ void reset_signals(void)
 	sa.sa_flags = 0;
 
 	for (i = 1; i < NSIG; i++)
-		sigaction(i, &sa, NULL);
+		if (i != SIGKILL && i != SIGSTOP)
+			sigaction(i, &sa, NULL);
 
 	sa.sa_handler = SIG_DFL;
 
 	for (i = 1; i < NSIG; i++)
-		sigaction(i, &sa, NULL);
+		if (i != SIGKILL && i != SIGSTOP)
+			sigaction(i, &sa, NULL);
 
 	/* Ignore the user signals that may be sent so that we
 	 *  don't terminate execed program by mistake */
