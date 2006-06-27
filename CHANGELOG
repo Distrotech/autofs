@@ -11,6 +11,7 @@
 - fix mistake in parsing old style LDAP specs.
 - update LDAP so that new query methos also works for old
   syntax.
+- allow global macro defines to override system macros.
 
 20/6/2006 autofs-5.0.0_beta5
 ---------------------------

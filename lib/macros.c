@@ -115,7 +115,7 @@ int macro_global_addvar(const char *str, int len, const char *value)
 		sv = sv->next;
 	}
 
-	if (sv) {
+	if (sv && !sv->readonly) {
 		char *this = realloc(sv->val, strlen(value) + 1);
 		if (!this)
 			goto done;
@@ -191,9 +191,6 @@ macro_addvar(struct substvar *table, const char *str, int len, const char *value
 	struct substvar *lv = table;
 	int status;
 
-	if (macro_is_systemvar(str, len))
-		return table;
-
 	status = pthread_mutex_lock(&table_mutex);
 	if (status)
 		fatal(status);
@@ -239,6 +236,7 @@ macro_addvar(struct substvar *table, const char *str, int len, const char *value
 		}
 		new->def = def;
 		new->val = val;
+		new->readonly = 0;
 		new->next = table;
 		lv = new;
 	}
@@ -294,9 +292,6 @@ macro_removevar(struct substvar *table, const char *str, int len)
 	struct substvar *list, *lv;
 	struct substvar *last = NULL;
 	int status;
-
-	if (macro_is_systemvar(str, len))
-		return table;
 
 	status = pthread_mutex_lock(&table_mutex);
 	if (status)
