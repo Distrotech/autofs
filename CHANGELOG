@@ -13,6 +13,7 @@
   syntax.
 - allow global macro defines to override system macros.
 - cleanup defaults_read_config.
+- add rfc2307-bis example map configurations.
 
 20/6/2006 autofs-5.0.0_beta5
 ---------------------------
