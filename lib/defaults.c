@@ -173,9 +173,19 @@ unsigned int defaults_read_config(void)
 			ret = setenv(res, value, 0);
 			if (ret)
 				fprintf(stderr,
-				        "can't set config value for %s", res);
+				        "can't set config value for %s, "
+					"error %d", res, ret);
 		}
 	}
+
+	if (!feof(f)) {
+		fprintf(stderr, "fgets returned error %d while reading %s\n",
+			ferror(f), DEFAULTS_CONFIG_FILE);
+		fclose(f);
+		return 0;
+	}
+
+	fclose(f);
 	return 1;
 }
 
