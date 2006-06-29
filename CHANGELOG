@@ -1,5 +1,5 @@
-?/6/2006 autofs-5.0.0
----------------------
+29/6/2006 autofs-5.0.0_beta6
+----------------------------
 - lookup_init cleanup and fix missed memory leak.
 - use nis map order to check if update is needed.
 - fix couple of memory leaks in lookup_yp.c.
