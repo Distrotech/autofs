@@ -30,7 +30,7 @@ export PATH
 #
 # load customized configuation settings
 #
-if [ -x $confdir/autofs ]; then
+if [ -r $confdir/autofs ]; then
 	. $confdir/autofs
 fi
 

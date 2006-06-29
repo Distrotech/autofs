@@ -46,12 +46,12 @@ autofs.conf: autofs.conf.default
 	@echo "Installing autofs default configuation in $(autofsconfdir)"
 	@if test -z "$(CONFIG)" ; \
 	then \
-		install -v autofs.conf.default -m 755 \
+		install -v autofs.conf.default -m 644 \
 			$(INSTALLROOT)$(autofsconfdir)/autofs.conf.new ; \
 		echo "Found existing backup of configuration file." ; \
 		echo "Installed package default configuration file as \"autofs.conf.new\"." ; \
 	else \
-		install -v autofs.conf.default -m 755 $(CONFIG) \
+		install -v autofs.conf.default -m 644 $(CONFIG) \
 				$(INSTALLROOT)$(autofsconfdir)/autofs ; \
 		echo "Installed package configuration configuration as \"autofs\"." ; \
 		if test -z "$(CEXISTS)" ; \

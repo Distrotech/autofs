@@ -73,7 +73,7 @@ mkdir -p -m755 $RPM_BUILD_ROOT/etc/sysconfig
 make install mandir=%{_mandir} initdir=/etc/rc.d/init.d INSTALLROOT=$RPM_BUILD_ROOT
 make -C redhat
 install -m 755 redhat/autofs.init $RPM_BUILD_ROOT/etc/rc.d/init.d/autofs
-install -m 755 redhat/autofs.sysconfig $RPM_BUILD_ROOT/etc/sysconfig/autofs
+install -m 644 redhat/autofs.sysconfig $RPM_BUILD_ROOT/etc/sysconfig/autofs
 
 %clean
 [ "$RPM_BUILD_ROOT" != "/" ] && rm -rf $RPM_BUILD_ROOT
