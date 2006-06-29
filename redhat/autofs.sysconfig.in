@@ -3,7 +3,7 @@
 #
 # DEFAULT_MASTER_MAP_NAME - default map name for the master map.
 #
-#DEFAULT_MASTER_MAP_NAME="/etc/auto.master"
+#DEFAULT_MASTER_MAP_NAME="auto.master"
 #
 # DEFAULT_TIMEOUT - set the default mount timeout (default 600).
 #

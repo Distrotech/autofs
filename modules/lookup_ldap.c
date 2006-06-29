@@ -781,7 +781,6 @@ static int get_query_dn(LDAP *ldap, struct lookup_context *ctxt)
 		error(LOGOPT_NONE,
 		      MODPREFIX "query failed for %s: %s",
 		      query, ldap_err2string(rv));
-		ldap_unbind_connection(ldap, ctxt);
 		return 0;
 	}
 
@@ -795,7 +794,6 @@ static int get_query_dn(LDAP *ldap, struct lookup_context *ctxt)
 		      MODPREFIX "query succeeded, no matches for %s",
 		      query);
 		ldap_msgfree(result);
-		ldap_unbind_connection(ldap, ctxt);
 		return 0;
 	}
 

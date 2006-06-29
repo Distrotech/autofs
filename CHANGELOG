@@ -16,6 +16,8 @@
 - add rfc2307-bis example map configurations.
 - change mode of of config file install to 644.
 - update kernel patches.
+- fix don't unbind on error return from get_query_dn.
+- update RedHat autofs default config.
 
 20/6/2006 autofs-5.0.0_beta5
 ---------------------------
