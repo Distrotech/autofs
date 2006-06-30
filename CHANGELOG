@@ -1,6 +1,7 @@
 ?/7/2006 autofs-5.0.0
 ---------------------
 - merge LDAP authentication update for GSSAPI (Jeff Moyer).
+- update default auth config to add options documenetation (Jeff Moyer).
 
 29/6/2006 autofs-5.0.0_beta6
 ----------------------------
