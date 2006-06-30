@@ -34,6 +34,14 @@ struct lookup_context {
 	char        *sasl_mech;
 	char        *user;
 	char        *secret;
+	char        *client_princ;
+	int          kinit_done;
+	int          kinit_successful;
+	krb5_principal  krb5_client_princ;
+	krb5_context krb5ctxt;
+	krb5_ccache  krb5_ccache;
+	sasl_conn_t  *sasl_conn;
+	/* keytab file name needs to be added */
 
 	struct parse_mod *parse;
 };
@@ -48,14 +56,14 @@ struct lookup_context {
 #define LDAP_TLS_RELEASE	2
 
 /* lookup_ldap.c */
-LDAP *ldap_connection_init(struct lookup_context *ctxt);
-int ldap_unbind_connection(LDAP *ldap, struct lookup_context *ctxt);
+LDAP *init_ldap_connection(struct lookup_context *ctxt);
+int unbind_ldap_connection(LDAP *ldap, struct lookup_context *ctxt);
 int authtype_requires_creds(const char *authtype);
 
 /* cyrus-sasl.c */
-int sasl_init(char *id, char *secret);
-int sasl_choose_mech(struct lookup_context *ctxt, char **mechanism);
-sasl_conn_t *sasl_bind_mech(LDAP *ldap, const char *mech);
+int autofs_sasl_init(LDAP *ldap, struct lookup_context *ctxt);
+int autofs_sasl_bind(LDAP *ldap, struct lookup_context *ctxt);
+void autofs_sasl_unbind(struct lookup_context *ctxt);
 #endif
 
 #endif /* _lookup_ldap_h */

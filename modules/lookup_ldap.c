@@ -43,7 +43,7 @@
 
 int lookup_version = AUTOFS_LOOKUP_VERSION;	/* Required by protocol */
 
-int ldap_bind_anonymous(LDAP *ldap, struct lookup_context *ctxt)
+int bind_ldap_anonymous(LDAP *ldap, struct lookup_context *ctxt)
 {
 	int rv;
 
@@ -53,7 +53,6 @@ int ldap_bind_anonymous(LDAP *ldap, struct lookup_context *ctxt)
 		rv = ldap_simple_bind_s(ldap, NULL, NULL);
 
 	if (rv != LDAP_SUCCESS) {
-		ldap_unbind(ldap);
 		crit(LOGOPT_ANY,
 		     MODPREFIX "Unable to bind to the LDAP server: "
 		     "%s, error %s", ctxt->server ?: "(default)",
@@ -64,11 +63,12 @@ int ldap_bind_anonymous(LDAP *ldap, struct lookup_context *ctxt)
 	return 0;
 }
 
-int ldap_unbind_connection(LDAP *ldap, struct lookup_context *ctxt)
+int unbind_ldap_connection(LDAP *ldap, struct lookup_context *ctxt)
 {
 	int rv;
 
 #if WITH_SASL
+	debug(LOGOPT_NONE, "use_tls: %d", ctxt->use_tls);
 	/*
 	 * The OpenSSL library can't handle having its message and error
 	 * string database loaded multiple times and segfaults if the
@@ -81,9 +81,10 @@ int ldap_unbind_connection(LDAP *ldap, struct lookup_context *ctxt)
 		ERR_remove_state(0);
 		ctxt->use_tls = LDAP_TLS_INIT;
 	}
+	autofs_sasl_unbind(ctxt);
 #endif
 
-	rv = ldap_unbind(ldap);
+	rv = ldap_unbind_ext(ldap, NULL, NULL);
 	if (rv != LDAP_SUCCESS)
 		error(LOGOPT_ANY,
 		     "unbind failed: %s", ldap_err2string(rv));
@@ -91,7 +92,7 @@ int ldap_unbind_connection(LDAP *ldap, struct lookup_context *ctxt)
 	return rv;
 }
 
-LDAP *ldap_connection_init(struct lookup_context *ctxt)
+LDAP *init_ldap_connection(struct lookup_context *ctxt)
 {
 	LDAP *ldap = NULL;
 	int timeout = 8;
@@ -100,6 +101,12 @@ LDAP *ldap_connection_init(struct lookup_context *ctxt)
 	ctxt->version = 3;
 
 	/* Initialize the LDAP context. */
+	/* LDAP_PORT should not be hard-coded, here.  If we are going to
+	 * parse ldap strings ourselves, then we can put the port specified
+	 * in the host:port format here.  Otherwise, we can just pass the
+	 * host:port string to the ldap_init call and let the library handle
+	 * it.   -JM
+	 */
 	ldap = ldap_init(ctxt->server, LDAP_PORT);
 	if (!ldap) {
 		crit(LOGOPT_ANY,
@@ -112,7 +119,7 @@ LDAP *ldap_connection_init(struct lookup_context *ctxt)
 	rv = ldap_set_option(ldap, LDAP_OPT_PROTOCOL_VERSION, &ctxt->version);
 	if (rv != LDAP_OPT_SUCCESS) {
 		/* fall back to LDAPv2 */
-		ldap_unbind(ldap);
+		ldap_unbind_ext(ldap, NULL, NULL);
 		ldap = ldap_init(ctxt->server, LDAP_PORT);
 		if (!ldap) {
 			crit(LOGOPT_ANY, MODPREFIX "couldn't initialize LDAP");
@@ -135,7 +142,7 @@ LDAP *ldap_connection_init(struct lookup_context *ctxt)
 				error(LOGOPT_ANY,
 				    MODPREFIX
 				    "TLS required but connection is version 2");
-				ldap_unbind(ldap);
+				ldap_unbind_ext(ldap, NULL, NULL);
 				return NULL;
 			}
 			return ldap;
@@ -143,7 +150,7 @@ LDAP *ldap_connection_init(struct lookup_context *ctxt)
 
 		rv = ldap_start_tls_s(ldap, NULL, NULL);
 		if (rv != LDAP_SUCCESS) {
-			ldap_unbind_connection(ldap, ctxt);
+			unbind_ldap_connection(ldap, ctxt);
 			if (ctxt->tls_required) {
 				error(LOGOPT_ANY,
 				      MODPREFIX
@@ -152,7 +159,7 @@ LDAP *ldap_connection_init(struct lookup_context *ctxt)
 				return NULL;
 			}
 			ctxt->use_tls = LDAP_TLS_DONT_USE;
-			ldap = ldap_connection_init(ctxt);
+			ldap = init_ldap_connection(ctxt);
 			ctxt->use_tls = LDAP_TLS_INIT;
 			return ldap;
 		}
@@ -168,39 +175,32 @@ static LDAP *do_connect(struct lookup_context *ctxt)
 	LDAP *ldap;
 	int rv;
 
-	ldap = ldap_connection_init(ctxt);
+	ldap = init_ldap_connection(ctxt);
 	if (!ldap)
 		return NULL;
 
 #if WITH_SASL
-	if (ctxt->auth_required && ctxt->sasl_mech) {
-		sasl_conn_t *conn;
+	debug(LOGOPT_NONE, "auth_required: %d, sasl_mech %s",
+	      ctxt->auth_required, ctxt->sasl_mech);
 
-		debug(LOGOPT_NONE,
-		      MODPREFIX
-		      "attempting sasl bind, mechanism %s, user %s",
-		      ctxt->sasl_mech, ctxt->user);
-
-		rv = 0;
-		conn = sasl_bind_mech(ldap, ctxt->sasl_mech);
-		if (!conn) {
-			error(LOGOPT_ANY, MODPREFIX "sasl bind failed");
-			rv = 1;
-		}
-
-		sasl_dispose(&conn);
+	if (ctxt->auth_required || ctxt->sasl_mech) {
+		rv = autofs_sasl_bind(ldap, ctxt);
+		debug(LOGOPT_NONE, MODPREFIX
+		      "autofs_sasl_bind returned %d", rv);
 	} else {
-		rv = ldap_bind_anonymous(ldap, ctxt);
+		rv = bind_ldap_anonymous(ldap, ctxt);
 		debug(LOGOPT_NONE,
-		      MODPREFIX "doing anonymous bind, ret %d", rv);
+		      MODPREFIX "ldap anonymous bind returned %d", rv);
 	}
 #else
-	rv = ldap_bind_anonymous(ldap, ctxt);
-	debug(LOGOPT_NONE, MODPREFIX "doing anonymous bind, ret %d", rv);
+	rv = bind_ldap_anonymous(ldap, ctxt);
+	debug(LOGOPT_NONE, MODPREFIX "ldap anonymous bind returned %d", rv);
 #endif
 
-	if (rv != 0)
+	if (rv != 0) {
+		unbind_ldap_connection(ldap, ctxt);
 		return NULL;
+	}
 
 	return ldap;
 }
@@ -228,13 +228,14 @@ int get_property(xmlNodePtr node, const char *prop, char **value)
 }
 
 /*
- *  For plain text and digest-md5 authentication types, we need
+ *  For plain text, login and digest-md5 authentication types, we need
  *  user and password credentials.
  */
 int authtype_requires_creds(const char *authtype)
 {
 	if (!strncmp(authtype, "PLAIN", strlen("PLAIN")) ||
-	    !strncmp(authtype, "DIGEST-MD5", strlen("DIGEST-MD5")))
+	    !strncmp(authtype, "DIGEST-MD5", strlen("DIGEST-MD5")) ||
+	    !strncmp(authtype, "LOGIN", strlen("LOGIN")))
 		return 1;
 	return 0;
 }
@@ -262,6 +263,7 @@ int parse_ldap_config(struct lookup_context *ctxt)
 	xmlNodePtr   root = NULL;
 	char         *authrequired, *auth_conf, *authtype;
 	char         *user = NULL, *secret = NULL;
+	char         *client_princ = NULL;
 	char	     *usetls, *tlsrequired;
 
 	authtype = user = secret = NULL;
@@ -290,6 +292,7 @@ int parse_ldap_config(struct lookup_context *ctxt)
 			ctxt->sasl_mech = NULL;
 			ctxt->user = NULL;
 			ctxt->secret = NULL;
+			ctxt->client_princ = NULL;
 			return 0;
 		}
 		error(LOGOPT_ANY,
@@ -444,6 +447,12 @@ int parse_ldap_config(struct lookup_context *ctxt)
 		}
 	}
 
+	/*
+	 * We allow the admin to specify the principal to use for the
+	 * client.  The default is "autofsclient/hostname@REALM".
+	 */
+	(void)get_property(root, "clientprinc", &client_princ);
+
 	ctxt->auth_conf = auth_conf;
 	ctxt->use_tls = use_tls;
 	ctxt->tls_required = tls_required;
@@ -451,6 +460,22 @@ int parse_ldap_config(struct lookup_context *ctxt)
 	ctxt->sasl_mech = authtype;
 	ctxt->user = user;
 	ctxt->secret = secret;
+	ctxt->client_princ = client_princ;
+
+	debug(LOGOPT_NONE,
+	      "ldap authentication configured with the following options:\n");
+	debug(LOGOPT_NONE,
+	      "use_tls: %u, "
+	      "tls_required: %u, "
+	      "auth_required: %u, "
+	      "sasl_mech: %s\n",
+	      use_tls, tls_required, auth_required, authtype);
+	debug(LOGOPT_NONE,
+	      "user: %s, "
+	      "secret: %s, "
+	      "client principal: %s\n",
+	      user, secret ? "specified" : "unspecified",
+	      client_princ);
 
 out:
 	xmlFreeDoc(doc);
@@ -470,11 +495,10 @@ out:
  *  Returns 0 on success, with authtype, user and secret filled in as
  *  appropriate.  Returns -1 on failre.
  */
-int ldap_auth_init(struct lookup_context *ctxt)
+int auth_init(struct lookup_context *ctxt)
 {
 	int ret;
-
-	ctxt->sasl_mech = NULL;
+	LDAP *ldap;
 
 	/*
 	 *  First, check to see if a preferred authentication method was
@@ -486,22 +510,23 @@ int ldap_auth_init(struct lookup_context *ctxt)
 	if (ret)
 		return -1;
 
-	/*
-	 *  Initialize the sasl library.  It is okay if user and secret
-	 *  are NULL, here.
-	 */
-	if (sasl_init(ctxt->user, ctxt->secret) != 0)
+	ldap = init_ldap_connection(ctxt);
+	if (!ldap)
 		return -1;
 
 	/*
-	 *  If sasl_mech was not filled in, it means that there was no
-	 *  mechanism specified in the configuration file.  Try to auto-
-	 *  select one if there are credentials.
+	 *  Initialize the sasl library.  It is okay if user and secret
+	 *  are NULL, here.
+	 *
+	 *  The autofs_sasl_init routine will figure out which mechamism
+	 *  to use. If kerberos is used, it will also take care to initialize
+	 *  the credential cache and the client and service principals.
 	 */
-	if (ctxt->sasl_mech == NULL && ctxt->user != NULL) {
-		ret = sasl_choose_mech(ctxt, &ctxt->sasl_mech);
-		if (ret != 0)
-			return -1;
+	ret = autofs_sasl_init(ldap, ctxt);
+	unbind_ldap_connection(ldap, ctxt);
+	if (ret) {
+		ctxt->sasl_mech = NULL;
+		return -1;
 	}
 
 	return 0;
@@ -850,9 +875,10 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 	 * Determine which authentication mechanism to use.  We sanity-
 	 * check by binding to the server temporarily.
 	 */
-	ret = ldap_auth_init(ctxt);
-	if (ret) {
-		error(LOGOPT_ANY, MODPREFIX "cannot initialize auth setup");
+	ret = auth_init(ctxt);
+	if (ret && ctxt->auth_required) {
+		error(LOGOPT_ANY, MODPREFIX
+		      "cannot initialize authentication setup");
 		free_context(ctxt);
 		return 1;
 	}
@@ -865,15 +891,13 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 		return 1;
 	}
 
-	if (!get_query_dn(ldap, ctxt)) {
+	ret = get_query_dn(ldap, ctxt);
+	unbind_ldap_connection(ldap, ctxt);
+	if (!ret) {
 		error(LOGOPT_ANY, MODPREFIX "failed to get query dn");
-		ldap_unbind_connection(ldap, ctxt);
 		free_context(ctxt);
 		return 1;
 	}
-
-	/* Okay, we're done here. */
-	ldap_unbind_connection(ldap, ctxt);
 
 	/* Open the parser, if we can. */
 	ctxt->parse = open_parse(mapfmt, MODPREFIX, argc - 1, argv + 1);
@@ -941,7 +965,7 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 		error(LOGOPT_NONE,
 		      MODPREFIX "query failed for %s: %s",
 		      query, ldap_err2string(rv));
-		ldap_unbind_connection(ldap, ctxt);
+		unbind_ldap_connection(ldap, ctxt);
 		return NSS_STATUS_NOTFOUND;
 	}
 
@@ -951,7 +975,7 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 		      MODPREFIX "query succeeded, no matches for %s",
 		      query);
 		ldap_msgfree(result);
-		ldap_unbind_connection(ldap, ctxt);
+		unbind_ldap_connection(ldap, ctxt);
 		return NSS_STATUS_NOTFOUND;
 	} else
 		debug(LOGOPT_NONE, MODPREFIX "examining entries");
@@ -1026,7 +1050,7 @@ next:
 
 	/* Clean up. */
 	ldap_msgfree(result);
-	ldap_unbind_connection(ldap, ctxt);
+	unbind_ldap_connection(ldap, ctxt);
 
 	return NSS_STATUS_SUCCESS;
 }
@@ -1092,7 +1116,7 @@ static int read_one_map(struct autofs_point *ap,
 		debug(ap->logopt,
 		      MODPREFIX "query failed for %s: %s",
 		      query, ldap_err2string(rv));
-		ldap_unbind_connection(ldap, ctxt);
+		unbind_ldap_connection(ldap, ctxt);
 		*result_ldap = rv;
 		return NSS_STATUS_NOTFOUND;
 	}
@@ -1102,7 +1126,7 @@ static int read_one_map(struct autofs_point *ap,
 		debug(ap->logopt,
 		      MODPREFIX "query succeeded, no matches for %s", query);
 		ldap_msgfree(result);
-		ldap_unbind_connection(ldap, ctxt);
+		unbind_ldap_connection(ldap, ctxt);
 		return NSS_STATUS_NOTFOUND;
 	} else
 		debug(ap->logopt, MODPREFIX "examining entries");
@@ -1216,7 +1240,7 @@ next:
 
 	/* Clean up. */
 	ldap_msgfree(result);
-	ldap_unbind_connection(ldap, ctxt);
+	unbind_ldap_connection(ldap, ctxt);
 
 	return NSS_STATUS_SUCCESS;
 }
@@ -1308,7 +1332,7 @@ static int lookup_one(struct autofs_point *ap,
 
 	if ((rv != LDAP_SUCCESS) || !result) {
 		crit(ap->logopt, MODPREFIX "query failed for %s", query);
-		ldap_unbind_connection(ldap, ctxt);
+		unbind_ldap_connection(ldap, ctxt);
 		return CHE_FAIL;
 	}
 
@@ -1320,7 +1344,7 @@ static int lookup_one(struct autofs_point *ap,
 		debug(ap->logopt,
 		     MODPREFIX "got answer, but no entry for %s", query);
 		ldap_msgfree(result);
-		ldap_unbind_connection(ldap, ctxt);
+		unbind_ldap_connection(ldap, ctxt);
 		return CHE_MISSING;
 	}
 
@@ -1332,7 +1356,7 @@ static int lookup_one(struct autofs_point *ap,
 		      MODPREFIX "key %s has duplicate entries", *keyValue);
 		ldap_value_free(keyValue);
 		ldap_msgfree(result);
-		ldap_unbind_connection(ldap, ctxt);
+		unbind_ldap_connection(ldap, ctxt);
 		return CHE_FAIL;
 	}
 
@@ -1344,7 +1368,7 @@ static int lookup_one(struct autofs_point *ap,
 		      MODPREFIX "no %s defined for %s", info, query);
 		ldap_value_free(keyValue);
 		ldap_msgfree(result);
-		ldap_unbind_connection(ldap, ctxt);
+		unbind_ldap_connection(ldap, ctxt);
 		return CHE_MISSING;
 	}
 
@@ -1405,7 +1429,7 @@ done:
 	/* Clean up. */
 	ldap_value_free(keyValue);
 	ldap_msgfree(result);
-	ldap_unbind_connection(ldap, ctxt);
+	unbind_ldap_connection(ldap, ctxt);
 
 	return ret;
 }
@@ -1564,6 +1588,8 @@ int lookup_done(void *context)
 #if WITH_SASL
 	EVP_cleanup();
 	ERR_free_strings();
+
+	autofs_sasl_done(ctxt);
 #endif
 	free_context(ctxt);
 	return rv;
