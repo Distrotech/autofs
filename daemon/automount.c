@@ -1208,8 +1208,6 @@ static void handle_mounts_cleanup(void *arg)
 	/* If we have been canceled then we may hold the state mutex. */
 	mutex_operation_wait(&ap->state_mutex);
 
-	msg("shut down path %s", ap->path);
-
 	master_remove_mapent(ap->entry);
 	master_free_mapent_sources(ap->entry, 1);
 	master_free_mapent(ap->entry);
@@ -1225,6 +1223,8 @@ static void handle_mounts_cleanup(void *arg)
 			     path, estr);
 		}
 	}
+
+	msg("shut down path %s", ap->path);
 
 	return;
 }
@@ -1352,6 +1352,23 @@ void *handle_mounts(void *arg)
 		fatal(status);
 */
 	pthread_cleanup_pop(1);
+
+	/*
+	 * A cowboy .. me!
+	 * That noise yu ear aint spuurs sonny!!
+	 *
+	 * The libkrb5support destructor called indirectly through
+	 * libgssapi_krb5 which is used bt libkrb5 (somehow) must run
+	 * to completion before the last thread using it exits so
+	 * that it's per thread data keys are deleted or we get a
+	 * little segfault at exit. So much for dlclose being
+	 * syncronous.
+	 *
+	 * So, the solution is a recipe for disaster.
+	 * Hope we don't get a really busy system!
+	 */
+	/* sleep(1); */
+	sched_yield();
 
 	return NULL;
 }

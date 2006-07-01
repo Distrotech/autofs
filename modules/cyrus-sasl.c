@@ -72,6 +72,8 @@
  */
 static const char *krb5ccenv = "KRB5CCNAME";
 static const char *krb5ccval = "MEMORY:_autofstkt";
+static pthread_mutex_t krb5cc_mutex = PTHREAD_MUTEX_INITIALIZER;
+static unsigned int krb5cc_in_use = 0;
 
 static int sasl_log_func(void *, int, const char *);
 static int getpass_func(sasl_conn_t *, void *, int, sasl_secret_t **);
@@ -378,6 +380,7 @@ sasl_do_kinit(struct lookup_context *ctxt)
 	krb5_principal tgs_princ, krb5_client_princ = ctxt->krb5_client_princ;
 	krb5_creds my_creds;
 	char *tgs_name;
+	int status;
 
 	if (ctxt->kinit_done)
 		return 0;
@@ -484,9 +487,20 @@ sasl_do_kinit(struct lookup_context *ctxt)
 		goto out_cleanup_unparse;
 	}
 
-	/* tell the cache what the default principal is */
-	ret = krb5_cc_initialize(ctxt->krb5ctxt,
+
+	status = pthread_mutex_lock(&krb5cc_mutex);
+	if (status)
+		fatal(status);
+
+	if (krb5cc_in_use++ == 0)
+		/* tell the cache what the default principal is */
+		ret = krb5_cc_initialize(ctxt->krb5ctxt,
 				 ctxt->krb5_ccache, krb5_client_princ);
+
+	status = pthread_mutex_unlock(&krb5cc_mutex);
+	if (status)
+		fatal(status);
+
 	if (ret) {
 		error(LOGOPT_ANY,
 		      "krb5_cc_initialize failed with error %d", ret);
@@ -518,10 +532,21 @@ sasl_do_kinit(struct lookup_context *ctxt)
 out_cleanup_unparse:
 	krb5_free_unparsed_name(ctxt->krb5ctxt, tgs_name);
 out_cleanup_cc:
-	ret = krb5_cc_destroy(ctxt->krb5ctxt, ctxt->krb5_ccache);
+	status = pthread_mutex_lock(&krb5cc_mutex);
+	if (status)
+		fatal(status);
+
+	if (krb5cc_in_use)
+		ret = krb5_cc_close(ctxt->krb5ctxt, ctxt->krb5_ccache);
+	else
+		ret = krb5_cc_destroy(ctxt->krb5ctxt, ctxt->krb5_ccache);
 	if (ret)
 		warn(LOGOPT_ANY,
 		     "krb5_cc_destroy failed with non-fatal error %d", ret);
+
+	status = pthread_mutex_unlock(&krb5cc_mutex);
+	if (status)
+		fatal(status);
 
 	krb5_free_context(ctxt->krb5ctxt);
 
@@ -731,7 +756,7 @@ autofs_sasl_init(LDAP *ldap, struct lookup_context *ctxt)
 void
 autofs_sasl_done(struct lookup_context *ctxt)
 {
-	int ret;
+	int status, ret;
 
 	if (ctxt && ctxt->sasl_conn) {
 		sasl_dispose(&ctxt->sasl_conn);
@@ -739,12 +764,22 @@ autofs_sasl_done(struct lookup_context *ctxt)
 	}
 
 	if (ctxt->kinit_successful) {
+		status = pthread_mutex_lock(&krb5cc_mutex);
+		if (status)
+			fatal(status);
 
-		ret = krb5_cc_destroy(ctxt->krb5ctxt, ctxt->krb5_ccache);
+		if (--krb5cc_in_use)
+			ret = krb5_cc_close(ctxt->krb5ctxt, ctxt->krb5_ccache);
+		else 
+			ret = krb5_cc_destroy(ctxt->krb5ctxt, ctxt->krb5_ccache);
 		if (ret)
 			warn(LOGOPT_ANY,
 			     "krb5_cc_destroy failed with non-fatal error %d",
 			     ret);
+
+		status = pthread_mutex_unlock(&krb5cc_mutex);
+		if (status)
+			fatal(status);
 
 		krb5_free_context(ctxt->krb5ctxt);
 		if (unsetenv(krb5ccenv) != 0)
