@@ -160,7 +160,8 @@ LDAP *init_ldap_connection(struct lookup_context *ctxt)
 			}
 			ctxt->use_tls = LDAP_TLS_DONT_USE;
 			ldap = init_ldap_connection(ctxt);
-			ctxt->use_tls = LDAP_TLS_INIT;
+			if (ldap)
+				ctxt->use_tls = LDAP_TLS_INIT;
 			return ldap;
 		}
 		ctxt->use_tls = LDAP_TLS_RELEASE;
