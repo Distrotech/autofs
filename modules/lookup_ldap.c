@@ -285,7 +285,7 @@ int parse_ldap_config(struct lookup_context *ctxt)
 	memset(&st, 0, sizeof(st));
 	if (stat(auth_conf, &st) == -1 || st.st_size == 0) {
 		/* Auth config doesn't exist so disable TLS and auth */
-		if (errno == EEXIST) {
+		if (errno == ENOENT) {
 			ctxt->auth_conf = auth_conf;
 			ctxt->use_tls = LDAP_TLS_DONT_USE;
 			ctxt->tls_required = LDAP_TLS_DONT_USE;
