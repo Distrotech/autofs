@@ -5,6 +5,7 @@
 - workaround segfaults at exit after using GSSAPI library.
 - fix not checking return in init_ldap_connection (Jeff Moyer).
 - correct test for existence of auth config file.
+- correct shutdown log message print.
 
 29/6/2006 autofs-5.0.0_beta6
 ----------------------------

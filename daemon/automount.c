@@ -1192,13 +1192,13 @@ static void handle_mounts_cleanup(void *arg)
 	struct autofs_point *ap;
 	char path[PATH_MAX + 1];
 	char buf[MAX_ERR_BUF];
+	unsigned int clean = 0;
 
 	ap = (struct autofs_point *) arg;
 
+	strcpy(path, ap->path);
 	if (!ap->submount && strcmp(ap->path, "/-") && ap->dir_created)
-		strcpy(path, ap->path);
-	else
-		*path = '\0';
+		clean = 1;
 
 	/* Make sure alarms are cleared */
 	alarm_delete(ap);
@@ -1216,7 +1216,7 @@ static void handle_mounts_cleanup(void *arg)
 	if (master_list_empty(master))
 		kill(getpid(), SIGTERM);
 
-	if (*path) {
+	if (clean) {
 		if (rmdir(path) == -1) {
 			char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
 			warn(LOGOPT_NONE, "failed to remove dir %s: %s",
@@ -1224,7 +1224,7 @@ static void handle_mounts_cleanup(void *arg)
 		}
 	}
 
-	msg("shut down path %s", ap->path);
+	msg("shut down path %s", path);
 
 	return;
 }
