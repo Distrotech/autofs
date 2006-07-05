@@ -420,7 +420,7 @@ int parse_ldap_config(struct lookup_context *ctxt)
 	}
 
 	ret = get_property(root, "authtype", &authtype);
-	if (ret != 0 || (!authtype && auth_required)) {
+	if (ret != 0) {
 		error(LOGOPT_ANY,
 		      MODPREFIX
 		      "Failed read the authtype property from the "
@@ -510,6 +510,9 @@ int auth_init(struct lookup_context *ctxt)
 	ret = parse_ldap_config(ctxt);
 	if (ret)
 		return -1;
+
+	if (!ctxt->auth_required)
+		return 0;
 
 	ldap = init_ldap_connection(ctxt);
 	if (!ldap)

@@ -6,6 +6,7 @@
 - fix not checking return in init_ldap_connection (Jeff Moyer).
 - correct test for existence of auth config file.
 - correct shutdown log message print.
+- correct auth init test when no credentials required.
 
 29/6/2006 autofs-5.0.0_beta6
 ----------------------------
