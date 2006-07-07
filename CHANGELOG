@@ -8,6 +8,7 @@
 - correct shutdown log message print.
 - correct auth init test when no credentials required.
 - correct auto.net installed as auto.smb.
+- update LDAP auth - add autodectect option.
 
 29/6/2006 autofs-5.0.0_beta6
 ----------------------------

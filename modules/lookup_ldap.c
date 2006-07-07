@@ -184,7 +184,8 @@ static LDAP *do_connect(struct lookup_context *ctxt)
 	debug(LOGOPT_NONE, "auth_required: %d, sasl_mech %s",
 	      ctxt->auth_required, ctxt->sasl_mech);
 
-	if (ctxt->auth_required || ctxt->sasl_mech) {
+	if (ctxt->sasl_mech ||
+	   (ctxt->auth_required & (LDAP_AUTH_REQUIRED|LDAP_AUTH_AUTODETECT))) {
 		rv = autofs_sasl_bind(ldap, ctxt);
 		debug(LOGOPT_NONE, MODPREFIX
 		      "autofs_sasl_bind returned %d", rv);
@@ -258,7 +259,8 @@ int authtype_requires_creds(const char *authtype)
 int parse_ldap_config(struct lookup_context *ctxt)
 {
 	int          ret = 0, fallback = 0;
-	unsigned int auth_required = 0, tls_required = 0, use_tls = 0;
+	unsigned int auth_required = LDAP_AUTH_NOTREQUIRED;
+	unsigned int tls_required = 0, use_tls = 0;
 	struct stat  st;
 	xmlDocPtr    doc = NULL;
 	xmlNodePtr   root = NULL;
@@ -289,7 +291,7 @@ int parse_ldap_config(struct lookup_context *ctxt)
 			ctxt->auth_conf = auth_conf;
 			ctxt->use_tls = LDAP_TLS_DONT_USE;
 			ctxt->tls_required = LDAP_TLS_DONT_USE;
-			ctxt->auth_required = 0;
+			ctxt->auth_required = LDAP_AUTH_NOTREQUIRED;
 			ctxt->sasl_mech = NULL;
 			ctxt->user = NULL;
 			ctxt->secret = NULL;
@@ -402,17 +404,19 @@ int parse_ldap_config(struct lookup_context *ctxt)
 	}
 
 	if (!authrequired)
-		auth_required = 0;
+		auth_required = LDAP_AUTH_NOTREQUIRED;
 	else {
 		if (!strcasecmp(authrequired, "yes"))
-			auth_required = 1;
+			auth_required = LDAP_AUTH_REQUIRED;
 		else if (!strcasecmp(authrequired, "no"))
-			auth_required = 0;
+			auth_required = LDAP_AUTH_NOTREQUIRED;
+		else if (!strcasecmp(authrequired, "autodetect"))
+			auth_required = LDAP_AUTH_AUTODETECT;
 		else {
 			error(LOGOPT_ANY,
 			      MODPREFIX
 			      "The authrequired property must have value "
-			      "\"yes\" or \"no\".");
+			      "\"yes\", \"no\" or \"autodetect\".");
 			ret = -1;
 			goto out;
 		}
@@ -511,7 +515,7 @@ int auth_init(struct lookup_context *ctxt)
 	if (ret)
 		return -1;
 
-	if (!ctxt->auth_required)
+	if (ctxt->auth_required & LDAP_AUTH_NOTREQUIRED)
 		return 0;
 
 	ldap = init_ldap_connection(ctxt);
@@ -530,6 +534,11 @@ int auth_init(struct lookup_context *ctxt)
 	unbind_ldap_connection(ldap, ctxt);
 	if (ret) {
 		ctxt->sasl_mech = NULL;
+		if (ctxt->auth_required & LDAP_AUTH_AUTODETECT) {
+			warn(LOGOPT_NONE,
+			     "no authentication mechanisms auto detected.");
+			return 0;
+		}
 		return -1;
 	}
 
@@ -880,7 +889,7 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 	 * check by binding to the server temporarily.
 	 */
 	ret = auth_init(ctxt);
-	if (ret && ctxt->auth_required) {
+	if (ret && (ctxt->auth_required & LDAP_AUTH_REQUIRED)) {
 		error(LOGOPT_ANY, MODPREFIX
 		      "cannot initialize authentication setup");
 		free_context(ctxt);

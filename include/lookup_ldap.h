@@ -55,6 +55,10 @@ struct lookup_context {
 #define LDAP_TLS_INIT		1
 #define LDAP_TLS_RELEASE	2
 
+#define LDAP_AUTH_NOTREQUIRED	0x0001
+#define LDAP_AUTH_REQUIRED	0x0002
+#define LDAP_AUTH_AUTODETECT	0x0004
+
 /* lookup_ldap.c */
 LDAP *init_ldap_connection(struct lookup_context *ctxt);
 int unbind_ldap_connection(LDAP *ldap, struct lookup_context *ctxt);
