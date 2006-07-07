@@ -166,7 +166,7 @@ auto.smb:
 		echo "Found existing backup of sample map \"auto.smb\"." ; \
 		echo "Installed package sample as \"auto.smb.new\"." ; \
 	else \
-		install -v auto.net -m 755 $(SMB) \
+		install -v auto.smb -m 755 $(SMB) \
 				$(INSTALLROOT)$(autofsmapdir)/auto.smb ; \
 		echo "Installed package sample map as \"auto.smb\"." ; \
 		if test -z "$(SEXISTS)" ; \
