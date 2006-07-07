@@ -171,3 +171,20 @@ else
   XML_FLAGS=`$XML_CONFIG --cflags`
 fi])
 
+dnl --------------------------------------------------------------------------
+dnl AF_CHECK_LIBHESIOD
+dnl
+dnl Check for lib hesiod
+dnl --------------------------------------------------------------------------
+AC_DEFUN([AF_CHECK_LIBHESIOD],
+[AC_MSG_CHECKING(for libhesiod)
+LIBS="$LIBHESIOD -lhesiod -lresolv"
+AC_TRY_LINK(
+  [ #include <hesiod.h> ],
+  [ char *c; hesiod_init(&c); ],
+  [ HAVE_HESIOD=1
+    LIBHESIOD="$LIBHESIOD -lhesiod -lresolv"
+    AC_MSG_RESULT(yes) ],
+  [ AC_MSG_RESULT(no) ])
+])
+

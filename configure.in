@@ -143,8 +143,7 @@ AC_ARG_WITH(hesiod,
 if test -z "$HAVE_HESIOD"
 then
 	HAVE_HESIOD=0
-	AC_CHECK_LIB(hesiod, hesiod_resolve, HAVE_HESIOD=1 LIBHESIOD="$LIBHESIOD -lhesiod", ,
-		     $LIBRESOLV)
+	AF_CHECK_LIBHESIOD()
 	if test "$HAVE_HESIOD" == "1"; then
 		AC_DEFINE(WITH_HESIOD,1,
 			[Define if using Hesiod as a source of automount maps])
