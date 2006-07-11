@@ -155,8 +155,11 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 			     what, fullpath, NULL);
 
 		if (err) {
-			if ((!ap->ghost && name_len) || !existed)
-				rmdir_path(ap, name);
+			if ((!ap->ghost && name_len) || !existed) {
+				if (!chdir(ap->path))
+					rmdir_path(ap, name);
+				err = chdir("/");
+			}
 			return 1;
 		} else {
 			debug(ap->logopt,
@@ -199,9 +202,11 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 			      fullpath, what);
 			if (ap->ghost && !status)
 				mkdir_path(fullpath, 0555);
-			else
-				rmdir_path(ap, fullpath);
-
+			else {
+				if (!chdir(ap->path))
+					rmdir_path(ap, name);
+				err = chdir("/");
+			}
 			return 1;
 		} else {
 			debug(ap->logopt,

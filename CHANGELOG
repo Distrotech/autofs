@@ -10,6 +10,7 @@
 - correct auto.net installed as auto.smb.
 - update LDAP auth - add autodectect option.
 - correct test for libhesiod.
+- correct directory cleanup in mount modules.
 
 29/6/2006 autofs-5.0.0_beta6
 ----------------------------

@@ -63,7 +63,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 	struct host *this, *hosts = NULL;
 	unsigned int vers;
 	char *nfsoptions = NULL;
-	int len, rlen, status, existed = 1;
+	int len, rlen, status, err, existed = 1;
 	int nosymlink = 0;
 	int ro = 0;            /* Set if mount bind should be read-only */
 
@@ -182,7 +182,6 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 
 	this = hosts;
 	while (this) {
-		int err;
 		char *loc;
 
 		if (is_mounted(_PATH_MOUNTED, fullpath, MNTS_REAL)) {
@@ -255,8 +254,11 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 	free_host_list(&hosts);
 
 	/* If we get here we've failed to complete the mount */
-	if ((!ap->ghost && name_len) || !existed)
-		rmdir_path(ap, name);
+	if ((!ap->ghost && name_len) || !existed) {
+		if (!chdir(ap->path))
+			rmdir_path(ap, name);
+		err = chdir("/");
+	}
 
 	error(ap->logopt,
 	      MODPREFIX "nfs: mount failure %s on %s", what, fullpath);
