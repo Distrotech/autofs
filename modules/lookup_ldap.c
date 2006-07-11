@@ -1281,6 +1281,7 @@ static int lookup_one(struct autofs_point *ap,
 {
 	struct map_source *source = ap->entry->current;
 	struct mapent_cache *mc = source->mc;
+	struct mapent me;
 	int rv, i, l, ql, count;
 	char buf[MAX_ERR_BUF];
 	time_t age = time(NULL);
@@ -1293,7 +1294,8 @@ static int lookup_one(struct autofs_point *ap,
 	int scope = LDAP_SCOPE_SUBTREE;
 	LDAP *ldap;
 	char *mapent = NULL;
-	int ret = CHE_OK;
+	unsigned int wild = 0;
+	int ret = CHE_MISSING;
 
 	if (ctxt == NULL) {
 		crit(ap->logopt, MODPREFIX "context was NULL");
@@ -1312,7 +1314,7 @@ static int lookup_one(struct autofs_point *ap,
 		*qKey = '/';
 
 	/* Build a query string. */
-	l = strlen(class) + strlen(entry) + strlen(qKey) + 21;
+	l = strlen(class) + 2*strlen(entry) + strlen(qKey) + 29;
 
 	query = alloca(l);
 	if (query == NULL) {
@@ -1325,7 +1327,8 @@ static int lookup_one(struct autofs_point *ap,
 	 * Look for an entry in class under ctxt-base
 	 * whose entry is equal to qKey.
 	 */
-	ql = sprintf(query, "(&(objectclass=%s)(%s=%s))", class, entry, qKey);
+	ql = sprintf(query,
+	      "(&(objectclass=%s)(|(%s=%s)(%s=/)))", class, entry, qKey, entry);
 	if (ql >= l) {
 		error(ap->logopt,
 		      MODPREFIX "error forming query string");
@@ -1361,88 +1364,101 @@ static int lookup_one(struct autofs_point *ap,
 		return CHE_MISSING;
 	}
 
-	keyValue = ldap_get_values(ldap, e, entry);
+	while (e) {
+		keyValue = ldap_get_values(ldap, e, entry);
 
-	/* By definition keys must be unique within each map entry */
-	if (ldap_count_values(keyValue) > 1) {
-		error(ap->logopt,
-		      MODPREFIX "key %s has duplicate entries", *keyValue);
-		ldap_value_free(keyValue);
-		ldap_msgfree(result);
-		unbind_ldap_connection(ldap, ctxt);
-		return CHE_FAIL;
-	}
+		if (!keyValue || !*keyValue) {
+			e = ldap_next_entry(ldap, e);
+			continue;
+		}
 
-	debug(ap->logopt, MODPREFIX "examining first entry");
+		/* By definition keys must be unique within each map entry */
+		if (ldap_count_values(keyValue) > 1) {
+			error(ap->logopt,
+			      MODPREFIX "key %s has duplicate entries",
+			      *keyValue);
+			ret = CHE_FAIL;
+			goto next;
+		}
 
-	values = ldap_get_values(ldap, e, info);
-	if (!values || !*values) {
-		debug(ap->logopt,
-		      MODPREFIX "no %s defined for %s", info, query);
-		ldap_value_free(keyValue);
-		ldap_msgfree(result);
-		unbind_ldap_connection(ldap, ctxt);
-		return CHE_MISSING;
-	}
+		debug(ap->logopt, MODPREFIX "examining first entry");
 
-	count = ldap_count_values(values);
-	for (i = 0; i < count; i++) {
-		int v_len = strlen(values[i]);
+		values = ldap_get_values(ldap, e, info);
+		if (!values || !*values) {
+			debug(ap->logopt,
+			      MODPREFIX "no %s defined for %s", info, query);
+			goto next;
+		}
 
-		if (!mapent) {
-			mapent = malloc(v_len + 1);
+		count = ldap_count_values(values);
+		for (i = 0; i < count; i++) {
+			int v_len = strlen(values[i]);
+
 			if (!mapent) {
-				char *estr;
-				estr = strerror_r(errno, buf, MAX_ERR_BUF);
-				error(ap->logopt,
-				      MODPREFIX "malloc: %s", estr);
-				continue;
-			}
-			strcpy(mapent, values[i]);
-		} else {
-			int new_size = strlen(mapent) + v_len + 2;
-			char *new_me;
-			new_me = realloc(mapent, new_size);
-			if (new_me) {
-				mapent = new_me;
-				strcat(mapent, " ");
-				strcat(mapent, values[i]);
+				mapent = malloc(v_len + 1);
+				if (!mapent) {
+					char *estr;
+					estr = strerror_r(errno, buf, MAX_ERR_BUF);
+					error(ap->logopt,
+					      MODPREFIX "malloc: %s", estr);
+					continue;
+				}
+				strcpy(mapent, values[i]);
 			} else {
-				char *estr;
-				estr = strerror_r(errno, buf, MAX_ERR_BUF);
-				error(ap->logopt,
-				      MODPREFIX "realloc: %s", estr);
+				int new_size = strlen(mapent) + v_len + 2;
+				char *new_me;
+				new_me = realloc(mapent, new_size);
+				if (new_me) {
+					mapent = new_me;
+					strcat(mapent, " ");
+					strcat(mapent, values[i]);
+				} else {
+					char *estr;
+					estr = strerror_r(errno, buf, MAX_ERR_BUF);
+					error(ap->logopt,
+					      MODPREFIX "realloc: %s", estr);
+				}
 			}
 		}
+		ldap_value_free(values);
+
+		if (**keyValue == '/') {
+			if (ap->type == LKP_INDIRECT) {
+				if (strlen(*keyValue) == 1) {
+					wild = 1;
+					**keyValue = '*';
+					cache_writelock(mc);
+					cache_update(mc,
+						source, *keyValue, mapent, age);
+					cache_unlock(mc);
+				}
+				goto next;
+			}
+		} else {
+			if (ap->type == LKP_DIRECT)
+				goto next;
+		}
+
+		cache_writelock(mc);
+		ret = cache_update(mc, source, *keyValue, mapent, age);
+		cache_unlock(mc);
+next:
+		if (mapent) {
+			free(mapent);
+			mapent = NULL;
+		}
+
+		ldap_value_free(keyValue);
+		e = ldap_next_entry(ldap, e);
 	}
-	ldap_value_free(values);
 
-	if (**keyValue == '/' && strlen(*keyValue) == 1)
-		**keyValue = '*';
-
-	if (ap->type == LKP_INDIRECT && **keyValue == '/') {
-		ret = CHE_MISSING;
-		goto done;
-	}
-
-	if (ap->type == LKP_DIRECT && **keyValue != '/') {
-		ret = CHE_MISSING;
-		goto done;
-	}
-
-	cache_writelock(mc);
-	ret = cache_update(mc, source, *keyValue, mapent, age);
-	cache_unlock(mc);
-done:
-	if (mapent) {
-		free(mapent);
-		mapent = NULL;
-	}
-
-	/* Clean up. */
-	ldap_value_free(keyValue);
 	ldap_msgfree(result);
 	unbind_ldap_connection(ldap, ctxt);
+
+	cache_writelock(mc);
+	if (!wild && cache_lookup(mc, "*"))
+		cache_delete(mc, "*");
+	cache_unlock(mc);
 
 	return ret;
 }
@@ -1480,19 +1496,9 @@ static int check_map_indirect(struct autofs_point *ap,
 	}
 
 	if (ret == CHE_MISSING) {
-		char *wkey = "/";
-		int wild = CHE_MISSING;
-
-		wild = lookup_one(ap, wkey, 1, ctxt);
-		if (wild == CHE_UPDATED || CHE_OK)
-			return NSS_STATUS_SUCCESS;
-
-		pthread_cleanup_push(cache_lock_cleanup, mc);
 		cache_writelock(mc);
-		if (wild == CHE_MISSING)
-			cache_delete(mc, "*");
-
-		if (cache_delete(mc, key) && wild & (CHE_MISSING | CHE_FAIL))
+		pthread_cleanup_push(cache_lock_cleanup, mc);
+		if (cache_delete(mc, key))
 			rmdir_path(ap, key);
 		pthread_cleanup_pop(1);
 	}
@@ -1514,8 +1520,12 @@ static int check_map_indirect(struct autofs_point *ap,
 			fatal(status);
 	}
 
-	if (ret == CHE_MISSING)
+	cache_readlock(mc);
+	if (ret == CHE_MISSING && !cache_lookup(mc, "*")) {
+		cache_unlock(mc);
 		return NSS_STATUS_NOTFOUND;
+	}
+	cache_unlock(mc);
 
 	return NSS_STATUS_SUCCESS;
 }
