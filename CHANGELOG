@@ -12,6 +12,7 @@
 - correct test for libhesiod.
 - correct directory cleanup in mount modules.
 - merge key and wildcard LDAP query for lookups.
+- add cacheing of negative lookups to reduce unneeded map lookups.
 
 29/6/2006 autofs-5.0.0_beta6
 ----------------------------

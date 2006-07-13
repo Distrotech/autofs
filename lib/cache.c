@@ -408,6 +408,7 @@ int cache_add(struct mapent_cache *mc, struct map_source *source,
 		me->mapent = NULL;
 
 	me->age = age;
+	me->status = 0;
 	me->source = source;
 	INIT_LIST_HEAD(&me->ino_index);
 	INIT_LIST_HEAD(&me->multi_list);

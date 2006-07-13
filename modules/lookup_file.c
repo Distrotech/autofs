@@ -898,6 +898,15 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 	if (key_len > KEY_MAX_LEN)
 		return NSS_STATUS_NOTFOUND;
 
+	/* Check if we recorded a mount fail for this key */
+	cache_readlock(mc);
+	me = cache_lookup_distinct(mc, key);
+	if (me && me->status >= time(NULL)) {
+		cache_unlock(mc);
+		return NSS_STATUS_NOTFOUND;
+	}
+	cache_unlock(mc);
+
 	/*
 	 * We can't check the direct mount map as if it's not in
 	 * the map cache already we never get a mount lookup, so
@@ -944,6 +953,21 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 		debug(ap->logopt, MODPREFIX "%s -> %s", key, mapent);
 		ret = ctxt->parse->parse_mount(ap, key, key_len,
 					mapent, ctxt->parse->context);
+		if (ret) {
+			time_t now = time(NULL);
+			int status = CHE_OK;
+
+			cache_writelock(mc);
+			me = cache_lookup_distinct(mc, key);
+			if (!me)
+				status = cache_update(mc,
+						source, key, NULL, now);
+			if (status != CHE_FAIL) {
+				me = cache_lookup_distinct(mc, key);
+				me->status = now + NEGATIVE_TIMEOUT;
+			}
+			cache_unlock(mc);
+		}
 	}
 
 	if (ret)

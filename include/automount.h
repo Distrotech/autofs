@@ -121,7 +121,8 @@ struct autofs_point;
 #define CHE_MISSING	0x0008
 #define CHE_COMPLETED	0x0010
 
-#define HASHSIZE      77
+#define HASHSIZE		77
+#define NEGATIVE_TIMEOUT	10
 
 struct mapent_cache {
 	pthread_rwlock_t rwlock;
@@ -141,6 +142,8 @@ struct mapent {
 	char *key;
 	char *mapent;
 	time_t age;
+	/* Time of last mount fail */
+	unsigned int status;
 	/* For direct mounts per entry context is kept here */
 	int dir_created;
 	/* File descriptor for ioctls */
