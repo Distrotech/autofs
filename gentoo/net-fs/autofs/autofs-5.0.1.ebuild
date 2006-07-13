@@ -9,7 +9,7 @@ IUSE="ldap"
 DESCRIPTION="Kernel based automounter"
 HOMEPAGE="http://www.linux-consulting.com/Amd_AutoFS/autofs.html"
 SRC_URI_BASE="mirror://kernel/linux/daemons/${PN}/v4"
-SRC_URI="${SRC_URI_BASE}/${P}.tar.bz2"
+SRC_URI="${SRC_URI_BASE}/${P}-rc1.tar.bz2"
 DEPEND="virtual/libc
 		ldap? ( >=net-nds/openldap-2.0 )"
 SLOT="0"
@@ -17,7 +17,7 @@ LICENSE="GPL-2"
 KEYWORDS="~x86 ~alpha ~ppc ~sparc ~amd64 ~ia64 ~ppc64"
 
 src_unpack() {
-	unpack ${P}.tar.bz2
+	unpack ${P}-rc1.tar.bz2
 #	PATCH_LIST=""
 
 #	for i in ${PATCH_LIST}; do

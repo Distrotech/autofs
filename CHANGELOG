@@ -1,5 +1,5 @@
-?/7/2006 autofs-5.0.0
----------------------
+13/7/2006 autofs-5.0.1 rc1
+--------------------------
 - merge LDAP authentication update for GSSAPI (Jeff Moyer).
 - update default auth config to add options documenetation (Jeff Moyer).
 - workaround segfaults at exit after using GSSAPI library.
@@ -13,6 +13,7 @@
 - correct directory cleanup in mount modules.
 - merge key and wildcard LDAP query for lookups.
 - add cacheing of negative lookups to reduce unneeded map lookups.
+- version number change to allow update from beta for rpm packages.
 
 29/6/2006 autofs-5.0.0_beta6
 ----------------------------

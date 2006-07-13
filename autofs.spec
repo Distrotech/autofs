@@ -12,13 +12,13 @@
 
 Summary: A tool from automatically mounting and umounting filesystems.
 Name: autofs
-%define version 5.0.0_beta6
-%define release 1
+%define version 5.0.1
+%define release 0.rc1.1
 Version: %{version}
 Release: %{release}
 License: GPL
 Group: System Environment/Daemons
-Source: ftp://ftp.kernel.org/pub/linux/daemons/autofs/v4/autofs-%{version}.tar.gz
+Source: ftp://ftp.kernel.org/pub/linux/daemons/autofs/v4/autofs-%{version}-rc1.tar.gz
 Buildroot: %{_tmppath}/%{name}-tmp
 BuildPrereq: autoconf, hesiod-devel, openldap-devel, bison, flex, cyrus-sasl-devel
 Prereq: chkconfig
@@ -108,6 +108,10 @@ fi
 %{_mandir}/*/*
 
 %changelog
+* Thu Jul 13 2006 Ian Kent <raven@themaw.net>
+- Rename package to version 5.0.1 to prevent problems when upgrading
+  from packages labeled with beta.
+
 * Tue Jun 29 2006 Ian Kent <raven@themaw.net>
 - Update package to version 5.0.0_beta6.
 
