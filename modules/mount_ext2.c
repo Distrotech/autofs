@@ -1,4 +1,3 @@
-#ident "$Id: mount_ext2.c,v 1.25 2006/03/29 10:32:36 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  mount_ext2.c - module for Linux automountd to mount ext2 filesystems

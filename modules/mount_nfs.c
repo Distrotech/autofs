@@ -1,4 +1,3 @@
-#ident "$Id: mount_nfs.c,v 1.36 2006/03/31 18:26:16 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  * mount_nfs.c - Module for Linux automountd to mount an NFS filesystem,
@@ -47,7 +46,7 @@ int mount_init(void **context)
 {
 	/* Make sure we have the local mount method available */
 	if (!mount_bind) {
-		if ((mount_bind = open_mount("bind", MODPREFIX)));
+		if ((mount_bind = open_mount("bind", MODPREFIX)))
 			init_ctr++;
 	} else
 		init_ctr++;
@@ -80,13 +79,13 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 	if (options) {
 		const char *comma;
 		char *nfsp;
-		int len = strlen(options) + 1;
+		int o_len = strlen(options) + 1;
 
-		nfsp = nfsoptions = alloca(len + 1);
+		nfsp = nfsoptions = alloca(o_len + 1);
 		if (!nfsoptions)
 			return 1;
 
-		memset(nfsoptions, '\0', len + 1);
+		memset(nfsoptions, '\0', o_len + 1);
 
 		for (comma = options; *comma != '\0';) {
 			const char *cp;

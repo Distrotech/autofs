@@ -1,4 +1,3 @@
-#ident "$Id: parse_hesiod.c,v 1.9 2006/03/11 06:02:48 raven Exp $"
 /*
  * parse_hesiod.c
  *

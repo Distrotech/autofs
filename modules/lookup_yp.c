@@ -1,4 +1,3 @@
-#ident "$Id: lookup_yp.c,v 1.30 2006/03/31 18:26:16 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup_yp.c - module for Linux automountd to access a YP (NIS)
@@ -565,9 +564,9 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 	me = cache_lookup(mc, key);
 	if (me) {
 		pthread_cleanup_push(cache_lock_cleanup, mc);
-		mapent = alloca(strlen(me->mapent) + 1);
-		mapent_len = sprintf(mapent, "%s", me->mapent);
-		mapent[mapent_len] = '\0';
+		mapent_len = strlen(me->mapent);
+		mapent = alloca(mapent_len + 1);
+		strcpy(mapent, me->mapent);
 		pthread_cleanup_pop(0);
 	}
 	cache_unlock(mc);

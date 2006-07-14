@@ -1,4 +1,3 @@
-#ident "$Id: macros.c,v 1.1 2006/03/09 23:01:01 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  macros.c - module to handle macro substitution variables for map

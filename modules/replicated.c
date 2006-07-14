@@ -75,17 +75,17 @@
 static unsigned int get_proximity(const char *host_addr, int addr_len)
 {
 	struct sockaddr_in *msk_addr, *if_addr;
-	struct in_addr *h_addr;
-	char tmp[20], buf[MAX_ERR_BUF], *estr, *ptr;
+	struct in_addr *hst_addr;
+	char tmp[20], buf[MAX_ERR_BUF], *ptr;
 	struct ifconf ifc;
 	struct ifreq *ifr, nmptr;
 	int sock, ret, i;
 	uint32_t mask, ha, ia;
 
 	memcpy(tmp, host_addr, addr_len);
-	h_addr = (struct in_addr *) tmp;
+	hst_addr = (struct in_addr *) tmp;
 
-	ha = ntohl((uint32_t) h_addr->s_addr);
+	ha = ntohl((uint32_t) hst_addr->s_addr);
 
 	sock = socket(AF_INET, SOCK_DGRAM, 0);
 	if (sock < 0) {
@@ -98,7 +98,7 @@ static unsigned int get_proximity(const char *host_addr, int addr_len)
 	ifc.ifc_req = (struct ifreq *) buf;
 	ret = ioctl(sock, SIOCGIFCONF, &ifc);
 	if (ret == -1) {
-		estr = strerror_r(errno, buf, MAX_ERR_BUF);
+		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
 		error(LOGOPT_ANY, "ioctl: %s", estr);
 		close(sock);
 		return PROXIMITY_ERROR;
@@ -116,7 +116,7 @@ static unsigned int get_proximity(const char *host_addr, int addr_len)
 		switch (ifr->ifr_addr.sa_family) {
 		case AF_INET:
 			if_addr = (struct sockaddr_in *) &ifr->ifr_addr;
-			ret = memcmp(&if_addr->sin_addr, h_addr, addr_len);
+			ret = memcmp(&if_addr->sin_addr, hst_addr, addr_len);
 			if (!ret) {
 				close(sock);
 				return PROXIMITY_LOCAL;
@@ -147,7 +147,7 @@ static unsigned int get_proximity(const char *host_addr, int addr_len)
 			nmptr = *ifr;
 			ret = ioctl(sock, SIOCGIFNETMASK, &nmptr);
 			if (ret == -1) {
-				estr = strerror_r(errno, buf, MAX_ERR_BUF);
+				char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
 				error(LOGOPT_ANY, "ioctl: %s", estr);
 				return PROXIMITY_ERROR;
 			}
@@ -696,7 +696,7 @@ static int add_host_addrs(struct host **list, const char *host, unsigned int wei
 	struct hostent *result;
 	struct sockaddr_in saddr;
 	char buf[MAX_IFC_BUF], **haddr;
-	int h_errno, ret;
+	int ghn_errno, ret;
 	struct host *new;
 	unsigned int prx;
 
@@ -721,14 +721,14 @@ static int add_host_addrs(struct host **list, const char *host, unsigned int wei
 	memset(&he, 0, sizeof(struct hostent));
 
 	ret = gethostbyname_r(host, phe,
-			buf, MAX_IFC_BUF, &result, &h_errno);
+			buf, MAX_IFC_BUF, &result, &ghn_errno);
 	if (ret || !result) {
-		if (h_errno == -1)
+		if (ghn_errno == -1)
 			error(LOGOPT_ANY,
 			      "host %s: lookup failure %d", host, errno);
 		else
 			error(LOGOPT_ANY,
-			      "host %s: lookup failure %d", host, h_errno);
+			      "host %s: lookup failure %d", host, ghn_errno);
 		return 0;
 	}
 
@@ -778,7 +778,7 @@ static int add_path(struct host *hosts, const char *path, int len)
 int parse_location(struct host **hosts, const char *list)
 {
 	char *str, *p, *delim;
-	unsigned int list_empty = 1;
+	unsigned int empty = 1;
 
 	if (!list)
 		return 0;
@@ -830,7 +830,7 @@ int parse_location(struct host **hosts, const char *list)
 				}
 
 				if (!add_host_addrs(hosts, p, weight)) {
-					if (list_empty) {
+					if (empty) {
 						p = next;
 						continue;
 					}
@@ -850,7 +850,7 @@ int parse_location(struct host **hosts, const char *list)
 					continue;
 				}
 
-				list_empty = 0;
+				empty = 0;
 			}
 		} else {
 			/* syntax error - no mount path */

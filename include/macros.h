@@ -1,4 +1,3 @@
-#ident "$Id: macros.h,v 1.2 2006/03/21 04:28:52 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  macros.h - header file for module to handle macro substitution

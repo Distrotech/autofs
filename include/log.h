@@ -1,4 +1,3 @@
-#ident "$Id: log.h,v 1.1 2006/03/29 10:32:36 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  log.c - applcation logging declarations.

@@ -1,4 +1,3 @@
-#ident "$Id: mount_autofs.c,v 1.25 2006/03/25 05:22:52 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  mount_autofs.c - Module for recursive autofs mounts.

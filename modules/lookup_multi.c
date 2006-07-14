@@ -1,4 +1,3 @@
-#ident "$Id: lookup_multi.c,v 1.15 2006/03/21 04:28:53 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup_multi.c - module for Linux automount to seek multiple lookup

@@ -1,4 +1,3 @@
-#ident "$Id: mounts.c,v 1.24 2006/04/03 08:15:36 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  mounts.c - module for Linux automount mount table lookup functions
@@ -107,7 +106,7 @@ char *make_mnt_name_string(char *path)
 struct mnt_list *get_mnt_list(const char *table, const char *path, int include)
 {
 	FILE *tab;
-	int pathlen = strlen(path);
+	size_t pathlen = strlen(path);
 	struct mntent mnt_wrk;
 	char buf[PATH_MAX * 3];
 	struct mntent *mnt;
@@ -115,7 +114,7 @@ struct mnt_list *get_mnt_list(const char *table, const char *path, int include)
 	struct mnt_list *list = NULL;
 	unsigned long count = 0;
 	char *pgrp;
-	int len;
+	size_t len;
 
 	if (!path || !pathlen || pathlen > PATH_MAX)
 		return NULL;
@@ -301,7 +300,7 @@ int is_mounted(const char *table, const char *path, unsigned int type)
 	return ret;
 }
 
-int has_fstab_option(const char *path, const char *opt)
+int has_fstab_option(const char *opt)
 {
 	struct mntent *mnt;
 	struct mntent mnt_wrk;
@@ -336,8 +335,8 @@ char *find_mnt_ino(const char *table, dev_t dev, ino_t ino)
 	struct mntent *mnt;
 	char buf[PATH_MAX];
 	char *path = NULL;
-	unsigned long l_dev = dev;
-	unsigned long l_ino = ino;
+	unsigned long l_dev = (unsigned long) dev;
+	unsigned long l_ino = (unsigned long) ino;
 	FILE *tab;
 
 	tab = setmntent(table, "r");
@@ -357,14 +356,14 @@ char *find_mnt_ino(const char *table, dev_t dev, ino_t ino)
 		p_dev = strstr(mnt->mnt_opts, "dev=");
 		if (!p_dev)
 			continue;
-		sscanf(p_dev, "dev=%ld", &m_dev);
+		sscanf(p_dev, "dev=%lu", &m_dev);
 		if (m_dev != l_dev)
 			continue;
 
 		p_ino = strstr(mnt->mnt_opts, "ino=");
 		if (!p_ino)
 			continue;
-		sscanf(p_ino, "ino=%ld", &m_ino);
+		sscanf(p_ino, "ino=%lu", &m_ino);
 		if (m_ino == l_ino) {
 			path = strdup(mnt->mnt_dir);
 			break;
@@ -380,8 +379,8 @@ char *get_offset(const char *prefix, char *offset,
 {
 	struct list_head *next;
 	struct mnt_list *this;
-	int plen = strlen(prefix);
-	int len = 0;
+	size_t plen = strlen(prefix);
+	size_t len = 0;
 
 	*offset = '\0';
 	next = *pos ? (*pos)->next : head->next;
@@ -447,7 +446,8 @@ void add_ordered_list(struct mnt_list *ent, struct list_head *head)
 	struct mnt_list *this;
 
 	list_for_each(p, head) {
-		int eq, tlen;
+		size_t tlen;
+		int eq;
 
 		this = list_entry(p, struct mnt_list, ordered);
 		tlen = strlen(this->path);
@@ -746,8 +746,10 @@ int tree_find_mnt_ents(struct mnt_list *mnts, struct list_head *list, const char
 int tree_is_mounted(struct mnt_list *mnts, const char *path)
 {
 	struct list_head *p;
-	LIST_HEAD(list);
+	struct list_head list;
 	int is_mounted = 0;
+
+	INIT_LIST_HEAD(&list);
 
 	if (!tree_find_mnt_ents(mnts, &list, path))
 		return 0;

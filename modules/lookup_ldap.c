@@ -1,4 +1,3 @@
-#ident "$Id: lookup_ldap.c,v 1.40 2006/04/06 20:02:04 raven Exp $"
 /*
  * lookup_ldap.c - Module for Linux automountd to access automount
  *		   maps in LDAP directories.
@@ -55,7 +54,7 @@ int bind_ldap_anonymous(LDAP *ldap, struct lookup_context *ctxt)
 	if (rv != LDAP_SUCCESS) {
 		crit(LOGOPT_ANY,
 		     MODPREFIX "Unable to bind to the LDAP server: "
-		     "%s, error %s", ctxt->server ?: "(default)",
+		     "%s, error %s", ctxt->server ? "" : "(default)",
 		     ldap_err2string(rv));
 		return -1;
 	}
@@ -67,7 +66,7 @@ int unbind_ldap_connection(LDAP *ldap, struct lookup_context *ctxt)
 {
 	int rv;
 
-#if WITH_SASL
+#ifdef WITH_SASL
 	debug(LOGOPT_NONE, "use_tls: %d", ctxt->use_tls);
 	/*
 	 * The OpenSSL library can't handle having its message and error
@@ -135,7 +134,7 @@ LDAP *init_ldap_connection(struct lookup_context *ctxt)
 		     MODPREFIX "failed to set connection timeout to %d",
 		     timeout);
 
-#if WITH_SASL
+#ifdef WITH_SASL
 	if (ctxt->use_tls) {
 		if (ctxt->version == 2) {
 			if (ctxt->tls_required) {
@@ -180,7 +179,7 @@ static LDAP *do_connect(struct lookup_context *ctxt)
 	if (!ldap)
 		return NULL;
 
-#if WITH_SASL
+#ifdef WITH_SASL
 	debug(LOGOPT_NONE, "auth_required: %d, sasl_mech %s",
 	      ctxt->auth_required, ctxt->sasl_mech);
 
@@ -207,7 +206,7 @@ static LDAP *do_connect(struct lookup_context *ctxt)
 	return ldap;
 }
 
-#if WITH_SASL
+#ifdef WITH_SASL
 int get_property(xmlNodePtr node, const char *prop, char **value)
 {
 	xmlChar *ret;
@@ -802,7 +801,7 @@ static int get_query_dn(LDAP *ldap, struct lookup_context *ctxt)
 			      MODPREFIX "error forming query string");
 			return 0;
 		}
-		scope = LDAP_SCOPE_ONE;
+		scope = LDAP_SCOPE_ONELEVEL;
 	} else {
 		if (sprintf(query, "(objectclass=%s)", class) >= l) {
 			debug(LOGOPT_NONE,
@@ -883,7 +882,7 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 		return 1;
 	}
 
-#if WITH_SASL
+#ifdef WITH_SASL
 	/*
 	 * Determine which authentication mechanism to use.  We sanity-
 	 * check by binding to the server temporarily.
@@ -1281,7 +1280,6 @@ static int lookup_one(struct autofs_point *ap,
 {
 	struct map_source *source = ap->entry->current;
 	struct mapent_cache *mc = source->mc;
-	struct mapent me;
 	int rv, i, l, ql, count;
 	char buf[MAX_ERR_BUF];
 	time_t age = time(NULL);
@@ -1480,7 +1478,7 @@ static int check_map_indirect(struct autofs_point *ap,
 		exists = NULL;
 	cache_unlock(mc);
 
-	ret = lookup_one(ap, key, strlen(key), ctxt);
+	ret = lookup_one(ap, key, key_len, ctxt);
 	if (ret == CHE_FAIL)
 		return NSS_STATUS_NOTFOUND;
 
@@ -1590,9 +1588,9 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 	me = cache_lookup(mc, key);
 	if (me) {
 		pthread_cleanup_push(cache_lock_cleanup, mc);
-		mapent = alloca(strlen(me->mapent) + 1);
-		mapent_len = sprintf(mapent, me->mapent);
-		mapent[mapent_len] = '\0';
+		mapent_len = strlen(me->mapent);
+		mapent = alloca(mapent_len + 1);
+		strcpy(mapent, me->mapent);
 		pthread_cleanup_pop(0);
 	}
 	cache_unlock(mc);
@@ -1633,7 +1631,7 @@ int lookup_done(void *context)
 {
 	struct lookup_context *ctxt = (struct lookup_context *) context;
 	int rv = close_parse(ctxt->parse);
-#if WITH_SASL
+#ifdef WITH_SASL
 	EVP_cleanup();
 	ERR_free_strings();
 

@@ -1,4 +1,3 @@
-#ident "$Id: mount_afs.c,v 1.9 2006/03/11 06:02:48 raven Exp $"
 /*
  * mount_afs.c
  *

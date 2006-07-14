@@ -1,4 +1,3 @@
-#ident "$Id: automount.c,v 1.78 2006/04/06 20:02:04 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  automount.c - Linux automounter daemon
@@ -54,10 +53,10 @@ static int *pst_stat = &st_stat;
 /* Attribute to create detached thread */
 pthread_attr_t thread_attr;
 
-struct master_readmap_cond mc = {
-	PTHREAD_MUTEX_INITIALIZER, PTHREAD_COND_INITIALIZER, 0, NULL, 0, 0};
+struct master_readmap_cond mrc = {
+	PTHREAD_MUTEX_INITIALIZER, PTHREAD_COND_INITIALIZER, 0, NULL, 0, 0, 0, 0};
 
-struct startup_cond sc = {
+struct startup_cond suc = {
 	PTHREAD_MUTEX_INITIALIZER, PTHREAD_COND_INITIALIZER, 0, 0};
 
 pthread_key_t key_thread_stdenv_vars;
@@ -70,7 +69,7 @@ pthread_key_t key_thread_stdenv_vars;
 static int umount_all(struct autofs_point *ap, int force);
 
 extern pthread_mutex_t master_mutex;
-extern struct master *master;
+extern struct master *master_list;
 
 int mkdir_path(const char *path, mode_t mode)
 {
@@ -547,7 +546,9 @@ int umount_multi(struct autofs_point *ap, struct mnt_list *mnts, const char *pat
 	int left;
 	struct mnt_list *mptr;
 	struct list_head *p;
-	LIST_HEAD(list);
+	struct list_head list;
+
+	INIT_LIST_HEAD(&list);
 
 	debug(ap->logopt, "path %s incl %d", path, incl);
 
@@ -929,7 +930,7 @@ static void do_master_cleanup_unlock(void *arg)
 {
 	int status;
 
-	status = pthread_mutex_unlock(&mc.mutex);
+	status = pthread_mutex_unlock(&mrc.mutex);
 	if (status)
 		fatal(status);
 
@@ -944,26 +945,26 @@ static void *do_notify_state(void *arg)
 
 	sig = *(int *) arg;
 
-	status = pthread_mutex_lock(&mc.mutex);
+	status = pthread_mutex_lock(&mrc.mutex);
 	if (status)
 		fatal(status);
 
-	master = mc.master;
+	master = mrc.master;
 
 	debug(master->default_logging, "signal %d", sig);
 
-	mc.signaled = 1;
-	status = pthread_cond_signal(&mc.cond);
+	mrc.signaled = 1;
+	status = pthread_cond_signal(&mrc.cond);
 	if (status) {
 		error(master->default_logging,
 		      "failed to signal state notify condition");
-		status = pthread_mutex_unlock(&mc.mutex);
+		status = pthread_mutex_unlock(&mrc.mutex);
 		if (status)
 			fatal(status);
 		pthread_exit(NULL);
 	}
 
-	status = pthread_mutex_unlock(&mc.mutex);
+	status = pthread_mutex_unlock(&mrc.mutex);
 	if (status)
 		fatal(status);
 
@@ -978,7 +979,7 @@ static int do_signals(struct master *master, int signal)
 	int sig = signal;
 	int status;
 
-	status = pthread_mutex_lock(&mc.mutex);
+	status = pthread_mutex_lock(&mrc.mutex);
 	if (status)
 		fatal(status);
 
@@ -986,20 +987,20 @@ static int do_signals(struct master *master, int signal)
 	if (status) {
 		error(master->default_logging,
 		      "mount state notify thread create failed");
-		status = pthread_mutex_unlock(&mc.mutex);
+		status = pthread_mutex_unlock(&mrc.mutex);
 		if (status)
 			fatal(status);
 		return 0;
 	}
 
-	mc.thid = thid;
-	mc.master = master;
+	mrc.thid = thid;
+	mrc.master = master;
 
 	pthread_cleanup_push(do_master_cleanup_unlock, NULL);
 
-	mc.signaled = 0;
-	while (!mc.signaled) {
-		status = pthread_cond_wait(&mc.cond, &mc.mutex);
+	mrc.signaled = 0;
+	while (!mrc.signaled) {
+		status = pthread_cond_wait(&mrc.cond, &mrc.mutex);
 		if (status)
 			fatal(status);
 	}
@@ -1016,25 +1017,25 @@ static void *do_read_master(void *arg)
 	int readall = 1;
 	int status;
 
-	status = pthread_mutex_lock(&mc.mutex);
+	status = pthread_mutex_lock(&mrc.mutex);
 	if (status)
 		fatal(status);
 
-	master = mc.master;
-	age = mc.age;
+	master = mrc.master;
+	age = mrc.age;
 
-	mc.signaled = 1;
-	status = pthread_cond_signal(&mc.cond);
+	mrc.signaled = 1;
+	status = pthread_cond_signal(&mrc.cond);
 	if (status) {
 		error(master->default_logging,
 		      "failed to signal master read map condition");
-		status = pthread_mutex_unlock(&mc.mutex);
+		status = pthread_mutex_unlock(&mrc.mutex);
 		if (status)
 			fatal(status);
 		pthread_exit(NULL);
 	}
 
-	status = pthread_mutex_unlock(&mc.mutex);
+	status = pthread_mutex_unlock(&mrc.mutex);
 	if (status)
 		fatal(status);
 
@@ -1048,7 +1049,7 @@ static int do_hup_signal(struct master *master, time_t age)
 	pthread_t thid;
 	int status;
 
-	status = pthread_mutex_lock(&mc.mutex);
+	status = pthread_mutex_lock(&mrc.mutex);
 	if (status)
 		fatal(status);
 
@@ -1056,21 +1057,21 @@ static int do_hup_signal(struct master *master, time_t age)
 	if (status) {
 		error(master->default_logging,
 		      "master read map thread create failed");
-		status = pthread_mutex_unlock(&mc.mutex);
+		status = pthread_mutex_unlock(&mrc.mutex);
 		if (status)
 			fatal(status);
 		return 0;
 	}
 
-	mc.thid = thid;
-	mc.master = master;
-	mc.age = age;
+	mrc.thid = thid;
+	mrc.master = master;
+	mrc.age = age;
 
 	pthread_cleanup_push(do_master_cleanup_unlock, NULL);
 
-	mc.signaled = 0;
-	while (!mc.signaled) {
-		status = pthread_cond_wait(&mc.cond, &mc.mutex);
+	mrc.signaled = 0;
+	while (!mrc.signaled) {
+		status = pthread_cond_wait(&mrc.cond, &mrc.mutex);
 		if (status)
 			fatal(status);
 	}
@@ -1083,21 +1084,21 @@ static int do_hup_signal(struct master *master, time_t age)
 /* Deal with all the signal-driven events in the state machine */
 static void *statemachine(void *arg)
 {
-	sigset_t sigset;
+	sigset_t signalset;
 	int sig, status;
 
-	sigfillset(&sigset);
-	sigdelset(&sigset, SIGCHLD);
-	sigdelset(&sigset, SIGCONT);
+	sigfillset(&signalset);
+	sigdelset(&signalset, SIGCHLD);
+	sigdelset(&signalset, SIGCONT);
 
 	while (1) {
-		sigwait(&sigset, &sig);
+		sigwait(&signalset, &sig);
 
 		status = pthread_mutex_lock(&master_mutex);
 		if (status)
 			fatal(status);
 
-		if (list_empty(&master->mounts)) {
+		if (list_empty(&master_list->mounts)) {
 			status = pthread_mutex_unlock(&master_mutex);
 			if (status)
 				fatal(status);
@@ -1112,15 +1113,15 @@ static void *statemachine(void *arg)
 		case SIGTERM:
 		case SIGUSR2:
 		case SIGUSR1:
-			do_signals(master, sig);
+			do_signals(master_list, sig);
 			break;
 
 		case SIGHUP:
-			do_hup_signal(master, time(NULL));
+			do_hup_signal(master_list, time(NULL));
 			break;
 
 		default:
-			error(master->default_logging,
+			error(master_list->default_logging,
 			      "got unexpected signal %d!", sig);
 			continue;
 		}
@@ -1213,7 +1214,7 @@ static void handle_mounts_cleanup(void *arg)
 	master_free_mapent(ap->entry);
 
 	/* If we are the last tell the state machine to shutdown */
-	if (master_list_empty(master))
+	if (master_list_empty(master_list))
 		kill(getpid(), SIGTERM);
 
 	if (clean) {
@@ -1236,14 +1237,14 @@ void *handle_mounts(void *arg)
 
 	ap = (struct autofs_point *) arg;
 
-	pthread_cleanup_push(return_start_status, &sc);
+	pthread_cleanup_push(return_start_status, &suc);
 	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cancel_state);
 
 	status = pthread_mutex_lock(&ap->state_mutex);
 	if (status)
 		fatal(status);
 
-	status = pthread_mutex_lock(&sc.mutex);
+	status = pthread_mutex_lock(&suc.mutex);
 	if (status) {
 		crit(ap->logopt, "failed to lock startup condition mutex!");
 		fatal(status);
@@ -1251,7 +1252,7 @@ void *handle_mounts(void *arg)
 
 	if (mount_autofs(ap) < 0) {
 		crit(ap->logopt, "mount of %s failed!", ap->path);
-		sc.status = 1;
+		suc.status = 1;
 		status = pthread_mutex_unlock(&ap->state_mutex);
 		if (status)
 			fatal(status);
@@ -1262,7 +1263,7 @@ void *handle_mounts(void *arg)
 	if (ap->ghost && ap->type != LKP_DIRECT)
 		msg("ghosting enabled");
 
-	sc.status = 0;
+	suc.status = 0;
 	pthread_cleanup_pop(1);
 
 	/* We often start several automounters at the same time.  Add some
@@ -1395,7 +1396,6 @@ static int is_automount_running(void)
 	struct dirent entry;
 	struct dirent *result;
 	char path[PATH_MAX + 1], buf[PATH_MAX];
-	int len;
 
 	if ((dir = opendir("/proc")) == NULL) {
 		fprintf(stderr, "cannot opendir(/proc)\n");
@@ -1403,7 +1403,7 @@ static int is_automount_running(void)
 	}
 
 	while (readdir_r(dir, &entry, &result) == 0) {
-		int pid = 0;
+		int path_len, pid = 0;
 
 		if (!result)
 			break;
@@ -1421,13 +1421,13 @@ static int is_automount_running(void)
 		if (pid == getpid())
 			continue;
 
-		len = sprintf(path, "/proc/%s/cmdline", entry.d_name);
-		if (len >= PATH_MAX) {
+		path_len = sprintf(path, "/proc/%s/cmdline", entry.d_name);
+		if (path_len >= PATH_MAX) {
 			fprintf(stderr,
 				"buffer to small for /proc path\n");
 			return -1;
 		}
-		path[len] = '\0';
+		path[path_len] = '\0';
 
 		fp = fopen(path, "r");
 		if (fp) {
@@ -1655,11 +1655,11 @@ int main(int argc, char *argv[])
 	become_daemon(foreground);
 
 	if (argc == 0)
-		master = master_new(NULL, timeout, ghost);
+		master_list = master_new(NULL, timeout, ghost);
 	else
-		master = master_new(argv[0], timeout, ghost);
+		master_list= master_new(argv[0], timeout, ghost);
 
-	if (!master) {
+	if (!master_list) {
 		crit(LOGOPT_ANY, "%s: can't create master map %s",
 			program, argv[0]);
 		close(start_pipefd[1]);
@@ -1695,35 +1695,35 @@ int main(int argc, char *argv[])
 #endif
 
 	msg("Starting automounter version %s, master map %s",
-		version, master->name);
+		version, master_list->name);
 
 	status = pthread_key_create(&key_thread_stdenv_vars,
 				key_thread_stdenv_vars_destroy);
 	if (status) {
 		crit(LOGOPT_ANY,
 		     "failed to create thread data key for std env vars!");
-		master_kill(master, 1);
+		master_kill(master_list);
 		close(start_pipefd[1]);
 		exit(1);
 	}
 
 	if (!alarm_start_handler()) {
 		crit(LOGOPT_ANY, "failed to create alarm handler thread!");
-		master_kill(master, 1);
+		master_kill(master_list);
 		close(start_pipefd[1]);
 		exit(1);
 	}
 
 	if (!st_start_handler()) {
 		crit(LOGOPT_ANY, "failed to create FSM handler thread!");
-		master_kill(master, 1);
+		master_kill(master_list);
 		close(start_pipefd[1]);
 		exit(1);
 	}
 
 	if (!sigchld_start_handler()) {
 		crit(LOGOPT_ANY, "failed to create SIGCHLD handler thread!");
-		master_kill(master, 1);
+		master_kill(master_list);
 		close(start_pipefd[1]);
 		exit(1);
 	}
@@ -1731,15 +1731,15 @@ int main(int argc, char *argv[])
 	if (!load_autofs4_module()) {
 		crit(LOGOPT_ANY, "%s: can't load %s filesystem module",
 			program, FS_MODULE_NAME);
-		master_kill(master, 1);
+		master_kill(master_list);
 		*pst_stat = 2;
 		res = write(start_pipefd[1], pst_stat, sizeof(pst_stat));
 		close(start_pipefd[1]);
 		exit(2);
 	}
 #endif
-	if (!master_read_master(master, age, 0)) {
-		master_kill(master, 1);
+	if (!master_read_master(master_list, age, 0)) {
+		master_kill(master_list);
 		*pst_stat = 3;
 		res = write(start_pipefd[1], pst_stat, sizeof(pst_stat));
 		close(start_pipefd[1]);
@@ -1751,7 +1751,7 @@ int main(int argc, char *argv[])
 
 	statemachine(NULL);
 
-	master_kill(master, 1);
+	master_kill(master_list);
 
 	if (pid_file) {
 		unlink(pid_file);

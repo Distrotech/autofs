@@ -1,4 +1,3 @@
-#ident "$Id: mount_bind.c,v 1.22 2006/03/29 10:32:36 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  mount_bind.c      - module to mount a local filesystem if possible;

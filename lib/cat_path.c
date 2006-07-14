@@ -1,4 +1,3 @@
-#ident "$Id: cat_path.c,v 1.9 2006/03/21 04:28:53 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  cat_path.c - boundary aware buffer management routines
@@ -60,14 +59,13 @@ int cat_path(char *buf, size_t len, const char *dir, const char *base)
 
 int _strlen(const char *str, size_t max)
 {
-	char *s = (char *) str;
+	const char *s = str;
+	size_t len = 0;
 
-	while (*s++ && max--) ;
+	while (*s++ && len < max) ;
+		len++;
 
-	if (max < 0)
-		return 0;
-	
-	return s - str - 1;
+	return len;
 }
 
 /* 

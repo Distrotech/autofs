@@ -1,3 +1,7 @@
+?/7/2006 autofs-5.0.1
+---------------------
+- code cleanup.
+
 13/7/2006 autofs-5.0.1 rc1
 --------------------------
 - merge LDAP authentication update for GSSAPI (Jeff Moyer).

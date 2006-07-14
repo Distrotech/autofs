@@ -1,4 +1,3 @@
-#ident "$Id: defaults.c,v 1.3 2006/04/06 20:02:04 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  defaults.h - system initialization defaults.

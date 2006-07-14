@@ -1,4 +1,3 @@
-#ident "$Id: nsswitch.c,v 1.2 2006/03/21 04:28:53 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  nsswitch.c - module to call parser for nsswitch config and store

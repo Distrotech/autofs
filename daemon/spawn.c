@@ -1,4 +1,3 @@
-#ident "$Id: spawn.c,v 1.25 2006/03/31 18:26:16 raven Exp $"
 /* ----------------------------------------------------------------------- *
  * 
  *  spawn.c - run programs synchronously with output redirected to syslog
@@ -85,16 +84,16 @@ inline void dump_core(void)
 void *sigchld(void *dummy)
 {
 	pid_t pid;
-	sigset_t sigchld;
+	sigset_t sig_child;
 	int sig;
 	int status;
 
-	sigemptyset(&sigchld);
-	sigaddset(&sigchld, SIGCHLD);
-	sigaddset(&sigchld, SIGCONT);
+	sigemptyset(&sig_child);
+	sigaddset(&sig_child, SIGCHLD);
+	sigaddset(&sig_child, SIGCONT);
 
 	while (1) {
-		sigwait(&sigchld, &sig);
+		sigwait(&sig_child, &sig);
 
 		status = pthread_mutex_lock(&sm.mutex);
 		if (status)

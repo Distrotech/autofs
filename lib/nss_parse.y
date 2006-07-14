@@ -37,6 +37,13 @@ struct nss_action act[NSS_STATUS_MAX];
 
 #define YYDEBUG 0
 
+#ifndef YYENABLE_NLS
+#define YYENABLE_NLS 0
+#endif
+#ifndef YYLTYPE_IS_TRIVIAL
+#define YYLTYPE_IS_TRIVIAL 0
+#endif
+
 extern int nss_lineno;
 extern int nss_lex(void);
 extern FILE *nss_in;
@@ -72,13 +79,11 @@ sources: nss_source
 
 nss_source: SOURCE
 {
-//	printf("source: %s\n", $1);
 	src = add_source(nss_list, $1);
 } | SOURCE LBRACKET status_exp_list RBRACKET
 {
 	enum nsswitch_status a;
 
-//	printf("source: %s\n", $1);
 	src = add_source(nss_list, $1);
 	for (a = 0; a < NSS_STATUS_MAX; a++) {
 		if (act[a].action != NSS_ACTION_UNKNOWN) {
@@ -98,11 +103,9 @@ status_exp_list: status_exp
 
 status_exp: STATUS EQUAL ACTION
 {
-//	printf("action: [ %s=%s ]\n", $1, $3);
 	set_action(act, $1, $3, 0);
 } | BANG STATUS EQUAL ACTION
 {
-//	printf("action: [ ! %s=%s ]\n", $2, $4);
 	set_action(act, $2, $4, 1);
 } | STATUS EQUAL OTHER {nss_error($3); YYABORT; }
   | STATUS OTHER {nss_error($2); YYABORT; }

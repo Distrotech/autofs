@@ -1,4 +1,3 @@
-#ident "$Id: nsswitch.h,v 1.3 2006/03/31 18:26:16 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  nsswitch.h - header file for module to call parser for nsswitch

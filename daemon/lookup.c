@@ -1,4 +1,3 @@
-#ident "$Id: lookup.c,v 1.17 2006/04/06 20:02:04 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup.c - API layer to implement nsswitch semantics for map reading

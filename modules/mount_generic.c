@@ -1,4 +1,3 @@
-#ident "$Id: mount_generic.c,v 1.22 2006/03/29 10:32:36 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  mount_generic.c - module for Linux automountd to mount filesystems

@@ -1,4 +1,3 @@
-#ident "$Id: rpc_subs.c,v 1.11 2006/03/31 18:26:16 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  rpc_subs.c - routines for rpc discovery
@@ -46,7 +45,7 @@
  */
 static CLIENT *create_udp_client(struct conn_info *info)
 {
-	int fd, ret, h_errno;
+	int fd, ret, ghn_errno;
 	CLIENT *client;
 	struct sockaddr_in laddr, raddr;
 	struct hostent hp;
@@ -78,9 +77,9 @@ static CLIENT *create_udp_client(struct conn_info *info)
 	memset(&hp, 0, sizeof(struct hostent));
 
 	ret = gethostbyname_r(info->host, php,
-			buf, HOST_ENT_BUF_SIZE, &result, &h_errno);
+			buf, HOST_ENT_BUF_SIZE, &result, &ghn_errno);
 	if (ret || !result) {
-		int err = h_errno == -1 ? errno : h_errno;
+		int err = ghn_errno == -1 ? errno : ghn_errno;
 		char *estr = strerror_r(err, buf, HOST_ENT_BUF_SIZE);
 		error(LOGOPT_ANY, "hostname lookup failed: %s", estr);
 		return NULL;
@@ -210,10 +209,10 @@ static int connect_nb(int fd, struct sockaddr_in *addr, struct timeval *tout)
 	}
 
 	if (FD_ISSET(fd, &rset) || FD_ISSET(fd, &wset)) {
-		int stat;
+		int status;
 
 		len = sizeof(ret);
-		stat = getsockopt(fd, SOL_SOCKET, SO_ERROR, &ret, &len);
+		status = getsockopt(fd, SOL_SOCKET, SO_ERROR, &ret, &len);
 		if (stat < 0) {
 			ret = -errno;
 			goto done;
@@ -234,7 +233,7 @@ done:
  */
 static CLIENT *create_tcp_client(struct conn_info *info)
 {
-	int fd;
+	int fd, ghn_errno;
 	CLIENT *client;
 	struct sockaddr_in addr;
 	struct hostent hp;
@@ -266,9 +265,9 @@ static CLIENT *create_tcp_client(struct conn_info *info)
 	memset(&hp, 0, sizeof(struct hostent));
 
 	ret = gethostbyname_r(info->host, php,
-			buf, HOST_ENT_BUF_SIZE, &result, &h_errno);
+			buf, HOST_ENT_BUF_SIZE, &result, &ghn_errno);
 	if (ret || !result) {
-		int err = h_errno == -1 ? errno : h_errno;
+		int err = ghn_errno == -1 ? errno : ghn_errno;
 		char *estr =  strerror_r(err, buf, HOST_ENT_BUF_SIZE);
 		error(LOGOPT_ANY, "hostname lookup failed: %s", estr);
 		return NULL;
@@ -403,7 +402,7 @@ unsigned short rpc_portmap_getport(struct conn_info *info, struct pmap *parms)
 	struct conn_info pmap_info;
 	unsigned short port = 0;
 	CLIENT *client;
-	enum clnt_stat stat;
+	enum clnt_stat status;
 	int proto = info->proto->p_proto;
 
 	memset(&pmap_info, 0, sizeof(struct conn_info));
@@ -437,12 +436,12 @@ unsigned short rpc_portmap_getport(struct conn_info *info, struct pmap *parms)
 	 * Check to see if server is up otherwise a getport will take
 	 * forever to timeout.
 	 */
-	stat = clnt_call(client, PMAPPROC_NULL,
+	status = clnt_call(client, PMAPPROC_NULL,
 			 (xdrproc_t) xdr_void, 0, (xdrproc_t) xdr_void, 0,
 			 pmap_info.timeout);
 
-	if (stat == RPC_SUCCESS) {
-		stat = clnt_call(client, PMAPPROC_GETPORT,
+	if (status == RPC_SUCCESS) {
+		status = clnt_call(client, PMAPPROC_GETPORT,
 				 (xdrproc_t) xdr_pmap, (caddr_t) parms,
 				 (xdrproc_t) xdr_u_short, (caddr_t) &port,
 				 pmap_info.timeout);
@@ -453,7 +452,7 @@ unsigned short rpc_portmap_getport(struct conn_info *info, struct pmap *parms)
 		 * Only play with the close options if we think it
 		 * completed OK
 		 */
-		if (proto == IPPROTO_TCP && stat == RPC_SUCCESS) {
+		if (proto == IPPROTO_TCP && status == RPC_SUCCESS) {
 			struct linger lin = { 1, 0 };
 			socklen_t lin_len = sizeof(struct linger);
 			int fd;
@@ -471,7 +470,7 @@ unsigned short rpc_portmap_getport(struct conn_info *info, struct pmap *parms)
 		clnt_destroy(client);
 	}
 
-	if (stat != RPC_SUCCESS)
+	if (status != RPC_SUCCESS)
 		return 0;
 
 	return port;
@@ -480,7 +479,7 @@ unsigned short rpc_portmap_getport(struct conn_info *info, struct pmap *parms)
 int rpc_ping_proto(struct conn_info *info)
 {
 	CLIENT *client;
-	enum clnt_stat stat;
+	enum clnt_stat status;
 	int proto = info->proto->p_proto;
 
 	if (info->client)
@@ -500,7 +499,7 @@ int rpc_ping_proto(struct conn_info *info)
 	clnt_control(client, CLSET_TIMEOUT, (char *) &info->timeout);
 	clnt_control(client, CLSET_RETRY_TIMEOUT, (char *) &info->timeout);
 
-	stat = clnt_call(client, NFSPROC_NULL,
+	status = clnt_call(client, NFSPROC_NULL,
 			 (xdrproc_t) xdr_void, 0, (xdrproc_t) xdr_void, 0,
 			 info->timeout);
 
@@ -509,7 +508,7 @@ int rpc_ping_proto(struct conn_info *info)
 		 * Only play with the close options if we think it
 		 * completed OK
 		 */
-		if (proto == IPPROTO_TCP && stat == RPC_SUCCESS) {
+		if (proto == IPPROTO_TCP && status == RPC_SUCCESS) {
 			struct linger lin = { 1, 0 };
 			socklen_t lin_len = sizeof(struct linger);
 			int fd;
@@ -527,7 +526,7 @@ int rpc_ping_proto(struct conn_info *info)
 		clnt_destroy(client);
 	}
 
-	if (stat != RPC_SUCCESS)
+	if (status != RPC_SUCCESS)
 		return 0;
 
 	return 1;
@@ -633,7 +632,7 @@ int rpc_time(const char *host,
 static int rpc_get_exports_proto(struct conn_info *info, exports *exp)
 {
 	CLIENT *client;
-	enum clnt_stat stat;
+	enum clnt_stat status;
 	int proto = info->proto->p_proto;
 	unsigned int option = info->close_option;
 
@@ -652,13 +651,13 @@ static int rpc_get_exports_proto(struct conn_info *info, exports *exp)
 
 	client->cl_auth = authunix_create_default();
 
-	stat = clnt_call(client, MOUNTPROC_EXPORT,
+	status = clnt_call(client, MOUNTPROC_EXPORT,
 			 (xdrproc_t) xdr_void, NULL,
 			 (xdrproc_t) xdr_exports, (caddr_t) exp,
 			 info->timeout);
 
 	/* Only play with the close options if we think it completed OK */
-	if (proto == IPPROTO_TCP && stat == RPC_SUCCESS) {
+	if (proto == IPPROTO_TCP && status == RPC_SUCCESS) {
 		struct linger lin = { 1, 0 };
 		socklen_t lin_len = sizeof(struct linger);
 		int fd;
@@ -676,7 +675,7 @@ static int rpc_get_exports_proto(struct conn_info *info, exports *exp)
 	auth_destroy(client->cl_auth);
 	clnt_destroy(client);
 
-	if (stat != RPC_SUCCESS)
+	if (status != RPC_SUCCESS)
 		return 0;
 
 	return 1;
@@ -720,13 +719,13 @@ static int masked_match(const char *myname, const char *addr, const char *mask)
 	struct hostent *result;
 	char buf[HOST_ENT_BUF_SIZE], **haddr;
 	struct sockaddr_in saddr, maddr;
-	int h_errno, ret;
+	int ghn_errno, ret;
 
 	memset(buf, 0, HOST_ENT_BUF_SIZE);
 	memset(&he, 0, sizeof(struct hostent));
 
 	ret = gethostbyname_r(myname, phe,
-			buf, HOST_ENT_BUF_SIZE, &result, &h_errno);
+			buf, HOST_ENT_BUF_SIZE, &result, &ghn_errno);
 	if (ret || !result)
 		return 0;
 
@@ -739,7 +738,7 @@ static int masked_match(const char *myname, const char *addr, const char *mask)
 		if (!ret)
 			return 0;
 	} else {
-		uint32_t m = -1;
+		uint32_t m = (uint32_t) -1;
 		int msize = atoi(mask);
 
 		m = m << (32 - msize);
@@ -836,13 +835,13 @@ static int string_match(const char *myname, const char *pattern)
 	struct hostent *phe = &he;
 	struct hostent *result;
 	char buf[HOST_ENT_BUF_SIZE];
-	int ret;
+	int ret, ghn_errno;
 
 	memset(buf, 0, HOST_ENT_BUF_SIZE);
 	memset(&he, 0, sizeof(struct hostent));
 
 	ret = gethostbyname_r(myname, phe,
-			buf, HOST_ENT_BUF_SIZE, &result, &h_errno);
+			buf, HOST_ENT_BUF_SIZE, &result, &ghn_errno);
 	if (ret || !result)
 		return 0;
 

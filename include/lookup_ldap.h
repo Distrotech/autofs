@@ -1,7 +1,7 @@
 #ifndef LOOKUP_LDAP_H
 #define LOOKUP_LDAP_H
 
-#if WITH_SASL
+#ifdef WITH_SASL
 #include <openssl/ssl.h>
 #include <openssl/evp.h>
 #include <openssl/err.h>
@@ -37,17 +37,19 @@ struct lookup_context {
 	char        *client_princ;
 	int          kinit_done;
 	int          kinit_successful;
+#ifdef WITH_SASL
 	krb5_principal  krb5_client_princ;
 	krb5_context krb5ctxt;
 	krb5_ccache  krb5_ccache;
 	sasl_conn_t  *sasl_conn;
+#endif
 	/* keytab file name needs to be added */
 
 	struct parse_mod *parse;
 };
 
 
-#if WITH_SASL
+#ifdef WITH_SASL
 #define LDAP_AUTH_CONF_FILE "test"
 
 #define LDAP_TLS_DONT_USE	0
@@ -70,4 +72,4 @@ int autofs_sasl_bind(LDAP *ldap, struct lookup_context *ctxt);
 void autofs_sasl_unbind(struct lookup_context *ctxt);
 #endif
 
-#endif /* _lookup_ldap_h */
+#endif

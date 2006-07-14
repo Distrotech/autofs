@@ -45,6 +45,19 @@ int master_wrap(void);
 /* no need for yywrap() */
 #define YY_SKIP_YYWRAP
 
+#ifndef YY_STACK_USED
+#define YY_STACK_USED 0
+#endif
+#ifndef YY_ALWAYS_INTERACTIVE
+#define YY_ALWAYS_INTERACTIVE 0
+#endif
+#ifndef YY_NEVER_INTERACTIVE
+#define YY_NEVER_INTERACTIVE 0
+#endif
+#ifndef YY_MAIN
+#define YY_MAIN 0
+#endif
+
 void master_set_scan_buffer(const char *);
 const char *line = NULL;
 
@@ -62,7 +75,7 @@ int my_yyinput(char *, int);
 #define unput(c) (*(char *) --line = c)
 #endif
 
-char buf[1024];
+char buff[1024];
 char *bptr;
 
 %}
@@ -99,13 +112,13 @@ MTYPE           ((file|program|yp|nis|nisplus|ldap|hesiod|userdir)(,(sun|hesiod)
 
 	"+" {
 		BEGIN(MAPSTR);
-		bptr = buf;
+		bptr = buff;
 		yyless(0);
 	}
 
 	"/" {
 		BEGIN(PATHSTR);
-		bptr = buf;
+		bptr = buff;
 		yyless(0);
 	}
 
@@ -119,22 +132,22 @@ MTYPE           ((file|program|yp|nis|nisplus|ldap|hesiod|userdir)(,(sun|hesiod)
 	\x00 {
 		BEGIN(INITIAL);
 		*bptr++ = *master_text;
-		strcpy(master_lval.strtype, buf);
+		strcpy(master_lval.strtype, buff);
 		return NILL;
 	}
 
 	{WS}/{INTMAP} {
 		BEGIN(MAPSTR);
 		*bptr = '\0';
-		strcpy(master_lval.strtype, buf);
+		strcpy(master_lval.strtype, buff);
 		return(PATH);
 	}
 
 	{WS}/"-" {
 		BEGIN(OPTSTR);
 		*bptr = '\0';
-		strcpy(master_lval.strtype, buf);
-		bptr = buf;
+		strcpy(master_lval.strtype, buff);
+		bptr = buff;
 		return(PATH);
 	}
 
@@ -143,29 +156,29 @@ MTYPE           ((file|program|yp|nis|nisplus|ldap|hesiod|userdir)(,(sun|hesiod)
 		BEGIN(INITIAL);
 		*bptr++ = *master_text;
 		*bptr = '\0';
-		strcpy(master_lval.strtype, buf);
+		strcpy(master_lval.strtype, buff);
 		return QUOTE;
 	}
 
 	{WS} {
 		BEGIN(MAPSTR);
 		*bptr = '\0';
-		strcpy(master_lval.strtype, buf);
-		bptr = buf;
+		strcpy(master_lval.strtype, buff);
+		bptr = buff;
 		return(PATH);
 	}
 
 	<<EOF>> {
 		BEGIN(INITIAL);
 		*bptr = '\0';
-		strcpy(master_lval.strtype, buf);
+		strcpy(master_lval.strtype, buff);
 		return(PATH);
 	}
 
 	{NL} {
 		BEGIN(INITIAL);
 		*bptr = '\0';
-		strcpy(master_lval.strtype, buf);
+		strcpy(master_lval.strtype, buff);
 		return PATH;
 	}
 
@@ -212,15 +225,15 @@ MTYPE           ((file|program|yp|nis|nisplus|ldap|hesiod|userdir)(,(sun|hesiod)
 
 	"/" {
 		BEGIN(PATHSTR);
-		bptr = buf;
+		bptr = buff;
 		yyless(0);
 	}
 
 	{OPTWS}/{NL} {
 		BEGIN(INITIAL);
 		*bptr = '\0';
-		strcpy(master_lval.strtype, buf);
-		bptr = buf;
+		strcpy(master_lval.strtype, buff);
+		bptr = buff;
 		return(MAPNAME);
 	}
 
@@ -229,8 +242,8 @@ MTYPE           ((file|program|yp|nis|nisplus|ldap|hesiod|userdir)(,(sun|hesiod)
 	{WS} {
 		BEGIN(OPTSTR);
 		*bptr = '\0';
-		strcpy(master_lval.strtype, buf);
-		bptr = buf;
+		strcpy(master_lval.strtype, buff);
+		bptr = buff;
 		return(MAPNAME);
 	}
 
@@ -238,7 +251,7 @@ MTYPE           ((file|program|yp|nis|nisplus|ldap|hesiod|userdir)(,(sun|hesiod)
 	<<EOF>> {
 		BEGIN(INITIAL);
 		*bptr = '\0';
-		strcpy(master_lval.strtype, buf);
+		strcpy(master_lval.strtype, buff);
 		return(MAPNAME);
 	}
 

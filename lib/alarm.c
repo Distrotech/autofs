@@ -1,4 +1,3 @@
-#ident "$Id: alarm.c,v 1.8 2006/03/29 10:32:36 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  alarm.c - alarm queue handling module.
@@ -34,10 +33,10 @@ void dump_alarms(void)
 
 	pthread_mutex_lock(&mutex);
 	list_for_each(p, head) {
-		struct alarm *alarm;
+		struct alarm *this;
 
-		alarm = list_entry(p, struct alarm, list);
-		msg("alarm time = %d", alarm->time);
+		this = list_entry(p, struct alarm, list);
+		msg("alarm time = %d", this->time);
 	}
 	pthread_mutex_unlock(&mutex);
 }
@@ -126,20 +125,20 @@ void alarm_delete(struct autofs_point *ap)
 
 	p = head->next;
 	while (p != head) {
-		struct alarm *alarm;
+		struct alarm *this;
 
-		alarm = list_entry(p, struct alarm, list);
+		this = list_entry(p, struct alarm, list);
 		p = p->next;
 
-		if (ap == alarm->ap) {
-			if (current != alarm) {
-				list_del_init(&alarm->list);
-				free(alarm);
+		if (ap == this->ap) {
+			if (current != this) {
+				list_del_init(&this->list);
+				free(this);
 				continue;
 			}
 			/* Mark as canceled */
-			alarm->cancel = 1;
-			alarm->time = 0;
+			this->cancel = 1;
+			this->time = 0;
 			signal_cancel = 1;
 		}
 	}

@@ -1,4 +1,3 @@
-#ident "$Id: module.c,v 1.12 2006/03/29 10:32:36 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  module.c - common module-management functions

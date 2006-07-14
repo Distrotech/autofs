@@ -1,4 +1,3 @@
-#ident "$Id: lookup_program.c,v 1.17 2006/03/29 10:32:36 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup_program.c - module for Linux automount to access an

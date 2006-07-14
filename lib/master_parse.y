@@ -63,6 +63,13 @@ static int lineno;
 
 #define YYDEBUG 0
 
+#ifndef YYENABLE_NLS
+#define YYENABLE_NLS 0
+#endif
+#ifndef YYLTYPE_IS_TRIVIAL
+#define YYLTYPE_IS_TRIVIAL 0
+#endif
+
 #if YYDEBUG
 static int master_fprintf(FILE *, char *, ...);
 #undef YYFPRINTF
@@ -386,12 +393,12 @@ static int master_fprintf(FILE *f, char *msg, ...)
 
 static char *master_strdup(char *str)
 {
-	char *dup;
+	char *tmp;
 
-	dup = strdup(str);
-	if (!dup)
+	tmp = strdup(str);
+	if (!tmp)
 		master_error("memory allocation error");
-	return dup;
+	return tmp;
 }
 
 static int master_error(const char *s)

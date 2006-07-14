@@ -1,4 +1,3 @@
-#ident "$Id: lookup_userhome.c,v 1.10 2006/03/21 04:28:53 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup_userhome.c - module for Linux automount to generate symlinks

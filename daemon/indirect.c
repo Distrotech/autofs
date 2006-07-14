@@ -1,4 +1,3 @@
-#ident "$Id: indirect.c,v 1.30 2006/04/03 23:00:05 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  indirect.c - Linux automounter indirect mount handling
@@ -78,33 +77,12 @@ static int autofs_init_indirect(struct autofs_point *ap)
 	return 0;
 }
 
-static int unlink_mount_tree(struct autofs_point *ap, struct mnt_list *mnts, const char *mount)
+static int unlink_mount_tree(struct autofs_point *ap, struct mnt_list *mnts)
 {
 	struct mnt_list *this;
 	int rv, ret;
 	pid_t pgrp = getpgrp();
 	char spgrp[10];
-/*
-	need_umount = 0;
-	this = mnts;
-	while (this) {
-		if (strcmp(mount, this->path)) {
-			this = this->next;
-			continue;
-		}
-
-		if (!strstr(this->opts, "indirect")) {
-			this = this->next;
-			continue;
-		}
-
-		need_umount = 1;
-		break;
-	}
-
-	if (!need_umount)
-		return 1;
-*/
 
 	sprintf(spgrp, "%d", pgrp);
 
@@ -153,7 +131,7 @@ static int do_mount_autofs_indirect(struct autofs_point *ap)
 
 	mnts = get_mnt_list(_PROC_MOUNTS, ap->path, 1);
 	if (mnts) {
-		int ret = unlink_mount_tree(ap, mnts, ap->path);
+		ret = unlink_mount_tree(ap, mnts);
 		free_mnt_list(mnts);
 		if (!ret) {
 			debug(ap->logopt,
@@ -393,7 +371,7 @@ void *expire_proc_indirect(void *arg)
 	struct mnt_list *mnts, *next;
 	struct expire_args *ea;
 	unsigned int now;
-	int offsets, submnts, count, ret;
+	int offsets, submnts, count;
 	int ioctlfd;
 	int status;
 
@@ -427,6 +405,7 @@ void *expire_proc_indirect(void *arg)
 	mnts = get_mnt_list(_PROC_MOUNTS, ap->path, 0);
 	for (next = mnts; next; next = next->next) {
 		char *ind_key;
+		int ret;
 
 		if (!strcmp(next->fs_type, "autofs"))
 			continue;
@@ -546,6 +525,8 @@ void *expire_proc_indirect(void *arg)
 	if (!list_empty(&ap->submounts)) {
 		ea->status = 1;
 	} else {
+		int ret;
+
 		if (!ioctl(ap->ioctlfd, AUTOFS_IOC_ASKUMOUNT, &ret)) {
 			if (!ret) {
 				debug(ap->logopt,

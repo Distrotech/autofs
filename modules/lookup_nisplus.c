@@ -1,4 +1,3 @@
-#ident "$Id: lookup_nisplus.c,v 1.16 2006/03/31 18:26:16 raven Exp $"
 /*
  * lookup_nisplus.c
  *
@@ -81,16 +80,22 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 int lookup_read_master(struct master *master, time_t age, void *context)
 {
 	struct lookup_context *ctxt = (struct lookup_context *) context;
-	char tablename[strlen(ctxt->mapname) +
-		       strlen(ctxt->domainname) + 20];
 	unsigned int timeout = master->default_timeout;
 	unsigned int logging =  master->default_logging;
+	char *tablename;
 	nis_result *result;
 	nis_object *this;
 	unsigned int current, result_count;
 	char *path, *ent;
 	char *buffer;
+	char buf[MAX_ERR_BUF];
 
+	tablename = alloca(strlen(ctxt->mapname) + strlen(ctxt->domainname) + 20);
+	if (!tablename) {
+		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+		crit(LOGOPT_ANY, MODPREFIX "alloca: %s", estr);
+		return NSS_STATUS_UNAVAIL;
+	}
 	sprintf(tablename, "%s.org_dir.%s", ctxt->mapname, ctxt->domainname);
 
 	/* check that the table exists */
@@ -153,13 +158,19 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 	struct lookup_context *ctxt = (struct lookup_context *) context;
 	struct map_source *source = ap->entry->current;
 	struct mapent_cache *mc = source->mc;
-	char tablename[strlen(ctxt->mapname) +
-		       strlen(ctxt->domainname) + 20];
+	char *tablename;
 	nis_result *result;
 	nis_object *this;
 	unsigned int current, result_count;
 	char *key, *mapent;
+	char buf[MAX_ERR_BUF];
 
+	tablename = alloca(strlen(ctxt->mapname) + strlen(ctxt->domainname) + 20);
+	if (!tablename) {
+		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+		crit(LOGOPT_ANY, MODPREFIX "alloca: %s", estr);
+		return NSS_STATUS_UNAVAIL;
+	}
 	sprintf(tablename, "%s.org_dir.%s", ctxt->mapname, ctxt->domainname);
 
 	/* check that the table exists */
@@ -217,14 +228,21 @@ static int lookup_one(struct autofs_point *ap,
 {
 	struct map_source *source = ap->entry->current;
 	struct mapent_cache *mc = source->mc;
-	char tablename[strlen(key) + strlen(ctxt->mapname) +
-		       strlen(ctxt->domainname) + 20];
+	char *tablename;
 	nis_result *result;
 	nis_object *this;
 	char *mapent;
 	time_t age = time(NULL);
 	int ret;
+	char buf[MAX_ERR_BUF];
 
+	tablename = alloca(strlen(key) +
+			strlen(ctxt->mapname) + strlen(ctxt->domainname) + 20);
+	if (!tablename) {
+		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+		crit(LOGOPT_ANY, MODPREFIX "alloca: %s", estr);
+		return -1;
+	}
 	sprintf(tablename, "[key=%s],%s.org_dir.%s", key, ctxt->mapname,
 		ctxt->domainname);
 
@@ -254,14 +272,20 @@ static int lookup_wild(struct autofs_point *ap, struct lookup_context *ctxt)
 {
 	struct map_source *source = ap->entry->current;
 	struct mapent_cache *mc = source->mc;
-	char tablename[strlen(ctxt->mapname) +
-		       strlen(ctxt->domainname) + 20];
+	char *tablename;
 	nis_result *result;
 	nis_object *this;
 	char *mapent;
 	time_t age = time(NULL);
 	int ret;
+	char buf[MAX_ERR_BUF];
 
+	tablename = alloca(strlen(ctxt->mapname) + strlen(ctxt->domainname) + 20);
+	if (!tablename) {
+		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+		crit(LOGOPT_ANY, MODPREFIX "alloca: %s", estr);
+		return -1;
+	}
 	sprintf(tablename, "[key=*],%s.org_dir.%s", ctxt->mapname,
 		ctxt->domainname);
 
@@ -424,8 +448,9 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 	me = cache_lookup(mc, key);
 	if (me) {
 		pthread_cleanup_push(cache_lock_cleanup, mc);
-		mapent = alloca(strlen(me->mapent) + 1);
-		mapent_len = sprintf(mapent, "%s", me->mapent);
+		mapent_len = strlen(me->mapent);
+		mapent = alloca(mapent_len + 1);
+		strcpy(mapent, me->mapent);
 		pthread_cleanup_pop(0);
 	}
 	cache_unlock(mc);

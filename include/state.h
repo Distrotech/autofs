@@ -1,4 +1,3 @@
-#ident "$Id: state.h,v 1.6 2006/04/01 06:48:05 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  state.h - state queue functions.
@@ -47,7 +46,7 @@ enum states {
 	ST_READMAP,
 	ST_SHUTDOWN_PENDING,
 	ST_SHUTDOWN_FORCE,
-	ST_SHUTDOWN,
+	ST_SHUTDOWN
 };
 
 struct expire_args {

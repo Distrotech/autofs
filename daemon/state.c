@@ -1,4 +1,3 @@
-#ident "$Id: state.c,v 1.11 2006/04/03 08:15:36 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  state.c - state machine functions.
@@ -36,7 +35,7 @@ static LIST_HEAD(state_queue);
 static unsigned int signaled = 0;
 static void st_set_thid(struct autofs_point *, pthread_t);
 
-int do_mount_autofs_direct(struct autofs_point *, struct mnt_list *, struct mapent *, int);
+int do_mount_autofs_direct(struct autofs_point *, struct mnt_list *, struct mapent *);
 
 void dump_state_queue(void)
 {
@@ -389,7 +388,7 @@ static void *do_readmap(void *arg)
                                 		debug(ap->logopt,
 						      "%s id mounted", me->key);
 				} else
-					do_mount_autofs_direct(ap, mnts, me, now);
+					do_mount_autofs_direct(ap, mnts, me);
 				me = cache_enumerate(mc, me);
 			}
 			pthread_cleanup_pop(1);

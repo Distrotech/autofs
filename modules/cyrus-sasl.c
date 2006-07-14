@@ -305,7 +305,6 @@ do_sasl_bind(LDAP *ld, sasl_conn_t *conn, const char **clientout,
 			     "bind request, but indicated that the bind was "
 			     "complete. LDAP SASL bind with mechansim %s "
 			     "failed.", auth_mech);
-			//debug(""); /* dump out the data we got */
 			ret = -1;
 			break;
 		}
@@ -388,7 +387,7 @@ sasl_do_kinit(struct lookup_context *ctxt)
 
 	debug(LOGOPT_NONE,
 	      "initializing kerberos ticket: client principal %s ",
-	      ctxt->client_princ ?: "autofsclient");
+	      ctxt->client_princ ? "" : "autofsclient");
 
 	ret = krb5_init_context(&ctxt->krb5ctxt);
 	if (ret) {
@@ -431,7 +430,7 @@ sasl_do_kinit(struct lookup_context *ctxt)
 			error(LOGOPT_ANY,
 			      "krb5_sname_to_principal failed for "
 			      "%s with error %d",
-			      ctxt->client_princ ?: "autofsclient", ret);
+			      ctxt->client_princ ? "" : "autofsclient", ret);
 			goto out_cleanup_cc;
 		}
 

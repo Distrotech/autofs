@@ -1,4 +1,3 @@
-#ident "$Id: mount.c,v 1.12 2006/03/08 02:40:22 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  mount.c - Abstract mount code used by modules for an unexpected

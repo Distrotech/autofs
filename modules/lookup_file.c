@@ -1,4 +1,3 @@
-#ident "$Id: lookup_file.c,v 1.36 2006/03/31 18:26:16 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup_file.c - module for Linux automount to query a flat file map
@@ -942,10 +941,10 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 	me = cache_lookup(mc, key);
 	if (me) {
 		pthread_cleanup_push(cache_lock_cleanup, mc);
-		mapent = alloca(strlen(me->mapent) + 1);
-		mapent_len = sprintf(mapent, me->mapent);
+		mapent_len = strlen(me->mapent);
+		mapent = alloca(mapent_len + 1);
+		strcpy(mapent, me->mapent);
 		pthread_cleanup_pop(0);
-		mapent[mapent_len] = '\0';
 	}
 	cache_unlock(mc);
 

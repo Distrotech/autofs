@@ -1,4 +1,3 @@
-#ident "$Id: lookup_hosts.c,v 1.10 2006/03/31 18:26:16 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  lookup_hosts.c - module for Linux automount to mount the exports

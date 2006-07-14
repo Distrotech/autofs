@@ -1,4 +1,3 @@
-#ident "$Id: parse_sun.c,v 1.49 2006/03/31 18:26:16 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  parse_sun.c - module for Linux automountd to parse a Sun-format

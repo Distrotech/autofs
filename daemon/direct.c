@@ -1,4 +1,3 @@
-#ident "$Id: direct.c,v 1.34 2006/04/03 23:00:05 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *
  *  direct.c - Linux automounter direct mount handling
@@ -219,31 +218,12 @@ int umount_autofs_direct(struct autofs_point *ap)
 	return 0;
 }
 
-static int unlink_mount_tree(struct autofs_point *ap, struct list_head *list, const char *mount)
+static int unlink_mount_tree(struct autofs_point *ap, struct list_head *list)
 {
 	struct list_head *p;
 	int rv, ret;
 	pid_t pgrp = getpgrp();
 	char spgrp[10];
-/*
-	need_umount = 0;
-	list_for_each(p, list) {
-		struct mnt_list *mnt;
-
-		mnt = list_entry(p, struct mnt_list, list);
-
-		if (strcmp(mount, mnt->path))
-			continue;
-
-		if (!strstr(mnt->opts, "direct"))
-			continue;
-
-		need_umount = 1;
-	}
-
-	if (!need_umount)
-		return 1;
-*/
 
 	sprintf(spgrp, "%d", pgrp);
 
@@ -282,19 +262,21 @@ static int unlink_mount_tree(struct autofs_point *ap, struct list_head *list, co
 	return ret;
 }
 
-int do_mount_autofs_direct(struct autofs_point *ap, struct mnt_list *mnts, struct mapent *me, int now)
+int do_mount_autofs_direct(struct autofs_point *ap, struct mnt_list *mnts, struct mapent *me)
 {
 	struct map_source *map = ap->entry->current;
 	struct mnt_params *mp;
 	time_t timeout = ap->exp_timeout;
 	struct stat st;
 	int status, ret;
-	LIST_HEAD(list);
+	struct list_head list;
+
+	INIT_LIST_HEAD(&list);
 
 	if (tree_get_mnt_list(mnts, &list, me->key, 1)) {
 		if (ap->state == ST_READMAP)
 			return 0;
-		if (!unlink_mount_tree(ap, &list, me->key)) {
+		if (!unlink_mount_tree(ap, &list)) {
 			debug(ap->logopt,
 			      "already mounted as other than autofs "
 			      "or failed to unlink entry in tree");
@@ -467,7 +449,7 @@ int mount_autofs_direct(struct autofs_point *ap)
 		me = cache_enumerate(mc, NULL);
 		while (me) {
 			/* TODO: check return, locking me */
-			do_mount_autofs_direct(ap, mnts, me, now);
+			do_mount_autofs_direct(ap, mnts, me);
 			me = cache_enumerate(mc, me);
 		}
 		pthread_cleanup_pop(1);

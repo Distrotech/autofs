@@ -1,4 +1,3 @@
-#ident "$Id: cache.c,v 1.30 2006/03/31 18:26:16 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  cache.c - mount entry cache management routines
@@ -42,7 +41,7 @@ void cache_dump_multi(struct list_head *list)
 void cache_dump_cache(struct mapent_cache *mc)
 {
 	struct mapent *me;
-	int i;
+	unsigned int i;
 
 	for (i = 0; i < mc->size; i++) {
 		me = mc->hash[i];
@@ -102,7 +101,8 @@ void cache_lock_cleanup(void *arg)
 struct mapent_cache *cache_init(struct map_source *map)
 {
 	struct mapent_cache *mc;
-	int i, status;
+	unsigned int i;
+	int status;
 
 	if (map->mc)
 		cache_release(map);
@@ -204,7 +204,7 @@ struct mapent *cache_lookup_ino(struct mapent_cache *mc, dev_t dev, ino_t ino)
 struct mapent *cache_lookup_first(struct mapent_cache *mc)
 {
 	struct mapent *me = NULL;
-	int i;
+	unsigned int i;
 
 	for (i = 0; i < mc->size; i++) {
 		me = mc->hash[i];
@@ -228,7 +228,7 @@ struct mapent *cache_lookup_next(struct mapent_cache *mc, struct mapent *me)
 {
 	struct mapent *this;
 	unsigned long hashval;
-	int i;
+	unsigned int i;
 
 	if (!me)
 		return NULL;
@@ -245,7 +245,7 @@ struct mapent *cache_lookup_next(struct mapent_cache *mc, struct mapent *me)
 
 	hashval = hash(me->key) + 1;
 	if (hashval < mc->size) {
-		for (i = hashval; i < mc->size; i++) {
+		for (i = (unsigned int) hashval; i < mc->size; i++) {
 			this = mc->hash[i];
 			if (!this)
 				continue;
@@ -354,8 +354,8 @@ done:
 struct mapent *cache_partial_match(struct mapent_cache *mc, const char *prefix)
 {
 	struct mapent *me = NULL;
-	int len = strlen(prefix);
-	int i;
+	size_t len = strlen(prefix);
+	unsigned int i;
 
 	for (i = 0; i < mc->size; i++) {
 		me = mc->hash[i];
@@ -414,8 +414,8 @@ int cache_add(struct mapent_cache *mc, struct map_source *source,
 	INIT_LIST_HEAD(&me->multi_list);
 	me->multi = NULL;
 	me->ioctlfd = -1;
-	me->dev = -1;
-	me->ino = -1;
+	me->dev = (dev_t) -1;
+	me->ino = (ino_t) -1;
 
 	/* 
 	 * We need to add to the end if values exist in order to
@@ -448,7 +448,8 @@ static void cache_add_ordered_offset(struct mapent *me, struct list_head *head)
 	struct mapent *this;
 
 	list_for_each(p, head) {
-		int eq, tlen;
+		size_t tlen;
+		int eq;
 
 		this = list_entry(p, struct mapent, multi_list);
 		tlen = strlen(this->key);
@@ -635,7 +636,7 @@ void cache_release(struct map_source *map)
 	struct mapent_cache *mc;
 	struct mapent *me, *next;
 	int status;
-	int i;
+	unsigned int i;
 
 	mc = map->mc;
 
@@ -696,8 +697,8 @@ char *cache_get_offset(const char *prefix, char *offset, int start,
 {
 	struct list_head *next;
 	struct mapent *this;
-	int plen = strlen(prefix);
-	int len = 0;
+	size_t plen = strlen(prefix);
+	size_t len = 0;
 
 	if (*pos == head)
 		return NULL;

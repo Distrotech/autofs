@@ -1,4 +1,3 @@
-#ident "$Id: lookup_hesiod.c,v 1.14 2006/03/29 10:32:36 raven Exp $"
 /*
  * lookup_hesiod.c
  *

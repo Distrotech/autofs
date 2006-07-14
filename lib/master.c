@@ -1,4 +1,3 @@
-#ident "$Id: master.c,v 1.11 2006/04/03 08:15:36 raven Exp $"
 /* ----------------------------------------------------------------------- *
  *   
  *  master.c - master map utility routines.
@@ -29,12 +28,12 @@
 #include "automount.h"
 
 /* The root of the map entry tree */
-struct master *master;
+struct master *master_list;
 
 /* Attribute to create detached thread */
 extern pthread_attr_t thread_attr;
 
-extern struct startup_cond sc;
+extern struct startup_cond suc;
 
 static struct map_source *
 __master_find_map_source(struct master_mapent *,
@@ -361,7 +360,7 @@ void master_free_map_source(struct map_source *source, unsigned int free_cache)
 struct map_source *master_find_source_instance(struct map_source *source, const char *type, const char *format, int argc, const char **argv)
 {
 	struct map_source *map;
-	struct map_source *instance = NULL;;
+	struct map_source *instance = NULL;
 	int status, res;
 
 	status = pthread_mutex_lock(&instance_mutex);
@@ -657,14 +656,14 @@ void master_free_mapent(struct master_mapent *entry)
 struct master *master_new(const char *name, unsigned int timeout, unsigned int ghost)
 {
 	struct master *master;
-	const char *tmp;
+	char *tmp;
 
 	master = malloc(sizeof(struct master));
 	if (!master)
 		return NULL;
 
 	if (!name)
-		tmp = defaults_get_master_map();
+		tmp = (char *) defaults_get_master_map();
 	else
 		tmp = strdup(name);
 
@@ -838,12 +837,12 @@ static int master_do_mount(struct master_mapent *entry)
 	pthread_t thid;
 	int status;
 
-	status = pthread_mutex_lock(&sc.mutex);
+	status = pthread_mutex_lock(&suc.mutex);
 	if (status)
 		fatal(status);
 
-	sc.done = 0;
-	sc.status = 0;
+	suc.done = 0;
+	suc.status = 0;
 
 	ap = entry->ap;
 
@@ -853,28 +852,28 @@ static int master_do_mount(struct master_mapent *entry)
 		crit(ap->logopt,
 		     "failed to create mount handler thread for %s",
 		     entry->path);
-		status = pthread_mutex_unlock(&sc.mutex);
+		status = pthread_mutex_unlock(&suc.mutex);
 		if (status)
 			fatal(status);
 		return 0;
 	}
 	entry->thid = thid;
 
-	while (!sc.done) {
-		status = pthread_cond_wait(&sc.cond, &sc.mutex);
+	while (!suc.done) {
+		status = pthread_cond_wait(&suc.cond, &suc.mutex);
 		if (status)
 			fatal(status);
 	}
 
-	if (sc.status) {
+	if (suc.status) {
 		error(ap->logopt, "failed to startup mount");
-		status = pthread_mutex_unlock(&sc.mutex);
+		status = pthread_mutex_unlock(&suc.mutex);
 		if (status)
 			fatal(status);
 		return 0;
 	}
 
-	status = pthread_mutex_unlock(&sc.mutex);
+	status = pthread_mutex_unlock(&suc.mutex);
 	if (status)
 		fatal(status);
 
@@ -912,7 +911,7 @@ next:
 	return;
 }
 
-static void check_update_map_sources(struct master_mapent *entry, time_t age, int readall)
+static void check_update_map_sources(struct master_mapent *entry, int readall)
 {
 	struct map_source *source, *last;
 	int status, state_pipe, map_stale = 0;
@@ -1021,7 +1020,7 @@ int master_mount_mounts(struct master *master, time_t age, int readall)
 			continue;
 		}
 
-		check_update_map_sources(this, age, readall);
+		check_update_map_sources(this, readall);
 
 		status = pthread_mutex_lock(&ap->state_mutex);
 		if (status)
@@ -1071,7 +1070,7 @@ int master_list_empty(struct master *master)
 	return res;
 }
 
-int master_kill(struct master *master, unsigned int mode)
+int master_kill(struct master *master)
 {
 	if (!list_empty(&master->mounts))
 		return 0;
