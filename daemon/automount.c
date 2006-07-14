@@ -1657,7 +1657,7 @@ int main(int argc, char *argv[])
 	if (argc == 0)
 		master_list = master_new(NULL, timeout, ghost);
 	else
-		master_list= master_new(argv[0], timeout, ghost);
+		master_list = master_new(argv[0], timeout, ghost);
 
 	if (!master_list) {
 		crit(LOGOPT_ANY, "%s: can't create master map %s",

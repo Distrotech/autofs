@@ -29,7 +29,7 @@
 #include "automount.h"
 #include "master.h"
 
-extern struct master *master;
+extern struct master *master_list;
 
 char **add_argv(int, char **, char *);
 const char **copy_argv(int, const char **);
@@ -448,6 +448,7 @@ void master_init_scan(void)
 
 int master_parse_entry(const char *buffer, unsigned int default_timeout, unsigned int logging, time_t age)
 {
+	struct master *master = master_list;
 	struct master_mapent *entry, *new;
 	struct map_source *source;
 	unsigned int logopt = logging;

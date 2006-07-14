@@ -14,8 +14,6 @@
 
 #include "automount.h"
 
-extern struct master *master;
-
 extern pthread_attr_t thread_attr;
 
 struct state_queue {

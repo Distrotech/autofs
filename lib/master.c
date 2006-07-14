@@ -28,7 +28,7 @@
 #include "automount.h"
 
 /* The root of the map entry tree */
-struct master *master_list;
+struct master *master_list = NULL;
 
 /* Attribute to create detached thread */
 extern pthread_attr_t thread_attr;
