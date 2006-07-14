@@ -25,9 +25,11 @@
 char **add_argv(int argc, char **argv, char *str)
 {
 	char **vector;
+	size_t vector_size;
 	int i;
 
-	vector = (char **) malloc((argc + 1) * sizeof(char *));
+	vector_size = (argc + 1) * sizeof(char *);
+	vector = (char **) malloc(vector_size);
 	if (!vector)
 		return NULL;
 
@@ -63,9 +65,11 @@ char **add_argv(int argc, char **argv, char *str)
 const char **copy_argv(int argc, const char **argv)
 {
 	char **vector;
+	size_t vector_size;
 	int i;
 
-	vector = (char **) malloc((argc + 1) * sizeof(char *));
+	vector_size = (argc + 1) * sizeof(char *);
+	vector = (char **) malloc(vector_size);
 	if (!vector)
 		return NULL;
 

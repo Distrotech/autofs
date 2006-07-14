@@ -259,7 +259,7 @@ int is_mounted(const char *table, const char *path, unsigned int type)
 	struct mntent *mnt;
 	struct mntent mnt_wrk;
 	char buf[PATH_MAX];
-	int pathlen = strlen(path);
+	size_t pathlen = strlen(path);
 	FILE *tab;
 	int ret = 0;
 
@@ -274,7 +274,7 @@ int is_mounted(const char *table, const char *path, unsigned int type)
 	}
 
 	while ((mnt = getmntent_r(tab, &mnt_wrk, buf, PATH_MAX))) {
-		int len = strlen(mnt->mnt_dir);
+		size_t len = strlen(mnt->mnt_dir);
 
 		if (type) {
 			unsigned int autofs_fs;
@@ -341,7 +341,7 @@ char *find_mnt_ino(const char *table, dev_t dev, ino_t ino)
 
 	tab = setmntent(table, "r");
 	if (!tab) {
-		char *estr = strerror_r(errno, buf, PATH_MAX - 1);
+		char *estr = strerror_r(errno, buf, (size_t) PATH_MAX - 1);
 		error(LOGOPT_ANY, "setmntent: %s", estr);
 		return 0;
 	}
@@ -530,7 +530,8 @@ struct mnt_list *tree_make_mnt_tree(const char *table, const char *path)
 	struct mnt_list *ent, *mptr;
 	struct mnt_list *tree = NULL;
 	char *pgrp;
-	int eq, plen;
+	size_t plen;
+	int eq;
 
 	tab = setmntent(table, "r");
 	if (!tab) {
@@ -542,7 +543,7 @@ struct mnt_list *tree_make_mnt_tree(const char *table, const char *path)
 	plen = strlen(path);
 
 	while ((mnt = getmntent_r(tab, &mnt_wrk, buf, PATH_MAX))) {
-		int len = strlen(mnt->mnt_dir);
+		size_t len = strlen(mnt->mnt_dir);
 
 		/* Not matching path */
 		if (strncmp(mnt->mnt_dir, path, plen))
@@ -657,7 +658,7 @@ struct mnt_list *tree_make_mnt_tree(const char *table, const char *path)
  */
 int tree_get_mnt_list(struct mnt_list *mnts, struct list_head *list, const char *path, int include)
 {
-	int mlen, plen;
+	size_t mlen, plen;
 
 	if (!mnts)
 		return 0;
@@ -747,7 +748,7 @@ int tree_is_mounted(struct mnt_list *mnts, const char *path)
 {
 	struct list_head *p;
 	struct list_head list;
-	int is_mounted = 0;
+	int mounted = 0;
 
 	INIT_LIST_HEAD(&list);
 
@@ -763,9 +764,9 @@ int tree_is_mounted(struct mnt_list *mnts, const char *path)
 		if (!strcmp(mptr->fs_type, "autofs"))
 			continue;
 
-		is_mounted++;
+		mounted++;
 	}
 
-	return is_mounted;
+	return mounted;
 }
 

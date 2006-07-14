@@ -70,6 +70,7 @@ int authtype_requires_creds(const char *authtype);
 int autofs_sasl_init(LDAP *ldap, struct lookup_context *ctxt);
 int autofs_sasl_bind(LDAP *ldap, struct lookup_context *ctxt);
 void autofs_sasl_unbind(struct lookup_context *ctxt);
+void autofs_sasl_done(struct lookup_context *ctxt);
 #endif
 
 #endif

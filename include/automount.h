@@ -300,7 +300,7 @@ int close_mount(struct mount_mod *);
 
 /* buffer management */
 
-int _strlen(const char *str, size_t max);
+size_t _strlen(const char *str, size_t max);
 int cat_path(char *buf, size_t len, const char *dir, const char *base);
 int ncat_path(char *buf, size_t len,
               const char *dir, const char *base, size_t blen);

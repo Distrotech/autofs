@@ -848,7 +848,7 @@ static void *do_expire_direct(void *arg)
 {
 	struct pending_args *mt;
 	struct autofs_point *ap;
-	int len;
+	size_t len;
 	int status;
 
 	mt = (struct pending_args *) arg;

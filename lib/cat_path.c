@@ -57,7 +57,7 @@ int cat_path(char *buf, size_t len, const char *dir, const char *base)
 	return 1;
 }
 
-int _strlen(const char *str, size_t max)
+size_t _strlen(const char *str, size_t max)
 {
 	const char *s = str;
 	size_t len = 0;
@@ -77,7 +77,7 @@ int ncat_path(char *buf, size_t len,
 	      const char *dir, const char *base, size_t blen)
 {
 	char name[PATH_MAX+1];
-	int alen = _strlen(base, blen);
+	size_t alen = _strlen(base, blen);
 
 	if (blen > PATH_MAX || !alen)
 		return 0;

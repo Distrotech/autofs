@@ -476,18 +476,18 @@ int parse_init(int argc, const char *const *argv, void **context)
 	}
 }
 
-static char *dequote(const char *str, int strlen, unsigned int logopt)
+static char *dequote(const char *str, int len, unsigned int logopt)
 {
-	char *ret = malloc(strlen + 1);
+	char *ret = malloc(len + 1);
 	char *cp = ret;
 	const char *scp;
-	int origlen = strlen;
+	int origlen = len;
 	int quote = 0;
 
 	if (ret == NULL)
 		return NULL;
 
-	for (scp = str; strlen > 0 && *scp; scp++, strlen--) {
+	for (scp = str; len > 0 && *scp; scp++, len--) {
 		if (*scp == '\\' && !quote ) {
 			quote = 1;
 			continue;
@@ -699,7 +699,7 @@ static int sun_mount(struct autofs_point *ap, const char *root,
  */
 static int check_is_multi(const char *mapent)
 {
-	const char *p = (char *) mapent;
+	const char *p = mapent;
 	int multi = 0;
 	int not_first_chunk = 0;
 

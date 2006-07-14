@@ -135,12 +135,12 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 	argc = 1;
 
 	if (options) {
-		char *p = options;
+		char *t = options;
 		do {
 			argc++;
-			if (*p == ',')
-				p++;
-		} while ((p = strchr(p, ',')) != NULL);
+			if (*t == ',')
+				t++;
+		} while ((t = strchr(t, ',')) != NULL);
 	}
 	argv = (const char **) alloca((argc + 1) * sizeof(char *));
 

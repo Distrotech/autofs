@@ -461,14 +461,13 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 					       mapent, ctxt->parse->context);
 		if (ret) {
 			time_t now = time(NULL);
-			int status = CHE_OK;
+			int rv = CHE_OK;
 
 			cache_writelock(mc);
 			me = cache_lookup_distinct(mc, key);
 			if (!me)
-				status = cache_update(mc,
-						source, key, NULL, now);
-			if (status != CHE_FAIL) {
+				rv = cache_update(mc, source, key, NULL, now);
+			if (rv != CHE_FAIL) {
 				me = cache_lookup_distinct(mc, key);
 				me->status = time(NULL) + NEGATIVE_TIMEOUT;
 			}

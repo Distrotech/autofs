@@ -52,6 +52,7 @@ static CLIENT *create_udp_client(struct conn_info *info)
 	struct hostent *php = &hp;
 	struct hostent *result;
 	char buf[HOST_ENT_BUF_SIZE];
+	size_t len;
 
 	if (info->proto->p_proto != IPPROTO_UDP)
 		return NULL;
@@ -102,8 +103,8 @@ got_addr:
 		laddr.sin_port = 0;
 		laddr.sin_addr.s_addr = htonl(INADDR_ANY);
 
-		if (bind(fd, (struct sockaddr *)&laddr, 
-			 sizeof(struct sockaddr_in)) < 0) {
+		len = sizeof(struct sockaddr_in);
+		if (bind(fd, (struct sockaddr *)&laddr, len) < 0) {
 			close(fd);
 			fd = RPC_ANYSOCK;
 			/* FALLTHROUGH */
@@ -185,7 +186,8 @@ static int connect_nb(int fd, struct sockaddr_in *addr, struct timeval *tout)
 	 * we set ret = -errno to capture it in case we decide to
 	 * use it later.
 	 */
-	ret = connect(fd, (struct sockaddr *)addr, sizeof(struct sockaddr));
+	len = sizeof(struct sockaddr);
+	ret = connect(fd, (struct sockaddr *)addr, len);
 	if (ret < 0 && errno != EINPROGRESS) {
 		ret = -errno;
 		goto done;
@@ -213,7 +215,7 @@ static int connect_nb(int fd, struct sockaddr_in *addr, struct timeval *tout)
 
 		len = sizeof(ret);
 		status = getsockopt(fd, SOL_SOCKET, SO_ERROR, &ret, &len);
-		if (stat < 0) {
+		if (status < 0) {
 			ret = -errno;
 			goto done;
 		}
@@ -574,21 +576,23 @@ static unsigned int __rpc_ping(const char *host,
 
 int rpc_ping(const char *host, long seconds, long micros, unsigned int option)
 {
+	unsigned long vers3 = NFS3_VERSION;
+	unsigned long vers2 = NFS2_VERSION;
 	unsigned int status;
 
-	status = __rpc_ping(host, NFS2_VERSION, "udp", seconds, micros, option);
+	status = __rpc_ping(host, vers2, "udp", seconds, micros, option);
 	if (status)
 		return RPC_PING_V2 | RPC_PING_UDP;
 
-	status = __rpc_ping(host, NFS3_VERSION, "udp", seconds, micros, option);
+	status = __rpc_ping(host, vers3, "udp", seconds, micros, option);
 	if (status)
 		return RPC_PING_V3 | RPC_PING_UDP;
 
-	status = __rpc_ping(host, NFS2_VERSION, "tcp", seconds, micros, option);
+	status = __rpc_ping(host, vers2, "tcp", seconds, micros, option);
 	if (status)
 		return RPC_PING_V2 | RPC_PING_TCP;
 
-	status = __rpc_ping(host, NFS3_VERSION, "tcp", seconds, micros, option);
+	status = __rpc_ping(host, vers3, "tcp", seconds, micros, option);
 	if (status)
 		return RPC_PING_V3 | RPC_PING_TCP;
 
@@ -612,9 +616,10 @@ int rpc_time(const char *host,
 	struct timeval start, end;
 	struct timezone tz;
 	char *proto = (ping_proto & RPC_PING_UDP) ? "udp" : "tcp";
+	unsigned long vers = ping_vers;
 
 	gettimeofday(&start, &tz);
-	status = __rpc_ping(host, ping_vers, proto, seconds, micros, option);
+	status = __rpc_ping(host, vers, proto, seconds, micros, option);
 	gettimeofday(&end, &tz);
 
 	if (!status) {
@@ -875,7 +880,7 @@ static int host_match(char *pattern)
 				return 0;
 		ret = innetgr(pattern + 1, myname, (char *) 0, ypdomain);
 	} else if (inet_aton(pattern, &tmp) || strchr(pattern, '/')) {
-		int len = strlen(pattern) + 1;
+		size_t len = strlen(pattern) + 1;
 		char *addr, *mask;
 
 		addr = alloca(len);

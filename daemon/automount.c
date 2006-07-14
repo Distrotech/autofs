@@ -616,7 +616,7 @@ static int umount_all(struct autofs_point *ap, int force)
 
 int umount_autofs(struct autofs_point *ap, int force)
 {
-	int status = 0;
+	int ret = 0;
 
 	if (ap->state == ST_INIT)
 		return -1;
@@ -632,9 +632,9 @@ int umount_autofs(struct autofs_point *ap, int force)
 		if (umount_all(ap, force) && !force)
 			return -1;
 
-		status = umount_autofs_indirect(ap);
+		ret = umount_autofs_indirect(ap);
 	} else {
-		status = umount_autofs_direct(ap);
+		ret = umount_autofs_direct(ap);
 	}
 
 	if (ap->submount) {
@@ -654,7 +654,7 @@ int umount_autofs(struct autofs_point *ap, int force)
 			fatal(status);
 	}
 
-	return status;
+	return ret;
 }
 
 int send_ready(int ioctlfd, unsigned int wait_queue_token)
@@ -973,17 +973,17 @@ static void *do_notify_state(void *arg)
 	return NULL;
 }
 
-static int do_signals(struct master *master, int signal)
+static int do_signals(struct master *master, int sig)
 {
 	pthread_t thid;
-	int sig = signal;
+	int r_sig = sig;
 	int status;
 
 	status = pthread_mutex_lock(&mrc.mutex);
 	if (status)
 		fatal(status);
 
-	status = pthread_create(&thid, &thread_attr, do_notify_state, &sig);
+	status = pthread_create(&thid, &thread_attr, do_notify_state, &r_sig);
 	if (status) {
 		error(master->default_logging,
 		      "mount state notify thread create failed");
