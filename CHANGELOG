@@ -1,6 +1,7 @@
 ?/7/2006 autofs-5.0.1
 ---------------------
 - code cleanup.
+- fix race for current map source.
 
 13/7/2006 autofs-5.0.1 rc1
 --------------------------

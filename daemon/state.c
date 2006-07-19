@@ -372,7 +372,6 @@ static void *do_readmap(void *arg)
 				map = map->next;
 				continue;
 			}
-			ap->entry->current = map;
 			mc = map->mc;
 			pthread_cleanup_push(cache_lock_cleanup, mc);
 			cache_readlock(mc);
@@ -392,9 +391,8 @@ static void *do_readmap(void *arg)
 			pthread_cleanup_pop(1);
 			map = map->next;
 		}
-		pthread_cleanup_pop(1);
 		tree_free_mnt_tree(mnts);
-		ap->entry->current = NULL;
+		pthread_cleanup_pop(1);
 		lookup_prune_cache(ap, now);
 	}
 

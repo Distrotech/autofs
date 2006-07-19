@@ -40,6 +40,8 @@ struct master_mapent {
 	pthread_t thid;
 	time_t age;
 	pthread_rwlock_t source_lock;
+	pthread_mutex_t current_mutex;
+	pthread_cond_t current_cond;
 	struct map_source *first;
 	struct map_source *current;
 	struct map_source *maps;
@@ -81,6 +83,8 @@ void master_source_writelock(struct master_mapent *);
 void master_source_readlock(struct master_mapent *);
 void master_source_unlock(struct master_mapent *);
 void master_source_lock_cleanup(void *);
+void master_source_current_wait(struct master_mapent *);
+void master_source_current_signal(struct master_mapent *);
 struct master_mapent *master_find_mapent(struct master *, const char *);
 struct master_mapent *master_new_mapent(const char *, time_t);
 void master_add_mapent(struct master *, struct master_mapent *);

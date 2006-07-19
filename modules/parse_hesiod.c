@@ -229,6 +229,9 @@ int parse_mount(struct autofs_point *ap, const char *name,
 	char *q;
 	const char *p;
 
+	ap->entry->current = NULL;
+	master_source_current_signal(ap->entry);
+
 	p = mapent;
 	q = fstype;
 

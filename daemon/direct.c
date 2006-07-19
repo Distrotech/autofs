@@ -531,7 +531,6 @@ force_umount:
 
 int mount_autofs_offset(struct autofs_point *ap, struct mapent *me, int is_autofs_fs)
 {
-	struct map_source *map = ap->entry->current;
 	struct mnt_params *mp;
 	time_t timeout = ap->exp_timeout;
 	struct stat st;
@@ -636,7 +635,7 @@ int mount_autofs_offset(struct autofs_point *ap, struct mapent *me, int is_autof
 		goto out_close;
 	}
 
-	cache_set_ino_index(map->mc, me->key, st.st_dev, st.st_ino);
+	cache_set_ino_index(me->source->mc, me->key, st.st_dev, st.st_ino);
 
 	close(me->ioctlfd);
 	me->ioctlfd = -1;

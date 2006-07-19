@@ -50,6 +50,7 @@ struct callback_master_data {
 
 struct callback_data {
 	struct autofs_point *ap;
+	struct map_source *source;
 	time_t age;
 };
 
@@ -244,7 +245,7 @@ int yp_all_callback(int status, char *ypkey, int ypkeylen,
 {
 	struct callback_data *cbdata = (struct callback_data *) ypcb_data;
 	struct autofs_point *ap = cbdata->ap;
-	struct map_source *source = ap->entry->current;
+	struct map_source *source = cbdata->source;
 	struct mapent_cache *mc = source->mc;
 	time_t age = cbdata->age;
 	char *key;
@@ -292,17 +293,21 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 	char *mapname;
 	int err;
 
+	ypcb_data.ap = ap;
+	ypcb_data.source = ap->entry->current;
+	ypcb_data.age = age;
+
+	ap->entry->current = NULL;
+	master_source_current_signal(ap->entry);
+
+	ypcb.foreach = yp_all_callback;
+	ypcb.data = (char *) &ypcb_data;
+
 	mapname = alloca(strlen(ctxt->mapname) + 1);
 	if (!mapname)
 		return 0;
 
 	strcpy(mapname, ctxt->mapname);
-
-	ypcb_data.ap = ap;
-	ypcb_data.age = age;
-
-	ypcb.foreach = yp_all_callback;
-	ypcb.data = (char *) &ypcb_data;
 
 	err = yp_all((char *) ctxt->domainname, mapname, &ypcb);
 
@@ -333,13 +338,19 @@ static int lookup_one(struct autofs_point *ap,
 		      const char *key, int key_len,
 		      struct lookup_context *ctxt)
 {
-	struct map_source *source = ap->entry->current;
-	struct mapent_cache *mc = source->mc;
+	struct map_source *source;
+	struct mapent_cache *mc;
 	char *mapname;
 	char *mapent;
 	int mapent_len;
 	time_t age = time(NULL);
 	int ret;
+
+	source = ap->entry->current;
+	ap->entry->current = NULL;
+	master_source_current_signal(ap->entry);
+
+	mc = source->mc;
 
 	mapname = alloca(strlen(ctxt->mapname) + 1);
 	if (!mapname)
@@ -385,13 +396,19 @@ static int lookup_one(struct autofs_point *ap,
 
 static int lookup_wild(struct autofs_point *ap, struct lookup_context *ctxt)
 {
-	struct map_source *source = ap->entry->current;
-	struct mapent_cache *mc = source->mc;
+	struct map_source *source;
+	struct mapent_cache *mc;
 	char *mapname;
 	char *mapent;
 	int mapent_len;
 	time_t age = time(NULL);
 	int ret;
+
+	source = ap->entry->current;
+	ap->entry->current = NULL;
+	master_source_current_signal(ap->entry);
+
+	mc = source->mc;
 
 	mapname = alloca(strlen(ctxt->mapname) + 1);
 	if (!mapname)
@@ -433,18 +450,27 @@ static int check_map_indirect(struct autofs_point *ap,
 			      char *key, int key_len,
 			      struct lookup_context *ctxt)
 {
-	struct map_source *source = ap->entry->current;
-	struct mapent_cache *mc = source->mc;
+	struct map_source *source;
+	struct mapent_cache *mc;
 	struct mapent *exists;
 	unsigned int map_order;
 	int need_map = 0;
 	int ret = 0;
+
+	source = ap->entry->current;
+	ap->entry->current = NULL;
+	master_source_current_signal(ap->entry);
+
+	mc = source->mc;
 
 	cache_readlock(mc);
 	exists = cache_lookup_distinct(mc, key);
 	if (exists && exists->source != source)
 		exists = NULL;
 	cache_unlock(mc);
+
+	master_source_current_wait(ap->entry);
+	ap->entry->current = source;
 
 	/* check map and if change is detected re-read map */
 	ret = lookup_one(ap, key, key_len, ctxt);
@@ -467,6 +493,9 @@ static int check_map_indirect(struct autofs_point *ap,
 
 	if (ret == CHE_MISSING) {
 		int wild = CHE_MISSING;
+
+		master_source_current_wait(ap->entry);
+		ap->entry->current = source;
 
 		wild = lookup_wild(ap, ctxt);
 		if (wild == CHE_UPDATED || CHE_OK)
@@ -508,8 +537,8 @@ static int check_map_indirect(struct autofs_point *ap,
 int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *context)
 {
 	struct lookup_context *ctxt = (struct lookup_context *) context;
-	struct map_source *source = ap->entry->current;
-	struct mapent_cache *mc = source->mc;
+	struct map_source *source;
+	struct mapent_cache *mc;
 	char key[KEY_MAX_LEN + 1];
 	int key_len;
 	char *mapent = NULL;
@@ -517,6 +546,12 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 	struct mapent *me;
 	int status = 0;
 	int ret = 1;
+
+	source = ap->entry->current;
+	ap->entry->current = NULL;
+	master_source_current_signal(ap->entry);
+
+	mc = source->mc;
 
 	debug(ap->logopt, MODPREFIX "looking up %s", name);
 
@@ -551,6 +586,9 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 		if (!lkp_key)
 			return NSS_STATUS_UNKNOWN;
 
+		master_source_current_wait(ap->entry);
+		ap->entry->current = source;
+
 		status = check_map_indirect(ap, lkp_key, strlen(lkp_key), ctxt);
 		free(lkp_key);
 		if (status) {
@@ -572,6 +610,9 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 	cache_unlock(mc);
 
 	if (mapent) {
+		master_source_current_wait(ap->entry);
+		ap->entry->current = source;
+
 		debug(ap->logopt, MODPREFIX "%s -> %s", key, mapent);
 		ret = ctxt->parse->parse_mount(ap, key, key_len,
 					       mapent, ctxt->parse->context);

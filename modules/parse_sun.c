@@ -753,12 +753,18 @@ add_offset_entry(struct autofs_point *ap, const char *name,
 		 const char *path, const char *myoptions, const char *loc,
 		 time_t age)
 {
-	struct map_source *source = ap->entry->current;
-	struct mapent_cache *mc = source->mc;
+	struct map_source *source;
+	struct mapent_cache *mc;
 	char m_key[PATH_MAX + 1];
 	char m_mapent[MAPENT_MAX_LEN + 1];
 	int m_key_len, m_mapent_len;
 	int ret;
+
+	source = ap->entry->current;
+	ap->entry->current = NULL;
+	master_source_current_signal(ap->entry);
+
+	mc = source->mc;
 
 	m_key_len = m_root_len + strlen(path) + 1;
 	if (m_key_len > PATH_MAX) {
@@ -890,14 +896,20 @@ int parse_mount(struct autofs_point *ap, const char *name,
 {
 	struct parse_context *ctxt = (struct parse_context *) context;
 	char buf[MAX_ERR_BUF];
-	struct map_source *source = ap->entry->current;
-	struct mapent_cache *mc = source->mc;
+	struct map_source *source;
+	struct mapent_cache *mc;
 	struct mapent *me;
 	char *pmapent, *options;
 	const char *p;
 	int mapent_len, rv = 0;
 	int optlen;
 	int slashify = ctxt->slashify_colons;
+
+	source = ap->entry->current;
+	ap->entry->current = NULL;
+	master_source_current_signal(ap->entry);
+
+	mc = source->mc;
 
 	if (!mapent) {
 		error(ap->logopt, MODPREFIX "error: empty map entry");
@@ -1122,6 +1134,9 @@ int parse_mount(struct autofs_point *ap, const char *name,
 				p += l;
 				p = skipspace(p);
 			}
+
+			master_source_current_wait(ap->entry);
+			ap->entry->current = source;
 
 			status = add_offset_entry(ap, name,
 						m_root, m_root_len,

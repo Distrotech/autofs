@@ -411,11 +411,11 @@ int lookup_nss_read_map(struct autofs_point *ap, time_t age)
 
 		sched_yield();
 
-		entry->current = map;
-
 		if (map->type) {
 			debug(ap->logopt,
 			      "reading map %s %s", map->type, map->argv[0]);
+			master_source_current_wait(entry);
+			entry->current = map;
 			result = do_read_map(ap, map, age);
 			map = map->next;
 			continue;
@@ -432,10 +432,14 @@ int lookup_nss_read_map(struct autofs_point *ap, time_t age)
 				map->type = tmp;
 				debug(ap->logopt,
 				      "reading map %s %s", tmp, map->argv[0]);
+				master_source_current_wait(entry);
+				entry->current = map;
 				result = do_read_map(ap, map, age);
 			} else {
 				debug(ap->logopt,
 				      "reading map file %s", map->argv[0]);
+				master_source_current_wait(entry);
+				entry->current = map;
 				result = read_file_source_instance(ap, map, age);
 			}
 			map = map->next;
@@ -448,7 +452,7 @@ int lookup_nss_read_map(struct autofs_point *ap, time_t age)
 		if (result) {
 			error(ap->logopt,
 			      "can't to read name service switch config.");
-			goto done;
+			break;
 		}
 
 		head = &nsslist;
@@ -460,25 +464,28 @@ int lookup_nss_read_map(struct autofs_point *ap, time_t age)
 			debug(ap->logopt,
 			      "reading map %s %s", this->source, map->argv[0]);
 
+			master_source_current_wait(entry);
+			entry->current = map;
 			result = read_map_source(this, ap, map, age);
 			if (result == NSS_STATUS_UNKNOWN)
 				continue;
 
 			status = check_nss_result(this, result);
 			if (status >= 0) {
-				free_sources(&nsslist);
 				result = !status;
-				goto done;
+				map = NULL;
+				break;
 			}
 		}
 
 		if (!list_empty(&nsslist))
 			free_sources(&nsslist);
 
+		if (!map)
+			break;
+
 		map = map->next;
 	}
-done:
-	entry->current = NULL;
 	pthread_cleanup_pop(1);
 
 	return !result;
@@ -737,11 +744,14 @@ int lookup_nss_mount(struct autofs_point *ap, const char *name, int name_len)
 		}
 
 		sched_yield();
-		entry->current = map;
+
 		if (map->type) {
+			master_source_current_wait(entry);
+			entry->current = map;
 			result = do_lookup_mount(ap, map, name, name_len);
+
 			if (result == NSS_STATUS_SUCCESS)
-				goto done;
+				break;
 
 			map = map->next;
 			continue;
@@ -756,12 +766,17 @@ int lookup_nss_mount(struct autofs_point *ap, const char *name, int name_len)
 					continue;
 				}
 				map->type = tmp;
+				master_source_current_wait(entry);
+				entry->current = map;
 				result = do_lookup_mount(ap, map, name, name_len);
-			} else
+			} else {
+				master_source_current_wait(entry);
+				entry->current = map;
 				result = lookup_name_file_source_instance(ap, map, name, name_len);
+			}
 
 			if (result == NSS_STATUS_SUCCESS)
-				goto done;
+				break;
 
 			map = map->next;
 			continue;
@@ -774,7 +789,7 @@ int lookup_nss_mount(struct autofs_point *ap, const char *name, int name_len)
 			error(ap->logopt,
 			      "can't to read name service switch config.");
 			result = 1;
-			goto done;
+			break;
 		}
 
 		head = &nsslist;
@@ -783,7 +798,10 @@ int lookup_nss_mount(struct autofs_point *ap, const char *name, int name_len)
 
 			this = list_entry(p, struct nss_source, list);
 
+			master_source_current_wait(entry);
+			entry->current = map;
 			result = lookup_map_name(this, ap, map, name, name_len);
+
 			if (result == NSS_STATUS_UNKNOWN) {
 				map = map->next;
 				continue;
@@ -791,18 +809,19 @@ int lookup_nss_mount(struct autofs_point *ap, const char *name, int name_len)
 
 			status = check_nss_result(this, result);
 			if (status >= 0) {
-				free_sources(&nsslist);
-				goto done;
+				map = NULL;
+				break;
 			}
 		}
 
 		if (!list_empty(&nsslist))
 			free_sources(&nsslist);
 
+		if (!map)
+			break;
+
 		map = map->next;
 	}
-done:
-	entry->current = NULL;
 	pthread_cleanup_pop(1);
 
 	return !result;
