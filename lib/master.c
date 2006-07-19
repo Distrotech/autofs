@@ -1142,3 +1142,13 @@ int master_kill(struct master *master)
 	return 1;
 }
 
+void dump_master(struct master *master)
+{
+	struct list_head *p, *head;
+
+	head = &master->mounts;
+	list_for_each(p, head) {
+		struct master_mapent *this = list_entry(p, struct master_mapent, list);
+		debug(LOGOPT_ANY, "path %s", this->path);
+	}
+}

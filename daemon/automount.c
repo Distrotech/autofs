@@ -217,7 +217,7 @@ static int umount_offsets(struct autofs_point *ap, struct mnt_list *mnts, const 
 	map = ap->entry->first;
 	while (map) {
 		mc = map->mc;
-		cache_writelock(mc);
+		cache_readlock(mc);
 		me = cache_lookup_distinct(mc, base);
 		if (!me)
 			me = cache_lookup_distinct(mc, ind_key);
@@ -226,7 +226,6 @@ static int umount_offsets(struct autofs_point *ap, struct mnt_list *mnts, const 
 		cache_unlock(mc);
 		map = map->next;
 	}
-	ap->entry->current = map;
 	master_source_unlock(ap->entry);
 
 	if (!me)
@@ -268,12 +267,13 @@ static int umount_offsets(struct autofs_point *ap, struct mnt_list *mnts, const 
 	}
 
 	if (!ret && me->multi == me) {
+		cache_multi_lock(mc);
 		status = cache_delete_offset_list(mc, me->key);
+		cache_multi_unlock(mc);
 		if (status != CHE_OK)
 			warn(ap->logopt, "couldn't delete offset list");
 	}
 	cache_unlock(mc);
-	ap->entry->current = NULL;
 
 	return ret;
 }
@@ -351,7 +351,6 @@ static int umount_ent(struct autofs_point *ap, const char *path, const char *typ
 			     "mounted on this path.", path);
 			rv = -1;
 		}
-
 	}
 
 	status = pthread_mutex_unlock(&ap->state_mutex);
@@ -383,6 +382,8 @@ static int walk_tree(const char *base, int (*fn) (const char *file,
 			while (n--) {
 				int ret, size;
 
+				sched_yield();
+
 				if (strcmp(de[n]->d_name, ".") == 0 ||
 				    strcmp(de[n]->d_name, "..") == 0) {
 					free(de[n]);
@@ -413,6 +414,7 @@ static int walk_tree(const char *base, int (*fn) (const char *file,
 static int rm_unwanted_fn(const char *file, const struct stat *st, int when, void *arg)
 {
 	dev_t dev = *(int *) arg;
+	char buf[MAX_ERR_BUF];
 	struct stat newst;
 
 	if (when == 0) {
@@ -437,8 +439,9 @@ static int rm_unwanted_fn(const char *file, const struct stat *st, int when, voi
 	if (S_ISDIR(newst.st_mode)) {
 		debug(LOGOPT_ANY, "removing directory %s", file);
 		if (rmdir(file)) {
+			char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
 			error(LOGOPT_ANY,
-			      "unable to remove directory %s", file);
+			      "unable to remove directory %s: %s", file, estr);
 			return 0;
 		}
 	} else if (S_ISREG(newst.st_mode)) {
@@ -1217,6 +1220,8 @@ static void handle_mounts_cleanup(void *arg)
 	if (master_list_empty(master_list))
 		kill(getpid(), SIGTERM);
 
+	sched_yield();
+
 	if (clean) {
 		if (rmdir(path) == -1) {
 			char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
@@ -1337,7 +1342,7 @@ void *handle_mounts(void *arg)
 				fatal(status);
 		}
 	}
-/*
+
 	status = pthread_mutex_lock(&ap->mounts_mutex);
 	if (status)
 		fatal(status);
@@ -1351,7 +1356,7 @@ void *handle_mounts(void *arg)
 	status = pthread_mutex_unlock(&ap->mounts_mutex);
 	if (status)
 		fatal(status);
-*/
+
 	pthread_cleanup_pop(1);
 
 	/*

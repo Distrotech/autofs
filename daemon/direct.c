@@ -197,7 +197,6 @@ int umount_autofs_direct(struct autofs_point *ap)
 	master_source_readlock(ap->entry);
 	map = ap->entry->first;
 	while (map) {
-		ap->entry->current = map;
 		mc = map->mc;
 		pthread_cleanup_push(cache_lock_cleanup, mc);
 		cache_readlock(mc);
@@ -213,7 +212,6 @@ int umount_autofs_direct(struct autofs_point *ap)
 	}
 	pthread_cleanup_pop(1);
 	tree_free_mnt_tree(mnts);
-	ap->entry->current = NULL;
 
 	return 0;
 }
@@ -264,7 +262,6 @@ static int unlink_mount_tree(struct autofs_point *ap, struct list_head *list)
 
 int do_mount_autofs_direct(struct autofs_point *ap, struct mnt_list *mnts, struct mapent *me)
 {
-	struct map_source *map = ap->entry->current;
 	struct mnt_params *mp;
 	time_t timeout = ap->exp_timeout;
 	struct stat st;
@@ -382,7 +379,7 @@ got_version:
 		      "failed to stat direct mount trigger %s", me->key);
 		goto out_close;
 	}
-	cache_set_ino_index(map->mc, me->key, st.st_dev, st.st_ino);
+	cache_set_ino_index(me->source->mc, me->key, st.st_dev, st.st_ino);
 
 	close(me->ioctlfd);
 	me->ioctlfd = -1;
@@ -442,7 +439,6 @@ int mount_autofs_direct(struct autofs_point *ap)
 			continue;
 		}
 
-		ap->entry->current = map;
 		mc = map->mc;
 		pthread_cleanup_push(cache_lock_cleanup, mc);
 		cache_readlock(mc);

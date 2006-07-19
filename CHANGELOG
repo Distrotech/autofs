@@ -3,6 +3,7 @@
 - code cleanup.
 - fix race for current map source.
 - cthon map parser corrections.
+- cthon multi-map locking fix and current race corrections.
 
 13/7/2006 autofs-5.0.1 rc1
 --------------------------

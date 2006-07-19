@@ -123,6 +123,7 @@ struct autofs_point;
 
 struct mapent_cache {
 	pthread_rwlock_t rwlock;
+	pthread_mutex_t multi_mutex;
 	unsigned int size;
 	struct list_head *ino_index;
 	struct mapent **hash;
@@ -170,6 +171,8 @@ int cache_add_offset(struct mapent_cache *mc, const char *mkey, const char *key,
 int cache_update(struct mapent_cache *mc, struct map_source *source,
 			const char *key, const char *mapent, time_t age);
 int cache_delete(struct mapent_cache *mc, const char *key);
+void cache_multi_lock(struct mapent_cache *mc);
+void cache_multi_unlock(struct mapent_cache *mc);
 int cache_delete_offset_list(struct mapent_cache *mc, const char *key);
 void cache_release(struct map_source *map);
 struct mapent *cache_enumerate(struct mapent_cache *mc, struct mapent *me);

@@ -76,10 +76,16 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 
 int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 {
-	struct map_source *source = ap->entry->current;
-	struct mapent_cache *mc = source->mc;
+	struct map_source *source;
+	struct mapent_cache *mc;
 	struct hostent *host;
 	int status;
+
+	source = ap->entry->current;
+	ap->entry->current = NULL;
+	master_source_current_signal(ap->entry);
+
+	mc = source->mc;
 
 	status = pthread_mutex_lock(&hostent_mutex);
 	if (status) {
@@ -107,8 +113,8 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *context)
 {
 	struct lookup_context *ctxt = (struct lookup_context *) context;
-	struct map_source *source = ap->entry->current;
-	struct mapent_cache *mc = source->mc;
+	struct map_source *source;
+	struct mapent_cache *mc;
 	struct mapent *me;
 	char buf[MAX_ERR_BUF];
 	char *mapent = NULL;
@@ -117,6 +123,12 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 	exports exp;
 	int status = NSS_STATUS_UNKNOWN;
 	int ret;
+
+	source = ap->entry->current;
+	ap->entry->current = NULL;
+	master_source_current_signal(ap->entry);
+
+	mc = source->mc;
 
 	cache_readlock(mc);
 	me = cache_lookup_distinct(mc, name);
@@ -168,6 +180,9 @@ done:
 		return status;
 
 	if (mapent) {
+		master_source_current_wait(ap->entry);
+		ap->entry->current = source;
+
 		debug(ap->logopt, MODPREFIX "%s -> %s", name, me->mapent);
 		ret = ctxt->parse->parse_mount(ap, name, name_len,
 				 mapent, ctxt->parse->context);
@@ -237,6 +252,9 @@ done:
 	cache_writelock(mc);
 	cache_update(mc, source, name, mapent, now);
 	cache_unlock(mc);
+
+	master_source_current_wait(ap->entry);
+	ap->entry->current = source;
 
 	ret = ctxt->parse->parse_mount(ap, name, name_len,
 				 mapent, ctxt->parse->context);

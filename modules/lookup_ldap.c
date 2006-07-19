@@ -1541,7 +1541,7 @@ static int check_map_indirect(struct autofs_point *ap,
 	if (ap->ghost && need_map) {
 		int status;
 
-		ap->entry->current->stale = 1;
+		source->stale = 1;
 
 		status = pthread_mutex_lock(&ap->state_mutex);
 		if (status)

@@ -98,6 +98,29 @@ void cache_lock_cleanup(void *arg)
 	cache_unlock(mc);
 }
 
+void cache_multi_lock(struct mapent_cache *mc)
+{
+	int status;
+
+	status = pthread_mutex_lock(&mc->multi_mutex);
+	if (status) {
+		error(LOGOPT_ANY, "mapent cache multi mutex lock failed");
+		fatal(status);
+	}
+	return;
+}
+
+void cache_multi_unlock(struct mapent_cache *mc)
+{
+	int status;
+
+	status = pthread_mutex_unlock(&mc->multi_mutex);
+	if (status) {
+		error(LOGOPT_ANY, "mapent cache multi mutex unlock failed");
+		fatal(status);
+	}
+	return;
+}
 struct mapent_cache *cache_init(struct map_source *map)
 {
 	struct mapent_cache *mc;
@@ -127,6 +150,10 @@ struct mapent_cache *cache_init(struct map_source *map)
 	}
 
 	status = pthread_rwlock_init(&mc->rwlock, NULL);
+	if (status)
+		fatal(status);
+
+	status = pthread_mutex_init(&mc->multi_mutex, NULL);
 	if (status)
 		fatal(status);
 
@@ -672,6 +699,10 @@ void cache_release(struct map_source *map)
 	cache_unlock(mc);
 
 	status = pthread_rwlock_destroy(&mc->rwlock);
+	if (status)
+		fatal(status);
+
+	status = pthread_mutex_destroy(&mc->multi_mutex);
 	if (status)
 		fatal(status);
 
