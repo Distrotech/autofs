@@ -182,6 +182,8 @@ static int read_one(FILE *f, char *key, char *mapent)
 				state = st_begin;
 				if (gotten == got_plus)
 					goto got_it;
+				if (escape != esc_val)
+					goto got_it;
 			} else if (isspace(ch) && !escape) {
 				getting = got_real;
 				state = st_entspc;
@@ -192,7 +194,7 @@ static int read_one(FILE *f, char *key, char *mapent)
 				if (key_len == KEY_MAX_LEN) {
 					state = st_badent;
 					error(LOGOPT_ANY,
-					      MODPREFIX "Map key \"%s...\" "
+					      MODPREFIX "map key \"%s...\" "
 					      "is too long.  The maximum key "
 					      "length is %d", key,
 					      KEY_MAX_LEN);
@@ -214,8 +216,12 @@ static int read_one(FILE *f, char *key, char *mapent)
 			break;
 
 		case st_badent:
-			if (ch == '\n')
+			if (ch == '\n') {
 				state = st_begin;
+				if (gotten == got_real || gotten == getting)
+					goto got_it;
+				goto next;
+			}
 			break;
 
 		case st_entspc:
@@ -232,6 +238,16 @@ static int read_one(FILE *f, char *key, char *mapent)
 
 		case st_getent:
 			if (ch == '\n') {
+				nch = getc(f);
+				if (nch != EOF && isblank(nch)) {
+					state = st_badent;
+					ungetc(nch, f);
+					error(LOGOPT_ANY, MODPREFIX 
+					      "bad map entry \"%s...\" for key "
+					      "\"%s\"", mapent, key);
+					break;
+				}
+				ungetc(nch, f);
 				state = st_begin;
 				if (gotten == got_real || gotten == getting)
 					goto got_it;
@@ -245,7 +261,7 @@ static int read_one(FILE *f, char *key, char *mapent)
 				ungetc(nch, f);
 			} else {
 				error(LOGOPT_ANY,
-				      MODPREFIX "Map entry \"%s...\" for key "
+				      MODPREFIX "map entry \"%s...\" for key "
 				      "\"%s\" is too long.  The maximum entry"
 				      " size is %d", mapent, key,
 				      MAPENT_MAX_LEN);
@@ -640,15 +656,36 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 			master_free_mapent_sources(iap->entry, 0);
 			master_free_mapent(iap->entry);
 		} else {
-			if (ap->type == LKP_INDIRECT && *key == '/')
+			char *dq_key, *dq_mapent; 
+
+			dq_key = dequote(key, strlen(key), ap->logopt);
+			if (!dq_key)
 				continue;
 
-			if (ap->type == LKP_DIRECT && *key != '/')
+			if (*dq_key == '/') {
+				if (ap->type == LKP_INDIRECT) {
+					free(dq_key);
+					continue;
+				}
+			} else {
+				if (ap->type == LKP_DIRECT) {
+					free(dq_key);
+					continue;
+				}
+			}
+
+			dq_mapent = dequote(mapent, strlen(mapent), ap->logopt); 
+			if (!dq_mapent) {
+				free(dq_key);
 				continue;
+			}
 
 			cache_writelock(mc);
-			cache_update(mc, source, key, mapent, age);
+			cache_update(mc, source, dq_key, dq_mapent, age);
 			cache_unlock(mc);
+
+			free(dq_key);
+			free(dq_mapent);
 		}
 
 		if (feof(f))

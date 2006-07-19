@@ -1146,6 +1146,7 @@ static int read_one_map(struct autofs_point *ap,
 
 	while (e) {
 		char *mapent = NULL;
+		char *dq_key, *dq_mapent;
 
 		keyValue = ldap_get_values(ldap, e, entry);
 
@@ -1227,18 +1228,37 @@ static int read_one_map(struct autofs_point *ap,
 		}
 		ldap_value_free(values);
 
-		if (**keyValue == '/' && strlen(*keyValue) == 1)
-			**keyValue = '*';
-
-		if (ap->type == LKP_INDIRECT && **keyValue == '/')
+		dq_key = dequote(*keyValue, strlen(*keyValue), ap->logopt);
+		if (!dq_key)
 			goto next;
 
-		if (ap->type == LKP_DIRECT && **keyValue != '/')
+		if (*dq_key == '/' && strlen(dq_key) == 1)
+			*dq_key = '*';
+
+		if (*dq_key == '/') {
+			if (ap->type == LKP_INDIRECT) {
+				free(dq_key);
+				goto next;
+			}
+		} else {
+			if (ap->type == LKP_DIRECT) {
+				free(dq_key);
+				goto next;
+			}
+		}
+
+		dq_mapent = dequote(mapent, strlen(mapent), ap->logopt);
+		if (!mapent) {
+			free(dq_key);
 			goto next;
+		}
 
 		cache_writelock(mc);
-		cache_update(mc, source, *keyValue, mapent, age);
+		cache_update(mc, source, dq_key, dq_mapent, age);
 		cache_unlock(mc);
+
+		free(dq_key);
+		free(dq_mapent);
 next:
 		if (mapent) {
 			free(mapent);

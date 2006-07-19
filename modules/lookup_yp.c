@@ -248,8 +248,7 @@ int yp_all_callback(int status, char *ypkey, int ypkeylen,
 	struct map_source *source = cbdata->source;
 	struct mapent_cache *mc = source->mc;
 	time_t age = cbdata->age;
-	char *key;
-	char *mapent;
+	char *key, *mapent;
 	int ret;
 
 	if (status != YP_TRUE)
@@ -262,23 +261,35 @@ int yp_all_callback(int status, char *ypkey, int ypkeylen,
 	if (*ypkey == '+')
 		return 0;
 
-	if (ap->type == LKP_INDIRECT && *ypkey == '/')
+	key = dequote(ypkey, ypkeylen, ap->logopt);
+	if (!key)
 		return 0;
 
-	if (ap->type == LKP_DIRECT && *ypkey != '/')
+	if (*key == '/') {
+		if (ap->type == LKP_INDIRECT) {
+			free(key);
+			return 0;
+		}
+	} else {
+		if (ap->type == LKP_DIRECT) {
+			free(key);
+			return 0;
+		}
+	}
+
+	mapent = dequote(val, vallen, ap->logopt);
+	if (!mapent) {
+		free(key);
 		return 0;
-
-	key = alloca(ypkeylen + 1);
-	strncpy(key, ypkey, ypkeylen);
-	*(key + ypkeylen) = '\0';
-
-	mapent = alloca(vallen + 1);
-	strncpy(mapent, val, vallen);
-	*(mapent + vallen) = '\0';
+	}
 
 	cache_writelock(mc);
 	ret = cache_update(mc, source, key, mapent, age);
 	cache_unlock(mc);
+
+	free(key);
+	free(mapent);
+
 	if (ret == CHE_FAIL)
 		return -1;
 

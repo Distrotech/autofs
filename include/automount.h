@@ -28,6 +28,7 @@
 #include "macros.h"
 #include "log.h"
 #include "rpc_subs.h"
+#include "parse_subs.h"
 
 #ifdef WITH_DMALLOC
 #include <dmalloc.h>
@@ -115,6 +116,7 @@ struct autofs_point;
 #define CHE_RMPATH	0x0004
 #define CHE_MISSING	0x0008
 #define CHE_COMPLETED	0x0010
+#define CHE_DUPLICATE	0x0020
 
 #define HASHSIZE		77
 #define NEGATIVE_TIMEOUT	10

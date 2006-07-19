@@ -446,6 +446,7 @@ static void cache_add_ordered_offset(struct mapent *me, struct list_head *head)
 {
 	struct list_head *p;
 	struct mapent *this;
+	int status = CHE_OK;
 
 	list_for_each(p, head) {
 		size_t tlen;
@@ -456,15 +457,15 @@ static void cache_add_ordered_offset(struct mapent *me, struct list_head *head)
 
 		eq = strncmp(this->key, me->key, tlen);
 		if (!eq && tlen == strlen(me->key))
-			goto done;
+			return;
 
 		if (eq > 0) {
 			list_add_tail(&me->multi_list, p);
-			goto done;
+			return;
 		}
 	}
 	list_add_tail(&me->multi_list, p);
-done:
+
 	return;
 }
 
@@ -478,7 +479,11 @@ int cache_add_offset(struct mapent_cache *mc, const char *mkey, const char *key,
 	if (!owner)
 		return CHE_FAIL;
 
-	ret = cache_update(mc, owner->source, key, mapent, age);
+	me = cache_lookup_distinct(mc, key);
+	if (me && me != owner)
+		return CHE_DUPLICATE;
+
+	ret = cache_add(mc, owner->source, key, mapent, age);
 	if (ret == CHE_FAIL) {
 		warn(LOGOPT_ANY, "failed to add key %s to cache", key);
 		return CHE_FAIL;

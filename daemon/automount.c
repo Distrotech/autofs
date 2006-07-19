@@ -1368,8 +1368,8 @@ void *handle_mounts(void *arg)
 	 * So, the solution is a recipe for disaster.
 	 * Hope we don't get a really busy system!
 	 */
-	/* sleep(1); */
-	sched_yield();
+	sleep(5);
+	/* sched_yield(); */
 
 	return NULL;
 }

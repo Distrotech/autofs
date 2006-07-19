@@ -214,116 +214,6 @@ int expandsunent(const char *src, char *dst, const char *key,
 	return len;
 }
 
-/*
- * Skip whitespace in a string; if we hit a #, consider the rest of the
- * entry a comment.
- */
-const char *skipspace(const char *whence)
-{
-	while (1) {
-		switch (*whence) {
-		case ' ':
-		case '\b':
-		case '\t':
-		case '\n':
-		case '\v':
-		case '\f':
-		case '\r':
-			whence++;
-			break;
-		case '#':	/* comment: skip to end of string */
-			while (*whence != '\0')
-				whence++;
-			/* FALLTHROUGH */
-
-		default:
-			return whence;
-		}
-	}
-}
-
-/*
- * Check a string to see if a colon appears before the next '/'.
- */
-int check_colon(const char *str)
-{
-	char *ptr = (char *) str;
-
-	while (*ptr && *ptr != ':' && *ptr != '/') {
-		ptr++;
-	}
-
-	if (!*ptr || *ptr == '/')
-		return 0;
-
-	return 1;
-}
-
-/* Get the length of a chunk delimitered by whitespace */
-int chunklen(const char *whence, int expect_colon)
-{
-	int n = 0;
-	int quote = 0;
-
-	for (; *whence; whence++, n++) {
-		switch (*whence) {
-		case '\\':
-			if( quote ) {
-				break;
-			} else {
-				quote = 1;
-				continue;
-			}
-		case ':':
-			if (expect_colon)
-				expect_colon = 0;
-			continue;
-		case ' ':
-		case '\t':
-			/* Skip space or tab if we expect a colon */
-			if (expect_colon)
-				continue;
-		case '\b':
-		case '\n':
-		case '\v':
-		case '\f':
-		case '\r':
-		case '#':
-		case '\0':
-			if (!quote)
-				return n;
-			/* FALLTHROUGH */
-		default:
-			break;
-		}
-		quote = 0;
-	}
-
-	return n;
-}
-
-/*
- * Compare str with pat.  Return 0 if compare equal or
- * str is an abbreviation of pat of no less than mchr characters.
- */
-int strmcmp(const char *str, const char *pat, int mchr)
-{
-	int nchr = 0;
-
-	while (*str == *pat) {
-		if (!*str)
-			return 0;
-		str++;
-		pat++;
-		nchr++;
-	}
-
-	if (!*str && nchr > mchr)
-		return 0;
-
-	return *pat - *str;
-}
-
 int parse_init(int argc, const char *const *argv, void **context)
 {
 	struct parse_context *ctxt;
@@ -474,33 +364,6 @@ int parse_init(int argc, const char *const *argv, void **context)
 		init_ctr++;
 		return 0;
 	}
-}
-
-static char *dequote(const char *str, int len, unsigned int logopt)
-{
-	char *ret = malloc(len + 1);
-	char *cp = ret;
-	const char *scp;
-	int origlen = len;
-	int quote = 0;
-
-	if (ret == NULL)
-		return NULL;
-
-	for (scp = str; len > 0 && *scp; scp++, len--) {
-		if (*scp == '\\' && !quote ) {
-			quote = 1;
-			continue;
-		}
-		quote = 0;
-		*cp++ = *scp;
-	}
-	*cp = '\0';
-
-	debug(logopt,
-	      MODPREFIX "dequote(\"%.*s\") -> %s", origlen, str, ret);
-
-	return ret;
 }
 
 static const char *parse_options(const char *str, char **ret, unsigned int logopt)
@@ -757,7 +620,7 @@ add_offset_entry(struct autofs_point *ap, const char *name,
 	struct mapent_cache *mc;
 	char m_key[PATH_MAX + 1];
 	char m_mapent[MAPENT_MAX_LEN + 1];
-	int m_key_len, m_mapent_len;
+	int p_len, m_key_len, m_options_len, m_mapent_len;
 	int ret;
 
 	source = ap->entry->current;
@@ -766,33 +629,53 @@ add_offset_entry(struct autofs_point *ap, const char *name,
 
 	mc = source->mc;
 
-	m_key_len = m_root_len + strlen(path) + 1;
-	if (m_key_len > PATH_MAX) {
+	if (!*path || !*loc) {
 		error(ap->logopt,
-		      MODPREFIX "multi mount key too long - ignored");
+		      MODPREFIX "syntax error in offset %s -> %s", path, loc);
+		return CHE_FAIL;
+	}
+
+	p_len = strlen(path);
+	/* Trailing '/' causes us pain */
+	if (path[p_len - 1] == '/')
+		p_len--;
+	m_key_len = m_root_len + p_len;
+	if (m_key_len > PATH_MAX) {
+		error(ap->logopt, MODPREFIX "multi mount key too long");
 		return CHE_FAIL;
 	}
 	strcpy(m_key, m_root);
-	strcat(m_key, path);
+	strncat(m_key, path, p_len);
+	m_key[m_key_len] = '\0';
 
-	m_mapent_len = strlen(myoptions) + strlen(loc) + 3;
-	if (m_mapent_len > MAPENT_MAX_LEN) {
-		error(ap->logopt,
-		      MODPREFIX "multi mount mapent too long - ignored");
+	m_options_len = 0;
+	if (*myoptions)
+		m_options_len = strlen(myoptions) + 2;
+
+	m_mapent_len = strlen(loc);
+	if (m_mapent_len + m_options_len > MAPENT_MAX_LEN) {
+		error(ap->logopt, MODPREFIX "multi mount mapent too long");
 		return CHE_FAIL;
 	}
-	strcpy(m_mapent, "-");
-	strcat(m_mapent, myoptions);
-	strcat(m_mapent, " ");
-	strcat(m_mapent, loc);
 
-	debug(ap->logopt,
-	      MODPREFIX
-	      "adding multi-mount offset %s -> %s", path, m_mapent);
+	if (*myoptions) {
+		strcpy(m_mapent, "-");
+		strcat(m_mapent, myoptions);
+		strcat(m_mapent, " ");
+		strcat(m_mapent, loc);
+	} else
+		strcpy(m_mapent, loc);
 
 	cache_writelock(mc);
 	ret = cache_add_offset(mc, name, m_key, m_mapent, age);
 	cache_unlock(mc);
+
+	if (ret == CHE_OK)
+		debug(ap->logopt, MODPREFIX
+		      "added multi-mount offset %s -> %s", path, m_mapent);
+	else
+		debug(ap->logopt, MODPREFIX
+		      "syntax error in offset %s -> %s", path, loc);
 
 	return ret;
 }
@@ -862,21 +745,164 @@ cont:
 	return 1;
 }
 
-static void parse_sun_cleanup(struct mapent_cache *mc, const char *name,
-			 char *options, char *path, char *myoptions)
+static int validate_location(char *loc)
 {
-	cache_writelock(mc);
-	cache_delete_offset_list(mc, name);
-	cache_unlock(mc);
+	char *ptr = loc;
 
-	if (options)
-		free(options);
+	/* We don't know much about these */
+	if (*ptr == '/')
+		return 1;
 
-	if (path)
-		free(path);
+	/* If a ':' is present now it must be a host name */
+	if (check_colon(ptr)) {
+		if (!isalpha(*ptr++))
+			return 0;
 
-	if (myoptions)
+		while (*ptr && *ptr != ':') {
+			if (!(isalnum(*ptr) ||
+			    *ptr == '-' || *ptr == '.' || *ptr == ','))
+				return 0;
+			ptr++;
+		}
+
+		if (*ptr && *ptr == ':')
+			ptr++;
+	}
+
+	/* Must always be something following */
+	if (!*ptr)
+		return 0;
+
+	return 1;
+}
+
+static int parse_mapent(const char *ent, char *g_options, char **options, char **location, int logopt)
+{
+	char buf[MAX_ERR_BUF];
+	const char *p;
+	char *myoptions, *loc;
+	int l;
+
+	p = ent;
+
+	myoptions = strdup(g_options);
+	if (!myoptions) {
+		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+		error(logopt, MODPREFIX "strdup: %s", estr);
+		return 0;
+	}
+
+	/* Local options are appended to per-map options */
+	if (*p == '-') {
+		do {
+			char *tmp, *newopt = NULL;
+
+			p = parse_options(p, &newopt, logopt);
+
+			tmp = concat_options(myoptions, newopt);
+			if (!tmp) {
+				char *estr;
+				estr = strerror_r(errno, buf, MAX_ERR_BUF);
+				error(logopt, MODPREFIX
+				      "concat_options: %s", estr);
+				free(myoptions);
+				return 0;
+			}
+			myoptions = tmp;
+
+			p = skipspace(p);
+		} while (*p == '-');
+	}
+
+	/* Location can't begin with a '/' */
+	if (*p == '/') {
+		error(logopt, MODPREFIX "error location begins with \"/\"");
 		free(myoptions);
+		return 0;
+	}
+
+	/* Skip ':' escape */
+	if (*p == ':')
+		p++;
+
+	l = chunklen(p, check_colon(p));
+	loc = dequote(p, l, logopt);
+	if (!loc) {
+		error(logopt, MODPREFIX "out of memory");
+		free(myoptions);
+		return 0;
+	}
+
+	if (!validate_location(loc)) {
+		error(logopt, MODPREFIX "invalid location");
+		free(myoptions);
+		free(loc);
+		return 0;
+	}
+
+	debug(logopt, MODPREFIX "dequote(\"%.*s\") -> %s", l, p, loc);
+
+	p += l;
+	p = skipspace(p);
+
+	while (*p && *p != '/') {
+		char *ent;
+
+		/* Location can't begin with a '/' */
+		if (*p == '/') {
+			error(logopt,
+			      MODPREFIX "error location begins with \"/\"");
+			free(myoptions);
+			free(loc);
+			return 0;
+		}
+
+		/* Skip ':' escape */
+		if (*p == ':')
+			p++;
+
+		l = chunklen(p, check_colon(p));
+		ent = dequote(p, l, logopt);
+		if (!ent) {
+			error(logopt, MODPREFIX "out of memory");
+			free(myoptions);
+			free(loc);
+			return 0;
+		}
+
+		if (!validate_location(ent)) {
+			error(logopt,
+			      MODPREFIX "invalid location %s", ent);
+			free(ent);
+			free(myoptions);
+			free(loc);
+			return 0;
+		}
+
+		debug(logopt, MODPREFIX "dequote(\"%.*s\") -> %s", l, p, ent);
+
+		loc = realloc(loc, strlen(loc) + l + 2);
+		if (!loc) {
+			error(logopt, MODPREFIX "out of memory");
+			free(ent);
+			free(myoptions);
+			free(loc);
+			return 0;
+		}
+
+		strcat(loc, " ");
+		strcat(loc, ent);
+
+		free(ent);
+
+		p += l;
+		p = skipspace(p);
+	}
+
+	*options = myoptions;
+	*location = loc;
+
+	return (p - ent);
 }
 
 /*
@@ -898,7 +924,7 @@ int parse_mount(struct autofs_point *ap, const char *name,
 	char buf[MAX_ERR_BUF];
 	struct map_source *source;
 	struct mapent_cache *mc;
-	struct mapent *me;
+	struct mapent *me, *ro;
 	char *pmapent, *options;
 	const char *p;
 	int mapent_len, rv = 0;
@@ -977,9 +1003,6 @@ int parse_mount(struct autofs_point *ap, const char *name,
 	if (check_is_multi(p)) {
 		char *m_root = NULL;
 		int m_root_len;
-		char *root_path = NULL;
-		char *root_loc = NULL;
-		char *root_options = NULL;
 		time_t age = time(NULL);
 		int l;
 
@@ -1041,8 +1064,7 @@ int parse_mount(struct autofs_point *ap, const char *name,
 
 		/* It's a multi-mount; deal with it */
 		do {
-			char *myoptions = strdup(options);
-			char *path, *loc;
+			char *path, *myoptions, *loc;
 			int status;
 
 			if (myoptions == NULL) {
@@ -1055,85 +1077,49 @@ int parse_mount(struct autofs_point *ap, const char *name,
 			if (*p != '/') {
 				l = 0;
 				path = dequote("/", 1, ap->logopt);
+				debug(ap->logopt,
+				      MODPREFIX "dequote(\"/\") -> %s", path);
 			} else {
 				l = chunklen(p, 0);
 				path = dequote(p, l, ap->logopt);
+				debug(ap->logopt, MODPREFIX
+				      "dequote(\"%.*s\") -> %s", l, p, path);
 			}
 
 			if (!path) {
 				error(ap->logopt, MODPREFIX "out of memory");
-				parse_sun_cleanup(mc, name, options, NULL, myoptions);
+				cache_writelock(mc);
+				cache_delete_offset_list(mc, name);
+				cache_unlock(mc);
+				free(options);
+				return 1;
+			}
+
+			if (!*path) {
+				error(ap->logopt, MODPREFIX "invalid path");
+				cache_writelock(mc);
+				cache_delete_offset_list(mc, name);
+				cache_unlock(mc);
+				free(path);
+				free(options);
 				return 1;
 			}
 
 			p += l;
 			p = skipspace(p);
 
-			/* Local options are appended to per-map options */
-			if (*p == '-') {
-				do {
-					char *newopt = NULL;
-
-					p = parse_options(p, &newopt, ap->logopt);
-					myoptions = concat_options(myoptions, newopt);
-
-					if (myoptions == NULL) {
-						char *estr;
-						estr = strerror_r(errno, buf, MAX_ERR_BUF);
-						error(ap->logopt, MODPREFIX
-						      "multi concat_options: %s", estr);
-						parse_sun_cleanup(mc, name,
-							options, NULL, NULL);
-						return 1;
-					}
-					p = skipspace(p);
-				} while (*p == '-');
-			}
-
-			/* Skip over colon escape */
-			if (*p == ':')
-				p++;
-
-			l = chunklen(p, check_colon(p));
-			loc = dequote(p, l, ap->logopt);
-			if (!loc) {
-				error(ap->logopt, MODPREFIX "out of memory");
-				parse_sun_cleanup(mc, name, options, path, myoptions);
+			l = parse_mapent(p, options, &myoptions, &loc, ap->logopt);
+			if (!l) {
+				cache_writelock(mc);
+				cache_delete_offset_list(mc, name);
+				cache_unlock(mc);
+				free(path);
+				free(options);
 				return 1;
 			}
 
 			p += l;
 			p = skipspace(p);
-
-			while (*p && *p != '/') {
-				char *ent;
-
-				l = chunklen(p, check_colon(p));
-				ent = dequote(p, l, ap->logopt);
-				if (!ent) {
-					error(ap->logopt, MODPREFIX "out of memory");
-					parse_sun_cleanup(mc, name,
-						options, path, myoptions);
-					return 1;
-				}
-
-				loc = realloc(loc, strlen(loc) + l + 2);
-				if (!loc) {
-					error(ap->logopt, MODPREFIX "out of memory");
-					parse_sun_cleanup(mc, name,
-						options, path, myoptions);
-					free(ent);
-					return 1;
-				}
-
-				strcat(loc, " ");
-				strcat(loc, ent);
-
-				free(ent);
-
-				p += l;
-				p = skipspace(p);
-			}
 
 			master_source_current_wait(ap->entry);
 			ap->entry->current = source;
@@ -1142,61 +1128,70 @@ int parse_mount(struct autofs_point *ap, const char *name,
 						m_root, m_root_len,
 						path, myoptions, loc, age);
 
-			if (!strcmp(path, "/")) {
-				root_path = strdup(path);
-				if (!root_path) {
-					error(ap->logopt, MODPREFIX "out of memory");
-					parse_sun_cleanup(mc, name,
-						options, path, myoptions);
-					return 1;
-				}
-				root_loc = strdup(loc);
-				if (!root_loc) {
-					error(ap->logopt, MODPREFIX "out of memory");
-					parse_sun_cleanup(mc, name,
-						options, path, myoptions);
-					free(root_path);
-					return 1;
-				}
-				root_options = strdup(myoptions);
-				if (!root_options) {
-					error(ap->logopt, MODPREFIX "out of memory");
-					parse_sun_cleanup(mc, name,
-						options, path, myoptions);
-					free(root_loc);
-					free(root_path);
-					return 1;
-				}
+			if (status != CHE_OK) {
+				error(ap->logopt, MODPREFIX "error adding multi-mount");
+				cache_writelock(mc);
+				cache_delete_offset_list(mc, name);
+				cache_unlock(mc);
+				free(path);
+				free(options);
+				free(myoptions);
+				free(loc);
+				return 1;
 			}
+
 			free(loc);
 			free(path);
 			free(myoptions);
 		} while (*p == '/');
 
-		if (root_path) {
-			rv = sun_mount(ap, m_root, root_path, strlen(root_path),
-				root_loc, strlen(root_loc), root_options, ctxt);
+		/* Mount root offset if it exists */
+		cache_readlock(mc);
+		ro = cache_lookup_offset("/", "/", strlen(m_root), &me->multi_list);
+		if (ro) {
+			char *myoptions, *loc;
 
-			free(root_path);
-			free(root_loc);
-			free(root_options);
+			rv = parse_mapent(ro->mapent,
+				options, &myoptions, &loc, ap->logopt);
+			if (!rv) {
+				cache_unlock(mc);
+				error(ap->logopt,
+				      MODPREFIX "mount of root offset failed");
+				cache_writelock(mc);
+				cache_delete_offset_list(mc, name);
+				cache_unlock(mc);
+				free(options);
+				return 1;
+			}
+
+			rv = sun_mount(ap, m_root,
+				"/", 1, loc, strlen(loc), myoptions, ctxt);
+
+			free(myoptions);
+			free(loc);
 
 			if (rv < 0) {
+				cache_unlock(mc);
 				error(ap->logopt,
 				      MODPREFIX
 				      "mount multi-mount root %s failed", name);
 				cache_writelock(mc);
 				cache_delete_offset_list(mc, name);
 				cache_unlock(mc);
+				free(options);
 				return rv;
 			}
 		}
 
-		cache_readlock(mc);
 		if (!mount_multi_triggers(ap, m_root, me, "/")) {
+			cache_unlock(mc);
 			error(ap->logopt,
 			      MODPREFIX "failed to mount offset triggers");
-			rv = 1;
+			cache_writelock(mc);
+			cache_delete_offset_list(mc, name);
+			cache_unlock(mc);
+			free(options);
+			return 1;
 		}
 		cache_unlock(mc);
 
@@ -1209,6 +1204,14 @@ int parse_mount(struct autofs_point *ap, const char *name,
 		int loclen;
 		int l;
 
+		/* Location can't begin with a '/' */
+		if (*p == '/') {
+			error(ap->logopt,
+			      MODPREFIX "error location begins with \"/\"");
+			free(options);
+			return 1;
+		}
+
 		if (*p == ':')
 			p++;	/* Sun escape for entries starting with / */
 
@@ -1220,6 +1223,23 @@ int parse_mount(struct autofs_point *ap, const char *name,
 			return 1;
 		}
 
+		if (!*loc) {
+			error(ap->logopt, MODPREFIX "invalid location");
+			free(loc);
+			free(options);
+			return 1;
+		}
+
+		if (!validate_location(loc)) {
+			error(ap->logopt, MODPREFIX "invalid location");
+			free(loc);
+			free(options);
+			return 1;
+		}
+
+		debug(ap->logopt,
+		      MODPREFIX "dequote(\"%.*s\") -> %s", l, p, loc);
+
 		p += l;
 		p = skipspace(p);
 
@@ -1230,14 +1250,27 @@ int parse_mount(struct autofs_point *ap, const char *name,
 			ent = dequote(p, l, ap->logopt);
 			if (!ent) {
 				error(ap->logopt, MODPREFIX "out of memory");
+				free(loc);
 				free(options);
 				return 1;
 			}
+
+			if (!validate_location(ent)) {
+				error(ap->logopt, MODPREFIX "invalid location");
+				free(ent);
+				free(loc);
+				free(options);
+				return 1;
+			}
+
+			debug(ap->logopt,
+			      MODPREFIX "dequote(\"%.*s\") -> %s", l, p, ent);
 
 			loc = realloc(loc, strlen(loc) + l + 2);
 			if (!loc) {
 				error(ap->logopt, MODPREFIX "out of memory");
 				free(ent);
+				free(loc);
 				free(options);
 				return 1;
 			}
@@ -1269,7 +1302,7 @@ int parse_mount(struct autofs_point *ap, const char *name,
 		/* non-strict failure to normal failure for ordinary mount */
 		if (rv < 0)
 			rv = -rv;
-			
+
 		free(loc);
 		free(options);
 
