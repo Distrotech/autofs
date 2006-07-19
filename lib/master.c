@@ -514,8 +514,6 @@ void master_source_current_wait(struct master_mapent *entry)
 {
 	int status;
 
-	debug(LOGOPT_ANY, "locking");
-
 	status = pthread_mutex_lock(&entry->current_mutex);
 	if (status) {
 		error(LOGOPT_ANY, "entry current source lock failed");
@@ -551,8 +549,6 @@ void master_source_current_signal(struct master_mapent *entry)
 		error(LOGOPT_ANY, "entry current source unlock failed");
 		fatal(status);
 	}
-
-	debug(LOGOPT_ANY, "unlocking");
 
 	return;
 }

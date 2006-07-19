@@ -637,7 +637,7 @@ add_offset_entry(struct autofs_point *ap, const char *name,
 
 	p_len = strlen(path);
 	/* Trailing '/' causes us pain */
-	if (path[p_len - 1] == '/')
+	if (p_len > 1 && path[p_len - 1] == '/')
 		p_len--;
 	m_key_len = m_root_len + p_len;
 	if (m_key_len > PATH_MAX) {
@@ -677,7 +677,7 @@ add_offset_entry(struct autofs_point *ap, const char *name,
 		      "added multi-mount offset %s -> %s", path, m_mapent);
 	else
 		warn(ap->logopt, MODPREFIX
-		      "syntax error or dupliate offset %s -> %s", path, loc);
+		      "syntax error or duplicate offset %s -> %s", path, loc);
 
 	return ret;
 }
@@ -800,7 +800,6 @@ static int parse_mapent(const char *ent, char *g_options, char **options, char *
 			char *tmp, *newopt = NULL;
 
 			p = parse_options(p, &newopt, logopt);
-
 			tmp = concat_options(myoptions, newopt);
 			if (!tmp) {
 				char *estr;
@@ -815,6 +814,8 @@ static int parse_mapent(const char *ent, char *g_options, char **options, char *
 			p = skipspace(p);
 		} while (*p == '-');
 	}
+
+	debug(logopt, MODPREFIX "gathered options: %s", myoptions);
 
 	/* Location can't begin with a '/' */
 	if (*p == '/') {
@@ -836,7 +837,7 @@ static int parse_mapent(const char *ent, char *g_options, char **options, char *
 	}
 
 	if (!validate_location(loc)) {
-		error(logopt, MODPREFIX "invalid location");
+		warn(logopt, MODPREFIX "invalid location");
 		free(myoptions);
 		free(loc);
 		return 0;
@@ -1151,6 +1152,7 @@ int parse_mount(struct autofs_point *ap, const char *name,
 		} while (*p == '/');
 
 		cache_readlock(mc);
+		me = cache_lookup_distinct(mc, name);
 		if (!me) {
 			error(ap->logopt,
 			      MODPREFIX
@@ -1171,7 +1173,7 @@ int parse_mount(struct autofs_point *ap, const char *name,
 			rv = parse_mapent(ro->mapent,
 				options, &myoptions, &loc, ap->logopt);
 			if (!rv) {
-				error(ap->logopt,
+				warn(ap->logopt,
 				      MODPREFIX "failed to mount root offset");
 				cache_multi_lock(mc);
 				cache_delete_offset_list(mc, name);
@@ -1188,7 +1190,7 @@ int parse_mount(struct autofs_point *ap, const char *name,
 			free(loc);
 
 			if (rv < 0) {
-				error(ap->logopt,
+				warn(ap->logopt,
 				      MODPREFIX
 				      "mount multi-mount root %s failed", name);
 				cache_multi_lock(mc);
@@ -1201,7 +1203,7 @@ int parse_mount(struct autofs_point *ap, const char *name,
 		}
 
 		if (!mount_multi_triggers(ap, m_root, me, "/")) {
-			error(ap->logopt,
+			warn(ap->logopt,
 			      MODPREFIX "failed to mount offset triggers");
 			free(options);
 			return 1;
