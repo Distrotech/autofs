@@ -242,6 +242,7 @@ static int read_one(FILE *f, char *key, char *mapent)
 				if (nch != EOF && isblank(nch)) {
 					state = st_badent;
 					ungetc(nch, f);
+					gotten = got_nothing;
 					error(LOGOPT_ANY, MODPREFIX 
 					      "bad map entry \"%s...\" for key "
 					      "\"%s\"", mapent, key);

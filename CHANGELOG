@@ -5,6 +5,7 @@
 - cthon map parser corrections.
 - cthon multi-map locking fix and current race corrections.
 - cthon shutdown expire fix.
+- cthon more map parser corrections.
 
 13/7/2006 autofs-5.0.1 rc1
 --------------------------

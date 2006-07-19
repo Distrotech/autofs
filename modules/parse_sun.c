@@ -677,7 +677,7 @@ add_offset_entry(struct autofs_point *ap, const char *name,
 		      "added multi-mount offset %s -> %s", path, m_mapent);
 	else
 		debug(ap->logopt, MODPREFIX
-		      "syntax error in offset %s -> %s", path, loc);
+		      "syntax error or dupliate offset %s -> %s", path, loc);
 
 	return ret;
 }
@@ -782,7 +782,7 @@ static int parse_mapent(const char *ent, char *g_options, char **options, char *
 {
 	char buf[MAX_ERR_BUF];
 	const char *p;
-	char *myoptions, *loc;
+	char *tmp, *myoptions, *loc;
 	int l;
 
 	p = ent;
@@ -1066,29 +1066,22 @@ int parse_mount(struct autofs_point *ap, const char *name,
 
 		/* It's a multi-mount; deal with it */
 		do {
-			char *path, *myoptions, *loc;
+			char *tmp, *path, *myoptions, *loc;
 			int status;
-
-			if (myoptions == NULL) {
-				char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-				error(ap->logopt, MODPREFIX "multi strdup: %s", estr);
-				parse_sun_cleanup(mc, name, options, NULL, NULL);
-				return 1;
-			}
 
 			if (*p != '/') {
 				l = 0;
-				path = dequote("/", 1, ap->logopt);
+				tmp = dequote("/", 1, ap->logopt);
 				debug(ap->logopt,
-				      MODPREFIX "dequote(\"/\") -> %s", path);
+				      MODPREFIX "dequote(\"/\") -> %s", tmp);
 			} else {
 				l = chunklen(p, 0);
-				path = dequote(p, l, ap->logopt);
+				tmp = dequote(p, l, ap->logopt);
 				debug(ap->logopt, MODPREFIX
-				      "dequote(\"%.*s\") -> %s", l, p, path);
+				      "dequote(\"%.*s\") -> %s", l, p, tmp);
 			}
 
-			if (!path) {
+			if (!tmp) {
 				error(ap->logopt, MODPREFIX "out of memory");
 				cache_readlock(mc);
 				cache_multi_lock(mc);
@@ -1099,17 +1092,19 @@ int parse_mount(struct autofs_point *ap, const char *name,
 				return 1;
 			}
 
-			if (!*path) {
+			path = sanitize_path(tmp, strlen(tmp));
+			if (!path) {
 				error(ap->logopt, MODPREFIX "invalid path");
 				cache_readlock(mc);
 				cache_multi_lock(mc);
 				cache_delete_offset_list(mc, name);
 				cache_multi_unlock(mc);
 				cache_unlock(mc);
-				free(path);
+				free(tmp);
 				free(options);
 				return 1;
 			}
+			free(tmp);
 
 			p += l;
 			p = skipspace(p);
