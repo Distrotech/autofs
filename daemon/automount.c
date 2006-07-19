@@ -546,7 +546,8 @@ static void update_map_cache(struct autofs_point *ap, const char *path)
    it also tries to umount path itself */
 int umount_multi(struct autofs_point *ap, struct mnt_list *mnts, const char *path, int incl)
 {
-	int left;
+	int left, n;
+	struct dirent **de;
 	struct mnt_list *mptr;
 	struct list_head *p;
 	struct list_head list;
@@ -558,7 +559,7 @@ int umount_multi(struct autofs_point *ap, struct mnt_list *mnts, const char *pat
 	if (!tree_get_mnt_list(mnts, &list, path, incl)) {
 		debug(ap->logopt, "no mounts found under %s", path);
 		check_rm_dirs(ap, path, incl);
-		return 0;
+		return 1;
 	}
 
 	left = 0;
@@ -583,11 +584,50 @@ int umount_multi(struct autofs_point *ap, struct mnt_list *mnts, const char *pat
 	}
 
 	/* Lastly check for offsets with no root mount */
-	if (!tree_is_mounted(mnts, path)) {
+	n = scandir(path, &de, 0, alphasort);
+	if (n) {
+		char buf[PATH_MAX + 1];
+
+		while (n--) {
+			size_t size;
+			int ret;
+
+			if (strcmp(de[n]->d_name, ".") == 0 ||
+			    strcmp(de[n]->d_name, "..") == 0) {
+				free(de[n]);
+				continue;
+			}
+
+			sched_yield();
+
+			size = sizeof(buf);
+			ret = cat_path(buf, size, path, de[n]->d_name);
+			if (!ret) {
+				do {
+					free(de[n]);
+				} while (n--);
+				left++;
+				break;
+			}
+
+			if (!tree_is_mounted(mnts, buf)) {
+				if (umount_offsets(ap, mnts, buf)) {
+					error(ap->logopt,
+					  "could not umount some offsets under %s",
+					  buf);
+					left++;
+				}
+			}
+			free(de[n]);
+		}
+		free(de);
+	}
+
+	if (!left && !tree_is_mounted(mnts, path)) {
 		if (umount_offsets(ap, mnts, path)) {
 			error(ap->logopt,
 			      "could not umount some offsets under %s", path);
-			return 0;
+			left++;
 		}
 	}
 
@@ -1216,9 +1256,7 @@ static void handle_mounts_cleanup(void *arg)
 	master_free_mapent_sources(ap->entry, 1);
 	master_free_mapent(ap->entry);
 
-	/* If we are the last tell the state machine to shutdown */
-	if (master_list_empty(master_list))
-		kill(getpid(), SIGTERM);
+	sched_yield();
 
 	sched_yield();
 
@@ -1231,6 +1269,10 @@ static void handle_mounts_cleanup(void *arg)
 	}
 
 	msg("shut down path %s", path);
+
+	/* If we are the last tell the state machine to shutdown */
+	if (master_list_empty(master_list))
+		kill(getpid(), SIGTERM);
 
 	return;
 }
@@ -1285,7 +1327,7 @@ void *handle_mounts(void *arg)
 
 	while (ap->state != ST_SHUTDOWN) {
 		if (handle_packet(ap)) {
-			int ret;
+			int ret, result;
 
 			status = pthread_mutex_lock(&ap->state_mutex);
 			if (status)
@@ -1307,7 +1349,7 @@ void *handle_mounts(void *arg)
 			 * If the ioctl fails assume the kernel doesn't have
 			 * AUTOFS_IOC_ASKUMOUNT and just continue.
 			 */
-			ret = ioctl(ap->ioctlfd, AUTOFS_IOC_ASKUMOUNT, &status);
+			ret = ioctl(ap->ioctlfd, AUTOFS_IOC_ASKUMOUNT, &result);
 			if (ret == -1) {
 				status = pthread_mutex_unlock(&ap->state_mutex);
 				if (status)
@@ -1316,7 +1358,7 @@ void *handle_mounts(void *arg)
 			}
 
 			/* OK to exit */
-			if (status) {
+			if (result) {
 				status = pthread_mutex_unlock(&ap->state_mutex);
 				if (status)
 					fatal(status);

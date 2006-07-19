@@ -851,7 +851,8 @@ void master_notify_state_change(struct master *master, int sig)
 
 		switch (sig) {
 		case SIGTERM:
-			if (ap->state != ST_SHUTDOWN) {
+			if (ap->state != ST_SHUTDOWN &&
+			    ap->state != ST_SHUTDOWN_PENDING) {
 				next = ST_SHUTDOWN_PENDING;
 				notify_submounts(ap, next);
 				nextstate(state_pipe, next);
@@ -859,7 +860,8 @@ void master_notify_state_change(struct master *master, int sig)
 			break;
 #ifdef ENABLE_FORCED_SHUTDOWN
 		case SIGUSR2:
-			if (ap->state != ST_SHUTDOWN) {
+			if (ap->state != ST_SHUTDOWN &&
+			    ap->state != ST_SHUTDOWN_FORCE) {
 				next = ST_SHUTDOWN_FORCE;
 				notify_submounts(ap, next);
 				nextstate(state_pipe, next);
@@ -874,13 +876,14 @@ void master_notify_state_change(struct master *master, int sig)
 			break;
 		}
 
-		debug(ap->logopt,
-		      "sig %d switching %s from %d to %d",
-		      sig, ap->path, ap->state, next);
-
 		status = pthread_mutex_unlock(&ap->state_mutex);
 		if (status)
 			fatal(status);
+
+		if (next != ST_INVAL)
+			debug(ap->logopt,
+			      "sig %d switching %s from %d to %d",
+			      sig, ap->path, ap->state, next);
 	}
 
 	status = pthread_mutex_unlock(&master_mutex);

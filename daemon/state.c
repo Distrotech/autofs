@@ -126,7 +126,9 @@ void expire_cleanup(void *arg)
 
 		case ST_SHUTDOWN_PENDING:
 			next = ST_SHUTDOWN;
-#ifndef ENABLE_IGNORE_BUSY_MOUNTS
+#ifdef ENABLE_IGNORE_BUSY_MOUNTS
+			break;
+#else
 			if (success == 0)
 				break;
 
@@ -134,8 +136,8 @@ void expire_cleanup(void *arg)
 			warn(ap->logopt, "filesystem %s still busy", ap->path);
 			alarm_add(ap, ap->exp_runfreq);
 			next = ST_READY;
-#endif
 			break;
+#endif
 
 		case ST_SHUTDOWN_FORCE:
 			next = ST_SHUTDOWN;
