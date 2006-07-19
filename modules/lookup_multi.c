@@ -133,9 +133,16 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 {
 	struct lookup_context *ctxt = (struct lookup_context *) context;
+	struct map_source *source;
 	int i, ret, at_least_1 = 0;
 
+	source = ap->entry->current;
+	ap->entry->current = NULL;
+	master_source_current_signal(ap->entry);
+
 	for (i = 0; i < ctxt->n; i++) {
+		master_source_current_wait(ap->entry);
+		ap->entry->current = source;
 		ret = ctxt->m[i].mod->lookup_read_map(ap, age,
 						ctxt->m[i].mod->context);
 		if (ret & LKP_FAIL || ret == LKP_NOTSUP)
@@ -153,9 +160,16 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *context)
 {
 	struct lookup_context *ctxt = (struct lookup_context *) context;
+	struct map_source *source;
 	int i;
 
+	source = ap->entry->current;
+	ap->entry->current = NULL;
+	master_source_current_signal(ap->entry);
+
 	for (i = 0; i < ctxt->n; i++) {
+		master_source_current_wait(ap->entry);
+		ap->entry->current = source;
 		if (ctxt->m[i].mod->lookup_mount(ap, name, name_len,
 						 ctxt->m[i].mod->context) == 0)
 			return NSS_STATUS_SUCCESS;

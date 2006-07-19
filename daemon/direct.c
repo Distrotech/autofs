@@ -140,12 +140,12 @@ int do_umount_autofs_direct(struct autofs_point *ap, struct mnt_list *mnts, stru
 		switch (errno) {
 		case ENOENT:
 		case EINVAL:
-			error(ap->logopt, "mount point %s does not exist",
+			warn(ap->logopt, "mount point %s does not exist",
 			      me->key);
 			return 0;
 			break;
 		case EBUSY:
-			error(ap->logopt, "mount point %s is in use", me->key);
+			warn(ap->logopt, "mount point %s is in use", me->key);
 			if (ap->state == ST_SHUTDOWN_FORCE)
 				goto force_umount;
 			else
@@ -246,13 +246,13 @@ static int unlink_mount_tree(struct autofs_point *ap, struct list_head *list)
 
 			switch (errno) {
 			case EINVAL:
-				debug(ap->logopt,
+				warn(ap->logopt,
 				      "bad superblock or not mounted");
 				break;
 
 			case ENOENT:
 			case EFAULT:
-				debug(ap->logopt, "bad path for mount");
+				warn(ap->logopt, "bad path for mount");
 				break;
 			}
 		}
@@ -494,10 +494,10 @@ int umount_autofs_offset(struct autofs_point *ap, struct mapent *me)
 	rv = umount(me->key);
 	if (rv == -1) {
 		if (errno == ENOENT) {
-			error(ap->logopt, "mount point does not exist");
+			warn(ap->logopt, "mount point does not exist");
 			return 0;
 		} else if (errno == EBUSY) {
-			error(ap->logopt, "mount point %s is in use", me->key);
+			warn(ap->logopt, "mount point %s is in use", me->key);
 			if (ap->state != ST_SHUTDOWN_FORCE)
 				return 0;
 		} else if (errno == ENOTDIR) {
@@ -534,7 +534,7 @@ int mount_autofs_offset(struct autofs_point *ap, struct mapent *me, int is_autof
 
 	if (is_mounted(_PROC_MOUNTS, me->key, MNTS_AUTOFS)) {
 		if (ap->state != ST_READMAP)
-			debug(ap->logopt,
+			warn(ap->logopt,
 			      "trigger %s already mounted", me->key);
 		return 0;
 	}

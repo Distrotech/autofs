@@ -99,6 +99,9 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 
 int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 {
+	ap->entry->current = NULL;
+	master_source_current_signal(ap->entry);
+
 	return NSS_STATUS_UNKNOWN;
 }
 

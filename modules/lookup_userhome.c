@@ -42,6 +42,8 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 
 int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 {
+	ap->entry->current = NULL;
+	master_source_current_signal(ap->entry);
 	return NSS_STATUS_UNKNOWN;
 }
 
@@ -50,6 +52,8 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 	struct passwd *pw;
 	char buf[MAX_ERR_BUF];
 
+	ap->entry->current = NULL;
+	master_source_current_signal(ap->entry);
 	debug(ap->logopt, MODPREFIX "looking up %s", name);
 
 	/* Get the equivalent username */

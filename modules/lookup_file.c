@@ -193,7 +193,7 @@ static int read_one(FILE *f, char *key, char *mapent)
 			else {
 				if (key_len == KEY_MAX_LEN) {
 					state = st_badent;
-					error(LOGOPT_ANY,
+					warn(LOGOPT_ANY,
 					      MODPREFIX "map key \"%s...\" "
 					      "is too long.  The maximum key "
 					      "length is %d", key,
@@ -243,7 +243,7 @@ static int read_one(FILE *f, char *key, char *mapent)
 					state = st_badent;
 					ungetc(nch, f);
 					gotten = got_nothing;
-					error(LOGOPT_ANY, MODPREFIX 
+					warn(LOGOPT_ANY, MODPREFIX 
 					      "bad map entry \"%s...\" for key "
 					      "\"%s\"", mapent, key);
 					break;
@@ -261,7 +261,7 @@ static int read_one(FILE *f, char *key, char *mapent)
 				   	goto got_it;
 				ungetc(nch, f);
 			} else {
-				error(LOGOPT_ANY,
+				warn(LOGOPT_ANY,
 				      MODPREFIX "map entry \"%s...\" for key "
 				      "\"%s\" is too long.  The maximum entry"
 				      " size is %d", mapent, key,

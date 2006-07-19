@@ -253,6 +253,9 @@ static int do_read_map(struct autofs_point *ap, struct map_source *map, time_t a
 	if (!ap->ghost && ap->type != LKP_DIRECT)
 		return NSS_STATUS_SUCCESS;
 
+	master_source_current_wait(ap->entry);
+	ap->entry->current = map;
+
 	status = lookup->lookup_read_map(ap, age, lookup->context);
 
 	/*
@@ -414,8 +417,6 @@ int lookup_nss_read_map(struct autofs_point *ap, time_t age)
 		if (map->type) {
 			debug(ap->logopt,
 			      "reading map %s %s", map->type, map->argv[0]);
-			master_source_current_wait(entry);
-			entry->current = map;
 			result = do_read_map(ap, map, age);
 			map = map->next;
 			continue;
@@ -432,14 +433,10 @@ int lookup_nss_read_map(struct autofs_point *ap, time_t age)
 				map->type = tmp;
 				debug(ap->logopt,
 				      "reading map %s %s", tmp, map->argv[0]);
-				master_source_current_wait(entry);
-				entry->current = map;
 				result = do_read_map(ap, map, age);
 			} else {
 				debug(ap->logopt,
 				      "reading map file %s", map->argv[0]);
-				master_source_current_wait(entry);
-				entry->current = map;
 				result = read_file_source_instance(ap, map, age);
 			}
 			map = map->next;
@@ -464,8 +461,6 @@ int lookup_nss_read_map(struct autofs_point *ap, time_t age)
 			debug(ap->logopt,
 			      "reading map %s %s", this->source, map->argv[0]);
 
-			master_source_current_wait(entry);
-			entry->current = map;
 			result = read_map_source(this, ap, map, age);
 			if (result == NSS_STATUS_UNKNOWN)
 				continue;
@@ -591,6 +586,9 @@ int do_lookup_mount(struct autofs_point *ap, struct map_source *map, const char 
 	}
 
 	lookup = map->lookup;
+
+	master_source_current_wait(ap->entry);
+	ap->entry->current = map;
 
 	status = lookup->lookup_mount(ap, name, name_len, lookup->context);
 
@@ -746,8 +744,6 @@ int lookup_nss_mount(struct autofs_point *ap, const char *name, int name_len)
 		sched_yield();
 
 		if (map->type) {
-			master_source_current_wait(entry);
-			entry->current = map;
 			result = do_lookup_mount(ap, map, name, name_len);
 
 			if (result == NSS_STATUS_SUCCESS)
@@ -766,14 +762,9 @@ int lookup_nss_mount(struct autofs_point *ap, const char *name, int name_len)
 					continue;
 				}
 				map->type = tmp;
-				master_source_current_wait(entry);
-				entry->current = map;
 				result = do_lookup_mount(ap, map, name, name_len);
-			} else {
-				master_source_current_wait(entry);
-				entry->current = map;
+			} else
 				result = lookup_name_file_source_instance(ap, map, name, name_len);
-			}
 
 			if (result == NSS_STATUS_SUCCESS)
 				break;
@@ -798,8 +789,6 @@ int lookup_nss_mount(struct autofs_point *ap, const char *name, int name_len)
 
 			this = list_entry(p, struct nss_source, list);
 
-			master_source_current_wait(entry);
-			entry->current = map;
 			result = lookup_map_name(this, ap, map, name, name_len);
 
 			if (result == NSS_STATUS_UNKNOWN) {

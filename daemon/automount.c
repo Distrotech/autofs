@@ -314,7 +314,7 @@ static int umount_ent(struct autofs_point *ap, const char *path, const char *typ
 	if (rv && (ap->state == ST_SHUTDOWN_FORCE || ap->state == ST_SHUTDOWN)) {
 		ret = stat(path, &st);
 		if (ret == -1 && errno == ENOENT) {
-			error(ap->logopt, "mount point does not exist");
+			warn(ap->logopt, "mount point does not exist");
 			status = pthread_mutex_unlock(&ap->state_mutex);
 			if (status)
 				fatal(status);
@@ -322,7 +322,7 @@ static int umount_ent(struct autofs_point *ap, const char *path, const char *typ
 		}
 
 		if (ret == 0 && !S_ISDIR(st.st_mode)) {
-			error(ap->logopt, "mount point is not a directory");
+			warn(ap->logopt, "mount point is not a directory");
 			status = pthread_mutex_unlock(&ap->state_mutex);
 			if (status)
 				fatal(status);
@@ -440,7 +440,7 @@ static int rm_unwanted_fn(const char *file, const struct stat *st, int when, voi
 		debug(LOGOPT_ANY, "removing directory %s", file);
 		if (rmdir(file)) {
 			char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-			error(LOGOPT_ANY,
+			warn(LOGOPT_ANY,
 			      "unable to remove directory %s: %s", file, estr);
 			return 0;
 		}
@@ -570,35 +570,37 @@ int umount_multi(struct autofs_point *ap, struct mnt_list *mnts, const char *pat
 		if (!strcmp(mptr->fs_type, "autofs"))
 			continue;
 
+		sched_yield();
+
 		if (umount_offsets(ap, mnts, mptr->path))
-			error(ap->logopt, "could not umount some offsets under %s",
+			warn(ap->logopt, "could not umount some offsets under %s",
 				mptr->path);
+
+		sched_yield();
 
 		debug(ap->logopt, "unmounting dir = %s", mptr->path);
 
 		if (umount_ent(ap, mptr->path, mptr->fs_type)) {
 			left++;
 		}
-
-		sched_yield();
 	}
 
 	/* Lastly check for offsets with no root mount */
 	n = scandir(path, &de, 0, alphasort);
-	if (n) {
+	if (n && n != -1) {
 		char buf[PATH_MAX + 1];
 
 		while (n--) {
 			size_t size;
 			int ret;
 
+			sched_yield();
+
 			if (strcmp(de[n]->d_name, ".") == 0 ||
 			    strcmp(de[n]->d_name, "..") == 0) {
 				free(de[n]);
 				continue;
 			}
-
-			sched_yield();
 
 			size = sizeof(buf);
 			ret = cat_path(buf, size, path, de[n]->d_name);
@@ -612,7 +614,7 @@ int umount_multi(struct autofs_point *ap, struct mnt_list *mnts, const char *pat
 
 			if (!tree_is_mounted(mnts, buf)) {
 				if (umount_offsets(ap, mnts, buf)) {
-					error(ap->logopt,
+					warn(ap->logopt,
 					  "could not umount some offsets under %s",
 					  buf);
 					left++;
@@ -624,8 +626,9 @@ int umount_multi(struct autofs_point *ap, struct mnt_list *mnts, const char *pat
 	}
 
 	if (!left && !tree_is_mounted(mnts, path)) {
+		sched_yield();
 		if (umount_offsets(ap, mnts, path)) {
-			error(ap->logopt,
+			warn(ap->logopt,
 			      "could not umount some offsets under %s", path);
 			left++;
 		}
@@ -831,11 +834,10 @@ int do_expire(struct autofs_point *ap, const char *name, int namelen)
 	mnts = tree_make_mnt_tree(_PROC_MOUNTS, buf);
 
 	ret = umount_multi(ap, mnts, buf, 1);
-	if (ret == 0) {
+	if (ret == 0)
 		msg("expired %s", buf);
-	} else {
+	else
 		error(ap->logopt, "error while expiring %s", buf);
-	}
 
 	tree_free_mnt_tree(mnts);
 
@@ -1258,8 +1260,6 @@ static void handle_mounts_cleanup(void *arg)
 
 	sched_yield();
 
-	sched_yield();
-
 	if (clean) {
 		if (rmdir(path) == -1) {
 			char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
@@ -1415,7 +1415,7 @@ void *handle_mounts(void *arg)
 	 * So, the solution is a recipe for disaster.
 	 * Hope we don't get a really busy system!
 	 */
-	sleep(5);
+	sleep(1);
 	/* sched_yield(); */
 
 	return NULL;

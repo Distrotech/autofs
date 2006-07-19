@@ -641,7 +641,7 @@ add_offset_entry(struct autofs_point *ap, const char *name,
 		p_len--;
 	m_key_len = m_root_len + p_len;
 	if (m_key_len > PATH_MAX) {
-		error(ap->logopt, MODPREFIX "multi mount key too long");
+		warn(ap->logopt, MODPREFIX "multi mount key too long");
 		return CHE_FAIL;
 	}
 	strcpy(m_key, m_root);
@@ -654,7 +654,7 @@ add_offset_entry(struct autofs_point *ap, const char *name,
 
 	m_mapent_len = strlen(loc);
 	if (m_mapent_len + m_options_len > MAPENT_MAX_LEN) {
-		error(ap->logopt, MODPREFIX "multi mount mapent too long");
+		warn(ap->logopt, MODPREFIX "multi mount mapent too long");
 		return CHE_FAIL;
 	}
 
@@ -676,7 +676,7 @@ add_offset_entry(struct autofs_point *ap, const char *name,
 		debug(ap->logopt, MODPREFIX
 		      "added multi-mount offset %s -> %s", path, m_mapent);
 	else
-		debug(ap->logopt, MODPREFIX
+		warn(ap->logopt, MODPREFIX
 		      "syntax error or dupliate offset %s -> %s", path, loc);
 
 	return ret;
@@ -818,7 +818,7 @@ static int parse_mapent(const char *ent, char *g_options, char **options, char *
 
 	/* Location can't begin with a '/' */
 	if (*p == '/') {
-		error(logopt, MODPREFIX "error location begins with \"/\"");
+		warn(logopt, MODPREFIX "error location begins with \"/\"");
 		free(myoptions);
 		return 0;
 	}
@@ -852,7 +852,7 @@ static int parse_mapent(const char *ent, char *g_options, char **options, char *
 
 		/* Location can't begin with a '/' */
 		if (*p == '/') {
-			error(logopt,
+			warn(logopt,
 			      MODPREFIX "error location begins with \"/\"");
 			free(myoptions);
 			free(loc);
@@ -873,7 +873,7 @@ static int parse_mapent(const char *ent, char *g_options, char **options, char *
 		}
 
 		if (!validate_location(ent)) {
-			error(logopt,
+			warn(logopt,
 			      MODPREFIX "invalid location %s", ent);
 			free(ent);
 			free(myoptions);
@@ -940,7 +940,7 @@ int parse_mount(struct autofs_point *ap, const char *name,
 	mc = source->mc;
 
 	if (!mapent) {
-		error(ap->logopt, MODPREFIX "error: empty map entry");
+		warn(ap->logopt, MODPREFIX "error: empty map entry");
 		return 1;
 	}
 
@@ -1094,7 +1094,7 @@ int parse_mount(struct autofs_point *ap, const char *name,
 
 			path = sanitize_path(tmp, strlen(tmp));
 			if (!path) {
-				error(ap->logopt, MODPREFIX "invalid path");
+				warn(ap->logopt, MODPREFIX "invalid path");
 				cache_readlock(mc);
 				cache_multi_lock(mc);
 				cache_delete_offset_list(mc, name);
@@ -1132,7 +1132,7 @@ int parse_mount(struct autofs_point *ap, const char *name,
 						path, myoptions, loc, age);
 
 			if (status != CHE_OK) {
-				error(ap->logopt, MODPREFIX "error adding multi-mount");
+				warn(ap->logopt, MODPREFIX "error adding multi-mount");
 				cache_readlock(mc);
 				cache_multi_lock(mc);
 				cache_delete_offset_list(mc, name);
@@ -1172,7 +1172,7 @@ int parse_mount(struct autofs_point *ap, const char *name,
 				options, &myoptions, &loc, ap->logopt);
 			if (!rv) {
 				error(ap->logopt,
-				      MODPREFIX "mount of root offset failed");
+				      MODPREFIX "failed to mount root offset");
 				cache_multi_lock(mc);
 				cache_delete_offset_list(mc, name);
 				cache_multi_unlock(mc);
@@ -1219,7 +1219,7 @@ int parse_mount(struct autofs_point *ap, const char *name,
 
 		/* Location can't begin with a '/' */
 		if (*p == '/') {
-			error(ap->logopt,
+			warn(ap->logopt,
 			      MODPREFIX "error location begins with \"/\"");
 			free(options);
 			return 1;
@@ -1236,15 +1236,8 @@ int parse_mount(struct autofs_point *ap, const char *name,
 			return 1;
 		}
 
-		if (!*loc) {
-			error(ap->logopt, MODPREFIX "invalid location");
-			free(loc);
-			free(options);
-			return 1;
-		}
-
 		if (!validate_location(loc)) {
-			error(ap->logopt, MODPREFIX "invalid location");
+			warn(ap->logopt, MODPREFIX "invalid location");
 			free(loc);
 			free(options);
 			return 1;
@@ -1269,7 +1262,7 @@ int parse_mount(struct autofs_point *ap, const char *name,
 			}
 
 			if (!validate_location(ent)) {
-				error(ap->logopt, MODPREFIX "invalid location");
+				warn(ap->logopt, MODPREFIX "invalid location");
 				free(ent);
 				free(loc);
 				free(options);

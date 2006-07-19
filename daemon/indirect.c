@@ -106,13 +106,13 @@ static int unlink_mount_tree(struct autofs_point *ap, struct mnt_list *mnts)
 
 			switch (errno) {
 			case EINVAL:
-				debug(ap->logopt,
+				warn(ap->logopt,
 				      "bad superblock or not mounted");
 				break;
 
 			case ENOENT:
 			case EFAULT:
-				debug(ap->logopt, "bad path for mount");
+				warn(ap->logopt, "bad path for mount");
 				break;
 			}
 		}
@@ -329,12 +329,12 @@ int umount_autofs_indirect(struct autofs_point *ap)
 		switch (errno) {
 		case ENOENT:
 		case EINVAL:
-			error(ap->logopt,
+			warn(ap->logopt,
 			      "mount point %s does not exist", ap->path);
 			return 0;
 			break;
 		case EBUSY:
-			error(ap->logopt,
+			warn(ap->logopt,
 			      "mount point %s is in use", ap->path);
 			if (ap->state == ST_SHUTDOWN_FORCE)
 				goto force_umount;
@@ -457,7 +457,7 @@ void *expire_proc_indirect(void *arg)
 
 		ret = ioctl(ioctlfd, AUTOFS_IOC_EXPIRE_MULTI, &now);
 		if (ret < 0 && errno != EAGAIN) {
-			debug(ap->logopt,
+			warn(ap->logopt,
 			      "failed to expire mount %s", next->path);
 			ea->status = 1;
 			break;
@@ -490,7 +490,7 @@ void *expire_proc_indirect(void *arg)
 		while (offsets--) {
 			ret = ioctl(ap->ioctlfd, AUTOFS_IOC_EXPIRE_MULTI, &now);
 			if (ret < 0 && errno != EAGAIN) {
-				debug(ap->logopt,
+				warn(ap->logopt,
 				      "failed to expire ofsets under %s",
 				      ap->path);
 				ea->status = 1;
@@ -529,7 +529,7 @@ void *expire_proc_indirect(void *arg)
 
 		if (!ioctl(ap->ioctlfd, AUTOFS_IOC_ASKUMOUNT, &ret)) {
 			if (!ret) {
-				debug(ap->logopt,
+				warn(ap->logopt,
 				      "mount still busy %s", ap->path);
 				ea->status = 1;
 			}

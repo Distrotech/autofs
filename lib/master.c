@@ -181,13 +181,7 @@ master_add_map_source(struct master_mapent *entry,
 
 	source->age = age;
 	source->stale = 1;
-/*
-	source->mc = cache_init(source);
-	if (!source->mc) {
-		master_free_map_source(source);
-		return NULL;
-	}
-*/
+
 	tmpargv = copy_argv(argc, argv);
 	if (!tmpargv) {
 		master_free_map_source(source, 0);
@@ -343,7 +337,7 @@ void master_free_map_source(struct map_source *source, unsigned int free_cache)
 		instance = source->instance;
 		while (instance) {
 			next = instance->next;
-			master_free_map_source(instance, free_cache);
+			master_free_map_source(instance, 0);
 			instance = next;
 		}
 
@@ -434,6 +428,7 @@ master_add_source_instance(struct map_source *source, const char *type, const ch
 	}
 
 	new->age = age;
+	new->mc = source->mc;
 
 	tmpargv = copy_argv(source->argc, source->argv);
 	if (!tmpargv) {
@@ -519,6 +514,8 @@ void master_source_current_wait(struct master_mapent *entry)
 {
 	int status;
 
+	debug(LOGOPT_ANY, "locking");
+
 	status = pthread_mutex_lock(&entry->current_mutex);
 	if (status) {
 		error(LOGOPT_ANY, "entry current source lock failed");
@@ -554,6 +551,8 @@ void master_source_current_signal(struct master_mapent *entry)
 		error(LOGOPT_ANY, "entry current source unlock failed");
 		fatal(status);
 	}
+
+	debug(LOGOPT_ANY, "unlocking");
 
 	return;
 }
