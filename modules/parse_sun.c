@@ -762,7 +762,8 @@ static int validate_location(char *loc)
 
 		while (*ptr && *ptr != ':') {
 			if (!(isalnum(*ptr) ||
-			    *ptr == '-' || *ptr == '.' || *ptr == ','))
+			    *ptr == '-' || *ptr == '.' ||
+			    *ptr == ',' || *ptr == '(' || *ptr == ')'))
 				return 0;
 			ptr++;
 		}
