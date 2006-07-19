@@ -53,6 +53,10 @@ int check_colon(const char *str)
 {
 	char *ptr = (char *) str;
 
+	/* Colon escape */
+	if (*ptr == ':')
+		return 1;
+
 	while (*ptr && *ptr != ':' && *ptr != '/') {
 		ptr++;
 	}

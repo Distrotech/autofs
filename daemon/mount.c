@@ -22,6 +22,8 @@
 #include <string.h>
 #include "automount.h"
 
+#define ERR_PREFIX	"(mount):"
+
 /* These filesystems are known not to work with the "generic" module */
 /* Note: starting with Samba 2.0.6, smbfs is handled generically.    */
 static char *not_generic[] = { "nfs", "userfs", "afs", "autofs",
@@ -36,14 +38,14 @@ int do_mount(struct autofs_point *ap, const char *root, const char *name, int na
 	char **ngp;
 	int rv;
 
-	mod = open_mount(modstr = fstype, NULL);
+	mod = open_mount(modstr = fstype, ERR_PREFIX);
 	if (!mod) {
 		for (ngp = not_generic; *ngp; ngp++) {
 			if (!strcmp(fstype, *ngp))
 				break;
 		}
 		if (!*ngp)
-			mod = open_mount(modstr = "generic", NULL);
+			mod = open_mount(modstr = "generic", ERR_PREFIX);
 		if (!mod) {
 			error(ap->logopt,
 			      "cannot find mount method for filesystem %s",

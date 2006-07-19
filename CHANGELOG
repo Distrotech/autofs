@@ -9,6 +9,7 @@
 - cthon cleanup and corrections.
 - cthon more cleanup and corrections.
 - cthon correction to host validation.
+- cthon fix submount operation broken by above.
 
 13/7/2006 autofs-5.0.1 rc1
 --------------------------

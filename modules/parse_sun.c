@@ -507,34 +507,13 @@ static int sun_mount(struct autofs_point *ap, const char *root,
 	sprintf(mountpoint, "%.*s", namelen, name);
 
 	what = alloca(loclen + 1);
-	memcpy(what, loc, loclen);
-	what[loclen] = '\0';
-/*
-	if (!strcmp(fstype, "autofs") && strchr(loc, ':') == NULL) {
-		char mtype[7];
-		int mtype_len;
-
-		if (loc[0] == '/') {
-			mtype_len = 5;
-			if (loc[1] == '/')
-				strcpy(mtype, "ldap:");
-			else
-				strcpy(mtype, "file:");
-		} else {
-			mtype_len = 3;
-			strcpy(mtype, "yp:");
-		}
-
-		what = alloca(loclen + mtype_len + 1);
-		memcpy(what, mtype, mtype_len);
-		memcpy(what + mtype_len, loc, loclen);
-		what[loclen + mtype_len] = '\0';
+	if (*loc == ':') {
+		memcpy(what, loc + 1, loclen - 1);
+		what[loclen - 1] = '\0';
 	} else {
-*/
-		what = alloca(loclen + 1);
 		memcpy(what, loc, loclen);
 		what[loclen] = '\0';
-/*	} */
+	}
 
 	debug(ap->logopt,
 	    MODPREFIX
@@ -752,7 +731,7 @@ static int validate_location(char *loc)
 	char *ptr = loc;
 
 	/* We don't know much about these */
-	if (*ptr == '/')
+	if (*ptr == ':')
 		return 1;
 
 	/* If a ':' is present now it must be a host name */
@@ -825,10 +804,6 @@ static int parse_mapent(const char *ent, char *g_options, char **options, char *
 		return 0;
 	}
 
-	/* Skip ':' escape */
-	if (*p == ':')
-		p++;
-
 	l = chunklen(p, check_colon(p));
 	loc = dequote(p, l, logopt);
 	if (!loc) {
@@ -860,10 +835,6 @@ static int parse_mapent(const char *ent, char *g_options, char **options, char *
 			free(loc);
 			return 0;
 		}
-
-		/* Skip ':' escape */
-		if (*p == ':')
-			p++;
 
 		l = chunklen(p, check_colon(p));
 		ent = dequote(p, l, logopt);
@@ -1227,10 +1198,10 @@ int parse_mount(struct autofs_point *ap, const char *name,
 			free(options);
 			return 1;
 		}
-
+/*
 		if (*p == ':')
-			p++;	/* Sun escape for entries starting with / */
-
+			p++;	/* Sun escape for entries starting with / */ /*
+*/
 		l = chunklen(p, check_colon(p));
 		loc = dequote(p, l, ap->logopt);
 		if (!loc) {

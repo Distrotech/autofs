@@ -33,7 +33,7 @@
 
 /* Attribute to create detached thread */
 extern pthread_attr_t thread_attr;
-extern struct startup_cond sc;
+extern struct startup_cond suc;
 
 int mount_version = AUTOFS_MOUNT_VERSION;	/* Required by protocol */
 
@@ -189,7 +189,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 		return 1;
 	}
 
-	status = pthread_mutex_lock(&sc.mutex);
+	status = pthread_mutex_lock(&suc.mutex);
 	if (status) {
 		crit(ap->logopt,
 		     MODPREFIX "failed to lock startup condition mutex!");
@@ -198,8 +198,8 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 		return 1;
 	}
 
-	sc.done = 0;
-	sc.status = 0;
+	suc.done = 0;
+	suc.status = 0;
 
 	pthread_mutex_lock(&ap->mounts_mutex);
 
@@ -209,7 +209,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 		     "failed to create mount handler thread for %s",
 		     fullpath);
 		pthread_mutex_unlock(&ap->mounts_mutex);
-		status = pthread_mutex_unlock(&sc.mutex);
+		status = pthread_mutex_unlock(&suc.mutex);
 		if (status)
 			fatal(status);
 		cache_release(source);
@@ -218,20 +218,20 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 	}
 	nap->thid = thid;
 
-	while (!sc.done) {
-		status = pthread_cond_wait(&sc.cond, &sc.mutex);
+	while (!suc.done) {
+		status = pthread_cond_wait(&suc.cond, &suc.mutex);
 		if (status) {
 			pthread_mutex_unlock(&ap->mounts_mutex);
-			pthread_mutex_unlock(&sc.mutex);
+			pthread_mutex_unlock(&suc.mutex);
 			fatal(status);
 		}
 	}
 
-	if (sc.status) {
+	if (suc.status) {
 		crit(ap->logopt,
 		     MODPREFIX "failed to create submount for %s", fullpath);
 		pthread_mutex_unlock(&ap->mounts_mutex);
-		status = pthread_mutex_unlock(&sc.mutex);
+		status = pthread_mutex_unlock(&suc.mutex);
 		if (status)
 			fatal(status);
 		return 1;
@@ -242,7 +242,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 
 	pthread_mutex_unlock(&ap->mounts_mutex);
 
-	status = pthread_mutex_unlock(&sc.mutex);
+	status = pthread_mutex_unlock(&suc.mutex);
 	if (status)
 		fatal(status);
 
