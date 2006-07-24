@@ -33,6 +33,10 @@ static LIST_HEAD(state_queue);
 static unsigned int signaled = 0;
 static void st_set_thid(struct autofs_point *, pthread_t);
 
+static pthread_mutex_t task_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t task_cond = PTHREAD_COND_INITIALIZER;
+static unsigned int task_signaled;
+
 int do_mount_autofs_direct(struct autofs_point *, struct mnt_list *, struct mapent *);
 
 void dump_state_queue(void)
@@ -83,18 +87,12 @@ void expire_cleanup(void *arg)
 	int statefd;
 	enum states next = ST_INVAL;
 	int success;
-	int status;
 
 	ea = (struct expire_args *) arg;
 	ap = ea->ap;
 	success = ea->status;
 
-	status = pthread_mutex_lock(&ap->state_mutex);
-	if (status) {
-		error(ap->logopt, "state mutex lock failed");
-		free(ea);
-		return;
-	}
+	state_mutex_lock(ap);
 
 	debug(ap->logopt,
 	      "got thid %lu path %s stat %d",
@@ -105,6 +103,7 @@ void expire_cleanup(void *arg)
 	/* Check to see if expire process finished */
 	if (thid == ap->exp_thread) {
 		ap->exp_thread = 0;
+		st_set_thid(ap, 0);
 
 		switch (ap->state) {
 		case ST_EXPIRE:
@@ -113,11 +112,13 @@ void expire_cleanup(void *arg)
 			/* If we're a submount and we've just
 			   pruned or expired everything away,
 			   try to shut down */
-			if (ap->submount && !success && ap->state != ST_SHUTDOWN) {
+			if (ap->submount && !success) {
 				next = ST_SHUTDOWN_PENDING;
 				break;
 			}
-			alarm_add(ap, ap->exp_runfreq);
+
+			if (!ap->submount)
+				alarm_add(ap, ap->exp_runfreq);
 			/* FALLTHROUGH */
 
 		case ST_READY:
@@ -134,7 +135,8 @@ void expire_cleanup(void *arg)
 
 			/* Failed shutdown returns to ready */
 			warn(ap->logopt, "filesystem %s still busy", ap->path);
-			alarm_add(ap, ap->exp_runfreq);
+			if (!ap->submount)
+				alarm_add(ap, ap->exp_runfreq);
 			next = ST_READY;
 			break;
 #endif
@@ -157,9 +159,7 @@ void expire_cleanup(void *arg)
 	if (next != ST_INVAL)
 		nextstate(statefd, next);
 
-	status = pthread_mutex_unlock(&ap->state_mutex);
-	if (status)
-		error(ap->logopt, "state mutex unlock failed");
+	state_mutex_unlock(ap);
 
 	free(ea);
 
@@ -173,22 +173,8 @@ static unsigned int st_ready(struct autofs_point *ap)
 
 	ap->state = ST_READY;
 
-	if (ap->submount) {
-		int status;
-
-		status = pthread_mutex_lock(&ap->parent->mounts_mutex);
-		if (status)
-			fatal(status);
-
-		status = pthread_cond_signal(&ap->parent->mounts_cond);
-		if (status)
-			error(ap->logopt,
-			      "failed to signal submount notify condition");
-
-		status = pthread_mutex_unlock(&ap->parent->mounts_mutex);
-		if (status)
-			fatal(status);
-	}
+	if (ap->submount)
+		master_signal_submount(ap);
 
 	return 1;
 }
@@ -298,22 +284,17 @@ static void do_readmap_cleanup(void *arg)
 {
 	struct readmap_args *ra;
 	struct autofs_point *ap;
-	int status;
 
 	ra = (struct readmap_args *) arg;
 
 	ap = ra->ap;
 	ap->readmap_thread = 0;
 
-	status = pthread_mutex_lock(&ap->state_mutex);
-	if (status)
-		fatal(status);
+	state_mutex_lock(ap);
 
 	nextstate(ap->state_pipe[1], ST_READY);
 
-	status = pthread_mutex_unlock(&ap->state_mutex);
-	if (status)
-		fatal(status);
+	state_mutex_unlock(ap);
 
 	free(ra);
 
@@ -485,7 +466,8 @@ static unsigned int st_prepare_shutdown(struct autofs_point *ap)
 	debug(ap->logopt, "state %d path %s", ap->state, ap->path);
 
 	/* Turn off timeouts for this mountpoint */
-	alarm_delete(ap);
+	if (!ap->submount)
+		alarm_delete(ap);
 
 	assert(ap->state == ST_READY || ap->state == ST_EXPIRE);
 	ap->state = ST_SHUTDOWN_PENDING;
@@ -496,7 +478,8 @@ static unsigned int st_prepare_shutdown(struct autofs_point *ap)
 	case EXP_ERROR:
 	case EXP_PARTIAL:
 		/* It didn't work: return to ready */
-		alarm_add(ap, ap->exp_runfreq);
+		if (!ap->submount)
+			alarm_add(ap, ap->exp_runfreq);
 		nextstate(ap->state_pipe[1], ST_READY);
 		return 0;
 
@@ -513,7 +496,8 @@ static unsigned int st_force_shutdown(struct autofs_point *ap)
 	debug(ap->logopt, "state %d path %s", ap->state, ap->path);
 
 	/* Turn off timeouts for this mountpoint */
-	alarm_delete(ap);
+	if (!ap->submount)
+		alarm_delete(ap);
 
 	assert(ap->state == ST_READY || ap->state == ST_EXPIRE);
 	ap->state = ST_SHUTDOWN_FORCE;
@@ -524,7 +508,8 @@ static unsigned int st_force_shutdown(struct autofs_point *ap)
 	case EXP_ERROR:
 	case EXP_PARTIAL:
 		/* It didn't work: return to ready */
-		alarm_add(ap, ap->exp_runfreq);
+		if (!ap->submount)
+			alarm_add(ap, ap->exp_runfreq);
 		nextstate(ap->state_pipe[1], ST_READY);
 		return 0;
 
@@ -542,12 +527,14 @@ static unsigned int st_prune(struct autofs_point *ap)
 	ap->state = ST_PRUNE;
 
 	/* Turn off timeouts while we prune */
-	alarm_delete(ap);
+	if (!ap->submount)
+		alarm_delete(ap);
 
 	switch (expire_proc(ap, 1)) {
 	case EXP_ERROR:
 	case EXP_PARTIAL:
-		alarm_add(ap, ap->exp_runfreq);
+		if (!ap->submount)
+			alarm_add(ap, ap->exp_runfreq);
 		nextstate(ap->state_pipe[1], ST_READY);
 		return 0;
 
@@ -565,12 +552,14 @@ static unsigned int st_expire(struct autofs_point *ap)
 	ap->state = ST_EXPIRE;
 
 	/* Turn off timeouts while we expire */
-	alarm_delete(ap);
+	if (!ap->submount)
+		alarm_delete(ap);
 
 	switch (expire_proc(ap, 0)) {
 	case EXP_ERROR:
 	case EXP_PARTIAL:
-		alarm_add(ap, ap->exp_runfreq);
+		if (!ap->submount)
+			alarm_add(ap, ap->exp_runfreq);
 		nextstate(ap->state_pipe[1], ST_READY);
 		return 0;
 
@@ -583,19 +572,23 @@ static unsigned int st_expire(struct autofs_point *ap)
 /* Insert alarm entry on ordered list. */
 int st_add_task(struct autofs_point *ap, enum states state)
 {
-	struct list_head *head = &state_queue;
+	struct list_head *head;
 	struct list_head *p;
 	struct state_queue *new;
 	unsigned int empty = 1;
 	int status;
 
+	state_mutex_lock(ap);
+
 	/* Task termination marker, poke state machine */
 	if (state == ST_READY) {
+		st_ready(ap);
+
+		state_mutex_unlock(ap);
+
 		status = pthread_mutex_lock(&mutex);
 		if (status)
 			fatal(status);
-
-		st_ready(ap);
 
 		signaled = 1;
 		status = pthread_cond_signal(&cond);
@@ -609,6 +602,13 @@ int st_add_task(struct autofs_point *ap, enum states state)
 		return 1;
 	}
 
+	if (ap->state == ST_SHUTDOWN) {
+		state_mutex_unlock(ap);
+		return 1;
+	}
+
+	state_mutex_unlock(ap);
+
 	new = malloc(sizeof(struct state_queue));
 	if (!new)
 		return 0;
@@ -620,14 +620,11 @@ int st_add_task(struct autofs_point *ap, enum states state)
 	INIT_LIST_HEAD(&new->list);
 	INIT_LIST_HEAD(&new->pending);
 
-	/* If we are shutting down get rid on all tasks */
-/*	if (ap->state == ST_SHUTDOWN_PENDING ||
-	    ap->state == ST_SHUTDOWN_FORCE)
-		st_remove_tasks(ap);
-*/
 	status = pthread_mutex_lock(&mutex);
 	if (status)
 		fatal(status);
+
+	head = &state_queue;
 
 	/* Add to task queue for autofs_point ? */
 	list_for_each(p, head) {
@@ -660,7 +657,7 @@ int st_add_task(struct autofs_point *ap, enum states state)
 
 void st_remove_tasks(struct autofs_point *ap)
 {
-	struct list_head *head = &state_queue;
+	struct list_head *head;
 	struct list_head *p, *q;
 	struct state_queue *task, *waiting;
 	int status;
@@ -668,6 +665,8 @@ void st_remove_tasks(struct autofs_point *ap)
 	status = pthread_mutex_lock(&mutex);
 	if (status)
 		fatal(status);
+
+	head = &state_queue;
 
 	if (list_empty(head)) {
 		status = pthread_mutex_unlock(&mutex);
@@ -707,22 +706,33 @@ void st_remove_tasks(struct autofs_point *ap)
 		fatal(status);
 }
 
-static int run_state_task(struct state_queue *task)
+static void *do_run_task(void *arg)
 {
+	struct state_queue *task;
 	struct autofs_point *ap;
-	enum states state;
-	enum states next_state;
-	int status, ret = 1;
-
-	ap = task->ap;
-	status = pthread_mutex_lock(&ap->state_mutex);
+	enum states next_state, state;
+	int status, ret;
+ 
+	status = pthread_mutex_lock(&task_mutex);
 	if (status)
 		fatal(status);
 
-	state = ap->state;
+	task = (struct state_queue *) arg;
+	ap = task->ap;
 	next_state = task->state;
 
-/*	debug("task %p state %d next %d", task, state, task->state); */
+	task_signaled = 1;
+	status = pthread_cond_signal(&task_cond);
+	if (status)
+		fatal(status);
+
+	status = pthread_mutex_unlock(&task_mutex);
+	if (status)
+		fatal(status);
+
+	state_mutex_lock(ap);
+
+	state = ap->state;
 
 	if (next_state != state) {
 		switch (next_state) {
@@ -752,11 +762,41 @@ static int run_state_task(struct state_queue *task)
 		}
 	}
 
-	status = pthread_mutex_unlock(&ap->state_mutex);
+	state_mutex_unlock(ap);
+
+	return;
+}
+
+static int run_state_task(struct state_queue *task)
+{
+	pthread_t thid;
+	int status;
+
+	status = pthread_mutex_lock(&task_mutex);
 	if (status)
 		fatal(status);
 
-	return ret;
+	status = pthread_create(&thid, &thread_attr, do_run_task, task);
+	if (status) {
+		error(task->ap->logopt, "error running task");
+		status = pthread_mutex_unlock(&task_mutex);
+		if (status)
+			fatal(status);
+		return 0;
+	}
+
+	task_signaled = 0;
+	while (!task_signaled) {
+		status = pthread_cond_wait(&task_cond, &task_mutex);
+		if (status)
+			fatal(status);
+	}
+
+	status = pthread_mutex_unlock(&task_mutex);
+	if (status)
+		fatal(status);
+
+	return 1;
 }
 
 static void st_set_thid(struct autofs_point *ap, pthread_t thid)
@@ -776,13 +816,15 @@ static void st_set_thid(struct autofs_point *ap, pthread_t thid)
 
 static void *st_queue_handler(void *arg)
 {
-	struct list_head *head = &state_queue;
+	struct list_head *head;
 	struct list_head *p;
 	int status;
 
 	status = pthread_mutex_lock(&mutex);
 	if (status)
 		fatal(status);
+
+	head = &state_queue;
 
 	while (1) {
 		/*
@@ -853,10 +895,10 @@ static void *st_queue_handler(void *arg)
 					run_state_task(task);
 					continue;
 				}
-
-				if (task->cancel)
+/*
+				if (task->thid && task->cancel)
 					pthread_cancel(task->thid);
-
+*/
 				/* Still busy */
 				if (task->thid) {
 					status = pthread_kill(task->thid, 0);

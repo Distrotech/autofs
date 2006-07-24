@@ -493,16 +493,20 @@ int umount_autofs_offset(struct autofs_point *ap, struct mapent *me)
 
 	rv = umount(me->key);
 	if (rv == -1) {
-		if (errno == ENOENT) {
+		switch (errno) {
+		case ENOENT:
 			warn(ap->logopt, "mount point does not exist");
 			return 0;
-		} else if (errno == EBUSY) {
+			break;
+		case EBUSY:
 			warn(ap->logopt, "mount point %s is in use", me->key);
 			if (ap->state != ST_SHUTDOWN_FORCE)
-				return 0;
-		} else if (errno == ENOTDIR) {
+				return 1;
+			break;
+		case ENOTDIR:
 			error(ap->logopt, "mount point is not a directory");
 			return 0;
+			break;
 		}
 		goto force_umount;
 	}
@@ -684,11 +688,13 @@ void *expire_proc_direct(void *arg)
 		pthread_exit(NULL);
 	}
 
+	pthread_cleanup_push(expire_cleanup, ea);
+
 	status = pthread_mutex_unlock(&ea->mutex);
 	if (status)
 		fatal(status);
 
-	pthread_cleanup_push(expire_cleanup, ea);
+	master_notify_submounts(ap, ap->state);
 
 	/* Get a list of real mounts and expire them if possible */
 	mnts = get_mnt_list(_PROC_MOUNTS, "/", 0);

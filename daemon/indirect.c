@@ -280,7 +280,8 @@ int mount_autofs_indirect(struct autofs_point *ap)
 
 int umount_autofs_indirect(struct autofs_point *ap)
 {
-	int rv;
+	char buf[MAX_ERR_BUF];
+	int ret, rv;
 
 	/*
 	 * Since submounts look after themselves the parent never knows
@@ -290,10 +291,13 @@ int umount_autofs_indirect(struct autofs_point *ap)
 	 */
 	if (ap->submount) {
 		struct master_mapent *entry = ap->parent->entry;
-		struct map_source *map = entry->first;
+		struct map_source *map;
 		struct mapent_cache *mc;
 		struct mapent *me;
 
+		pthread_cleanup_push(master_source_lock_cleanup, entry);
+		master_source_readlock(entry);
+		map = entry->first;
 		while (map) {
 			mc = map->mc;
 			cache_readlock(mc);
@@ -307,6 +311,13 @@ int umount_autofs_indirect(struct autofs_point *ap)
 			cache_unlock(mc);
 			map = map->next;
 		}
+		pthread_cleanup_pop(1);
+	}
+
+	/* If we are trying to shutdown make sure we can umount */
+	if (!ioctl(ap->ioctlfd, AUTOFS_IOC_ASKUMOUNT, &ret)) {
+		if (!ret)
+			warn(ap->logopt, "mount still busy %s", ap->path);
 	}
 
 	if (ap->ioctlfd >= 0) {
@@ -373,7 +384,7 @@ void *expire_proc_indirect(void *arg)
 	unsigned int now;
 	int offsets, submnts, count;
 	int ioctlfd;
-	int status;
+	int status, ret;
 
 	ea = (struct expire_args *) arg;
 
@@ -395,11 +406,13 @@ void *expire_proc_indirect(void *arg)
 		pthread_exit(NULL);
 	}
 
+	pthread_cleanup_push(expire_cleanup, ea);
+
 	status = pthread_mutex_unlock(&ea->mutex);
 	if (status)
 		fatal(status);
 
-	pthread_cleanup_push(expire_cleanup, ea);
+	master_notify_submounts(ap, ap->state);
 
 	/* Get a list of real mounts and expire them if possible */
 	mnts = get_mnt_list(_PROC_MOUNTS, ap->path, 0);
@@ -518,27 +531,12 @@ void *expire_proc_indirect(void *arg)
 	}
 
 	/* If we are trying to shutdown make sure we can umount */
-	status = pthread_mutex_lock(&ap->mounts_mutex);
-	if (status)
-		fatal(status);
-
-	if (!list_empty(&ap->submounts)) {
-		ea->status = 1;
-	} else {
-		int ret;
-
-		if (!ioctl(ap->ioctlfd, AUTOFS_IOC_ASKUMOUNT, &ret)) {
-			if (!ret) {
-				warn(ap->logopt,
-				      "mount still busy %s", ap->path);
-				ea->status = 1;
-			}
+	if (!ioctl(ap->ioctlfd, AUTOFS_IOC_ASKUMOUNT, &ret)) {
+		if (!ret) {
+			warn(ap->logopt, "mount still busy %s", ap->path);
+			ea->status = 1;
 		}
 	}
-
-	status = pthread_mutex_unlock(&ap->mounts_mutex);
-	if (status)
-		fatal(status);
 
 	pthread_cleanup_pop(1);
 

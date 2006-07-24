@@ -248,7 +248,7 @@ int yp_all_callback(int status, char *ypkey, int ypkeylen,
 	struct map_source *source = cbdata->source;
 	struct mapent_cache *mc = source->mc;
 	time_t age = cbdata->age;
-	char *key, *mapent;
+	char *tmp, *key, *mapent;
 	int ret;
 
 	if (status != YP_TRUE)
@@ -261,34 +261,19 @@ int yp_all_callback(int status, char *ypkey, int ypkeylen,
 	if (*ypkey == '+')
 		return 0;
 
-	key = dequote(ypkey, ypkeylen, ap->logopt);
+	key = sanitize_path(ypkey, ypkeylen, ap->type, ap->logopt);
 	if (!key)
 		return 0;
 
-	if (*key == '/') {
-		if (ap->type == LKP_INDIRECT) {
-			free(key);
-			return 0;
-		}
-	} else {
-		if (ap->type == LKP_DIRECT) {
-			free(key);
-			return 0;
-		}
-	}
-
-	mapent = dequote(val, vallen, ap->logopt);
-	if (!mapent) {
-		free(key);
-		return 0;
-	}
+	mapent = alloca(vallen + 1);
+	strncpy(mapent, val, vallen);
+	*(mapent + vallen) = '\0';
 
 	cache_writelock(mc);
 	ret = cache_update(mc, source, key, mapent, age);
 	cache_unlock(mc);
 
 	free(key);
-	free(mapent);
 
 	if (ret == CHE_FAIL)
 		return -1;
@@ -301,15 +286,17 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 	struct lookup_context *ctxt = (struct lookup_context *) context;
 	struct ypall_callback ypcb;
 	struct callback_data ypcb_data;
+	struct map_source *source;
 	char *mapname;
 	int err;
 
-	ypcb_data.ap = ap;
-	ypcb_data.source = ap->entry->current;
-	ypcb_data.age = age;
-
+	source = ap->entry->current;
 	ap->entry->current = NULL;
 	master_source_current_signal(ap->entry);
+
+	ypcb_data.ap = ap;
+	ypcb_data.source = source;
+	ypcb_data.age = age;
 
 	ypcb.foreach = yp_all_callback;
 	ypcb.data = (char *) &ypcb_data;
@@ -341,6 +328,8 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 
 		return NSS_STATUS_NOTFOUND;
 	}
+
+	source->age = age;
 
 	return NSS_STATUS_SUCCESS;
 }

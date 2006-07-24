@@ -23,6 +23,7 @@ int check_colon(const char *);
 int chunklen(const char *, int);
 int strmcmp(const char *, const char *, int);
 char *dequote(const char *, int, unsigned int);
-char *sanitize_path(const char *, int);
+int span_space(const char *, unsigned int);
+char *sanitize_path(const char *, int, unsigned int, unsigned int);
 
 #endif

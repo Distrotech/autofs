@@ -1078,8 +1078,8 @@ static int read_one_map(struct autofs_point *ap,
 	char *query;
 	LDAPMessage *result, *e;
 	char *class, *info, *entry;
-	char **keyValue = NULL;
-	char **values = NULL;
+	struct berval **bvKey;
+	struct berval **bvValues;
 	char *attrs[3];
 	int scope = LDAP_SCOPE_SUBTREE;
 	LDAP *ldap;
@@ -1146,11 +1146,14 @@ static int read_one_map(struct autofs_point *ap,
 
 	while (e) {
 		char *mapent = NULL;
-		char *dq_key, *dq_mapent;
+		char *k_val;
+		ber_len_t k_len;
+		size_t mapent_len;
+		char *s_key;
 
-		keyValue = ldap_get_values(ldap, e, entry);
+		bvKey = ldap_get_values_len(ldap, e, entry);
 
-		if (!keyValue || !*keyValue) {
+		if (!bvKey || !*bvKey) {
 			e = ldap_next_entry(ldap, e);
 			continue;
 		}
@@ -1159,27 +1162,30 @@ static int read_one_map(struct autofs_point *ap,
 		 * By definition keys must be unique within
 		 * each map entry
 		 */
-		if (ldap_count_values(keyValue) > 1) {
+		if (ldap_count_values_len(bvKey) > 1) {
 			error(ap->logopt,
 			      MODPREFIX
-			      "key %s has duplicate entries - ignoring",
-			      *keyValue);
+			      "key %.*s has duplicate entries - ignoring",
+			      bvKey[0]->bv_len, bvKey[0]->bv_val);
 			goto next;
 		}
+
+		k_val = bvKey[0]->bv_val;
+		k_len = bvKey[0]->bv_len;
 
 		/*
 		 * Ignore keys beginning with '+' as plus map
 		 * inclusion is only valid in file maps.
 		 */
-		if (**keyValue == '+') {
+		if (*k_val == '+') {
 			warn(ap->logopt,
 			     MODPREFIX
 			     "ignoreing '+' map entry - not in file map");
 			goto next;
 		}
 
-		values = ldap_get_values(ldap, e, info);
-		if (!values || !*values) {
+		bvValues = ldap_get_values_len(ldap, e, info);
+		if (!bvValues || !*bvValues) {
 			debug(ap->logopt,
 			      MODPREFIX "no %s defined for %s", info, query);
 			goto next;
@@ -1196,9 +1202,10 @@ static int read_one_map(struct autofs_point *ap,
 		 * how to force an ordering.
 		 * 
 		 */
-		count = ldap_count_values(values);
+		count = ldap_count_values_len(bvValues);
 		for (i = 0; i < count; i++) {
-			int v_len = strlen(values[i]);
+			char *v_val = bvValues[i]->bv_val;
+			ber_len_t v_len = bvValues[i]->bv_len;
 
 			if (!mapent) {
 				mapent = malloc(v_len + 1);
@@ -1207,17 +1214,22 @@ static int read_one_map(struct autofs_point *ap,
 					estr = strerror_r(errno, buf, MAX_ERR_BUF);
 					error(ap->logopt,
 					      MODPREFIX "malloc: %s", estr);
+					ldap_value_free_len(bvValues);
 					goto next;
 				}
-				strcpy(mapent, values[i]);
+				strncpy(mapent, v_val, v_len);
+				mapent[v_len] = '\0';
+				mapent_len = v_len;
 			} else {
-				int new_size = strlen(mapent) + v_len + 2;
+				int new_size = mapent_len + v_len + 2;
 				char *new_me;
 				new_me = realloc(mapent, new_size);
 				if (new_me) {
 					mapent = new_me;
 					strcat(mapent, " ");
-					strcat(mapent, values[i]);
+					strncat(mapent, v_val, v_len);
+					mapent[new_size] = '\0';
+					mapent_len = new_size;
 				} else {
 					char *estr;
 					estr = strerror_r(errno, buf, MAX_ERR_BUF);
@@ -1226,46 +1238,30 @@ static int read_one_map(struct autofs_point *ap,
 				}
 			}
 		}
-		ldap_value_free(values);
+		ldap_value_free_len(bvValues);
 
-		dq_key = dequote(*keyValue, strlen(*keyValue), ap->logopt);
-		if (!dq_key)
-			goto next;
-
-		if (*dq_key == '/' && strlen(dq_key) == 1)
-			*dq_key = '*';
-
-		if (*dq_key == '/') {
-			if (ap->type == LKP_INDIRECT) {
-				free(dq_key);
+		if (*k_val == '/' && k_len == 1) {
+			if (ap->type == LKP_DIRECT)
 				goto next;
-			}
-		} else {
-			if (ap->type == LKP_DIRECT) {
-				free(dq_key);
-				goto next;
-			}
+			*k_val = '*';
 		}
 
-		dq_mapent = dequote(mapent, strlen(mapent), ap->logopt);
-		if (!mapent) {
-			free(dq_key);
+		s_key = sanitize_path(k_val, k_len, ap->type, ap->logopt);
+		if (!s_key)
 			goto next;
-		}
 
 		cache_writelock(mc);
-		cache_update(mc, source, dq_key, dq_mapent, age);
+		cache_update(mc, source, s_key, mapent, age);
 		cache_unlock(mc);
 
-		free(dq_key);
-		free(dq_mapent);
+		free(s_key);
 next:
 		if (mapent) {
 			free(mapent);
 			mapent = NULL;
 		}
 
-		ldap_value_free(keyValue);
+		ldap_value_free_len(bvKey);
 		e = ldap_next_entry(ldap, e);
 	}
 
@@ -1274,6 +1270,8 @@ next:
 	/* Clean up. */
 	ldap_msgfree(result);
 	unbind_ldap_connection(ldap, ctxt);
+
+	source->age = age;
 
 	return NSS_STATUS_SUCCESS;
 }
@@ -1307,12 +1305,11 @@ static int lookup_one(struct autofs_point *ap,
 	char *query;
 	LDAPMessage *result, *e;
 	char *class, *info, *entry;
-	char **keyValue;
-	char **values = NULL;
+	struct berval **bvKey;
+	struct berval **bvValues;
 	char *attrs[3];
 	int scope = LDAP_SCOPE_SUBTREE;
 	LDAP *ldap;
-	char *mapent = NULL;
 	unsigned int wild = 0;
 	int ret = CHE_MISSING;
 
@@ -1390,34 +1387,43 @@ static int lookup_one(struct autofs_point *ap,
 	}
 
 	while (e) {
-		keyValue = ldap_get_values(ldap, e, entry);
+		char *mapent = NULL;
+		char *k_val;
+		ber_len_t k_len;
+		char *s_key;
+		size_t mapent_len;
 
-		if (!keyValue || !*keyValue) {
+		bvKey = ldap_get_values_len(ldap, e, entry);
+		if (!bvKey || !*bvKey) {
 			e = ldap_next_entry(ldap, e);
 			continue;
 		}
 
 		/* By definition keys must be unique within each map entry */
-		if (ldap_count_values(keyValue) > 1) {
+		if (ldap_count_values_len(bvKey) > 1) {
 			error(ap->logopt,
-			      MODPREFIX "key %s has duplicate entries",
-			      *keyValue);
+			      MODPREFIX "key %.*s has duplicate entries",
+			      bvKey[0]->bv_len, bvKey[0]->bv_val);
 			ret = CHE_FAIL;
 			goto next;
 		}
 
 		debug(ap->logopt, MODPREFIX "examining first entry");
 
-		values = ldap_get_values(ldap, e, info);
-		if (!values || !*values) {
+		k_val = bvKey[0]->bv_val;
+		k_len = bvKey[0]->bv_len;
+
+		bvValues = ldap_get_values_len(ldap, e, info);
+		if (!bvValues || !*bvValues) {
 			debug(ap->logopt,
 			      MODPREFIX "no %s defined for %s", info, query);
 			goto next;
 		}
 
-		count = ldap_count_values(values);
+		count = ldap_count_values_len(bvValues);
 		for (i = 0; i < count; i++) {
-			int v_len = strlen(values[i]);
+			char *v_val = bvValues[i]->bv_val;
+			ber_len_t v_len = bvValues[i]->bv_len;
 
 			if (!mapent) {
 				mapent = malloc(v_len + 1);
@@ -1426,17 +1432,22 @@ static int lookup_one(struct autofs_point *ap,
 					estr = strerror_r(errno, buf, MAX_ERR_BUF);
 					error(ap->logopt,
 					      MODPREFIX "malloc: %s", estr);
-					continue;
+					ldap_value_free_len(bvValues);
+					goto next;
 				}
-				strcpy(mapent, values[i]);
+				strncpy(mapent, v_val, v_len);
+				mapent[v_len] = '\0';
+				mapent_len = v_len;
 			} else {
-				int new_size = strlen(mapent) + v_len + 2;
+				int new_size = mapent_len + v_len + 2;
 				char *new_me;
 				new_me = realloc(mapent, new_size);
 				if (new_me) {
 					mapent = new_me;
 					strcat(mapent, " ");
-					strcat(mapent, values[i]);
+					strncat(mapent, v_val, v_len);
+					mapent[new_size] = '\0';
+					mapent_len = new_size;
 				} else {
 					char *estr;
 					estr = strerror_r(errno, buf, MAX_ERR_BUF);
@@ -1445,35 +1456,34 @@ static int lookup_one(struct autofs_point *ap,
 				}
 			}
 		}
-		ldap_value_free(values);
+		ldap_value_free_len(bvValues);
 
-		if (**keyValue == '/') {
-			if (ap->type == LKP_INDIRECT) {
-				if (strlen(*keyValue) == 1) {
-					wild = 1;
-					**keyValue = '*';
-					cache_writelock(mc);
-					cache_update(mc,
-						source, *keyValue, mapent, age);
-					cache_unlock(mc);
-				}
-				goto next;
-			}
-		} else {
+		if (*k_val == '/' && k_len == 1) {
 			if (ap->type == LKP_DIRECT)
 				goto next;
+			wild = 1;
+			cache_writelock(mc);
+			cache_update(mc, source, "*", mapent, age);
+			cache_unlock(mc);
+			goto next;
 		}
 
+		s_key = sanitize_path(k_val, k_len, ap->type, ap->logopt);
+		if (!s_key)
+			goto next;
+
 		cache_writelock(mc);
-		ret = cache_update(mc, source, *keyValue, mapent, age);
+		ret = cache_update(mc, source, s_key, mapent, age);
 		cache_unlock(mc);
+
+		free(s_key);
 next:
 		if (mapent) {
 			free(mapent);
 			mapent = NULL;
 		}
 
-		ldap_value_free(keyValue);
+		ldap_value_free_len(bvKey);
 		e = ldap_next_entry(ldap, e);
 	}
 

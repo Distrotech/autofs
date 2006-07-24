@@ -58,28 +58,26 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 	struct autofs_point *nap;
 	char buf[MAX_ERR_BUF];
 	char *options, *p;
-	int ret, rlen;
+	int ret;
+	struct list_head *l;
 
-	/* Root offset of multi-mount */
-	if (*name == '/' && name_len == 1) {
-		rlen = strlen(root);
-		name_len = 0;
-	} else if (*name == '/')
-		rlen = 0;
-	else
-		rlen = strlen(root);
-
-	fullpath = alloca(rlen + name_len + 2);
+	fullpath = alloca(strlen(root) + name_len + 2);
 	if (!fullpath) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
 		error(ap->logopt, MODPREFIX "alloca: %s", estr);
 		return 1;
 	}
 
-	if (rlen)
-		sprintf(fullpath, "%s/%s", root, name);
-	else
-		sprintf(fullpath, "%s", name);
+	/* Root offset of multi-mount */
+	if (*name == '/' && name_len == 1)
+		strcpy(fullpath, root);
+	else if (*name == '/')
+		strcpy(fullpath, name);
+	else {
+		strcpy(fullpath, root);
+		strcat(fullpath, "/");
+		strcat(fullpath, name);
+	}
 
 	if (is_mounted(_PATH_MOUNTED, fullpath, MNTS_REAL)) {
 		error(ap->logopt,
@@ -201,14 +199,14 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 	suc.done = 0;
 	suc.status = 0;
 
-	pthread_mutex_lock(&ap->mounts_mutex);
+	mounts_mutex_lock(ap);
 
 	if (pthread_create(&thid, &thread_attr, handle_mounts, nap)) {
 		crit(ap->logopt,
 		     MODPREFIX
 		     "failed to create mount handler thread for %s",
 		     fullpath);
-		pthread_mutex_unlock(&ap->mounts_mutex);
+		mounts_mutex_unlock(ap);
 		status = pthread_mutex_unlock(&suc.mutex);
 		if (status)
 			fatal(status);
@@ -221,7 +219,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 	while (!suc.done) {
 		status = pthread_cond_wait(&suc.cond, &suc.mutex);
 		if (status) {
-			pthread_mutex_unlock(&ap->mounts_mutex);
+			mounts_mutex_unlock(ap);
 			pthread_mutex_unlock(&suc.mutex);
 			fatal(status);
 		}
@@ -230,17 +228,18 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 	if (suc.status) {
 		crit(ap->logopt,
 		     MODPREFIX "failed to create submount for %s", fullpath);
-		pthread_mutex_unlock(&ap->mounts_mutex);
+		mounts_mutex_unlock(ap);
 		status = pthread_mutex_unlock(&suc.mutex);
 		if (status)
 			fatal(status);
+		master_free_mapent(entry);
 		return 1;
 	}
 
 	ap->submnt_count++;
 	list_add(&nap->mounts, &ap->submounts);
 
-	pthread_mutex_unlock(&ap->mounts_mutex);
+	mounts_mutex_unlock(ap);
 
 	status = pthread_mutex_unlock(&suc.mutex);
 	if (status)

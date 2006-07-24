@@ -26,12 +26,27 @@ static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
 static LIST_HEAD(alarms);
 
+#define alarm_lock() \
+do { \
+	int status = pthread_mutex_lock(&mutex); \
+	if (status) \
+		fatal(status); \
+} while (0)
+
+#define alarm_unlock() \
+do { \
+	int status = pthread_mutex_unlock(&mutex); \
+	if (status) \
+		fatal(status); \
+} while (0)
+
 void dump_alarms(void)
 {
-	struct list_head *head = &alarms;
+	struct list_head *head;
 	struct list_head *p;
 
 	pthread_mutex_lock(&mutex);
+	head = &alarms;
 	list_for_each(p, head) {
 		struct alarm *this;
 
@@ -44,7 +59,7 @@ void dump_alarms(void)
 /* Insert alarm entry on ordered list. */
 int alarm_add(struct autofs_point *ap, time_t seconds)
 {
-	struct list_head *head = &alarms;
+	struct list_head *head;
 	struct list_head *p;
 	struct alarm *new;
 	time_t now = time(NULL);
@@ -60,9 +75,9 @@ int alarm_add(struct autofs_point *ap, time_t seconds)
 	new->cancel = 0;
 	new->time = now + seconds;
 
-	status = pthread_mutex_lock(&mutex);
-	if (status)
-		fatal(status);
+	alarm_lock();
+
+	head = &alarms;
 
 	/* Check if we have a pending alarm */
 	if (!list_empty(head)) {
@@ -95,29 +110,25 @@ int alarm_add(struct autofs_point *ap, time_t seconds)
 			fatal(status);
 	}
 
-	status = pthread_mutex_unlock(&mutex);
-	if (status)
-		fatal(status);
+	alarm_unlock();
 
 	return 1;
 }
 
 void alarm_delete(struct autofs_point *ap)
 {
-	struct list_head *head = &alarms;
+	struct list_head *head;
 	struct list_head *p;
 	struct alarm *current;
 	unsigned int signal_cancel = 0;
 	int status;
 
-	status = pthread_mutex_lock(&mutex);
-	if (status)
-		fatal(status);
+	alarm_lock();
+
+	head = &alarms;
 
 	if (list_empty(head)) {
-		status = pthread_mutex_unlock(&mutex);
-		if (status)
-			fatal(status);
+		alarm_unlock();
 		return;
 	}
 
@@ -149,22 +160,22 @@ void alarm_delete(struct autofs_point *ap)
 			fatal(status);
 	}
 
-	status = pthread_mutex_unlock(&mutex);
-	if (status)
-		fatal(status);
+	alarm_unlock();
+
+	return;
 }
 
 static void *alarm_handler(void *arg)
 {
-	struct list_head *head = &alarms;
+	struct list_head *head;
 	struct autofs_point *ap;
 	struct timespec expire;
 	time_t now;
 	int status;
 
-	status = pthread_mutex_lock(&mutex);
-	if (status)
-		fatal(status);
+	alarm_lock();
+
+	head = &alarms;
 
 	while (1) {
 		struct alarm *current;
@@ -192,15 +203,11 @@ static void *alarm_handler(void *arg)
 				continue;
 			}
 
-			status = pthread_mutex_lock(&ap->state_mutex);
-			if (status)
-				fatal(status);
+			state_mutex_lock(ap);
 
 			nextstate(ap->state_pipe[1], ST_EXPIRE);
 
-			status = pthread_mutex_unlock(&ap->state_mutex);
-			if (status)
-				fatal(status);
+			state_mutex_unlock(ap);
 
 			free(current);
 			continue;
@@ -227,18 +234,12 @@ static void *alarm_handler(void *arg)
 				break;
 
 			list_del(&current->list);
-
-			status = pthread_mutex_lock(&ap->state_mutex);
-			if (status)
-				fatal(status);
-
-			nextstate(ap->state_pipe[1], ST_EXPIRE);
-
-			status = pthread_mutex_unlock(&ap->state_mutex);
-			if (status)
-				fatal(status);
-
 			free(current);
+
+			alarm_unlock();
+			st_add_task(ap, ST_EXPIRE);
+			alarm_lock();
+
 			break;
 		}
 	}

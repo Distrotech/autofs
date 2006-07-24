@@ -84,18 +84,19 @@ int load_autofs4_module(void);
 
 #define LKP_INDIRECT	0x0002
 #define LKP_DIRECT	0x0004
-#define LKP_NOMATCH	0x0008
-#define LKP_MATCH	0x0010
-#define LKP_NEXT	0x0020
-#define LKP_MOUNT	0x0040
-#define LKP_WILD	0x0080
-#define LKP_LOOKUP	0x0100
-#define LKP_GHOST	0x0200
-#define LKP_REREAD	0x0400
-#define LKP_EMPTY	0x0800
-#define LKP_ERR_FORMAT	0x1000
-#define LKP_ERR_MOUNT	0x2000
-#define LKP_NOTSUP	0x4000
+#define LKP_MULTI	0x0008
+#define LKP_NOMATCH	0x0010
+#define LKP_MATCH	0x0020
+#define LKP_NEXT	0x0040
+#define LKP_MOUNT	0x0080
+#define LKP_WILD	0x0100
+#define LKP_LOOKUP	0x0200
+#define LKP_GHOST	0x0400
+#define LKP_REREAD	0x0800
+#define LKP_EMPTY	0x1000
+#define LKP_ERR_FORMAT	0x2000
+#define LKP_ERR_MOUNT	0x4000
+#define LKP_NOTSUP	0x8000
 
 #define MAX_ERR_BUF	128
 
@@ -185,7 +186,7 @@ const char **copy_argv(int argc, const char **argv);
 int compare_argv(int argc1, const char **argv1, int argc2, const char **argv2);
 int free_argv(int argc, const char **argv);
 
-void dump_core(void);
+inline void dump_core(void);
 int sigchld_start_handler(void);
 int sigchld_block(void);
 int sigchld_unblock(void);
@@ -435,6 +436,7 @@ struct autofs_point {
 	struct autofs_point *parent;	/* Owner of mounts list for submount */
 	pthread_mutex_t mounts_mutex;	/* Protect mount lists */
 	pthread_cond_t mounts_cond;	/* Submounts condition variable */
+	unsigned int mounts_signaled;	/* Submount signals task complete */
 	struct list_head mounts;	/* List of autofs mounts at current level */
 	unsigned int submount;		/* Is this a submount */
 	unsigned int submnt_count;	/* Number of submounts */
@@ -454,6 +456,7 @@ int expire_offsets_direct(struct autofs_point *ap, struct mapent *me, int now);
 int mount_autofs_indirect(struct autofs_point *ap);
 int mount_autofs_direct(struct autofs_point *ap);
 int mount_autofs_offset(struct autofs_point *ap, struct mapent *me, int is_autofs_fs);
+void submount_signal_parent(struct autofs_point *ap, unsigned int success);
 int umount_autofs(struct autofs_point *ap, int force);
 int umount_autofs_indirect(struct autofs_point *ap);
 int do_umount_autofs_direct(struct autofs_point *ap, struct mnt_list *mnts, struct mapent *me);
@@ -465,6 +468,34 @@ int handle_packet_missing_indirect(struct autofs_point *ap, autofs_packet_missin
 int handle_packet_missing_direct(struct autofs_point *ap, autofs_packet_missing_direct_t *pkt);
 void rm_unwanted(const char *path, int incl, dev_t dev);
 int count_mounts(struct autofs_point *ap, const char *path);
+
+#define state_mutex_lock(ap) \
+do { \
+	int status = pthread_mutex_lock(&ap->state_mutex); \
+	if (status) \
+		fatal(status); \
+} while(0)
+
+#define state_mutex_unlock(ap) \
+do{ \
+	int status = pthread_mutex_unlock(&ap->state_mutex); \
+	if (status) \
+		fatal(status); \
+} while (0)
+
+#define mounts_mutex_lock(ap) \
+do { \
+	int status = pthread_mutex_lock(&ap->mounts_mutex); \
+	if (status) \
+		fatal(status); \
+} while (0)
+
+#define mounts_mutex_unlock(ap) \
+do { \
+	int status = pthread_mutex_unlock(&ap->mounts_mutex); \
+	if (status) \
+		fatal(status); \
+} while(0)
 
 /* Expire alarm handling routines */
 int alarm_start_handler(void);

@@ -807,7 +807,7 @@ static int parse_mapent(const char *ent, char *g_options, char **options, char *
 	l = chunklen(p, check_colon(p));
 	loc = dequote(p, l, logopt);
 	if (!loc) {
-		error(logopt, MODPREFIX "out of memory");
+		warn(logopt, MODPREFIX "possible missing location");
 		free(myoptions);
 		return 0;
 	}
@@ -1039,22 +1039,23 @@ int parse_mount(struct autofs_point *ap, const char *name,
 
 		/* It's a multi-mount; deal with it */
 		do {
-			char *tmp, *path, *myoptions, *loc;
+			char *path, *myoptions, *loc;
+			unsigned int s_len = 0;
 			int status;
 
 			if (*p != '/') {
 				l = 0;
-				tmp = dequote("/", 1, ap->logopt);
+				path = dequote("/", 1, ap->logopt);
 				debug(ap->logopt,
-				      MODPREFIX "dequote(\"/\") -> %s", tmp);
+				      MODPREFIX "dequote(\"/\") -> %s", path);
 			} else {
-				l = chunklen(p, 0);
-				tmp = dequote(p, l, ap->logopt);
+				l = span_space(p, mapent_len - (p - pmapent));
+				path = sanitize_path(p, l, LKP_MULTI, ap->logopt);
 				debug(ap->logopt, MODPREFIX
-				      "dequote(\"%.*s\") -> %s", l, p, tmp);
+				      "dequote(\"%.*s\") -> %s", l, p, path);
 			}
 
-			if (!tmp) {
+			if (!path) {
 				error(ap->logopt, MODPREFIX "out of memory");
 				cache_readlock(mc);
 				cache_multi_lock(mc);
@@ -1064,20 +1065,6 @@ int parse_mount(struct autofs_point *ap, const char *name,
 				free(options);
 				return 1;
 			}
-
-			path = sanitize_path(tmp, strlen(tmp));
-			if (!path) {
-				warn(ap->logopt, MODPREFIX "invalid path");
-				cache_readlock(mc);
-				cache_multi_lock(mc);
-				cache_delete_offset_list(mc, name);
-				cache_multi_unlock(mc);
-				cache_unlock(mc);
-				free(tmp);
-				free(options);
-				return 1;
-			}
-			free(tmp);
 
 			p += l;
 			p = skipspace(p);

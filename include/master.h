@@ -93,9 +93,25 @@ void master_free_mapent_sources(struct master_mapent *, unsigned int);
 void master_free_mapent(struct master_mapent *);
 struct master *master_new(const char *, unsigned int, unsigned int);
 int master_read_master(struct master *, time_t, int);
+void master_notify_submounts(struct autofs_point *, enum states);
+void master_signal_submount(struct autofs_point *);
 void master_notify_state_change(struct master *, int);
 int master_mount_mounts(struct master *, time_t, int);
 int master_list_empty(struct master *);
 int master_kill(struct master *);
+
+#define master_mutex_lock() \
+do { \
+	int status = pthread_mutex_lock(&master_mutex); \
+	if (status) \
+		fatal(status); \
+} while (0)
+
+#define master_mutex_unlock() \
+do { \
+	int status = pthread_mutex_unlock(&master_mutex); \
+	if (status) \
+		fatal(status); \
+} while (0)
 
 #endif

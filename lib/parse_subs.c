@@ -16,7 +16,7 @@
  * ----------------------------------------------------------------------- */
 
 #include <stdlib.h>
-#include "log.h"
+#include "automount.h"
 
 /*
  * Skip whitespace in a string; if we hit a #, consider the rest of the
@@ -153,9 +153,11 @@ char *dequote(const char *str, int origlen, unsigned int logopt)
 				continue;
 			}
 
-			if (*scp == '\\') {
-				quote = 1;
-				continue;
+			if (!dquote) {
+				if (*scp == '\\') {
+					quote = 1;
+					continue;
+				}
 			}
 		}
 		quote = 0;
@@ -172,28 +174,76 @@ char *dequote(const char *str, int origlen, unsigned int logopt)
 	return ret;
 }
 
-char *sanitize_path(const char *path, int origlen)
+int span_space(const char *str, unsigned int maxlen)
 {
-	char *ret = malloc(origlen + 1);
-	char *cp = ret;
+	const char *p = str;
+	unsigned int len = 0;
+
+	while (!isblank(*(p++)) && len++ < maxlen) {
+		if (*p == '\\') {
+			p += 2;
+			len += 2;
+		}
+	}
+	return len;
+}
+
+char *sanitize_path(const char *path, int origlen, unsigned int type, unsigned int logopt)
+{
+	char *slash, *cp, *s_path;
 	const char *scp;
 	int len = origlen;
-	unsigned int seen_slash = 0, quote = 0;
+	unsigned int seen_slash = 0, quote = 0, dquote = 0;
 
-	if (ret == NULL)
+	if (type & (LKP_INDIRECT | LKP_DIRECT)) {
+		slash = strchr(path, '/');
+		if (slash) {
+			if (type == LKP_INDIRECT)
+				return NULL;
+			if (*path != '/')
+				return NULL;
+		} else {
+			if (type == LKP_DIRECT)
+				return NULL;
+		}
+	}
+
+	s_path = malloc(origlen + 1);
+	if (!s_path)
 		return NULL;
 
-	for (scp = path; len > 0 && *scp; scp++, len--) {
+	for (cp = s_path, scp = path; len > 0; scp++, len--) {
 		if (!quote) {
-			if (*scp == '\\') {
-				quote = 1;
+			if (*scp == '"') {
+				if (dquote)
+					dquote = 0;
+				else
+					dquote = 1;
 				continue;
 			}
 
+			if (!dquote) {
+				/* Badness in string - go away */
+				if (*scp < 32) {
+					free(s_path);
+					return NULL;
+				}
+
+				if (*scp == '\\') {
+					quote = 1;
+					continue;
+				} 
+			}
+
+			/*
+			 * Not really proper but we get problems with
+			 * paths with multiple slashes. The kernel
+			 * compresses them so when we get a query there
+			 * should be only single slashes.
+			 */
 			if (*scp == '/') {
 				if (seen_slash)
 					continue;
-
 				seen_slash = 1;
 			} else
 				seen_slash = 0;
@@ -203,9 +253,15 @@ char *sanitize_path(const char *path, int origlen)
 	}
 	*cp = '\0';
 
+	if (dquote) {
+		debug(logopt, "unmatched quote in %.*s", origlen, path);
+		free(s_path);
+		return NULL;
+	}
+
 	if (origlen > 1 && *(cp - 1) == '/')
 		*(cp - 1) = '\0';
 
-	return ret;
+	return s_path;
 }
 

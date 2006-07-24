@@ -202,10 +202,13 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 	result_count = NIS_RES_NUMOBJ(result);
 
 	while (result_count--) {
-		char *dq_key, *dq_mapent;
+		char *s_key;
+		size_t len;
 
 		this = &result->objects.objects_val[current++];
 		key = ENTRY_VAL(this, 0);
+		len = ENTRY_LEN(this, 0);
+
 		/*
 		 * Ignore keys beginning with '+' as plus map
 		 * inclusion is only valid in file maps.
@@ -213,38 +216,22 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 		if (*key == '+')
 			continue;
 
-		dq_key = dequote(key, ENTRY_LEN(this, 0), ap->logopt);
-		if (!dq_key)
+		s_key = sanitize_path(key, len, ap->type, ap->logopt);
+		if (!s_key)
 			continue;
-
-		if (*dq_key == '/') {
-			if (ap->type == LKP_INDIRECT) {
-				free(dq_key);
-				continue;
-			}
-		} else {
-			if (ap->type == LKP_DIRECT) {
-				free(dq_key);
-				continue;
-			}
-		}
 
 		mapent = ENTRY_VAL(this, 1);
-		dq_mapent = dequote(mapent, ENTRY_LEN(this, 1), ap->logopt);
-		if (!dq_mapent) {
-			free(dq_key);
-			continue;
-		}
 
 		cache_writelock(mc);
-		cache_update(mc, source, dq_key, dq_mapent, age);
+		cache_update(mc, source, s_key, mapent, age);
 		cache_unlock(mc);
 
-		free(dq_key);
-		free(dq_mapent);
+		free(s_key);
 	}
 
 	nis_freeresult(result);
+
+	source->age = age;
 
 	return NSS_STATUS_SUCCESS;
 }

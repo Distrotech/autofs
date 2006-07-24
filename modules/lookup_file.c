@@ -113,7 +113,7 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 	return 0;
 }
 
-static int read_one(FILE *f, char *key, char *mapent)
+static int read_one(FILE *f, char *key, unsigned *k_len, char *mapent, unsigned *m_len)
 {
 	char *kptr, *p;
 	int mapent_len, key_len;
@@ -228,11 +228,25 @@ static int read_one(FILE *f, char *key, char *mapent)
 			if (ch == '\n')
 				state = st_begin;
 			else if (!isspace(ch) || escape) {
+				if (escape) {
+					if (escape == esc_char)
+						break;
+					if (ch <= 32) {
+						getting = got_nothing;
+						state = st_badent;
+						break;
+					}
+					p = mapent;
+					*(p++) = '\\';
+					*(p++) = ch;
+					mapent_len = 2;
+				} else {
+					p = mapent;
+					*(p++) = ch;
+					mapent_len = 1;
+				}
 				state = st_getent;
-				p = mapent;
 				gotten = getting;
-				*(p++) = ch;
-				mapent_len = 1;
 			}
 			break;
 
@@ -240,8 +254,8 @@ static int read_one(FILE *f, char *key, char *mapent)
 			if (ch == '\n') {
 				nch = getc(f);
 				if (nch != EOF && isblank(nch)) {
-					state = st_badent;
 					ungetc(nch, f);
+					state = st_badent;
 					gotten = got_nothing;
 					warn(LOGOPT_ANY, MODPREFIX 
 					      "bad map entry \"%s...\" for key "
@@ -275,6 +289,9 @@ static int read_one(FILE *f, char *key, char *mapent)
 	      got_it:
 		if (gotten == got_nothing)
 			goto next;
+
+		*k_len = key_len;
+		*m_len = mapent_len;
 
 		return 1;
 
@@ -329,7 +346,7 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 	char *ent;
 	struct stat st;
 	FILE *f;
-	int entry;
+	int entry, path_len, ent_len;
 
 	if (master->recurse)
 		return NSS_STATUS_UNAVAIL;
@@ -368,7 +385,7 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 
 	master_init_scan();
 	while(1) {
-		entry = read_one(f, path, ent);
+		entry = read_one(f, path, &path_len, ent, &ent_len);
 		if (!entry) {
 			if (feof(f))
 				break;
@@ -404,7 +421,7 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 
 			master->name = save_name;
 		} else {
-			blen = strlen(path) + 1 + strlen(ent) + 1;
+			blen = path_len + 1 + ent_len + 1;
 			buffer = malloc(blen);
 			if (!buffer) {
 				error(LOGOPT_ANY,
@@ -576,7 +593,7 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 	char *mapent;
 	struct stat st;
 	FILE *f;
-	int entry;
+	int entry, k_len, m_len;
 
 	source = ap->entry->current;
 	ap->entry->current = NULL;
@@ -618,7 +635,7 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 	}
 
 	while(1) {
-		entry = read_one(f, key, mapent);
+		entry = read_one(f, key, &k_len, mapent, &m_len);
 		if (!entry) {
 			if (feof(f))
 				break;
@@ -657,36 +674,17 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 			master_free_mapent_sources(iap->entry, 0);
 			master_free_mapent(iap->entry);
 		} else {
-			char *dq_key, *dq_mapent; 
+			char *s_key; 
 
-			dq_key = dequote(key, strlen(key), ap->logopt);
-			if (!dq_key)
+			s_key = sanitize_path(key, k_len, ap->type, ap->logopt);
+			if (!s_key)
 				continue;
-
-			if (*dq_key == '/') {
-				if (ap->type == LKP_INDIRECT) {
-					free(dq_key);
-					continue;
-				}
-			} else {
-				if (ap->type == LKP_DIRECT) {
-					free(dq_key);
-					continue;
-				}
-			}
-
-			dq_mapent = dequote(mapent, strlen(mapent), ap->logopt); 
-			if (!dq_mapent) {
-				free(dq_key);
-				continue;
-			}
 
 			cache_writelock(mc);
-			cache_update(mc, source, dq_key, dq_mapent, age);
+			cache_update(mc, source, s_key, mapent, age);
 			cache_unlock(mc);
 
-			free(dq_key);
-			free(dq_mapent);
+			free(s_key);
 		}
 
 		if (feof(f))
@@ -702,6 +700,7 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 		return NSS_STATUS_UNAVAIL;
 	}
 	ctxt->mtime = st.st_mtime;
+	source->age = age;
 
 	fclose(f);
 
@@ -721,7 +720,7 @@ static int lookup_one(struct autofs_point *ap,
 	char mapent[MAPENT_MAX_LEN + 1];
 	time_t age = time(NULL);
 	FILE *f;
-	int entry, ret;
+	int entry, ret, k_len, m_len;
 
 	source = ap->entry->current;
 	ap->entry->current = NULL;
@@ -737,7 +736,7 @@ static int lookup_one(struct autofs_point *ap,
 	}
 
 	while(1) {
-		entry = read_one(f, mkey, mapent);
+		entry = read_one(f, mkey, &k_len, mapent, &m_len);
 		if (entry) {
 			/*
 			 * If key starts with '+' it has to be an
@@ -773,11 +772,30 @@ static int lookup_one(struct autofs_point *ap,
 
 				if (status)
 					return CHE_COMPLETED;
-			} else if (strncmp(mkey, key, key_len) == 0) {
+			} else {
+				char *s_key; 
+				int eq;
+
+				s_key = sanitize_path(mkey, k_len, ap->type, ap->logopt);
+				if (!s_key)
+					continue;
+
+				if (key_len != strlen(s_key)) {
+					free(s_key);
+					continue;
+				}
+
+				eq = strncmp(s_key, key, key_len);
+				if (eq != 0)
+					continue;
+
+				free(s_key);
+
 				fclose(f);
 				cache_writelock(mc);
 				ret = cache_update(mc, source, key, mapent, age);
 				cache_unlock(mc);
+
 				return ret;
 			}
 		}
@@ -799,7 +817,7 @@ static int lookup_wild(struct autofs_point *ap, struct lookup_context *ctxt)
 	char mapent[MAPENT_MAX_LEN + 1];
 	time_t age = time(NULL);
 	FILE *f;
-	int entry, ret;
+	int entry, ret, k_len, m_len;
 
 	source = ap->entry->current;
 	ap->entry->current = NULL;
@@ -815,7 +833,7 @@ static int lookup_wild(struct autofs_point *ap, struct lookup_context *ctxt)
 	}
 
 	while(1) {
-		entry = read_one(f, mkey, mapent);
+		entry = read_one(f, mkey, &k_len, mapent, &m_len);
 		if (entry) {
 			/*
 			 * If key starts with '+' it has to be an
@@ -848,7 +866,13 @@ static int lookup_wild(struct autofs_point *ap, struct lookup_context *ctxt)
 
 				if (status)
 					return CHE_COMPLETED;
-			} else if (strncmp(mkey, "*", 1) == 0) {
+			} else {
+				int eq;
+
+				eq = (*mkey == '*' && k_len == 1);
+				if (eq == 0)
+					continue;
+
 				fclose(f);
 				cache_writelock(mc);
 				ret = cache_update(mc, source, "*", mapent, age);
@@ -1029,7 +1053,7 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 
 	cache_readlock(mc);
 	me = cache_lookup(mc, key);
-	if (me) {
+	if (me && me->mapent) {
 		pthread_cleanup_push(cache_lock_cleanup, mc);
 		mapent_len = strlen(me->mapent);
 		mapent = alloca(mapent_len + 1);
