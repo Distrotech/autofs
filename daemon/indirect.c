@@ -300,7 +300,6 @@ int umount_autofs_indirect(struct autofs_point *ap)
 		return 1;
 	} else if (!ret) {
 		error(ap->logopt, "ask umount returned busy %s", ap->path);
-		busy = 1;
 	}
 
 	if (ap->ioctlfd >= 0) {
