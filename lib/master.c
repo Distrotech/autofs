@@ -754,14 +754,19 @@ int master_read_master(struct master *master, time_t age, int readall)
 
 static void notify_submounts(struct autofs_point *ap, enum states state)
 {
-	struct list_head *p;
+	struct list_head *head, *p;
 	struct autofs_point *this;
+	pthread_t thid;
 	int status;
 
 	mounts_mutex_lock(ap);
 
-	list_for_each(p, &ap->submounts) {
+	head = &ap->submounts;
+	p = head->next;
+	while (p != head) {
 		this = list_entry(p, struct autofs_point, mounts);
+
+		p = p->next;
 
 		if (!list_empty(&this->submounts))
 			notify_submounts(this, state);
@@ -777,11 +782,19 @@ static void notify_submounts(struct autofs_point *ap, enum states state)
 
 		state_mutex_unlock(this);
 
-		ap->mounts_signaled = 0;
-		while (!ap->mounts_signaled) {
+		thid = this->thid;
+		ap->mounts_signaled = MASTER_SUBMNT_WAIT;
+		while (ap->mounts_signaled == MASTER_SUBMNT_WAIT) {
 			status = pthread_cond_wait(&ap->mounts_cond, &ap->mounts_mutex);
 			if (status)
 				fatal(status);
+			if (ap->mounts_signaled == MASTER_SUBMNT_JOIN) {
+				mounts_mutex_unlock(ap);
+				status = pthread_join(thid, NULL);
+				if (status)
+					fatal(status);
+				mounts_mutex_lock(ap);
+			}
 		}
 	}
 
@@ -801,7 +814,7 @@ void master_notify_submounts(struct autofs_point *ap, enum states state)
 	return;
 }
 
-void master_signal_submount(struct autofs_point *ap)
+void master_signal_submount(struct autofs_point *ap, unsigned int join)
 {
 	int status;
 
@@ -810,7 +823,10 @@ void master_signal_submount(struct autofs_point *ap)
 
 	mounts_mutex_lock(ap->parent);
 
-	ap->parent->mounts_signaled = 1;
+	if (join)
+		ap->parent->mounts_signaled = 1;
+	else
+		ap->parent->mounts_signaled = 2;
 	status = pthread_cond_signal(&ap->parent->mounts_cond);
 	if (status)
 		fatal(status);

@@ -744,7 +744,7 @@ int tree_find_mnt_ents(struct mnt_list *mnts, struct list_head *list, const char
 	return 0;
 }
 
-int tree_is_mounted(struct mnt_list *mnts, const char *path)
+int tree_is_mounted(struct mnt_list *mnts, const char *path, unsigned int type)
 {
 	struct list_head *p;
 	struct list_head list;
@@ -760,13 +760,27 @@ int tree_is_mounted(struct mnt_list *mnts, const char *path)
 
 		mptr = list_entry(p, struct mnt_list, list);
 
-		/* We only want real mounts */
-		if (!strcmp(mptr->fs_type, "autofs"))
-			continue;
+		if (type) {
+			unsigned int autofs_fs;
 
-		mounted++;
+			autofs_fs = !strcmp(mptr->fs_type, "autofs");
+
+			if (type & MNTS_REAL) {
+				if (!autofs_fs) {
+					mounted = 1;
+					break;
+				}
+			} else if (type & MNTS_AUTOFS) {
+				if (autofs_fs) {
+					mounted = 1;
+					break;
+				}
+			} else {
+				mounted = 1;
+				break;
+			}
+		}
 	}
-
 	return mounted;
 }
 

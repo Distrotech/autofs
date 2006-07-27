@@ -20,6 +20,10 @@
 #ifndef MASTER_H
 #define MASTER_H
 
+#define MASTER_SUBMNT_WAIT	0
+#define MASTER_SUBMNT_CONTINUE	1
+#define MASTER_SUBMNT_JOIN	2
+
 struct map_source {
 	char *type;
 	char *format;
@@ -94,7 +98,7 @@ void master_free_mapent(struct master_mapent *);
 struct master *master_new(const char *, unsigned int, unsigned int);
 int master_read_master(struct master *, time_t, int);
 void master_notify_submounts(struct autofs_point *, enum states);
-void master_signal_submount(struct autofs_point *);
+void master_signal_submount(struct autofs_point *, unsigned int);
 void master_notify_state_change(struct master *, int);
 int master_mount_mounts(struct master *, time_t, int);
 int master_list_empty(struct master *);

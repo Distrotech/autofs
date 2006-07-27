@@ -550,21 +550,35 @@ int umount_multi(struct autofs_point *ap, struct mnt_list *mnts, const char *pat
 
 	left = 0;
 	list_for_each(p, &list) {
+		struct autofs_point *oap = ap;
+		char *has_opt_direct;
+		int is_autofs;
+
 		mptr = list_entry(p, struct mnt_list, list);
 
-		/* We only want real mounts */
-		if (!strcmp(mptr->fs_type, "autofs"))
+		is_autofs = !strcmp(mptr->fs_type, "autofs");
+		has_opt_direct = strstr(mptr->opts, "direct");
+
+		/* We only want real mounts and top level direct mounts */
+		if (is_autofs && !has_opt_direct)
+			continue;
+
+		if (ap->submount)
+			oap = ap->parent;
+
+		sched_yield();
+
+		if (umount_offsets(oap, mnts, mptr->path))
+			warn(ap->logopt,
+			     "could not umount some offsets under %s",
+			     mptr->path);
+
+		if (is_autofs)
 			continue;
 
 		sched_yield();
 
-		if (umount_offsets(ap, mnts, mptr->path))
-			warn(ap->logopt, "could not umount some offsets under %s",
-				mptr->path);
-
-		sched_yield();
-
-		debug(ap->logopt, "unmounting dir = %s", mptr->path);
+		warn(ap->logopt, "unmounting dir = %s", mptr->path);
 
 		if (umount_ent(ap, mptr->path, mptr->fs_type)) {
 			warn(ap->logopt, "could not umount dir %s",
@@ -573,49 +587,16 @@ int umount_multi(struct autofs_point *ap, struct mnt_list *mnts, const char *pat
 		}
 	}
 
-	/* Lastly check for offsets with no root mount */
-	n = scandir(path, &de, 0, alphasort);
-	if (n && n != -1) {
-		char buf[PATH_MAX + 1];
+	/* Catch any offsets of indirect mounts with no root mount */
+	if (!left && !tree_is_mounted(mnts, path, MNTS_ALL)) {
+		struct autofs_point *rap = ap;
 
-		while (n--) {
-			size_t size;
-			int ret;
+		if (ap->submount)
+			rap = ap->parent;
 
-			sched_yield();
-
-			if (strcmp(de[n]->d_name, ".") == 0 ||
-			    strcmp(de[n]->d_name, "..") == 0) {
-				free(de[n]);
-				continue;
-			}
-
-			size = sizeof(buf);
-			ret = cat_path(buf, size, path, de[n]->d_name);
-			if (!ret) {
-				do {
-					free(de[n]);
-				} while (n--);
-				left++;
-				break;
-			}
-
-			if (umount_offsets(ap, mnts, buf)) {
-				warn(ap->logopt,
-				     "could not umount some offsets under %s",
-				     buf);
-				left++;
-			}
-			free(de[n]);
-		}
-		free(de);
-	}
-
-	if (!left && !tree_is_mounted(mnts, path)) {
-		sched_yield();
-		if (umount_offsets(ap, mnts, path)) {
+		if (umount_offsets(rap, mnts, path)) {
 			warn(ap->logopt,
-			      "could not umount some offsets under %s", path);
+			     "could not umount some offsets under %s", path);
 			left++;
 		}
 	}
@@ -1229,7 +1210,7 @@ static void handle_mounts_cleanup(void *arg)
 	umount_autofs(ap, 1);
 
 	if (submount)
-		master_signal_submount(ap);
+		master_signal_submount(ap, MASTER_SUBMNT_JOIN);
 	else
 		master_remove_mapent(ap->entry);
 	master_free_mapent_sources(ap->entry, 1);

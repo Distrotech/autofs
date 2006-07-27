@@ -395,6 +395,7 @@ int lookup_nss_read_map(struct autofs_point *ap, time_t age)
 	struct list_head *head, *p;
 	struct nss_source *this;
 	struct map_source *map;
+	enum nsswitch_status status;
 	int result = 0;
 
 	/*
@@ -445,17 +446,16 @@ int lookup_nss_read_map(struct autofs_point *ap, time_t age)
 
 		INIT_LIST_HEAD(&nsslist);
 
-		result = nsswitch_parse(&nsslist);
-		if (result) {
+		status = nsswitch_parse(&nsslist);
+		if (status) {
 			error(ap->logopt,
 			      "can't to read name service switch config.");
+			result = 1;
 			break;
 		}
 
 		head = &nsslist;
 		list_for_each(p, head) {
-			int status;
-
 			this = list_entry(p, struct nss_source, list);
 
 			debug(ap->logopt,
@@ -721,6 +721,7 @@ int lookup_nss_mount(struct autofs_point *ap, const char *name, int name_len)
 	struct list_head *head, *p;
 	struct nss_source *this;
 	struct map_source *map;
+	enum nsswitch_status status;
 	int result = 0;
 
 	/*
@@ -775,8 +776,8 @@ int lookup_nss_mount(struct autofs_point *ap, const char *name, int name_len)
 
 		INIT_LIST_HEAD(&nsslist);
 
-		result = nsswitch_parse(&nsslist);
-		if (result) {
+		status = nsswitch_parse(&nsslist);
+		if (status) {
 			error(ap->logopt,
 			      "can't to read name service switch config.");
 			result = 1;
@@ -959,5 +960,60 @@ next:
 	master_source_unlock(entry);
 
 	return 1;
+}
+
+/* Return with cache readlock held */
+struct mapent *lookup_source_mapent(struct autofs_point *ap, const char *key)
+{
+	struct master_mapent *entry = ap->entry;
+	struct map_source *map;
+	struct mapent_cache *mc;
+	struct mapent *me;
+
+	pthread_cleanup_push(master_source_lock_cleanup, entry);
+	master_source_readlock(entry);
+	map = entry->first;
+	while (map) {
+		mc = map->mc;
+		cache_readlock(mc);
+		me = cache_lookup_distinct(mc, key);
+		if (me)
+			break;
+		cache_unlock(mc);
+		map = map->next;
+	}
+	pthread_cleanup_pop(1);
+
+	return me;
+}
+
+int lookup_source_close_ioctlfd(struct autofs_point *ap, const char *key)
+{
+	struct master_mapent *entry = ap->entry;
+	struct map_source *map;
+	struct mapent_cache *mc;
+	struct mapent *me;
+	int ret = 0;
+
+	pthread_cleanup_push(master_source_lock_cleanup, entry);
+	master_source_readlock(entry);
+	map = entry->first;
+	while (map) {
+		mc = map->mc;
+		cache_readlock(mc);
+		me = cache_lookup_distinct(mc, key);
+		if (me) {
+			close(me->ioctlfd);
+			me->ioctlfd = -1;
+			cache_unlock(mc);
+			ret = 1;
+			break;
+		}
+		cache_unlock(mc);
+		map = map->next;
+	}
+	pthread_cleanup_pop(1);
+
+	return ret;
 }
 

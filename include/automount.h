@@ -224,6 +224,8 @@ int lookup_ghost(struct autofs_point *ap);
 int lookup_nss_mount(struct autofs_point *ap, const char *name, int name_len);
 void lookup_close_lookup(struct autofs_point *ap);
 int lookup_prune_cache(struct autofs_point *ap, time_t age);
+struct mapent *lookup_source_mapent(struct autofs_point *ap, const char *key);
+int lookup_source_close_ioctlfd(struct autofs_point *ap, const char *key);
 
 #ifdef MODULE_LOOKUP
 int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **context);
@@ -313,9 +315,9 @@ int ncat_path(char *buf, size_t len,
 
 /* mount table utilities */
 
-#define MNTS_ALL	0x0000
-#define MNTS_REAL	0x0001
-#define MNTS_AUTOFS	0x0002
+#define MNTS_ALL	0x0001
+#define MNTS_REAL	0x0002
+#define MNTS_AUTOFS	0x0004
 
 struct mnt_list {
 	char *path;
@@ -356,7 +358,7 @@ void tree_free_mnt_tree(struct mnt_list *tree);
 struct mnt_list *tree_make_mnt_tree(const char *table, const char *path);
 int tree_get_mnt_list(struct mnt_list *mnts, struct list_head *list, const char *path, int include);
 int tree_find_mnt_ents(struct mnt_list *mnts, struct list_head *list, const char *path);
-int tree_is_mounted(struct mnt_list *mnts, const char *path);
+int tree_is_mounted(struct mnt_list *mnts, const char *path, unsigned int type);
 
 /* Core automount definitions */
 

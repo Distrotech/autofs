@@ -103,7 +103,6 @@ void expire_cleanup(void *arg)
 	/* Check to see if expire process finished */
 	if (thid == ap->exp_thread) {
 		ap->exp_thread = 0;
-		st_set_thid(ap, 0);
 
 		switch (ap->state) {
 		case ST_EXPIRE:
@@ -174,7 +173,7 @@ static unsigned int st_ready(struct autofs_point *ap)
 	ap->state = ST_READY;
 
 	if (ap->submount)
-		master_signal_submount(ap);
+		master_signal_submount(ap, MASTER_SUBMNT_CONTINUE);
 
 	return 1;
 }
@@ -362,7 +361,7 @@ static void *do_readmap(void *arg)
 			while (me) {
 				/* TODO: check return of do_... */
 				if (me->age < now) {
-					if (!tree_is_mounted(mnts, me->key))
+					if (!tree_is_mounted(mnts, me->key, MNTS_REAL))
 						do_umount_autofs_direct(ap, mnts, me);
 					else
                                 		debug(ap->logopt,
@@ -586,18 +585,14 @@ int st_add_task(struct autofs_point *ap, enum states state)
 
 		state_mutex_unlock(ap);
 
-		status = pthread_mutex_lock(&mutex);
-		if (status)
-			fatal(status);
+		st_mutex_lock();
 
 		signaled = 1;
 		status = pthread_cond_signal(&cond);
 		if (status)
 			fatal(status);
 
-		status = pthread_mutex_unlock(&mutex);
-		if (status)
-			fatal(status);
+		st_mutex_unlock();
 
 		return 1;
 	}
@@ -620,9 +615,7 @@ int st_add_task(struct autofs_point *ap, enum states state)
 	INIT_LIST_HEAD(&new->list);
 	INIT_LIST_HEAD(&new->pending);
 
-	status = pthread_mutex_lock(&mutex);
-	if (status)
-		fatal(status);
+	st_mutex_lock();
 
 	head = &state_queue;
 
@@ -648,9 +641,7 @@ int st_add_task(struct autofs_point *ap, enum states state)
 	if (status)
 		fatal(status);
 
-	status = pthread_mutex_unlock(&mutex);
-	if (status)
-		fatal(status);
+	st_mutex_unlock();
 
 	return 1;
 }

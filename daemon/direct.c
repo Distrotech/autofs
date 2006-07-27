@@ -125,6 +125,24 @@ int do_umount_autofs_direct(struct autofs_point *ap, struct mnt_list *mnts, stru
 		me->ioctlfd = open(me->key, O_RDONLY);
 
 	if (me->ioctlfd >= 0) {
+		int status = 1;
+
+		rv = ioctl(me->ioctlfd, AUTOFS_IOC_ASKUMOUNT, &status);
+		if (rv) {
+			char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+			error(ap->logopt, "ioctl failed: %s", estr);
+			return 1;
+		} else if (!status) {
+			if (ap->state != ST_SHUTDOWN_FORCE) {
+				debug(ap->logopt, "ask umount returned busy");
+				return 1;
+			} else {
+				ioctl(me->ioctlfd, AUTOFS_IOC_CATATONIC, 0);
+				close(me->ioctlfd);
+				me->ioctlfd = -1;
+				goto force_umount;
+			}
+		}
 		ioctl(me->ioctlfd, AUTOFS_IOC_CATATONIC, 0);
 		close(me->ioctlfd);
 		me->ioctlfd = -1;
@@ -136,7 +154,7 @@ int do_umount_autofs_direct(struct autofs_point *ap, struct mnt_list *mnts, stru
 	}
 
 	rv = umount(me->key);
-	if (rv != 0) {
+	if (rv == -1) {
 		switch (errno) {
 		case ENOENT:
 		case EINVAL:
@@ -468,8 +486,12 @@ int umount_autofs_offset(struct autofs_point *ap, struct mapent *me)
 	if (me->ioctlfd >= 0) {
 		int status = 1;
 
-		ioctl(me->ioctlfd, AUTOFS_IOC_ASKUMOUNT, &status);
-		if (!status) {
+		rv = ioctl(me->ioctlfd, AUTOFS_IOC_ASKUMOUNT, &status);
+		if (rv) {
+			char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+			error(ap->logopt, "ioctl failed: %s", estr);
+			return 1;
+		} else if (!status) {
 			if (ap->state != ST_SHUTDOWN_FORCE) {
 				debug(ap->logopt, "ask umount returned busy");
 				return 1;
@@ -517,15 +539,7 @@ force_umount:
 		rv = umount2(me->key, MNT_DETACH);
 	} else
 		msg("umounted offset %s", me->key);
-/*
-	if (!rv && me->dir_created) {
-		if  (rmdir(me->key) == -1) {
-			char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-			warn(ap->logopt,
-			     "failed to remove dir %s: %s", me->key, estr);
-		}
-	}
-*/
+
 	return rv;
 }
 
@@ -800,25 +814,25 @@ static void kernel_callback_cleanup(void *arg)
 	mc = mt->mc;
 
 	if (mt->status) {
+		cache_writelock(mc);
 		send_ready(mt->ioctlfd, mt->wait_queue_token);
 		if (mt->type == NFY_EXPIRE) {
 			close(mt->ioctlfd);
-			cache_writelock(mc);
 			me = cache_lookup_distinct(mc, mt->name);
 			if (me)
 				me->ioctlfd = -1;
-			cache_unlock(mc);
 		}
+		cache_unlock(mc);
 	} else {
+		cache_writelock(mc);
 		send_fail(mt->ioctlfd, mt->wait_queue_token);
 		if (mt->type == NFY_MOUNT) {
 			close(mt->ioctlfd);
-			cache_writelock(mc);
 			me = cache_lookup_distinct(mc, mt->name);
 			if (me)
 				me->ioctlfd = -1;
-			cache_unlock(mc);
 		}
+		cache_unlock(mc);
 	}
 
 	free(mt);

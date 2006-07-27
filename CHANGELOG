@@ -12,6 +12,7 @@
 - cthon fix submount operation broken by above.
 - cthon more parser corrections and attempt to fix multi-mounts
   with various combinations of submounts (still broken).
+- cthon fix expire of various forms of nested mounts.
 
 13/7/2006 autofs-5.0.1 rc1
 --------------------------

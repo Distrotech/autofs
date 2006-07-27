@@ -201,7 +201,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 
 	mounts_mutex_lock(ap);
 
-	if (pthread_create(&thid, &thread_attr, handle_mounts, nap)) {
+	if (pthread_create(&thid, NULL, handle_mounts, nap)) {
 		crit(ap->logopt,
 		     MODPREFIX
 		     "failed to create mount handler thread for %s",

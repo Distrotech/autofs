@@ -289,40 +289,24 @@ int umount_autofs_indirect(struct autofs_point *ap)
 	 * to do it here. If the cache entry isn't found then there aren't
 	 * any offset mounts.
 	 */
-	if (ap->submount) {
-		struct master_mapent *entry = ap->parent->entry;
-		struct map_source *map;
-		struct mapent_cache *mc;
-		struct mapent *me;
-
-		pthread_cleanup_push(master_source_lock_cleanup, entry);
-		master_source_readlock(entry);
-		map = entry->first;
-		while (map) {
-			mc = map->mc;
-			cache_readlock(mc);
-			me = cache_lookup_distinct(mc, ap->path);
-			if (me) {
-				close(me->ioctlfd);
-				me->ioctlfd = -1;
-				cache_unlock(mc);
-				break;
-			}
-			cache_unlock(mc);
-			map = map->next;
-		}
-		pthread_cleanup_pop(1);
-	}
+	if (ap->submount)
+		lookup_source_close_ioctlfd(ap->parent, ap->path);
 
 	/* If we are trying to shutdown make sure we can umount */
-	if (!ioctl(ap->ioctlfd, AUTOFS_IOC_ASKUMOUNT, &ret)) {
-		if (!ret)
-			warn(ap->logopt, "mount still busy %s", ap->path);
+	rv = ioctl(ap->ioctlfd, AUTOFS_IOC_ASKUMOUNT, &ret);
+	if (rv) {
+		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+		error(ap->logopt, "ioctl failed: %s", estr);
+		return 1;
+	} else if (!ret) {
+		error(ap->logopt, "ask umount returned busy %s", ap->path);
+		busy = 1;
 	}
 
 	if (ap->ioctlfd >= 0) {
 		ioctl(ap->ioctlfd, AUTOFS_IOC_CATATONIC, 0);
 		close(ap->ioctlfd);
+		ap->ioctlfd = -1;
 		close(ap->state_pipe[0]);
 		close(ap->state_pipe[1]);
 		ap->state_pipe[0] = -1;
@@ -340,12 +324,12 @@ int umount_autofs_indirect(struct autofs_point *ap)
 		switch (errno) {
 		case ENOENT:
 		case EINVAL:
-			warn(ap->logopt,
+			error(ap->logopt,
 			      "mount point %s does not exist", ap->path);
 			return 0;
 			break;
 		case EBUSY:
-			warn(ap->logopt,
+			error(ap->logopt,
 			      "mount point %s is in use", ap->path);
 			if (ap->state == ST_SHUTDOWN_FORCE)
 				goto force_umount;
@@ -385,6 +369,7 @@ void *expire_proc_indirect(void *arg)
 	int offsets, submnts, count;
 	int ioctlfd;
 	int status, ret;
+	char buf[MAX_ERR_BUF];
 
 	ea = (struct expire_args *) arg;
 
@@ -470,8 +455,9 @@ void *expire_proc_indirect(void *arg)
 
 		ret = ioctl(ioctlfd, AUTOFS_IOC_EXPIRE_MULTI, &now);
 		if (ret < 0 && errno != EAGAIN) {
+			char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
 			warn(ap->logopt,
-			      "failed to expire mount %s", next->path);
+			     "failed to expire mount %s:", next->path, estr);
 			ea->status = 1;
 			break;
 		}
@@ -479,7 +465,7 @@ void *expire_proc_indirect(void *arg)
 	free_mnt_list(mnts);
 
 	count = offsets = submnts = 0;
-	mnts = get_mnt_list(_PROC_MOUNTS, ap->path, 0);
+	mnts = get_mnt_list(_PROC_MOUNTS, ap->path, 1);
 	/* Are there any real mounts left */
 	for (next = mnts; next; next = next->next) {
 		if (strcmp(next->fs_type, "autofs"))
@@ -497,10 +483,10 @@ void *expire_proc_indirect(void *arg)
 	 * have some offset mounts with no '/' offset so we need to
 	 * umount them here.
 	 */
-	if (mnts && !ea->status && !count) {
-		int ret;
+	if (mnts) {
+		int ret, tries = (count + submnts + offsets + 2) * 2;
 
-		while (offsets--) {
+		while (tries--) {
 			ret = ioctl(ap->ioctlfd, AUTOFS_IOC_EXPIRE_MULTI, &now);
 			if (ret < 0 && errno != EAGAIN) {
 				warn(ap->logopt,
@@ -509,6 +495,21 @@ void *expire_proc_indirect(void *arg)
 				ea->status = 1;
 				break;
 			}
+		}
+	}
+	free_mnt_list(mnts);
+
+	count = offsets = submnts = 0;
+	mnts = get_mnt_list(_PROC_MOUNTS, ap->path, 0);
+	/* Are there any real mounts left */
+	for (next = mnts; next; next = next->next) {
+		if (strcmp(next->fs_type, "autofs"))
+			count++;
+		else {
+			if (strstr(next->opts, "indirect"))
+				submnts++;
+			else
+				offsets++;
 		}
 	}
 	free_mnt_list(mnts);

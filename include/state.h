@@ -59,6 +59,20 @@ struct expire_args {
 	int status;		 /* Return status */
 };
 
+#define expire_args_mutex_lock(ea) \
+do { \
+	int status = pthread_mutex_lock(&ea->mutex); \
+	if (status) \
+		fatal(status); \
+} while (0)
+
+#define expire_args_mutex_unlock(ea) \
+do { \
+	int status = pthread_mutex_unlock(&ea->mutex); \
+	if (status) \
+		fatal(status); \
+} while (0)
+
 struct readmap_args {
 	pthread_mutex_t mutex;
 	pthread_cond_t cond;
@@ -74,5 +88,19 @@ void nextstate(int, enum states);
 int st_add_task(struct autofs_point *, enum states);
 void st_remove_tasks(struct autofs_point *);
 int st_start_handler(void);
+
+#define st_mutex_lock() \
+do { \
+	int status = pthread_mutex_lock(&mutex); \
+	if (status) \
+		fatal(status); \
+} while (0)
+
+#define st_mutex_unlock() \
+do { \
+	int status = pthread_mutex_unlock(&mutex); \
+	if (status) \
+		fatal(status); \
+} while (0)
 
 #endif

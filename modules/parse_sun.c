@@ -839,7 +839,7 @@ static int parse_mapent(const char *ent, char *g_options, char **options, char *
 		l = chunklen(p, check_colon(p));
 		ent = dequote(p, l, logopt);
 		if (!ent) {
-			error(logopt, MODPREFIX "out of memory");
+			warn(logopt, MODPREFIX "null location or out of memory");
 			free(myoptions);
 			free(loc);
 			return 0;
@@ -1056,7 +1056,7 @@ int parse_mount(struct autofs_point *ap, const char *name,
 			}
 
 			if (!path) {
-				error(ap->logopt, MODPREFIX "out of memory");
+				warn(ap->logopt, MODPREFIX "null path or out of memory");
 				cache_readlock(mc);
 				cache_multi_lock(mc);
 				cache_delete_offset_list(mc, name);
@@ -1174,6 +1174,7 @@ int parse_mount(struct autofs_point *ap, const char *name,
 		return rv;
 	} else {
 		/* Normal (and non-root multi-mount) entries */
+		struct autofs_point *oap = ap;
 		char *loc;
 		int loclen;
 		int l;
@@ -1185,14 +1186,11 @@ int parse_mount(struct autofs_point *ap, const char *name,
 			free(options);
 			return 1;
 		}
-/*
-		if (*p == ':')
-			p++;	/* Sun escape for entries starting with / */ /*
-*/
+
 		l = chunklen(p, check_colon(p));
 		loc = dequote(p, l, ap->logopt);
 		if (!loc) {
-			error(ap->logopt, MODPREFIX "out of memory");
+			warn(ap->logopt, MODPREFIX "null location or out of memory");
 			free(options);
 			return 1;
 		}
@@ -1216,7 +1214,8 @@ int parse_mount(struct autofs_point *ap, const char *name,
 			l = chunklen(p, check_colon(p));
 			ent = dequote(p, l, ap->logopt);
 			if (!ent) {
-				error(ap->logopt, MODPREFIX "out of memory");
+				warn(ap->logopt,
+				     MODPREFIX "null location or out of memory");
 				free(loc);
 				free(options);
 				return 1;
@@ -1277,12 +1276,23 @@ int parse_mount(struct autofs_point *ap, const char *name,
 		 * If it's a multi-mount insert the triggers
 		 * These are always direct mount triggers so root = ""
 		 */
-		cache_readlock(mc);
-		me = cache_lookup_distinct(mc, name);
-		if (me && me->multi) {
-			char *m_key = me->multi->key;
+		if (ap->submount)
+			oap = ap->parent;
+
+		me = lookup_source_mapent(oap, name);
+		if (me) {
+			char *m_key;
 			int start;
 			char *base, *m_root;
+
+			mc = me->source->mc;
+
+			if (!me->multi) {
+				cache_unlock(mc);
+				return rv;
+			}
+
+			m_key = me->multi->key;
 
 			if (*m_key == '/') {
 				m_root = m_key;
@@ -1308,14 +1318,14 @@ int parse_mount(struct autofs_point *ap, const char *name,
 			base = &me->key[start];
 
 			cache_multi_lock(mc);
-			if (!mount_multi_triggers(ap, m_root, me->multi, base)) {
+			if (!mount_multi_triggers(oap, m_root, me->multi, base)) {
 				error(ap->logopt,
 				      MODPREFIX "failed to mount offset triggers");
 				rv = 1;
 			}
 			cache_multi_unlock(mc);
+			cache_unlock(mc);
 		}
-		cache_unlock(mc);
 	}
 	return rv;
 }
