@@ -113,7 +113,7 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 	return 0;
 }
 
-static int read_one(FILE *f, char *key, unsigned *k_len, char *mapent, unsigned *m_len)
+static int read_one(FILE *f, char *key, unsigned int *k_len, char *mapent, unsigned int *m_len)
 {
 	char *kptr, *p;
 	int mapent_len, key_len;
@@ -346,7 +346,8 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 	char *ent;
 	struct stat st;
 	FILE *f;
-	int entry, path_len, ent_len;
+	unsigned int path_len, ent_len;
+	int entry;
 
 	if (master->recurse)
 		return NSS_STATUS_UNAVAIL;
@@ -593,7 +594,8 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 	char *mapent;
 	struct stat st;
 	FILE *f;
-	int entry, k_len, m_len;
+	unsigned int k_len, m_len;
+	int entry;
 
 	source = ap->entry->current;
 	ap->entry->current = NULL;
@@ -720,7 +722,8 @@ static int lookup_one(struct autofs_point *ap,
 	char mapent[MAPENT_MAX_LEN + 1];
 	time_t age = time(NULL);
 	FILE *f;
-	int entry, ret, k_len, m_len;
+	unsigned int k_len, m_len;
+	int entry, ret;
 
 	source = ap->entry->current;
 	ap->entry->current = NULL;
@@ -817,7 +820,8 @@ static int lookup_wild(struct autofs_point *ap, struct lookup_context *ctxt)
 	char mapent[MAPENT_MAX_LEN + 1];
 	time_t age = time(NULL);
 	FILE *f;
-	int entry, ret, k_len, m_len;
+	unsigned int k_len, m_len;
+	int entry, ret;
 
 	source = ap->entry->current;
 	ap->entry->current = NULL;

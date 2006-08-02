@@ -59,7 +59,6 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 	char buf[MAX_ERR_BUF];
 	char *options, *p;
 	int ret;
-	struct list_head *l;
 
 	fullpath = alloca(strlen(root) + name_len + 2);
 	if (!fullpath) {

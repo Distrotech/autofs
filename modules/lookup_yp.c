@@ -248,7 +248,7 @@ int yp_all_callback(int status, char *ypkey, int ypkeylen,
 	struct map_source *source = cbdata->source;
 	struct mapent_cache *mc = source->mc;
 	time_t age = cbdata->age;
-	char *tmp, *key, *mapent;
+	char *key, *mapent;
 	int ret;
 
 	if (status != YP_TRUE)

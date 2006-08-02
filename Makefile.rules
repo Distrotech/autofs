@@ -27,7 +27,7 @@ LDFLAGS   = -g
 STRIP     = :
 else
 ifdef DONTSTRIP
-CFLAGS    = -O2 -g
+CFLAGS    ?= -O2 -g
 LDFLAGS   = -g
 STRIP     = :
 else

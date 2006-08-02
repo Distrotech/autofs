@@ -473,7 +473,6 @@ static void cache_add_ordered_offset(struct mapent *me, struct list_head *head)
 {
 	struct list_head *p;
 	struct mapent *this;
-	int status = CHE_OK;
 
 	list_for_each(p, head) {
 		size_t tlen;
@@ -633,6 +632,18 @@ int cache_delete_offset_list(struct mapent_cache *mc, const char *key)
 	/* Not offset list owner */
 	if (me->multi != me)
 		return CHE_FAIL;
+
+	head = &me->multi_list;
+	next = head->next;
+	while (next != head) {
+		this = list_entry(next, struct mapent, multi_list);
+		next = next->next;
+		if (this->ioctlfd != -1) {
+			error(LOGOPT_ANY,
+			      "active offset mount key %s", this->key);
+			return CHE_FAIL;
+		}
+	}
 
 	head = &me->multi_list;
 	next = head->next;

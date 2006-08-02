@@ -112,40 +112,50 @@ static int autofs_init_direct(struct autofs_point *ap)
 int do_umount_autofs_direct(struct autofs_point *ap, struct mnt_list *mnts, struct mapent *me)
 {
 	char buf[MAX_ERR_BUF];
-	int rv, left;
+	int ioctlfd, rv, left;
 
-	left = umount_multi(ap, mnts, me->key, 1);
+	left = umount_multi(ap, me->key, 1);
 	if (left) {
 		warn(ap->logopt, "could not unmount %d dirs under %s",
 		     left, me->key);
 		return -1;
 	}
 
-	if (me->ioctlfd < 0)
-		me->ioctlfd = open(me->key, O_RDONLY);
+	if (me->ioctlfd != -1) {
+		if (tree_is_mounted(mnts, me->key, MNTS_REAL)) {
+			error(ap->logopt,
+			      "attempt to umount busy direct mount %s",
+			      me->key);
+			return 1;
+		}
+		ioctlfd = me->ioctlfd;
+	} else
+		ioctlfd = open(me->key, O_RDONLY);
 
-	if (me->ioctlfd >= 0) {
+	if (ioctlfd >= 0) {
 		int status = 1;
 
-		rv = ioctl(me->ioctlfd, AUTOFS_IOC_ASKUMOUNT, &status);
+		rv = ioctl(ioctlfd, AUTOFS_IOC_ASKUMOUNT, &status);
 		if (rv) {
 			char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
 			error(ap->logopt, "ioctl failed: %s", estr);
 			return 1;
 		} else if (!status) {
 			if (ap->state != ST_SHUTDOWN_FORCE) {
-				debug(ap->logopt, "ask umount returned busy");
+				error(ap->logopt,
+				      "ask umount returned busy for %s",
+				      me->key);
 				return 1;
 			} else {
-				ioctl(me->ioctlfd, AUTOFS_IOC_CATATONIC, 0);
-				close(me->ioctlfd);
 				me->ioctlfd = -1;
+				ioctl(ioctlfd, AUTOFS_IOC_CATATONIC, 0);
+				close(ioctlfd);
 				goto force_umount;
 			}
 		}
-		ioctl(me->ioctlfd, AUTOFS_IOC_CATATONIC, 0);
-		close(me->ioctlfd);
 		me->ioctlfd = -1;
+		ioctl(ioctlfd, AUTOFS_IOC_CATATONIC, 0);
+		close(ioctlfd);
 	} else {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
 		error(ap->logopt,
@@ -283,7 +293,7 @@ int do_mount_autofs_direct(struct autofs_point *ap, struct mnt_list *mnts, struc
 	struct mnt_params *mp;
 	time_t timeout = ap->exp_timeout;
 	struct stat st;
-	int status, ret;
+	int status, ret, ioctlfd;
 	struct list_head list;
 
 	INIT_LIST_HEAD(&list);
@@ -297,6 +307,11 @@ int do_mount_autofs_direct(struct autofs_point *ap, struct mnt_list *mnts, struc
 			      "or failed to unlink entry in tree");
 			return -1;
 		}
+	}
+
+	if (me->ioctlfd != -1) {
+		error(ap->logopt, "active direct mount %s", me->key);
+		return -1;
 	}
 
 	status = pthread_once(&key_mnt_params_once, key_mnt_params_init);
@@ -349,8 +364,8 @@ int do_mount_autofs_direct(struct autofs_point *ap, struct mnt_list *mnts, struc
 	}
 
 	/* Root directory for ioctl()'s */
-	me->ioctlfd = open(me->key, O_RDONLY);
-	if (me->ioctlfd < 0) {
+	ioctlfd = open(me->key, O_RDONLY);
+	if (ioctlfd < 0) {
 		crit(ap->logopt, "failed to create ioctl fd for %s", me->key);
 		goto out_umount;
 	}
@@ -363,7 +378,7 @@ int do_mount_autofs_direct(struct autofs_point *ap, struct mnt_list *mnts, struc
 	ap->kver.minor = 0;
 
 	/* If this ioctl() doesn't work, it is kernel version 2 */
-	if (!ioctl(me->ioctlfd, AUTOFS_IOC_PROTOVER, &ap->kver.major)) {
+	if (!ioctl(ioctlfd, AUTOFS_IOC_PROTOVER, &ap->kver.major)) {
 		 /* If this ioctl() fails the kernel doesn't support direct mounts */
 		 if (ioctl(me->ioctlfd, AUTOFS_IOC_PROTOSUBVER, &ap->kver.minor)) {
 			ap->kver.minor = 0;
@@ -389,9 +404,9 @@ int do_mount_autofs_direct(struct autofs_point *ap, struct mnt_list *mnts, struc
 	}
 
 got_version:
-	ioctl(me->ioctlfd, AUTOFS_IOC_SETTIMEOUT, &timeout);
+	ioctl(ioctlfd, AUTOFS_IOC_SETTIMEOUT, &timeout);
 
-	ret = fstat(me->ioctlfd, &st);
+	ret = fstat(ioctlfd, &st);
 	if (ret == -1) {
 		error(ap->logopt,
 		      "failed to stat direct mount trigger %s", me->key);
@@ -399,16 +414,14 @@ got_version:
 	}
 	cache_set_ino_index(me->source->mc, me->key, st.st_dev, st.st_ino);
 
-	close(me->ioctlfd);
-	me->ioctlfd = -1;
+	close(ioctlfd);
 
 	debug(ap->logopt, "mounted trigger %s", me->key);
 
 	return 0;
 
 out_close:
-	close(me->ioctlfd);
-	me->ioctlfd = -1;
+	close(ioctlfd);
 out_umount:
 	/* TODO: maybe force umount (-l) */
 	umount(me->key);
@@ -478,38 +491,55 @@ int mount_autofs_direct(struct autofs_point *ap)
 int umount_autofs_offset(struct autofs_point *ap, struct mapent *me)
 {
 	char buf[MAX_ERR_BUF];
-	int rv = 1;
+	int ioctlfd, rv = 1;
 
-	if (me->ioctlfd < 0)
-		me->ioctlfd = open(me->key, O_RDONLY);
+	if (me->ioctlfd != -1) {
+		if (is_mounted(_PATH_MOUNTED, me->key, MNTS_REAL)) {
+			error(ap->logopt,
+			      "attempt to umount busy offset %s", me->key);
+			return 1;
+		}
+		ioctlfd = me->ioctlfd;
+	} else
+		ioctlfd = open(me->key, O_RDONLY);
 
-	if (me->ioctlfd >= 0) {
+	if (ioctlfd >= 0) {
 		int status = 1;
 
-		rv = ioctl(me->ioctlfd, AUTOFS_IOC_ASKUMOUNT, &status);
+		rv = ioctl(ioctlfd, AUTOFS_IOC_ASKUMOUNT, &status);
 		if (rv) {
 			char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
 			error(ap->logopt, "ioctl failed: %s", estr);
 			return 1;
 		} else if (!status) {
 			if (ap->state != ST_SHUTDOWN_FORCE) {
-				debug(ap->logopt, "ask umount returned busy");
+				error(ap->logopt,
+				      "ask umount returned busy for %s",
+				      me->key);
 				return 1;
 			} else {
-				ioctl(me->ioctlfd, AUTOFS_IOC_CATATONIC, 0);
-				close(me->ioctlfd);
 				me->ioctlfd = -1;
+				ioctl(ioctlfd, AUTOFS_IOC_CATATONIC, 0);
+				close(ioctlfd);
 				goto force_umount;
 			}
 		}
-		ioctl(me->ioctlfd, AUTOFS_IOC_CATATONIC, 0);
-		close(me->ioctlfd);
 		me->ioctlfd = -1;
+		ioctl(ioctlfd, AUTOFS_IOC_CATATONIC, 0);
+		close(ioctlfd);
 	} else {
-		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+		struct stat st;
+		char *estr;
+		int save_errno = errno;
+
+		/* Non existent directory on remote fs - no mount */
+		if (stat(me->key, &st) == -1 && errno == ENOENT)
+			return 0;
+
+		estr = strerror_r(save_errno, buf, MAX_ERR_BUF);
 		error(ap->logopt,
-		      "couldn't get ioctl fd for offset %s", me->key);
-		debug(ap->logopt, "open: %s", estr);
+		      "couldn't get ioctl fd for offset %s: %s",
+		      me->key, estr);
 		goto force_umount;
 	}
 
@@ -521,7 +551,7 @@ int umount_autofs_offset(struct autofs_point *ap, struct mapent *me)
 			return 0;
 			break;
 		case EBUSY:
-			warn(ap->logopt, "mount point %s is in use", me->key);
+			error(ap->logopt, "mount point %s is in use", me->key);
 			if (ap->state != ST_SHUTDOWN_FORCE)
 				return 1;
 			break;
@@ -548,13 +578,18 @@ int mount_autofs_offset(struct autofs_point *ap, struct mapent *me, int is_autof
 	struct mnt_params *mp;
 	time_t timeout = ap->exp_timeout;
 	struct stat st;
-	int status, ret;
+	int ioctlfd, status, ret;
 
 	if (is_mounted(_PROC_MOUNTS, me->key, MNTS_AUTOFS)) {
 		if (ap->state != ST_READMAP)
 			warn(ap->logopt,
 			      "trigger %s already mounted", me->key);
 		return 0;
+	}
+
+	if (me->ioctlfd != -1) {
+		error(ap->logopt, "active offset mount %s", me->key);
+		return -1;
 	}
 
 	status = pthread_once(&key_mnt_params_once, key_mnt_params_init);
@@ -634,15 +669,15 @@ int mount_autofs_offset(struct autofs_point *ap, struct mapent *me, int is_autof
 	}
 
 	/* Root directory for ioctl()'s */
-	me->ioctlfd = open(me->key, O_RDONLY);
-	if (me->ioctlfd < 0) {
+	ioctlfd = open(me->key, O_RDONLY);
+	if (ioctlfd < 0) {
 		crit(ap->logopt, "failed to create ioctl fd for %s", me->key);
 		goto out_umount;
 	}
 
-	ioctl(me->ioctlfd, AUTOFS_IOC_SETTIMEOUT, &timeout);
+	ioctl(ioctlfd, AUTOFS_IOC_SETTIMEOUT, &timeout);
 
-	ret = fstat(me->ioctlfd, &st);
+	ret = fstat(ioctlfd, &st);
 	if (ret == -1) {
 		error(ap->logopt,
 		     "failed to stat direct mount trigger %s", me->key);
@@ -651,16 +686,14 @@ int mount_autofs_offset(struct autofs_point *ap, struct mapent *me, int is_autof
 
 	cache_set_ino_index(me->source->mc, me->key, st.st_dev, st.st_ino);
 
-	close(me->ioctlfd);
-	me->ioctlfd = -1;
+	close(ioctlfd);
 
 	debug(ap->logopt, "mounted trigger %s", me->key);
 
 	return 0;
 
 out_close:
-	close(me->ioctlfd);
-	me->ioctlfd = -1;
+	close(ioctlfd);
 out_umount:
 	umount(me->key);
 out_err:
@@ -677,7 +710,7 @@ void *expire_proc_direct(void *arg)
 	struct expire_args *ea;
 	struct autofs_point *ap;
 	struct mapent_cache *mc = NULL;
-	struct mapent *me = NULL;
+	struct mapent *ro, *me = NULL;
 	unsigned int now;
 	int ioctlfd = -1;
 	int status, ret;
@@ -713,12 +746,12 @@ void *expire_proc_direct(void *arg)
 	/* Get a list of real mounts and expire them if possible */
 	mnts = get_mnt_list(_PROC_MOUNTS, "/", 0);
 	for (next = mnts; next; next = next->next) {
-		/* Consider only autofs mounts */
-		if (!strstr(next->fs_type, "autofs"))
+		/* Skip submounts */
+		if (strstr(next->fs_type, "indirect"))
 			continue;
 
-		/* Skip submounts */
-		if (strstr(next->opts, "indirect"))
+		/* Skip offsets */
+		if (strstr(next->opts, "offsets"))
 			continue;
 
 		sched_yield();
@@ -760,7 +793,6 @@ void *expire_proc_direct(void *arg)
 			debug(ap->logopt,
 			      "failed to expire mount %s", next->path);
 			ea->status = 1;
-			break;
 		}
 	}
 	free_mnt_list(mnts);
@@ -802,43 +834,6 @@ void *expire_proc_direct(void *arg)
 	return NULL;
 }
 
-static void kernel_callback_cleanup(void *arg)
-{
-	struct autofs_point *ap;
-	struct pending_args *mt;
-	struct mapent_cache *mc;
-	struct mapent *me;
-
-	mt = (struct pending_args *) arg;
-	ap = mt->ap;
-	mc = mt->mc;
-
-	if (mt->status) {
-		cache_writelock(mc);
-		send_ready(mt->ioctlfd, mt->wait_queue_token);
-		if (mt->type == NFY_EXPIRE) {
-			close(mt->ioctlfd);
-			me = cache_lookup_distinct(mc, mt->name);
-			if (me)
-				me->ioctlfd = -1;
-		}
-		cache_unlock(mc);
-	} else {
-		cache_writelock(mc);
-		send_fail(mt->ioctlfd, mt->wait_queue_token);
-		if (mt->type == NFY_MOUNT) {
-			close(mt->ioctlfd);
-			me = cache_lookup_distinct(mc, mt->name);
-			if (me)
-				me->ioctlfd = -1;
-		}
-		cache_unlock(mc);
-	}
-
-	free(mt);
-	return;
-}
-
 void pending_cleanup(void *arg)
 {
 	struct pending_args *mt;
@@ -859,21 +854,28 @@ void pending_cleanup(void *arg)
 		fatal(status);
 }
 
+static void expire_send_fail(void *arg)
+{
+	struct pending_args *mt = arg;
+	send_fail(mt->ioctlfd, mt->wait_queue_token);
+}
+
 static void *do_expire_direct(void *arg)
 {
 	struct pending_args *mt;
 	struct autofs_point *ap;
 	size_t len;
-	int status;
+	int status, state;
 
 	mt = (struct pending_args *) arg;
+
+	pthread_cleanup_push(expire_send_fail, mt);
 
 	status = pthread_mutex_lock(&mt->mutex);
 	if (status)
 		fatal(status);
 
 	ap = mt->ap;
-	mt->status = 1;
 
 	mt->signaled = 1;
 	status = pthread_cond_signal(&mt->cond);
@@ -884,21 +886,28 @@ static void *do_expire_direct(void *arg)
 	if (status)
 		fatal(status);
 
-	pthread_cleanup_push(kernel_callback_cleanup, mt);
-
 	len = _strlen(mt->name, KEY_MAX_LEN);
 	if (!len) {
 		warn(ap->logopt, "direct key path too long %s", mt->name);
-		mt->status = 0;
 		/* TODO: force umount ?? */
 		pthread_exit(NULL);
 	}
 
 	status = do_expire(ap, mt->name, len);
+	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &state);
 	if (status)
-		mt->status = 0;
+		send_fail(mt->ioctlfd, mt->wait_queue_token);
+	else {
+		struct mapent *me;
+		me = lookup_source_mapent(ap, mt->name);
+		me->ioctlfd = -1;
+		cache_unlock(me->source->mc);
+		send_ready(mt->ioctlfd, mt->wait_queue_token);
+		close(mt->ioctlfd);
+	}
+	pthread_setcancelstate(state, NULL);
 
-	pthread_cleanup_pop(1);
+	pthread_cleanup_pop(0);
 	return NULL;
 }
 
@@ -910,7 +919,9 @@ int handle_packet_expire_direct(struct autofs_point *ap, autofs_packet_expire_di
 	struct pending_args *mt;
 	char buf[MAX_ERR_BUF];
 	pthread_t thid;
-	int status = 0;
+	int status, state;
+
+	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &state);
 
 	/*
 	 * This is a bit of a big deal.
@@ -942,18 +953,19 @@ int handle_packet_expire_direct(struct autofs_point *ap, autofs_packet_expire_di
 		 */
 		crit(ap->logopt, "can't find map entry for (%lu,%lu)",
 		    (unsigned long) pkt->dev, (unsigned long) pkt->ino);
+		pthread_setcancelstate(state, NULL);
 		return 1;
 	}
 
-	pthread_cleanup_push(cache_lock_cleanup, mc);
 
 	mt = malloc(sizeof(struct pending_args));
 	if (!mt) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
 		error(ap->logopt, "malloc: %s", estr);
 		send_fail(me->ioctlfd, pkt->wait_queue_token);
-		status = 1;
-		goto done;
+		cache_unlock(mc);
+		pthread_setcancelstate(state, NULL);
+		return 1;
 	}
 
 	status = pthread_mutex_init(&mt->mutex, NULL);
@@ -985,11 +997,15 @@ int handle_packet_expire_direct(struct autofs_point *ap, autofs_packet_expire_di
 		error(ap->logopt, "expire thread create failed");
 		free(mt);
 		send_fail(mt->ioctlfd, pkt->wait_queue_token);
-		status = 1;
-		goto done;
+		cache_unlock(mc);
+		pending_cleanup(mt);
+		pthread_setcancelstate(state, NULL);
+		return 1;
 	}
 
+	cache_unlock(mc);
 	pthread_cleanup_push(pending_cleanup, mt);
+	pthread_setcancelstate(state, NULL);
 
 	mt->signaled = 0;
 	while (!mt->signaled) {
@@ -999,12 +1015,14 @@ int handle_packet_expire_direct(struct autofs_point *ap, autofs_packet_expire_di
 	}
 
 	pthread_cleanup_pop(1);
-	pthread_cleanup_pop(1);
-	return status;
+	return 0;
+}
 
-done:
-	cache_lock_cleanup(mc);
-	return status;
+static void mount_send_fail(void *arg)
+{
+	struct pending_args *mt = arg;
+	send_fail(mt->ioctlfd, mt->wait_queue_token);
+	close(mt->ioctlfd);
 }
 
 static void *do_mount_direct(void *arg)
@@ -1021,7 +1039,7 @@ static void *do_mount_direct(void *arg)
 	struct thread_stdenv_vars *tsv;
 	int tmplen;
 	struct stat st;
-	int status;
+	int status, state;
 
 	mt = (struct pending_args *) arg;
 
@@ -1030,7 +1048,6 @@ static void *do_mount_direct(void *arg)
 		fatal(status);
 
 	ap = mt->ap;
-	mt->status = 0;
 
 	mt->signaled = 1;
 	status = pthread_cond_signal(&mt->cond);
@@ -1041,12 +1058,14 @@ static void *do_mount_direct(void *arg)
 	if (status)
 		fatal(status);
 
-	pthread_cleanup_push(kernel_callback_cleanup, mt);
+	pthread_cleanup_push(mount_send_fail, mt);
+	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &state);
 
 	status = fstat(mt->ioctlfd, &st);
 	if (status == -1) {
 		error(ap->logopt,
 		      "can't stat direct mount trigger %s", mt->name);
+		pthread_setcancelstate(state, NULL);
 		pthread_exit(NULL);
 	}
 
@@ -1055,8 +1074,11 @@ static void *do_mount_direct(void *arg)
 		error(ap->logopt,
 		     "direct trigger not valid or already mounted %s",
 		     mt->name);
+		pthread_setcancelstate(state, NULL);
 		pthread_exit(NULL);
 	}
+
+	pthread_setcancelstate(state, NULL);
 
 	msg("attempting to mount entry %s", mt->name);
 
@@ -1173,13 +1195,22 @@ cont:
 	 * Direct mounts are always a single mount. If it fails there's
 	 * nothing to undo so just complain
 	 */
+	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &state);
 	if (status) {
+		struct mapent *me;
+		me = lookup_source_mapent(ap, mt->name);
+		me->ioctlfd = mt->ioctlfd;
+		cache_unlock(me->source->mc);
+		send_ready(mt->ioctlfd, mt->wait_queue_token);
 		msg("mounted %s", mt->name);
-		mt->status = 1;
-	} else
+	} else {
+		send_fail(mt->ioctlfd, mt->wait_queue_token);
+		close(mt->ioctlfd);
 		msg("failed to mount %s", mt->name);
+	}
+	pthread_setcancelstate(state, NULL);
 
-	pthread_cleanup_pop(1);
+	pthread_cleanup_pop(0);
 	return NULL;
 }
 
@@ -1192,7 +1223,9 @@ int handle_packet_missing_direct(struct autofs_point *ap, autofs_packet_missing_
 	struct pending_args *mt;
 	char buf[MAX_ERR_BUF];
 	int status = 0;
-	int ioctlfd;
+	int ioctlfd, state;
+
+	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &state);
 
 	master_source_readlock(ap->entry);
 	map = ap->entry->first;
@@ -1223,19 +1256,18 @@ int handle_packet_missing_direct(struct autofs_point *ap, autofs_packet_missing_
 		 */
 		crit(ap->logopt, "can't find map entry for (%lu,%lu)",
 		    (unsigned long) pkt->dev, (unsigned long) pkt->ino);
+		pthread_setcancelstate(state, NULL);
 		return 1;
 	}
 
-	pthread_cleanup_push(cache_lock_cleanup, mc);
-
 	ioctlfd = open(me->key, O_RDONLY);
 	if (ioctlfd < 0) {
+		cache_unlock(mc);
+		pthread_setcancelstate(state, NULL);
 		crit(ap->logopt, "failed to create ioctl fd for %s", me->key);
 		/* TODO:  how do we clear wait q in kernel ?? */
-		status = 1;
-		goto done;
+		return 1;
 	}
-	me->ioctlfd = ioctlfd;
 
 	debug(ap->logopt, "token %ld, name %s, request pid %u",
 		  (unsigned long) pkt->wait_queue_token, me->key, pkt->pid);
@@ -1244,21 +1276,22 @@ int handle_packet_missing_direct(struct autofs_point *ap, autofs_packet_missing_
 	if (ap->state == ST_SHUTDOWN_PENDING ||
 	    ap->state == ST_SHUTDOWN_FORCE ||
 	    ap->state == ST_SHUTDOWN) {
-		send_fail(me->ioctlfd, pkt->wait_queue_token);
-		close(me->ioctlfd);
-		me->ioctlfd = -1;
-		status = 1;
-		goto done;
+		send_fail(ioctlfd, pkt->wait_queue_token);
+		close(ioctlfd);
+		cache_unlock(mc);
+		pthread_setcancelstate(state, NULL);
+		return 1;
 	}
 
 	mt = malloc(sizeof(struct pending_args));
 	if (!mt) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
 		error(ap->logopt, "malloc: %s", estr);
-		send_fail(me->ioctlfd, pkt->wait_queue_token);
-		close(me->ioctlfd);
-		me->ioctlfd = -1;
-		goto done;
+		send_fail(ioctlfd, pkt->wait_queue_token);
+		close(ioctlfd);
+		cache_unlock(mc);
+		pthread_setcancelstate(state, NULL);
+		return 1;
 	}
 
 	status = pthread_mutex_init(&mt->mutex, NULL);
@@ -1274,7 +1307,7 @@ int handle_packet_missing_direct(struct autofs_point *ap, autofs_packet_missing_
 		fatal(status);
 
 	mt->ap = ap;
-	mt->ioctlfd = me->ioctlfd;
+	mt->ioctlfd = ioctlfd;
 	mt->mc = mc;
 	/* TODO: check length here */
 	strcpy(mt->name, me->key);
@@ -1288,13 +1321,15 @@ int handle_packet_missing_direct(struct autofs_point *ap, autofs_packet_missing_
 	if (status) {
 		error(ap->logopt, "missing mount thread create failed");
 		free(mt);
-		send_fail(me->ioctlfd, pkt->wait_queue_token);
-		close(me->ioctlfd);
-		me->ioctlfd = -1;
-		status = 1;
-		goto done;
+		send_fail(ioctlfd, pkt->wait_queue_token);
+		close(ioctlfd);
+		cache_unlock(mc);
+		pending_cleanup(mt);
+		pthread_setcancelstate(state, NULL);
+		return 1;
 	}
 
+	cache_unlock(mc);
 	pthread_cleanup_push(pending_cleanup, mt);
 
 	mt->signaled = 0;
@@ -1305,11 +1340,7 @@ int handle_packet_missing_direct(struct autofs_point *ap, autofs_packet_missing_
 	}
 
 	pthread_cleanup_pop(1);
-	pthread_cleanup_pop(1);
-	return status;
 
-done:
-	cache_lock_cleanup(mc);
-	return status;
+	return 0;
 }
 

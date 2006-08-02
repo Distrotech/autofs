@@ -112,7 +112,6 @@ struct mnt_list *get_mnt_list(const char *table, const char *path, int include)
 	struct mntent *mnt;
 	struct mnt_list *ent, *mptr, *last;
 	struct mnt_list *list = NULL;
-	unsigned long count = 0;
 	char *pgrp;
 	size_t len;
 
@@ -126,7 +125,7 @@ struct mnt_list *get_mnt_list(const char *table, const char *path, int include)
 		return NULL;
 	}
 
-	while ((mnt = getmntent_r(tab, &mnt_wrk, buf, PATH_MAX)) != NULL) {
+	while ((mnt = getmntent_r(tab, &mnt_wrk, buf, PATH_MAX * 3))) {
 		len = strlen(mnt->mnt_dir);
 
 		if ((!include && len <= pathlen) ||
@@ -198,9 +197,6 @@ struct mnt_list *get_mnt_list(const char *table, const char *path, int include)
 				*end = '\0';
 			sscanf(pgrp, "pgrp=%d", &ent->owner);
 		}
-
-		if (count++ % 100)
-			sched_yield();
 	}
 	endmntent(tab);
 
@@ -258,7 +254,7 @@ int is_mounted(const char *table, const char *path, unsigned int type)
 {
 	struct mntent *mnt;
 	struct mntent mnt_wrk;
-	char buf[PATH_MAX];
+	char buf[PATH_MAX * 3];
 	size_t pathlen = strlen(path);
 	FILE *tab;
 	int ret = 0;
@@ -273,7 +269,7 @@ int is_mounted(const char *table, const char *path, unsigned int type)
 		return 0;
 	}
 
-	while ((mnt = getmntent_r(tab, &mnt_wrk, buf, PATH_MAX))) {
+	while ((mnt = getmntent_r(tab, &mnt_wrk, buf, PATH_MAX * 3))) {
 		size_t len = strlen(mnt->mnt_dir);
 
 		if (type) {
@@ -304,7 +300,7 @@ int has_fstab_option(const char *opt)
 {
 	struct mntent *mnt;
 	struct mntent mnt_wrk;
-	char buf[PATH_MAX];
+	char buf[PATH_MAX * 3];
 	FILE *tab;
 	int ret = 0;
 
@@ -318,7 +314,7 @@ int has_fstab_option(const char *opt)
 		return 0;
 	}
 
-	while ((mnt = getmntent_r(tab, &mnt_wrk, buf, PATH_MAX))) {
+	while ((mnt = getmntent_r(tab, &mnt_wrk, buf, PATH_MAX * 3))) {
 		if (hasmntopt(mnt, opt)) {
 			ret = 1;
 			break;
@@ -333,7 +329,7 @@ char *find_mnt_ino(const char *table, dev_t dev, ino_t ino)
 {
 	struct mntent mnt_wrk;
 	struct mntent *mnt;
-	char buf[PATH_MAX];
+	char buf[PATH_MAX * 3];
 	char *path = NULL;
 	unsigned long l_dev = (unsigned long) dev;
 	unsigned long l_ino = (unsigned long) ino;
@@ -346,7 +342,7 @@ char *find_mnt_ino(const char *table, dev_t dev, ino_t ino)
 		return 0;
 	}
 
-	while ((mnt = getmntent_r(tab, &mnt_wrk, buf, PATH_MAX))) {
+	while ((mnt = getmntent_r(tab, &mnt_wrk, buf, PATH_MAX * 3))) {
 		char *p_dev, *p_ino;
 		unsigned long m_dev, m_ino;
 
@@ -542,7 +538,7 @@ struct mnt_list *tree_make_mnt_tree(const char *table, const char *path)
 
 	plen = strlen(path);
 
-	while ((mnt = getmntent_r(tab, &mnt_wrk, buf, PATH_MAX))) {
+	while ((mnt = getmntent_r(tab, &mnt_wrk, buf, PATH_MAX * 3))) {
 		size_t len = strlen(mnt->mnt_dir);
 
 		/* Not matching path */
@@ -563,6 +559,7 @@ struct mnt_list *tree_make_mnt_tree(const char *table, const char *path)
 
 		INIT_LIST_HEAD(&ent->self);
 		INIT_LIST_HEAD(&ent->list);
+		INIT_LIST_HEAD(&ent->sublist);
 		INIT_LIST_HEAD(&ent->ordered);
 
 		ent->path = malloc(len + 1);
@@ -692,6 +689,53 @@ int tree_get_mnt_list(struct mnt_list *mnts, struct list_head *list, const char 
 		}
 skip:
 		tree_get_mnt_list(mnts->right, list, path, include);
+	}
+
+	if (list_empty(list))
+		return 0;
+
+	return 1;
+}
+
+/*
+ * Get list of mounts under "path" in longest->shortest order
+ */
+int tree_get_mnt_sublist(struct mnt_list *mnts, struct list_head *list, const char *path, int include)
+{
+	size_t mlen, plen;
+
+	if (!mnts)
+		return 0;
+
+	plen = strlen(path);
+	mlen = strlen(mnts->path);
+	if (mlen < plen)
+		return tree_get_mnt_sublist(mnts->right, list, path, include);
+	else {
+		struct list_head *self, *p;
+
+		tree_get_mnt_sublist(mnts->left, list, path, include);
+
+		if ((!include && mlen <= plen) ||
+				strncmp(mnts->path, path, plen))
+			goto skip;
+
+		if (plen > 1 && mlen > plen && mnts->path[plen] != '/')
+			goto skip;
+
+		INIT_LIST_HEAD(&mnts->sublist);
+		list_add(&mnts->sublist, list);
+
+		self = &mnts->self;
+		list_for_each(p, self) {
+			struct mnt_list *this;
+
+			this = list_entry(p, struct mnt_list, self);
+			INIT_LIST_HEAD(&this->sublist);
+			list_add(&this->sublist, list);
+		}
+skip:
+		tree_get_mnt_sublist(mnts->right, list, path, include);
 	}
 
 	if (list_empty(list))

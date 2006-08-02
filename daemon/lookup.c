@@ -931,7 +931,9 @@ int lookup_prune_cache(struct autofs_point *ap, time_t age)
 				free(path);
 				goto next;
 			}
-			status = cache_delete(mc, key);
+			status = CHE_FAIL;
+			if (this->ioctlfd == -1)
+				status = cache_delete(mc, key);
 			cache_unlock(mc);
 
 			if (status != CHE_FAIL) {
@@ -968,7 +970,7 @@ struct mapent *lookup_source_mapent(struct autofs_point *ap, const char *key)
 	struct master_mapent *entry = ap->entry;
 	struct map_source *map;
 	struct mapent_cache *mc;
-	struct mapent *me;
+	struct mapent *me = NULL;
 
 	pthread_cleanup_push(master_source_lock_cleanup, entry);
 	master_source_readlock(entry);

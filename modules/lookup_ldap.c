@@ -1146,9 +1146,9 @@ static int read_one_map(struct autofs_point *ap,
 
 	while (e) {
 		char *mapent = NULL;
+		size_t mapent_len = 0;
 		char *k_val;
 		ber_len_t k_len;
-		size_t mapent_len;
 		char *s_key;
 
 		bvKey = ldap_get_values_len(ldap, e, entry);
@@ -1388,10 +1388,10 @@ static int lookup_one(struct autofs_point *ap,
 
 	while (e) {
 		char *mapent = NULL;
+		size_t mapent_len = 0;
 		char *k_val;
 		ber_len_t k_len;
 		char *s_key;
-		size_t mapent_len;
 
 		bvKey = ldap_get_values_len(ldap, e, entry);
 		if (!bvKey || !*bvKey) {

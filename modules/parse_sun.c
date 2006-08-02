@@ -661,71 +661,6 @@ add_offset_entry(struct autofs_point *ap, const char *name,
 	return ret;
 }
 
-static int mount_multi_triggers(struct autofs_point *ap, char *root, struct mapent *me, const char *base)
-{
-	char path[PATH_MAX + 1];
-	char *offset = path;
-	struct mapent *oe;
-	struct list_head *pos = NULL;
-	unsigned int fs_path_len;
-	struct statfs fs;
-	struct stat st;
-	unsigned int is_autofs_fs;
-	int ret, start;
-
-	fs_path_len = strlen(root) + strlen(base);
-	if (fs_path_len > PATH_MAX)
-		return 0;
-
-	strcpy(path, root);
-	strcat(path, base);
-	ret = statfs(path, &fs);
-	if (ret == -1) {
-		/* There's no mount yet - it must be autofs */
-		if (errno == ENOENT)
-			is_autofs_fs = 1;
-		else
-			return 0;
-	} else
-		is_autofs_fs = fs.f_type == AUTOFS_SUPER_MAGIC ? 1 : 0;
-
-	start = strlen(root);
-	offset = cache_get_offset(base, offset, start, &me->multi_list, &pos);
-	while (offset) {
-		int plen = fs_path_len + strlen(offset);
-
-		if (plen > PATH_MAX) {
-			warn(ap->logopt, MODPREFIX "path loo long");
-			goto cont;
-		}
-
-		oe = cache_lookup_offset(base, offset, start, &me->multi_list);
-		if (!oe)
-			goto cont;
-
-		/*
-		 * If the host filesystem is not an autofs fs
-		 * we require the mount point directory exist
-		 * and that permissions are OK.
-		 */
-		if (!is_autofs_fs) {
-			ret = stat(oe->key, &st);
-			if (ret == -1)
-				goto cont;
-		}
-
-		debug(ap->logopt, MODPREFIX "mount offset %s", oe->key);
-
-		if (mount_autofs_offset(ap, oe, is_autofs_fs) < 0)
-			warn(ap->logopt, MODPREFIX "failed to mount offset");
-cont:
-		offset = cache_get_offset(base,
-				offset, start, &me->multi_list, &pos);
-	}
-
-	return 1;
-}
-
 static int validate_location(char *loc)
 {
 	char *ptr = loc;
@@ -762,7 +697,7 @@ static int parse_mapent(const char *ent, char *g_options, char **options, char *
 {
 	char buf[MAX_ERR_BUF];
 	const char *p;
-	char *tmp, *myoptions, *loc;
+	char *myoptions, *loc;
 	int l;
 
 	p = ent;
@@ -1040,7 +975,6 @@ int parse_mount(struct autofs_point *ap, const char *name,
 		/* It's a multi-mount; deal with it */
 		do {
 			char *path, *myoptions, *loc;
-			unsigned int s_len = 0;
 			int status;
 
 			if (*p != '/') {
@@ -1272,6 +1206,8 @@ int parse_mount(struct autofs_point *ap, const char *name,
 		free(loc);
 		free(options);
 
+		if (rv)
+			return rv;
 		/*
 		 * If it's a multi-mount insert the triggers
 		 * These are always direct mount triggers so root = ""

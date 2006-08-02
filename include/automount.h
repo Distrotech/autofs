@@ -66,7 +66,9 @@ int load_autofs4_module(void);
 #define SLOPPY
 #endif
 
-#define AUTOFS_SUPER_MAGIC 0x0187L
+#define AUTOFS_SUPER_MAGIC 0x00000187L
+#define SMB_SUPER_MAGIC    0x0000517BL
+#define CIFS_MAGIC_NUMBER  0xFF534D42L
 
 /* This sould be enough for at least 20 host aliases */
 #define HOST_ENT_BUF_SIZE	2048
@@ -336,6 +338,7 @@ struct mnt_list {
 	struct mnt_list *right;
 	struct list_head self;
 	struct list_head list;
+	struct list_head sublist;
 	/*
 	 * Offset mount handling ie. add_ordered_list
 	 * and get_offset.
@@ -357,6 +360,7 @@ void add_ordered_list(struct mnt_list *ent, struct list_head *head);
 void tree_free_mnt_tree(struct mnt_list *tree);
 struct mnt_list *tree_make_mnt_tree(const char *table, const char *path);
 int tree_get_mnt_list(struct mnt_list *mnts, struct list_head *list, const char *path, int include);
+int tree_get_mnt_sublist(struct mnt_list *mnts, struct list_head *list, const char *path, int include);
 int tree_find_mnt_ents(struct mnt_list *mnts, struct list_head *list, const char *path);
 int tree_is_mounted(struct mnt_list *mnts, const char *path, unsigned int type);
 
@@ -448,7 +452,7 @@ struct autofs_point {
 /* Standard functions used by daemon or modules */
 
 void *handle_mounts(void *arg);
-int umount_multi(struct autofs_point *ap, struct mnt_list *mnts, const char *path, int incl);
+int umount_multi(struct autofs_point *ap, const char *path, int incl);
 int send_ready(int ioctlfd, unsigned int wait_queue_token);
 int send_fail(int ioctlfd, unsigned int wait_queue_token);
 int do_expire(struct autofs_point *ap, const char *name, int namelen);

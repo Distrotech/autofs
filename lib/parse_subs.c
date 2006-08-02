@@ -16,6 +16,12 @@
  * ----------------------------------------------------------------------- */
 
 #include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <sys/vfs.h>
 #include "automount.h"
 
 /*
@@ -263,5 +269,216 @@ char *sanitize_path(const char *path, int origlen, unsigned int type, unsigned i
 		*(cp - 1) = '\0';
 
 	return s_path;
+}
+
+int umount_ent(struct autofs_point *ap, const char *path)
+{
+	struct stat st;
+	struct statfs fs;
+	int sav_errno;
+	int status, is_smbfs = 0;
+	int ret, rv = 1;
+
+	ret = statfs(path, &fs);
+	if (ret == -1) {
+		warn(ap->logopt, "could not stat fs of %s", path);
+		is_smbfs = 0;
+	} else {
+		int cifsfs = fs.f_type == CIFS_MAGIC_NUMBER;
+		int smbfs = fs.f_type == SMB_SUPER_MAGIC;
+		is_smbfs = (cifsfs | smbfs) ? 1 : 0;
+	}
+
+	status = lstat(path, &st);
+	sav_errno = errno;
+
+	if (status < 0)
+		warn(ap->logopt, "lstat of %s failed with %d", path, status);
+
+	/*
+	 * lstat failed and we're an smbfs fs returning an error that is not
+	 * EIO or EBADSLT or the lstat failed so it's a bad path. Return
+	 * a fail.
+	 *
+	 * EIO appears to correspond to an smb mount that has gone away
+	 * and EBADSLT relates to CD changer not responding.
+	 */
+	if (!status && (S_ISDIR(st.st_mode) && st.st_dev != ap->dev)) {
+		rv = spawnll(log_debug, PATH_UMOUNT, PATH_UMOUNT, path, NULL);
+	} else if (is_smbfs && (sav_errno == EIO || sav_errno == EBADSLT)) {
+		rv = spawnll(log_debug, PATH_UMOUNT, PATH_UMOUNT, path, NULL);
+	}
+
+	/* We are doing a forced shutcwdown down so unlink busy mounts */
+	if (rv && (ap->state == ST_SHUTDOWN_FORCE || ap->state == ST_SHUTDOWN)) {
+		ret = stat(path, &st);
+		if (ret == -1 && errno == ENOENT) {
+			warn(ap->logopt, "mount point does not exist");
+			return 0;
+		}
+
+		if (ret == 0 && !S_ISDIR(st.st_mode)) {
+			warn(ap->logopt, "mount point is not a directory");
+			return 0;
+		}
+
+		if (ap->state == ST_SHUTDOWN_FORCE) {
+			msg("forcing umount of %s", path);
+			rv = spawnll(log_debug, PATH_UMOUNT, PATH_UMOUNT, "-l", path, NULL);
+		}
+
+		/*
+		 * Verify that we actually unmounted the thing.  This is a
+		 * belt and suspenders approach to not eating user data.
+		 * We have seen cases where umount succeeds, but there is
+		 * still a file system mounted on the mount point.  How
+		 * this happens has not yet been determined, but we want to
+		 * make sure to return failure here, if that is the case,
+		 * so that we do not try to call rmdir_path on the
+		 * directory.
+		 */
+		if (!rv && is_mounted(_PATH_MOUNTED, path, MNTS_REAL)) {
+			crit(ap->logopt,
+			     "the umount binary reported that %s was "
+			     "unmounted, but there is still something "
+			     "mounted on this path.", path);
+			rv = -1;
+		}
+	}
+
+	return rv;
+}
+
+int mount_multi_triggers(struct autofs_point *ap, char *root, struct mapent *me, const char *base)
+{
+	char path[PATH_MAX + 1];
+	char *offset = path;
+	struct mapent *oe;
+	struct list_head *pos = NULL;
+	unsigned int fs_path_len;
+	struct statfs fs;
+	struct stat st;
+	unsigned int is_autofs_fs;
+	int ret, start;
+
+	fs_path_len = strlen(root) + strlen(base);
+	if (fs_path_len > PATH_MAX)
+		return 0;
+
+	strcpy(path, root);
+	strcat(path, base);
+	ret = statfs(path, &fs);
+	if (ret == -1) {
+		/* There's no mount yet - it must be autofs */
+		if (errno == ENOENT)
+			is_autofs_fs = 1;
+		else
+			return 0;
+	} else
+		is_autofs_fs = fs.f_type == AUTOFS_SUPER_MAGIC ? 1 : 0;
+
+	start = strlen(root);
+	offset = cache_get_offset(base, offset, start, &me->multi_list, &pos);
+	while (offset) {
+		int plen = fs_path_len + strlen(offset);
+
+		if (plen > PATH_MAX) {
+			warn(ap->logopt, "path loo long");
+			goto cont;
+		}
+
+		oe = cache_lookup_offset(base, offset, start, &me->multi_list);
+		if (!oe)
+			goto cont;
+
+		/*
+		 * If the host filesystem is not an autofs fs
+		 * we require the mount point directory exist
+		 * and that permissions are OK.
+		 */
+		if (!is_autofs_fs) {
+			ret = stat(oe->key, &st);
+			if (ret == -1)
+				goto cont;
+		}
+
+		debug(ap->logopt, "mount offset %s", oe->key);
+
+		if (mount_autofs_offset(ap, oe, is_autofs_fs) < 0)
+			warn(ap->logopt, "failed to mount offset");
+cont:
+		offset = cache_get_offset(base,
+				offset, start, &me->multi_list, &pos);
+	}
+
+	return 1;
+}
+
+int umount_multi_triggers(struct autofs_point *ap, char *root, struct mapent *me, const char *base)
+{
+	char path[PATH_MAX + 1];
+	char *offset = path;
+	struct mapent *oe;
+	struct list_head *mm_root, *pos = NULL;
+	const char o_root[] = "/";
+	const char *mm_base;
+	int left, start;
+
+	left = 0;
+	start = strlen(root);
+
+	mm_root = &me->multi->multi_list;
+
+	if (!base)
+		mm_base = o_root;
+	else
+		mm_base = base;
+
+	offset = cache_get_offset(mm_base, offset, start, mm_root, &pos);
+	while (offset) {
+		oe = cache_lookup_offset(mm_base, offset, start, &me->multi_list);
+		/* root offset is a special case */
+		if (!oe || (strlen(oe->key) - start) == 1)
+			goto cont;
+
+		debug(ap->logopt, "umount offset %s", oe->key);
+
+		if (umount_autofs_offset(ap, oe)) {
+			warn(ap->logopt, "failed to umount offset");
+			left++;
+		}
+cont:
+		offset = cache_get_offset(mm_base,
+				offset, start, &me->multi_list, &pos);
+	}
+
+	if (!left && me->multi == me) {
+		struct mapent_cache *mc = me->source->mc;
+		int status;
+
+		/*
+		 * Special case.
+		 * If we can't umount the root container then we can't
+		 * delete the offsets from the cache and we need to put
+		 * the offset triggers back.
+		 */
+		if (is_mounted(_PATH_MOUNTED, path, MNTS_REAL)) {
+			if (umount_ent(ap, root)) {
+				if (!mount_multi_triggers(ap, root, me, "/"))
+					warn(ap->logopt,
+					     "failed to remount offset triggers");
+				return left++;
+			}
+		}
+
+		/* We're done - clean out the offsets */
+		cache_multi_lock(mc);
+		status = cache_delete_offset_list(mc, me->key);
+		cache_multi_unlock(mc);
+		if (status != CHE_OK)
+			warn(ap->logopt, "couldn't delete offset list");
+	}
+
+	return left;
 }
 

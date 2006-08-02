@@ -36,6 +36,7 @@
 #include <sys/resource.h>
 #include <sys/poll.h>
 #include <dirent.h>
+#include <sys/vfs.h>
 
 #include "automount.h"
 
@@ -173,177 +174,6 @@ int rmdir_path(struct autofs_point *ap, const char *path)
 	} while ((cp = strrchr(buf, '/')) != NULL && cp != buf);
 
 	return 0;
-}
-
-static int umount_offsets(struct autofs_point *ap, struct mnt_list *mnts, const char *base)
-{
-	char path[PATH_MAX + 1];
-	char *offset = path;
-	struct list_head list, head, *pos, *p;
-	char key[PATH_MAX + 1];
-	struct map_source *map;
-	struct mapent_cache *mc = NULL;
-	struct mapent *me = NULL;
-	char *ind_key;
-	int ret = 0, status;
-
-	INIT_LIST_HEAD(&list);
-	INIT_LIST_HEAD(&head);
-
-	if (!tree_get_mnt_list(mnts, &list, base, 0))
-		return 0;
-
-	list_for_each(p, &list) {
-		struct mnt_list *this;
-
-		this = list_entry(p, struct mnt_list, list);
-
-		if (strcmp(this->fs_type, "autofs"))
-			continue;
-
-		INIT_LIST_HEAD(&this->ordered);
-		add_ordered_list(this, &head);
-	}
-
-	/*
-	 * If it's a direct mount it's base is the key otherwise
-	 * the last path component is the indirect entry key.
-	 */
-	ind_key = strrchr(base, '/');
-	if (ind_key)
-		ind_key++;
-
-	master_source_readlock(ap->entry);
-	map = ap->entry->first;
-	while (map) {
-		mc = map->mc;
-		cache_readlock(mc);
-		me = cache_lookup_distinct(mc, base);
-		if (!me)
-			me = cache_lookup_distinct(mc, ind_key);
-		if (me)
-			break;
-		cache_unlock(mc);
-		map = map->next;
-	}
-	master_source_unlock(ap->entry);
-
-	if (!me)
-		return 0;
-
-	pos = NULL;
-	while ((offset = get_offset(base, offset, &head, &pos))) {
-		struct mapent *oe;
-
-		if (strlen(base) + strlen(offset) >= PATH_MAX) {
-			warn(ap->logopt, "can't umount - mount path too long");
-			ret++;
-			continue;
-		}
-
-		sched_yield();
-
-		strcpy(key, base);
-		strcat(key, offset);
-		oe = cache_lookup_distinct(mc, key);
-
-		if (!oe) {
-			debug(ap->logopt, "offset key %s not found", key);
-			continue;
-		}
-
-		warn(ap->logopt, "umount offset %s", key);
-
-		/*
-		 * We're in trouble if umounting the triggers fails.
-		 * It should always succeed due to the expire design.
-		 */
-		pthread_cleanup_push(cache_lock_cleanup, mc);
-		if (umount_autofs_offset(ap, oe)) {
-			crit(ap->logopt, "failed to umount offset %s", key);
-			ret++;
-		}
-		pthread_cleanup_pop(0);
-	}
-
-	if (!ret && me->multi == me) {
-		cache_multi_lock(mc);
-		status = cache_delete_offset_list(mc, me->key);
-		cache_multi_unlock(mc);
-		if (status != CHE_OK)
-			warn(ap->logopt, "couldn't delete offset list");
-	}
-	cache_unlock(mc);
-
-	return ret;
-}
-
-static int umount_ent(struct autofs_point *ap, const char *path, const char *type)
-{
-	struct stat st;
-	int sav_errno;
-	int is_smbfs = (strcmp(type, "smbfs") == 0);
-	int status;
-	int ret, rv = 1;
-
-	status = lstat(path, &st);
-	sav_errno = errno;
-
-	if (status < 0)
-		warn(ap->logopt, "lstat of %s failed with %d", path, status);
-
-	/*
-	 * lstat failed and we're an smbfs fs returning an error that is not
-	 * EIO or EBADSLT or the lstat failed so it's a bad path. Return
-	 * a fail.
-	 *
-	 * EIO appears to correspond to an smb mount that has gone away
-	 * and EBADSLT relates to CD changer not responding.
-	 */
-	if (!status && (S_ISDIR(st.st_mode) && st.st_dev != ap->dev)) {
-		rv = spawnll(log_debug, PATH_UMOUNT, PATH_UMOUNT, path, NULL);
-	} else if (is_smbfs && (sav_errno == EIO || sav_errno == EBADSLT)) {
-		rv = spawnll(log_debug, PATH_UMOUNT, PATH_UMOUNT, path, NULL);
-	}
-
-	/* We are doing a forced shutcwdown down so unlink busy mounts */
-	if (rv && (ap->state == ST_SHUTDOWN_FORCE || ap->state == ST_SHUTDOWN)) {
-		ret = stat(path, &st);
-		if (ret == -1 && errno == ENOENT) {
-			warn(ap->logopt, "mount point does not exist");
-			return 0;
-		}
-
-		if (ret == 0 && !S_ISDIR(st.st_mode)) {
-			warn(ap->logopt, "mount point is not a directory");
-			return 0;
-		}
-
-		if (ap->state == ST_SHUTDOWN_FORCE) {
-			msg("forcing umount of %s", path);
-			rv = spawnll(log_debug, PATH_UMOUNT, PATH_UMOUNT, "-l", path, NULL);
-		}
-
-		/*
-		 * Verify that we actually unmounted the thing.  This is a
-		 * belt and suspenders approach to not eating user data.
-		 * We have seen cases where umount succeeds, but there is
-		 * still a file system mounted on the mount point.  How
-		 * this happens has not yet been determined, but we want to
-		 * make sure to return failure here, if that is the case,
-		 * so that we do not try to call rmdir_path on the
-		 * directory.
-		 */
-		if (!rv && is_mounted(_PATH_MOUNTED, path, MNTS_REAL)) {
-			crit(ap->logopt,
-			     "the umount binary reported that %s was "
-			     "unmounted, but there is still something "
-			     "mounted on this path.", path);
-			rv = -1;
-		}
-	}
-
-	return rv;
 }
 
 /* Like ftw, except fn gets called twice: before a directory is
@@ -517,7 +347,7 @@ static void update_map_cache(struct autofs_point *ap, const char *path)
 		mc = map->mc;
 		cache_writelock(mc);
 		me = cache_lookup_distinct(mc, key);
-		if (me)
+		if (me && me->ioctlfd == -1)
 			cache_delete(mc, key);
 		cache_unlock(mc);
 
@@ -530,73 +360,79 @@ static void update_map_cache(struct autofs_point *ap, const char *path)
 
 /* umount all filesystems mounted under path.  If incl is true, then
    it also tries to umount path itself */
-int umount_multi(struct autofs_point *ap, struct mnt_list *mnts, const char *path, int incl)
+int umount_multi(struct autofs_point *ap, const char *path, int incl)
 {
-	int left, n;
-	struct dirent **de;
-	struct mnt_list *mptr;
-	struct list_head *p;
-	struct list_head list;
-
-	INIT_LIST_HEAD(&list);
+	struct mapent *me;
+	struct statfs fs;
+	int is_autofs_fs;
+	int ret, left;
 
 	debug(ap->logopt, "path %s incl %d", path, incl);
 
-	if (!tree_get_mnt_list(mnts, &list, path, incl)) {
-		debug(ap->logopt, "no mounts found under %s", path);
-		check_rm_dirs(ap, path, incl);
-		return 0;
+	ret = statfs(path, &fs);
+	if (ret == -1) {
+		error(ap->logopt, "could not stat fs of %s", path);
+		return 1;
+	}
+
+	is_autofs_fs = fs.f_type == AUTOFS_SUPER_MAGIC ? 1 : 0;
+
+	me = lookup_source_mapent(ap, path);
+	if (!me) {
+		char *ind_key;
+
+		ind_key = strrchr(path, '/');
+		if (ind_key)
+			ind_key++;
+
+		me = lookup_source_mapent(ap, ind_key);
+		if (!me) {
+			warn(ap->logopt, "no mounts found under %s", path);
+			return 0;
+		}
 	}
 
 	left = 0;
-	list_for_each(p, &list) {
+
+	if (me && me->multi) {
 		struct autofs_point *oap = ap;
-		char *has_opt_direct;
-		int is_autofs;
-
-		mptr = list_entry(p, struct mnt_list, list);
-
-		is_autofs = !strcmp(mptr->fs_type, "autofs");
-		has_opt_direct = strstr(mptr->opts, "direct");
-
-		/* We only want real mounts and top level direct mounts */
-		if (is_autofs && !has_opt_direct)
-			continue;
+		char *root, *base;
 
 		if (ap->submount)
 			oap = ap->parent;
 
-		sched_yield();
+		 if (me == me->multi && !strchr(me->key, '/')) {
+			/* Indirect multi-mount root */
+			root = alloca(strlen(ap->path) + strlen(me->key) + 2);
+			strcpy(root, ap->path);
+			strcat(root, "/");
+			strcat(root, me->key);
+			base = NULL;
+		} else {
+			root = me->multi->key;
+			base = me->key + strlen(root);
+		}
 
-		if (umount_offsets(oap, mnts, mptr->path))
+		if (umount_multi_triggers(oap, root, me, base)) {
 			warn(ap->logopt,
-			     "could not umount some offsets under %s",
-			     mptr->path);
-
-		if (is_autofs)
-			continue;
-
-		sched_yield();
-
-		warn(ap->logopt, "unmounting dir = %s", mptr->path);
-
-		if (umount_ent(ap, mptr->path, mptr->fs_type)) {
-			warn(ap->logopt, "could not umount dir %s",
-				mptr->path);
+			     "could not umount some offsets under %s", path);
 			left++;
 		}
 	}
+	cache_unlock(me->source->mc);
 
-	/* Catch any offsets of indirect mounts with no root mount */
-	if (!left && !tree_is_mounted(mnts, path, MNTS_ALL)) {
-		struct autofs_point *rap = ap;
+	if (left || is_autofs_fs || ap->submount)
+		return left;
 
-		if (ap->submount)
-			rap = ap->parent;
+	/*
+	 * If this is the root of a multi-mount we've had to umount
+	 * it already to ensure it's ok to remove any offset triggers
+	 */
+	if (me != me->multi) {
+		warn(ap->logopt, "unmounting dir = %s", path);
 
-		if (umount_offsets(rap, mnts, path)) {
-			warn(ap->logopt,
-			     "could not umount some offsets under %s", path);
+		if (umount_ent(ap, path)) {
+			warn(ap->logopt, "could not umount dir %s", path);
 			left++;
 		}
 	}
@@ -612,17 +448,12 @@ int umount_multi(struct autofs_point *ap, struct mnt_list *mnts, const char *pat
 
 static int umount_all(struct autofs_point *ap, int force)
 {
-	struct mnt_list *mnts;
 	int left;
 
-	mnts = tree_make_mnt_tree(_PROC_MOUNTS, ap->path);
-
-	left = umount_multi(ap, mnts, ap->path, 0);
+	left = umount_multi(ap, ap->path, 0);
 	if (force && left)
 		warn(ap->logopt, "could not unmount %d dirs under %s",
 		     left, ap->path);
-
-	tree_free_mnt_tree(mnts);
 
 	return left;
 }
@@ -729,7 +560,6 @@ static int get_pkt(struct autofs_point *ap, union autofs_packet_union *pkt)
 			enum states next_state, post_state;
 			size_t read_size = sizeof(next_state);
 			int state_pipe;
-			int status;
 
 			next_state = post_state = ST_INVAL;
 
@@ -767,7 +597,6 @@ static int get_pkt(struct autofs_point *ap, union autofs_packet_union *pkt)
 
 int do_expire(struct autofs_point *ap, const char *name, int namelen)
 {
-	struct mnt_list *mnts;
 	char buf[PATH_MAX + 1];
 	int len, ret;
 
@@ -786,15 +615,11 @@ int do_expire(struct autofs_point *ap, const char *name, int namelen)
 
 	msg("expiring path %s", buf);
 
-	mnts = tree_make_mnt_tree(_PROC_MOUNTS, buf);
-
-	ret = umount_multi(ap, mnts, buf, 1);
+	ret = umount_multi(ap, buf, 1);
 	if (ret == 0)
 		msg("expired %s", buf);
 	else
-		warn(ap->logopt, "couldn't complet expire of %s", buf);
-
-	tree_free_mnt_tree(mnts);
+		warn(ap->logopt, "couldn't complete expire of %s", buf);
 
 	return ret;
 }

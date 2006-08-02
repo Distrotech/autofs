@@ -296,7 +296,6 @@ struct map_source *master_find_map_source(struct master_mapent *entry,
 				int argc, const char **argv)
 {
 	struct map_source *source = NULL;
-	int status;
 
 	master_mutex_lock();
 
@@ -559,7 +558,6 @@ void master_source_current_signal(struct master_mapent *entry)
 struct master_mapent *master_find_mapent(struct master *master, const char *path)
 {
 	struct list_head *head, *p;
-	int status;
 
 	master_mutex_lock();
 
@@ -625,27 +623,18 @@ struct master_mapent *master_new_mapent(const char *path, time_t age)
 
 void master_add_mapent(struct master *master, struct master_mapent *entry)
 {
-	int status;
-
 	master_mutex_lock();
 	list_add_tail(&entry->list, &master->mounts);
 	master_mutex_unlock();
-
 	return;
 }
 
 void master_remove_mapent(struct master_mapent *entry)
 {
-	struct autofs_point *ap;
-	int status;
-
 	master_mutex_lock();
-
 	if (!list_empty(&entry->list))
 		list_del_init(&entry->list);
-
 	master_mutex_unlock();
-
 	return;
 }
 
@@ -729,8 +718,6 @@ struct master *master_new(const char *name, unsigned int timeout, unsigned int g
 
 int master_read_master(struct master *master, time_t age, int readall)
 {
-	int status;
-
 	if (!lookup_nss_read_master(master, age)) {
 		error(LOGOPT_ANY,
 		      "can't read master map %s", master->name);
@@ -842,7 +829,6 @@ void master_notify_state_change(struct master *master, int sig)
 	struct autofs_point *ap;
 	struct list_head *p;
 	int state_pipe;
-	int status;
 
 	master_mutex_lock();
 
@@ -862,8 +848,7 @@ void master_notify_state_change(struct master *master, int sig)
 
 		switch (sig) {
 		case SIGTERM:
-			if (ap->state != ST_SHUTDOWN &&
-			    ap->state != ST_SHUTDOWN_PENDING &&
+			if (ap->state != ST_SHUTDOWN_PENDING &&
 			    ap->state != ST_SHUTDOWN_FORCE) {
 				next = ST_SHUTDOWN_PENDING;
 				nextstate(state_pipe, next);
@@ -871,8 +856,7 @@ void master_notify_state_change(struct master *master, int sig)
 			break;
 #ifdef ENABLE_FORCED_SHUTDOWN
 		case SIGUSR2:
-			if (ap->state != ST_SHUTDOWN &&
-			    ap->state != ST_SHUTDOWN_FORCE &&
+			if (ap->state != ST_SHUTDOWN_FORCE &&
 			    ap->state != ST_SHUTDOWN_PENDING) {
 				next = ST_SHUTDOWN_FORCE;
 				nextstate(state_pipe, next);
@@ -950,7 +934,7 @@ static int master_do_mount(struct master_mapent *entry)
 
 static void shutdown_entry(struct master_mapent *entry)
 {
-	int status, state_pipe;
+	int state_pipe;
 	struct autofs_point *ap;
 	struct stat st;
 	int ret;
@@ -977,7 +961,7 @@ next:
 static void check_update_map_sources(struct master_mapent *entry, int readall)
 {
 	struct map_source *source, *last;
-	int status, state_pipe, map_stale = 0;
+	int state_pipe, map_stale = 0;
 	struct autofs_point *ap;
 	struct stat st;
 	int ret;
@@ -1053,7 +1037,6 @@ static void check_update_map_sources(struct master_mapent *entry, int readall)
 int master_mount_mounts(struct master *master, time_t age, int readall)
 {
 	struct list_head *p, *head;
-	int status;
 
 	master_mutex_lock();
 
@@ -1104,14 +1087,11 @@ int master_mount_mounts(struct master *master, time_t age, int readall)
 
 int master_list_empty(struct master *master)
 {
-	int status;
 	int res = 0;
 
 	master_mutex_lock();
-
 	if (list_empty(&master->mounts))
 		res = 1;
-
 	master_mutex_unlock();
 
 	return res;

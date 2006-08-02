@@ -702,7 +702,8 @@ static void *do_run_task(void *arg)
 	struct state_queue *task;
 	struct autofs_point *ap;
 	enum states next_state, state;
-	int status, ret;
+	unsigned long ret = 1;
+	int status;
  
 	status = pthread_mutex_lock(&task_mutex);
 	if (status)
@@ -755,7 +756,7 @@ static void *do_run_task(void *arg)
 
 	state_mutex_unlock(ap);
 
-	return;
+	return (void *) ret;
 }
 
 static int run_state_task(struct state_queue *task)
