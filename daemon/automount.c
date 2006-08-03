@@ -198,8 +198,6 @@ static int walk_tree(const char *base, int (*fn) (const char *file,
 			while (n--) {
 				int ret, size;
 
-				sched_yield();
-
 				if (strcmp(de[n]->d_name, ".") == 0 ||
 				    strcmp(de[n]->d_name, "..") == 0) {
 					free(de[n]);
@@ -387,7 +385,7 @@ int umount_multi(struct autofs_point *ap, const char *path, int incl)
 
 		me = lookup_source_mapent(ap, ind_key);
 		if (!me) {
-			warn(ap->logopt, "no mounts found under %s", path);
+			warn(ap->logopt, "map entry not found for %s", path);
 			return 0;
 		}
 	}
@@ -421,7 +419,7 @@ int umount_multi(struct autofs_point *ap, const char *path, int incl)
 	}
 	cache_unlock(me->source->mc);
 
-	if (left || is_autofs_fs || ap->submount)
+	if (left || is_autofs_fs)
 		return left;
 
 	/*
@@ -1034,10 +1032,8 @@ static void handle_mounts_cleanup(void *arg)
 	st_remove_tasks(ap);
 	umount_autofs(ap, 1);
 
-	if (submount)
-		master_signal_submount(ap, MASTER_SUBMNT_JOIN);
-	else
-		master_remove_mapent(ap->entry);
+	master_signal_submount(ap, MASTER_SUBMNT_JOIN);
+	master_remove_mapent(ap->entry);
 	master_free_mapent_sources(ap->entry, 1);
 	master_free_mapent(ap->entry);
 
@@ -1161,8 +1157,8 @@ void *handle_mounts(void *arg)
 	 * So, the solution is a recipe for disaster.
 	 * Hope we don't get a really busy system!
 	 */
-	sleep(1);
-	/* sched_yield(); */
+	/*sleep(1);*/
+	sched_yield();
 
 	return NULL;
 }

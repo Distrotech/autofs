@@ -281,8 +281,7 @@ int mount_autofs_indirect(struct autofs_point *ap)
 int umount_autofs_indirect(struct autofs_point *ap)
 {
 	char buf[MAX_ERR_BUF];
-	struct stat st;
-	int ret, rv;
+	int ret, rv, retries;
 
 	/*
 	 * Since submounts look after themselves the parent never knows
@@ -318,7 +317,16 @@ int umount_autofs_indirect(struct autofs_point *ap)
 	if (ap->kpipefd >= 0)
 		close(ap->kpipefd);
 
-	rv = umount(ap->path);
+	sched_yield();
+
+	retries = UMOUNT_RETRIES;
+	while ((rv = umount(ap->path)) == -1 && retries--) {
+		struct timespec tm = {0, 100000000};
+		if (errno != EBUSY)
+			break;
+		nanosleep(&tm, NULL);
+	}
+
 	if (rv == -1) {
 		switch (errno) {
 		case ENOENT:
@@ -356,6 +364,50 @@ force_umount:
 	return rv;
 }
 
+static int expire_indirect(int ioctlfd, const char *path, unsigned int when, int count, unsigned int logopt)
+{
+	char *estr, buf[MAX_ERR_BUF];
+	int ret, retries = count;
+
+	while (retries--) {
+		struct timespec tm = {0, 100000000};
+		int busy = 0;
+
+		ret = ioctl(ioctlfd, AUTOFS_IOC_ASKUMOUNT, &busy);
+		if (ret == -1) {
+			/* Mount has gone away */
+			if (errno == EBADF)
+				return 1;
+
+			estr = strerror_r(errno, buf, MAX_ERR_BUF);
+			error(logopt, "ioctl failed: %s", estr);
+			return 0;
+		}
+
+		/* No need to go further */
+		if (busy)
+			return 0;
+
+		sched_yield();
+
+		/* Ggenerate expire message for the mount. */
+		ret = ioctl(ioctlfd, AUTOFS_IOC_EXPIRE_DIRECT, &when);
+		if (ret == -1) {
+			/* Mount has gone away */
+			if (errno == EBADF)
+				return 1;
+
+			/* Need to wait for the kernel ? */
+			if (errno != EAGAIN)
+				return 0;
+		}
+
+		nanosleep(&tm, NULL);
+	}
+
+	return 1;
+}
+
 void *expire_proc_indirect(void *arg)
 {
 	struct map_source *map;
@@ -368,7 +420,6 @@ void *expire_proc_indirect(void *arg)
 	int offsets, submnts, count;
 	int ioctlfd, limit;
 	int status, ret;
-	char buf[MAX_ERR_BUF];
 
 	ea = (struct expire_args *) arg;
 
@@ -406,8 +457,6 @@ void *expire_proc_indirect(void *arg)
 
 		if (!strcmp(next->fs_type, "autofs"))
 			continue;
-
-		sched_yield();
 
 		/*
 		 * If the mount corresponds to an offset trigger then
@@ -452,14 +501,13 @@ void *expire_proc_indirect(void *arg)
 
 		debug(ap->logopt, "expire %s", next->path);
 
-		ret = ioctl(ioctlfd, AUTOFS_IOC_EXPIRE_MULTI, &now);
-		if (ret < 0 && errno != EAGAIN) {
-			char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-			warn(ap->logopt,
-			     "failed to expire mount %s:", next->path, estr);
-			ea->status = 1;
+		ret = expire_indirect(ioctlfd, next->path,
+				      now, EXPIRE_RETRIES, ap->logopt);
+		if (!ret) {
+			debug(ap->logopt,
+			      "failed to expire mount %s", next->path);
+			ea->status++;
 		}
-
 	}
 	free_mnt_list(mnts);
 
@@ -469,17 +517,11 @@ void *expire_proc_indirect(void *arg)
 	 * umount them here.
 	 */
 	limit = count_mounts(ap, ap->path);
-	while (limit--) {
-		ret = ioctl(ap->ioctlfd, AUTOFS_IOC_EXPIRE_MULTI, &now);
-		if (ret < 0) {
-			if (errno == EAGAIN)
-				break;
-			warn(ap->logopt,
-			      "failed to expire offsets under %s",
-			      ap->path);
-			ea->status = 1;
-			break;
-		}
+	ret = expire_indirect(ap->ioctlfd, ap->path, now, limit, ap->logopt);
+	if (!ret) {
+		debug(ap->logopt,
+		      "failed to expire offsets under %s", ap->path);
+		ea->status++;
 	}
 
 	count = offsets = submnts = 0;

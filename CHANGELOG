@@ -14,6 +14,7 @@
   with various combinations of submounts (still broken).
 - cthon fix expire of various forms of nested mounts.
 - cthon fix some shutdown races.
+- cthon corrections for above patch and fix shutdown expire.
 
 13/7/2006 autofs-5.0.1 rc1
 --------------------------

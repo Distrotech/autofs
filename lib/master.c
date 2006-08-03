@@ -131,13 +131,6 @@ void master_free_autofs_point(struct autofs_point *ap)
 	if (!ap)
 		return;
 
-	if (ap->submount) {
-		mounts_mutex_lock(ap);
-		ap->parent->submnt_count--;
-		list_del(&ap->mounts);
-		mounts_mutex_unlock(ap);
-	}
-
 	status = pthread_mutex_destroy(&ap->state_mutex);
 	if (status)
 		fatal(status);
@@ -631,6 +624,9 @@ void master_add_mapent(struct master *master, struct master_mapent *entry)
 
 void master_remove_mapent(struct master_mapent *entry)
 {
+	if (entry->ap->submount)
+		return;
+
 	master_mutex_lock();
 	if (!list_empty(&entry->list))
 		list_del_init(&entry->list);
@@ -739,12 +735,16 @@ int master_read_master(struct master *master, time_t age, int readall)
 	return 1;
 }
 
-static void notify_submounts(struct autofs_point *ap, enum states state)
+void master_notify_submounts(struct autofs_point *ap, enum states state)
 {
 	struct list_head *head, *p;
 	struct autofs_point *this;
 	pthread_t thid;
 	int status;
+
+	/* Initiate from master entries only */
+	if (ap->submount || list_empty(&ap->submounts))
+		return;
 
 	mounts_mutex_lock(ap);
 
@@ -756,7 +756,7 @@ static void notify_submounts(struct autofs_point *ap, enum states state)
 		p = p->next;
 
 		if (!list_empty(&this->submounts))
-			notify_submounts(this, state);
+			master_notify_submounts(this, state);
 
 		state_mutex_lock(this);
 
@@ -776,11 +776,9 @@ static void notify_submounts(struct autofs_point *ap, enum states state)
 			if (status)
 				fatal(status);
 			if (ap->mounts_signaled == MASTER_SUBMNT_JOIN) {
-				mounts_mutex_unlock(ap);
 				status = pthread_join(thid, NULL);
 				if (status)
 					fatal(status);
-				mounts_mutex_lock(ap);
 			}
 		}
 	}
@@ -790,30 +788,23 @@ static void notify_submounts(struct autofs_point *ap, enum states state)
 	return;
 }
 
-void master_notify_submounts(struct autofs_point *ap, enum states state)
-{
-	/* Initiate from master entries only */
-	if (ap->submount || list_empty(&ap->submounts))
-		return;
-	master_mutex_lock();
-	notify_submounts(ap, state);
-	master_mutex_unlock();
-	return;
-}
-
 void master_signal_submount(struct autofs_point *ap, unsigned int join)
 {
 	int status;
 
-	if (!ap->parent)
+	if (!ap->parent || !ap->submount)
 		return;
 
 	mounts_mutex_lock(ap->parent);
 
-	if (join)
+	if (join) {
+		/* We are finishing up */
+		ap->parent->submnt_count--;
+		list_del(&ap->mounts);
 		ap->parent->mounts_signaled = 1;
-	else
+	} else
 		ap->parent->mounts_signaled = 2;
+
 	status = pthread_cond_signal(&ap->parent->mounts_cond);
 	if (status)
 		fatal(status);

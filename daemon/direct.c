@@ -112,13 +112,13 @@ static int autofs_init_direct(struct autofs_point *ap)
 int do_umount_autofs_direct(struct autofs_point *ap, struct mnt_list *mnts, struct mapent *me)
 {
 	char buf[MAX_ERR_BUF];
-	int ioctlfd, rv, left;
+	int ioctlfd, rv, left, retries;
 
 	left = umount_multi(ap, me->key, 1);
 	if (left) {
 		warn(ap->logopt, "could not unmount %d dirs under %s",
 		     left, me->key);
-		return -1;
+		return 1;
 	}
 
 	if (me->ioctlfd != -1) {
@@ -161,9 +161,19 @@ int do_umount_autofs_direct(struct autofs_point *ap, struct mnt_list *mnts, stru
 		error(ap->logopt,
 		      "couldn't get ioctl fd for offset %s", me->key);
 		debug(ap->logopt, "open: %s", estr);
+		return 1;
 	}
 
-	rv = umount(me->key);
+	sched_yield();
+
+	retries = UMOUNT_RETRIES;
+	while ((rv = umount(me->key)) == -1 && retries--) {
+		struct timespec tm = {0, 100000000};
+		if (errno != EBUSY)
+			break;
+		nanosleep(&tm, NULL);
+	}
+
 	if (rv == -1) {
 		switch (errno) {
 		case ENOENT:
@@ -230,7 +240,6 @@ int umount_autofs_direct(struct autofs_point *ap)
 		cache_readlock(mc);
 		me = cache_enumerate(mc, NULL);
 		while (me) {
-			sched_yield();
 			/* TODO: check return, locking me */
 			do_umount_autofs_direct(ap, mnts, me);
 			me = cache_enumerate(mc, me);
@@ -491,7 +500,7 @@ int mount_autofs_direct(struct autofs_point *ap)
 int umount_autofs_offset(struct autofs_point *ap, struct mapent *me)
 {
 	char buf[MAX_ERR_BUF];
-	int ioctlfd, rv = 1;
+	int ioctlfd, rv = 1, retries;
 
 	if (me->ioctlfd != -1) {
 		if (is_mounted(_PATH_MOUNTED, me->key, MNTS_REAL)) {
@@ -543,7 +552,16 @@ int umount_autofs_offset(struct autofs_point *ap, struct mapent *me)
 		goto force_umount;
 	}
 
-	rv = umount(me->key);
+	sched_yield();
+
+	retries = UMOUNT_RETRIES;
+	while ((rv = umount(me->key)) == -1 && retries--) {
+		struct timespec tm = {0, 100000000};
+		if (errno != EBUSY)
+			break;
+		nanosleep(&tm, NULL);
+	}
+
 	if (rv == -1) {
 		switch (errno) {
 		case ENOENT:
@@ -703,6 +721,49 @@ out_err:
 	return -1;
 }
 
+static int expire_direct(int ioctlfd, const char *path, unsigned int when, int count, unsigned int logopt)
+{
+	char *estr, buf[MAX_ERR_BUF];
+	int ret, retries = count;
+
+	while (retries--) {
+		struct timespec tm = {0, 100000000};
+		int busy = 0;
+
+		ret = ioctl(ioctlfd, AUTOFS_IOC_ASKUMOUNT, &busy);
+		if (ret == -1) {
+			/* Mount has gone away */
+			if (errno == EBADF)
+				return 1;
+
+			estr = strerror_r(errno, buf, MAX_ERR_BUF);
+			error(logopt, "ioctl failed: %s", estr);
+			return 0;
+		}
+
+		/* No need to go further */
+		if (busy)
+			return 0;
+
+		sched_yield();
+
+		/* Ggenerate expire message for the mount. */
+		ret = ioctl(ioctlfd, AUTOFS_IOC_EXPIRE_DIRECT, &when);
+		if (ret == -1) {
+			/* Mount has gone away */
+			if (errno == EBADF)
+				return 1;
+
+			/* Need to wait for the kernel ? */
+			if (errno != EAGAIN)
+				return 0;
+		}
+		nanosleep(&tm, NULL);
+	}
+
+	return 1;
+}
+
 void *expire_proc_direct(void *arg)
 {
 	struct map_source *map;
@@ -710,7 +771,7 @@ void *expire_proc_direct(void *arg)
 	struct expire_args *ea;
 	struct autofs_point *ap;
 	struct mapent_cache *mc = NULL;
-	struct mapent *ro, *me = NULL;
+	struct mapent *me = NULL;
 	unsigned int now;
 	int ioctlfd = -1;
 	int status, ret;
@@ -751,10 +812,8 @@ void *expire_proc_direct(void *arg)
 			continue;
 
 		/* Skip offsets */
-		if (strstr(next->opts, "offsets"))
+		if (strstr(next->opts, "offset"))
 			continue;
-
-		sched_yield();
 
 		/*
 		 * All direct mounts must be present in the map
@@ -787,48 +846,16 @@ void *expire_proc_direct(void *arg)
 
 		debug(ap->logopt, "send expire to trigger %s", next->path);
 
-		/* Finally generate an expire message for the direct mount. */
-		ret = ioctl(ioctlfd, AUTOFS_IOC_EXPIRE_DIRECT, &now);
-		if (ret < 0 && errno != EAGAIN) {
+		ret = expire_direct(ioctlfd, next->path,
+				    now, EXPIRE_RETRIES, ap->logopt);
+		if (!ret) {
 			debug(ap->logopt,
-			      "failed to expire mount %s", next->path);
-			ea->status = 1;
+			     "failed to expire mount %s", next->path);
+			ea->status++;
 		}
 	}
 	free_mnt_list(mnts);
 
-	pthread_cleanup_push(master_source_lock_cleanup, ap->entry);
-	master_source_readlock(ap->entry);
-	map = ap->entry->first;
-	while (map) {
-		mc = map->mc;
-		pthread_cleanup_push(cache_lock_cleanup, mc);
-		cache_readlock(mc);
-		me = cache_enumerate(mc, NULL);
-		while (me) {
-			sched_yield();
-
-			if (me->ioctlfd >= 0)
-				/* Real mounts have an open ioctl fd */
-				ioctlfd = me->ioctlfd;
-			else {
-				me = cache_enumerate(mc, me);
-				continue;
-			}
-
-			if (!ioctl(ioctlfd, AUTOFS_IOC_ASKUMOUNT, &ret)) {
-				if (!ret) {
-					ea->status = 1;
-					break;
-				}
-			}
-			me = cache_enumerate(mc, me);
-		}
-		pthread_cleanup_pop(1);
-		map = map->next;
-	}
-
-	pthread_cleanup_pop(1);
 	pthread_cleanup_pop(1);
 
 	return NULL;
