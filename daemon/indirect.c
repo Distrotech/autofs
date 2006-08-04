@@ -294,7 +294,7 @@ int umount_autofs_indirect(struct autofs_point *ap)
 
 	/* If we are trying to shutdown make sure we can umount */
 	rv = ioctl(ap->ioctlfd, AUTOFS_IOC_ASKUMOUNT, &ret);
-	if (rv) {
+	if (rv == -1) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
 		error(ap->logopt, "ioctl failed: %s", estr);
 		return 1;
@@ -364,7 +364,7 @@ force_umount:
 	return rv;
 }
 
-static int expire_indirect(int ioctlfd, const char *path, unsigned int when, int count, unsigned int logopt)
+static int expire_indirect(int ioctlfd, const char *path, unsigned int when, unsigned int count, unsigned int logopt)
 {
 	char *estr, buf[MAX_ERR_BUF];
 	int ret, retries = count;
@@ -376,7 +376,7 @@ static int expire_indirect(int ioctlfd, const char *path, unsigned int when, int
 		ret = ioctl(ioctlfd, AUTOFS_IOC_ASKUMOUNT, &busy);
 		if (ret == -1) {
 			/* Mount has gone away */
-			if (errno == EBADF)
+			if (errno == EBADF || errno == EINVAL)
 				return 1;
 
 			estr = strerror_r(errno, buf, MAX_ERR_BUF);
@@ -394,7 +394,7 @@ static int expire_indirect(int ioctlfd, const char *path, unsigned int when, int
 		ret = ioctl(ioctlfd, AUTOFS_IOC_EXPIRE_DIRECT, &when);
 		if (ret == -1) {
 			/* Mount has gone away */
-			if (errno == EBADF)
+			if (errno == EBADF || errno == EINVAL)
 				return 1;
 
 			/* Need to wait for the kernel ? */
@@ -410,9 +410,7 @@ static int expire_indirect(int ioctlfd, const char *path, unsigned int when, int
 
 void *expire_proc_indirect(void *arg)
 {
-	struct map_source *map;
 	struct autofs_point *ap;
-	struct mapent_cache *mc = NULL;
 	struct mapent *me = NULL;
 	struct mnt_list *mnts, *next;
 	struct expire_args *ea;
@@ -420,6 +418,7 @@ void *expire_proc_indirect(void *arg)
 	int offsets, submnts, count;
 	int ioctlfd, limit;
 	int status, ret;
+	unsigned int retries = EXPIRE_RETRIES;
 
 	ea = (struct expire_args *) arg;
 
@@ -473,36 +472,23 @@ void *expire_proc_indirect(void *arg)
 		 * Otherwise it's a top level indirect mount (possibly
 		 * with offsets in it) and we use the usual ioctlfd.
 		 */
-		master_source_readlock(ap->entry);
-		map = ap->entry->first;
-		while (map) {
-			mc = map->mc;
-			cache_readlock(mc);
-			me = cache_lookup_distinct(mc, next->path);
-			if (!me)
-				me = cache_lookup_distinct(mc, ind_key);
-			if (me)
-				break;
-			cache_unlock(mc);
-			map = map->next;
-		}
-		master_source_unlock(ap->entry);
-
+		me = lookup_source_mapent(ap, next->path, LKP_DISTINCT);
+		if (!me && ind_key)
+			lookup_source_mapent(ap, ind_key, LKP_NORMAL);
 		if (!me)
 			continue;
 
 		if (*me->key == '/') {
 			ioctlfd = me->ioctlfd;
-			cache_unlock(mc);
+			cache_unlock(me->source->mc);
 		} else {
 			ioctlfd = ap->ioctlfd;
-			cache_unlock(mc);
+			cache_unlock(me->source->mc);
 		}
 
 		debug(ap->logopt, "expire %s", next->path);
 
-		ret = expire_indirect(ioctlfd, next->path,
-				      now, EXPIRE_RETRIES, ap->logopt);
+		ret = expire_indirect(ioctlfd, next->path, now, retries, ap->logopt);
 		if (!ret) {
 			debug(ap->logopt,
 			      "failed to expire mount %s", next->path);

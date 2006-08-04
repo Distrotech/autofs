@@ -49,11 +49,18 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 
 int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *context)
 {
+	struct map_source *source;
+	struct mapent_cache *mc;
 	struct passwd *pw;
 	char buf[MAX_ERR_BUF];
+	int ret;
 
+	source = ap->entry->current;
 	ap->entry->current = NULL;
 	master_source_current_signal(ap->entry);
+
+	mc = source->mc;
+
 	debug(ap->logopt, MODPREFIX "looking up %s", name);
 
 	/* Get the equivalent username */
@@ -70,11 +77,22 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 		return NSS_STATUS_UNAVAIL;
 	}
 
+	cache_writelock(mc);
+	ret = cache_update(mc, source, name, NULL, time(NULL));
+	cache_unlock(mc);
+
+	if (ret == CHE_FAIL) {
+		ret = chdir("/");
+		return NSS_STATUS_UNAVAIL;
+	}
+
 	if (symlink(pw->pw_dir, name) && errno != EEXIST) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
 		error(ap->logopt, MODPREFIX "symlink failed: %s", estr);
 		return NSS_STATUS_UNAVAIL;
 	}
+
+	ret = chdir("/");
 
 	return NSS_STATUS_SUCCESS;
 }

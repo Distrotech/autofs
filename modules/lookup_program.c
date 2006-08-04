@@ -346,6 +346,12 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 		goto out_free;
 	}
 
+	cache_writelock(mc);
+	ret = cache_update(mc, source, name, mapent, time(NULL));
+	cache_unlock(mc);
+	if (ret == CHE_FAIL)
+		return NSS_STATUS_UNAVAIL;
+
 	debug(ap->logopt, MODPREFIX "%s -> %s", name, mapent);
 
 	master_source_current_wait(ap->entry);

@@ -100,14 +100,19 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
  */
 int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *context)
 {
+	struct map_source *source;
+	struct mapent_cache *mc;
 	char **hes_result;
 	struct lookup_context *ctxt = (struct lookup_context *) context;
 	int status, rv;
 	char **record, *best_record = NULL, *p;
 	int priority, lowest_priority = INT_MAX;	
 
+	source = ap->entry->current;
 	ap->entry->current = NULL;
 	master_source_current_signal(ap->entry);
+
+	mc = source->mc;
 
 	debug(ap->logopt,
 	      MODPREFIX "looking up root=\"%s\", name=\"%s\"",
@@ -147,6 +152,12 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 		best_record = *record;
 	    }
 	}
+
+	cache_writelock(mc);
+	rv = cache_update(mc, source, name, best_record, time(NULL));
+	cache_unlock(mc);
+	if (rv == CHE_FAIL)
+		return NSS_STATUS_UNAVAIL;
 
 	debug(ap->logopt,
 	      MODPREFIX "lookup for \"%s\" gave \"%s\"",

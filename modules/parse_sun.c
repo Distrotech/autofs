@@ -1215,7 +1215,7 @@ int parse_mount(struct autofs_point *ap, const char *name,
 		if (ap->submount)
 			oap = ap->parent;
 
-		me = lookup_source_mapent(oap, name);
+		me = lookup_source_mapent(oap, name, LKP_DISTINCT);
 		if (me) {
 			char *m_key;
 			int start;

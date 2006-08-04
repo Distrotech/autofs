@@ -931,15 +931,15 @@ int lookup_prune_cache(struct autofs_point *ap, time_t age)
 				free(path);
 				goto next;
 			}
-			status = CHE_FAIL;
-			if (this->ioctlfd == -1)
-				status = cache_delete(mc, key);
-			cache_unlock(mc);
 
-			if (status != CHE_FAIL) {
-				if (!is_mounted(_PROC_MOUNTS, path, MNTS_AUTOFS))
+			if (!is_mounted(_PROC_MOUNTS, path, MNTS_AUTOFS)) {
+				status = CHE_FAIL;
+				if (this->ioctlfd == -1)
+					status = cache_delete(mc, key);
+				if (status != CHE_FAIL)
 					rmdir_path(ap, path);
 			}
+			cache_unlock(mc);
 
 			if (!next_key) {
 				free(key);
@@ -965,7 +965,7 @@ next:
 }
 
 /* Return with cache readlock held */
-struct mapent *lookup_source_mapent(struct autofs_point *ap, const char *key)
+struct mapent *lookup_source_mapent(struct autofs_point *ap, const char *key, unsigned int type)
 {
 	struct master_mapent *entry = ap->entry;
 	struct map_source *map;
@@ -978,7 +978,10 @@ struct mapent *lookup_source_mapent(struct autofs_point *ap, const char *key)
 	while (map) {
 		mc = map->mc;
 		cache_readlock(mc);
-		me = cache_lookup_distinct(mc, key);
+		if (type == LKP_DISTINCT)
+			me = cache_lookup_distinct(mc, key);
+		else
+			me = cache_lookup_distinct(mc, key);
 		if (me)
 			break;
 		cache_unlock(mc);

@@ -721,10 +721,10 @@ out_err:
 	return -1;
 }
 
-static int expire_direct(int ioctlfd, const char *path, unsigned int when, int count, unsigned int logopt)
+static int expire_direct(int ioctlfd, const char *path, unsigned int when, unsigned int logopt)
 {
 	char *estr, buf[MAX_ERR_BUF];
-	int ret, retries = count;
+	int ret, retries = EXPIRE_RETRIES;
 
 	while (retries--) {
 		struct timespec tm = {0, 100000000};
@@ -733,7 +733,7 @@ static int expire_direct(int ioctlfd, const char *path, unsigned int when, int c
 		ret = ioctl(ioctlfd, AUTOFS_IOC_ASKUMOUNT, &busy);
 		if (ret == -1) {
 			/* Mount has gone away */
-			if (errno == EBADF)
+			if (errno == EBADF || errno == EINVAL)
 				return 1;
 
 			estr = strerror_r(errno, buf, MAX_ERR_BUF);
@@ -751,7 +751,7 @@ static int expire_direct(int ioctlfd, const char *path, unsigned int when, int c
 		ret = ioctl(ioctlfd, AUTOFS_IOC_EXPIRE_DIRECT, &when);
 		if (ret == -1) {
 			/* Mount has gone away */
-			if (errno == EBADF)
+			if (errno == EBADF || errno == EINVAL)
 				return 1;
 
 			/* Need to wait for the kernel ? */
@@ -766,11 +766,9 @@ static int expire_direct(int ioctlfd, const char *path, unsigned int when, int c
 
 void *expire_proc_direct(void *arg)
 {
-	struct map_source *map;
 	struct mnt_list *mnts, *next;
 	struct expire_args *ea;
 	struct autofs_point *ap;
-	struct mapent_cache *mc = NULL;
 	struct mapent *me = NULL;
 	unsigned int now;
 	int ioctlfd = -1;
@@ -819,35 +817,22 @@ void *expire_proc_direct(void *arg)
 		 * All direct mounts must be present in the map
 		 * entry cache.
 		 */
-		master_source_readlock(ap->entry);
-		map = ap->entry->first;
-		while (map) {
-			mc = map->mc;
-			cache_readlock(mc);
-			me = cache_lookup_distinct(mc, next->path);
-			if (me)
-				break;
-			cache_unlock(mc);
-			map = map->next;
-		}
-		master_source_unlock(ap->entry);
-
+		me = lookup_source_mapent(ap, next->path, LKP_DISTINCT);
 		if (!me)
 			continue;
 
 		if (me->ioctlfd >= 0) {
 			/* Real mounts have an open ioctl fd */
 			ioctlfd = me->ioctlfd;
-			cache_unlock(mc);
+			cache_unlock(me->source->mc);
 		} else {
-			cache_unlock(mc);
+			cache_unlock(me->source->mc);
 			continue;
 		}
 
 		debug(ap->logopt, "send expire to trigger %s", next->path);
 
-		ret = expire_direct(ioctlfd, next->path,
-				    now, EXPIRE_RETRIES, ap->logopt);
+		ret = expire_direct(ioctlfd, next->path, now, ap->logopt);
 		if (!ret) {
 			debug(ap->logopt,
 			     "failed to expire mount %s", next->path);
@@ -926,7 +911,7 @@ static void *do_expire_direct(void *arg)
 		send_fail(mt->ioctlfd, mt->wait_queue_token);
 	else {
 		struct mapent *me;
-		me = lookup_source_mapent(ap, mt->name);
+		me = lookup_source_mapent(ap, mt->name, LKP_DISTINCT);
 		me->ioctlfd = -1;
 		cache_unlock(me->source->mc);
 		send_ready(mt->ioctlfd, mt->wait_queue_token);
@@ -1225,7 +1210,7 @@ cont:
 	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &state);
 	if (status) {
 		struct mapent *me;
-		me = lookup_source_mapent(ap, mt->name);
+		me = lookup_source_mapent(ap, mt->name, LKP_DISTINCT);
 		me->ioctlfd = mt->ioctlfd;
 		cache_unlock(me->source->mc);
 		send_ready(mt->ioctlfd, mt->wait_queue_token);

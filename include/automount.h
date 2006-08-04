@@ -95,8 +95,8 @@ int load_autofs4_module(void);
 #define LKP_LOOKUP	0x0200
 #define LKP_GHOST	0x0400
 #define LKP_REREAD	0x0800
-#define LKP_EMPTY	0x1000
-#define LKP_ERR_FORMAT	0x2000
+#define LKP_NORMAL	0x1000
+#define LKP_DISTINCT	0x2000
 #define LKP_ERR_MOUNT	0x4000
 #define LKP_NOTSUP	0x8000
 
@@ -228,7 +228,7 @@ int lookup_ghost(struct autofs_point *ap);
 int lookup_nss_mount(struct autofs_point *ap, const char *name, int name_len);
 void lookup_close_lookup(struct autofs_point *ap);
 int lookup_prune_cache(struct autofs_point *ap, time_t age);
-struct mapent *lookup_source_mapent(struct autofs_point *ap, const char *key);
+struct mapent *lookup_source_mapent(struct autofs_point *ap, const char *key, unsigned int type);
 int lookup_source_close_ioctlfd(struct autofs_point *ap, const char *key);
 
 #ifdef MODULE_LOOKUP

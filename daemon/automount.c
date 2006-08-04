@@ -375,7 +375,7 @@ int umount_multi(struct autofs_point *ap, const char *path, int incl)
 
 	is_autofs_fs = fs.f_type == AUTOFS_SUPER_MAGIC ? 1 : 0;
 
-	me = lookup_source_mapent(ap, path);
+	me = lookup_source_mapent(ap, path, LKP_DISTINCT);
 	if (!me) {
 		char *ind_key;
 
@@ -383,7 +383,7 @@ int umount_multi(struct autofs_point *ap, const char *path, int incl)
 		if (ind_key)
 			ind_key++;
 
-		me = lookup_source_mapent(ap, ind_key);
+		me = lookup_source_mapent(ap, ind_key, LKP_DISTINCT);
 		if (!me) {
 			warn(ap->logopt, "map entry not found for %s", path);
 			return 0;
