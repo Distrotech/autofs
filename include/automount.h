@@ -208,7 +208,7 @@ int do_mount(struct autofs_point *ap, const char *root, const char *name,
 	     int name_len, const char *what, const char *fstype,
 	     const char *options);
 int mkdir_path(const char *path, mode_t mode);
-int rmdir_path(struct autofs_point *ap, const char *path);
+int rmdir_path(struct autofs_point *ap, const char *path, dev_t dev);
 
 /* Prototype for module functions */
 

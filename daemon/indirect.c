@@ -226,7 +226,7 @@ out_umount:
 	umount(ap->path);
 out_rmdir:
 	if (ap->dir_created)
-		rmdir_path(ap, ap->path);
+		rmdir_path(ap, ap->path, ap->dev);
 out_err:
 	if (options)
 		free(options);

@@ -949,7 +949,7 @@ static int check_map_indirect(struct autofs_point *ap,
 			cache_delete(mc, "*");
 
 		if (cache_delete(mc, key) && wild & (CHE_MISSING | CHE_FAIL))
-			rmdir_path(ap, key);
+			rmdir_path(ap, key, ap->dev);
 		pthread_cleanup_pop(1);
 	}
 

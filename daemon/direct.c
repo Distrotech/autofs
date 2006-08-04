@@ -715,8 +715,10 @@ out_close:
 out_umount:
 	umount(me->key);
 out_err:
-	if (me->dir_created)
-		rmdir_path(ap, me->key);
+	if (is_autofs_fs) {
+		if (stat(me->key, &st) == 0 && me->dir_created)
+			 rmdir_path(ap, me->key, st.st_dev);
+	}
 
 	return -1;
 }

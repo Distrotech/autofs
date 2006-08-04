@@ -106,13 +106,14 @@ int mkdir_path(const char *path, mode_t mode)
 }
 
 /* Remove as much as possible of a path */
-int rmdir_path(struct autofs_point *ap, const char *path)
+int rmdir_path(struct autofs_point *ap, const char *path, dev_t dev)
 {
 	int len = strlen(path);
 	char *buf = alloca(len + 1);
 	char *cp;
 	int first = 1;
 	struct stat st;
+	struct statfs fs;
 
 	strcpy(buf, path);
 	cp = buf + len;
@@ -131,15 +132,24 @@ int rmdir_path(struct autofs_point *ap, const char *path)
 			return -1;
 		}
 
-		if (st.st_dev != ap->dev) {
-			crit(ap->logopt, "attempt to remove files from a "
-			     "mounted file system!");
-			crit(ap->logopt,
-			    "ap->dev == %llu, \"%s\" dev == %llu", ap->dev,
-			     buf, st.st_dev);
+		/* Termination condition removing full path within autofs fs */
+		if (st.st_dev != dev)
+			return 0;
+
+		if (statfs(buf, &fs) != 0) {
+			error(ap->logopt, "could not stat fs of %s", buf);
 			return -1;
 		}
 
+		if (fs.f_type != AUTOFS_SUPER_MAGIC) {
+			crit(ap->logopt, "attempt to remove directory from a "
+			     "non-autofs filesystem!");
+			crit(ap->logopt,
+			     "requestor dev == %llu, \"%s\" owner dev == %llu",
+			     dev, buf, st.st_dev);
+			return -1;
+		}
+			     
 		/*
 		 * Last element of path may be a symbolic link; all others
 		 * are directories (and the last directory element is

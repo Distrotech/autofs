@@ -17,6 +17,7 @@
 - cthon corrections for above patch and fix shutdown expire.
 - cthon fix expire of wildcard and program mounts broken by above
   patches.
+- tidy up directory cleanup and add validation check to rmdir_path.
 
 13/7/2006 autofs-5.0.1 rc1
 --------------------------

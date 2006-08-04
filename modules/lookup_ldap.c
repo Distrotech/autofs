@@ -1543,7 +1543,7 @@ static int check_map_indirect(struct autofs_point *ap,
 		cache_writelock(mc);
 		pthread_cleanup_push(cache_lock_cleanup, mc);
 		if (cache_delete(mc, key))
-			rmdir_path(ap, key);
+			rmdir_path(ap, key, ap->dev);
 		pthread_cleanup_pop(1);
 	}
 

@@ -253,14 +253,15 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 	free_host_list(&hosts);
 
 	/* If we get here we've failed to complete the mount */
-	if ((!ap->ghost && name_len) || !existed) {
-		if (!chdir(ap->path))
-			rmdir_path(ap, name);
-		err = chdir("/");
-	}
 
 	error(ap->logopt,
 	      MODPREFIX "nfs: mount failure %s on %s", what, fullpath);
+
+	if (ap->type != LKP_INDIRECT)
+		return 1;
+
+	if ((!ap->ghost && name_len) || !existed)
+		rmdir_path(ap, fullpath, ap->dev);
 
 	return 1;
 }

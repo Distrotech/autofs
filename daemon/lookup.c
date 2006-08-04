@@ -936,8 +936,12 @@ int lookup_prune_cache(struct autofs_point *ap, time_t age)
 				status = CHE_FAIL;
 				if (this->ioctlfd == -1)
 					status = cache_delete(mc, key);
-				if (status != CHE_FAIL)
-					rmdir_path(ap, path);
+				if (status != CHE_FAIL) {
+					if (ap->type == LKP_INDIRECT)
+						rmdir_path(ap, path, ap->dev);
+					else
+						rmdir_path(ap, path, this->dev);
+				}
 			}
 			cache_unlock(mc);
 
