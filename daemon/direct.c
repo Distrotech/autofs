@@ -725,29 +725,10 @@ out_err:
 
 static int expire_direct(int ioctlfd, const char *path, unsigned int when, unsigned int logopt)
 {
-	char *estr, buf[MAX_ERR_BUF];
 	int ret, retries = EXPIRE_RETRIES;
 
 	while (retries--) {
 		struct timespec tm = {0, 100000000};
-		int busy = 0;
-
-		ret = ioctl(ioctlfd, AUTOFS_IOC_ASKUMOUNT, &busy);
-		if (ret == -1) {
-			/* Mount has gone away */
-			if (errno == EBADF || errno == EINVAL)
-				return 1;
-
-			estr = strerror_r(errno, buf, MAX_ERR_BUF);
-			error(logopt, "ioctl failed: %s", estr);
-			return 0;
-		}
-
-		/* No need to go further */
-		if (busy)
-			return 0;
-
-		sched_yield();
 
 		/* Ggenerate expire message for the mount. */
 		ret = ioctl(ioctlfd, AUTOFS_IOC_EXPIRE_DIRECT, &when);
@@ -756,7 +737,7 @@ static int expire_direct(int ioctlfd, const char *path, unsigned int when, unsig
 			if (errno == EBADF || errno == EINVAL)
 				return 1;
 
-			/* Need to wait for the kernel ? */
+			/* Other than need to wait for the kernel ? */
 			if (errno != EAGAIN)
 				return 0;
 		}

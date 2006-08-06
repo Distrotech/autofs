@@ -472,9 +472,7 @@ cont:
 		}
 
 		/* We're done - clean out the offsets */
-		cache_multi_lock(mc);
 		status = cache_delete_offset_list(mc, me->key);
-		cache_multi_unlock(mc);
 		if (status != CHE_OK)
 			warn(ap->logopt, "couldn't delete offset list");
 	}

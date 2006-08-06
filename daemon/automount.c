@@ -370,6 +370,7 @@ static void update_map_cache(struct autofs_point *ap, const char *path)
    it also tries to umount path itself */
 int umount_multi(struct autofs_point *ap, const char *path, int incl)
 {
+	struct mapent_cache *mc;
 	struct mapent *me;
 	struct statfs fs;
 	int is_autofs_fs;
@@ -400,16 +401,20 @@ int umount_multi(struct autofs_point *ap, const char *path, int incl)
 		}
 	}
 
+	cache_multi_lock(me->parent);
+
+	mc = me->source->mc;
+
 	left = 0;
 
-	if (me && me->multi) {
+	if (me->multi) {
 		struct autofs_point *oap = ap;
 		char *root, *base;
 
 		if (ap->submount)
 			oap = ap->parent;
 
-		 if (me == me->multi && !strchr(me->key, '/')) {
+		if (me == me->multi && !strchr(me->key, '/')) {
 			/* Indirect multi-mount root */
 			root = alloca(strlen(ap->path) + strlen(me->key) + 2);
 			strcpy(root, ap->path);
@@ -427,10 +432,12 @@ int umount_multi(struct autofs_point *ap, const char *path, int incl)
 			left++;
 		}
 	}
-	cache_unlock(me->source->mc);
 
-	if (left || is_autofs_fs)
+	if (left || is_autofs_fs) {
+		cache_multi_unlock(me->parent);
+		cache_unlock(mc);
 		return left;
+	}
 
 	/*
 	 * If this is the root of a multi-mount we've had to umount
@@ -450,6 +457,9 @@ int umount_multi(struct autofs_point *ap, const char *path, int incl)
 		update_map_cache(ap, path);
 		check_rm_dirs(ap, path, incl);
 	}
+
+	cache_multi_unlock(me->parent);
+	cache_unlock(mc);
 
 	return left;
 }

@@ -123,12 +123,11 @@ struct autofs_point;
 
 #define HASHSIZE		77
 #define NEGATIVE_TIMEOUT	10
-#define UMOUNT_RETRIES		25
-#define EXPIRE_RETRIES		15
+#define UMOUNT_RETRIES		50
+#define EXPIRE_RETRIES		25
 
 struct mapent_cache {
 	pthread_rwlock_t rwlock;
-	pthread_mutex_t multi_mutex;
 	unsigned int size;
 	struct list_head *ino_index;
 	struct mapent **hash;
@@ -137,11 +136,14 @@ struct mapent_cache {
 struct mapent {
 	struct mapent *next;
 	struct list_head ino_index;
+	pthread_mutex_t multi_mutex;
 	struct list_head multi_list;
 	/* Map source of the cache entry */
 	struct map_source *source;
-	/* Need to know owner if we're a multi mount */
+	/* Need to know owner if we're a multi-mount */
 	struct mapent *multi;
+	/* Parent nesting point within multi-mount */
+	struct mapent *parent;
 	char *key;
 	char *mapent;
 	time_t age;
@@ -173,11 +175,12 @@ struct mapent *cache_partial_match(struct mapent_cache *mc, const char *prefix);
 int cache_add(struct mapent_cache *mc, struct map_source *source,
 			const char *key, const char *mapent, time_t age);
 int cache_add_offset(struct mapent_cache *mc, const char *mkey, const char *key, const char *mapent, time_t age);
+int cache_set_parents(struct mapent *mm);
 int cache_update(struct mapent_cache *mc, struct map_source *source,
 			const char *key, const char *mapent, time_t age);
 int cache_delete(struct mapent_cache *mc, const char *key);
-void cache_multi_lock(struct mapent_cache *mc);
-void cache_multi_unlock(struct mapent_cache *mc);
+void cache_multi_lock(struct mapent *me);
+void cache_multi_unlock(struct mapent *me);
 int cache_delete_offset_list(struct mapent_cache *mc, const char *key);
 void cache_release(struct map_source *map);
 struct mapent *cache_enumerate(struct mapent_cache *mc, struct mapent *me);

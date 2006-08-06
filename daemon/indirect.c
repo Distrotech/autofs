@@ -366,29 +366,10 @@ force_umount:
 
 static int expire_indirect(int ioctlfd, const char *path, unsigned int when, unsigned int count, unsigned int logopt)
 {
-	char *estr, buf[MAX_ERR_BUF];
 	int ret, retries = count;
 
 	while (retries--) {
 		struct timespec tm = {0, 100000000};
-		int busy = 0;
-
-		ret = ioctl(ioctlfd, AUTOFS_IOC_ASKUMOUNT, &busy);
-		if (ret == -1) {
-			/* Mount has gone away */
-			if (errno == EBADF || errno == EINVAL)
-				return 1;
-
-			estr = strerror_r(errno, buf, MAX_ERR_BUF);
-			error(logopt, "ioctl failed: %s", estr);
-			return 0;
-		}
-
-		/* No need to go further */
-		if (busy)
-			return 0;
-
-		sched_yield();
 
 		/* Ggenerate expire message for the mount. */
 		ret = ioctl(ioctlfd, AUTOFS_IOC_EXPIRE_DIRECT, &when);
@@ -397,7 +378,7 @@ static int expire_indirect(int ioctlfd, const char *path, unsigned int when, uns
 			if (errno == EBADF || errno == EINVAL)
 				return 1;
 
-			/* Need to wait for the kernel ? */
+			/* Other than need to wait for the kernel ? */
 			if (errno != EAGAIN)
 				return 0;
 		}
@@ -480,11 +461,10 @@ void *expire_proc_indirect(void *arg)
 
 		if (*me->key == '/') {
 			ioctlfd = me->ioctlfd;
-			cache_unlock(me->source->mc);
 		} else {
 			ioctlfd = ap->ioctlfd;
-			cache_unlock(me->source->mc);
 		}
+		cache_unlock(me->source->mc);
 
 		debug(ap->logopt, "expire %s", next->path);
 
@@ -502,7 +482,7 @@ void *expire_proc_indirect(void *arg)
 	 * have some offset mounts with no '/' offset so we need to
 	 * umount them here.
 	 */
-	limit = count_mounts(ap, ap->path);
+	limit = count_mounts(ap, ap->path) * 2;
 	ret = expire_indirect(ap->ioctlfd, ap->path, now, limit, ap->logopt);
 	if (!ret) {
 		debug(ap->logopt,
@@ -525,28 +505,22 @@ void *expire_proc_indirect(void *arg)
 	}
 	free_mnt_list(mnts);
 
-	if (submnts) {
+	if (submnts)
 		debug(ap->logopt,
 		      "%d submounts remaining in %s", submnts, ap->path);
-		ea->status = 1;
-		pthread_exit(NULL);
-	}
 
 	/* 
 	 * EXPIRE_MULTI is synchronous, so we can be sure (famous last
 	 * words) the umounts are done by the time we reach here
 	 */
-	if (count) {
+	if (count)
 		debug(ap->logopt, "%d remaining in %s", count, ap->path);
-		ea->status = 1;
-		pthread_exit(NULL);
-	}
 
 	/* If we are trying to shutdown make sure we can umount */
 	if (!ioctl(ap->ioctlfd, AUTOFS_IOC_ASKUMOUNT, &ret)) {
 		if (!ret) {
 			warn(ap->logopt, "mount still busy %s", ap->path);
-			ea->status = 1;
+			ea->status++;
 		}
 	}
 

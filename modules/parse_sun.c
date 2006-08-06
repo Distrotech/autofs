@@ -645,12 +645,7 @@ add_offset_entry(struct autofs_point *ap, const char *name,
 	} else
 		strcpy(m_mapent, loc);
 
-	cache_readlock(mc);
-	cache_multi_lock(mc);
 	ret = cache_add_offset(mc, name, m_key, m_mapent, age);
-	cache_multi_unlock(mc);
-	cache_unlock(mc);
-
 	if (ret == CHE_OK)
 		debug(ap->logopt, MODPREFIX
 		      "added multi-mount offset %s -> %s", path, m_mapent);
@@ -956,22 +951,25 @@ int parse_mount(struct autofs_point *ap, const char *name,
 				return 1;
 			}
 		}
+		cache_unlock(mc);
 
+		cache_readlock(mc);
 		me = cache_lookup_distinct(mc, name);
 		if (me) {
 			/* So we know we're the multi-mount root */
 			if (!me->multi)
 				me->multi = me;
 		}
-		cache_unlock(mc);
 
 		if (!me) {
 			error(ap->logopt,
 			      MODPREFIX "can't find multi root %s", name);
 			free(options);
+			cache_unlock(mc);
 			return 1;
 		}
 
+		cache_multi_lock(me);
 		/* It's a multi-mount; deal with it */
 		do {
 			char *path, *myoptions, *loc;
@@ -991,10 +989,8 @@ int parse_mount(struct autofs_point *ap, const char *name,
 
 			if (!path) {
 				warn(ap->logopt, MODPREFIX "null path or out of memory");
-				cache_readlock(mc);
-				cache_multi_lock(mc);
 				cache_delete_offset_list(mc, name);
-				cache_multi_unlock(mc);
+				cache_multi_unlock(me);
 				cache_unlock(mc);
 				free(options);
 				return 1;
@@ -1005,10 +1001,8 @@ int parse_mount(struct autofs_point *ap, const char *name,
 
 			l = parse_mapent(p, options, &myoptions, &loc, ap->logopt);
 			if (!l) {
-				cache_readlock(mc);
-				cache_multi_lock(mc);
 				cache_delete_offset_list(mc, name);
-				cache_multi_unlock(mc);
+				cache_multi_unlock(me);
 				cache_unlock(mc);
 				free(path);
 				free(options);
@@ -1027,10 +1021,8 @@ int parse_mount(struct autofs_point *ap, const char *name,
 
 			if (status != CHE_OK) {
 				warn(ap->logopt, MODPREFIX "error adding multi-mount");
-				cache_readlock(mc);
-				cache_multi_lock(mc);
 				cache_delete_offset_list(mc, name);
-				cache_multi_unlock(mc);
+				cache_multi_unlock(me);
 				cache_unlock(mc);
 				free(path);
 				free(options);
@@ -1044,19 +1036,11 @@ int parse_mount(struct autofs_point *ap, const char *name,
 			free(myoptions);
 		} while (*p == '/');
 
-		cache_readlock(mc);
-		me = cache_lookup_distinct(mc, name);
-		if (!me) {
-			error(ap->logopt,
-			      MODPREFIX
-			      "failed to find cache entry for %s", name);
-			cache_multi_lock(mc);
-			cache_delete_offset_list(mc, name);
-			cache_multi_unlock(mc);
-			cache_unlock(mc);
-			free(options);
-			return 1;
-		}
+		/*
+		 * We've got the ordered list of multi-mount entries so go
+		 * through and set the parent entry of each
+		 */
+		cache_set_parents(me);
 
 		/* Mount root offset if it exists */
 		ro = cache_lookup_offset("/", "/", strlen(m_root), &me->multi_list);
@@ -1068,9 +1052,8 @@ int parse_mount(struct autofs_point *ap, const char *name,
 			if (!rv) {
 				warn(ap->logopt,
 				      MODPREFIX "failed to mount root offset");
-				cache_multi_lock(mc);
 				cache_delete_offset_list(mc, name);
-				cache_multi_unlock(mc);
+				cache_multi_unlock(me);
 				cache_unlock(mc);
 				free(options);
 				return 1;
@@ -1086,9 +1069,8 @@ int parse_mount(struct autofs_point *ap, const char *name,
 				warn(ap->logopt,
 				      MODPREFIX
 				      "mount multi-mount root %s failed", name);
-				cache_multi_lock(mc);
 				cache_delete_offset_list(mc, name);
-				cache_multi_unlock(mc);
+				cache_multi_unlock(me);
 				cache_unlock(mc);
 				free(options);
 				return rv;
@@ -1098,9 +1080,12 @@ int parse_mount(struct autofs_point *ap, const char *name,
 		if (!mount_multi_triggers(ap, m_root, me, "/")) {
 			warn(ap->logopt,
 			      MODPREFIX "failed to mount offset triggers");
+			cache_multi_unlock(me);
+			cache_unlock(mc);
 			free(options);
 			return 1;
 		}
+		cache_multi_unlock(me);
 		cache_unlock(mc);
 
 		free(options);
@@ -1217,11 +1202,13 @@ int parse_mount(struct autofs_point *ap, const char *name,
 
 		me = lookup_source_mapent(oap, name, LKP_DISTINCT);
 		if (me) {
+			struct mapent *mm;
 			char *m_key;
 			int start;
 			char *base, *m_root;
 
 			mc = me->source->mc;
+			mm = me->multi;
 
 			if (!me->multi) {
 				cache_unlock(mc);
@@ -1253,13 +1240,13 @@ int parse_mount(struct autofs_point *ap, const char *name,
 
 			base = &me->key[start];
 
-			cache_multi_lock(mc);
+			cache_multi_lock(mm);
 			if (!mount_multi_triggers(oap, m_root, me->multi, base)) {
 				error(ap->logopt,
 				      MODPREFIX "failed to mount offset triggers");
 				rv = 1;
 			}
-			cache_multi_unlock(mc);
+			cache_multi_unlock(mm);
 			cache_unlock(mc);
 		}
 	}

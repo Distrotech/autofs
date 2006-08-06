@@ -59,7 +59,7 @@ inkludera nätfilsystem, CD-ROM, floppydiskar, och så vidare.
 echo %{version}-%{release} > .version
 
 %build
-CFLAGS="$RPM_OPT_FLAGS -Wall" ./configure --libdir=%{_libdir} --enable-ignore-busy
+CFLAGS="$RPM_OPT_FLAGS -Wall" ./configure --libdir=%{_libdir} --disable-mount-locking --enable-ignore-busy
 CFLAGS="$RPM_OPT_FLAGS -Wall" make initdir=/etc/rc.d/init.d DONTSTRIP=1
 
 %install

@@ -98,11 +98,14 @@ void cache_lock_cleanup(void *arg)
 	cache_unlock(mc);
 }
 
-void cache_multi_lock(struct mapent_cache *mc)
+void cache_multi_lock(struct mapent *me)
 {
 	int status;
 
-	status = pthread_mutex_lock(&mc->multi_mutex);
+	if (!me)
+		return;
+
+	status = pthread_mutex_lock(&me->multi_mutex);
 	if (status) {
 		error(LOGOPT_ANY, "mapent cache multi mutex lock failed");
 		fatal(status);
@@ -110,17 +113,21 @@ void cache_multi_lock(struct mapent_cache *mc)
 	return;
 }
 
-void cache_multi_unlock(struct mapent_cache *mc)
+void cache_multi_unlock(struct mapent *me)
 {
 	int status;
 
-	status = pthread_mutex_unlock(&mc->multi_mutex);
+	if (!me)
+		return;
+
+	status = pthread_mutex_unlock(&me->multi_mutex);
 	if (status) {
 		error(LOGOPT_ANY, "mapent cache multi mutex unlock failed");
 		fatal(status);
 	}
 	return;
 }
+
 struct mapent_cache *cache_init(struct map_source *map)
 {
 	struct mapent_cache *mc;
@@ -150,10 +157,6 @@ struct mapent_cache *cache_init(struct map_source *map)
 	}
 
 	status = pthread_rwlock_init(&mc->rwlock, NULL);
-	if (status)
-		fatal(status);
-
-	status = pthread_mutex_init(&mc->multi_mutex, NULL);
 	if (status)
 		fatal(status);
 
@@ -411,6 +414,7 @@ int cache_add(struct mapent_cache *mc, struct map_source *source,
 	struct mapent *me, *existing = NULL;
 	char *pkey, *pent;
 	unsigned int hashval = hash(key);
+	int status;
 
 	me = (struct mapent *) malloc(sizeof(struct mapent));
 	if (!me)
@@ -440,9 +444,14 @@ int cache_add(struct mapent_cache *mc, struct map_source *source,
 	INIT_LIST_HEAD(&me->ino_index);
 	INIT_LIST_HEAD(&me->multi_list);
 	me->multi = NULL;
+	me->parent = NULL;
 	me->ioctlfd = -1;
 	me->dev = (dev_t) -1;
 	me->ino = (ino_t) -1;
+
+	status = pthread_mutex_init(&me->multi_mutex, NULL);
+	if (status)
+		fatal(status);
 
 	/* 
 	 * We need to add to the end if values exist in order to
@@ -526,6 +535,56 @@ done:
 	return ret; 
 }
 
+static struct mapent *get_parent(const char *key, struct list_head *head, struct list_head **pos)
+{
+	struct list_head *next;
+	struct mapent *this, *last;
+	int eq;
+
+	last = NULL;
+	next = *pos ? (*pos)->next : head->next;
+
+	list_for_each(next, head) {
+		this = list_entry(next, struct mapent, multi_list);
+
+		if (!strcmp(this->key, key))
+			break;
+
+		eq = strncmp(this->key, key, strlen(this->key));
+		if (eq == 0) {
+			*pos = next;
+			last = this;
+			continue;
+		}
+	}
+
+	return last;
+}
+
+int cache_set_parents(struct mapent *mm)
+{
+	struct list_head *multi_head, *p, *pos;
+	struct mapent *this;
+
+	if (!mm->multi)
+		return 0;
+
+	pos = NULL;
+	multi_head = &mm->multi->multi_list;
+
+	list_for_each(p, multi_head) {
+		struct mapent *parent;
+		this = list_entry(p, struct mapent, multi_list);
+		parent = get_parent(this->key, multi_head, &pos);
+		if (parent)
+			this->parent = parent;
+		else
+			this->parent = mm->multi;
+	}
+
+	return 1;
+}
+
 /* cache must be write locked by caller */
 int cache_update(struct mapent_cache *mc, struct map_source *source,
 		 const char *key, const char *mapent, time_t age)
@@ -568,7 +627,7 @@ int cache_delete(struct mapent_cache *mc, const char *key)
 {
 	struct mapent *me = NULL, *pred;
 	unsigned int hashval = hash(key);
-	int ret = CHE_OK;
+	int status, ret = CHE_OK;
 
 	me = mc->hash[hashval];
 	if (!me) {
@@ -585,6 +644,9 @@ int cache_delete(struct mapent_cache *mc, const char *key)
 				goto done;
 			}
 			pred->next = me->next;
+			status = pthread_mutex_destroy(&me->multi_mutex);
+			if (status)
+				fatal(status);
 			if (!list_empty(&me->ino_index))
 				list_del(&me->ino_index);
 			free(me->key);
@@ -605,6 +667,9 @@ int cache_delete(struct mapent_cache *mc, const char *key)
 			goto done;
 		}
 		mc->hash[hashval] = me->next;
+		status = pthread_mutex_destroy(&me->multi_mutex);
+		if (status)
+			fatal(status);
 		if (!list_empty(&me->ino_index))
 			list_del(&me->ino_index);
 		free(me->key);
@@ -710,10 +775,6 @@ void cache_release(struct map_source *map)
 	cache_unlock(mc);
 
 	status = pthread_rwlock_destroy(&mc->rwlock);
-	if (status)
-		fatal(status);
-
-	status = pthread_mutex_destroy(&mc->multi_mutex);
 	if (status)
 		fatal(status);
 

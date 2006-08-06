@@ -19,6 +19,8 @@
   patches.
 - tidy up directory cleanup and add validation check to rmdir_path.
 - remove SIGCHLD handler.
+- alter expire locking of multi-mounts to lock sub-tree instead of
+  entire tree.
 
 13/7/2006 autofs-5.0.1 rc1
 --------------------------
