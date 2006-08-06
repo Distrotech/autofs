@@ -31,44 +31,6 @@
 static pthread_mutex_t spawn_mutex = PTHREAD_MUTEX_INITIALIZER;
 #endif
 
-/*
- * SIGCHLD handling.
- *
- * We need to manage SIGCHLD process wide so that when we fork
- * programs we can reap the exit status in the calling thread by
- * blocking the signal. There is also the need to be able to reap
- * the exit status for child processes that are asynchronous to
- * the main program such as submount processes.
- * 
- * The method used to achieve this in our threaded environment
- * is to define a signal handler thread for SIGCHLD (and SIGCONT)
- * and, before we fork, tell it not to wait for signals so that
- * the waitpid in the subroutine that forks and execs can reap the
- * exit status.
- *
- * An added complication is that more than one thread at a time
- * may be forking program execution so we can't just simply tell
- * the handler to start listening for the signal again when done.
- * To deal with this a usage counter is used to identify when
- * there are no more threads that need to obtain an exit status
- * and we can tell the handler to start listening for the signal
- * again.
- */
-struct sigchld_mutex {
-	pthread_mutex_t mutex;
-	pthread_cond_t ready;
-	pthread_t thid;
-	unsigned int catch;
-	unsigned int count;
-};
-
-/* Start out catching SIGCHLD signals */
-static struct sigchld_mutex sm = {PTHREAD_MUTEX_INITIALIZER,
-				  PTHREAD_COND_INITIALIZER,
-				  0, 1, 0};
-
-extern pthread_attr_t thread_attr;
-
 inline void dump_core(void)
 {
 	sigset_t segv;
@@ -79,134 +41,6 @@ inline void dump_core(void)
 	sigprocmask(SIG_UNBLOCK, &segv, NULL);
 
 	raise(SIGSEGV);
-}
-
-void *sigchld(void *dummy)
-{
-	pid_t pid;
-	sigset_t sig_child;
-	int sig;
-	int status;
-
-	sigemptyset(&sig_child);
-	sigaddset(&sig_child, SIGCHLD);
-	sigaddset(&sig_child, SIGCONT);
-
-	while (1) {
-		sigwait(&sig_child, &sig);
-
-		status = pthread_mutex_lock(&sm.mutex);
-		if (status)
-			fatal(status);
-
-		/*
-		 * We could receive SIGCONT from two sources at the same
-		 * time. For example if we are a submount process whose startup
-		 * up is now complete and from a thread performing a fork and
-		 * exec (via sigchld_block below). So we are being told to
-		 * continue at the same time as we are bieng told to wait on
-		 * the condition. In this case catching the signal is enough
-		 * for us to continue and we also wait on the condition
-		 * (sm.catch == 0).
-		 */
-		if (!sm.catch) {
-			status = pthread_cond_wait(&sm.ready, &sm.mutex);
-			if (status)
-				error(LOGOPT_ANY,
-				      "SIGCHLD condition wait failed");
-		}
-
-		if (sig != SIGCONT)
-			while ((pid = waitpid(-1, NULL, WNOHANG)) > 0)
-				debug(LOGOPT_NONE,
-				      "received SIGCHLD from %d", pid);
-
-		status = pthread_mutex_unlock(&sm.mutex);
-		if (status)
-			error(LOGOPT_ANY,
-			      "failed to unlock SIGCHLD handler mutex");
-	}
-}
-
-int sigchld_start_handler(void)
-{
-	pthread_attr_t attrs;
-	pthread_attr_t *pattrs = &attrs;
-	int status;
-
-	status = pthread_attr_init(pattrs);
-	if (status)
-		pattrs = NULL;
-	else {
-		pthread_attr_setdetachstate(pattrs, PTHREAD_CREATE_DETACHED);
-#ifdef _POSIX_THREAD_ATTR_STACKSIZE
-		pthread_attr_setstacksize(pattrs, PTHREAD_STACK_MIN*4);
-#endif
-	}
-
-	status = pthread_create(&sm.thid, pattrs, sigchld, NULL);
-	if (status)
-	 	return 0;
-
-	return 1;
-}
-
-int sigchld_block(void)
-{
-	int status;
-
-	status = pthread_mutex_lock(&sm.mutex);
-	if (status) {
-		error(LOGOPT_ANY, "failed to lock SIGCHLD mutex");
-		return 0;
-	}
-
-	/*
-	 * If this is the first request to block then disable
-	 * signal catching and tell the handler.
-	 */
-	if (sm.count == 0) {
-		sm.catch = 0;
-		pthread_kill(sm.thid, SIGCONT);
-	}
-
-	sm.count++;
-
-	status = pthread_mutex_unlock(&sm.mutex);
-	if (status)
-		error(LOGOPT_ANY, "failed to unlock SIGCHLD mutex");
-
-	return 1;
-}
-
-int sigchld_unblock(void)
-{
-	int status;
-
-	status = pthread_mutex_lock(&sm.mutex);
-	if (status) {
-		error(LOGOPT_ANY, "failed to lock SIGCHLD mutex");
-		return 0;
-	}
-
-	sm.count--;
-
-	/*
-	 * If this is the last request for blocking then enable
-	 * signal catching and tell the handler.
-	 */
-	if (sm.count == 0) {
-		sm.catch = 1;
-		status = pthread_cond_signal(&sm.ready);
-		if (status)
-			error(LOGOPT_ANY, "SIGCHLD condition signal failed");
-	}
-
-	status = pthread_mutex_unlock(&sm.mutex);
-	if (status)
-		error(LOGOPT_ANY, "failed to unlock SIGCHLD mutex");
-	
-	return 1;
 }
 
 /*
@@ -268,20 +102,23 @@ static int do_spawn(logger *log, int use_lock, const char *prog, const char *con
 	int status, pipefd[2];
 	char errbuf[ERRBUFSIZ + 1], *p, *sp;
 	int errp, errn;
-#ifdef ENABLE_MOUNT_LOCKING
 	int cancel_state;
-#endif
+	sigset_t allsigs, tmpsig, oldsig;
 
 	if (pipe(pipefd))
 		return -1;
 
-	sigchld_block();
+	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cancel_state);
+
+	sigfillset(&allsigs);
+	pthread_sigmask(SIG_BLOCK, &allsigs, &oldsig);
 
 #ifdef ENABLE_MOUNT_LOCKING
-	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cancel_state);
 	if (use_lock) {
 		if (pthread_mutex_lock(&spawn_mutex)) {
 			log(LOGOPT_ANY, "failed to lock spawn_mutex");
+			pthread_sigmask(SIG_SETMASK, &oldsig, NULL);
+			pthread_setcancelstate(cancel_state, NULL);
 			return -1;
 		}
 	}
@@ -298,14 +135,20 @@ static int do_spawn(logger *log, int use_lock, const char *prog, const char *con
 		execv(prog, (char *const *) argv);
 		_exit(255);	/* execv() failed */
 	} else {
+		tmpsig = oldsig;
+
+		sigaddset(&tmpsig, SIGCHLD);
+		pthread_sigmask(SIG_SETMASK, &tmpsig, NULL);
+
 		close(pipefd[1]);
 
 		if (f < 0) {
 			close(pipefd[0]);
+			pthread_sigmask(SIG_SETMASK, &oldsig, NULL);
 #ifdef ENABLE_MOUNT_LOCKING
 			spawn_unlock(&use_lock);
 #endif
-			sigchld_unblock();
+			pthread_setcancelstate(cancel_state, NULL);
 			return -1;
 		}
 
@@ -350,11 +193,11 @@ static int do_spawn(logger *log, int use_lock, const char *prog, const char *con
 		if (waitpid(f, &status, 0) != f)
 			status = -1;	/* waitpid() failed */
 
+		pthread_sigmask(SIG_SETMASK, &oldsig, NULL);
 #ifdef ENABLE_MOUNT_LOCKING
 		spawn_unlock(&use_lock);
-		pthread_setcancelstate(cancel_state, &cancel_state);
 #endif
-		sigchld_unblock();
+		pthread_setcancelstate(cancel_state, NULL);
 
 		return status;
 	}

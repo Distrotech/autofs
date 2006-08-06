@@ -18,6 +18,7 @@
 - cthon fix expire of wildcard and program mounts broken by above
   patches.
 - tidy up directory cleanup and add validation check to rmdir_path.
+- remove SIGCHLD handler.
 
 13/7/2006 autofs-5.0.1 rc1
 --------------------------

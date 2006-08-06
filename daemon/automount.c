@@ -1519,13 +1519,6 @@ int main(int argc, char *argv[])
 		close(start_pipefd[1]);
 		exit(1);
 	}
-
-	if (!sigchld_start_handler()) {
-		crit(LOGOPT_ANY, "failed to create SIGCHLD handler thread!");
-		master_kill(master_list);
-		close(start_pipefd[1]);
-		exit(1);
-	}
 #if 0
 	if (!load_autofs4_module()) {
 		crit(LOGOPT_ANY, "%s: can't load %s filesystem module",

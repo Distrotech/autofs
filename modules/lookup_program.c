@@ -174,19 +174,14 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 	 * want to send stderr to the syslog, and we don't use spawnl()
 	 * because we need the pipe hooks
 	 */
-
-	sigchld_block();
-
 	if (pipe(pipefd)) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
 		error(ap->logopt, MODPREFIX "pipe: %s", estr);
-		sigchld_unblock();
 		goto out_free;
 	}
 	if (pipe(epipefd)) {
 		close(pipefd[0]);
 		close(pipefd[1]);
-		sigchld_unblock();
 		goto out_free;
 	}
 
@@ -198,7 +193,6 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 		close(pipefd[1]);
 		close(epipefd[0]);
 		close(epipefd[1]);
-		sigchld_unblock();
 		goto out_free;
 	} else if (f == 0) {
 		reset_signals();
@@ -338,8 +332,6 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 		error(ap->logopt, MODPREFIX "waitpid: %s", estr);
 		goto out_free;
 	}
-
-	sigchld_unblock();
 
 	if (mapp == mapent || !WIFEXITED(status) || WEXITSTATUS(status) != 0) {
 		error(ap->logopt, MODPREFIX "lookup for %s failed", name);

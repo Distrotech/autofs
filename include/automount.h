@@ -191,9 +191,6 @@ int compare_argv(int argc1, const char **argv1, int argc2, const char **argv2);
 int free_argv(int argc, const char **argv);
 
 inline void dump_core(void);
-int sigchld_start_handler(void);
-int sigchld_block(void);
-int sigchld_unblock(void);
 int aquire_lock(void);
 void release_lock(void);
 int spawnl(logger *log, const char *prog, ...);
