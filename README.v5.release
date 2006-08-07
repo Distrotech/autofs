@@ -36,7 +36,7 @@ New in 5.0.0 is:
 
 - improved direct mount map support
   - single level map entries now work as expected.
-  - top level directory of direct mount heirachy no longer obscurses
+  - top level directory of direct mount hierarchy no longer obscures
     directory tree below.
 
 - `+' map inclusion
@@ -46,10 +46,10 @@ New in 5.0.0 is:
 - added nsswitch map source support
   - is now used to locate maps if no map source is given in their
     specification.
-  - is used for bothe master map and mount maps.
+  - is used for both master map and mount maps.
 
 - rewrote multi-mount map code
-  - multi-mount map entry offsets now mount and expire indpendently
+  - multi-mount map entry offsets now mount and expire independently
     instead of having to mount and umount all offset entries at once.
 
 - added LDAP encryption and authentication support
@@ -65,13 +65,13 @@ New in 5.0.0 is:
   - an entry like "/net -hosts" is now understood and uses the new
     multi-mount semantics for lazy mount/umount of exports from the host.
   - the implementation is quite simple minded at this stage and will need
-    refinment. It just iterates through the host table and addes any host
+    refinement. It just iterates through the host table and adds any host
     names it finds to the internal map.
 
 Things not yet done
 ===================
 
-- I have no way to test the Gentoo setup here anymore so it is unlikey
+- I have no way to test the Gentoo setup here anymore so it is unlikely
   to work. Patches from anyone who needs this are welcome.
 
 Ian

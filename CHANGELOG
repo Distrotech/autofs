@@ -23,6 +23,7 @@
   entire tree.
 - review verbose message feedback and update.
 - correction for expire of multi-mounts.
+- spelling corrections to release notes (Jeff Moyer).
 
 13/7/2006 autofs-5.0.1 rc1
 --------------------------
