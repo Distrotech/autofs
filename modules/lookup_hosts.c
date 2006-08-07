@@ -186,6 +186,7 @@ done:
 		ap->entry->current = source;
 
 		debug(ap->logopt, MODPREFIX "%s -> %s", name, me->mapent);
+
 		ret = ctxt->parse->parse_mount(ap, name, name_len,
 				 mapent, ctxt->parse->context);
 

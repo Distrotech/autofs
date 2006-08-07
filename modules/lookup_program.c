@@ -334,7 +334,7 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 	}
 
 	if (mapp == mapent || !WIFEXITED(status) || WEXITSTATUS(status) != 0) {
-		error(ap->logopt, MODPREFIX "lookup for %s failed", name);
+		msg(MODPREFIX "lookup for %s failed", name);
 		goto out_free;
 	}
 

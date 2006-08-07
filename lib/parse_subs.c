@@ -463,6 +463,7 @@ cont:
 		 * the offset triggers back.
 		 */
 		if (is_mounted(_PATH_MOUNTED, path, MNTS_REAL)) {
+			msg("unmounting dir = %s", root);
 			if (umount_ent(ap, root)) {
 				if (!mount_multi_triggers(ap, root, me, "/"))
 					warn(ap->logopt,

@@ -196,9 +196,8 @@ get_server_SASL_mechanisms(LDAP *ld)
 	ldap_msgfree(results);
 	if (mechanisms == NULL) {
 		/* Well, that was a waste of time. */
-		info(LOGOPT_ANY,
-		     "No SASL authentication mechanisms are supported"
-		     " by the LDAP server.\n");
+		msg("No SASL authentication mechanisms are supported"
+		    " by the LDAP server.\n");
 		return NULL;
 	}
 

@@ -199,10 +199,10 @@ int do_umount_autofs_direct(struct autofs_point *ap, struct mnt_list *mnts, stru
 
 force_umount:
 	if (rv != 0) {
-		msg("forcing umount of %s", me->key);
+		msg("forcing umount of direct mount %s", me->key);
 		rv = umount2(me->key, MNT_DETACH);
 	} else
-		msg("umounted %s", me->key);
+		msg("umounted direct mount %s", me->key);
 
 	if (!rv && me->dir_created) {
 		if  (rmdir(me->key) == -1) {
@@ -371,6 +371,8 @@ int do_mount_autofs_direct(struct autofs_point *ap, struct mnt_list *mnts, struc
 		crit(ap->logopt, "failed to mount autofs path %s", me->key);
 		goto out_err;
 	}
+
+	msg("mounted autofs direct mount on %s", me->key);
 
 	/* Root directory for ioctl()'s */
 	ioctlfd = open(me->key, O_RDONLY);
@@ -583,10 +585,10 @@ int umount_autofs_offset(struct autofs_point *ap, struct mapent *me)
 
 force_umount:
 	if (rv != 0) {
-		msg("forcing umount of %s", me->key);
+		msg("forcing umount of offset mount %s", me->key);
 		rv = umount2(me->key, MNT_DETACH);
 	} else
-		msg("umounted offset %s", me->key);
+		msg("umounted offset mount %s", me->key);
 
 	return rv;
 }
@@ -741,6 +743,7 @@ static int expire_direct(int ioctlfd, const char *path, unsigned int when, unsig
 			if (errno != EAGAIN)
 				return 0;
 		}
+
 		nanosleep(&tm, NULL);
 	}
 
@@ -817,8 +820,7 @@ void *expire_proc_direct(void *arg)
 
 		ret = expire_direct(ioctlfd, next->path, now, ap->logopt);
 		if (!ret) {
-			debug(ap->logopt,
-			     "failed to expire mount %s", next->path);
+			msg("mount apparently busy %s", next->path);
 			ea->status++;
 		}
 	}

@@ -129,9 +129,8 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 	}
 
 	if (err) {
-		error(ap->logopt,
-		      MODPREFIX "failed to mount %s (type %s) on %s",
-		      what, fstype, fullpath);
+		msg(MODPREFIX "failed to mount %s (type %s) on %s",
+		    what, fstype, fullpath);
 
 		if (ap->type != LKP_INDIRECT)
 			return 1;
@@ -141,9 +140,8 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 
 		return 1;
 	} else {
-		debug(ap->logopt,
-		      MODPREFIX "mounted %s type %s on %s",
-		      what, fstype, fullpath);
+		msg(MODPREFIX "mounted %s type %s on %s",
+		    what, fstype, fullpath);
 		return 0;
 	}
 }

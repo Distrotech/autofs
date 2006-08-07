@@ -239,8 +239,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 		}
 
 		if (!err) {
-			debug(ap->logopt,
-			      MODPREFIX "mounted %s on %s", loc, fullpath);
+			msg(MODPREFIX "mounted %s on %s", loc, fullpath);
 			free(loc);
 			free_host_list(&hosts);
 			return 0;
@@ -254,8 +253,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 
 	/* If we get here we've failed to complete the mount */
 
-	error(ap->logopt,
-	      MODPREFIX "nfs: mount failure %s on %s", what, fullpath);
+	msg(MODPREFIX "nfs: mount failure %s on %s", what, fullpath);
 
 	if (ap->type != LKP_INDIRECT)
 		return 1;

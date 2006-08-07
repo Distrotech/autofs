@@ -444,7 +444,7 @@ int umount_multi(struct autofs_point *ap, const char *path, int incl)
 	 * it already to ensure it's ok to remove any offset triggers
 	 */
 	if (me != me->multi) {
-		warn(ap->logopt, "unmounting dir = %s", path);
+		msg("unmounting dir = %s", path);
 
 		if (umount_ent(ap, path)) {
 			warn(ap->logopt, "could not umount dir %s", path);

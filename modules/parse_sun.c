@@ -620,7 +620,7 @@ add_offset_entry(struct autofs_point *ap, const char *name,
 		p_len--;
 	m_key_len = m_root_len + p_len;
 	if (m_key_len > PATH_MAX) {
-		warn(ap->logopt, MODPREFIX "multi mount key too long");
+		error(ap->logopt, MODPREFIX "multi mount key too long");
 		return CHE_FAIL;
 	}
 	strcpy(m_key, m_root);
@@ -633,7 +633,7 @@ add_offset_entry(struct autofs_point *ap, const char *name,
 
 	m_mapent_len = strlen(loc);
 	if (m_mapent_len + m_options_len > MAPENT_MAX_LEN) {
-		warn(ap->logopt, MODPREFIX "multi mount mapent too long");
+		error(ap->logopt, MODPREFIX "multi mount mapent too long");
 		return CHE_FAIL;
 	}
 

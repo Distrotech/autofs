@@ -66,6 +66,7 @@ int mount_init(void **context)
 	}
 
 	debug(LOGOPT_NONE, MODPREFIX "bind_works = %d", bind_works);
+
 	spawnl(log_debug,
 	       PATH_UMOUNT, PATH_UMOUNT, "-n", tmp2, NULL);
 

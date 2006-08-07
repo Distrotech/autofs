@@ -75,17 +75,15 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 	ctxt->mapname = argv[0];
 
 	if (ctxt->mapname[0] != '/') {
-		debug(LOGOPT_NONE,
-		      MODPREFIX "file map %s is not an absolute pathname",
-		      ctxt->mapname);
+		msg(MODPREFIX "file map %s is not an absolute pathname",
+		    ctxt->mapname);
 		free(ctxt);
 		return 1;
 	}
 
 	if (access(ctxt->mapname, R_OK)) {
-		warn(LOGOPT_ANY,
-		     MODPREFIX "file map %s missing or not readable",
-		     ctxt->mapname);
+		msg(MODPREFIX "file map %s missing or not readable",
+		    ctxt->mapname);
 		free(ctxt);
 		return 1;
 	}
@@ -1051,6 +1049,7 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 
 			debug(ap->logopt,
 			      MODPREFIX "check indirect map lookup failed");
+
 			return NSS_STATUS_NOTFOUND;
 		}
 	}

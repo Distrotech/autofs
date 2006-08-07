@@ -171,6 +171,8 @@ static int do_mount_autofs_indirect(struct autofs_point *ap)
 
 	options = NULL;
 
+	msg("mounted autofs indirect mount on %s", ap->path);
+
 	/* Root directory for ioctl()'s */
 	ap->ioctlfd = open(ap->path, O_RDONLY);
 	if (ap->ioctlfd < 0) {
@@ -353,10 +355,11 @@ int umount_autofs_indirect(struct autofs_point *ap)
 
 force_umount:
 	if (rv != 0) {
-		warn(ap->logopt, "forcing umount of %s", ap->path);
+		warn(ap->logopt,
+		     "forcing umount of indirect mount %s", ap->path);
 		rv = umount2(ap->path, MNT_DETACH);
 	} else {
-		msg("umounted %s", ap->path);
+		msg("umounted indirect mount %s", ap->path);
 		if (ap->submount)
 			rm_unwanted(ap->path, 1, ap->dev);
 	}
@@ -470,8 +473,7 @@ void *expire_proc_indirect(void *arg)
 
 		ret = expire_indirect(ioctlfd, next->path, now, retries, ap->logopt);
 		if (!ret) {
-			debug(ap->logopt,
-			      "failed to expire mount %s", next->path);
+			msg("mount apparently busy %s", next->path);
 			ea->status++;
 		}
 	}
