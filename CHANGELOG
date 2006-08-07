@@ -22,6 +22,7 @@
 - alter expire locking of multi-mounts to lock sub-tree instead of
   entire tree.
 - review verbose message feedback and update.
+- correction for expire of multi-mounts.
 
 13/7/2006 autofs-5.0.1 rc1
 --------------------------

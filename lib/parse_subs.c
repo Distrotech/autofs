@@ -462,7 +462,7 @@ cont:
 		 * delete the offsets from the cache and we need to put
 		 * the offset triggers back.
 		 */
-		if (is_mounted(_PATH_MOUNTED, path, MNTS_REAL)) {
+		if (is_mounted(_PATH_MOUNTED, root, MNTS_REAL)) {
 			msg("unmounting dir = %s", root);
 			if (umount_ent(ap, root)) {
 				if (!mount_multi_triggers(ap, root, me, "/"))

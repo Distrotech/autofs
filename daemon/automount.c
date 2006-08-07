@@ -375,6 +375,7 @@ int umount_multi(struct autofs_point *ap, const char *path, int incl)
 	struct statfs fs;
 	int is_autofs_fs;
 	int ret, left;
+	unsigned int is_mm_root;
 
 	debug(ap->logopt, "path %s incl %d", path, incl);
 
@@ -404,6 +405,7 @@ int umount_multi(struct autofs_point *ap, const char *path, int incl)
 	cache_multi_lock(me->parent);
 
 	mc = me->source->mc;
+	is_mm_root = (me->multi == me);
 
 	left = 0;
 
@@ -414,7 +416,7 @@ int umount_multi(struct autofs_point *ap, const char *path, int incl)
 		if (ap->submount)
 			oap = ap->parent;
 
-		if (me == me->multi && !strchr(me->key, '/')) {
+		if (is_mm_root && !strchr(me->key, '/')) {
 			/* Indirect multi-mount root */
 			root = alloca(strlen(ap->path) + strlen(me->key) + 2);
 			strcpy(root, ap->path);
@@ -443,7 +445,7 @@ int umount_multi(struct autofs_point *ap, const char *path, int incl)
 	 * If this is the root of a multi-mount we've had to umount
 	 * it already to ensure it's ok to remove any offset triggers
 	 */
-	if (me != me->multi) {
+	if (!is_mm_root) {
 		msg("unmounting dir = %s", path);
 
 		if (umount_ent(ap, path)) {
