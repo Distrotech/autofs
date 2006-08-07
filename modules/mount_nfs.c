@@ -227,7 +227,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 
 			err = spawnll(log_debug,
 				     PATH_MOUNT, PATH_MOUNT, "-t",
-				     "nfs", "-o", nfsoptions,
+				     "nfs", SLOPPYOPT "-o", nfsoptions,
 				     loc, fullpath, NULL);
 		} else {
 			debug(ap->logopt,
