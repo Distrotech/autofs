@@ -25,6 +25,7 @@
 - correction for expire of multi-mounts.
 - spelling corrections to release notes (Jeff Moyer).
 - expire individual submounts.
+- add ino_index locking.
 
 13/7/2006 autofs-5.0.1 rc1
 --------------------------

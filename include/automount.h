@@ -129,6 +129,7 @@ struct autofs_point;
 struct mapent_cache {
 	pthread_rwlock_t rwlock;
 	unsigned int size;
+	pthread_mutex_t ino_index_mutex;
 	struct list_head *ino_index;
 	struct mapent **hash;
 };

@@ -96,6 +96,7 @@ void cache_lock_cleanup(void *arg)
 	struct mapent_cache *mc = (struct mapent_cache *) arg;
 
 	cache_unlock(mc);
+	return;
 }
 
 void cache_multi_lock(struct mapent *me)
@@ -128,6 +129,29 @@ void cache_multi_unlock(struct mapent *me)
 	return;
 }
 
+void cache_multi_lock_cleanup(void *arg)
+{
+	struct mapent *me = (struct mapent *) arg;
+	cache_multi_unlock(me);
+	return;
+}
+
+static inline void ino_index_lock(struct mapent_cache *mc)
+{
+	int status = pthread_mutex_lock(&mc->ino_index_mutex);
+	if (status)
+		fatal(status);
+	return;
+}
+
+static inline void ino_index_unlock(struct mapent_cache *mc)
+{
+	int status = pthread_mutex_unlock(&mc->ino_index_mutex);
+	if (status)
+		fatal(status);
+	return;
+}
+
 struct mapent_cache *cache_init(struct map_source *map)
 {
 	struct mapent_cache *mc;
@@ -155,6 +179,10 @@ struct mapent_cache *cache_init(struct map_source *map)
 		free(mc);
 		return NULL;
 	}
+
+	status = pthread_mutex_init(&mc->ino_index_mutex, NULL);
+	if (status)
+		fatal(status);
 
 	status = pthread_rwlock_init(&mc->rwlock, NULL);
 	if (status)
@@ -201,10 +229,12 @@ int cache_set_ino_index(struct mapent_cache *mc, const char *key, dev_t dev, ino
 	if (!me)
 		return 0;
 
+	ino_index_lock(mc);
+	list_del_init(&me->ino_index);
 	list_add(&me->ino_index, &mc->ino_index[ino_index]);
-
 	me->dev = dev;
 	me->ino = ino;
+	ino_index_unlock(mc);
 
 	return 1;
 }
@@ -216,6 +246,7 @@ struct mapent *cache_lookup_ino(struct mapent_cache *mc, dev_t dev, ino_t ino)
 	struct list_head *head, *p;
 	unsigned int ino_index;
 
+	ino_index_lock(mc);
 	ino_index = ino_hash(dev, ino);
 	head = &mc->ino_index[ino_index];
 
@@ -225,8 +256,10 @@ struct mapent *cache_lookup_ino(struct mapent_cache *mc, dev_t dev, ino_t ino)
 		if (me->dev != dev || me->ino != ino)
 			continue;
 
+		ino_index_unlock(mc);
 		return me;
 	}
+	ino_index_unlock(mc);
 	return NULL;
 }
 
@@ -647,8 +680,9 @@ int cache_delete(struct mapent_cache *mc, const char *key)
 			status = pthread_mutex_destroy(&me->multi_mutex);
 			if (status)
 				fatal(status);
-			if (!list_empty(&me->ino_index))
-				list_del(&me->ino_index);
+			ino_index_lock(mc);
+			list_del(&me->ino_index);
+			ino_index_unlock(mc);
 			free(me->key);
 			if (me->mapent)
 				free(me->mapent);
@@ -670,8 +704,9 @@ int cache_delete(struct mapent_cache *mc, const char *key)
 		status = pthread_mutex_destroy(&me->multi_mutex);
 		if (status)
 			fatal(status);
-		if (!list_empty(&me->ino_index))
-			list_del(&me->ino_index);
+		ino_index_lock(mc);
+		list_del(&me->ino_index);
+		ino_index_unlock(mc);
 		free(me->key);
 		if (me->mapent)
 			free(me->mapent);
@@ -773,6 +808,10 @@ void cache_release(struct map_source *map)
 	map->mc = NULL;
 
 	cache_unlock(mc);
+
+	status = pthread_mutex_destroy(&mc->ino_index_mutex);
+	if (status)
+		fatal(status);
 
 	status = pthread_rwlock_destroy(&mc->rwlock);
 	if (status)
