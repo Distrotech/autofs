@@ -95,7 +95,6 @@ int master_add_autofs_point(struct master_mapent *entry,
 		free(ap);
 		return 0;
 	}
-	INIT_LIST_HEAD(&ap->state_queue);
 
 	status = pthread_mutex_init(&ap->mounts_mutex, NULL);
 	if (status) {
@@ -735,34 +734,68 @@ int master_read_master(struct master *master, time_t age, int readall)
 	return 1;
 }
 
-void master_notify_submounts(struct autofs_point *ap, enum states state)
+int master_submount_list_empty(struct autofs_point *ap)
+{
+	int res = 0;
+
+	mounts_mutex_lock(ap);
+	if (list_empty(&ap->submounts))
+		res = 1;
+	mounts_mutex_unlock(ap);
+
+	return res;
+}
+
+int master_notify_submount(struct autofs_point *ap, const char *path, enum states state)
 {
 	struct list_head *head, *p;
 	struct autofs_point *this;
 	pthread_t thid;
-	int status;
-
-	/* Initiate from master entries only */
-	if (ap->submount || list_empty(&ap->submounts))
-		return;
+	size_t plen = strlen(path);
+	int status, ret = 1;
 
 	mounts_mutex_lock(ap);
 
 	head = &ap->submounts;
-	p = head->next;
+	p = head->prev;
 	while (p != head) {
+		size_t len;
+
 		this = list_entry(p, struct autofs_point, mounts);
+		p = p->prev;
 
-		p = p->next;
+		if (!master_submount_list_empty(this)) {
+			if (!master_notify_submount(this, path, state)) {
+				ret = 0;
+				break;
+			}
+		}
 
-		if (!list_empty(&this->submounts))
-			master_notify_submounts(this, state);
+		len = strlen(this->path);
+
+		/* Initial path not the same */
+		if (strncmp(this->path, path, len))
+			continue;
+
+		/*
+		 * Part of submount tree?
+		 * We must wait till we get to submount itself.
+		 * If it is tell caller by returning true.
+		 */
+		if (plen > len) {
+			/* Not part of this directory tree */
+			if (path[len] != '/')
+				continue;
+			break;
+		}
+
+		/* Now we have a submount to expire */
 
 		state_mutex_lock(this);
 
 		if (this->state == ST_SHUTDOWN) {
 			state_mutex_unlock(this);
-			continue;
+			break;
 		}
 
 		nextstate(this->state_pipe[1], state);
@@ -775,17 +808,21 @@ void master_notify_submounts(struct autofs_point *ap, enum states state)
 			status = pthread_cond_wait(&ap->mounts_cond, &ap->mounts_mutex);
 			if (status)
 				fatal(status);
-			if (ap->mounts_signaled == MASTER_SUBMNT_JOIN) {
-				status = pthread_join(thid, NULL);
-				if (status)
-					fatal(status);
-			}
 		}
+
+		if (ap->mounts_signaled == MASTER_SUBMNT_JOIN) {
+			status = pthread_join(thid, NULL);
+			if (status)
+				fatal(status);
+		} else
+			ret = 0;
+
+		break;
 	}
 
 	mounts_mutex_unlock(ap);
 
-	return;
+	return ret;
 }
 
 void master_signal_submount(struct autofs_point *ap, unsigned int join)
@@ -797,13 +834,13 @@ void master_signal_submount(struct autofs_point *ap, unsigned int join)
 
 	mounts_mutex_lock(ap->parent);
 
-	if (join) {
+	ap->parent->mounts_signaled = join;
+
+	if (join == MASTER_SUBMNT_JOIN) {
 		/* We are finishing up */
 		ap->parent->submnt_count--;
 		list_del(&ap->mounts);
-		ap->parent->mounts_signaled = 1;
-	} else
-		ap->parent->mounts_signaled = 2;
+	}
 
 	status = pthread_cond_signal(&ap->parent->mounts_cond);
 	if (status)

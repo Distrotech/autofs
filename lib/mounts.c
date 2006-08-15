@@ -149,7 +149,7 @@ struct mnt_list *get_mnt_list(const char *table, const char *path, int include)
 		mptr = list;
 		last = NULL;
 		while (mptr) {
-			if (len > strlen(mptr->path))
+			if (len >= strlen(mptr->path))
 				break;
 			last = mptr;
 			mptr = mptr->next;

@@ -786,18 +786,23 @@ void *expire_proc_direct(void *arg)
 	if (status)
 		fatal(status);
 
-	master_notify_submounts(ap, ap->state);
-
 	/* Get a list of real mounts and expire them if possible */
 	mnts = get_mnt_list(_PROC_MOUNTS, "/", 0);
 	for (next = mnts; next; next = next->next) {
-		/* Skip submounts */
-		if (strstr(next->fs_type, "indirect"))
-			continue;
+		if (!strcmp(next->fs_type, "autofs")) {
+			/*
+			 * If we have submounts check if this path lives below
+			 * one of them and pass on state change.
+			 */
+			if (strstr(next->opts, "indirect")) {
+				master_notify_submount(ap, next->path, ap->state);
+				continue;
+			}
 
-		/* Skip offsets */
-		if (strstr(next->opts, "offset"))
-			continue;
+			/* Skip offsets */
+			if (strstr(next->opts, "offset"))
+				continue;
+		}
 
 		/*
 		 * All direct mounts must be present in the map
@@ -896,9 +901,10 @@ static void *do_expire_direct(void *arg)
 		send_fail(mt->ioctlfd, mt->wait_queue_token);
 	else {
 		struct mapent *me;
-		me = lookup_source_mapent(ap, mt->name, LKP_DISTINCT);
+		cache_readlock(mt->mc);
+		me = cache_lookup_distinct(mt->mc, mt->name);
 		me->ioctlfd = -1;
-		cache_unlock(me->source->mc);
+		cache_unlock(mt->mc);
 		send_ready(mt->ioctlfd, mt->wait_queue_token);
 		close(mt->ioctlfd);
 	}
@@ -1195,9 +1201,10 @@ cont:
 	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &state);
 	if (status) {
 		struct mapent *me;
-		me = lookup_source_mapent(ap, mt->name, LKP_DISTINCT);
+		cache_readlock(mt->mc);
+		me = cache_lookup_distinct(mt->mc, mt->name);
 		me->ioctlfd = mt->ioctlfd;
-		cache_unlock(me->source->mc);
+		cache_unlock(mt->mc);
 		send_ready(mt->ioctlfd, mt->wait_queue_token);
 		msg("mounted %s", mt->name);
 	} else {

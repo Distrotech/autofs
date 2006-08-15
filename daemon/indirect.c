@@ -430,16 +430,22 @@ void *expire_proc_indirect(void *arg)
 	if (status)
 		fatal(status);
 
-	master_notify_submounts(ap, ap->state);
-
 	/* Get a list of real mounts and expire them if possible */
 	mnts = get_mnt_list(_PROC_MOUNTS, ap->path, 0);
 	for (next = mnts; next; next = next->next) {
 		char *ind_key;
 		int ret;
 
-		if (!strcmp(next->fs_type, "autofs"))
+		if (!strcmp(next->fs_type, "autofs")) {
+			/*
+			 * If we have submounts check if this path lives below
+			 * one of them and pass on the state change.
+			 */
+			if (strstr(next->opts, "indirect"))
+				master_notify_submount(ap, next->path, ap->state);
+
 			continue;
+		}
 
 		/*
 		 * If the mount corresponds to an offset trigger then
@@ -458,7 +464,7 @@ void *expire_proc_indirect(void *arg)
 		 */
 		me = lookup_source_mapent(ap, next->path, LKP_DISTINCT);
 		if (!me && ind_key)
-			lookup_source_mapent(ap, ind_key, LKP_NORMAL);
+			me = lookup_source_mapent(ap, ind_key, LKP_NORMAL);
 		if (!me)
 			continue;
 
