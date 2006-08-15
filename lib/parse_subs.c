@@ -417,9 +417,9 @@ cont:
 int umount_multi_triggers(struct autofs_point *ap, char *root, struct mapent *me, const char *base)
 {
 	char path[PATH_MAX + 1];
-	char *offset = path;
+	char *offset;
 	struct mapent *oe;
-	struct list_head *mm_root, *pos = NULL;
+	struct list_head *mm_root, *pos;
 	const char o_root[] = "/";
 	const char *mm_base;
 	int left, start;
@@ -434,12 +434,32 @@ int umount_multi_triggers(struct autofs_point *ap, char *root, struct mapent *me
 	else
 		mm_base = base;
 
-	offset = cache_get_offset(mm_base, offset, start, mm_root, &pos);
-	while (offset) {
+	pos = NULL;
+	offset = path;
+
+	/* Make sure "none" of the offsets have an active mount. */
+	while ((offset = cache_get_offset(mm_base, offset, start, mm_root, &pos))) {
 		oe = cache_lookup_offset(mm_base, offset, start, &me->multi_list);
 		/* root offset is a special case */
 		if (!oe || (strlen(oe->key) - start) == 1)
-			goto cont;
+			continue;
+
+		if (oe->ioctlfd != -1)
+			left++;
+	}
+
+	if (left)
+		return left;
+
+	pos = NULL;
+	offset = path;
+
+	/* Make sure "none" of the offsets have an active mount. */
+	while ((offset = cache_get_offset(mm_base, offset, start, mm_root, &pos))) {
+		oe = cache_lookup_offset(mm_base, offset, start, &me->multi_list);
+		/* root offset is a special case */
+		if (!oe || (strlen(oe->key) - start) == 1)
+			continue;
 
 		debug(ap->logopt, "umount offset %s", oe->key);
 
@@ -447,9 +467,6 @@ int umount_multi_triggers(struct autofs_point *ap, char *root, struct mapent *me
 			warn(ap->logopt, "failed to umount offset");
 			left++;
 		}
-cont:
-		offset = cache_get_offset(mm_base,
-				offset, start, &me->multi_list, &pos);
 	}
 
 	if (!left && me->multi == me) {
