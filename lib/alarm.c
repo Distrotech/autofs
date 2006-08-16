@@ -236,9 +236,9 @@ static void *alarm_handler(void *arg)
 			list_del(&current->list);
 			free(current);
 
-			alarm_unlock();
-			st_add_task(ap, ST_EXPIRE);
-			alarm_lock();
+			state_mutex_lock(ap);
+			nextstate(ap->state_pipe[1], ST_EXPIRE);
+			state_mutex_unlock(ap);
 
 			break;
 		}

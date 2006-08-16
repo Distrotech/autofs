@@ -304,12 +304,12 @@ static int counter_fn(const char *file, const struct stat *st, int when, void *a
 }
 
 /* Count mounted filesystems and symlinks */
-int count_mounts(struct autofs_point *ap, const char *path)
+int count_mounts(const char *path, dev_t dev)
 {
 	struct counter_args counter;
 
 	counter.count = 0;
-	counter.dev = ap->dev;
+	counter.dev = dev;
 	
 	if (walk_tree(path, counter_fn, 0, &counter) == -1)
 		return -1;
@@ -366,16 +366,88 @@ static void update_map_cache(struct autofs_point *ap, const char *path)
 	return;
 }
 
+static int umount_subtree_mounts(struct autofs_point *ap, const char *path, unsigned int is_autofs_fs)
+{
+	struct mapent_cache *mc;
+	struct mapent *me;
+	unsigned int is_mm_root;
+	int left;
+
+	me = lookup_source_mapent(ap, path, LKP_DISTINCT);
+	if (!me) {
+		char *ind_key;
+
+		ind_key = strrchr(path, '/');
+		if (ind_key)
+			ind_key++;
+
+		me = lookup_source_mapent(ap, ind_key, LKP_NORMAL);
+		if (!me)
+			return 0;
+	}
+
+	mc = me->source->mc;
+	is_mm_root = (me->multi == me);
+
+	left = 0;
+
+	if (me->multi) {
+		char *root, *base;
+		size_t ap_len;
+
+		ap_len = strlen(ap->path);
+
+		if (!strchr(me->multi->key, '/')) {
+			/* Indirect multi-mount root */
+			root = alloca(ap_len + strlen(me->multi->key) + 2);
+			strcpy(root, ap->path);
+			strcat(root, "/");
+			strcat(root, me->multi->key);
+		} else
+			root = me->multi->key;
+
+		if (is_mm_root)
+			base = NULL;
+		else
+			base = me->key + strlen(root);
+
+		/* Lock the closest parent nesting point for umount */
+		cache_multi_lock(me->parent);
+		if (umount_multi_triggers(ap, root, me, base)) {
+			warn(ap->logopt,
+			     "could not umount some offsets under %s", path);
+			left++;
+		}
+		cache_multi_unlock(me->parent);
+	}
+
+	cache_unlock(mc);
+
+	if (left || is_autofs_fs)
+		return left;
+
+	/*
+	 * If this is the root of a multi-mount we've had to umount
+	 * it already to ensure it's ok to remove any offset triggers.
+	 */
+	if (!is_mm_root && is_mounted(_PATH_MOUNTED, path, MNTS_REAL)) {
+		msg("unmounting dir = %s", path);
+		if (umount_ent(ap, path)) {
+			warn(ap->logopt, "could not umount dir %s", path);
+			left++;
+		}
+	}
+
+	return left;
+}
+
 /* umount all filesystems mounted under path.  If incl is true, then
    it also tries to umount path itself */
 int umount_multi(struct autofs_point *ap, const char *path, int incl)
 {
-	struct mapent_cache *mc;
-	struct mapent *me;
 	struct statfs fs;
 	int is_autofs_fs;
 	int ret, left;
-	unsigned int is_mm_root;
 
 	debug(ap->logopt, "path %s incl %d", path, incl);
 
@@ -387,81 +459,25 @@ int umount_multi(struct autofs_point *ap, const char *path, int incl)
 
 	is_autofs_fs = fs.f_type == AUTOFS_SUPER_MAGIC ? 1 : 0;
 
-	me = lookup_source_mapent(ap, path, LKP_DISTINCT);
-	if (!me) {
-		char *ind_key;
-
-		ind_key = strrchr(path, '/');
-		if (ind_key)
-			ind_key++;
-
-		me = lookup_source_mapent(ap, ind_key, LKP_DISTINCT);
-		if (!me) {
-			warn(ap->logopt, "map entry not found for %s", path);
-			return 0;
-		}
-	}
-
-	cache_multi_lock(me->parent);
-
-	mc = me->source->mc;
-	is_mm_root = (me->multi == me);
-
 	left = 0;
 
-	if (me->multi) {
-		struct autofs_point *oap = ap;
-		char *root, *base;
-
-		if (ap->submount)
-			oap = ap->parent;
-
-		if (is_mm_root && !strchr(me->key, '/')) {
-			/* Indirect multi-mount root */
-			root = alloca(strlen(ap->path) + strlen(me->key) + 2);
-			strcpy(root, ap->path);
-			strcat(root, "/");
-			strcat(root, me->key);
-			base = NULL;
-		} else {
-			root = me->multi->key;
-			base = me->key + strlen(root);
-		}
-
-		if (umount_multi_triggers(oap, root, me, base)) {
-			warn(ap->logopt,
-			     "could not umount some offsets under %s", path);
-			left++;
-		}
-	}
-
-	if (left || is_autofs_fs) {
-		cache_multi_unlock(me->parent);
-		cache_unlock(mc);
-		return left;
-	}
-
 	/*
-	 * If this is the root of a multi-mount we've had to umount
-	 * it already to ensure it's ok to remove any offset triggers
+	 * If we are a submount we need to umount any offsets our
+	 * parent may have mounted over top of us.
 	 */
-	if (!is_mm_root) {
-		msg("unmounting dir = %s", path);
+	/*if (ap->submount)
+		left += umount_subtree_mounts(ap->parent, path, is_autofs_fs);*/
 
-		if (umount_ent(ap, path)) {
-			warn(ap->logopt, "could not umount dir %s", path);
-			left++;
-		}
-	}
+	left += umount_subtree_mounts(ap, path, is_autofs_fs);
+
+	if (left || is_autofs_fs)
+		return left;
 
 	/* Delete detritus like unwanted mountpoints and symlinks */
 	if (left == 0) {
 		update_map_cache(ap, path);
 		check_rm_dirs(ap, path, incl);
 	}
-
-	cache_multi_unlock(me->parent);
-	cache_unlock(mc);
 
 	return left;
 }

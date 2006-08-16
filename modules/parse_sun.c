@@ -810,6 +810,54 @@ static int parse_mapent(const char *ent, char *g_options, char **options, char *
 	return (p - ent);
 }
 
+static int mount_subtree_offsets(struct autofs_point *ap, struct mapent_cache *mc, struct mapent *me)
+{
+	struct mapent *mm;
+	char *m_key;
+	int start;
+	char *base, *m_root;
+	char buf[MAX_ERR_BUF];
+
+	mm = me->multi;
+
+	if (!mm)
+		return 1;
+
+	cache_multi_lock(me->parent);
+
+	m_key = mm->key;
+
+	if (*m_key == '/') {
+		m_root = m_key;
+		start = strlen(m_key);
+	} else {
+		start = strlen(ap->path) + strlen(m_key) + 1;
+		m_root = alloca(start + 1);
+		if (!m_root) {
+			char *estr;
+			cache_multi_unlock(me->parent);
+			estr = strerror_r(errno, buf, MAX_ERR_BUF);
+			error(ap->logopt, MODPREFIX "alloca: %s", estr);
+			return 0;
+		}
+		strcpy(m_root, ap->path);
+		strcat(m_root, "/");
+		strcat(m_root, m_key);
+	}
+
+	base = &me->key[start];
+
+	if (!mount_multi_triggers(ap, m_root, me->multi, base)) {
+		cache_multi_unlock(me->parent);
+		error(ap->logopt, MODPREFIX "failed to mount offset triggers");
+		return 0;
+	}
+
+	cache_multi_unlock(me->parent);
+
+	return 1;
+}
+
 /*
  * syntax is:
  *	[-options] location [location] ...
@@ -1085,6 +1133,7 @@ int parse_mount(struct autofs_point *ap, const char *name,
 			free(options);
 			return 1;
 		}
+
 		cache_multi_unlock(me);
 		cache_unlock(mc);
 
@@ -1093,7 +1142,6 @@ int parse_mount(struct autofs_point *ap, const char *name,
 		return rv;
 	} else {
 		/* Normal (and non-root multi-mount) entries */
-		struct autofs_point *oap = ap;
 		char *loc;
 		int loclen;
 		int l;
@@ -1197,58 +1245,12 @@ int parse_mount(struct autofs_point *ap, const char *name,
 		 * If it's a multi-mount insert the triggers
 		 * These are always direct mount triggers so root = ""
 		 */
-		if (ap->submount)
-			oap = ap->parent;
-
-		me = lookup_source_mapent(oap, name, LKP_DISTINCT);
+		cache_readlock(mc);
+		me = cache_lookup_distinct(mc, name);
 		if (me) {
-			struct mapent *mm;
-			char *m_key;
-			int start;
-			char *base, *m_root;
-
-			mc = me->source->mc;
-			mm = me->multi;
-
-			if (!me->multi) {
-				cache_unlock(mc);
-				return rv;
-			}
-
-			m_key = me->multi->key;
-
-			if (*m_key == '/') {
-				m_root = m_key;
-				start = strlen(m_key);
-			} else {
-				start = strlen(ap->path) + strlen(m_key) + 1;
-				pthread_cleanup_push(cache_lock_cleanup, mc);
-				m_root = alloca(start + 1);
-				pthread_cleanup_pop(0);
-				if (!m_root) {
-					char *estr;
-					cache_unlock(mc);
-					estr = strerror_r(errno, buf, MAX_ERR_BUF);
-					error(ap->logopt,
-					      MODPREFIX "alloca: %s", estr);
-					return 1;
-				}
-				strcpy(m_root, ap->path);
-				strcat(m_root, "/");
-				strcat(m_root, m_key);
-			}
-
-			base = &me->key[start];
-
-			cache_multi_lock(mm);
-			if (!mount_multi_triggers(oap, m_root, me->multi, base)) {
-				error(ap->logopt,
-				      MODPREFIX "failed to mount offset triggers");
-				rv = 1;
-			}
-			cache_multi_unlock(mm);
-			cache_unlock(mc);
+			mount_subtree_offsets(ap, mc, me);
 		}
+		cache_unlock(mc);
 	}
 	return rv;
 }

@@ -82,9 +82,9 @@ static int unlink_mount_tree(struct autofs_point *ap, struct mnt_list *mnts)
 	struct mnt_list *this;
 	int rv, ret;
 	pid_t pgrp = getpgrp();
-	char spgrp[10];
+	char spgrp[20];
 
-	sprintf(spgrp, "%d", pgrp);
+	sprintf(spgrp, "pgrp=%d", pgrp);
 
 	ret = 1;
 	this = mnts;
@@ -367,9 +367,19 @@ force_umount:
 	return rv;
 }
 
-static int expire_indirect(int ioctlfd, const char *path, unsigned int when, unsigned int count, unsigned int logopt)
+static int expire_indirect(struct autofs_point *ap, int ioctlfd, const char *path, unsigned int when)
 {
-	int ret, retries = count;
+	char buf[MAX_ERR_BUF];
+	int ret, retries;
+	struct stat st;
+
+	if (fstat(ioctlfd, &st) == -1) {
+		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+		error(ap->logopt, "fstat failed: %s", estr);
+		return 0;
+	}
+
+	retries = (count_mounts(path, st.st_dev) + 1) * EXPIRE_RETRIES;
 
 	while (retries--) {
 		struct timespec tm = {0, 100000000};
@@ -389,7 +399,7 @@ static int expire_indirect(int ioctlfd, const char *path, unsigned int when, uns
 		nanosleep(&tm, NULL);
 	}
 
-	return 1;
+	return (retries >= 0);
 }
 
 void *expire_proc_indirect(void *arg)
@@ -400,9 +410,8 @@ void *expire_proc_indirect(void *arg)
 	struct expire_args *ea;
 	unsigned int now;
 	int offsets, submnts, count;
-	int ioctlfd, limit;
+	int ioctlfd;
 	int status, ret;
-	unsigned int retries = EXPIRE_RETRIES;
 
 	ea = (struct expire_args *) arg;
 
@@ -477,11 +486,9 @@ void *expire_proc_indirect(void *arg)
 
 		debug(ap->logopt, "expire %s", next->path);
 
-		ret = expire_indirect(ioctlfd, next->path, now, retries, ap->logopt);
-		if (!ret) {
-			msg("mount apparently busy %s", next->path);
+		ret = expire_indirect(ap, ioctlfd, next->path, now);
+		if (!ret)
 			ea->status++;
-		}
 	}
 	free_mnt_list(mnts);
 
@@ -490,12 +497,10 @@ void *expire_proc_indirect(void *arg)
 	 * have some offset mounts with no '/' offset so we need to
 	 * umount them here.
 	 */
-	limit = count_mounts(ap, ap->path) * 2;
-	ret = expire_indirect(ap->ioctlfd, ap->path, now, limit, ap->logopt);
-	if (!ret) {
-		debug(ap->logopt,
-		      "failed to expire offsets under %s", ap->path);
-		ea->status++;
+	if (mnts) {
+		ret = expire_indirect(ap, ap->ioctlfd, ap->path, now);
+		if (!ret)
+			ea->status++;
 	}
 
 	count = offsets = submnts = 0;
@@ -527,7 +532,7 @@ void *expire_proc_indirect(void *arg)
 	/* If we are trying to shutdown make sure we can umount */
 	if (!ioctl(ap->ioctlfd, AUTOFS_IOC_ASKUMOUNT, &ret)) {
 		if (!ret) {
-			warn(ap->logopt, "mount still busy %s", ap->path);
+			msg("mount still busy %s", ap->path);
 			ea->status++;
 		}
 	}

@@ -969,6 +969,43 @@ next:
 }
 
 /* Return with cache readlock held */
+struct mapent *lookup_source_valid_mapent(struct autofs_point *ap, const char *key, unsigned int type)
+{
+	struct master_mapent *entry = ap->entry;
+	struct map_source *map;
+	struct mapent_cache *mc;
+	struct mapent *me = NULL;
+
+	pthread_cleanup_push(master_source_lock_cleanup, entry);
+	master_source_readlock(entry);
+	map = entry->first;
+	while (map) {
+		/*
+		 * Only consider map sources that have been read since
+		 * the map entry was last updated.
+		 */
+		if (ap->entry->age > map->age) {
+			map = map->next;
+			continue;
+		}
+
+		mc = map->mc;
+		cache_readlock(mc);
+		if (type == LKP_DISTINCT)
+			me = cache_lookup_distinct(mc, key);
+		else
+			me = cache_lookup(mc, key);
+		if (me)
+			break;
+		cache_unlock(mc);
+		map = map->next;
+	}
+	pthread_cleanup_pop(1);
+
+	return me;
+}
+
+/* Return with cache readlock held */
 struct mapent *lookup_source_mapent(struct autofs_point *ap, const char *key, unsigned int type)
 {
 	struct master_mapent *entry = ap->entry;
@@ -985,7 +1022,7 @@ struct mapent *lookup_source_mapent(struct autofs_point *ap, const char *key, un
 		if (type == LKP_DISTINCT)
 			me = cache_lookup_distinct(mc, key);
 		else
-			me = cache_lookup_distinct(mc, key);
+			me = cache_lookup(mc, key);
 		if (me)
 			break;
 		cache_unlock(mc);
@@ -1012,8 +1049,10 @@ int lookup_source_close_ioctlfd(struct autofs_point *ap, const char *key)
 		cache_readlock(mc);
 		me = cache_lookup_distinct(mc, key);
 		if (me) {
-			close(me->ioctlfd);
-			me->ioctlfd = -1;
+			if (me->ioctlfd != -1) {
+				close(me->ioctlfd);
+				me->ioctlfd = -1;
+			}
 			cache_unlock(mc);
 			ret = 1;
 			break;

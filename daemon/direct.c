@@ -33,6 +33,7 @@
 #include <sys/time.h>
 #include <sys/poll.h>
 #include <sys/mount.h>
+#include <sys/vfs.h>
 #include <sched.h>
 #include <pwd.h>
 #include <grp.h>
@@ -114,7 +115,7 @@ int do_umount_autofs_direct(struct autofs_point *ap, struct mnt_list *mnts, stru
 	char buf[MAX_ERR_BUF];
 	int ioctlfd, rv, left, retries;
 
-	left = umount_multi(ap, me->key, 1);
+	left = umount_multi(ap, me->key, 0);
 	if (left) {
 		warn(ap->logopt, "could not unmount %d dirs under %s",
 		     left, me->key);
@@ -258,9 +259,9 @@ static int unlink_mount_tree(struct autofs_point *ap, struct list_head *list)
 	struct list_head *p;
 	int rv, ret;
 	pid_t pgrp = getpgrp();
-	char spgrp[10];
+	char spgrp[20];
 
-	sprintf(spgrp, "%d", pgrp);
+	sprintf(spgrp, "pgrp=%d", pgrp);
 
 	ret = 1;
 	list_for_each(p, list) {
@@ -727,7 +728,17 @@ out_err:
 
 static int expire_direct(int ioctlfd, const char *path, unsigned int when, unsigned int logopt)
 {
-	int ret, retries = EXPIRE_RETRIES;
+	char buf[MAX_ERR_BUF];
+	int ret, retries;
+	struct stat st;
+
+	if (fstat(ioctlfd, &st) == -1) {
+		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+		error(logopt, "fstat failed: %s", estr);
+		return 0;
+	}
+
+	retries = (count_mounts(path, st.st_dev) + 1) * EXPIRE_RETRIES;
 
 	while (retries--) {
 		struct timespec tm = {0, 100000000};
@@ -747,7 +758,7 @@ static int expire_direct(int ioctlfd, const char *path, unsigned int when, unsig
 		nanosleep(&tm, NULL);
 	}
 
-	return 1;
+	return (retries >= 0);
 }
 
 void *expire_proc_direct(void *arg)
@@ -824,10 +835,8 @@ void *expire_proc_direct(void *arg)
 		debug(ap->logopt, "send expire to trigger %s", next->path);
 
 		ret = expire_direct(ioctlfd, next->path, now, ap->logopt);
-		if (!ret) {
-			msg("mount apparently busy %s", next->path);
+		if (!ret)
 			ea->status++;
-		}
 	}
 	free_mnt_list(mnts);
 

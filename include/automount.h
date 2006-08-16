@@ -123,8 +123,8 @@ struct autofs_point;
 
 #define HASHSIZE		77
 #define NEGATIVE_TIMEOUT	10
-#define UMOUNT_RETRIES		50
-#define EXPIRE_RETRIES		25
+#define UMOUNT_RETRIES		6
+#define EXPIRE_RETRIES		3
 
 struct mapent_cache {
 	pthread_rwlock_t rwlock;
@@ -229,6 +229,7 @@ int lookup_ghost(struct autofs_point *ap);
 int lookup_nss_mount(struct autofs_point *ap, const char *name, int name_len);
 void lookup_close_lookup(struct autofs_point *ap);
 int lookup_prune_cache(struct autofs_point *ap, time_t age);
+struct mapent *lookup_source_valid_mapent(struct autofs_point *ap, const char *key, unsigned int type);
 struct mapent *lookup_source_mapent(struct autofs_point *ap, const char *key, unsigned int type);
 int lookup_source_close_ioctlfd(struct autofs_point *ap, const char *key);
 
@@ -475,7 +476,7 @@ int handle_packet_expire_direct(struct autofs_point *ap, autofs_packet_expire_di
 int handle_packet_missing_indirect(struct autofs_point *ap, autofs_packet_missing_indirect_t *pkt);
 int handle_packet_missing_direct(struct autofs_point *ap, autofs_packet_missing_direct_t *pkt);
 void rm_unwanted(const char *path, int incl, dev_t dev);
-int count_mounts(struct autofs_point *ap, const char *path);
+int count_mounts(const char *path, dev_t dev);
 
 #define state_mutex_lock(ap) \
 do { \
