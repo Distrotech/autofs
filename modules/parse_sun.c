@@ -666,9 +666,6 @@ static int validate_location(char *loc)
 
 	/* If a ':' is present now it must be a host name */
 	if (check_colon(ptr)) {
-		if (!isalpha(*ptr++))
-			return 0;
-
 		while (*ptr && *ptr != ':') {
 			if (!(isalnum(*ptr) ||
 			    *ptr == '-' || *ptr == '.' ||
