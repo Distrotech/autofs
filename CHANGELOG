@@ -26,6 +26,7 @@
 - spelling corrections to release notes (Jeff Moyer).
 - expire individual submounts.
 - add ino_index locking.
+- fix nested submount expiring away when pwd is base of submount.
 
 13/7/2006 autofs-5.0.1 rc1
 --------------------------

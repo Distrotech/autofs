@@ -12,6 +12,8 @@
  *
  * ----------------------------------------------------------------------- */
 
+#include <sys/ioctl.h>
+
 #include "automount.h"
 
 extern pthread_attr_t thread_attr;
@@ -36,6 +38,34 @@ static void st_set_thid(struct autofs_point *, pthread_t);
 static pthread_mutex_t task_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t task_cond = PTHREAD_COND_INITIALIZER;
 static unsigned int task_signaled;
+
+#define st_mutex_lock() \
+do { \
+	int status = pthread_mutex_lock(&mutex); \
+	if (status) \
+		fatal(status); \
+} while (0)
+
+#define st_mutex_unlock() \
+do { \
+	int status = pthread_mutex_unlock(&mutex); \
+	if (status) \
+		fatal(status); \
+} while (0)
+
+#define task_mutex_lock() \
+do { \
+	int status = pthread_mutex_lock(&task_mutex); \
+	if (status) \
+		fatal(status); \
+} while (0)
+
+#define task_mutex_unlock() \
+do { \
+	int status = pthread_mutex_unlock(&task_mutex); \
+	if (status) \
+		fatal(status); \
+} while (0)
 
 int do_mount_autofs_direct(struct autofs_point *, struct mnt_list *, struct mapent *);
 
@@ -86,7 +116,7 @@ void expire_cleanup(void *arg)
 	struct autofs_point *ap;
 	int statefd;
 	enum states next = ST_INVAL;
-	int success;
+	int success, ret;
 
 	ea = (struct expire_args *) arg;
 	ap = ea->ap;
@@ -112,7 +142,10 @@ void expire_cleanup(void *arg)
 			   pruned or expired everything away,
 			   try to shut down */
 			if (ap->submount && !success) {
-				next = ST_SHUTDOWN_PENDING;
+				if (!ioctl(ap->ioctlfd, AUTOFS_IOC_ASKUMOUNT, &ret)) {
+					if (ret)
+						next = ST_SHUTDOWN_PENDING;
+				}
 				break;
 			}
 
@@ -415,11 +448,14 @@ static unsigned int st_readmap(struct autofs_point *ap)
 	debug(ap->logopt, "state %d path %s", ap->state, ap->path);
 
 	assert(ap->state == ST_READY);
+	assert(ap->readmap_thread == 0);
+
 	ap->state = ST_READMAP;
 
 	ra = malloc(sizeof(struct readmap_args));
 	if (!ra) {
 		error(ap->logopt, "failed to malloc reamap cond struct");
+		nextstate(ap->state_pipe[1], ST_READY);
 		return 0;
 	}
 
@@ -448,12 +484,16 @@ static unsigned int st_readmap(struct autofs_point *ap)
 	ap->readmap_thread = thid;
 	st_set_thid(ap, thid);
 
+	pthread_cleanup_push(st_readmap_cleanup, ra);
+
 	ra->signaled = 0;
 	while (!ra->signaled) {
 		status = pthread_cond_wait(&ra->cond, &ra->mutex);
 		if (status)
 			fatal(status);
 	}
+
+	pthread_cleanup_pop(1);
 
 	return 1;
 }
@@ -653,16 +693,12 @@ void st_remove_tasks(struct autofs_point *ap)
 	struct state_queue *task, *waiting;
 	int status;
 
-	status = pthread_mutex_lock(&mutex);
-	if (status)
-		fatal(status);
+	st_mutex_lock();
 
 	head = &state_queue;
 
 	if (list_empty(head)) {
-		status = pthread_mutex_unlock(&mutex);
-		if (status)
-			fatal(status);
+		st_mutex_unlock();
 		return;
 	}
 
@@ -692,9 +728,10 @@ void st_remove_tasks(struct autofs_point *ap)
 	if (status)
 		fatal(status);
 
-	status = pthread_mutex_unlock(&mutex);
-	if (status)
-		fatal(status);
+	st_mutex_unlock();
+
+	return;
+
 }
 
 static void *do_run_task(void *arg)
@@ -705,9 +742,7 @@ static void *do_run_task(void *arg)
 	unsigned long ret = 1;
 	int status;
  
-	status = pthread_mutex_lock(&task_mutex);
-	if (status)
-		fatal(status);
+	task_mutex_lock();
 
 	task = (struct state_queue *) arg;
 	ap = task->ap;
@@ -718,9 +753,7 @@ static void *do_run_task(void *arg)
 	if (status)
 		fatal(status);
 
-	status = pthread_mutex_unlock(&task_mutex);
-	if (status)
-		fatal(status);
+	task_mutex_unlock();
 
 	state_mutex_lock(ap);
 
@@ -764,16 +797,12 @@ static int run_state_task(struct state_queue *task)
 	pthread_t thid;
 	int status;
 
-	status = pthread_mutex_lock(&task_mutex);
-	if (status)
-		fatal(status);
+	task_mutex_lock();
 
 	status = pthread_create(&thid, &thread_attr, do_run_task, task);
 	if (status) {
 		error(task->ap->logopt, "error running task");
-		status = pthread_mutex_unlock(&task_mutex);
-		if (status)
-			fatal(status);
+		task_mutex_unlock();
 		return 0;
 	}
 
@@ -784,9 +813,7 @@ static int run_state_task(struct state_queue *task)
 			fatal(status);
 	}
 
-	status = pthread_mutex_unlock(&task_mutex);
-	if (status)
-		fatal(status);
+	task_mutex_unlock();
 
 	return 1;
 }
@@ -810,11 +837,10 @@ static void *st_queue_handler(void *arg)
 {
 	struct list_head *head;
 	struct list_head *p;
+	struct timespec wait;
 	int status;
 
-	status = pthread_mutex_lock(&mutex);
-	if (status)
-		fatal(status);
+	st_mutex_lock();
 
 	head = &state_queue;
 
@@ -823,10 +849,17 @@ static void *st_queue_handler(void *arg)
 		 * If the state queue list is empty, wait until an
 		 * entry is added.
 		 */
+		head = &state_queue;
+		wait.tv_sec = time(NULL) + 1;
+		wait.tv_nsec = 0;
+
 		while (list_empty(head)) {
-			status = pthread_cond_wait(&cond, &mutex);
-			if (status)
+			status = pthread_cond_timedwait(&cond, &mutex, &wait);
+			if (status) {
+				if (status == ETIMEDOUT)
+					break;
 				fatal(status);
+			}
 		}
 
 		list_for_each(p, head) {
@@ -850,11 +883,10 @@ static void *st_queue_handler(void *arg)
 		}
 
 		while (1) {
-			struct timespec wait;
-
 			wait.tv_sec = time(NULL) + 1;
 			wait.tv_nsec = 0;
 
+			signaled = 0;
 			while (!signaled) {
 				status = pthread_cond_timedwait(&cond, &mutex, &wait);
 				if (status) {
@@ -863,8 +895,8 @@ static void *st_queue_handler(void *arg)
 					fatal(status);
 				}
 			}
-			signaled = 0;
 
+			head = &state_queue;
 			p = head->next;
 			while (p != head) {
 				struct state_queue *task, *next;
@@ -901,7 +933,6 @@ static void *st_queue_handler(void *arg)
 				/* No more tasks for this queue */
 				if (list_empty(&task->pending)) {
 					list_del(&task->list);
-					/* debug("task complete %p", task); */
 					free(task);
 					continue;
 				}
@@ -911,10 +942,9 @@ static void *st_queue_handler(void *arg)
 							struct state_queue, pending);
 
 				list_del_init(&next->pending);
-				list_add_tail(&next->list, head);
+				list_add_tail(&next->list, p);
 
 				list_del(&task->list);
-				/* debug("task complete %p", task); */
 				free(task);
 			}
 

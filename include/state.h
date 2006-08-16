@@ -89,18 +89,4 @@ int st_add_task(struct autofs_point *, enum states);
 void st_remove_tasks(struct autofs_point *);
 int st_start_handler(void);
 
-#define st_mutex_lock() \
-do { \
-	int status = pthread_mutex_lock(&mutex); \
-	if (status) \
-		fatal(status); \
-} while (0)
-
-#define st_mutex_unlock() \
-do { \
-	int status = pthread_mutex_unlock(&mutex); \
-	if (status) \
-		fatal(status); \
-} while (0)
-
 #endif
