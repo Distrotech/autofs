@@ -441,8 +441,7 @@ struct mapent *cache_partial_match(struct mapent_cache *mc, const char *prefix)
 }
 
 /* cache must be write locked by caller */
-int cache_add(struct mapent_cache *mc, struct map_source *source,
-		const char *key, const char *mapent, time_t age)
+int cache_add(struct mapent_cache *mc, const char *key, const char *mapent, time_t age)
 {
 	struct mapent *me, *existing = NULL;
 	char *pkey, *pent;
@@ -473,7 +472,7 @@ int cache_add(struct mapent_cache *mc, struct map_source *source,
 
 	me->age = age;
 	me->status = 0;
-	me->source = source;
+	me->mc = mc;
 	INIT_LIST_HEAD(&me->ino_index);
 	INIT_LIST_HEAD(&me->multi_list);
 	me->multi = NULL;
@@ -551,7 +550,7 @@ int cache_add_offset(struct mapent_cache *mc, const char *mkey, const char *key,
 	if (me && me != owner)
 		return CHE_DUPLICATE;
 
-	ret = cache_add(mc, owner->source, key, mapent, age);
+	ret = cache_add(mc, key, mapent, age);
 	if (ret == CHE_FAIL) {
 		warn(LOGOPT_ANY, "failed to add key %s to cache", key);
 		return CHE_FAIL;
@@ -619,8 +618,7 @@ int cache_set_parents(struct mapent *mm)
 }
 
 /* cache must be write locked by caller */
-int cache_update(struct mapent_cache *mc, struct map_source *source,
-		 const char *key, const char *mapent, time_t age)
+int cache_update(struct mapent_cache *mc, const char *key, const char *mapent, time_t age)
 {
 	struct mapent *me = NULL;
 	char *pent;
@@ -628,7 +626,7 @@ int cache_update(struct mapent_cache *mc, struct map_source *source,
 
 	me = cache_lookup(mc, key);
 	if (!me || (*me->key == '*' && *key != '*')) {
-		ret = cache_add(mc, source, key, mapent, age);
+		ret = cache_add(mc, key, mapent, age);
 		if (!ret) {
 			debug(LOGOPT_NONE, "failed for %s", key);
 			return CHE_FAIL;

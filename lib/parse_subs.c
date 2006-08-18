@@ -470,7 +470,7 @@ int umount_multi_triggers(struct autofs_point *ap, char *root, struct mapent *me
 	}
 
 	if (!left && me->multi == me) {
-		struct mapent_cache *mc = me->source->mc;
+		struct mapent_cache *mc = me->mc;
 		int status;
 
 		/*

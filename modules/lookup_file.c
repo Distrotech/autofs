@@ -521,6 +521,7 @@ prepare_plus_include(struct autofs_point *ap, time_t age, char *key, unsigned in
 		return NULL;
 	}
 	iap = entry->ap;
+	iap->kpipefd = ap->kpipefd;
 	set_mnt_logging(iap);
 
 	/*
@@ -681,7 +682,7 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 				continue;
 
 			cache_writelock(mc);
-			cache_update(mc, source, s_key, mapent, age);
+			cache_update(mc, s_key, mapent, age);
 			cache_unlock(mc);
 
 			free(s_key);
@@ -794,7 +795,7 @@ static int lookup_one(struct autofs_point *ap,
 
 				fclose(f);
 				cache_writelock(mc);
-				ret = cache_update(mc, source, key, mapent, age);
+				ret = cache_update(mc, key, mapent, age);
 				cache_unlock(mc);
 
 				return ret;
@@ -877,7 +878,7 @@ static int lookup_wild(struct autofs_point *ap, struct lookup_context *ctxt)
 
 				fclose(f);
 				cache_writelock(mc);
-				ret = cache_update(mc, source, "*", mapent, age);
+				ret = cache_update(mc, "*", mapent, age);
 				cache_unlock(mc);
 				return ret;
 			}
@@ -910,7 +911,7 @@ static int check_map_indirect(struct autofs_point *ap,
 
 	cache_readlock(mc);
 	exists = cache_lookup_distinct(mc, key);
-	if (exists && exists->source != source)
+	if (exists && exists->mc != mc)
 		exists = NULL;
 	cache_unlock(mc);
 
@@ -1024,7 +1025,7 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 	 * the map cache already we never get a mount lookup, so
 	 * we never know about it.
 	 */
-	if (ap->type == LKP_INDIRECT) {
+	if (ap->type == LKP_INDIRECT && *key != '/') {
 		char *lkp_key;
 
 		cache_readlock(mc);
@@ -1079,7 +1080,7 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 			cache_writelock(mc);
 			me = cache_lookup_distinct(mc, key);
 			if (!me)
-				rv = cache_update(mc, source, key, NULL, now);
+				rv = cache_update(mc, key, NULL, now);
 			if (rv != CHE_FAIL) {
 				me = cache_lookup_distinct(mc, key);
 				me->status = now + NEGATIVE_TIMEOUT;

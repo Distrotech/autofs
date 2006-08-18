@@ -424,7 +424,7 @@ got_version:
 		      "failed to stat direct mount trigger %s", me->key);
 		goto out_close;
 	}
-	cache_set_ino_index(me->source->mc, me->key, st.st_dev, st.st_ino);
+	cache_set_ino_index(me->mc, me->key, st.st_dev, st.st_ino);
 
 	close(ioctlfd);
 
@@ -705,7 +705,7 @@ int mount_autofs_offset(struct autofs_point *ap, struct mapent *me, int is_autof
 		goto out_close;
 	}
 
-	cache_set_ino_index(me->source->mc, me->key, st.st_dev, st.st_ino);
+	cache_set_ino_index(me->mc, me->key, st.st_dev, st.st_ino);
 
 	close(ioctlfd);
 
@@ -826,9 +826,9 @@ void *expire_proc_direct(void *arg)
 		if (me->ioctlfd >= 0) {
 			/* Real mounts have an open ioctl fd */
 			ioctlfd = me->ioctlfd;
-			cache_unlock(me->source->mc);
+			cache_unlock(me->mc);
 		} else {
-			cache_unlock(me->source->mc);
+			cache_unlock(me->mc);
 			continue;
 		}
 

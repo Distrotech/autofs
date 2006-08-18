@@ -29,6 +29,7 @@
 - fix nested submount expiring away when pwd is base of submount.
 - more expire re-work to cope better with shutdown following cthon tests.
 - allow hostname to start with numeric when validating.
+- fix included map lookup.
 
 13/7/2006 autofs-5.0.1 rc1
 --------------------------

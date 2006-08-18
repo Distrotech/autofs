@@ -386,7 +386,7 @@ static int umount_subtree_mounts(struct autofs_point *ap, const char *path, unsi
 			return 0;
 	}
 
-	mc = me->source->mc;
+	mc = me->mc;
 	is_mm_root = (me->multi == me);
 
 	left = 0;

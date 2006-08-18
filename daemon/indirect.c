@@ -482,7 +482,7 @@ void *expire_proc_indirect(void *arg)
 		} else {
 			ioctlfd = ap->ioctlfd;
 		}
-		cache_unlock(me->source->mc);
+		cache_unlock(me->mc);
 
 		debug(ap->logopt, "expire %s", next->path);
 

@@ -270,7 +270,7 @@ int yp_all_callback(int status, char *ypkey, int ypkeylen,
 	*(mapent + vallen) = '\0';
 
 	cache_writelock(mc);
-	ret = cache_update(mc, source, key, mapent, age);
+	ret = cache_update(mc, key, mapent, age);
 	cache_unlock(mc);
 
 	free(key);
@@ -387,7 +387,7 @@ static int lookup_one(struct autofs_point *ap,
 	}
 
 	cache_writelock(mc);
-	ret = cache_update(mc, source, key, mapent, age);
+	ret = cache_update(mc, key, mapent, age);
 	cache_unlock(mc);
 	free(mapent);
 
@@ -439,7 +439,7 @@ static int lookup_wild(struct autofs_point *ap, struct lookup_context *ctxt)
 	}
 
 	cache_writelock(mc);
-	ret = cache_update(mc, source, "*", mapent, age);
+	ret = cache_update(mc, "*", mapent, age);
 	cache_unlock(mc);
 	free(mapent);
 
@@ -465,7 +465,7 @@ static int check_map_indirect(struct autofs_point *ap,
 
 	cache_readlock(mc);
 	exists = cache_lookup_distinct(mc, key);
-	if (exists && exists->source != source)
+	if (exists && exists->mc != mc)
 		exists = NULL;
 	cache_unlock(mc);
 
@@ -572,7 +572,7 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 	  * the map cache already we never get a mount lookup, so
 	  * we never know about it.
 	  */
-        if (ap->type == LKP_INDIRECT) {
+        if (ap->type == LKP_INDIRECT && *key != '/') {
 		char *lkp_key;
 
 		cache_readlock(mc);
@@ -623,7 +623,7 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 			cache_writelock(mc);
 			me = cache_lookup_distinct(mc, key);
 			if (!me)
-				rv = cache_update(mc, source, key, NULL, now);
+				rv = cache_update(mc, key, NULL, now);
 			if (rv != CHE_FAIL) {
 				me = cache_lookup_distinct(mc, key);
 				me->status = now + NEGATIVE_TIMEOUT;

@@ -78,7 +78,7 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 	}
 
 	cache_writelock(mc);
-	ret = cache_update(mc, source, name, NULL, time(NULL));
+	ret = cache_update(mc, name, NULL, time(NULL));
 	cache_unlock(mc);
 
 	if (ret == CHE_FAIL) {

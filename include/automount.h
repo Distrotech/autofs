@@ -139,8 +139,7 @@ struct mapent {
 	struct list_head ino_index;
 	pthread_mutex_t multi_mutex;
 	struct list_head multi_list;
-	/* Map source of the cache entry */
-	struct map_source *source;
+	struct mapent_cache *mc;
 	/* Need to know owner if we're a multi-mount */
 	struct mapent *multi;
 	/* Parent nesting point within multi-mount */
@@ -173,12 +172,10 @@ struct mapent *cache_lookup(struct mapent_cache *mc, const char *key);
 struct mapent *cache_lookup_distinct(struct mapent_cache *mc, const char *key);
 struct mapent *cache_lookup_offset(const char *prefix, const char *offset, int start, struct list_head *head);
 struct mapent *cache_partial_match(struct mapent_cache *mc, const char *prefix);
-int cache_add(struct mapent_cache *mc, struct map_source *source,
-			const char *key, const char *mapent, time_t age);
+int cache_add(struct mapent_cache *mc, const char *key, const char *mapent, time_t age);
 int cache_add_offset(struct mapent_cache *mc, const char *mkey, const char *key, const char *mapent, time_t age);
 int cache_set_parents(struct mapent *mm);
-int cache_update(struct mapent_cache *mc, struct map_source *source,
-			const char *key, const char *mapent, time_t age);
+int cache_update(struct mapent_cache *mc, const char *key, const char *mapent, time_t age);
 int cache_delete(struct mapent_cache *mc, const char *key);
 void cache_multi_lock(struct mapent *me);
 void cache_multi_unlock(struct mapent *me);
