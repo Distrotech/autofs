@@ -30,6 +30,7 @@
 - more expire re-work to cope better with shutdown following cthon tests.
 - allow hostname to start with numeric when validating.
 - fix included map lookup.
+- fix directory cleanup on expire.
 
 13/7/2006 autofs-5.0.1 rc1
 --------------------------

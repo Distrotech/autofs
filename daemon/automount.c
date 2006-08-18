@@ -470,9 +470,6 @@ int umount_multi(struct autofs_point *ap, const char *path, int incl)
 
 	left += umount_subtree_mounts(ap, path, is_autofs_fs);
 
-	if (left || is_autofs_fs)
-		return left;
-
 	/* Delete detritus like unwanted mountpoints and symlinks */
 	if (left == 0) {
 		update_map_cache(ap, path);
