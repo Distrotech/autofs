@@ -1280,16 +1280,19 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 {
 	struct lookup_context *ctxt = (struct lookup_context *) context;
 	int rv = LDAP_SUCCESS;
-	int ret;
+	int ret, cur_state;
 
+	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cur_state);
 	ret = read_one_map(ap, ctxt, age, &rv);
 	if (ret != NSS_STATUS_SUCCESS) {
 		switch (rv) {
 		case LDAP_SIZELIMIT_EXCEEDED:
 		case LDAP_UNWILLING_TO_PERFORM:
+			pthread_setcancelstate(cur_state, NULL);
 			return NSS_STATUS_UNAVAIL;
 		}
 	}
+	pthread_setcancelstate(cur_state, NULL);
 
 	return ret;
 }
@@ -1507,7 +1510,7 @@ static int check_map_indirect(struct autofs_point *ap,
 	struct mapent *me, *exists;
 	time_t now = time(NULL);
 	time_t t_last_read;
-	int ret, need_map = 0;
+	int ret, cur_state, need_map = 0;
 
 	source = ap->entry->current;
 	ap->entry->current = NULL;
@@ -1524,9 +1527,13 @@ static int check_map_indirect(struct autofs_point *ap,
 	master_source_current_wait(ap->entry);
 	ap->entry->current = source;
 
+	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cur_state);
 	ret = lookup_one(ap, key, key_len, ctxt);
-	if (ret == CHE_FAIL)
+	if (ret == CHE_FAIL) {
+		pthread_setcancelstate(cur_state, NULL);
 		return NSS_STATUS_NOTFOUND;
+	}
+	pthread_setcancelstate(cur_state, NULL);
 
 	cache_readlock(mc);
 	me = cache_lookup_first(mc);
@@ -1540,8 +1547,8 @@ static int check_map_indirect(struct autofs_point *ap,
 	}
 
 	if (ret == CHE_MISSING) {
-		cache_writelock(mc);
 		pthread_cleanup_push(cache_lock_cleanup, mc);
+		cache_writelock(mc);
 		if (cache_delete(mc, key))
 			rmdir_path(ap, key, ap->dev);
 		pthread_cleanup_pop(1);
@@ -1641,12 +1648,10 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 
 	cache_readlock(mc);
 	me = cache_lookup(mc, key);
-	if (me) {
-		pthread_cleanup_push(cache_lock_cleanup, mc);
+	if (me && me->mapent) {
 		mapent_len = strlen(me->mapent);
 		mapent = alloca(mapent_len + 1);
 		strcpy(mapent, me->mapent);
-		pthread_cleanup_pop(0);
 	}
 	cache_unlock(mc);
 

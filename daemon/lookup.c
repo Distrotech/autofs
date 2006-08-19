@@ -71,6 +71,14 @@ static int check_nss_result(struct nss_source *this, enum nsswitch_status result
 	return -1;
 }
 
+static void nsslist_cleanup(void *arg)
+{
+	struct list_head *nsslist = (struct list_head *) arg;
+	if (!list_empty(nsslist))
+		free_sources(nsslist);
+	return;
+}
+
 static int do_read_master(struct master *master, char *type, time_t age)
 {
 	struct lookup_mod *lookup;
@@ -313,6 +321,14 @@ static int read_source_instance(struct autofs_point *ap, struct map_source *map,
 	return do_read_map(ap, instance, age);
 }
 
+static void argv_cleanup(void *arg)
+{
+	struct map_source *tmap = (struct map_source *) arg;
+	/* path is freed in free_argv */
+	free_argv(tmap->argc, tmap->argv);
+	return;
+}
+
 static enum nsswitch_status read_map_source(struct nss_source *this,
 		struct autofs_point *ap, struct map_source *map, time_t age)
 {
@@ -380,10 +396,9 @@ static enum nsswitch_status read_map_source(struct nss_source *this,
 		return NSS_STATUS_UNKNOWN;
 	}
 
+	pthread_cleanup_push(argv_cleanup, &tmap);
 	result = read_file_source_instance(ap, &tmap, age);
-
-	/* path is freed in free_argv */
-	free_argv(tmap.argc, tmap.argv);
+	pthread_cleanup_pop(1);
 
 	return result;
 }
@@ -412,8 +427,6 @@ int lookup_nss_read_map(struct autofs_point *ap, time_t age)
 			map = map->next;
 			continue;
 		}
-
-		sched_yield();
 
 		if (map->type) {
 			debug(ap->logopt,
@@ -446,7 +459,9 @@ int lookup_nss_read_map(struct autofs_point *ap, time_t age)
 
 		INIT_LIST_HEAD(&nsslist);
 
+		pthread_cleanup_push(nsslist_cleanup, &nsslist);
 		status = nsswitch_parse(&nsslist);
+		pthread_cleanup_pop(0);
 		if (status) {
 			error(ap->logopt,
 			      "can't to read name service switch config.");
@@ -454,6 +469,7 @@ int lookup_nss_read_map(struct autofs_point *ap, time_t age)
 			break;
 		}
 
+		pthread_cleanup_push(nsslist_cleanup, &nsslist);
 		head = &nsslist;
 		list_for_each(p, head) {
 			this = list_entry(p, struct nss_source, list);
@@ -472,9 +488,7 @@ int lookup_nss_read_map(struct autofs_point *ap, time_t age)
 				break;
 			}
 		}
-
-		if (!list_empty(&nsslist))
-			free_sources(&nsslist);
+		pthread_cleanup_pop(1);
 
 		if (!map)
 			break;
@@ -876,6 +890,7 @@ int lookup_prune_cache(struct autofs_point *ap, time_t age)
 	char *path;
 	int status = CHE_FAIL;
 
+	pthread_cleanup_push(master_source_lock_cleanup, entry);
 	master_source_readlock(entry);
 
 	map = entry->first;
@@ -885,6 +900,7 @@ int lookup_prune_cache(struct autofs_point *ap, time_t age)
 			continue;
 		}
 		mc = map->mc;
+		pthread_cleanup_push(cache_lock_cleanup, mc);
 		cache_readlock(mc);
 		me = cache_enumerate(mc, NULL);
 		while (me) {
@@ -958,12 +974,12 @@ next:
 			free(path);
 			free(next_key);
 		}
-		cache_unlock(mc);
+		pthread_cleanup_pop(1);
 		map->stale = 0;
 		map = map->next;
 	}
 
-	master_source_unlock(entry);
+	pthread_cleanup_pop(1);
 
 	return 1;
 }
@@ -976,7 +992,6 @@ struct mapent *lookup_source_valid_mapent(struct autofs_point *ap, const char *k
 	struct mapent_cache *mc;
 	struct mapent *me = NULL;
 
-	pthread_cleanup_push(master_source_lock_cleanup, entry);
 	master_source_readlock(entry);
 	map = entry->first;
 	while (map) {
@@ -1000,7 +1015,7 @@ struct mapent *lookup_source_valid_mapent(struct autofs_point *ap, const char *k
 		cache_unlock(mc);
 		map = map->next;
 	}
-	pthread_cleanup_pop(1);
+	master_source_unlock(entry);
 
 	return me;
 }
@@ -1013,7 +1028,6 @@ struct mapent *lookup_source_mapent(struct autofs_point *ap, const char *key, un
 	struct mapent_cache *mc;
 	struct mapent *me = NULL;
 
-	pthread_cleanup_push(master_source_lock_cleanup, entry);
 	master_source_readlock(entry);
 	map = entry->first;
 	while (map) {
@@ -1028,7 +1042,7 @@ struct mapent *lookup_source_mapent(struct autofs_point *ap, const char *key, un
 		cache_unlock(mc);
 		map = map->next;
 	}
-	pthread_cleanup_pop(1);
+	master_source_unlock(entry);
 
 	return me;
 }

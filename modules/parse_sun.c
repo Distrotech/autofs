@@ -407,7 +407,9 @@ static char *concat_options(char *left, char *right)
 		return NULL;
 	}
 
-	sprintf(ret, "%s,%s", left, right);
+	strcpy(ret, left);
+	strcat(ret, ",");
+	strcat(ret, right);
 
 	free(left);
 	free(right);
@@ -422,7 +424,7 @@ static int sun_mount(struct autofs_point *ap, const char *root,
 {
 	char *fstype = "nfs";	/* Default filesystem type */
 	int nonstrict = 1;
-	int rv;
+	int rv, cur_state;
 	char *mountpoint;
 	char *what;
 
@@ -520,6 +522,7 @@ static int sun_mount(struct autofs_point *ap, const char *root,
 	    "mounting root %s, mountpoint %s, what %s, fstype %s, options %s",
 	    root, mountpoint, what, fstype, options);
 
+	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cur_state);
 	if (!strcmp(fstype, "nfs")) {
 		rv = mount_nfs->mount_mount(ap, root, mountpoint, strlen(mountpoint),
 					    what, fstype, options, mount_nfs->context);
@@ -528,6 +531,7 @@ static int sun_mount(struct autofs_point *ap, const char *root,
 		rv = do_mount(ap, root, mountpoint, strlen(mountpoint), what, fstype,
 			      options);
 	}
+	pthread_setcancelstate(cur_state, NULL);
 
 	if (nonstrict && rv)
 		return -rv;
@@ -878,7 +882,7 @@ int parse_mount(struct autofs_point *ap, const char *name,
 	char *pmapent, *options;
 	const char *p;
 	int mapent_len, rv = 0;
-	int optlen;
+	int optlen, cur_state;
 	int slashify = ctxt->slashify_colons;
 
 	source = ap->entry->current;
@@ -962,8 +966,8 @@ int parse_mount(struct autofs_point *ap, const char *name,
 			m_root = alloca(m_root_len + 1);
 			if (!m_root) {
 				char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-				error(ap->logopt, MODPREFIX "alloca: %s", estr);
 				free(options);
+				error(ap->logopt, MODPREFIX "alloca: %s", estr);
 				return 1;
 			}
 			strcpy(m_root, name);
@@ -972,8 +976,8 @@ int parse_mount(struct autofs_point *ap, const char *name,
 			m_root = alloca(m_root_len + 1);
 			if (!m_root) {
 				char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-				error(ap->logopt, MODPREFIX "alloca: %s", estr);
 				free(options);
+				error(ap->logopt, MODPREFIX "alloca: %s", estr);
 				return 1;
 			}
 			strcpy(m_root, ap->path);
@@ -1007,13 +1011,14 @@ int parse_mount(struct autofs_point *ap, const char *name,
 		}
 
 		if (!me) {
-			error(ap->logopt,
-			      MODPREFIX "can't find multi root %s", name);
 			free(options);
 			cache_unlock(mc);
+			error(ap->logopt,
+			      MODPREFIX "can't find multi root %s", name);
 			return 1;
 		}
 
+		pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cur_state);
 		cache_multi_lock(me);
 		/* It's a multi-mount; deal with it */
 		do {
@@ -1038,6 +1043,7 @@ int parse_mount(struct autofs_point *ap, const char *name,
 				cache_multi_unlock(me);
 				cache_unlock(mc);
 				free(options);
+				pthread_setcancelstate(cur_state, NULL);
 				return 1;
 			}
 
@@ -1051,6 +1057,7 @@ int parse_mount(struct autofs_point *ap, const char *name,
 				cache_unlock(mc);
 				free(path);
 				free(options);
+				pthread_setcancelstate(cur_state, NULL);
 				return 1;
 			}
 
@@ -1073,6 +1080,7 @@ int parse_mount(struct autofs_point *ap, const char *name,
 				free(options);
 				free(myoptions);
 				free(loc);
+				pthread_setcancelstate(cur_state, NULL);
 				return 1;
 			}
 
@@ -1101,6 +1109,7 @@ int parse_mount(struct autofs_point *ap, const char *name,
 				cache_multi_unlock(me);
 				cache_unlock(mc);
 				free(options);
+				pthread_setcancelstate(cur_state, NULL);
 				return 1;
 			}
 
@@ -1118,6 +1127,7 @@ int parse_mount(struct autofs_point *ap, const char *name,
 				cache_multi_unlock(me);
 				cache_unlock(mc);
 				free(options);
+				pthread_setcancelstate(cur_state, NULL);
 				return rv;
 			}
 		}
@@ -1128,6 +1138,7 @@ int parse_mount(struct autofs_point *ap, const char *name,
 			cache_multi_unlock(me);
 			cache_unlock(mc);
 			free(options);
+			pthread_setcancelstate(cur_state, NULL);
 			return 1;
 		}
 
@@ -1135,6 +1146,7 @@ int parse_mount(struct autofs_point *ap, const char *name,
 		cache_unlock(mc);
 
 		free(options);
+		pthread_setcancelstate(cur_state, NULL);
 
 		return rv;
 	} else {
@@ -1145,24 +1157,24 @@ int parse_mount(struct autofs_point *ap, const char *name,
 
 		/* Location can't begin with a '/' */
 		if (*p == '/') {
+			free(options);
 			warn(ap->logopt,
 			      MODPREFIX "error location begins with \"/\"");
-			free(options);
 			return 1;
 		}
 
 		l = chunklen(p, check_colon(p));
 		loc = dequote(p, l, ap->logopt);
 		if (!loc) {
-			warn(ap->logopt, MODPREFIX "null location or out of memory");
 			free(options);
+			warn(ap->logopt, MODPREFIX "null location or out of memory");
 			return 1;
 		}
 
 		if (!validate_location(loc)) {
-			warn(ap->logopt, MODPREFIX "invalid location");
 			free(loc);
 			free(options);
+			warn(ap->logopt, MODPREFIX "invalid location");
 			return 1;
 		}
 
@@ -1178,18 +1190,18 @@ int parse_mount(struct autofs_point *ap, const char *name,
 			l = chunklen(p, check_colon(p));
 			ent = dequote(p, l, ap->logopt);
 			if (!ent) {
-				warn(ap->logopt,
-				     MODPREFIX "null location or out of memory");
 				free(loc);
 				free(options);
+				warn(ap->logopt,
+				     MODPREFIX "null location or out of memory");
 				return 1;
 			}
 
 			if (!validate_location(ent)) {
-				warn(ap->logopt, MODPREFIX "invalid location");
 				free(ent);
 				free(loc);
 				free(options);
+				warn(ap->logopt, MODPREFIX "invalid location");
 				return 1;
 			}
 
@@ -1198,10 +1210,10 @@ int parse_mount(struct autofs_point *ap, const char *name,
 
 			loc = realloc(loc, strlen(loc) + l + 2);
 			if (!loc) {
-				error(ap->logopt, MODPREFIX "out of memory");
 				free(ent);
 				free(loc);
 				free(options);
+				error(ap->logopt, MODPREFIX "out of memory");
 				return 1;
 			}
 
@@ -1216,10 +1228,10 @@ int parse_mount(struct autofs_point *ap, const char *name,
 
 		loclen = strlen(loc);
 		if (loclen == 0) {
-			error(ap->logopt,
-			      MODPREFIX "entry %s is empty!", name);
 			free(loc);
 			free(options);
+			error(ap->logopt,
+			      MODPREFIX "entry %s is empty!", name);
 			return 1;
 		}
 
@@ -1242,12 +1254,14 @@ int parse_mount(struct autofs_point *ap, const char *name,
 		 * If it's a multi-mount insert the triggers
 		 * These are always direct mount triggers so root = ""
 		 */
+		pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cur_state);
 		cache_readlock(mc);
 		me = cache_lookup_distinct(mc, name);
 		if (me) {
 			mount_subtree_offsets(ap, mc, me);
 		}
 		cache_unlock(mc);
+		pthread_setcancelstate(cur_state, NULL);
 	}
 	return rv;
 }

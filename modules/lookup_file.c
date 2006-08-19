@@ -67,31 +67,31 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 	}
 
 	if (argc < 1) {
-		crit(LOGOPT_ANY, MODPREFIX "No map name");
 		free(ctxt);
+		crit(LOGOPT_ANY, MODPREFIX "No map name");
 		return 1;
 	}
 
 	ctxt->mapname = argv[0];
 
 	if (ctxt->mapname[0] != '/') {
-		msg(MODPREFIX "file map %s is not an absolute pathname",
-		    ctxt->mapname);
 		free(ctxt);
+		msg(MODPREFIX "file map %s is not an absolute pathname",
+		    argv[0]);
 		return 1;
 	}
 
 	if (access(ctxt->mapname, R_OK)) {
-		msg(MODPREFIX "file map %s missing or not readable",
-		    ctxt->mapname);
 		free(ctxt);
+		msg(MODPREFIX "file map %s missing or not readable",
+		    argv[0]);
 		return 1;
 	}
 
 	if (stat(ctxt->mapname, &st)) {
-		crit(LOGOPT_ANY, MODPREFIX "file map %s, could not stat",
-		     ctxt->mapname);
 		free(ctxt);
+		crit(LOGOPT_ANY, MODPREFIX "file map %s, could not stat",
+		     argv[0]);
 		return 1;
 	}
 		
@@ -102,8 +102,8 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 
 	ctxt->parse = open_parse(mapfmt, MODPREFIX, argc - 1, argv + 1);
 	if (!ctxt->parse) {
-		crit(LOGOPT_ANY, MODPREFIX "failed to open parse context");
 		free(ctxt);
+		crit(LOGOPT_ANY, MODPREFIX "failed to open parse context");
 		return 1;
 	}
 	*context = ctxt;
@@ -345,7 +345,7 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 	struct stat st;
 	FILE *f;
 	unsigned int path_len, ent_len;
-	int entry;
+	int entry, cur_state;
 
 	if (master->recurse)
 		return NSS_STATUS_UNAVAIL;
@@ -357,18 +357,17 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 		return NSS_STATUS_UNAVAIL;
 	}
 
-	path = malloc(KEY_MAX_LEN + 1);
+	path = alloca(KEY_MAX_LEN + 1);
 	if (!path) {
 		error(LOGOPT_ANY,
 		      MODPREFIX "could not malloc storage for path");
 		return NSS_STATUS_UNAVAIL;
 	}
 
-	ent = malloc(MAPENT_MAX_LEN + 1);
+	ent = alloca(MAPENT_MAX_LEN + 1);
 	if (!ent) {
 		error(LOGOPT_ANY,
 		      MODPREFIX "could not malloc storage for mapent");
-		free(path);
 		return NSS_STATUS_UNAVAIL;
 	}
 
@@ -377,8 +376,6 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 		error(LOGOPT_ANY,
 		      MODPREFIX "could not open master map file %s",
 		      ctxt->mapname);
-		free(path);
-		free(ent);
 		return NSS_STATUS_UNAVAIL;
 	}
 
@@ -425,8 +422,6 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 			if (!buffer) {
 				error(LOGOPT_ANY,
 				      MODPREFIX "could not malloc parse buffer");
-				free(path);
-				free(ent);
 				return NSS_STATUS_UNAVAIL;
 			}
 			memset(buffer, 0, blen);
@@ -435,9 +430,10 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 			strcat(buffer, " ");
 			strcat(buffer, ent);
 
+			pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cur_state);
 			master_parse_entry(buffer, timeout, logging, age);
-
 			free(buffer);
+			pthread_setcancelstate(cur_state, NULL);
 		}
 
 		if (feof(f))
@@ -447,16 +443,11 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 	if (fstat(fileno(f), &st)) {
 		crit(LOGOPT_ANY, MODPREFIX "file map %s, could not stat",
 		       ctxt->mapname);
-		free(path);
-		free(ent);
 		return NSS_STATUS_UNAVAIL;
 	}
 	ctxt->mtime = st.st_mtime;
 
 	fclose(f);
-
-	free(path);
-	free(ent);
 
 	return NSS_STATUS_SUCCESS;
 }
@@ -515,9 +506,9 @@ prepare_plus_include(struct autofs_point *ap, time_t age, char *key, unsigned in
 
 	ret = master_add_autofs_point(entry, timeout, logopt, ghost, 0);
 	if (!ret) {
+		master_free_mapent(entry);
 		error(ap->logopt,
 		      MODPREFIX "failed to add autofs_point to entry");
-		master_free_mapent(entry);
 		return NULL;
 	}
 	iap = entry->ap;
@@ -536,8 +527,8 @@ prepare_plus_include(struct autofs_point *ap, time_t age, char *key, unsigned in
 	/* skip plus */
 	buf = strdup(key + 1);
 	if (!buf) {
-		error(ap->logopt, MODPREFIX "failed to strdup key");
 		master_free_mapent(entry);
+		error(ap->logopt, MODPREFIX "failed to strdup key");
 		return NULL;
 	}
 
@@ -569,9 +560,9 @@ prepare_plus_include(struct autofs_point *ap, time_t age, char *key, unsigned in
 
 	source = master_add_map_source(entry, type, fmt, age, argc, argv);
 	if (!source) {
-		error(ap->logopt, "failed to creat map_source");
 		master_free_mapent(entry);
 		free(buf);
+		error(ap->logopt, "failed to creat map_source");
 		return NULL;
 	}
 	source->mc = current->mc;
@@ -611,18 +602,17 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 		return NSS_STATUS_UNAVAIL;
 	}
 
-	key = malloc(KEY_MAX_LEN + 1);
+	key = alloca(KEY_MAX_LEN + 1);
 	if (!key) {
 		error(ap->logopt,
 		      MODPREFIX "could not malloc storage for key");
 		return NSS_STATUS_UNAVAIL;
 	}
 
-	mapent = malloc(MAPENT_MAX_LEN + 1);
+	mapent = alloca(MAPENT_MAX_LEN + 1);
 	if (!mapent) {
 		error(ap->logopt,
 		      MODPREFIX "could not malloc storage for mapent");
-		free(key);
 		return NSS_STATUS_UNAVAIL;
 	}
 
@@ -630,8 +620,6 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 	if (!f) {
 		error(ap->logopt,
 		      MODPREFIX "could not open map file %s", ctxt->mapname);
-		free(key);
-		free(mapent);
 		return NSS_STATUS_UNAVAIL;
 	}
 
@@ -696,17 +684,12 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 		crit(ap->logopt,
 		     MODPREFIX "file map %s, could not stat",
 		     ctxt->mapname);
-		free(key);
-		free(mapent);
 		return NSS_STATUS_UNAVAIL;
 	}
 	ctxt->mtime = st.st_mtime;
 	source->age = age;
 
 	fclose(f);
-
-	free(key);
-	free(mapent);
 
 	return NSS_STATUS_SUCCESS;
 }
@@ -793,10 +776,11 @@ static int lookup_one(struct autofs_point *ap,
 
 				free(s_key);
 
-				fclose(f);
 				cache_writelock(mc);
 				ret = cache_update(mc, key, mapent, age);
 				cache_unlock(mc);
+
+				fclose(f);
 
 				return ret;
 			}
@@ -876,10 +860,12 @@ static int lookup_wild(struct autofs_point *ap, struct lookup_context *ctxt)
 				if (eq == 0)
 					continue;
 
-				fclose(f);
 				cache_writelock(mc);
 				ret = cache_update(mc, "*", mapent, age);
 				cache_unlock(mc);
+
+				fclose(f);
+
 				return ret;
 			}
 		}

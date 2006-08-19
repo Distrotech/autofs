@@ -402,6 +402,13 @@ static int expire_indirect(struct autofs_point *ap, int ioctlfd, const char *pat
 	return (retries >= 0);
 }
 
+static void mnts_cleanup(void *arg)
+{
+	struct mnt_list *mnts = (struct mnt_list *) arg;
+	free_mnt_list(mnts);
+	return;
+}
+
 void *expire_proc_indirect(void *arg)
 {
 	struct autofs_point *ap;
@@ -410,8 +417,8 @@ void *expire_proc_indirect(void *arg)
 	struct expire_args *ea;
 	unsigned int now;
 	int offsets, submnts, count;
-	int ioctlfd;
-	int status, ret;
+	int ioctlfd, cur_state;
+	int status, ret, left;
 
 	ea = (struct expire_args *) arg;
 
@@ -421,7 +428,7 @@ void *expire_proc_indirect(void *arg)
 
 	ap = ea->ap;
 	now = ea->when;
-	ea->status = 0;
+	ea->status = 1;
 
 	ea->signaled = 1;
 	status = pthread_cond_signal(&ea->cond);
@@ -439,8 +446,11 @@ void *expire_proc_indirect(void *arg)
 	if (status)
 		fatal(status);
 
+	left = 0;
+
 	/* Get a list of real mounts and expire them if possible */
 	mnts = get_mnt_list(_PROC_MOUNTS, ap->path, 0);
+	pthread_cleanup_push(mnts_cleanup, mnts);
 	for (next = mnts; next; next = next->next) {
 		char *ind_key;
 		int ret;
@@ -450,8 +460,10 @@ void *expire_proc_indirect(void *arg)
 			 * If we have submounts check if this path lives below
 			 * one of them and pass on the state change.
 			 */
+			pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cur_state);
 			if (strstr(next->opts, "indirect"))
 				master_notify_submount(ap, next->path, ap->state);
+			pthread_setcancelstate(cur_state, NULL);
 
 			continue;
 		}
@@ -486,11 +498,13 @@ void *expire_proc_indirect(void *arg)
 
 		debug(ap->logopt, "expire %s", next->path);
 
+		pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cur_state);
 		ret = expire_indirect(ap, ioctlfd, next->path, now);
 		if (!ret)
-			ea->status++;
+			left++;
+		pthread_setcancelstate(cur_state, NULL);
 	}
-	free_mnt_list(mnts);
+	pthread_cleanup_pop(1);
 
 	/*
 	 * If there are no more real mounts left we could still
@@ -498,13 +512,16 @@ void *expire_proc_indirect(void *arg)
 	 * umount them here.
 	 */
 	if (mnts) {
+		pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cur_state);
 		ret = expire_indirect(ap, ap->ioctlfd, ap->path, now);
 		if (!ret)
-			ea->status++;
+			left++;
+		pthread_setcancelstate(cur_state, NULL);
 	}
 
 	count = offsets = submnts = 0;
 	mnts = get_mnt_list(_PROC_MOUNTS, ap->path, 0);
+	pthread_cleanup_push(mnts_cleanup, mnts);
 	/* Are there any real mounts left */
 	for (next = mnts; next; next = next->next) {
 		if (strcmp(next->fs_type, "autofs"))
@@ -516,7 +533,7 @@ void *expire_proc_indirect(void *arg)
 				offsets++;
 		}
 	}
-	free_mnt_list(mnts);
+	pthread_cleanup_pop(1);
 
 	if (submnts)
 		debug(ap->logopt,
@@ -531,11 +548,11 @@ void *expire_proc_indirect(void *arg)
 
 	/* If we are trying to shutdown make sure we can umount */
 	if (!ioctl(ap->ioctlfd, AUTOFS_IOC_ASKUMOUNT, &ret)) {
-		if (!ret) {
+		if (!ret)
 			msg("mount still busy %s", ap->path);
-			ea->status++;
-		}
 	}
+
+	ea->status = left;
 
 	pthread_cleanup_pop(1);
 

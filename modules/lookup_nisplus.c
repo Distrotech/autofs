@@ -46,8 +46,8 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 	}
 
 	if (argc < 1) {
-		crit(LOGOPT_ANY, MODPREFIX "No map name");
 		free(ctxt);
+		crit(LOGOPT_ANY, MODPREFIX "No map name");
 		return 1;
 	}
 	ctxt->mapname = argv[0];
@@ -58,8 +58,8 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 	 */
 	ctxt->domainname = nis_local_directory();
 	if (!ctxt->domainname) {
-		crit(LOGOPT_ANY, MODPREFIX "NIS+ domain not set");
 		free(ctxt);
+		crit(LOGOPT_ANY, MODPREFIX "NIS+ domain not set");
 		return 1;
 	}
 
@@ -68,8 +68,8 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 
 	ctxt->parse = open_parse(mapfmt, MODPREFIX, argc - 1, argv + 1);
 	if (!ctxt->parse) {
-		crit(LOGOPT_ANY, MODPREFIX "failed to open parse context");
 		free(ctxt);
+		crit(LOGOPT_ANY, MODPREFIX "failed to open parse context");
 		return 1;
 	}
 	*context = ctxt;
@@ -89,11 +89,14 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 	char *path, *ent;
 	char *buffer;
 	char buf[MAX_ERR_BUF];
+	int cur_state;
 
+	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cur_state);
 	tablename = alloca(strlen(ctxt->mapname) + strlen(ctxt->domainname) + 20);
 	if (!tablename) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
 		crit(LOGOPT_ANY, MODPREFIX "alloca: %s", estr);
+		pthread_setcancelstate(cur_state, NULL);
 		return NSS_STATUS_UNAVAIL;
 	}
 	sprintf(tablename, "%s.org_dir.%s", ctxt->mapname, ctxt->domainname);
@@ -104,6 +107,7 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 		nis_freeresult(result);
 		crit(LOGOPT_ANY,
 		     MODPREFIX "couldn't locat nis+ table %s", ctxt->mapname);
+		pthread_setcancelstate(cur_state, NULL);
 		return NSS_STATUS_NOTFOUND;
 	}
 
@@ -114,6 +118,7 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 		nis_freeresult(result);
 		crit(LOGOPT_ANY,
 		     MODPREFIX "couldn't enumrate nis+ map %s", ctxt->mapname);
+		pthread_setcancelstate(cur_state, NULL);
 		return NSS_STATUS_UNAVAIL;
 	}
 
@@ -149,6 +154,7 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 	}
 
 	nis_freeresult(result);
+	pthread_setcancelstate(cur_state, NULL);
 
 	return NSS_STATUS_SUCCESS;
 }
@@ -164,6 +170,7 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 	unsigned int current, result_count;
 	char *key, *mapent;
 	char buf[MAX_ERR_BUF];
+	int cur_state;
 
 	source = ap->entry->current;
 	ap->entry->current = NULL;
@@ -171,10 +178,12 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 
 	mc = source->mc;
 
+	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cur_state);
 	tablename = alloca(strlen(ctxt->mapname) + strlen(ctxt->domainname) + 20);
 	if (!tablename) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
 		crit(LOGOPT_ANY, MODPREFIX "alloca: %s", estr);
+		pthread_setcancelstate(cur_state, NULL);
 		return NSS_STATUS_UNAVAIL;
 	}
 	sprintf(tablename, "%s.org_dir.%s", ctxt->mapname, ctxt->domainname);
@@ -185,6 +194,7 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 		nis_freeresult(result);
 		crit(ap->logopt,
 		     MODPREFIX "couldn't locat nis+ table %s", ctxt->mapname);
+		pthread_setcancelstate(cur_state, NULL);
 		return NSS_STATUS_NOTFOUND;
 	}
 
@@ -195,6 +205,7 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 		nis_freeresult(result);
 		crit(ap->logopt,
 		     MODPREFIX "couldn't enumrate nis+ map %s", ctxt->mapname);
+		pthread_setcancelstate(cur_state, NULL);
 		return NSS_STATUS_UNAVAIL;
 	}
 
@@ -233,6 +244,8 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 
 	source->age = age;
 
+	pthread_setcancelstate(cur_state, NULL);
+
 	return NSS_STATUS_SUCCESS;
 }
 
@@ -247,7 +260,7 @@ static int lookup_one(struct autofs_point *ap,
 	nis_object *this;
 	char *mapent;
 	time_t age = time(NULL);
-	int ret;
+	int ret, cur_state;
 	char buf[MAX_ERR_BUF];
 
 	source = ap->entry->current;
@@ -256,11 +269,13 @@ static int lookup_one(struct autofs_point *ap,
 
 	mc = source->mc;
 
+	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cur_state);
 	tablename = alloca(strlen(key) +
 			strlen(ctxt->mapname) + strlen(ctxt->domainname) + 20);
 	if (!tablename) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
 		crit(LOGOPT_ANY, MODPREFIX "alloca: %s", estr);
+		pthread_setcancelstate(cur_state, NULL);
 		return -1;
 	}
 	sprintf(tablename, "[key=%s],%s.org_dir.%s", key, ctxt->mapname,
@@ -269,6 +284,7 @@ static int lookup_one(struct autofs_point *ap,
 	result = nis_list(tablename, FOLLOW_PATH | FOLLOW_LINKS, NULL, NULL);
 	if (result->status != NIS_SUCCESS && result->status != NIS_S_SUCCESS) {
 		nis_freeresult(result);
+		pthread_setcancelstate(cur_state, NULL);
 		if (result->status == NIS_NOTFOUND ||
 		    result->status == NIS_S_NOTFOUND)
 			return CHE_MISSING;
@@ -284,6 +300,7 @@ static int lookup_one(struct autofs_point *ap,
 	cache_unlock(mc);
 
 	nis_freeresult(result);
+	pthread_setcancelstate(cur_state, NULL);
 
 	return ret;
 }
@@ -297,7 +314,7 @@ static int lookup_wild(struct autofs_point *ap, struct lookup_context *ctxt)
 	nis_object *this;
 	char *mapent;
 	time_t age = time(NULL);
-	int ret;
+	int ret, cur_state;
 	char buf[MAX_ERR_BUF];
 
 	source = ap->entry->current;
@@ -306,10 +323,12 @@ static int lookup_wild(struct autofs_point *ap, struct lookup_context *ctxt)
 
 	mc = source->mc;
 
+	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cur_state);
 	tablename = alloca(strlen(ctxt->mapname) + strlen(ctxt->domainname) + 20);
 	if (!tablename) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
 		crit(LOGOPT_ANY, MODPREFIX "alloca: %s", estr);
+		pthread_setcancelstate(cur_state, NULL);
 		return -1;
 	}
 	sprintf(tablename, "[key=*],%s.org_dir.%s", ctxt->mapname,
@@ -318,6 +337,7 @@ static int lookup_wild(struct autofs_point *ap, struct lookup_context *ctxt)
 	result = nis_list(tablename, FOLLOW_PATH | FOLLOW_LINKS, NULL, NULL);
 	if (result->status != NIS_SUCCESS && result->status != NIS_S_SUCCESS) {
 		nis_freeresult(result);
+		pthread_setcancelstate(cur_state, NULL);
 		if (result->status == NIS_NOTFOUND ||
 		    result->status == NIS_S_NOTFOUND)
 			return CHE_MISSING;
@@ -332,6 +352,7 @@ static int lookup_wild(struct autofs_point *ap, struct lookup_context *ctxt)
 	cache_unlock(mc);
 
 	nis_freeresult(result);
+	pthread_setcancelstate(cur_state, NULL);
 
 	return ret;
 }
@@ -493,12 +514,10 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 
 	cache_readlock(mc);
 	me = cache_lookup(mc, key);
-	if (me) {
-		pthread_cleanup_push(cache_lock_cleanup, mc);
+	if (me && me->mapent) {
 		mapent_len = strlen(me->mapent);
 		mapent = alloca(mapent_len + 1);
 		strcpy(mapent, me->mapent);
-		pthread_cleanup_pop(0);
 	}
 	cache_unlock(mc);
 

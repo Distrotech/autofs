@@ -761,6 +761,13 @@ static int expire_direct(int ioctlfd, const char *path, unsigned int when, unsig
 	return (retries >= 0);
 }
 
+static void mnts_cleanup(void *arg)
+{
+	struct mnt_list *mnts = (struct mnt_list *) arg;
+	free_mnt_list(mnts);
+	return;
+}
+
 void *expire_proc_direct(void *arg)
 {
 	struct mnt_list *mnts, *next;
@@ -768,8 +775,8 @@ void *expire_proc_direct(void *arg)
 	struct autofs_point *ap;
 	struct mapent *me = NULL;
 	unsigned int now;
-	int ioctlfd = -1;
-	int status, ret;
+	int ioctlfd, cur_state;
+	int status, ret, left;
 
 	ea = (struct expire_args *) arg;
 
@@ -779,7 +786,7 @@ void *expire_proc_direct(void *arg)
 
 	ap = ea->ap;
 	now = ea->when;
-	ea->status = 0;
+	ea->status = 1;
 
 	ea->signaled = 1;
 	status = pthread_cond_signal(&ea->cond);
@@ -797,18 +804,24 @@ void *expire_proc_direct(void *arg)
 	if (status)
 		fatal(status);
 
+	left = 0;
+
 	/* Get a list of real mounts and expire them if possible */
 	mnts = get_mnt_list(_PROC_MOUNTS, "/", 0);
+	pthread_cleanup_push(mnts_cleanup, mnts);
 	for (next = mnts; next; next = next->next) {
 		if (!strcmp(next->fs_type, "autofs")) {
 			/*
 			 * If we have submounts check if this path lives below
 			 * one of them and pass on state change.
 			 */
+			pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cur_state);
 			if (strstr(next->opts, "indirect")) {
 				master_notify_submount(ap, next->path, ap->state);
+				pthread_setcancelstate(cur_state, NULL);
 				continue;
 			}
+			pthread_setcancelstate(cur_state, NULL);
 
 			/* Skip offsets */
 			if (strstr(next->opts, "offset"))
@@ -834,11 +847,15 @@ void *expire_proc_direct(void *arg)
 
 		debug(ap->logopt, "send expire to trigger %s", next->path);
 
+		pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cur_state);
 		ret = expire_direct(ioctlfd, next->path, now, ap->logopt);
 		if (!ret)
-			ea->status++;
+			left++;
+		pthread_setcancelstate(cur_state, NULL);
 	}
-	free_mnt_list(mnts);
+	pthread_cleanup_pop(1);
+
+	ea->status = left;
 
 	pthread_cleanup_pop(1);
 

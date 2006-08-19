@@ -30,14 +30,10 @@ struct state_queue {
 
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
+static unsigned int signaled = 0;
 static LIST_HEAD(state_queue);
 
-static unsigned int signaled = 0;
 static void st_set_thid(struct autofs_point *, pthread_t);
-
-static pthread_mutex_t task_mutex = PTHREAD_MUTEX_INITIALIZER;
-static pthread_cond_t task_cond = PTHREAD_COND_INITIALIZER;
-static unsigned int task_signaled;
 
 #define st_mutex_lock() \
 do { \
@@ -49,20 +45,6 @@ do { \
 #define st_mutex_unlock() \
 do { \
 	int status = pthread_mutex_unlock(&mutex); \
-	if (status) \
-		fatal(status); \
-} while (0)
-
-#define task_mutex_lock() \
-do { \
-	int status = pthread_mutex_lock(&task_mutex); \
-	if (status) \
-		fatal(status); \
-} while (0)
-
-#define task_mutex_unlock() \
-do { \
-	int status = pthread_mutex_unlock(&task_mutex); \
 	if (status) \
 		fatal(status); \
 } while (0)
@@ -116,11 +98,13 @@ void expire_cleanup(void *arg)
 	struct autofs_point *ap;
 	int statefd;
 	enum states next = ST_INVAL;
-	int success, ret;
+	int success, ret, cur_state;
 
 	ea = (struct expire_args *) arg;
 	ap = ea->ap;
 	success = ea->status;
+
+	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cur_state);
 
 	state_mutex_lock(ap);
 
@@ -194,6 +178,8 @@ void expire_cleanup(void *arg)
 	state_mutex_unlock(ap);
 
 	free(ea);
+
+	pthread_setcancelstate(cur_state, NULL);
 
 	return;
 }
@@ -333,13 +319,20 @@ static void do_readmap_cleanup(void *arg)
 	return;
 }
 
+static void tree_mnts_cleanup(void *arg)
+{
+	struct mnt_list *mnts = (struct mnt_list *) arg;
+	tree_free_mnt_tree(mnts);
+	return;
+}
+
 static void *do_readmap(void *arg)
 {
 	struct autofs_point *ap;
 	struct map_source *map;
 	struct mapent_cache *mc;
 	struct readmap_args *ra;
-	struct  mnt_list *mnts;
+	struct mnt_list *mnts;
 	int status;
 	time_t now;
 
@@ -378,6 +371,7 @@ static void *do_readmap(void *arg)
 	} else {
 		struct mapent *me;
 		mnts = tree_make_mnt_tree(_PROC_MOUNTS, "/");
+		pthread_cleanup_push(tree_mnts_cleanup, mnts);
 		pthread_cleanup_push(master_source_lock_cleanup, ap->entry);
 		master_source_readlock(ap->entry);
 		map = ap->entry->first;
@@ -406,7 +400,7 @@ static void *do_readmap(void *arg)
 			pthread_cleanup_pop(1);
 			map = map->next;
 		}
-		tree_free_mnt_tree(mnts);
+		pthread_cleanup_pop(1);
 		pthread_cleanup_pop(1);
 		lookup_prune_cache(ap, now);
 	}
@@ -617,12 +611,10 @@ int st_add_task(struct autofs_point *ap, enum states state)
 	unsigned int empty = 1;
 	int status;
 
-	state_mutex_lock(ap);
-
 	/* Task termination marker, poke state machine */
 	if (state == ST_READY) {
+		state_mutex_lock(ap);
 		st_ready(ap);
-
 		state_mutex_unlock(ap);
 
 		st_mutex_lock();
@@ -637,11 +629,11 @@ int st_add_task(struct autofs_point *ap, enum states state)
 		return 1;
 	}
 
+	state_mutex_lock(ap);
 	if (ap->state == ST_SHUTDOWN) {
 		state_mutex_unlock(ap);
 		return 1;
 	}
-
 	state_mutex_unlock(ap);
 
 	new = malloc(sizeof(struct state_queue));
@@ -734,26 +726,14 @@ void st_remove_tasks(struct autofs_point *ap)
 
 }
 
-static void *do_run_task(void *arg)
+static int run_state_task(struct state_queue *task)
 {
-	struct state_queue *task;
 	struct autofs_point *ap;
 	enum states next_state, state;
 	unsigned long ret = 1;
-	int status;
  
-	task_mutex_lock();
-
-	task = (struct state_queue *) arg;
 	ap = task->ap;
 	next_state = task->state;
-
-	task_signaled = 1;
-	status = pthread_cond_signal(&task_cond);
-	if (status)
-		fatal(status);
-
-	task_mutex_unlock();
 
 	state_mutex_lock(ap);
 
@@ -789,33 +769,7 @@ static void *do_run_task(void *arg)
 
 	state_mutex_unlock(ap);
 
-	return (void *) ret;
-}
-
-static int run_state_task(struct state_queue *task)
-{
-	pthread_t thid;
-	int status;
-
-	task_mutex_lock();
-
-	status = pthread_create(&thid, &thread_attr, do_run_task, task);
-	if (status) {
-		error(task->ap->logopt, "error running task");
-		task_mutex_unlock();
-		return 0;
-	}
-
-	task_signaled = 0;
-	while (!task_signaled) {
-		status = pthread_cond_wait(&task_cond, &task_mutex);
-		if (status)
-			fatal(status);
-	}
-
-	task_mutex_unlock();
-
-	return 1;
+	return ret;
 }
 
 static void st_set_thid(struct autofs_point *ap, pthread_t thid)
@@ -838,11 +792,9 @@ static void *st_queue_handler(void *arg)
 	struct list_head *head;
 	struct list_head *p;
 	struct timespec wait;
-	int status;
+	int status, ret;
 
 	st_mutex_lock();
-
-	head = &state_queue;
 
 	while (1) {
 		/*
@@ -862,24 +814,25 @@ static void *st_queue_handler(void *arg)
 			}
 		}
 
-		list_for_each(p, head) {
+		p = head->next;
+		while(p != head) {
 			struct state_queue *task;
 
 			task = list_entry(p, struct state_queue, list);
+			p = p->next;
 /*
 			debug(LOGOPT_NONE,
 			      "task %p ap %p state %d next %d busy %d",
 			      task, task->ap, task->ap->state,
 			      task->state, task->busy);
 */
-
 			task->busy = 1;
-			/*
-			 * TODO: field return code and delete immediately
-			 * 	 on fail
-			 */
-			/* TODO: field return code and delete immediately on fail */
-			run_state_task(task);
+
+			ret = run_state_task(task);
+			if (!ret) {
+				list_del(&task->list);
+				free(task);
+			}
 		}
 
 		while (1) {
@@ -912,24 +865,30 @@ static void *st_queue_handler(void *arg)
 				if (!task->busy) {
 					/* Start a new task */
 					task->busy = 1;
-					/*
-					 * TODO: field return code and delete
-					 *	 immediately on fail
-					 */
-					run_state_task(task);
+
+					ret = run_state_task(task);
+					if (!ret)
+						goto remove;
 					continue;
 				}
-/*
-				if (task->thid && task->cancel)
+
+				/* Still starting up */
+				if (!task->thid)
+					continue;
+
+				if (task->cancel) {
 					pthread_cancel(task->thid);
-*/
+					task->cancel = 0;
+					continue;
+				}
+
 				/* Still busy */
 				if (task->thid) {
 					status = pthread_kill(task->thid, 0);
 					if (status != ESRCH)
 						continue;
 				}
-
+remove:
 				/* No more tasks for this queue */
 				if (list_empty(&task->pending)) {
 					list_del(&task->list);

@@ -117,8 +117,8 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 	memset(ctxt, 0, sizeof(struct lookup_context));
 
 	if (argc < 1) {
-		crit(LOGOPT_ANY, MODPREFIX "no map name");
 		free(ctxt);
+		crit(LOGOPT_ANY, MODPREFIX "no map name");
 		return 1;
 	}
 	ctxt->mapname = argv[0];
@@ -128,9 +128,9 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 	/* This should, but doesn't, take a const char ** */
 	err = yp_get_default_domain((char **) &ctxt->domainname);
 	if (err) {
+		free(ctxt);
 		debug(LOGOPT_NONE, MODPREFIX "map %s: %s", ctxt->mapname,
 		       yperr_string(err));
-		free(ctxt);
 		return 1;
 	}
 
@@ -141,8 +141,8 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 
 	ctxt->parse = open_parse(mapfmt, MODPREFIX, argc - 1, argv + 1);
 	if (!ctxt->parse) {
-		crit(LOGOPT_ANY, MODPREFIX "failed to open parse context");
 		free(ctxt);
+		crit(LOGOPT_ANY, MODPREFIX "failed to open parse context");
 		return 1;
 	}
 	*context = ctxt;
@@ -176,7 +176,7 @@ int yp_all_master_callback(int status, char *ypkey, int ypkeylen,
 
 	len = ypkeylen + 1 + vallen + 1;
 
-	buffer = malloc(len);
+	buffer = alloca(len);
 	if (!buffer) {
 		error(LOGOPT_ANY, MODPREFIX "could not malloc parse buffer");
 		return 0;
@@ -188,8 +188,6 @@ int yp_all_master_callback(int status, char *ypkey, int ypkeylen,
 	strcat(buffer, val);
 
 	master_parse_entry(buffer, timeout, logging, age);
-
-	free(buffer);
 
 	return 0;
 }
@@ -600,12 +598,10 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 
 	cache_readlock(mc);
 	me = cache_lookup(mc, key);
-	if (me) {
-		pthread_cleanup_push(cache_lock_cleanup, mc);
+	if (me && me->mapent) {
 		mapent_len = strlen(me->mapent);
 		mapent = alloca(mapent_len + 1);
 		strcpy(mapent, me->mapent);
-		pthread_cleanup_pop(0);
 	}
 	cache_unlock(mc);
 
