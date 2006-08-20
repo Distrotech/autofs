@@ -702,8 +702,13 @@ void st_remove_tasks(struct autofs_point *ap)
 		if (task->ap != ap)
 			continue;
 
-		if (task->busy)
-			task->cancel = 1;
+		if (task->busy) {
+			/* We only cancel readmap, prune and expire */
+			if (task->state == ST_EXPIRE ||
+			    task->state == ST_PRUNE ||
+			    task->state == ST_READMAP)
+				task->cancel = 1;
+		}
 
 		q = (&task->pending)->next;
 		while(q != &task->pending) {
