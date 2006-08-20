@@ -32,6 +32,7 @@
 - fix included map lookup.
 - fix directory cleanup on expire.
 - fix task cancelation at shutdown.
+- fix included map wild card key lookup.
 
 13/7/2006 autofs-5.0.1 rc1
 --------------------------

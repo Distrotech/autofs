@@ -822,52 +822,19 @@ static int lookup_wild(struct autofs_point *ap, struct lookup_context *ctxt)
 	while(1) {
 		entry = read_one(f, mkey, &k_len, mapent, &m_len);
 		if (entry) {
-			/*
-			 * If key starts with '+' it has to be an
-			 * included map.
-			 */
-			if (*mkey == '+') {
-				struct autofs_point *iap;
-				unsigned int inc;
-				int status;
+			int eq;
 
-				inc = check_self_include(mkey, ctxt);
+			eq = (*mkey == '*' && k_len == 1);
+			if (eq == 0)
+				continue;
 
-				master_source_current_wait(ap->entry);
-				ap->entry->current = source;
+			cache_writelock(mc);
+			ret = cache_update(mc, "*", mapent, age);
+			cache_unlock(mc);
 
-				iap = prepare_plus_include(ap, age, mkey, inc);
-				if (!iap) {
-					debug(ap->logopt,
-					      MODPREFIX
-					      "failed to select included map %s",
-					       mkey);
-					continue;
-				}
+			fclose(f);
 
-				/* Gim'ee some o' that 16k stack baby !! */
-				status = lookup_nss_mount(iap, "*", 1);
-
-				master_free_mapent_sources(iap->entry, 0);
-				master_free_mapent(iap->entry);
-
-				if (status)
-					return CHE_COMPLETED;
-			} else {
-				int eq;
-
-				eq = (*mkey == '*' && k_len == 1);
-				if (eq == 0)
-					continue;
-
-				cache_writelock(mc);
-				ret = cache_update(mc, "*", mapent, age);
-				cache_unlock(mc);
-
-				fclose(f);
-
-				return ret;
-			}
+			return ret;
 		}
 
 		if (feof(f))
