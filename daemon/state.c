@@ -98,13 +98,11 @@ void expire_cleanup(void *arg)
 	struct autofs_point *ap;
 	int statefd;
 	enum states next = ST_INVAL;
-	int success, ret, cur_state;
+	int success, ret;
 
 	ea = (struct expire_args *) arg;
 	ap = ea->ap;
 	success = ea->status;
-
-	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cur_state);
 
 	state_mutex_lock(ap);
 
@@ -178,8 +176,6 @@ void expire_cleanup(void *arg)
 	state_mutex_unlock(ap);
 
 	free(ea);
-
-	pthread_setcancelstate(cur_state, NULL);
 
 	return;
 }
@@ -676,10 +672,9 @@ int st_add_task(struct autofs_point *ap, enum states state)
 		/* No pending tasks */
 		if (list_empty(&task->pending)) {
 			new = st_alloc_task(ap, state);
-			if (!new)
-				break;
-			list_add_tail(&new->pending, &task->pending);
-			break;
+			if (new)
+				list_add_tail(&new->pending, &task->pending);
+			goto done;
 		}
 
 		list_for_each(q, &task->pending) {
@@ -688,13 +683,13 @@ int st_add_task(struct autofs_point *ap, enum states state)
 			p_task = list_entry(q, struct state_queue, pending);
 
 			if (p_task->state == state)
-				break;
-
-			new = st_alloc_task(ap, state);
-			if (!new)
-				break;
-			list_add_tail(&new->pending, &task->pending);
+				goto done;
 		}
+
+		new = st_alloc_task(ap, state);
+		if (new)
+			list_add_tail(&new->pending, &task->pending);
+done:
 		break;
 	}
 

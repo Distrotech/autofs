@@ -758,7 +758,12 @@ static int expire_direct(int ioctlfd, const char *path, unsigned int when, unsig
 		nanosleep(&tm, NULL);
 	}
 
-	return (retries >= 0);
+	if (!ioctl(ioctlfd, AUTOFS_IOC_ASKUMOUNT, &ret)) {
+		if (!ret)
+			return 0;
+	}
+
+	return 1;
 }
 
 static void mnts_cleanup(void *arg)
@@ -786,7 +791,7 @@ void *expire_proc_direct(void *arg)
 
 	ap = ea->ap;
 	now = ea->when;
-	ea->status = 1;
+	ea->status = -1;
 
 	ea->signaled = 1;
 	status = pthread_cond_signal(&ea->cond);
@@ -828,7 +833,8 @@ void *expire_proc_direct(void *arg)
 				continue;
 		}
 
-		pthread_testcancel();
+		if (ap->state == ST_EXPIRE || ap->state == ST_PRUNE)
+			pthread_testcancel();
 
 		/*
 		 * All direct mounts must be present in the map
@@ -859,9 +865,9 @@ void *expire_proc_direct(void *arg)
 
 	ea->status = left;
 
+	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cur_state);
 	pthread_cleanup_pop(1);
-
-	pthread_testcancel();
+	pthread_setcancelstate(cur_state, NULL);
 
 	return NULL;
 }

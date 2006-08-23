@@ -949,7 +949,7 @@ static int do_hup_signal(struct master *master, time_t age)
 static void *statemachine(void *arg)
 {
 	sigset_t signalset;
-	int sig, status;
+	int sig;
 
 	sigfillset(&signalset);
 	sigdelset(&signalset, SIGCHLD);
