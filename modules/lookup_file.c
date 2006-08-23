@@ -1010,7 +1010,7 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 
 	cache_readlock(mc);
 	me = cache_lookup(mc, key);
-	if (me && me->mapent) {
+	if (me && me->mapent && *me->mapent) {
 		pthread_cleanup_push(cache_lock_cleanup, mc);
 		mapent_len = strlen(me->mapent);
 		mapent = alloca(mapent_len + 1);

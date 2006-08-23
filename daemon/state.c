@@ -602,11 +602,29 @@ static unsigned int st_expire(struct autofs_point *ap)
 	return 0;
 }
 
+static struct state_queue *st_alloc_task(struct autofs_point *ap, enum states state)
+{
+	struct state_queue *task;
+
+	task = malloc(sizeof(struct state_queue));
+	if (!task)
+		return NULL;
+	memset(task, 0, sizeof(struct state_queue));
+
+	task->ap = ap;
+	task->state = state;
+
+	INIT_LIST_HEAD(&task->list);
+	INIT_LIST_HEAD(&task->pending);
+
+	return task;
+}
+
 /* Insert alarm entry on ordered list. */
 int st_add_task(struct autofs_point *ap, enum states state)
 {
 	struct list_head *head;
-	struct list_head *p;
+	struct list_head *p, *q;
 	struct state_queue *new;
 	unsigned int empty = 1;
 	int status;
@@ -636,17 +654,6 @@ int st_add_task(struct autofs_point *ap, enum states state)
 	}
 	state_mutex_unlock(ap);
 
-	new = malloc(sizeof(struct state_queue));
-	if (!new)
-		return 0;
-	memset(new, 0, sizeof(struct state_queue));
-
-	new->ap = ap;
-	new->state = state;
-
-	INIT_LIST_HEAD(&new->list);
-	INIT_LIST_HEAD(&new->pending);
-
 	st_mutex_lock();
 
 	head = &state_queue;
@@ -657,15 +664,45 @@ int st_add_task(struct autofs_point *ap, enum states state)
 
 		task = list_entry(p, struct state_queue, list);
 
-		if (task->ap == ap) {
-			empty = 0;
+		if (task->ap != ap)
+			continue;
+
+		empty = 0;
+
+		/* Don't add duplicate tasks */
+		if (task->state == state)
+			break;
+
+		/* No pending tasks */
+		if (list_empty(&task->pending)) {
+			new = st_alloc_task(ap, state);
+			if (!new)
+				break;
 			list_add_tail(&new->pending, &task->pending);
 			break;
 		}
+
+		list_for_each(q, &task->pending) {
+			struct state_queue *p_task;
+
+			p_task = list_entry(q, struct state_queue, pending);
+
+			if (p_task->state == state)
+				break;
+
+			new = st_alloc_task(ap, state);
+			if (!new)
+				break;
+			list_add_tail(&new->pending, &task->pending);
+		}
+		break;
 	}
 
-	if (empty)
-		list_add(&new->list, head);
+	if (empty) {
+		new = st_alloc_task(ap, state);
+		if (new)
+			list_add(&new->list, head);
+	}
 
 	/* Added task, encourage state machine */
 	signaled = 1;
@@ -715,8 +752,12 @@ void st_remove_tasks(struct autofs_point *ap)
 			waiting = list_entry(q, struct state_queue, pending);
 			q = q->next;
 
-			list_del(&waiting->pending);
-			free(waiting);
+			/* Don't remove existing shutdown task */
+			if (waiting->state != ST_SHUTDOWN_PENDING &&
+			    waiting->state != ST_SHUTDOWN_FORCE) {
+				list_del(&waiting->pending);
+				free(waiting);
+			}
 		}
 	}
 
@@ -735,7 +776,7 @@ static int run_state_task(struct state_queue *task)
 {
 	struct autofs_point *ap;
 	enum states next_state, state;
-	unsigned long ret = 1;
+	unsigned long ret = 0;
  
 	ap = task->ap;
 	next_state = task->state;
@@ -767,7 +808,6 @@ static int run_state_task(struct state_queue *task)
 			break;
 
 		default:
-			ret = 0;
 			error(ap->logopt, "bad next state %d", next_state);
 		}
 	}
@@ -825,12 +865,7 @@ static void *st_queue_handler(void *arg)
 
 			task = list_entry(p, struct state_queue, list);
 			p = p->next;
-/*
-			debug(LOGOPT_NONE,
-			      "task %p ap %p state %d next %d busy %d",
-			      task, task->ap, task->ap->state,
-			      task->state, task->busy);
-*/
+
 			task->busy = 1;
 
 			ret = run_state_task(task);
@@ -861,12 +896,7 @@ static void *st_queue_handler(void *arg)
 
 				task = list_entry(p, struct state_queue, list);
 				p = p->next;
-/*
-				debug(LOGOPT_NONE,
-				      "task %p ap %p state %d next %d busy %d",
-				      task, task->ap, task->ap->state,
-				      task->state, task->busy);
-*/
+
 				if (!task->busy) {
 					/* Start a new task */
 					task->busy = 1;

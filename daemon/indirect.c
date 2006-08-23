@@ -413,7 +413,7 @@ void *expire_proc_indirect(void *arg)
 {
 	struct autofs_point *ap;
 	struct mapent *me = NULL;
-	struct mnt_list *mnts, *next;
+	struct mnt_list *mnts = NULL, *next;
 	struct expire_args *ea;
 	unsigned int now;
 	int offsets, submnts, count;
@@ -449,8 +449,8 @@ void *expire_proc_indirect(void *arg)
 	left = 0;
 
 	/* Get a list of real mounts and expire them if possible */
-	mnts = get_mnt_list(_PROC_MOUNTS, ap->path, 0);
 	pthread_cleanup_push(mnts_cleanup, mnts);
+	mnts = get_mnt_list(_PROC_MOUNTS, ap->path, 0);
 	for (next = mnts; next; next = next->next) {
 		char *ind_key;
 		int ret;
@@ -467,6 +467,8 @@ void *expire_proc_indirect(void *arg)
 
 			continue;
 		}
+
+		pthread_testcancel();
 
 		/*
 		 * If the mount corresponds to an offset trigger then

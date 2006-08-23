@@ -616,8 +616,10 @@ static int get_pkt(struct autofs_point *ap, union autofs_packet_union *pkt)
 
 			if (post_state != ST_INVAL) {
 				if (post_state == ST_SHUTDOWN_PENDING ||
-				    post_state == ST_SHUTDOWN_FORCE)
+				    post_state == ST_SHUTDOWN_FORCE) {
+					alarm_delete(ap);
 					st_remove_tasks(ap);
+				}
 				st_add_task(ap, post_state);
 			}
 
@@ -1068,6 +1070,9 @@ static void handle_mounts_cleanup(void *arg)
 	/* If we have been canceled then we may hold the state mutex. */
 	mutex_operation_wait(&ap->state_mutex);
 
+	alarm_delete(ap);
+	st_remove_tasks(ap);
+
 	umount_autofs(ap, 1);
 
 	master_signal_submount(ap, MASTER_SUBMNT_JOIN);
@@ -1132,7 +1137,7 @@ void *handle_mounts(void *arg)
 		alarm_add(ap, ap->exp_runfreq + rand() % ap->exp_runfreq);
 
 	pthread_cleanup_push(handle_mounts_cleanup, ap);
-	pthread_setcancelstate(cancel_state, &cancel_state);
+	pthread_setcancelstate(cancel_state, NULL);
 
 	state_mutex_unlock(ap);
 
