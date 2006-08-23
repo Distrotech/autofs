@@ -537,6 +537,8 @@ void *expire_proc_indirect(void *arg)
 	}
 	pthread_cleanup_pop(1);
 
+	pthread_testcancel();
+
 	if (submnts)
 		debug(ap->logopt,
 		      "%d submounts remaining in %s", submnts, ap->path);

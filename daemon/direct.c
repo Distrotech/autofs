@@ -859,6 +859,8 @@ void *expire_proc_direct(void *arg)
 
 	ea->status = left;
 
+	pthread_testcancel();
+
 	pthread_cleanup_pop(1);
 
 	return NULL;

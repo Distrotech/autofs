@@ -958,20 +958,9 @@ static void *statemachine(void *arg)
 	while (1) {
 		sigwait(&signalset, &sig);
 
-		status = pthread_mutex_lock(&master_mutex);
-		if (status)
-			fatal(status);
 
-		if (list_empty(&master_list->mounts)) {
-			status = pthread_mutex_unlock(&master_mutex);
-			if (status)
-				fatal(status);
+		if (master_list_empty(master_list))
 			return NULL;
-		}
-
-		status = pthread_mutex_unlock(&master_mutex);
-		if (status)
-			fatal(status);
 
 		switch (sig) {
 		case SIGTERM:

@@ -724,8 +724,8 @@ int master_read_master(struct master *master, time_t age, int readall)
 	master_mutex_lock();
 
 	if (list_empty(&master->mounts)) {
-		error(LOGOPT_ANY, "no mounts in table");
 		master_mutex_unlock();
+		error(LOGOPT_ANY, "no mounts in table");
 		return 0;
 	}
 
