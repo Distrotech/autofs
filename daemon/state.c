@@ -96,7 +96,7 @@ void expire_cleanup(void *arg)
 	pthread_t thid = pthread_self();
 	struct expire_args *ea;
 	struct autofs_point *ap;
-	int statefd, status;
+	int statefd, success;
 	enum states next = ST_INVAL;
 
 	ea = (struct expire_args *) arg;
