@@ -96,9 +96,8 @@ void expire_cleanup(void *arg)
 	pthread_t thid = pthread_self();
 	struct expire_args *ea;
 	struct autofs_point *ap;
-	int statefd;
+	int statefd, status;
 	enum states next = ST_INVAL;
-	int success, ret;
 
 	ea = (struct expire_args *) arg;
 	ap = ea->ap;
@@ -120,19 +119,35 @@ void expire_cleanup(void *arg)
 		case ST_EXPIRE:
 			/* FALLTHROUGH */
 		case ST_PRUNE:
-			/* If we're a submount and we've just
-			   pruned or expired everything away,
-			   try to shut down */
+			/*
+			 * If we're a submount and we've just pruned or
+			 * expired everything away, try to shut down.
+			 *
+			 * Since we use the the fact that a mount will not
+			 * expire for at least ap->exp_timeout to avoid a
+			 * mount <-> expire race we need to wait before
+			 * letting a submount expire away. We also need
+			 * them to go away fairly quickly so the owner
+			 * mount expires in a reasonable time. Just skip
+			 * one expire check after it's no longer busy before
+			 * allowing it to shutdown.
+			 */
 			if (ap->submount && !success) {
-				if (!ioctl(ap->ioctlfd, AUTOFS_IOC_ASKUMOUNT, &ret)) {
-					if (ret)
-						next = ST_SHUTDOWN_PENDING;
+				int rv, idle;
+
+				rv = ioctl(ap->ioctlfd, AUTOFS_IOC_ASKUMOUNT, &idle);
+				if (!rv && idle && ap->submount > 1) {
+					next = ST_SHUTDOWN_PENDING;
+					break;
 				}
-				break;
+
+				if (ap->submount++ == 0)
+					ap->submount = 2;
 			}
 
 			if (!ap->submount)
 				alarm_add(ap, ap->exp_runfreq);
+
 			/* FALLTHROUGH */
 
 		case ST_READY:
