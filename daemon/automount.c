@@ -391,9 +391,12 @@ static int umount_subtree_mounts(struct autofs_point *ap, const char *path, unsi
 
 	left = 0;
 
+	pthread_cleanup_push(cache_lock_cleanup, mc);
+
 	if (me->multi) {
 		char *root, *base;
 		size_t ap_len;
+		int cur_state;
 
 		ap_len = strlen(ap->path);
 
@@ -411,6 +414,7 @@ static int umount_subtree_mounts(struct autofs_point *ap, const char *path, unsi
 		else
 			base = me->key + strlen(root);
 
+		pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cur_state);
 		/* Lock the closest parent nesting point for umount */
 		cache_multi_lock(me->parent);
 		if (umount_multi_triggers(ap, root, me, base)) {
@@ -419,9 +423,10 @@ static int umount_subtree_mounts(struct autofs_point *ap, const char *path, unsi
 			left++;
 		}
 		cache_multi_unlock(me->parent);
+		pthread_setcancelstate(cur_state, NULL);
 	}
 
-	cache_unlock(mc);
+	pthread_cleanup_pop(1);
 
 	if (left || is_autofs_fs)
 		return left;
@@ -1111,6 +1116,7 @@ void *handle_mounts(void *arg)
 		suc.status = 1;
 		state_mutex_unlock(ap);
 		umount_autofs(ap, 1);
+		pthread_setcancelstate(cancel_state, NULL);
 		pthread_exit(NULL);
 	}
 

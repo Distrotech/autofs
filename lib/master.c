@@ -856,8 +856,9 @@ void master_notify_state_change(struct master *master, int sig)
 	struct master_mapent *entry;
 	struct autofs_point *ap;
 	struct list_head *p;
-	int state_pipe;
+	int state_pipe, cur_state;
 
+	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cur_state);
 	master_mutex_lock();
 
 	list_for_each(p, &master->mounts) {
@@ -907,6 +908,7 @@ next:
 	}
 
 	master_mutex_unlock();
+	pthread_setcancelstate(cur_state, NULL);
 
 	return;
 }
@@ -1065,7 +1067,9 @@ static void check_update_map_sources(struct master_mapent *entry, int readall)
 int master_mount_mounts(struct master *master, time_t age, int readall)
 {
 	struct list_head *p, *head;
+	int cur_state;
 
+	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cur_state);
 	master_mutex_lock();
 
 	head = &master->mounts;
@@ -1109,6 +1113,7 @@ int master_mount_mounts(struct master *master, time_t age, int readall)
 	}
 
 	master_mutex_unlock();
+	pthread_setcancelstate(cur_state, NULL);
 
 	return 1;
 }

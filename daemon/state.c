@@ -622,6 +622,7 @@ int st_add_task(struct autofs_point *ap, enum states state)
 	struct list_head *head;
 	struct list_head *p, *q;
 	struct state_queue *new;
+	enum states ap_state;
 	unsigned int empty = 1;
 	int status;
 
@@ -644,7 +645,8 @@ int st_add_task(struct autofs_point *ap, enum states state)
 	}
 
 	state_mutex_lock(ap);
-	if (ap->state == ST_SHUTDOWN) {
+	ap_state = ap->state;
+	if (ap_state == ST_SHUTDOWN) {
 		state_mutex_unlock(ap);
 		return 1;
 	}
@@ -665,8 +667,10 @@ int st_add_task(struct autofs_point *ap, enum states state)
 
 		empty = 0;
 
-		/* Don't add duplicate tasks */
-		if (task->state == state)
+		/* Don't add duplicate shutdown tasks */
+		if (task->state == state &&
+		   (ap_state == ST_SHUTDOWN_PENDING ||
+		    ap_state == ST_SHUTDOWN_FORCE))
 			break;
 
 		/* No pending tasks */
@@ -682,7 +686,9 @@ int st_add_task(struct autofs_point *ap, enum states state)
 
 			p_task = list_entry(q, struct state_queue, pending);
 
-			if (p_task->state == state)
+			if (p_task->state == state &&
+			   (ap_state == ST_SHUTDOWN_PENDING ||
+			    ap_state == ST_SHUTDOWN_FORCE))
 				goto done;
 		}
 
