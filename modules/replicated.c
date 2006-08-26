@@ -587,14 +587,16 @@ int prune_host_list(struct host **list, unsigned int vers)
 	while (this && this->proximity == proximity) {
 		struct host *next = this->next;
 
-		status = get_vers_and_cost(this, vers);
-		if (!status) {
-			if (this == first) {
-				first = next;
-				if (next)
-					proximity = next->proximity;
+		if (this->name) {
+			status = get_vers_and_cost(this, vers);
+			if (!status) {
+				if (this == first) {
+					first = next;
+					if (next)
+						proximity = next->proximity;
+				}
+				delete_host(list, this);
 			}
-			delete_host(list, this);
 		}
 		this = next;
 	}
@@ -674,11 +676,15 @@ int prune_host_list(struct host **list, unsigned int vers)
 	this = first;
 	while (this) {
 		struct host *next = this->next;
-		status = get_supported_ver_and_cost(this, selected_version);
-		if (status) {
-			this->version = selected_version;
-			remove_host(list, this);
+		if (!this->name)
 			add_host(&new, this);
+		else {
+			status = get_supported_ver_and_cost(this, selected_version);
+			if (status) {
+				this->version = selected_version;
+				remove_host(list, this);
+				add_host(&new, this);
+			}
 		}
 		this = next;
 	}
@@ -775,6 +781,34 @@ static int add_path(struct host *hosts, const char *path, int len)
 	return 1;
 }
 
+static int add_local_path(struct host **hosts, const char *path)
+{
+	struct host *new;
+	char *tmp;
+
+	tmp = strdup(path);
+	if (!tmp)
+		return 0;
+
+	new = malloc(sizeof(struct host));
+	if (!new) {
+		free(tmp);
+		return 0;
+	}
+
+	memset(new, 0, sizeof(struct host));
+
+	new->path = tmp;
+	new->proximity = PROXIMITY_LOCAL;
+	new->version = NFS_VERS_MASK;
+	new->name = new->addr = NULL;
+	new->weight = new->cost = 0;
+
+	add_host(hosts, new);
+
+	return 1;
+}
+
 int parse_location(struct host **hosts, const char *list)
 {
 	char *str, *p, *delim;
@@ -829,17 +863,24 @@ int parse_location(struct host **hosts, const char *list)
 					*next++ = '\0';
 				}
 
-				if (!add_host_addrs(hosts, p, weight)) {
-					if (empty) {
+				if (p != delim) {
+					if (!add_host_addrs(hosts, p, weight)) {
+						if (empty) {
+							p = next;
+							continue;
+						}
+					}
+
+					if (!add_path(*hosts, path, strlen(path))) {
+						free_host_list(hosts);
+						free(str);
+						return 0;
+					}
+				} else {
+					if (!add_local_path(hosts, path)) {
 						p = next;
 						continue;
 					}
-				}
-
-				if (!add_path(*hosts, path, strlen(path))) {
-					free_host_list(hosts);
-					free(str);
-					return 0;
 				}
 			} else if (*delim != '\0') {
 				*delim = '\0';

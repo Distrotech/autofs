@@ -35,6 +35,7 @@
 - fix included map wild card key lookup.
 - fix task cancelation at shutdown (more).
 - fix concurrent mount and expire race with nested submounts.
+- fix colon escape handling.
 
 13/7/2006 autofs-5.0.1 rc1
 --------------------------

@@ -508,25 +508,35 @@ static int sun_mount(struct autofs_point *ap, const char *root,
 	mountpoint = alloca(namelen + 1);
 	sprintf(mountpoint, "%.*s", namelen, name);
 
-	what = alloca(loclen + 1);
-	if (*loc == ':') {
-		memcpy(what, loc + 1, loclen - 1);
-		what[loclen - 1] = '\0';
-	} else {
-		memcpy(what, loc, loclen);
-		what[loclen] = '\0';
-	}
-
-	debug(ap->logopt,
-	    MODPREFIX
-	    "mounting root %s, mountpoint %s, what %s, fstype %s, options %s",
-	    root, mountpoint, what, fstype, options);
-
 	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cur_state);
 	if (!strcmp(fstype, "nfs")) {
+		what = alloca(loclen + 1);
+		memcpy(what, loc, loclen);
+		what[loclen] = '\0';
+
+		debug(ap->logopt, MODPREFIX
+		      "mounting root %s, mountpoint %s, "
+		      "what %s, fstype %s, options %s",
+		      root, mountpoint, what, fstype, options);
+
 		rv = mount_nfs->mount_mount(ap, root, mountpoint, strlen(mountpoint),
 					    what, fstype, options, mount_nfs->context);
 	} else {
+		what = alloca(loclen + 1);
+		if (*loc == ':') {
+			loclen--;
+			memcpy(what, loc + 1, loclen);
+			what[loclen] = '\0';
+		} else {
+			memcpy(what, loc, loclen);
+			what[loclen] = '\0';
+		}
+
+		debug(ap->logopt, MODPREFIX
+		      "mounting root %s, mountpoint %s, "
+		      "what %s, fstype %s, options %s",
+		      root, mountpoint, what, fstype, options);
+
 		/* Generic mount routine */
 		rv = do_mount(ap, root, mountpoint, strlen(mountpoint), what, fstype,
 			      options);
