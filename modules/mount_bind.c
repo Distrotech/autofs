@@ -56,9 +56,7 @@ int mount_init(void **context)
 	if (lstat(tmp1, &st1) == -1)
 		goto out;
 
-	err = spawnl(log_debug,
-	    	     PATH_MOUNT, PATH_MOUNT, "-n", "--bind", tmp1, tmp2, NULL);
-
+	err = spawn_mount(log_debug, "-n", "--bind", tmp1, tmp2, NULL);
 	if (err == 0 &&
 	    lstat(tmp2, &st2) == 0 &&
 	    st1.st_dev == st2.st_dev && st1.st_ino == st2.st_ino) {
@@ -67,8 +65,7 @@ int mount_init(void **context)
 
 	debug(LOGOPT_NONE, MODPREFIX "bind_works = %d", bind_works);
 
-	spawnl(log_debug,
-	       PATH_UMOUNT, PATH_UMOUNT, "-n", tmp2, NULL);
+	spawn_umount(log_debug, "-n", tmp2, NULL);
 
       out:
 	rmdir(tmp2);
@@ -149,10 +146,8 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 		      "calling mount --bind " SLOPPY " -o %s %s %s",
 		      options, what, fullpath);
 
-		err = spawnll(log_debug,
-			     PATH_MOUNT, PATH_MOUNT, "--bind",
-			     SLOPPYOPT "-o", options,
-			     what, fullpath, NULL);
+		err = spawn_bind_mount(log_debug,
+			     SLOPPYOPT "-o", options, what, fullpath, NULL);
 
 		if (err) {
 			if (ap->type != LKP_INDIRECT)

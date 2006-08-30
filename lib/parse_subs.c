@@ -304,9 +304,9 @@ int umount_ent(struct autofs_point *ap, const char *path)
 	 * and EBADSLT relates to CD changer not responding.
 	 */
 	if (!status && (S_ISDIR(st.st_mode) && st.st_dev != ap->dev)) {
-		rv = spawnll(log_debug, PATH_UMOUNT, PATH_UMOUNT, path, NULL);
+		rv = spawn_umount(log_debug, path, NULL);
 	} else if (is_smbfs && (sav_errno == EIO || sav_errno == EBADSLT)) {
-		rv = spawnll(log_debug, PATH_UMOUNT, PATH_UMOUNT, path, NULL);
+		rv = spawn_umount(log_debug, path, NULL);
 	}
 
 	/* We are doing a forced shutcwdown down so unlink busy mounts */
@@ -324,7 +324,7 @@ int umount_ent(struct autofs_point *ap, const char *path)
 
 		if (ap->state == ST_SHUTDOWN_FORCE) {
 			msg("forcing umount of %s", path);
-			rv = spawnll(log_debug, PATH_UMOUNT, PATH_UMOUNT, "-l", path, NULL);
+			rv = spawn_umount(log_debug, "-l", path, NULL);
 		}
 
 		/*

@@ -95,8 +95,7 @@ static int unlink_mount_tree(struct autofs_point *ap, struct mnt_list *mnts)
 		}
 
 		if (strcmp(this->fs_type, "autofs"))
-			rv = spawnll(log_debug,
-			    PATH_UMOUNT, PATH_UMOUNT, "-l", this->path, NULL);
+			rv = spawn_umount(log_debug, "-l", this->path, NULL);
 		else
 			rv = umount2(this->path, MNT_DETACH);
 		if (rv == -1) {

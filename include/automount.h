@@ -195,12 +195,10 @@ inline void dump_core(void);
 int aquire_lock(void);
 void release_lock(void);
 int spawnl(logger *log, const char *prog, ...);
-#ifdef ENABLE_MOUNT_LOCKING
-int spawnll(logger *log, const char *prog, ...);
-#else
-#define spawnll	spawnl
-#endif
 int spawnv(logger *log, const char *prog, const char *const *argv);
+int spawn_mount(logger *log, ...);
+int spawn_bind_mount(logger *log, ...);
+int spawn_umount(logger *log, ...);
 void reset_signals(void);
 int do_mount(struct autofs_point *ap, const char *root, const char *name,
 	     int name_len, const char *what, const char *fstype,

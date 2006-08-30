@@ -20,6 +20,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
+#include <dirent.h>
 #include <unistd.h>
 #include <time.h>
 #include <sys/wait.h>
@@ -27,9 +28,11 @@
 
 #include "automount.h"
 
-#ifdef ENABLE_MOUNT_LOCKING
 static pthread_mutex_t spawn_mutex = PTHREAD_MUTEX_INITIALIZER;
-#endif
+
+#define SPAWN_OPT_NONE		0x0000
+#define SPAWN_OPT_LOCK		0x0001
+#define SPAWN_OPT_OPENDIR	0x0002
 
 inline void dump_core(void)
 {
@@ -83,26 +86,15 @@ void reset_signals(void)
 
 #define ERRBUFSIZ 2047		/* Max length of error string excl \0 */
 
-#ifdef ENABLE_MOUNT_LOCKING
-void spawn_unlock(void *arg)
-{
-	int *use_lock = (int *) arg;
-
-	if (*use_lock) {
-		if (pthread_mutex_unlock(&spawn_mutex))
-			warn(LOGOPT_NONE, "failed to unlock spawn_mutex");
-	}
-	return;
-}
-#endif
-
-static int do_spawn(logger *log, int use_lock, const char *prog, const char *const *argv)
+static int do_spawn(logger *log, unsigned int options, const char *prog, const char *const *argv)
 {
 	pid_t f;
 	int status, pipefd[2];
 	char errbuf[ERRBUFSIZ + 1], *p, *sp;
 	int errp, errn;
 	int cancel_state;
+	unsigned int use_lock = options & SPAWN_OPT_LOCK;
+	unsigned int use_opendir = options & SPAWN_OPT_OPENDIR;
 	sigset_t allsigs, tmpsig, oldsig;
 
 	if (pipe(pipefd))
@@ -113,16 +105,11 @@ static int do_spawn(logger *log, int use_lock, const char *prog, const char *con
 	sigfillset(&allsigs);
 	pthread_sigmask(SIG_BLOCK, &allsigs, &oldsig);
 
-#ifdef ENABLE_MOUNT_LOCKING
 	if (use_lock) {
-		if (pthread_mutex_lock(&spawn_mutex)) {
-			log(LOGOPT_ANY, "failed to lock spawn_mutex");
-			pthread_sigmask(SIG_SETMASK, &oldsig, NULL);
-			pthread_setcancelstate(cancel_state, NULL);
-			return -1;
-		}
+		status = pthread_mutex_lock(&spawn_mutex);
+		if (status)
+			fatal(status);
 	}
-#endif
 
 	f = fork();
 	if (f == 0) {
@@ -131,6 +118,26 @@ static int do_spawn(logger *log, int use_lock, const char *prog, const char *con
 		dup2(pipefd[1], STDOUT_FILENO);
 		dup2(pipefd[1], STDERR_FILENO);
 		close(pipefd[1]);
+
+		/* Bind mount - check target exists */
+		if (use_opendir) {
+			char **pargv = (char **) argv;
+			int argc = 0;
+			pid_t pgrp = getpgrp();
+			DIR *dfd;
+
+			/* what to mount must always be second last */
+			while (*pargv++)
+				argc++;
+			argc -= 2;
+
+			/* Set non-autofs program group to trigger mount */
+			setpgrp();
+			if ((dfd = opendir(argv[argc])) == NULL)
+				_exit(errno);
+			closedir(dfd);
+			setpgid(0, pgrp);
+		}
 
 		execv(prog, (char *const *) argv);
 		_exit(255);	/* execv() failed */
@@ -144,10 +151,12 @@ static int do_spawn(logger *log, int use_lock, const char *prog, const char *con
 
 		if (f < 0) {
 			close(pipefd[0]);
+			if (use_lock) {
+				status = pthread_mutex_unlock(&spawn_mutex);
+				if (status)
+					fatal(status);
+			}
 			pthread_sigmask(SIG_SETMASK, &oldsig, NULL);
-#ifdef ENABLE_MOUNT_LOCKING
-			spawn_unlock(&use_lock);
-#endif
 			pthread_setcancelstate(cancel_state, NULL);
 			return -1;
 		}
@@ -193,10 +202,12 @@ static int do_spawn(logger *log, int use_lock, const char *prog, const char *con
 		if (waitpid(f, &status, 0) != f)
 			status = -1;	/* waitpid() failed */
 
+		if (use_lock) {
+			status = pthread_mutex_unlock(&spawn_mutex);
+			if (status)
+				fatal(status);
+		}
 		pthread_sigmask(SIG_SETMASK, &oldsig, NULL);
-#ifdef ENABLE_MOUNT_LOCKING
-		spawn_unlock(&use_lock);
-#endif
 		pthread_setcancelstate(cancel_state, NULL);
 
 		return status;
@@ -205,7 +216,7 @@ static int do_spawn(logger *log, int use_lock, const char *prog, const char *con
 
 int spawnv(logger *log, const char *prog, const char *const *argv)
 {
-	return do_spawn(log, 0, prog, argv);
+	return do_spawn(log, SPAWN_OPT_NONE, prog, argv);
 }
 
 int spawnl(logger *log, const char *prog, ...)
@@ -226,28 +237,114 @@ int spawnl(logger *log, const char *prog, ...)
 	while ((*p++ = va_arg(arg, char *)));
 	va_end(arg);
 
-	return do_spawn(log, 0, prog, (const char **) argv);
+	return do_spawn(log, SPAWN_OPT_NONE, prog, (const char **) argv);
 }
 
-#ifdef ENABLE_MOUNT_LOCKING
-int spawnll(logger *log, const char *prog, ...)
+int spawn_mount(logger *log, ...)
 {
 	va_list arg;
 	int argc;
 	char **argv, **p;
+	char prog[] = PATH_MOUNT;
+	char arg0[] = PATH_MOUNT;
+	unsigned int options;
 
-	va_start(arg, prog);
+	/* If we use mount locking we can't validate the location */
+#ifdef ENABLE_MOUNT_LOCKING
+	options = SPAWN_OPT_LOCK;
+#else
+	options = SPAWN_OPT_NONE;
+#endif
+
+	va_start(arg, log);
 	for (argc = 1; va_arg(arg, char *); argc++);
 	va_end(arg);
 
-	if (!(argv = alloca(sizeof(char *) * argc)))
+	if (!(argv = alloca(sizeof(char *) * argc + 1)))
 		return -1;
 
-	va_start(arg, prog);
-	p = argv;
+	argv[0] = arg0;
+
+	va_start(arg, log);
+	p = argv + 1;
 	while ((*p++ = va_arg(arg, char *)));
 	va_end(arg);
 
-	return do_spawn(log, 1, prog, (const char **) argv);
+	return do_spawn(log, options, prog, (const char **) argv);
 }
+
+/*
+ * For bind mounts that depend on the target being mounted (possibly
+ * itself an automount) we attempt to mount the target using an opendir
+ * call. For this to work the location must be the second last arg.
+ *
+ * NOTE: If mount locking is enabled this type of recursive mount cannot
+ *	 work.
+ */
+int spawn_bind_mount(logger *log, ...)
+{
+	va_list arg;
+	int argc;
+	char **argv, **p;
+	char prog[] = PATH_MOUNT;
+	char arg0[] = PATH_MOUNT;
+	char bind[] = "--bind";
+	unsigned int options;
+
+	/* If we use mount locking we can't validate the location */
+#ifdef ENABLE_MOUNT_LOCKING
+	options = SPAWN_OPT_LOCK;
+#else
+	options = SPAWN_OPT_OPENDIR;
 #endif
+
+	va_start(arg, log);
+	for (argc = 1; va_arg(arg, char *); argc++);
+	va_end(arg);
+
+	if (!(argv = alloca(sizeof(char *) * argc + 2)))
+		return -1;
+
+	argv[0] = arg0;
+	argv[1] = bind;
+
+	va_start(arg, log);
+	p = argv + 2;
+	while ((*p++ = va_arg(arg, char *)));
+	va_end(arg);
+
+	return do_spawn(log, options, prog, (const char **) argv);
+}
+
+int spawn_umount(logger *log, ...)
+{
+	va_list arg;
+	int argc;
+	char **argv, **p;
+	char prog[] = PATH_UMOUNT;
+	char arg0[] = PATH_UMOUNT;
+	unsigned int options;
+
+#ifdef ENABLE_MOUNT_LOCKING
+	options = SPAWN_OPT_LOCK;
+#else
+	options = SPAWN_OPT_NONE;
+#endif
+
+	va_start(arg, log);
+	for (argc = 1; va_arg(arg, char *); argc++);
+	va_end(arg);
+
+	if (!(argv = alloca(sizeof(char *) * argc + 1)))
+		return -1;
+
+	argv[0] = arg0;
+
+	va_start(arg, log);
+	p = argv + 1;
+	while ((*p++ = va_arg(arg, char *)));
+	va_end(arg);
+
+	return do_spawn(log, options, prog, (const char **) argv);
+}
+

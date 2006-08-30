@@ -93,15 +93,12 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 		      MODPREFIX "calling mount -t %s " SLOPPY "-o %s %s %s",
 		      fstype, options, what, fullpath);
 
-		err = spawnll(log_debug,
-			     PATH_MOUNT, PATH_MOUNT, "-t", fstype,
+		err = spawn_mount(log_debug, "-t", fstype,
 			     SLOPPYOPT "-o", options, what, fullpath, NULL);
 	} else {
 		debug(ap->logopt, MODPREFIX "calling mount -t %s %s %s",
 		      fstype, what, fullpath);
-		err = spawnll(log_debug,
-			     PATH_MOUNT, PATH_MOUNT, "-t", fstype,
-			     what, fullpath, NULL);
+		err = spawn_mount(log_debug, "-t", fstype, what, fullpath, NULL);
 	}
 
 	if (err) {
