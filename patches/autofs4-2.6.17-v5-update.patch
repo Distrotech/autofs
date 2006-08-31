@@ -1,6 +1,6 @@
 diff -Nurp linux-2.6.17.orig/fs/autofs4/expire.c linux-2.6.17/fs/autofs4/expire.c
 --- linux-2.6.17.orig/fs/autofs4/expire.c	2006-06-18 09:49:35.000000000 +0800
-+++ linux-2.6.17/fs/autofs4/expire.c	2006-06-29 17:11:41.000000000 +0800
++++ linux-2.6.17/fs/autofs4/expire.c	2006-08-31 14:54:11.000000000 +0800
 @@ -174,6 +174,12 @@ static int autofs4_tree_busy(struct vfsm
  			struct autofs_info *ino = autofs4_dentry_ino(p);
  			unsigned int ino_count = atomic_read(&ino->count);
@@ -16,7 +16,7 @@ diff -Nurp linux-2.6.17.orig/fs/autofs4/expire.c linux-2.6.17/fs/autofs4/expire.
  				ino_count += 2;
 diff -Nurp linux-2.6.17.orig/fs/autofs4/root.c linux-2.6.17/fs/autofs4/root.c
 --- linux-2.6.17.orig/fs/autofs4/root.c	2006-06-18 09:49:35.000000000 +0800
-+++ linux-2.6.17/fs/autofs4/root.c	2006-06-29 17:11:41.000000000 +0800
++++ linux-2.6.17/fs/autofs4/root.c	2006-08-31 14:54:11.000000000 +0800
 @@ -137,7 +137,9 @@ static int autofs4_dir_open(struct inode
  		nd.flags = LOOKUP_DIRECTORY;
  		ret = (dentry->d_op->d_revalidate)(dentry, &nd);
@@ -28,7 +28,26 @@ diff -Nurp linux-2.6.17.orig/fs/autofs4/root.c linux-2.6.17/fs/autofs4/root.c
  			dcache_dir_close(inode, file);
  			goto out;
  		}
-@@ -400,13 +402,23 @@ static int autofs4_revalidate(struct den
+@@ -279,9 +281,6 @@ static int try_to_fill_dentry(struct den
+ 
+ 		DPRINTK("mount done status=%d", status);
+ 
+-		if (status && dentry->d_inode)
+-			return status; /* Try to get the kernel to invalidate this dentry */
+-
+ 		/* Turn this into a real negative dentry? */
+ 		if (status == -ENOENT) {
+ 			spin_lock(&dentry->d_lock);
+@@ -357,7 +356,7 @@ static void *autofs4_follow_link(struct 
+ 	 * don't try to mount it again.
+ 	 */
+ 	spin_lock(&dcache_lock);
+-	if (!d_mountpoint(dentry) && list_empty(&dentry->d_subdirs)) {
++	if (!d_mountpoint(dentry) && __simple_empty(dentry)) {
+ 		spin_unlock(&dcache_lock);
+ 
+ 		status = try_to_fill_dentry(dentry, 0);
+@@ -400,13 +399,23 @@ static int autofs4_revalidate(struct den
  	struct autofs_sb_info *sbi = autofs4_sbi(dir->i_sb);
  	int oz_mode = autofs4_oz_mode(sbi);
  	int flags = nd ? nd->flags : 0;
@@ -56,7 +75,7 @@ diff -Nurp linux-2.6.17.orig/fs/autofs4/root.c linux-2.6.17/fs/autofs4/root.c
  	}
  
  	/* Negative dentry.. invalidate if "old" */
-@@ -421,9 +433,19 @@ static int autofs4_revalidate(struct den
+@@ -421,9 +430,19 @@ static int autofs4_revalidate(struct den
  		DPRINTK("dentry=%p %.*s, emptydir",
  			 dentry, dentry->d_name.len, dentry->d_name.name);
  		spin_unlock(&dcache_lock);
@@ -79,9 +98,19 @@ diff -Nurp linux-2.6.17.orig/fs/autofs4/root.c linux-2.6.17/fs/autofs4/root.c
  	}
  	spin_unlock(&dcache_lock);
  
+@@ -518,6 +537,9 @@ static struct dentry *autofs4_lookup(str
+ 			    return ERR_PTR(-ERESTARTNOINTR);
+ 			}
+ 		}
++		spin_lock(&dentry->d_lock);
++		dentry->d_flags &= ~DCACHE_AUTOFS_PENDING;
++		spin_unlock(&dentry->d_lock);
+ 	}
+ 
+ 	/*
 diff -Nurp linux-2.6.17.orig/fs/namei.c linux-2.6.17/fs/namei.c
 --- linux-2.6.17.orig/fs/namei.c	2006-06-18 09:49:35.000000000 +0800
-+++ linux-2.6.17/fs/namei.c	2006-06-29 17:11:41.000000000 +0800
++++ linux-2.6.17/fs/namei.c	2006-08-31 14:54:11.000000000 +0800
 @@ -365,6 +365,29 @@ void release_open_intent(struct nameidat
  		fput(nd->intent.open.file);
  }

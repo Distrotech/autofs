@@ -1,6 +1,6 @@
 diff -Nurp linux-2.6.9.orig/fs/autofs/dirhash.c linux-2.6.9/fs/autofs/dirhash.c
 --- linux-2.6.9.orig/fs/autofs/dirhash.c	2004-10-19 05:53:12.000000000 +0800
-+++ linux-2.6.9/fs/autofs/dirhash.c	2006-06-29 15:45:52.000000000 +0800
++++ linux-2.6.9/fs/autofs/dirhash.c	2006-08-31 12:14:13.000000000 +0800
 @@ -92,7 +92,7 @@ struct autofs_dir_ent *autofs_expire(str
  			;
  		dput(dentry);
@@ -12,7 +12,7 @@ diff -Nurp linux-2.6.9.orig/fs/autofs/dirhash.c linux-2.6.9/fs/autofs/dirhash.c
  			return ent; /* Expirable! */
 diff -Nurp linux-2.6.9.orig/fs/autofs4/autofs_i.h linux-2.6.9/fs/autofs4/autofs_i.h
 --- linux-2.6.9.orig/fs/autofs4/autofs_i.h	2004-10-19 05:54:38.000000000 +0800
-+++ linux-2.6.9/fs/autofs4/autofs_i.h	2006-06-29 15:45:53.000000000 +0800
++++ linux-2.6.9/fs/autofs4/autofs_i.h	2006-08-31 12:14:13.000000000 +0800
 @@ -3,6 +3,7 @@
   * linux/fs/autofs/autofs_i.h
   *
@@ -178,7 +178,7 @@ diff -Nurp linux-2.6.9.orig/fs/autofs4/autofs_i.h linux-2.6.9/fs/autofs4/autofs_
 +
 diff -Nurp linux-2.6.9.orig/fs/autofs4/expire.c linux-2.6.9/fs/autofs4/expire.c
 --- linux-2.6.9.orig/fs/autofs4/expire.c	2004-10-19 05:54:39.000000000 +0800
-+++ linux-2.6.9/fs/autofs4/expire.c	2006-06-29 15:48:26.000000000 +0800
++++ linux-2.6.9/fs/autofs4/expire.c	2006-08-31 12:14:13.000000000 +0800
 @@ -4,7 +4,7 @@
   *
   *  Copyright 1997-1998 Transmeta Corporation -- All Rights Reserved
@@ -653,7 +653,7 @@ diff -Nurp linux-2.6.9.orig/fs/autofs4/expire.c linux-2.6.9/fs/autofs4/expire.c
  
 diff -Nurp linux-2.6.9.orig/fs/autofs4/inode.c linux-2.6.9/fs/autofs4/inode.c
 --- linux-2.6.9.orig/fs/autofs4/inode.c	2004-10-19 05:54:40.000000000 +0800
-+++ linux-2.6.9/fs/autofs4/inode.c	2006-06-29 15:45:53.000000000 +0800
++++ linux-2.6.9/fs/autofs4/inode.c	2006-08-31 12:14:13.000000000 +0800
 @@ -3,6 +3,7 @@
   * linux/fs/autofs/inode.c
   *
@@ -974,7 +974,7 @@ diff -Nurp linux-2.6.9.orig/fs/autofs4/inode.c linux-2.6.9/fs/autofs4/inode.c
  fail_unlock:
 diff -Nurp linux-2.6.9.orig/fs/autofs4/root.c linux-2.6.9/fs/autofs4/root.c
 --- linux-2.6.9.orig/fs/autofs4/root.c	2004-10-19 05:53:06.000000000 +0800
-+++ linux-2.6.9/fs/autofs4/root.c	2006-06-29 15:49:20.000000000 +0800
++++ linux-2.6.9/fs/autofs4/root.c	2006-08-31 12:14:14.000000000 +0800
 @@ -4,7 +4,7 @@
   *
   *  Copyright 1997-1998 Transmeta Corporation -- All Rights Reserved
@@ -1300,13 +1300,13 @@ diff -Nurp linux-2.6.9.orig/fs/autofs4/root.c linux-2.6.9/fs/autofs4/root.c
  	}
  
  	DPRINTK("dentry=%p %.*s ino=%p",
-@@ -319,18 +278,17 @@ static int try_to_fill_dentry(struct den
+@@ -318,19 +277,15 @@ static int try_to_fill_dentry(struct den
+ 		 
  		DPRINTK("mount done status=%d", status);
  
- 		if (status && dentry->d_inode)
+-		if (status && dentry->d_inode)
 -			return 0; /* Try to get the kernel to invalidate this dentry */
-+			return status; /* Try to get the kernel to invalidate this dentry */
- 		
+-		
  		/* Turn this into a real negative dentry? */
  		if (status == -ENOENT) {
 -			dentry->d_time = jiffies + AUTOFS_NEGATIVE_TIMEOUT;
@@ -1322,7 +1322,7 @@ diff -Nurp linux-2.6.9.orig/fs/autofs4/root.c linux-2.6.9/fs/autofs4/root.c
  		}
  	/* Trigger mount for path component or follow link */
  	} else if (flags & (LOOKUP_CONTINUE | LOOKUP_DIRECTORY) ||
-@@ -349,19 +307,83 @@ static int try_to_fill_dentry(struct den
+@@ -349,19 +304,83 @@ static int try_to_fill_dentry(struct den
  			spin_lock(&dentry->d_lock);
  			dentry->d_flags &= ~DCACHE_AUTOFS_PENDING;
  			spin_unlock(&dentry->d_lock);
@@ -1380,7 +1380,7 @@ diff -Nurp linux-2.6.9.orig/fs/autofs4/root.c linux-2.6.9/fs/autofs4/root.c
 +	 * don't try to mount it again.
 +	 */
 +	spin_lock(&dcache_lock);
-+	if (!d_mountpoint(dentry) && list_empty(&dentry->d_subdirs)) {
++	if (!d_mountpoint(dentry) && __simple_empty(dentry)) {
 +		spin_unlock(&dcache_lock);
 +
 +		status = try_to_fill_dentry(dentry, 0);
@@ -1412,7 +1412,7 @@ diff -Nurp linux-2.6.9.orig/fs/autofs4/root.c linux-2.6.9/fs/autofs4/root.c
  }
  
  /*
-@@ -370,47 +392,63 @@ static int try_to_fill_dentry(struct den
+@@ -370,47 +389,63 @@ static int try_to_fill_dentry(struct den
   * yet completely filled in, and revalidate has to delay such
   * lookups..
   */
@@ -1490,7 +1490,7 @@ diff -Nurp linux-2.6.9.orig/fs/autofs4/root.c linux-2.6.9/fs/autofs4/root.c
  {
  	struct autofs_info *inf;
  
-@@ -439,23 +477,8 @@ static struct dentry_operations autofs4_
+@@ -439,23 +474,8 @@ static struct dentry_operations autofs4_
  	.d_release	= autofs4_dentry_release,
  };
  
@@ -1515,7 +1515,7 @@ diff -Nurp linux-2.6.9.orig/fs/autofs4/root.c linux-2.6.9/fs/autofs4/root.c
  {
  	struct autofs_sb_info *sbi;
  	int oz_mode;
-@@ -463,12 +486,13 @@ static struct dentry *autofs4_root_looku
+@@ -463,12 +483,13 @@ static struct dentry *autofs4_root_looku
  	DPRINTK("name = %.*s",
  		dentry->d_name.len, dentry->d_name.name);
  
@@ -1531,6 +1531,16 @@ diff -Nurp linux-2.6.9.orig/fs/autofs4/root.c linux-2.6.9/fs/autofs4/root.c
  	DPRINTK("pid = %u, pgrp = %u, catatonic = %d, oz_mode = %d",
  		 current->pid, process_group(current), sbi->catatonic, oz_mode);
  
+@@ -512,6 +533,9 @@ static struct dentry *autofs4_root_looku
+ 			    return ERR_PTR(-ERESTARTNOINTR);
+ 			}
+ 		}
++		spin_lock(&dentry->d_lock);
++		dentry->d_flags &= ~DCACHE_AUTOFS_PENDING;
++		spin_unlock(&dentry->d_lock);
+ 	}
+ 
+ 	/*
 @@ -520,7 +544,7 @@ static struct dentry *autofs4_root_looku
  	 * doesn't do the right thing for all system calls, but it should
  	 * be OK for the operations we permit from an autofs.
@@ -1629,7 +1639,7 @@ diff -Nurp linux-2.6.9.orig/fs/autofs4/root.c linux-2.6.9/fs/autofs4/root.c
  	DPRINTK("returning %d", status);
 diff -Nurp linux-2.6.9.orig/fs/autofs4/waitq.c linux-2.6.9/fs/autofs4/waitq.c
 --- linux-2.6.9.orig/fs/autofs4/waitq.c	2004-10-19 05:55:27.000000000 +0800
-+++ linux-2.6.9/fs/autofs4/waitq.c	2006-06-29 15:45:53.000000000 +0800
++++ linux-2.6.9/fs/autofs4/waitq.c	2006-08-31 12:14:13.000000000 +0800
 @@ -3,7 +3,7 @@
   * linux/fs/autofs/waitq.c
   *
@@ -1896,7 +1906,7 @@ diff -Nurp linux-2.6.9.orig/fs/autofs4/waitq.c linux-2.6.9/fs/autofs4/waitq.c
  	}
 diff -Nurp linux-2.6.9.orig/fs/namei.c linux-2.6.9/fs/namei.c
 --- linux-2.6.9.orig/fs/namei.c	2004-10-19 05:53:46.000000000 +0800
-+++ linux-2.6.9/fs/namei.c	2006-06-29 15:51:22.000000000 +0800
++++ linux-2.6.9/fs/namei.c	2006-08-31 12:14:14.000000000 +0800
 @@ -288,6 +288,29 @@ void path_release_on_umount(struct namei
  	_mntput(nd->mnt);
  }
@@ -2001,7 +2011,7 @@ diff -Nurp linux-2.6.9.orig/fs/namei.c linux-2.6.9/fs/namei.c
  			mntput(next.mnt);
 diff -Nurp linux-2.6.9.orig/fs/namespace.c linux-2.6.9/fs/namespace.c
 --- linux-2.6.9.orig/fs/namespace.c	2004-10-19 05:54:37.000000000 +0800
-+++ linux-2.6.9/fs/namespace.c	2006-06-29 15:45:52.000000000 +0800
++++ linux-2.6.9/fs/namespace.c	2006-08-31 12:14:13.000000000 +0800
 @@ -309,9 +309,9 @@ resume:
  	spin_unlock(&vfsmount_lock);
  
@@ -2029,7 +2039,7 @@ diff -Nurp linux-2.6.9.orig/fs/namespace.c linux-2.6.9/fs/namespace.c
  EXPORT_SYMBOL(may_umount);
 diff -Nurp linux-2.6.9.orig/include/linux/auto_fs4.h linux-2.6.9/include/linux/auto_fs4.h
 --- linux-2.6.9.orig/include/linux/auto_fs4.h	2004-10-19 05:53:08.000000000 +0800
-+++ linux-2.6.9/include/linux/auto_fs4.h	2006-06-29 15:45:52.000000000 +0800
++++ linux-2.6.9/include/linux/auto_fs4.h	2006-08-31 12:14:13.000000000 +0800
 @@ -19,18 +19,37 @@
  #undef AUTOFS_MIN_PROTO_VERSION
  #undef AUTOFS_MAX_PROTO_VERSION
