@@ -9,7 +9,7 @@ IUSE="ldap"
 DESCRIPTION="Kernel based automounter"
 HOMEPAGE="http://www.linux-consulting.com/Amd_AutoFS/autofs.html"
 SRC_URI_BASE="mirror://kernel/linux/daemons/${PN}/v4"
-SRC_URI="${SRC_URI_BASE}/${P}-rc1.tar.bz2"
+SRC_URI="${SRC_URI_BASE}/${P}-rc2.tar.bz2"
 DEPEND="virtual/libc
 		ldap? ( >=net-nds/openldap-2.0 )"
 SLOT="0"
@@ -35,7 +35,7 @@ src_compile() {
 	local myconf
 	use ldap || myconf="--without-openldap"
 
-	myconf="${myconf} --with-mapdir=/etc/autofs"
+	myconf="${myconf} --with-mapdir=/etc/autofs --disable-mount-locking --enable-ignore-busy"
 
 	econf ${myconf} || die
 	sed -i -e '/^\(CFLAGS\|CXXFLAGS\|LDFLAGS\)[[:space:]]*=/d' Makefile.rules || die "Failed to remove (C|CXX|LD)FLAGS"
