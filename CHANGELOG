@@ -1,5 +1,5 @@
-?/7/2006 autofs-5.0.1
----------------------
+1/9/2006 autofs-5.0.1 rc2
+-------------------------
 - code cleanup.
 - fix race for current map source.
 - cthon map parser corrections.
