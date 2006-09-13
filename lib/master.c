@@ -70,10 +70,7 @@ int master_add_autofs_point(struct master_mapent *entry,
 	ap->readmap_thread = 0;
 	ap->exp_timeout = timeout;
 	ap->exp_runfreq = (timeout + CHECK_RATIO - 1) / CHECK_RATIO;
-	if (ghost)
-		ap->ghost = ghost;
-	else
-		ap->ghost = defaults_get_browse_mode();
+	ap->ghost = ghost;
 
 	if (ap->path[1] == '-')
 		ap->type = LKP_DIRECT;

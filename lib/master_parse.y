@@ -421,7 +421,7 @@ static void local_init_vars(void)
 	verbose = 0;
 	debug = 0;
 	timeout = -1;
-	ghost = 0;
+	ghost = defaults_get_browse_mode();
 	local_argv = NULL;
 	local_argc = 0;
 }

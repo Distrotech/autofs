@@ -86,30 +86,56 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 		return 0;
 	}
 
+	options = NULL;
 	if (c_options) {
-		options = alloca(strlen(c_options) + 1);
-		if (!options) {
+		char *noptions;
+		const char *comma;
+		char *np;
+		int len = strlen(c_options) + 1;
+
+		noptions = np = alloca(len);
+		if (!np) {
 			char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
 			error(ap->logopt, MODPREFIX "alloca: %s", estr);
 			return 1;
 		}
-		strcpy(options, c_options);
-	} else {
-		options = NULL;
+		memset(np, 0, len);
+
+		/* Grab the autofs specific options */
+		for (comma = c_options; *comma != '\0';) {
+			const char *cp;
+
+			while (*comma == ',')
+				comma++; 
+
+			cp = comma;
+
+			while (*comma != '\0' && *comma != ',')
+				comma++;
+
+			if (strncmp(cp, "nobrowse", 8) == 0)
+				ghost = 0;
+			else if (strncmp(cp, "browse", 6) == 0)
+				ghost = 1;
+			else if (strncmp(cp, "timeout=", 8) == 0) {
+				char *val = strchr(cp, '=');
+				unsigned tout;
+				if (val++) {
+					int ret = sscanf(cp, "timeout=%u", &tout);
+					if (ret)
+						timeout = tout;
+				}
+			} else {
+				memcpy(np, cp, comma - cp + 1);
+				np += comma - cp + 1;
+			}
+		}
+		options = noptions;
 	}
 
 	debug(ap->logopt,
 	      MODPREFIX "fullpath=%s what=%s options=%s",
 	      fullpath, what, options);
-
-	/* TODO: options processing needs more work */
-
-	if (strstr(options, "browse")) {
-		if (strstr(options, "nobrowse"))
-			ghost = 0;
-		else
-			ghost = 1;
-	}
 
 	entry = master_new_mapent(fullpath, ap->entry->age);
 	if (!entry) {

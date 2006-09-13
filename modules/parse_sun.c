@@ -461,6 +461,14 @@ static int sun_mount(struct autofs_point *ap, const char *root,
 				nonstrict = 0;
 			} else if (strncmp("nonstrict", cp, 9) == 0) {
 				nonstrict = 1;
+			} else if (strncmp("nobrowse", cp, 8) == 0 ||
+				   strncmp("browse", cp, 6) == 0 ||
+				   strncmp("timeout=", cp, 8) == 0) {
+				if (strcmp(fstype, "autofs") == 0 ||
+				    strstr(cp, "fstype=autofs")) {
+					memcpy(np, cp, comma - cp + 1);
+					np += comma - cp + 1;
+				}
 			} else if (strncmp("bg", cp, 2) == 0 ||
 				   strncmp("nofg", cp, 4) == 0) {
 				continue;
