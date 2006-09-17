@@ -310,6 +310,19 @@ static int check_master_self_include(struct master *master, struct lookup_contex
 {
 	char *m_path, *m_base, *i_path, *i_base;
 
+	/*
+	 * If we are including a file map then check the
+	 * full path of the map.
+	 */
+	if (*master->name == '/') {
+		if (!strcmp(master->name, ctxt->mapname))
+			return 1;
+		else
+			return 0;
+	}
+
+	/* Otherwise only check the map name itself. */
+
 	i_path = strdup(ctxt->mapname);
 	if (!i_path)
 		return 0;
