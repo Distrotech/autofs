@@ -1017,6 +1017,17 @@ int parse_mount(struct autofs_point *ap, const char *name,
 				free(options);
 				return 1;
 			}
+		} else {
+			/*
+			 * If the entry exists it must not have any existing
+			 * multi-mount subordinate entries since we are
+			 * mounting this afresh. We need to do this to allow
+			 * us to fail on the check for duplicate offsets in
+			 * we don't know when submounts go away.
+			 */
+			cache_multi_lock(me);
+			cache_delete_offset_list(mc, name);
+			cache_multi_unlock(me);
 		}
 		cache_unlock(mc);
 

@@ -2,6 +2,7 @@
 -------------------------
 - fix handling of autofs specific mount options.
 - fix include check full patch for file map of same name.
+- fix cache entrys not being cleaned up on submount expire.
 
 1/9/2006 autofs-5.0.1 rc2
 -------------------------
