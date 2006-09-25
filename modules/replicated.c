@@ -149,6 +149,7 @@ static unsigned int get_proximity(const char *host_addr, int addr_len)
 			if (ret == -1) {
 				char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
 				error(LOGOPT_ANY, "ioctl: %s", estr);
+				close(sock);
 				return PROXIMITY_ERROR;
 			}
 

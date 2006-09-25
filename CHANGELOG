@@ -4,6 +4,7 @@
 - fix include check full patch for file map of same name.
 - fix cache entrys not being cleaned up on submount expire.
 - fix LDAP lookup delete cache entry only if entry doesn't exist. 
+- add missing socket close in replicated host check (Jeff Moyer).
 
 1/9/2006 autofs-5.0.1 rc2
 -------------------------
