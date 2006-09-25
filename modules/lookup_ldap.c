@@ -1546,7 +1546,7 @@ static int check_map_indirect(struct autofs_point *ap,
 			need_map = 1;
 	}
 
-	if (ret == CHE_MISSING) {
+	if (ret == CHE_MISSING && exists) {
 		pthread_cleanup_push(cache_lock_cleanup, mc);
 		cache_writelock(mc);
 		if (cache_delete(mc, key))
