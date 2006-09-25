@@ -5,6 +5,7 @@
 - fix cache entrys not being cleaned up on submount expire.
 - fix LDAP lookup delete cache entry only if entry doesn't exist. 
 - add missing socket close in replicated host check (Jeff Moyer).
+- remove unused option UNDERSCORETODOT from default config files.
 
 1/9/2006 autofs-5.0.1 rc2
 -------------------------

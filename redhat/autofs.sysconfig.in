@@ -50,7 +50,3 @@ DEFAULT_BROWSE_MODE="no"
 #
 #OPTIONS=""
 #
-#
-#  UNDERSCORETODOT changes auto_home to auto.home and auto_mnt to auto.mnt
-UNDERSCORETODOT=1
-
