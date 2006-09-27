@@ -633,9 +633,14 @@ static int lookup_name_file_source_instance(struct autofs_point *ap, struct map_
 
 	format = map->format;
 
-	instance = master_add_source_instance(map, type, format, age);
-	if (!instance)
-		return NSS_STATUS_NOTFOUND;
+	instance = master_find_source_instance(map, type, format, 0, NULL);
+	if (!instance) {
+		instance = master_add_source_instance(map, type, format, age);
+		if (!instance)
+			return NSS_STATUS_NOTFOUND;
+		instance->recurse = map->recurse;
+		instance->depth = map->depth;
+	}
 
 	return do_lookup_mount(ap, instance, name, name_len);
 }
@@ -649,8 +654,13 @@ static int lookup_name_source_instance(struct autofs_point *ap, struct map_sourc
 	format = map->format;
 
 	instance = master_find_source_instance(map, type, format, 0, NULL);
-	if (!instance)
+	if (!instance) {
 		instance = master_add_source_instance(map, type, format, age);
+		if (!instance)
+			return NSS_STATUS_NOTFOUND;
+		instance->recurse = map->recurse;
+		instance->depth = map->depth;
+	}
 
 	return do_lookup_mount(ap, instance, name, name_len);
 }
@@ -692,6 +702,8 @@ static enum nsswitch_status lookup_map_name(struct nss_source *this,
 	tmap.format = map->format;
 	tmap.mc = map->mc;
 	tmap.instance = map->instance;
+	tmap.recurse = map->recurse;
+	tmap.depth = map->depth;
 	tmap.argc = 0;
 	tmap.argv = NULL;
 

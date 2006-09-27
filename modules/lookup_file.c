@@ -469,6 +469,17 @@ static int check_self_include(const char *key, struct lookup_context *ctxt)
 {
 	char *m_key, *m_base, *i_key, *i_base;
 
+	/*
+	 * If we are including a file map then check the
+	 * full path of the map.
+	 */
+	if (*(key + 1) == '/') {
+		if (!strcmp(key + 1, ctxt->mapname))
+			return 1;
+		else
+			return 0;
+	}
+
 	i_key = strdup(key + 1);
 	if (!i_key)
 		return 0;
@@ -746,7 +757,7 @@ static int lookup_one(struct autofs_point *ap,
 				int status;
 
 				debug(ap->logopt,
-				      MODPREFIX "lookup included map %s", key);
+				      MODPREFIX "lookup included map %s", mkey);
 
 				inc = check_self_include(mkey, ctxt);
 

@@ -8,6 +8,7 @@
 - remove unused option UNDERSCORETODOT from default config files.
 - make default installed master map for /net use "-hosts" instead
   of auto.net.
+- fix included map recursive map key lookup.
 
 1/9/2006 autofs-5.0.1 rc2
 -------------------------
