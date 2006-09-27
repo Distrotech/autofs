@@ -896,12 +896,12 @@ void master_notify_state_change(struct master *master, int sig)
 			break;
 		}
 next:
-		state_mutex_unlock(ap);
-
 		if (next != ST_INVAL)
 			debug(ap->logopt,
 			      "sig %d switching %s from %d to %d",
 			      sig, ap->path, ap->state, next);
+
+		state_mutex_unlock(ap);
 	}
 
 	master_mutex_unlock();

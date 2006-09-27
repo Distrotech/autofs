@@ -308,8 +308,29 @@ int do_mount_autofs_direct(struct autofs_point *ap, struct mnt_list *mnts, struc
 	INIT_LIST_HEAD(&list);
 
 	if (tree_get_mnt_list(mnts, &list, me->key, 1)) {
-		if (ap->state == ST_READMAP)
+		if (ap->state == ST_READMAP) {
+			time_t tout = ap->exp_timeout;
+			int save_ioctlfd, ioctlfd;
+
+			save_ioctlfd = ioctlfd = me->ioctlfd;
+
+			if (ioctlfd == -1)
+				ioctlfd = open(me->key, O_RDONLY);
+
+			if (ioctlfd < 0) {
+				error(ap->logopt,
+				     "failed to create ioctl fd for %s",
+				     me->key);
+				return 0;
+			}
+
+			ioctl(ioctlfd, AUTOFS_IOC_SETTIMEOUT, &tout);
+
+			if (save_ioctlfd == -1)
+				close(ioctlfd);
+
 			return 0;
+		}
 		if (!unlink_mount_tree(ap, &list)) {
 			debug(ap->logopt,
 			      "already mounted as other than autofs "

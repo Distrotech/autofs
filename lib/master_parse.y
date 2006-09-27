@@ -493,21 +493,22 @@ int master_parse_entry(const char *buffer, unsigned int default_timeout, unsigne
 		}
 		set_mnt_logging(entry->ap);
 	} else {
-/*		struct autofs_point *ap = entry->ap;
-		unsigned int tout = timeout; */
+		struct autofs_point *ap = entry->ap;
+		time_t tout = timeout;
 
 		/*
-		 * TODO: how do we know if this is the first read entry
-		 *	 during a map re-read?
-		 *
 		 * Second and subsequent instances of a mount point
 		 * use the ghost, log and timeout of the first
 		 */
-/*		ap->ghost = ghost;
-		ap->logopt = logopt;
-		ap->exp_timeout = timeout;
-		if (ap->ioctlfd != -1 && ap->type == LKP_INDIRECT)
-			ioctl(ap->ioctlfd, AUTOFS_IOC_SETTIMEOUT, &tout); */
+		if (entry->age < age) {
+			ap->ghost = ghost;
+			ap->logopt = logopt;
+			ap->exp_timeout = timeout;
+			ap->exp_runfreq = (ap->exp_timeout + CHECK_RATIO - 1) / CHECK_RATIO;
+			if (ap->ioctlfd != -1 && ap->type == LKP_INDIRECT)
+				ioctl(ap->ioctlfd, AUTOFS_IOC_SETTIMEOUT, &tout);
+		}
+		set_mnt_logging(ap);
 	}
 
 /*
