@@ -300,9 +300,14 @@ static int read_file_source_instance(struct autofs_point *ap, struct map_source 
 
 	format = map->format;
 
-	instance = master_add_source_instance(map, type, format, age);
-	if (!instance)
-		return NSS_STATUS_UNAVAIL;
+	instance = master_find_source_instance(map, type, format, 0, NULL);
+	if (!instance) {
+		instance = master_add_source_instance(map, type, format, age);
+		if (!instance)
+			return NSS_STATUS_UNAVAIL;
+		instance->recurse = map->recurse;
+		instance->depth = map->depth;
+	}
 
 	return do_read_map(ap, instance, age);
 }
@@ -314,9 +319,14 @@ static int read_source_instance(struct autofs_point *ap, struct map_source *map,
 
 	format = map->format;
 
-	instance = master_add_source_instance(map, type, format, age);
-	if (!instance)
-		return NSS_STATUS_UNAVAIL;
+	instance = master_find_source_instance(map, type, format, 0, NULL);
+	if (!instance) {
+		instance = master_add_source_instance(map, type, format, age);
+		if (!instance)
+			return NSS_STATUS_UNAVAIL;
+		instance->recurse = map->recurse;
+		instance->depth = map->depth;
+	}
 
 	return do_read_map(ap, instance, age);
 }
@@ -368,6 +378,8 @@ static enum nsswitch_status read_map_source(struct nss_source *this,
 	tmap.lookup = map->lookup;
 	tmap.mc = map->mc;
 	tmap.instance = map->instance;
+	tmap.recurse = map->recurse;
+	tmap.depth = map->depth;
 	tmap.argc = 0;
 	tmap.argv = NULL;
 
