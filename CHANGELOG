@@ -11,6 +11,7 @@
 - fix included map recursive map key lookup.
   - and fix the recursive map key lookup for browsable map case.
 - review iand fix master map options update for map reload.
+- fix "-fstype=nfs4" handling.
 
 1/9/2006 autofs-5.0.1 rc2
 -------------------------

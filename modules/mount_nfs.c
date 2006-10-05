@@ -222,18 +222,18 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 
 		if (nfsoptions && *nfsoptions) {
 			debug(ap->logopt,
-			      MODPREFIX "calling mount -t nfs " SLOPPY 
-			      "-o %s %s %s", nfsoptions, loc, fullpath);
+			      MODPREFIX "calling mount -t %s " SLOPPY 
+			      "-o %s %s %s", fstype, nfsoptions, loc, fullpath);
 
 			err = spawn_mount(log_debug,
-					  "-t", "nfs", SLOPPYOPT "-o",
+					  "-t", fstype, SLOPPYOPT "-o",
 					  nfsoptions, loc, fullpath, NULL);
 		} else {
 			debug(ap->logopt,
-			      MODPREFIX "calling mount -t nfs %s %s",
-			      loc, fullpath);
+			      MODPREFIX "calling mount -t %s %s %s",
+			      fstype, loc, fullpath);
 			err = spawn_mount(log_debug,
-					  "-t", "nfs", loc, fullpath, NULL);
+					  "-t", fstype, loc, fullpath, NULL);
 		}
 
 		if (!err) {
