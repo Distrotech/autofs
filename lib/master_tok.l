@@ -102,6 +102,9 @@ DNNAMESTR	([[:alnum:]_.\-]+)
 INTMAP		(-hosts|-null)
 MTYPE           ((file|program|yp|nis|nisplus|ldap|hesiod|userdir)(,(sun|hesiod))?)
 
+
+OPTTOUT		(-t{OPTWS}|-t{OPTWS}={OPTWS}|--timeout{OPTWS}|--timeout{OPTWS}={OPTWS})
+
 %%
 
 <INITIAL>{
@@ -300,9 +303,7 @@ MTYPE           ((file|program|yp|nis|nisplus|ldap|hesiod|userdir)(,(sun|hesiod)
 <OPTSTR>{
 	{OPTWS}\\\n{OPTWS} {}
 
-	-t{OPTWS}|-t{OPTWS}={OPTWS}|--timeout{OPTWS}={OPTWS} {
-		return(OPT_TIMEOUT);
-	}
+	{OPTTOUT} { return(OPT_TIMEOUT); }
 
 	-D{OPTWS}
 

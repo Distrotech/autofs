@@ -13,6 +13,7 @@
 - review iand fix master map options update for map reload.
 - fix "-fstype=nfs4" handling.
 - fix get_query_dn not looking in subtree for LDAP search.
+- allow syntax "--timeout <secs>" for backward compatibility.
 
 1/9/2006 autofs-5.0.1 rc2
 -------------------------
