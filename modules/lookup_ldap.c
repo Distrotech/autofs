@@ -808,7 +808,7 @@ static int get_query_dn(LDAP *ldap, struct lookup_context *ctxt)
 			      MODPREFIX "error forming query string");
 			return 0;
 		}
-		scope = LDAP_SCOPE_BASE;
+		scope = LDAP_SCOPE_SUBTREE;
 	}
 	query[l] = '\0';
 
