@@ -10,7 +10,7 @@
   of auto.net.
 - fix included map recursive map key lookup.
   - and fix the recursive map key lookup for browsable map case.
-- review iand fix master map options update for map reload.
+- review and fix master map options update for map reload.
 - fix "-fstype=nfs4" handling.
 - fix get_query_dn not looking in subtree for LDAP search.
 - allow syntax "--timeout <secs>" for backward compatibility.
