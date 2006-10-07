@@ -24,11 +24,13 @@
 #include <unistd.h>
 #include <sys/socket.h>
 #include <netdb.h>
+#include <net/if.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <sys/fcntl.h>
 #include <rpcsvc/ypclnt.h>
 #include <errno.h>
+#include <sys/ioctl.h>
 
 #include "mount.h"
 #include "rpc_subs.h"
@@ -39,6 +41,8 @@
 #else
 #include "log.h"
 #endif
+
+#define MAX_ERR_BUF	512
 
 /*
  * Create a UDP RPC client
@@ -717,50 +721,99 @@ void rpc_exports_free(exports list)
 	return;
 }
 
-static int masked_match(const char *myname, const char *addr, const char *mask)
+static int masked_match(const char *addr, const char *mask)
 {
-	struct hostent he;
-	struct hostent *phe = &he;
-	struct hostent *result;
-	char buf[HOST_ENT_BUF_SIZE], **haddr;
-	struct sockaddr_in saddr, maddr;
-	int ghn_errno, ret;
+	char buf[MAX_ERR_BUF], *ptr;
+	struct sockaddr_in saddr;
+	struct sockaddr_in6 saddr6;
+	struct ifconf ifc;
+	struct ifreq *ifr;
+	int sock, ret, i, is_ipv4, is_ipv6;
+	unsigned int msize;
 
-	memset(buf, 0, HOST_ENT_BUF_SIZE);
-	memset(&he, 0, sizeof(struct hostent));
-
-	ret = gethostbyname_r(myname, phe,
-			buf, HOST_ENT_BUF_SIZE, &result, &ghn_errno);
-	if (ret || !result)
+	sock = socket(AF_INET, SOCK_DGRAM, 0);
+	if (sock < 0) {
+		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+		error(LOGOPT_ANY, "socket creation failed: %s", estr);
 		return 0;
+	}
 
-	ret = inet_aton(addr, &saddr.sin_addr);
-	if (!ret)
+	ifc.ifc_len = sizeof(buf);
+	ifc.ifc_req = (struct ifreq *) buf;
+	ret = ioctl(sock, SIOCGIFCONF, &ifc);
+	if (ret == -1) {
+		close(sock);
+		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+		error(LOGOPT_ANY, "ioctl: %s", estr);
 		return 0;
+	}
+
+	is_ipv4 = is_ipv6 = 0;
+	is_ipv4 = inet_pton(AF_INET, addr, &saddr.sin_addr);
+	if (!is_ipv4)
+		is_ipv6 = inet_pton(AF_INET6, addr, &saddr6.sin6_addr);
 
 	if (strchr(mask, '.')) {
+		struct sockaddr_in maddr;
+		uint32_t ma;
+		int i = 0;
+
 		ret = inet_aton(mask, &maddr.sin_addr);
 		if (!ret)
 			return 0;
-	} else {
-		uint32_t m = (uint32_t) -1;
-		int msize = atoi(mask);
 
-		m = m << (32 - msize);
-		maddr.sin_addr.s_addr = htonl(m);
+		ma = ntohl((uint32_t) maddr.sin_addr.s_addr);
+		while (!(ma & 1)) {
+			i++;
+			ma = ma >> 1;
+		}
+
+		msize = i;
+	} else
+		msize = atoi(mask);
+
+	i = 0;
+	ptr = (char *) &ifc.ifc_buf[0];
+
+	while (ptr < buf + ifc.ifc_len) {
+		ifr = (struct ifreq *) ptr;
+
+		switch (ifr->ifr_addr.sa_family) {
+		case AF_INET:
+		{
+			struct sockaddr_in *if_addr;
+			uint32_t m, ia, ha;
+
+			if (!is_ipv4 || msize > 32)
+				break;
+
+			m = -1;
+			m = m << (32 - msize);
+			ha = ntohl((uint32_t) saddr.sin_addr.s_addr);
+
+			if_addr = (struct sockaddr_in *) &ifr->ifr_addr;
+			ia = ntohl((uint32_t) if_addr->sin_addr.s_addr);
+
+			if ((ia & m) == (ha & m)) {
+				close(sock);
+				return 1;
+			}
+			break;
+		}
+
+		/* glibc rpc only understands IPv4 atm */
+		case AF_INET6:
+			break;
+
+		default:
+			break;
+		}
+
+		i++;
+		ptr = (char *) &ifc.ifc_req[i];
 	}
 
-	for (haddr = phe->h_addr_list; *haddr; haddr++) {
-		uint32_t ca, ma, ha;
-
-		ca = (uint32_t) saddr.sin_addr.s_addr;
-		ma = (uint32_t) maddr.sin_addr.s_addr;
-		ha = (uint32_t) ((struct in_addr *) *haddr)->s_addr;
-
-		ret = ((ca & ma) == (ha & ma));
-		if (ret)
-			return 1;
-	}
+	close(sock);
 	return 0;
 }
 
@@ -892,9 +945,9 @@ static int host_match(char *pattern)
 		mask = strchr(addr, '/');
 		if (mask) {
 			*mask++ = '\0';
-			ret = masked_match(myname, addr, mask);
+			ret = masked_match(addr, mask);
 		} else
-			ret = masked_match(myname, addr, "32");
+			ret = masked_match(addr, "32");
 	} else if (!strcmp(pattern, "gss/krb5")) {
 		/* Leave this to the GSS layer */
 		ret = 1;
