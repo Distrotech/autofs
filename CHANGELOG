@@ -15,6 +15,7 @@
 - fix get_query_dn not looking in subtree for LDAP search.
 - allow syntax "--timeout <secs>" for backward compatibility.
 - make masked_match independent of hostname for exports comparison.
+- fix file handle leak in nsswitch parser.
 
 1/9/2006 autofs-5.0.1 rc2
 -------------------------

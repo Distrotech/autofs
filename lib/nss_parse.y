@@ -136,6 +136,9 @@ int nsswitch_parse(struct list_head *list)
 	nss_list = list;
 	status = nss_parse();
 	nss_list = NULL;
+
+	fclose(nsswitch);
+
 	if (status)
 		return 1;
 
