@@ -204,9 +204,7 @@ static void *alarm_handler(void *arg)
 			}
 
 			state_mutex_lock(ap);
-
 			nextstate(ap->state_pipe[1], ST_EXPIRE);
-
 			state_mutex_unlock(ap);
 
 			free(current);

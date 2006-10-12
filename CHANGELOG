@@ -17,6 +17,7 @@
 - make masked_match independent of hostname for exports comparison.
 - fix file handle leak in nsswitch parser.
 - fix memory leak in mount and expire request processing.
+- add additional check to prevent running of cancelled tasks.
 
 1/9/2006 autofs-5.0.1 rc2
 -------------------------

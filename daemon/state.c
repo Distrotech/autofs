@@ -882,6 +882,12 @@ static void *st_queue_handler(void *arg)
 			task = list_entry(p, struct state_queue, list);
 			p = p->next;
 
+			if (task->cancel) {
+				list_del(&task->list);
+				free(task);
+				continue;
+			}
+
 			task->busy = 1;
 
 			ret = run_state_task(task);
