@@ -344,14 +344,14 @@ static unsigned int get_nfs_info(struct host *host,
 
 	parms.pm_prog = NFS_PROGRAM;
 
-	status = rpc_portmap_getclient(pm_info,
-				 host->name, proto, RPC_CLOSE_DEFAULT);
-	if (!status)
-		return 0;
-
 	/* Try to prode UDP first to conserve socket space */
 	rpc_info->proto = getprotobyname(proto);
 	if (!rpc_info->proto)
+		return 0;
+
+	status = rpc_portmap_getclient(pm_info,
+				 host->name, proto, RPC_CLOSE_DEFAULT);
+	if (!status)
 		return 0;
 
 	parms.pm_prot = rpc_info->proto->p_proto;
@@ -519,13 +519,13 @@ static int get_supported_ver_and_cost(struct host *host, unsigned int version)
 		vers = version;
 	}
 
+	rpc_info.proto = getprotobyname(proto);
+	if (!rpc_info.proto)
+		return 0;
+
 	status = rpc_portmap_getclient(&pm_info,
 				 host->name, proto, RPC_CLOSE_DEFAULT);
 	if (!status)
-		return 0;
-
-	rpc_info.proto = getprotobyname(proto);
-	if (!rpc_info.proto)
 		return 0;
 
 	parms.pm_prot = rpc_info.proto->p_proto;

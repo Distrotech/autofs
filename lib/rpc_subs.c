@@ -87,7 +87,7 @@ static CLIENT *create_udp_client(struct conn_info *info)
 		int err = ghn_errno == -1 ? errno : ghn_errno;
 		char *estr = strerror_r(err, buf, HOST_ENT_BUF_SIZE);
 		error(LOGOPT_ANY, "hostname lookup failed: %s", estr);
-		return NULL;
+		goto out_close;
 	}
 	memcpy(&raddr.sin_addr.s_addr, php->h_addr, php->h_length);
 
@@ -120,10 +120,24 @@ got_addr:
 				   info->timeout, &fd,
 				   info->send_sz, info->recv_sz);
 
-	if (client)
-		clnt_control(client, CLSET_FD_CLOSE, NULL);
+	if (!client) {
+		info->client = NULL;
+		goto out_close;
+	}
+
+	/* Close socket fd on destroy, as is default for rpcowned fds */
+	if  (!clnt_control(client, CLSET_FD_CLOSE, NULL)) {
+		clnt_destroy(client);
+		info->client = NULL;
+		goto out_close;
+	}
 
 	return client;
+
+out_close:
+	if (fd != -1)
+		close(fd);
+	return NULL;
 }
 
 int rpc_udp_getclient(struct conn_info *info,
@@ -276,7 +290,7 @@ static CLIENT *create_tcp_client(struct conn_info *info)
 		int err = ghn_errno == -1 ? errno : ghn_errno;
 		char *estr =  strerror_r(err, buf, HOST_ENT_BUF_SIZE);
 		error(LOGOPT_ANY, "hostname lookup failed: %s", estr);
-		return NULL;
+		goto out_close;
 	}
 	memcpy(&addr.sin_addr.s_addr, php->h_addr, php->h_length);
 
@@ -296,19 +310,24 @@ got_addr:
 	client = clnttcp_create(&addr,
 				info->program, info->version, &fd,
 				info->send_sz, info->recv_sz);
-	if (!client)
+
+	if (!client) {
+		info->client = NULL;
 		goto out_close;
+	}
 
 	/* Close socket fd on destroy, as is default for rpcowned fds */
 	if  (!clnt_control(client, CLSET_FD_CLOSE, NULL)) {
 		clnt_destroy(client);
+		info->client = NULL;
 		goto out_close;
 	}
 
 	return client;
 
 out_close:
-	close(fd);
+	if (fd != -1)
+		close(fd);
 	return NULL;
 }
 
@@ -759,8 +778,10 @@ static int masked_match(const char *addr, const char *mask)
 		int i = 0;
 
 		ret = inet_aton(mask, &maddr.sin_addr);
-		if (!ret)
+		if (!ret) {
+			close(sock);
 			return 0;
+		}
 
 		ma = ntohl((uint32_t) maddr.sin_addr.s_addr);
 		while (!(ma & 1)) {

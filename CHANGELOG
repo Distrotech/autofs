@@ -18,6 +18,7 @@
 - fix file handle leak in nsswitch parser.
 - fix memory leak in mount and expire request processing.
 - add additional check to prevent running of cancelled tasks.
+- fix potential file handle leakage in rpc_subs.c for some failure cases.
 
 1/9/2006 autofs-5.0.1 rc2
 -------------------------
