@@ -797,6 +797,7 @@ void *expire_proc_direct(void *arg)
 {
 	struct mnt_list *mnts = NULL, *next;
 	struct expire_args *ea;
+	struct expire_args ec;
 	struct autofs_point *ap;
 	struct mapent *me = NULL;
 	unsigned int now;
@@ -809,25 +810,20 @@ void *expire_proc_direct(void *arg)
 	if (status)
 		fatal(status);
 
-	ap = ea->ap;
+	ap = ec.ap = ea->ap;
 	now = ea->when;
-	ea->status = -1;
+	ec.status = -1;
 
 	ea->signaled = 1;
 	status = pthread_cond_signal(&ea->cond);
-	if (status) {
-		error(ap->logopt, "failed to signal expire condition");
-		status = pthread_mutex_unlock(&ea->mutex);
-		if (status)
-			fatal(status);
-		pthread_exit(NULL);
-	}
-
-	pthread_cleanup_push(expire_cleanup, ea);
+	if (status)
+		fatal(status);
 
 	status = pthread_mutex_unlock(&ea->mutex);
 	if (status)
 		fatal(status);
+
+	pthread_cleanup_push(expire_cleanup, &ec);
 
 	left = 0;
 
@@ -883,7 +879,7 @@ void *expire_proc_direct(void *arg)
 	}
 	pthread_cleanup_pop(1);
 
-	ea->status = left;
+	ec.status = left;
 
 	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cur_state);
 	pthread_cleanup_pop(1);
@@ -918,6 +914,12 @@ static void expire_send_fail(void *arg)
 	send_fail(mt->ioctlfd, mt->wait_queue_token);
 }
 
+static void free_pending_args(void *arg)
+{
+	struct pending_args *mt = arg;
+	free(mt);
+}
+
 static void *do_expire_direct(void *arg)
 {
 	struct pending_args *mt;
@@ -926,8 +928,6 @@ static void *do_expire_direct(void *arg)
 	int status, state;
 
 	mt = (struct pending_args *) arg;
-
-	pthread_cleanup_push(expire_send_fail, mt);
 
 	status = pthread_mutex_lock(&mt->mutex);
 	if (status)
@@ -943,6 +943,10 @@ static void *do_expire_direct(void *arg)
 	status = pthread_mutex_unlock(&mt->mutex);
 	if (status)
 		fatal(status);
+
+	pthread_cleanup_push(free_pending_args, mt);
+	pthread_cleanup_push(pending_cleanup, mt);
+	pthread_cleanup_push(expire_send_fail, mt);
 
 	len = _strlen(mt->name, KEY_MAX_LEN);
 	if (!len) {
@@ -967,6 +971,12 @@ static void *do_expire_direct(void *arg)
 	pthread_setcancelstate(state, NULL);
 
 	pthread_cleanup_pop(0);
+	status = pthread_mutex_lock(&mt->mutex);
+	if (status)
+		fatal(status);
+	pthread_cleanup_pop(1);
+	pthread_cleanup_pop(1);
+
 	return NULL;
 }
 
@@ -1054,17 +1064,15 @@ int handle_packet_expire_direct(struct autofs_point *ap, autofs_packet_expire_di
 	status = pthread_create(&thid, &thread_attr, do_expire_direct, mt);
 	if (status) {
 		error(ap->logopt, "expire thread create failed");
-		free(mt);
 		send_fail(mt->ioctlfd, pkt->wait_queue_token);
 		cache_unlock(mc);
 		pending_cleanup(mt);
+		free_pending_args(mt);
 		pthread_setcancelstate(state, NULL);
 		return 1;
 	}
 
 	cache_unlock(mc);
-	pthread_cleanup_push(pending_cleanup, mt);
-	pthread_setcancelstate(state, NULL);
 
 	mt->signaled = 0;
 	while (!mt->signaled) {
@@ -1073,7 +1081,12 @@ int handle_packet_expire_direct(struct autofs_point *ap, autofs_packet_expire_di
 			fatal(status);
 	}
 
-	pthread_cleanup_pop(1);
+	status = pthread_mutex_unlock(&mt->mutex);
+	if (status)
+		fatal(status);
+
+	pthread_setcancelstate(state, NULL);
+
 	return 0;
 }
 
@@ -1117,6 +1130,7 @@ static void *do_mount_direct(void *arg)
 	if (status)
 		fatal(status);
 
+	pthread_cleanup_push(free_pending_args, mt);
 	pthread_cleanup_push(mount_send_fail, mt);
 	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &state);
 
@@ -1271,6 +1285,8 @@ cont:
 	pthread_setcancelstate(state, NULL);
 
 	pthread_cleanup_pop(0);
+	pthread_cleanup_pop(1);
+
 	return NULL;
 }
 
@@ -1353,6 +1369,7 @@ int handle_packet_missing_direct(struct autofs_point *ap, autofs_packet_missing_
 		pthread_setcancelstate(state, NULL);
 		return 1;
 	}
+	memset(mt, 0, sizeof(struct pending_args));
 
 	status = pthread_mutex_init(&mt->mutex, NULL);
 	if (status)
@@ -1369,7 +1386,6 @@ int handle_packet_missing_direct(struct autofs_point *ap, autofs_packet_missing_
 	mt->ap = ap;
 	mt->ioctlfd = ioctlfd;
 	mt->mc = mc;
-	/* TODO: check length here */
 	strcpy(mt->name, me->key);
 	mt->dev = me->dev;
 	mt->type = NFY_MOUNT;
@@ -1380,11 +1396,11 @@ int handle_packet_missing_direct(struct autofs_point *ap, autofs_packet_missing_
 	status = pthread_create(&thid, &thread_attr, do_mount_direct, mt);
 	if (status) {
 		error(ap->logopt, "missing mount thread create failed");
-		free(mt);
 		send_fail(ioctlfd, pkt->wait_queue_token);
 		close(ioctlfd);
 		cache_unlock(mc);
 		pending_cleanup(mt);
+		free_pending_args(mt);
 		pthread_setcancelstate(state, NULL);
 		return 1;
 	}

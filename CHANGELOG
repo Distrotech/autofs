@@ -16,6 +16,7 @@
 - allow syntax "--timeout <secs>" for backward compatibility.
 - make masked_match independent of hostname for exports comparison.
 - fix file handle leak in nsswitch parser.
+- fix memory leak in mount and expire request processing.
 
 1/9/2006 autofs-5.0.1 rc2
 -------------------------

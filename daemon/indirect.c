@@ -419,6 +419,7 @@ void *expire_proc_indirect(void *arg)
 	struct mapent *me = NULL;
 	struct mnt_list *mnts = NULL, *next;
 	struct expire_args *ea;
+	struct expire_args ec;
 	unsigned int now;
 	int offsets, submnts, count;
 	int ioctlfd, cur_state;
@@ -430,25 +431,20 @@ void *expire_proc_indirect(void *arg)
 	if (status)
 		fatal(status);
 
-	ap = ea->ap;
+	ap = ec.ap = ea->ap;
 	now = ea->when;
-	ea->status = -1;
+	ec.status = -1;
 
 	ea->signaled = 1;
 	status = pthread_cond_signal(&ea->cond);
-	if (status) {
-		error(ap->logopt, "failed to signal expire condition");
-		status = pthread_mutex_unlock(&ea->mutex);
-		if (status)
-			fatal(status);
-		pthread_exit(NULL);
-	}
-
-	pthread_cleanup_push(expire_cleanup, ea);
+	if (status)
+		fatal(status);
 
 	status = pthread_mutex_unlock(&ea->mutex);
 	if (status)
 		fatal(status);
+
+	pthread_cleanup_push(expire_cleanup, &ec);
 
 	left = 0;
 
@@ -559,7 +555,7 @@ void *expire_proc_indirect(void *arg)
 			msg("mount still busy %s", ap->path);
 	}
 
-	ea->status = left;
+	ec.status = left;
 
 	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cur_state);
 	pthread_cleanup_pop(1);
@@ -575,6 +571,12 @@ static void expire_send_fail(void *arg)
 {
 	struct pending_args *mt = arg;
 	send_fail(mt->ap->ioctlfd, mt->wait_queue_token);
+}
+
+static void free_pending_args(void *arg)
+{
+	struct pending_args *mt = arg;
+	free(mt);
 }
 
 static void *do_expire_indirect(void *arg)
@@ -600,6 +602,8 @@ static void *do_expire_indirect(void *arg)
 	if (status)
 		fatal(status);
 
+	pthread_cleanup_push(free_pending_args, mt);
+	pthread_cleanup_push(pending_cleanup, mt);
 	pthread_cleanup_push(expire_send_fail, mt);
 
 	status = do_expire(mt->ap, mt->name, mt->len);
@@ -611,6 +615,11 @@ static void *do_expire_indirect(void *arg)
 	pthread_setcancelstate(state, NULL);
 
 	pthread_cleanup_pop(0);
+	status = pthread_mutex_lock(&mt->mutex);
+	if (status)
+		fatal(status);
+	pthread_cleanup_pop(1);
+	pthread_cleanup_pop(1);
 
 	return NULL;
 }
@@ -658,14 +667,11 @@ int handle_packet_expire_indirect(struct autofs_point *ap, autofs_packet_expire_
 	if (status) {
 		error(ap->logopt, "expire thread create failed");
 		send_fail(ap->ioctlfd, pkt->wait_queue_token);
-		free(mt);
 		pending_cleanup(mt);
+		free_pending_args(mt);
 		pthread_setcancelstate(state, NULL);
 		return 1;
 	}
-
-	pthread_cleanup_push(pending_cleanup, mt);
-	pthread_setcancelstate(state, NULL);
 
 	mt->signaled = 0;
 	while (!mt->signaled) {
@@ -674,7 +680,11 @@ int handle_packet_expire_indirect(struct autofs_point *ap, autofs_packet_expire_
 			fatal(status);
 	}
 
-	pthread_cleanup_pop(1);
+	status = pthread_mutex_unlock(&mt->mutex);
+	if (status)
+		fatal(status);
+
+	pthread_setcancelstate(state, NULL);
 
 	return 0;
 }
@@ -719,12 +729,15 @@ static void *do_mount_indirect(void *arg)
 	if (status)
 		fatal(status);
 
+	pthread_cleanup_push(free_pending_args, mt);
+	pthread_cleanup_push(pending_cleanup, mt);
+	pthread_cleanup_push(mount_send_fail, mt);
+
 	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &state);
 
 	len = ncat_path(buf, sizeof(buf), ap->path, mt->name, mt->len);
 	if (!len) {
 		crit(ap->logopt, "path to be mounted is to long");
-		send_fail(ap->ioctlfd, mt->wait_queue_token);
 		pthread_setcancelstate(state, NULL);
 		pthread_exit(NULL);
 	}
@@ -733,12 +746,10 @@ static void *do_mount_indirect(void *arg)
 	if (status != -1 && !(S_ISDIR(st.st_mode) && st.st_dev == mt->dev)) {
 		error(ap->logopt,
 		      "indirect trigger not valid or already mounted %s", buf);
-		send_fail(ap->ioctlfd, mt->wait_queue_token);
 		pthread_setcancelstate(state, NULL);
 		pthread_exit(NULL);
 	}
 
-	pthread_cleanup_push(mount_send_fail, mt);
 	pthread_setcancelstate(state, NULL);
 
 	msg("attempting to mount entry %s", buf);
@@ -862,6 +873,12 @@ cont:
 	pthread_setcancelstate(state, NULL);
 
 	pthread_cleanup_pop(0);
+	status = pthread_mutex_lock(&mt->mutex);
+	if (status)
+		fatal(status);
+	pthread_cleanup_pop(1);
+	pthread_cleanup_pop(1);
+
 	return NULL;
 }
 
@@ -894,6 +911,7 @@ int handle_packet_missing_indirect(struct autofs_point *ap, autofs_packet_missin
 		pthread_setcancelstate(state, NULL);
 		return 1;
 	}
+	memset(mt, 0, sizeof(struct pending_args));
 
 	status = pthread_mutex_init(&mt->mutex, NULL);
 	if (status)
@@ -920,14 +938,11 @@ int handle_packet_missing_indirect(struct autofs_point *ap, autofs_packet_missin
 	if (status) {
 		error(ap->logopt, "expire thread create failed");
 		send_fail(ap->ioctlfd, pkt->wait_queue_token);
-		free(mt);
 		pending_cleanup(mt);
+		free_pending_args(mt);
 		pthread_setcancelstate(state, NULL);
 		return 1;
 	}
-
-	pthread_cleanup_push(pending_cleanup, mt);
-	pthread_setcancelstate(state, NULL);
 
 	mt->signaled = 0;
 	while (!mt->signaled) {
@@ -936,7 +951,11 @@ int handle_packet_missing_indirect(struct autofs_point *ap, autofs_packet_missin
 			fatal(status);
 	}
 
-	pthread_cleanup_pop(1);
+	status = pthread_mutex_unlock(&mt->mutex);
+	if (status)
+		fatal(status);
+
+	pthread_setcancelstate(state, NULL);
 
 	return 0;
 }

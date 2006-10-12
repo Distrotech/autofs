@@ -94,14 +94,14 @@ void nextstate(int statefd, enum states next)
 void expire_cleanup(void *arg)
 {
 	pthread_t thid = pthread_self();
-	struct expire_args *ea;
+	struct expire_args *ec;
 	struct autofs_point *ap;
 	int statefd, success;
 	enum states next = ST_INVAL;
 
-	ea = (struct expire_args *) arg;
-	ap = ea->ap;
-	success = ea->status;
+	ec = (struct expire_args *) arg;
+	ap = ec->ap;
+	success = ec->status;
 
 	state_mutex_lock(ap);
 
@@ -190,8 +190,6 @@ void expire_cleanup(void *arg)
 
 	state_mutex_unlock(ap);
 
-	free(ea);
-
 	return;
 }
 
@@ -241,6 +239,8 @@ void expire_proc_cleanup(void *arg)
 	status = pthread_mutex_destroy(&ea->mutex);
 	if (status)
 		fatal(status);
+
+	free(ea);
 
 	return;
 }
