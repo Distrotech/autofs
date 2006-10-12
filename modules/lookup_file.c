@@ -779,8 +779,10 @@ static int lookup_one(struct autofs_point *ap,
 				master_free_mapent_sources(iap->entry, 0);
 				master_free_mapent(iap->entry);
 
-				if (status)
+				if (status) {
+					fclose(f);
 					return CHE_COMPLETED;
+				}
 			} else {
 				char *s_key; 
 				int eq;

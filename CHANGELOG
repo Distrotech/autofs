@@ -19,6 +19,7 @@
 - fix memory leak in mount and expire request processing.
 - add additional check to prevent running of cancelled tasks.
 - fix potential file handle leakage in rpc_subs.c for some failure cases.
+- fix file handle leak in included map lookup.
 
 1/9/2006 autofs-5.0.1 rc2
 -------------------------

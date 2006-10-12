@@ -311,7 +311,7 @@ void master_free_map_source(struct map_source *source, unsigned int free_cache)
 		instance = source->instance;
 		while (instance) {
 			if (instance->lookup)
-			close_lookup(instance->lookup);
+				close_lookup(instance->lookup);
 			instance = instance->next;
 		}
 		close_lookup(source->lookup);
