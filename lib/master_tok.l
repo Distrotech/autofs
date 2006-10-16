@@ -95,7 +95,9 @@ NUMBER		[0-9]+
 
 DNSERVSTR1	([[:alpha:]][[:alnum:]\-.]*(:[0-9]+)?:)
 DNSERVSTR2	(\/\/[[:alpha:]][[:alnum:]\-.]*(:[0-9]+)?\/)
-DNSERVERSTR	{DNSERVSTR1}|{DNSERVSTR2}
+DNSERVSTR3	(([[:digit:]]{1,3}\.){3}[[:digit:]]{1,3}(:[0-9]+)?:)
+DNSERVSTR4	(\/\/([[:digit:]]{1,3}\.){3}[[:digit:]]{1,3}(:[0-9]+)?\/)
+DNSERVERSTR	{DNSERVSTR1}|{DNSERVSTR2}|{DNSERVSTR3}|{DNSERVSTR4}
 DNATTRSTR	(ou|cn|nisMapName|automountMapName|dc)
 DNNAMESTR	([[:alnum:]_.\-]+)
 
