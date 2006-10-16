@@ -125,7 +125,11 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 		      nfsoptions, nosymlink, ro);
 	}
 
-	vers = NFS_VERS_MASK | NFS_PROTO_MASK;
+	if (strcmp(fstype, "nfs4") == 0)
+		vers = NFS4_VERS_MASK | NFS_PROTO_MASK;
+	else
+		vers = NFS_VERS_MASK | NFS_PROTO_MASK;
+
 	if (!parse_location(&hosts, what)) {
 		warn(ap->logopt, MODPREFIX "no hosts available");
 		return 1;

@@ -20,6 +20,7 @@
 - add additional check to prevent running of cancelled tasks.
 - fix potential file handle leakage in rpc_subs.c for some failure cases.
 - fix file handle leak in included map lookup.
+- fix "-fstype=nfs4" server probing.
 
 1/9/2006 autofs-5.0.1 rc2
 -------------------------
