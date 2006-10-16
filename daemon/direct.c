@@ -81,7 +81,7 @@ static void key_mnt_params_init(void)
 
 static int autofs_init_direct(struct autofs_point *ap)
 {
-	int pipefd[2];
+	int pipefd[2], cl_flags;
 
 	if ((ap->state != ST_INIT)) {
 		/* This can happen if an autofs process is already running*/
@@ -102,6 +102,16 @@ static int autofs_init_direct(struct autofs_point *ap)
 	ap->pipefd = pipefd[0];
 	ap->kpipefd = pipefd[1];
 
+	if ((cl_flags = fcntl(ap->pipefd, F_GETFD, 0)) != -1) {
+		cl_flags |= FD_CLOEXEC;
+		fcntl(ap->pipefd, F_SETFD, cl_flags);
+	}
+
+	if ((cl_flags = fcntl(ap->kpipefd, F_GETFD, 0)) != -1) {
+		cl_flags |= FD_CLOEXEC;
+		fcntl(ap->kpipefd, F_SETFD, cl_flags);
+	}
+
 	/* Pipe state changes from signal handler to main loop */
 	if (pipe(ap->state_pipe) < 0) {
 		crit(ap->logopt, "failed create state pipe for autofs path %s",
@@ -110,6 +120,17 @@ static int autofs_init_direct(struct autofs_point *ap)
 		close(ap->kpipefd);
 		return -1;
 	}
+
+	if ((cl_flags = fcntl(ap->state_pipe[0], F_GETFD, 0)) != -1) {
+		cl_flags |= FD_CLOEXEC;
+		fcntl(ap->state_pipe[0], F_SETFD, cl_flags);
+	}
+
+	if ((cl_flags = fcntl(ap->state_pipe[1], F_GETFD, 0)) != -1) {
+		cl_flags |= FD_CLOEXEC;
+		fcntl(ap->state_pipe[1], F_SETFD, cl_flags);
+	}
+
 	return 0;
 }
 
@@ -133,8 +154,18 @@ int do_umount_autofs_direct(struct autofs_point *ap, struct mnt_list *mnts, stru
 			return 1;
 		}
 		ioctlfd = me->ioctlfd;
-	} else
+	} else {
+		int cl_flags;
+
 		ioctlfd = open(me->key, O_RDONLY);
+		if (ioctlfd != -1) {
+			if ((cl_flags = fcntl(ioctlfd, F_GETFD, 0)) != -1) {
+				cl_flags |= FD_CLOEXEC;
+				fcntl(ioctlfd, F_SETFD, cl_flags);
+			}
+		}
+	}
+
 
 	if (ioctlfd >= 0) {
 		int status = 1;
@@ -305,7 +336,7 @@ int do_mount_autofs_direct(struct autofs_point *ap, struct mnt_list *mnts, struc
 	struct mnt_params *mp;
 	time_t timeout = ap->exp_timeout;
 	struct stat st;
-	int status, ret, ioctlfd;
+	int status, ret, ioctlfd, cl_flags;
 	struct list_head list;
 
 	INIT_LIST_HEAD(&list);
@@ -317,8 +348,16 @@ int do_mount_autofs_direct(struct autofs_point *ap, struct mnt_list *mnts, struc
 
 			save_ioctlfd = ioctlfd = me->ioctlfd;
 
-			if (ioctlfd == -1)
+			if (ioctlfd == -1) {
 				ioctlfd = open(me->key, O_RDONLY);
+				if (ioctlfd != -1) {
+					cl_flags = fcntl(ioctlfd, F_GETFD, 0);
+					if (cl_flags != -1) {
+						cl_flags |= FD_CLOEXEC;
+						fcntl(ioctlfd, F_SETFD, cl_flags);
+					}
+				}
+			}
 
 			if (ioctlfd < 0) {
 				error(ap->logopt,
@@ -403,6 +442,11 @@ int do_mount_autofs_direct(struct autofs_point *ap, struct mnt_list *mnts, struc
 	if (ioctlfd < 0) {
 		crit(ap->logopt, "failed to create ioctl fd for %s", me->key);
 		goto out_umount;
+	}
+
+	if ((cl_flags = fcntl(ioctlfd, F_GETFD, 0)) != -1) {
+		cl_flags |= FD_CLOEXEC;
+		fcntl(ioctlfd, F_SETFD, cl_flags);
 	}
 
 	/* Only calculate this first time round */
@@ -526,7 +570,7 @@ int mount_autofs_direct(struct autofs_point *ap)
 int umount_autofs_offset(struct autofs_point *ap, struct mapent *me)
 {
 	char buf[MAX_ERR_BUF];
-	int ioctlfd, rv = 1, retries;
+	int ioctlfd, cl_flags, rv = 1, retries;
 
 	if (me->ioctlfd != -1) {
 		if (is_mounted(_PATH_MOUNTED, me->key, MNTS_REAL)) {
@@ -535,8 +579,15 @@ int umount_autofs_offset(struct autofs_point *ap, struct mapent *me)
 			return 1;
 		}
 		ioctlfd = me->ioctlfd;
-	} else
+	} else {
 		ioctlfd = open(me->key, O_RDONLY);
+		if (ioctlfd != -1) {
+			if ((cl_flags = fcntl(ioctlfd, F_GETFD, 0)) != -1) {
+				cl_flags |= FD_CLOEXEC;
+				fcntl(ioctlfd, F_SETFD, cl_flags);
+			}
+		}
+	}
 
 	if (ioctlfd >= 0) {
 		int status = 1;
@@ -622,7 +673,7 @@ int mount_autofs_offset(struct autofs_point *ap, struct mapent *me, int is_autof
 	struct mnt_params *mp;
 	time_t timeout = ap->exp_timeout;
 	struct stat st;
-	int ioctlfd, status, ret;
+	int ioctlfd, cl_flags, status, ret;
 
 	if (is_mounted(_PROC_MOUNTS, me->key, MNTS_AUTOFS)) {
 		if (ap->state != ST_READMAP)
@@ -717,6 +768,11 @@ int mount_autofs_offset(struct autofs_point *ap, struct mapent *me, int is_autof
 	if (ioctlfd < 0) {
 		crit(ap->logopt, "failed to create ioctl fd for %s", me->key);
 		goto out_umount;
+	}
+
+	if ((cl_flags = fcntl(ioctlfd, F_GETFD, 0)) != -1) {
+		cl_flags |= FD_CLOEXEC;
+		fcntl(ioctlfd, F_SETFD, cl_flags);
 	}
 
 	ioctl(ioctlfd, AUTOFS_IOC_SETTIMEOUT, &timeout);
@@ -1299,7 +1355,7 @@ int handle_packet_missing_direct(struct autofs_point *ap, autofs_packet_missing_
 	struct pending_args *mt;
 	char buf[MAX_ERR_BUF];
 	int status = 0;
-	int ioctlfd, state;
+	int ioctlfd, cl_flags, state;
 
 	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &state);
 
@@ -1343,6 +1399,11 @@ int handle_packet_missing_direct(struct autofs_point *ap, autofs_packet_missing_
 		crit(ap->logopt, "failed to create ioctl fd for %s", me->key);
 		/* TODO:  how do we clear wait q in kernel ?? */
 		return 1;
+	}
+
+	if ((cl_flags = fcntl(ioctlfd, F_GETFD, 0)) != -1) {
+		cl_flags |= FD_CLOEXEC;
+		fcntl(ioctlfd, F_SETFD, cl_flags);
 	}
 
 	debug(ap->logopt, "token %ld, name %s, request pid %u",

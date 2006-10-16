@@ -25,6 +25,7 @@
 #include <string.h>
 #include <memory.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include <limits.h>
 
 #include "automount.h"
@@ -124,13 +125,21 @@ static int nss_error(const char *s)
 int nsswitch_parse(struct list_head *list)
 {
 	FILE *nsswitch;
-	int status;
+	int fd, cl_flags, status;
 
 	nsswitch = fopen(NSSWITCH_FILE, "r");
 	if (!nsswitch) {
 		error(LOGOPT_ANY, "couldn't open %s\n", NSSWITCH_FILE);
 		return 1;
 	}
+
+	fd = fileno(nsswitch);
+
+	if ((cl_flags = fcntl(fd, F_GETFD, 0)) != -1) {
+		cl_flags |= FD_CLOEXEC;
+		fcntl(fd, F_SETFD, cl_flags);
+	}
+
 	nss_in = nsswitch;
 
 	nss_list = list;

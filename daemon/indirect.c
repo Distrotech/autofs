@@ -45,7 +45,7 @@ static pthread_mutex_t ea_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static int autofs_init_indirect(struct autofs_point *ap)
 {
-	int pipefd[2];
+	int pipefd[2], cl_flags;
 
 	if ((ap->state != ST_INIT)) {
 		/* This can happen if an autofs process is already running*/
@@ -67,6 +67,16 @@ static int autofs_init_indirect(struct autofs_point *ap)
 	ap->pipefd = pipefd[0];
 	ap->kpipefd = pipefd[1];
 
+	if ((cl_flags = fcntl(ap->pipefd, F_GETFD, 0)) != -1) {
+		cl_flags |= FD_CLOEXEC;
+		fcntl(ap->pipefd, F_SETFD, cl_flags);
+	}
+
+	if ((cl_flags = fcntl(ap->kpipefd, F_GETFD, 0)) != -1) {
+		cl_flags |= FD_CLOEXEC;
+		fcntl(ap->kpipefd, F_SETFD, cl_flags);
+	}
+
 	/* Pipe state changes from signal handler to main loop */
 	if (pipe(ap->state_pipe) < 0) {
 		crit(ap->logopt,
@@ -75,6 +85,16 @@ static int autofs_init_indirect(struct autofs_point *ap)
 		close(ap->kpipefd);	/* Close kernel pipe end */
 		free(ap->path);
 		return -1;
+	}
+
+	if ((cl_flags = fcntl(ap->state_pipe[0], F_GETFD, 0)) != -1) {
+		cl_flags |= FD_CLOEXEC;
+		fcntl(ap->state_pipe[0], F_SETFD, cl_flags);
+	}
+
+	if ((cl_flags = fcntl(ap->state_pipe[1], F_GETFD, 0)) != -1) {
+		cl_flags |= FD_CLOEXEC;
+		fcntl(ap->state_pipe[1], F_SETFD, cl_flags);
 	}
 
 	return 0;
@@ -129,7 +149,7 @@ static int do_mount_autofs_indirect(struct autofs_point *ap)
 	char *options = NULL;
 	struct stat st;
 	struct mnt_list *mnts;
-	int ret;
+	int cl_flags, ret;
 
 	mnts = get_mnt_list(_PROC_MOUNTS, ap->path, 1);
 	if (mnts) {
@@ -181,6 +201,11 @@ static int do_mount_autofs_indirect(struct autofs_point *ap)
 		crit(ap->logopt,
 		     "failed to create ioctl fd for autofs path %s", ap->path);
 		goto out_umount;
+	}
+
+	if ((cl_flags = fcntl(ap->ioctlfd, F_GETFD, 0)) != -1) {
+		cl_flags |= FD_CLOEXEC;
+		fcntl(ap->ioctlfd, F_SETFD, cl_flags);
 	}
 
 	ap->kver.major = 0;
