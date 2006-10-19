@@ -23,6 +23,8 @@
 - fix "-fstype=nfs4" server probing.
 - set close-on-exec flag on open files where possible.
 - fix parsing of numeric host names in LDAP map specs.
+- fix get_query_dn not looking in subtree for LDAP search (missed second
+  occurance).
 
 1/9/2006 autofs-5.0.1 rc2
 -------------------------
