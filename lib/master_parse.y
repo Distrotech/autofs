@@ -29,6 +29,8 @@
 #include "automount.h"
 #include "master.h"
 
+#define MAX_ERR_LEN	512
+
 extern struct master *master_list;
 
 char **add_argv(int, char **, char *);
@@ -55,6 +57,8 @@ static long timeout;
 static unsigned ghost;
 static char **local_argv;
 static int local_argc;
+
+static char errstr[MAX_ERR_LEN];
 
 static unsigned int verbose;
 static unsigned int debug;
@@ -311,25 +315,88 @@ dn:	DNSERVER dnattrs
 	}
 	;
 
-dnattrs: dnattr
+dnattrs: DNATTR EQUAL DNNAME
 	{
+		if (strcasecmp($1, "cn") &&
+		    strcasecmp($1, "ou") &&
+		    strcasecmp($1, "automountMapName") &&
+		    strcasecmp($1, "nisMapName")) {
+			strcpy(errstr, $1);
+			strcat(errstr, "=");
+			strcat(errstr, $3);
+			master_notify(errstr);
+			YYABORT;
+		}
 		strcpy($$, $1);
-	}
-	| dnattr COMMA dnattrs
-	{
-		strcpy($$, $1);
-		strcat($$, ",");
+		strcat($$, "=");
 		strcat($$, $3);
+	}
+	| DNATTR EQUAL DNNAME COMMA dnattr
+	{
+		if (strcasecmp($1, "cn") &&
+		    strcasecmp($1, "ou") &&
+		    strcasecmp($1, "automountMapName") &&
+		    strcasecmp($1, "nisMapName")) {
+			strcpy(errstr, $1);
+			strcat(errstr, "=");
+			strcat(errstr, $3);
+			master_notify(errstr);
+			YYABORT;
+		}
+		strcpy($$, $1);
+		strcat($$, "=");
+		strcat($$, $3);
+		strcat($$, ",");
+		strcat($$, $5);
+	}
+	| DNATTR
+	{
+		master_notify($1);
+		YYABORT;
+	}
+	| DNNAME
+	{
+		master_notify($1);
+		YYABORT;
 	}
 	;
 
 dnattr: DNATTR EQUAL DNNAME
 	{
+		if (!strcasecmp($1, "automountMapName") ||
+		    !strcasecmp($1, "nisMapName")) {
+			strcpy(errstr, $1);
+			strcat(errstr, "=");
+			strcat(errstr, $3);
+			master_notify(errstr);
+			YYABORT;
+		}
 		strcpy($$, $1);
 		strcat($$, "=");
 		strcat($$, $3);
 	}
+	| DNATTR EQUAL DNNAME COMMA dnattr
+	{
+		if (!strcasecmp($1, "automountMapName") ||
+		    !strcasecmp($1, "nisMapName")) {
+			strcpy(errstr, $1);
+			strcat(errstr, "=");
+			strcat(errstr, $3);
+			master_notify(errstr);
+			YYABORT;
+		}
+		strcpy($$, $1);
+		strcat($$, "=");
+		strcat($$, $3);
+		strcat($$, ",");
+		strcat($$, $5);
+	}
 	| DNATTR
+	{
+		master_notify($1);
+		YYABORT;
+	}
+	| DNNAME
 	{
 		master_notify($1);
 		YYABORT;

@@ -25,6 +25,7 @@
 - fix parsing of numeric host names in LDAP map specs.
 - fix get_query_dn not looking in subtree for LDAP search (missed second
   occurance).
+- allow additional common LDAP attributes in map dn.
 
 1/9/2006 autofs-5.0.1 rc2
 -------------------------
