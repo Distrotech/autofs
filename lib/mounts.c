@@ -550,6 +550,7 @@ void tree_free_mnt_tree(struct mnt_list *tree)
 		list_del(&this->self);
 
 		free(this->path);
+		free(this->fs_name);
 		free(this->fs_type);
 
 		if (this->opts)
@@ -623,8 +624,18 @@ struct mnt_list *tree_make_mnt_tree(const char *table, const char *path)
 		}
 		strcpy(ent->path, mnt->mnt_dir);
 
+		ent->fs_name = malloc(strlen(mnt->mnt_fsname) + 1);
+		if (!ent->fs_name) {
+			free(ent->path);
+			endmntent(tab);
+			tree_free_mnt_tree(tree);
+			return NULL;
+		}
+		strcpy(ent->fs_name, mnt->mnt_fsname);
+
 		ent->fs_type = malloc(strlen(mnt->mnt_type) + 1);
 		if (!ent->fs_type) {
+			free(ent->fs_name);
 			free(ent->path);
 			endmntent(tab);
 			tree_free_mnt_tree(tree);
@@ -635,6 +646,7 @@ struct mnt_list *tree_make_mnt_tree(const char *table, const char *path)
 		ent->opts = malloc(strlen(mnt->mnt_opts) + 1);
 		if (!ent->opts) {
 			free(ent->fs_type);
+			free(ent->fs_name);
 			free(ent->path);
 			endmntent(tab);
 			tree_free_mnt_tree(tree);
