@@ -19,6 +19,7 @@
 #include <limits.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/vfs.h>
 #include <stdio.h>
 
 #include "automount.h"
@@ -170,6 +171,14 @@ struct mnt_list *get_mnt_list(const char *table, const char *path, int include)
 		}
 		strcpy(ent->path, mnt->mnt_dir);
 
+		ent->fs_name = malloc(strlen(mnt->mnt_fsname) + 1);
+		if (!ent->fs_name) {
+			endmntent(tab);
+			free_mnt_list(list);
+			return NULL;
+		}
+		strcpy(ent->fs_name, mnt->mnt_fsname);
+
 		ent->fs_type = malloc(strlen(mnt->mnt_type) + 1);
 		if (!ent->fs_type) {
 			free(ent->path);
@@ -240,6 +249,9 @@ void free_mnt_list(struct mnt_list *list)
 		if (this->path)
 			free(this->path);
 
+		if (this->fs_name)
+			free(this->fs_name);
+
 		if (this->fs_type)
 			free(this->fs_type);
 
@@ -248,6 +260,47 @@ void free_mnt_list(struct mnt_list *list)
 
 		free(this);
 	}
+}
+
+int contained_in_local_fs(const char *path)
+{
+	struct mnt_list *mnts, *this;
+	size_t pathlen = strlen(path);
+	struct statfs fs;
+	int rv, ret;
+
+	if (!path || !pathlen || pathlen > PATH_MAX)
+		return 0;
+
+	mnts = get_mnt_list(_PATH_MOUNTED, "/", 1);
+	if (!mnts)
+		return 0;
+
+	ret = 0;
+
+	for (this = mnts; this != NULL; this = this->next) {
+		size_t len = strlen(this->path);
+
+		if (!strncmp(path, this->path, len)) {
+			if (len > 1 && pathlen > len && path[len] != '/')
+				continue;
+			rv = statfs(this->path, &fs);
+			if (rv != -1 && fs.f_type == AUTOFS_SUPER_MAGIC)
+				ret = 1;
+			else if (this->fs_name[0] == '/') {
+				if (strlen(this->fs_name) > 1) {
+					if (this->fs_name[1] != '/')
+						ret = 1;
+				} else
+					ret = 1;
+			}
+			break;
+		}
+	}
+
+	free_mnt_list(mnts);
+
+	return ret;
 }
 
 int is_mounted(const char *table, const char *path, unsigned int type)

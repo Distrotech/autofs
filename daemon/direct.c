@@ -418,7 +418,7 @@ int do_mount_autofs_direct(struct autofs_point *ap, struct mnt_list *mnts, struc
 	if (mkdir_path(me->key, 0555) < 0) {
 		if (errno != EEXIST && errno != EROFS) {
 			crit(ap->logopt,
-			     "failed to create mount directory %s", me->key);
+			     "failed to create mount directory %s %d", me->key, errno);
 			return -1;
 		}
 		/* If we recieve an error, and it's EEXIST or EROFS we know

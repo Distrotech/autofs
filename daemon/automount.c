@@ -72,6 +72,32 @@ static int umount_all(struct autofs_point *ap, int force);
 extern pthread_mutex_t master_mutex;
 extern struct master *master_list;
 
+static int do_mkdir(const char *path, mode_t mode)
+{
+	int status;
+	struct stat st;
+
+	status = stat(path, &st);
+	if (status == 0) {
+		if (!S_ISDIR(st.st_mode)) {
+			errno = ENOTDIR;
+			return 0;
+		}
+		return 1;
+	}
+
+	if (contained_in_local_fs(path)) {
+		if (mkdir(path, mode) == -1) {
+			if (errno == EEXIST)
+				return 1;
+			return 0;
+		}
+		return 1;
+	}
+
+	return 0;
+}
+
 int mkdir_path(const char *path, mode_t mode)
 {
 	char *buf = alloca(strlen(path) + 1);
@@ -84,19 +110,9 @@ int mkdir_path(const char *path, mode_t mode)
 			bp += cp - lcp;
 			lcp = cp;
 			*bp = '\0';
-			if (mkdir(buf, mode) == -1) {
-				/* If it already exists, make sure it's a directory */
-				if (errno == EEXIST) {
-					struct stat st;
-
-					if (stat(buf, &st) == 0 && !S_ISDIR(st.st_mode))
-						errno = ENOTDIR;
-					else {
-						/* last component, return -1 */
-						if (*cp != '\0')
-							continue;
-					}
-				}
+			if (!do_mkdir(buf, mode)) {
+				if (*cp != '\0')
+					continue;
 				return -1;
 			}
 		}

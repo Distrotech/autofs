@@ -322,6 +322,7 @@ int ncat_path(char *buf, size_t len,
 
 struct mnt_list {
 	char *path;
+	char *fs_name;
 	char *fs_type;
 	char *opts;
 	pid_t owner;
@@ -350,6 +351,7 @@ char *make_mnt_name_string(char *path);
 struct mnt_list *get_mnt_list(const char *table, const char *path, int include);
 struct mnt_list *reverse_mnt_list(struct mnt_list *list);
 void free_mnt_list(struct mnt_list *list);
+int contained_in_local_fs(const char *path);
 int is_mounted(const char *table, const char *path, unsigned int type);
 int has_fstab_option(const char *opt);
 char *find_mnt_ino(const char *table, dev_t dev, ino_t ino);

@@ -171,7 +171,7 @@ static int do_mount_autofs_indirect(struct autofs_point *ap)
 	if (mkdir_path(ap->path, 0555) < 0) {
 		if (errno != EEXIST && errno != EROFS) {
 			crit(ap->logopt,
-			     "failed to create iautofs directory %s",
+			     "failed to create autofs directory %s",
 			     ap->path);
 			goto out_err;
 		}
