@@ -32,6 +32,8 @@
 #include "nsswitch.h"
 #include "nss_parse.tab.h"
 
+static pthread_mutex_t parse_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 static struct list_head *nss_list;
 static struct nss_source *src;
 struct nss_action act[NSS_STATUS_MAX];
@@ -122,6 +124,29 @@ static int nss_error(const char *s)
 	return(0);
 }
 
+static void parse_mutex_lock(void)
+{
+	int status = pthread_mutex_lock(&parse_mutex);
+	if (status)
+		fatal(status);
+	return;
+}
+
+static void parse_mutex_unlock(void *arg)
+{
+	int status = pthread_mutex_unlock(&parse_mutex);
+	if (status)
+		fatal(status);
+	return;
+}
+
+static void parse_close_nsswitch(void *arg)
+{
+	FILE *nsswitch = (FILE *) arg;
+	fclose(nsswitch);
+	return;
+}
+
 int nsswitch_parse(struct list_head *list)
 {
 	FILE *nsswitch;
@@ -133,6 +158,8 @@ int nsswitch_parse(struct list_head *list)
 		return 1;
 	}
 
+	pthread_cleanup_push(parse_close_nsswitch, nsswitch);
+
 	fd = fileno(nsswitch);
 
 	if ((cl_flags = fcntl(fd, F_GETFD, 0)) != -1) {
@@ -140,13 +167,17 @@ int nsswitch_parse(struct list_head *list)
 		fcntl(fd, F_SETFD, cl_flags);
 	}
 
+	parse_mutex_lock();
+	pthread_cleanup_push(parse_mutex_unlock, NULL);
+
 	nss_in = nsswitch;
 
 	nss_list = list;
 	status = nss_parse();
 	nss_list = NULL;
 
-	fclose(nsswitch);
+	pthread_cleanup_pop(1);
+	pthread_cleanup_pop(1);
 
 	if (status)
 		return 1;
