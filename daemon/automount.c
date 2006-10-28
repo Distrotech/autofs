@@ -72,11 +72,13 @@ static int umount_all(struct autofs_point *ap, int force);
 extern pthread_mutex_t master_mutex;
 extern struct master *master_list;
 
-static int do_mkdir(const char *path, mode_t mode)
+static int do_mkdir(const char *parent, const char *path, mode_t mode)
 {
 	int status;
 	struct stat st;
+	struct statfs fs;
 
+	/* If path exists we're done */
 	status = stat(path, &st);
 	if (status == 0) {
 		if (!S_ISDIR(st.st_mode)) {
@@ -86,7 +88,15 @@ static int do_mkdir(const char *path, mode_t mode)
 		return 1;
 	}
 
-	if (contained_in_local_fs(path)) {
+	/*
+	 * If we're trying to create a directory within an autofs fs
+	 * of the path is contained in a localy mounted fs go ahead.
+	 */
+	status = -1;
+	if (*parent)
+		status = statfs(parent, &fs);
+	if ((status != -1 && fs.f_type == AUTOFS_SUPER_MAGIC) ||
+	    contained_in_local_fs(path)) {
 		if (mkdir(path, mode) == -1) {
 			if (errno == EEXIST)
 				return 1;
@@ -101,20 +111,31 @@ static int do_mkdir(const char *path, mode_t mode)
 int mkdir_path(const char *path, mode_t mode)
 {
 	char *buf = alloca(strlen(path) + 1);
+	char *parent = alloca(strlen(path) + 1);
 	const char *cp = path, *lcp = path;
-	char *bp = buf;
+	char *bp = buf, *pp = parent;
+
+	*parent = '\0';
 
 	do {
 		if (cp != path && (*cp == '/' || *cp == '\0')) {
 			memcpy(bp, lcp, cp - lcp);
 			bp += cp - lcp;
-			lcp = cp;
 			*bp = '\0';
-			if (!do_mkdir(buf, mode)) {
-				if (*cp != '\0')
+			if (!do_mkdir(parent, buf, mode)) {
+				if (*cp != '\0') {
+					memcpy(pp, lcp, cp - lcp);
+					pp += cp - lcp;
+					*pp = '\0';
+					lcp = cp;
 					continue;
+				}
 				return -1;
 			}
+			memcpy(pp, lcp, cp - lcp);
+			pp += cp - lcp;
+			*pp = '\0';
+			lcp = cp;
 		}
 	} while (*cp++ != '\0');
 

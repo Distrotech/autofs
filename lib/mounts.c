@@ -19,7 +19,6 @@
 #include <limits.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <sys/vfs.h>
 #include <stdio.h>
 
 #include "automount.h"
@@ -181,7 +180,6 @@ struct mnt_list *get_mnt_list(const char *table, const char *path, int include)
 
 		ent->fs_type = malloc(strlen(mnt->mnt_type) + 1);
 		if (!ent->fs_type) {
-			free(ent->path);
 			endmntent(tab);
 			free_mnt_list(list);
 			return NULL;
@@ -190,8 +188,6 @@ struct mnt_list *get_mnt_list(const char *table, const char *path, int include)
 
 		ent->opts = malloc(strlen(mnt->mnt_opts) + 1);
 		if (!ent->opts) {
-			free(ent->fs_type);
-			free(ent->path);
 			endmntent(tab);
 			free_mnt_list(list);
 			return NULL;
@@ -266,8 +262,7 @@ int contained_in_local_fs(const char *path)
 {
 	struct mnt_list *mnts, *this;
 	size_t pathlen = strlen(path);
-	struct statfs fs;
-	int rv, ret;
+	int ret;
 
 	if (!path || !pathlen || pathlen > PATH_MAX)
 		return 0;
@@ -284,9 +279,6 @@ int contained_in_local_fs(const char *path)
 		if (!strncmp(path, this->path, len)) {
 			if (len > 1 && pathlen > len && path[len] != '/')
 				continue;
-			rv = statfs(this->path, &fs);
-			if (rv != -1 && fs.f_type == AUTOFS_SUPER_MAGIC)
-				ret = 1;
 			else if (this->fs_name[0] == '/') {
 				if (strlen(this->fs_name) > 1) {
 					if (this->fs_name[1] != '/')
@@ -560,6 +552,7 @@ void tree_free_mnt_tree(struct mnt_list *tree)
 	}
 
 	free(tree->path);
+	free(tree->fs_name);
 	free(tree->fs_type);
 
 	if (tree->opts)
@@ -627,6 +620,7 @@ struct mnt_list *tree_make_mnt_tree(const char *table, const char *path)
 		ent->fs_name = malloc(strlen(mnt->mnt_fsname) + 1);
 		if (!ent->fs_name) {
 			free(ent->path);
+			free(ent);
 			endmntent(tab);
 			tree_free_mnt_tree(tree);
 			return NULL;
@@ -637,6 +631,7 @@ struct mnt_list *tree_make_mnt_tree(const char *table, const char *path)
 		if (!ent->fs_type) {
 			free(ent->fs_name);
 			free(ent->path);
+			free(ent);
 			endmntent(tab);
 			tree_free_mnt_tree(tree);
 			return NULL;
@@ -648,6 +643,7 @@ struct mnt_list *tree_make_mnt_tree(const char *table, const char *path)
 			free(ent->fs_type);
 			free(ent->fs_name);
 			free(ent->path);
+			free(ent);
 			endmntent(tab);
 			tree_free_mnt_tree(tree);
 			return NULL;
