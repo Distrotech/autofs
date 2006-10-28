@@ -68,7 +68,9 @@ static struct parse_context default_context = {
 /* Free all storage associated with this context */
 static void kill_context(struct parse_context *ctxt)
 {
+	macro_lock();
 	macro_free_table(ctxt->subst);
+	macro_unlock();
 	if (ctxt->optstr)
 		free(ctxt->optstr);
 	if (ctxt->macros)
@@ -267,8 +269,12 @@ int parse_init(int argc, const char *const *argv, void **context)
 				else
 					val = "";
 
+				macro_lock();
+
 				ctxt->subst = macro_addvar(ctxt->subst,
 							def, strlen(def), val);
+
+				macro_unlock();
 
 				/* we use 5 for the "-D", "=", "," and the null */
 				if (ctxt->macros) {
@@ -914,11 +920,17 @@ int parse_mount(struct autofs_point *ap, const char *name,
 		return 1;
 	}
 
+	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cur_state);
+	macro_lock();
+
 	ctxt->subst = addstdenv(ctxt->subst);
 
 	mapent_len = expandsunent(mapent, NULL, name, ctxt->subst, slashify);
 	if (mapent_len == 0) {
 		error(ap->logopt, MODPREFIX "failed to expand map entry");
+		ctxt->subst = removestdenv(ctxt->subst);
+		macro_unlock();
+		pthread_setcancelstate(cur_state, NULL);
 		return 1;
 	}
 
@@ -926,12 +938,18 @@ int parse_mount(struct autofs_point *ap, const char *name,
 	if (!pmapent) {	
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
 		error(ap->logopt, MODPREFIX "alloca: %s", estr);
+		ctxt->subst = removestdenv(ctxt->subst);
+		macro_unlock();
+		pthread_setcancelstate(cur_state, NULL);
 		return 1;
 	}
 	pmapent[mapent_len] = '\0';
 
 	expandsunent(mapent, pmapent, name, ctxt->subst, slashify);
 	ctxt->subst = removestdenv(ctxt->subst);
+
+	macro_unlock();
+	pthread_setcancelstate(cur_state, NULL);
 
 	debug(ap->logopt, MODPREFIX "expanded entry: %s", pmapent);
 

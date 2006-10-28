@@ -38,6 +38,7 @@ static struct substvar
 static struct substvar *system_table = &sv_osvers;
 
 static pthread_mutex_t table_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t macro_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 void dump_table(struct substvar *table)
 {
@@ -76,13 +77,15 @@ void macro_init(void)
 
 int macro_is_systemvar(const char *str, int len)
 {
-	struct substvar *sv = system_table;
+	struct substvar *sv;
 	int found = 0;
 	int status;
 
 	status = pthread_mutex_lock(&table_mutex);
 	if (status)
 		fatal(status);
+
+	sv = system_table;
 
 	while (sv) {
 		if (!strncmp(str, sv->def, len) && sv->def[len] == '\0') {
@@ -101,12 +104,14 @@ int macro_is_systemvar(const char *str, int len)
 
 int macro_global_addvar(const char *str, int len, const char *value)
 {
-	struct substvar *sv = system_table;
+	struct substvar *sv;
 	int status, ret = 0;
 
 	status = pthread_mutex_lock(&table_mutex);
 	if (status)
 		fatal(status);
+
+	sv = system_table;
 
 	while (sv) {
 		if (!strncmp(str, sv->def, len) && sv->def[len] == '\0')
@@ -184,15 +189,24 @@ int macro_parse_globalvar(const char *define)
 	return macro_global_addvar(buf, strlen(buf), value);
 }
 
+void macro_lock(void)
+{
+	int status = pthread_mutex_lock(&macro_mutex);
+	if (status)
+		fatal(status);
+}
+
+void macro_unlock(void)
+{
+	int status = pthread_mutex_unlock(&macro_mutex);
+	if (status)
+		fatal(status);
+}
+
 struct substvar *
 macro_addvar(struct substvar *table, const char *str, int len, const char *value)
 {
 	struct substvar *lv = table;
-	int status;
-
-	status = pthread_mutex_lock(&table_mutex);
-	if (status)
-		fatal(status);
 
 	while (lv) {
 		if (!strncmp(str, lv->def, len) && lv->def[len] == '\0')
@@ -240,9 +254,6 @@ macro_addvar(struct substvar *table, const char *str, int len, const char *value
 		lv = new;
 	}
 done:
-	status = pthread_mutex_unlock(&table_mutex);
-	if (status)
-		fatal(status);
 
 	return lv;
 }
@@ -290,11 +301,6 @@ macro_removevar(struct substvar *table, const char *str, int len)
 {
 	struct substvar *list, *lv;
 	struct substvar *last = NULL;
-	int status;
-
-	status = pthread_mutex_lock(&table_mutex);
-	if (status)
-		fatal(status);
 
 	lv = list = table;
 
@@ -317,25 +323,20 @@ macro_removevar(struct substvar *table, const char *str, int len)
 		free(lv);
 	}
 
-	status = pthread_mutex_unlock(&table_mutex);
-	if (status)
-		fatal(status);
-
 	return list;
 }
 
 void macro_free_global_table(void)
 {
-	struct substvar *sv = system_table;
+	struct substvar *sv;
 	struct substvar *next;
 	int status;
-
-	if (!sv)
-		return;
 
 	status = pthread_mutex_lock(&table_mutex);
 	if (status)
 		fatal(status);
+
+	sv = system_table;
 
 	while (sv) {
 		if (sv->readonly) {
@@ -351,6 +352,8 @@ void macro_free_global_table(void)
 		sv = next;
 	}
 
+	system_table = &sv_osvers;
+
 	status = pthread_mutex_unlock(&table_mutex);
 	if (status)
 		fatal(status);
@@ -362,14 +365,9 @@ void macro_free_table(struct substvar *table)
 {
 	struct substvar *lv = table;
 	struct substvar *next;
-	int status;
 
 	if (!lv)
 		return;
-
-	status = pthread_mutex_lock(&table_mutex);
-	if (status)
-		fatal(status);
 
 	while (lv) {
 		next = lv->next;
@@ -380,10 +378,6 @@ void macro_free_table(struct substvar *table)
 		free(lv);
 		lv = next;
 	}
-
-	status = pthread_mutex_unlock(&table_mutex);
-	if (status)
-		fatal(status);
 
 	return;
 }
