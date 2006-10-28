@@ -308,9 +308,9 @@ dn:	DNSERVER dnattrs
 	{
 		strcpy($$, $1);
 	}
-	| DNSERVER DNNAME
+	|
 	{
-		master_notify($2);
+		master_notify("syntax error in dn");
 		YYABORT;
 	}
 	;
@@ -545,8 +545,10 @@ int master_parse_entry(const char *buffer, unsigned int default_timeout, unsigne
 	entry = master_find_mapent(master, path);
 	if (!entry) {
 		new = master_new_mapent(path, age);
-		if (!new)
+		if (!new) {
+			local_free_vars();
 			return 0;
+		}
 		entry = new;
 	}
 
@@ -556,6 +558,7 @@ int master_parse_entry(const char *buffer, unsigned int default_timeout, unsigne
 			error(LOGOPT_ANY, "failed to add autofs_point");
 			if (new)
 				master_free_mapent(new);
+			local_free_vars();
 			return 0;
 		}
 		set_mnt_logging(entry->ap);
@@ -593,6 +596,7 @@ int master_parse_entry(const char *buffer, unsigned int default_timeout, unsigne
 		error(LOGOPT_ANY, "failed to add source");
 		if (new)
 			master_free_mapent(new);
+		local_free_vars();
 		return 0;
 	}
 
@@ -602,6 +606,7 @@ int master_parse_entry(const char *buffer, unsigned int default_timeout, unsigne
 			error(LOGOPT_ANY, "failed to init source cache");
 			if (new)
 				master_free_mapent(new);
+			local_free_vars();
 			return 0;
 		}
 	}
