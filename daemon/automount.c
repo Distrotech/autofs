@@ -935,6 +935,7 @@ static void *do_read_master(void *arg)
 	if (status) {
 		error(master->default_logging,
 		      "failed to signal master read map condition");
+		master->reading = 0;
 		status = pthread_mutex_unlock(&mrc.mutex);
 		if (status)
 			fatal(status);
@@ -946,6 +947,8 @@ static void *do_read_master(void *arg)
 		fatal(status);
 
 	status = master_read_master(master, age, readall);
+
+	master->reading = 0;
 
 	return NULL;
 }
@@ -959,10 +962,20 @@ static int do_hup_signal(struct master *master, time_t age)
 	if (status)
 		fatal(status);
 
+	if (master->reading) {
+		status = pthread_mutex_unlock(&mrc.mutex);
+		if (status)
+			fatal(status);
+		return 1;
+	}
+
+	master->reading = 1;
+
 	status = pthread_create(&thid, &thread_attr, do_read_master, NULL);
 	if (status) {
 		error(master->default_logging,
 		      "master read map thread create failed");
+		master->reading = 0;
 		status = pthread_mutex_unlock(&mrc.mutex);
 		if (status)
 			fatal(status);

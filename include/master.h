@@ -57,6 +57,7 @@ struct master {
 	char *name;
 	unsigned int recurse;
 	unsigned int depth;
+	unsigned int reading;
 	unsigned int default_ghost;
 	unsigned int default_logging;
 	unsigned int default_timeout;

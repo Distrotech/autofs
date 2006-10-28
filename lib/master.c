@@ -699,6 +699,7 @@ struct master *master_new(const char *name, unsigned int timeout, unsigned int g
 
 	master->recurse = 0;
 	master->depth = 0;
+	master->reading = 0;
 	master->default_ghost = ghost;
 	master->default_timeout = timeout;
 	master->default_logging = defaults_get_logging();

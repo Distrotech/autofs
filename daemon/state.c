@@ -682,8 +682,8 @@ int st_add_task(struct autofs_point *ap, enum states state)
 
 		empty = 0;
 
-		/* Don't add duplicate shutdown tasks */
-		if (task->state == state &&
+		/* Don't add duplicate tasks */
+		if (task->state == state ||
 		   (ap_state == ST_SHUTDOWN_PENDING ||
 		    ap_state == ST_SHUTDOWN_FORCE))
 			break;
@@ -701,7 +701,7 @@ int st_add_task(struct autofs_point *ap, enum states state)
 
 			p_task = list_entry(q, struct state_queue, pending);
 
-			if (p_task->state == state &&
+			if (p_task->state == state ||
 			   (ap_state == ST_SHUTDOWN_PENDING ||
 			    ap_state == ST_SHUTDOWN_FORCE))
 				goto done;
