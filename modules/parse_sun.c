@@ -394,16 +394,11 @@ static char *concat_options(char *left, char *right)
 	char buf[MAX_ERR_BUF];
 	char *ret;
 
-	if (left == NULL || *left == '\0') {
-		free(left);
-		ret = strdup(right);
-		return ret;
-	}
+	if (left == NULL || *left == '\0')
+		return strdup(right);
 
-	if (right == NULL || *right == '\0') {
-		free(right);
+	if (right == NULL || *right == '\0')
 		return strdup(left);
-	}
 
 	ret = malloc(strlen(left) + strlen(right) + 2);
 
@@ -741,6 +736,8 @@ static int parse_mapent(const char *ent, char *g_options, char **options, char *
 				estr = strerror_r(errno, buf, MAX_ERR_BUF);
 				error(logopt, MODPREFIX
 				      "concat_options: %s", estr);
+				if (newopt)
+					free(newopt);
 				free(myoptions);
 				return 0;
 			}
@@ -780,7 +777,7 @@ static int parse_mapent(const char *ent, char *g_options, char **options, char *
 	p = skipspace(p);
 
 	while (*p && *p != '/') {
-		char *ent;
+		char *tmp, *ent;
 
 		/* Location can't begin with a '/' */
 		if (*p == '/') {
@@ -811,14 +808,15 @@ static int parse_mapent(const char *ent, char *g_options, char **options, char *
 
 		debug(logopt, MODPREFIX "dequote(\"%.*s\") -> %s", l, p, ent);
 
-		loc = realloc(loc, strlen(loc) + l + 2);
-		if (!loc) {
+		tmp = realloc(loc, strlen(loc) + l + 2);
+		if (!tmp) {
 			error(logopt, MODPREFIX "out of memory");
 			free(ent);
 			free(myoptions);
 			free(loc);
 			return 0;
 		}
+		loc = tmp;
 
 		strcat(loc, " ");
 		strcat(loc, ent);
@@ -968,17 +966,23 @@ int parse_mount(struct autofs_point *ap, const char *name,
 		char *mnt_options = NULL;
 
 		do {
-			char *noptions = NULL;
+			char *tmp, *noptions = NULL;
 
 			p = parse_options(p, &noptions, ap->logopt);
-			mnt_options = concat_options(mnt_options, noptions);
-
-			if (mnt_options == NULL) {
+			tmp = concat_options(mnt_options, noptions);
+			if (!tmp) {
 				char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
 				error(ap->logopt,
 				      MODPREFIX "concat_options: %s", estr);
+				if (noptions)
+					free(noptions);
+				if (mnt_options)
+					free(mnt_options);
+				free(options);
 				return 1;
 			}
+			mnt_options = tmp;
+
 			p = skipspace(p);
 		} while (*p == '-');
 
@@ -1232,7 +1236,7 @@ int parse_mount(struct autofs_point *ap, const char *name,
 		p = skipspace(p);
 
 		while (*p) {
-			char *ent;
+			char *tmp, *ent;
 
 			l = chunklen(p, check_colon(p));
 			ent = dequote(p, l, ap->logopt);
@@ -1255,14 +1259,15 @@ int parse_mount(struct autofs_point *ap, const char *name,
 			debug(ap->logopt,
 			      MODPREFIX "dequote(\"%.*s\") -> %s", l, p, ent);
 
-			loc = realloc(loc, strlen(loc) + l + 2);
-			if (!loc) {
+			tmp = realloc(loc, strlen(loc) + l + 2);
+			if (!tmp) {
 				free(ent);
 				free(loc);
 				free(options);
 				error(ap->logopt, MODPREFIX "out of memory");
 				return 1;
 			}
+			loc = tmp;
 
 			strcat(loc, " ");
 			strcat(loc, ent);

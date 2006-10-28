@@ -192,6 +192,7 @@ static int read_one(FILE *f, char *key, unsigned int *k_len, char *mapent, unsig
 			else {
 				if (key_len == KEY_MAX_LEN) {
 					state = st_badent;
+					gotten = got_nothing;
 					warn(LOGOPT_ANY,
 					      MODPREFIX "map key \"%s...\" "
 					      "is too long.  The maximum key "
@@ -822,8 +823,10 @@ static int lookup_one(struct autofs_point *ap,
 				}
 
 				eq = strncmp(s_key, key, key_len);
-				if (eq != 0)
+				if (eq != 0) {
+					free(s_key);
 					continue;
+				}
 
 				free(s_key);
 

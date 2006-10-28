@@ -887,8 +887,8 @@ void *expire_proc_direct(void *arg)
 	left = 0;
 
 	/* Get a list of real mounts and expire them if possible */
-	pthread_cleanup_push(mnts_cleanup, mnts);
 	mnts = get_mnt_list(_PROC_MOUNTS, "/", 0);
+	pthread_cleanup_push(mnts_cleanup, mnts);
 	for (next = mnts; next; next = next->next) {
 		if (!strcmp(next->fs_type, "autofs")) {
 			/*

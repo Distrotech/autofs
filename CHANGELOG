@@ -30,6 +30,7 @@
 - fix macro table locking.
 - fix nsswitch parser locking.
 - allow only one master map read task at a time.
+- fix misc memory leaks.
 
 1/9/2006 autofs-5.0.1 rc2
 -------------------------

@@ -477,8 +477,8 @@ void *expire_proc_indirect(void *arg)
 	left = 0;
 
 	/* Get a list of real mounts and expire them if possible */
-	pthread_cleanup_push(mnts_cleanup, mnts);
 	mnts = get_mnt_list(_PROC_MOUNTS, ap->path, 0);
+	pthread_cleanup_push(mnts_cleanup, mnts);
 	for (next = mnts; next; next = next->next) {
 		char *ind_key;
 		int ret;
