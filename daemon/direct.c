@@ -848,13 +848,14 @@ static int expire_direct(int ioctlfd, const char *path, unsigned int when, unsig
 static void mnts_cleanup(void *arg)
 {
 	struct mnt_list *mnts = (struct mnt_list *) arg;
-	free_mnt_list(mnts);
+	tree_free_mnt_tree(mnts);
 	return;
 }
 
 void *expire_proc_direct(void *arg)
 {
 	struct mnt_list *mnts = NULL, *next;
+	struct list_head list, *p;
 	struct expire_args *ea;
 	struct expire_args ec;
 	struct autofs_point *ap;
@@ -886,30 +887,18 @@ void *expire_proc_direct(void *arg)
 
 	left = 0;
 
-	/* Get a list of real mounts and expire them if possible */
-	mnts = get_mnt_list(_PROC_MOUNTS, "/", 0);
+	mnts = tree_make_mnt_tree(_PROC_MOUNTS, "/");
+
+	/* Get a list of mounts select real ones and expire them if possible */
+	INIT_LIST_HEAD(&list);
+	if (!tree_get_mnt_list(mnts, &list, "/", 0)) {
+		ec.status = 0;
+		return NULL;
+	}
 	pthread_cleanup_push(mnts_cleanup, mnts);
-	for (next = mnts; next; next = next->next) {
-		if (!strcmp(next->fs_type, "autofs")) {
-			/*
-			 * If we have submounts check if this path lives below
-			 * one of them and pass on state change.
-			 */
-			pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cur_state);
-			if (strstr(next->opts, "indirect")) {
-				master_notify_submount(ap, next->path, ap->state);
-				pthread_setcancelstate(cur_state, NULL);
-				continue;
-			}
-			pthread_setcancelstate(cur_state, NULL);
 
-			/* Skip offsets */
-			if (strstr(next->opts, "offset"))
-				continue;
-		}
-
-		if (ap->state == ST_EXPIRE || ap->state == ST_PRUNE)
-			pthread_testcancel();
+	list_for_each(p, &list) {
+		next = list_entry(p, struct mnt_list, list);
 
 		/*
 		 * All direct mounts must be present in the map
@@ -919,6 +908,40 @@ void *expire_proc_direct(void *arg)
 		if (!me)
 			continue;
 
+		if (!strcmp(next->fs_type, "autofs")) {
+			/*
+			 * If we have submounts check if this path lives below
+			 * one of them and pass on state change.
+			 */
+			pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cur_state);
+			if (strstr(next->opts, "indirect")) {
+				cache_unlock(me->mc);
+				master_notify_submount(ap, next->path, ap->state);
+				pthread_setcancelstate(cur_state, NULL);
+				continue;
+			}
+
+			if (!tree_is_mounted(mnts, next->path, MNTS_REAL)) {
+				/*
+				 * Maybe a manual umount, repair.
+				 * It will take ap->exp_timeout/4 for us to relaize
+				 * this so user must still use USR1 signal to close
+				 * the open file handle for mounts atop multi-mount
+				 * triggers. There is no way that I'm aware of to
+				 * to avoid maintaining a file handle for control
+				 * functions as once it's mounted all opens are
+				 * directed to the mount not the trigger.
+				 */
+				if (me->ioctlfd != -1) {
+					close(me->ioctlfd);
+					me->ioctlfd = -1;
+				}
+			}
+			cache_unlock(me->mc);
+			pthread_setcancelstate(cur_state, NULL);
+			continue;
+		}
+
 		if (me->ioctlfd >= 0) {
 			/* Real mounts have an open ioctl fd */
 			ioctlfd = me->ioctlfd;
@@ -927,6 +950,9 @@ void *expire_proc_direct(void *arg)
 			cache_unlock(me->mc);
 			continue;
 		}
+
+		if (ap->state == ST_EXPIRE || ap->state == ST_PRUNE)
+			pthread_testcancel();
 
 		debug(ap->logopt, "send expire to trigger %s", next->path);
 
@@ -1392,8 +1418,14 @@ int handle_packet_missing_direct(struct autofs_point *ap, autofs_packet_missing_
 		return 1;
 	}
 
-	ioctlfd = open(me->key, O_RDONLY);
-	if (ioctlfd < 0) {
+	if (me->ioctlfd != -1) {
+		/* Maybe someone did a manual umount, clean up ! */
+		ioctlfd = me->ioctlfd;
+		me->ioctlfd = -1;
+	} else
+		ioctlfd = open(me->key, O_RDONLY);
+
+	if (ioctlfd == -1) {
 		cache_unlock(mc);
 		pthread_setcancelstate(state, NULL);
 		crit(ap->logopt, "failed to create ioctl fd for %s", me->key);

@@ -338,6 +338,7 @@ struct mnt_list {
 	struct mnt_list *right;
 	struct list_head self;
 	struct list_head list;
+	struct list_head entries;
 	struct list_head sublist;
 	/*
 	 * Offset mount handling ie. add_ordered_list

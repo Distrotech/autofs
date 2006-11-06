@@ -606,6 +606,7 @@ struct mnt_list *tree_make_mnt_tree(const char *table, const char *path)
 
 		INIT_LIST_HEAD(&ent->self);
 		INIT_LIST_HEAD(&ent->list);
+		INIT_LIST_HEAD(&ent->entries);
 		INIT_LIST_HEAD(&ent->sublist);
 		INIT_LIST_HEAD(&ent->ordered);
 
@@ -824,8 +825,8 @@ int tree_find_mnt_ents(struct mnt_list *mnts, struct list_head *list, const char
 		tree_find_mnt_ents(mnts->left, list, path);
 
 		if (!strcmp(mnts->path, path)) {
-			INIT_LIST_HEAD(&mnts->list);
-			list_add(&mnts->list, list);
+			INIT_LIST_HEAD(&mnts->entries);
+			list_add(&mnts->entries, list);
 		}
 
 		self = &mnts->self;
@@ -835,8 +836,8 @@ int tree_find_mnt_ents(struct mnt_list *mnts, struct list_head *list, const char
 			this = list_entry(p, struct mnt_list, self);
 
 			if (!strcmp(this->path, path)) {
-				INIT_LIST_HEAD(&this->list);
-				list_add(&this->list, list);
+				INIT_LIST_HEAD(&this->entries);
+				list_add(&this->entries, list);
 			}
 		}
 
@@ -863,7 +864,7 @@ int tree_is_mounted(struct mnt_list *mnts, const char *path, unsigned int type)
 	list_for_each(p, &list) {
 		struct mnt_list *mptr;
 
-		mptr = list_entry(p, struct mnt_list, list);
+		mptr = list_entry(p, struct mnt_list, entries);
 
 		if (type) {
 			unsigned int autofs_fs;

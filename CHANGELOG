@@ -31,6 +31,7 @@
 - fix nsswitch parser locking.
 - allow only one master map read task at a time.
 - fix misc memory leaks.
+- mitigate manual umount of automounts where possible.
 
 1/9/2006 autofs-5.0.1 rc2
 -------------------------
