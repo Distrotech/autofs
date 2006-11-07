@@ -32,7 +32,7 @@ static pthread_mutex_t spawn_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 #define SPAWN_OPT_NONE		0x0000
 #define SPAWN_OPT_LOCK		0x0001
-#define SPAWN_OPT_OPENDIR	0x0002
+#define SPAWN_OPT_ACCESS	0x0002
 
 inline void dump_core(void)
 {
@@ -94,7 +94,7 @@ static int do_spawn(logger *log, unsigned int options, const char *prog, const c
 	int errp, errn;
 	int cancel_state;
 	unsigned int use_lock = options & SPAWN_OPT_LOCK;
-	unsigned int use_opendir = options & SPAWN_OPT_OPENDIR;
+	unsigned int use_access = options & SPAWN_OPT_ACCESS;
 	sigset_t allsigs, tmpsig, oldsig;
 	struct thread_stdenv_vars *tsv;
 	pid_t euid = 0;
@@ -129,7 +129,7 @@ static int do_spawn(logger *log, unsigned int options, const char *prog, const c
 		close(pipefd[1]);
 
 		/* Bind mount - check target exists */
-		if (use_opendir) {
+		if (use_access) {
 			char **pargv = (char **) argv;
 			int argc = 0;
 			pid_t pgrp = getpgrp();
@@ -151,9 +151,8 @@ static int do_spawn(logger *log, unsigned int options, const char *prog, const c
 			setpgrp();
 
 			/* Trigger the recursive mount */
-			if ((dfd = opendir(argv[argc])) == NULL)
+			if (access(argv[argc], F_OK) == -1)
 				_exit(errno);
-			closedir(dfd);
 
 			seteuid(0);
 			setegid(0);
@@ -296,7 +295,7 @@ int spawn_mount(logger *log, ...)
 
 /*
  * For bind mounts that depend on the target being mounted (possibly
- * itself an automount) we attempt to mount the target using an opendir
+ * itself an automount) we attempt to mount the target using an access
  * call. For this to work the location must be the second last arg.
  *
  * NOTE: If mount locking is enabled this type of recursive mount cannot
@@ -316,7 +315,7 @@ int spawn_bind_mount(logger *log, ...)
 #ifdef ENABLE_MOUNT_LOCKING
 	options = SPAWN_OPT_LOCK;
 #else
-	options = SPAWN_OPT_OPENDIR;
+	options = SPAWN_OPT_ACCESS;
 #endif
 
 	va_start(arg, log);
