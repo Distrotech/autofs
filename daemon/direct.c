@@ -885,35 +885,68 @@ void *expire_proc_direct(void *arg)
 			continue;
 
 		if (!strcmp(next->fs_type, "autofs")) {
+			struct stat st;
+			int ioctlfd;
+
+			cache_unlock(me->mc);
+
 			/*
 			 * If we have submounts check if this path lives below
 			 * one of them and pass on state change.
 			 */
 			pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cur_state);
 			if (strstr(next->opts, "indirect")) {
-				cache_unlock(me->mc);
 				master_notify_submount(ap, next->path, ap->state);
 				pthread_setcancelstate(cur_state, NULL);
 				continue;
 			}
 
-			if (!tree_is_mounted(mnts, next->path, MNTS_REAL)) {
-				/*
-				 * Maybe a manual umount, repair.
-				 * It will take ap->exp_timeout/4 for us to relaize
-				 * this so user must still use USR1 signal to close
-				 * the open file handle for mounts atop multi-mount
-				 * triggers. There is no way that I'm aware of to
-				 * to avoid maintaining a file handle for control
-				 * functions as once it's mounted all opens are
-				 * directed to the mount not the trigger.
-				 */
-				if (me->ioctlfd != -1) {
-					close(me->ioctlfd);
-					me->ioctlfd = -1;
-				}
+			if (me->ioctlfd == -1) {
+				pthread_setcancelstate(cur_state, NULL);
+				continue;
 			}
-			cache_unlock(me->mc);
+
+			if (tree_is_mounted(mnts, next->path, MNTS_REAL)) {
+				pthread_setcancelstate(cur_state, NULL);
+				continue;
+			}
+
+			/*
+			 * Maybe a manual umount, repair.
+			 * It will take ap->exp_timeout/4 for us to relaize
+			 * this so user must still use USR1 signal to close
+			 * the open file handle for mounts atop multi-mount
+			 * triggers. There is no way that I'm aware of to
+			 * avoid maintaining a file handle for control
+			 * functions as once it's mounted all opens are
+			 * directed to the mount not the trigger.
+			 * But first expire possible rootless offsets first.
+			 */
+
+			/* Offsets always have a real mount at their base */
+			if (strstr(next->opts, "offset")) {
+				close(me->ioctlfd);
+				me->ioctlfd = -1;
+				pthread_setcancelstate(cur_state, NULL);
+				continue;
+			}
+
+			ioctlfd = me->ioctlfd;
+
+			ret = expire_direct(ioctlfd, next->path, now, ap->logopt);
+			if (!ret) {
+				left++;
+				pthread_setcancelstate(cur_state, NULL);
+				continue;
+			}
+
+			if (me->ioctlfd != -1 && 
+			    fstat(ioctlfd, &st) != -1 &&
+			    !count_mounts(next->path, st.st_dev)) {
+				close(ioctlfd);
+				me->ioctlfd = -1;
+			}
+
 			pthread_setcancelstate(cur_state, NULL);
 			continue;
 		}
