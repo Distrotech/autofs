@@ -96,6 +96,9 @@ static int do_spawn(logger *log, unsigned int options, const char *prog, const c
 	unsigned int use_lock = options & SPAWN_OPT_LOCK;
 	unsigned int use_opendir = options & SPAWN_OPT_OPENDIR;
 	sigset_t allsigs, tmpsig, oldsig;
+	struct thread_stdenv_vars *tsv;
+	pid_t euid = 0;
+	gid_t egid = 0;
 
 	if (pipe(pipefd))
 		return -1;
@@ -109,6 +112,12 @@ static int do_spawn(logger *log, unsigned int options, const char *prog, const c
 		status = pthread_mutex_lock(&spawn_mutex);
 		if (status)
 			fatal(status);
+	}
+
+	tsv = pthread_getspecific(key_thread_stdenv_vars);
+	if (tsv) {
+		euid = tsv->uid;
+		egid = tsv->gid;
 	}
 
 	f = fork();
@@ -131,11 +140,23 @@ static int do_spawn(logger *log, unsigned int options, const char *prog, const c
 				argc++;
 			argc -= 2;
 
-			/* Set non-autofs program group to trigger mount */
+			/*
+			 * Pretend to be requesting user and set non-autofs
+			 * program group to trigger mount
+			 */
+			if (euid) {
+				seteuid(euid);
+				setegid(egid);
+			}
 			setpgrp();
+
+			/* Trigger the recursive mount */
 			if ((dfd = opendir(argv[argc])) == NULL)
 				_exit(errno);
 			closedir(dfd);
+
+			seteuid(0);
+			setegid(0);
 			setpgid(0, pgrp);
 		}
 

@@ -32,6 +32,7 @@
 - allow only one master map read task at a time.
 - fix misc memory leaks.
 - mitigate manual umount of automounts where possible.
+- fix multiply recursive bind mounts.
 
 1/9/2006 autofs-5.0.1 rc2
 -------------------------
