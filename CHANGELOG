@@ -33,6 +33,7 @@
 - fix misc memory leaks.
 - mitigate manual umount of automounts where possible.
 - fix multiply recursive bind mounts.
+- check kernel module version and require 5.00 or above.
 
 1/9/2006 autofs-5.0.1 rc2
 -------------------------

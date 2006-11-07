@@ -19,6 +19,9 @@
 #include <limits.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/ioctl.h>
+#include <fcntl.h>
+#include <sys/mount.h>
 #include <stdio.h>
 
 #include "automount.h"
@@ -29,6 +32,88 @@
 static const char options_template[]       = "fd=%d,pgrp=%u,minproto=5,maxproto=%d";
 static const char options_template_extra[] = "fd=%d,pgrp=%u,minproto=5,maxproto=%d,%s";
 static const char mnt_name_template[]      = "automount(pid%u)";
+
+static struct kernel_mod_version kver = {0, 0};
+static const char kver_options_template[]  = "fd=%d,pgrp=%u,minproto=3,maxproto=5";
+
+unsigned int query_kproto_ver(void)
+{
+	char options[MAX_OPTIONS_LEN + 1], *tmp;
+	pid_t pgrp = getpgrp();
+	int pipefd[2], ioctlfd, len;
+
+	tmp = tempnam(NULL, "auto");
+	if (mkdir(tmp, 0700) == -1)
+		return 0;
+
+	if (pipe(pipefd) == -1) {
+		rmdir(tmp);
+		return 0;
+	}
+
+	len = snprintf(options, MAX_OPTIONS_LEN,
+		       kver_options_template, pipefd[1], (unsigned) pgrp);
+	if (len < 0) {
+		close(pipefd[0]);
+		close(pipefd[1]);
+		rmdir(tmp);
+		return 0;
+	}
+
+	if (mount("automount", tmp, "autofs", MS_MGC_VAL, options)) {
+		close(pipefd[0]);
+		close(pipefd[1]);
+		rmdir(tmp);
+		return 0;
+	}
+
+	close(pipefd[1]);
+
+	ioctlfd = open(tmp, O_RDONLY);
+	if (ioctlfd == -1) {
+		umount(tmp);
+		close(pipefd[0]);
+		rmdir(tmp);
+		return 0;
+	}
+
+	ioctl(ioctlfd, AUTOFS_IOC_CATATONIC, 0);
+
+	/* If this ioctl() doesn't work, it is kernel version 2 */
+	if (ioctl(ioctlfd, AUTOFS_IOC_PROTOVER, &kver.major) == -1) {
+		close(ioctlfd);
+		umount(tmp);
+		close(pipefd[0]);
+		rmdir(tmp);
+		return 0;
+	}
+
+	/* If this ioctl() doesn't work, version is 4 or less */
+	if (ioctl(ioctlfd, AUTOFS_IOC_PROTOSUBVER, &kver.minor) == -1) {
+		close(ioctlfd);
+		umount(tmp);
+		close(pipefd[0]);
+		rmdir(tmp);
+		return 0;
+	}
+
+	close(ioctlfd);
+	umount(tmp);
+	close(pipefd[0]);
+	rmdir(tmp);
+
+	return 1;
+}
+
+unsigned int get_kver_major(void)
+{
+	return kver.major;
+}
+
+unsigned int get_kver_minor(void)
+{
+	return kver.minor;
+}
 
 /*
  * Make common autofs mount options string

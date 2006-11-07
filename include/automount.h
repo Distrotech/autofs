@@ -347,6 +347,9 @@ struct mnt_list {
 	struct list_head ordered;
 };
 
+unsigned int query_kproto_ver(void);
+unsigned int get_kver_major(void);
+unsigned int get_kver_minor(void);
 char *make_options_string(char *path, int kernel_pipefd, char *extra);
 char *make_mnt_name_string(char *path);
 struct mnt_list *get_mnt_list(const char *table, const char *path, int include);
@@ -433,7 +436,6 @@ struct autofs_point {
 	time_t exp_runfreq;		/* Frequency for polling for timeouts */
 	unsigned ghost;			/* Enable/disable gohsted directories */
 	unsigned logopt;		/* Per map logging */
-	struct kernel_mod_version kver;	/* autofs kernel module version */
 	pthread_t exp_thread;		/* Thread that is expiring */
 	pthread_t readmap_thread;	/* Thread that is reading maps */
 	pthread_mutex_t state_mutex;	/* Protect state changes */

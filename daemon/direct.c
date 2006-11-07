@@ -435,8 +435,6 @@ int do_mount_autofs_direct(struct autofs_point *ap, struct mnt_list *mnts, struc
 		goto out_err;
 	}
 
-	msg("mounted autofs direct mount on %s", me->key);
-
 	/* Root directory for ioctl()'s */
 	ioctlfd = open(me->key, O_RDONLY);
 	if (ioctlfd < 0) {
@@ -449,41 +447,19 @@ int do_mount_autofs_direct(struct autofs_point *ap, struct mnt_list *mnts, struc
 		fcntl(ioctlfd, F_SETFD, cl_flags);
 	}
 
-	/* Only calculate this first time round */
-	if (ap->kver.major)
-		goto got_version;
-
-	ap->kver.major = 0;
-	ap->kver.minor = 0;
-
-	/* If this ioctl() doesn't work, it is kernel version 2 */
-	if (!ioctl(ioctlfd, AUTOFS_IOC_PROTOVER, &ap->kver.major)) {
-		 /* If this ioctl() fails the kernel doesn't support direct mounts */
-		 if (ioctl(me->ioctlfd, AUTOFS_IOC_PROTOSUBVER, &ap->kver.minor)) {
-			ap->kver.minor = 0;
-			ap->ghost = 0;
-		 }
-	}
-
-	msg("using kernel protocol version %d.%02d", ap->kver.major, ap->kver.minor);
-
-	if (ap->kver.major < 5) {
-		crit(ap->logopt, "kernel does not support direct mounts");
-		goto out_close;
-	}
-
 	/* Calculate the timeouts */
 	ap->exp_runfreq = (timeout + CHECK_RATIO - 1) / CHECK_RATIO;
 
-	if (timeout) {
-		msg("using timeout %d seconds; freq %d secs",
-			(int) ap->exp_timeout, (int) ap->exp_runfreq);
-	} else {
-		msg("timeouts disabled");
-	}
-
-got_version:
 	ioctl(ioctlfd, AUTOFS_IOC_SETTIMEOUT, &timeout);
+
+	if (ap->exp_timeout)
+		msg("mounted direct mount on %s "
+		    "with timeout %u, freq %u seconds", me->key,
+		    (unsigned int) ap->exp_timeout,
+		    (unsigned int) ap->exp_runfreq);
+	else
+		msg("mounted direct mount on %s with timeouts disabled",
+		    me->key);
 
 	ret = fstat(ioctlfd, &st);
 	if (ret == -1) {

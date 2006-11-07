@@ -193,8 +193,6 @@ static int do_mount_autofs_indirect(struct autofs_point *ap)
 
 	options = NULL;
 
-	msg("mounted autofs indirect mount on %s", ap->path);
-
 	/* Root directory for ioctl()'s */
 	ap->ioctlfd = open(ap->path, O_RDONLY);
 	if (ap->ioctlfd < 0) {
@@ -208,43 +206,18 @@ static int do_mount_autofs_indirect(struct autofs_point *ap)
 		fcntl(ap->ioctlfd, F_SETFD, cl_flags);
 	}
 
-	ap->kver.major = 0;
-	ap->kver.minor = 0;
-
-	/* If this ioctl() doesn't work, it is kernel version 2 */
-	if (!ioctl(ap->ioctlfd, AUTOFS_IOC_PROTOVER, &ap->kver.major)) {
-		 /* If this ioctl() doesn't work, kernel does not support ghosting */
-		 if (ioctl(ap->ioctlfd, AUTOFS_IOC_PROTOSUBVER, &ap->kver.minor)) {
-			ap->kver.minor = 0;
-			if (ap->ghost) {
-				msg("kernel does not support ghosting, disabled");
-				ap->ghost = 0;
-			}
-		 }
-	} else {
-		ap->kver.major = 2;
-		ap->kver.minor = 0;
-	}
-
-	msg("using kernel protocol version %d.%02d", ap->kver.major, ap->kver.minor);
-
-	/* Calculate the timeouts */
-	if (ap->kver.major < 3 || !timeout) {
-		ap->exp_timeout = ap->exp_runfreq = 0;
-		ap->ghost = 0;
-		if (ap->kver.major >= 3) {
-			msg("timeouts disabled");
-		} else {
-			msg("kernel does not support timeouts");
-		}
-	} else {
-		ap->exp_runfreq = (ap->exp_timeout + CHECK_RATIO - 1) / CHECK_RATIO;
-
-		msg("using timeout %d seconds; freq %d secs",
-		       (int) ap->exp_timeout, (int) ap->exp_runfreq);
-	}
+	ap->exp_runfreq = (timeout + CHECK_RATIO - 1) / CHECK_RATIO;
 
 	ioctl(ap->ioctlfd, AUTOFS_IOC_SETTIMEOUT, &timeout);
+
+	if (ap->exp_timeout)
+		msg("mounted indirect mount on %s "
+		    "with timeout %u, freq %u seconds", ap->path,
+	 	   (unsigned int) ap->exp_timeout,
+		   (unsigned int) ap->exp_runfreq);
+	else
+		msg("mounted indirect mount on %s with timeouts disabled",
+		    ap->path);
 
 	fstat(ap->ioctlfd, &st);
 	ap->dev = st.st_dev;	/* Device number for mount point checks */

@@ -1512,6 +1512,20 @@ int main(int argc, char *argv[])
 			program);
 		exit(1);
 	}
+#if 0
+	if (!load_autofs4_module()) {
+		fprintf(stderr, "%s: can't load %s filesystem module.\n",
+			program, FS_MODULE_NAME);
+		exit(1);
+	}
+#endif
+
+	if (!query_kproto_ver() || get_kver_major() < 5) {
+		fprintf(stderr,
+			"%s: kernel protocol version 5.00 or above required.\n",
+			program);
+		exit(1);
+	}
 
 	rlim.rlim_cur = MAX_OPEN_FILES;
 	rlim.rlim_max = MAX_OPEN_FILES;
@@ -1573,6 +1587,8 @@ int main(int argc, char *argv[])
 
 	msg("Starting automounter version %s, master map %s",
 		version, master_list->name);
+	msg("using kernel protocol version %d.%02d",
+		get_kver_major(), get_kver_minor());
 
 	status = pthread_key_create(&key_thread_stdenv_vars,
 				key_thread_stdenv_vars_destroy);
@@ -1597,17 +1613,6 @@ int main(int argc, char *argv[])
 		close(start_pipefd[1]);
 		exit(1);
 	}
-#if 0
-	if (!load_autofs4_module()) {
-		crit(LOGOPT_ANY, "%s: can't load %s filesystem module",
-			program, FS_MODULE_NAME);
-		master_kill(master_list);
-		*pst_stat = 2;
-		res = write(start_pipefd[1], pst_stat, sizeof(pst_stat));
-		close(start_pipefd[1]);
-		exit(2);
-	}
-#endif
 	if (!master_read_master(master_list, age, 0)) {
 		master_kill(master_list);
 		*pst_stat = 3;
