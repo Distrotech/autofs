@@ -89,7 +89,7 @@ void reset_signals(void)
 static int do_spawn(logger *log, unsigned int options, const char *prog, const char *const *argv)
 {
 	pid_t f;
-	int status, pipefd[2];
+	int ret, status, pipefd[2];
 	char errbuf[ERRBUFSIZ + 1], *p, *sp;
 	int errp, errn;
 	int cancel_state;
@@ -219,8 +219,8 @@ static int do_spawn(logger *log, unsigned int options, const char *prog, const c
 			log(LOGOPT_ANY, ">> %s", errbuf);
 		}
 
-		if (waitpid(f, &status, 0) != f)
-			status = -1;	/* waitpid() failed */
+		if (waitpid(f, &ret, 0) != f)
+			ret = -1;	/* waitpid() failed */
 
 		if (use_lock) {
 			status = pthread_mutex_unlock(&spawn_mutex);
@@ -230,7 +230,7 @@ static int do_spawn(logger *log, unsigned int options, const char *prog, const c
 		pthread_sigmask(SIG_SETMASK, &oldsig, NULL);
 		pthread_setcancelstate(cancel_state, NULL);
 
-		return status;
+		return ret;
 	}
 }
 
