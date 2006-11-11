@@ -148,7 +148,22 @@ OPTTOUT		(-t{OPTWS}|-t{OPTWS}={OPTWS}|--timeout{OPTWS}|--timeout{OPTWS}={OPTWS})
 		return(PATH);
 	}
 
+	{WS}/{DNATTRSTR}= {
+		BEGIN(MAPSTR);
+		*bptr = '\0';
+		strcpy(master_lval.strtype, buff);
+		return(PATH);
+	}
+
 	{WS}/"-" {
+		BEGIN(OPTSTR);
+		*bptr = '\0';
+		strcpy(master_lval.strtype, buff);
+		bptr = buff;
+		return(PATH);
+	}
+
+	{WS}/{OPTIONSTR} {
 		BEGIN(OPTSTR);
 		*bptr = '\0';
 		strcpy(master_lval.strtype, buff);

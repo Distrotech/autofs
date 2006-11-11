@@ -349,11 +349,11 @@ int parse_init(int argc, const char *const *argv, void **context)
 				return 1;
 			}
 			ctxt->optstr = noptstr;
-			debug(LOGOPT_NONE,
-			      MODPREFIX "init gathered options: %s",
-			      ctxt->optstr);
 		}
 	}
+
+	debug(LOGOPT_NONE,
+	      MODPREFIX "init gathered global options: %s", ctxt->optstr);
 
 	/* We only need this once.  NFS mounts are so common that we cache
 	   this module. */
