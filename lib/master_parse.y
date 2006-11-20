@@ -127,15 +127,7 @@ file: {
 	} line
 	;
 
-line:	
-	| PATH
-	{
-		path = master_strdup($1);
-		if (!path) {
-			local_free_vars();
-			YYABORT;
-		}
-	}
+line:
 	| PATH map
 	{
 		path = master_strdup($1);
@@ -160,7 +152,9 @@ line:
 	| PATH OPT_GHOST { master_notify($1); YYABORT; }
 	| PATH OPT_NOGHOST { master_notify($1); YYABORT; }
 	| PATH OPT_VERBOSE { master_notify($1); YYABORT; }
+	| PATH { master_notify($1); YYABORT; }
 	| QUOTE { master_notify($1); YYABORT; }
+	| OPTION { master_notify($1); YYABORT; }
 	| NILL { master_notify($1); YYABORT; }
 	| COMMENT { YYABORT; }
 	;

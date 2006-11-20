@@ -77,6 +77,7 @@ int my_yyinput(char *, int);
 
 char buff[1024];
 char *bptr;
+char *optr = buff;
 
 %}
 
@@ -110,16 +111,17 @@ OPTTOUT		(-t{OPTWS}|-t{OPTWS}={OPTWS}|--timeout{OPTWS}|--timeout{OPTWS}={OPTWS})
 %%
 
 <INITIAL>{
-	{NL} { }
-	{WS} { }
+	{NL} | 
+	\x00 {
+		if (optr != buff) {
+			*optr = '\0';
+			optr = buff;
+			strcpy(master_lval.strtype, buff);
+			return NILL;
+		}
+	}
 
 	#.*  { return COMMENT; }
-
-	"+" {
-		BEGIN(MAPSTR);
-		bptr = buff;
-		yyless(0);
-	}
 
 	"/" {
 		BEGIN(PATHSTR);
@@ -127,10 +129,7 @@ OPTTOUT		(-t{OPTWS}|-t{OPTWS}={OPTWS}|--timeout{OPTWS}|--timeout{OPTWS}={OPTWS})
 		yyless(0);
 	}
 
-	"-" {
-		BEGIN(OPTSTR);
-		yyless(0);
-	}
+	.    { *optr++ = *master_text; }
 }
 
 <PATHSTR>{
@@ -139,36 +138,6 @@ OPTTOUT		(-t{OPTWS}|-t{OPTWS}={OPTWS}|--timeout{OPTWS}|--timeout{OPTWS}={OPTWS})
 		*bptr++ = *master_text;
 		strcpy(master_lval.strtype, buff);
 		return NILL;
-	}
-
-	{WS}/{INTMAP} {
-		BEGIN(MAPSTR);
-		*bptr = '\0';
-		strcpy(master_lval.strtype, buff);
-		return(PATH);
-	}
-
-	{WS}/{DNATTRSTR}= {
-		BEGIN(MAPSTR);
-		*bptr = '\0';
-		strcpy(master_lval.strtype, buff);
-		return(PATH);
-	}
-
-	{WS}/"-" {
-		BEGIN(OPTSTR);
-		*bptr = '\0';
-		strcpy(master_lval.strtype, buff);
-		bptr = buff;
-		return(PATH);
-	}
-
-	{WS}/{OPTIONSTR} {
-		BEGIN(OPTSTR);
-		*bptr = '\0';
-		strcpy(master_lval.strtype, buff);
-		bptr = buff;
-		return(PATH);
 	}
 
 	\\.  { *bptr++ = *(master_text + 1); }
@@ -201,7 +170,6 @@ OPTTOUT		(-t{OPTWS}|-t{OPTWS}={OPTWS}|--timeout{OPTWS}|--timeout{OPTWS}={OPTWS})
 		strcpy(master_lval.strtype, buff);
 		return PATH;
 	}
-
 
 	.    { *bptr++ = *master_text; }
 }
@@ -243,12 +211,6 @@ OPTTOUT		(-t{OPTWS}|-t{OPTWS}={OPTWS}|--timeout{OPTWS}|--timeout{OPTWS}={OPTWS})
 		yyless(0);
 	}
 
-	"/" {
-		BEGIN(PATHSTR);
-		bptr = buff;
-		yyless(0);
-	}
-
 	{OPTWS}/{NL} {
 		BEGIN(INITIAL);
 		*bptr = '\0';
@@ -268,6 +230,13 @@ OPTTOUT		(-t{OPTWS}|-t{OPTWS}={OPTWS}|--timeout{OPTWS}|--timeout{OPTWS}={OPTWS})
 	}
 
 	{NL} |
+	\x00 {
+		BEGIN(INITIAL);
+		*bptr = '\0';
+		strcpy(master_lval.strtype, buff);
+		return(MAPNAME);
+	}
+
 	<<EOF>> {
 		BEGIN(INITIAL);
 		*bptr = '\0';
@@ -314,7 +283,9 @@ OPTTOUT		(-t{OPTWS}|-t{OPTWS}={OPTWS}|--timeout{OPTWS}|--timeout{OPTWS}={OPTWS})
 	{WS}    { BEGIN(OPTSTR); }
 
 	{NL} |
-	<<EOF>>	{ BEGIN(INITIAL); }
+	\x00	{ BEGIN(INITIAL); }
+
+	<<EOF>> { BEGIN(INITIAL); }
 }
 
 <OPTSTR>{
@@ -355,7 +326,9 @@ OPTTOUT		(-t{OPTWS}|-t{OPTWS}={OPTWS}|--timeout{OPTWS}|--timeout{OPTWS}={OPTWS})
 
 	{WS}	{}
 	{NL} |
-	<<EOF>>	{ BEGIN(INITIAL); }
+	\x00 { BEGIN(INITIAL); }
+
+	<<EOF>> { BEGIN(INITIAL); }
 }
 
 %%

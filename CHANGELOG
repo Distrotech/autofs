@@ -38,6 +38,7 @@
 - still more on multiply recursive bind mounts.
 - fix tokenizer to distinguish between global option and dn string.
 - fix incorrect return from spawn (Gordon Lack).
+- fix parsing of bad mount mount point in master map.
 
 1/9/2006 autofs-5.0.1 rc2
 -------------------------
