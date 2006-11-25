@@ -39,6 +39,7 @@
 - fix tokenizer to distinguish between global option and dn string.
 - fix incorrect return from spawn (Gordon Lack).
 - fix parsing of bad mount mount point in master map.
+- fix use after free memory access in cache.c and lookup_yp.c.
 
 1/9/2006 autofs-5.0.1 rc2
 -------------------------

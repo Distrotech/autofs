@@ -354,6 +354,9 @@ struct mapent *cache_lookup(struct mapent_cache *mc, const char *key)
 	if (!me)
 		return NULL;
 
+	if (!key)
+		return NULL;
+
 	for (me = mc->hash[hash(key)]; me != NULL; me = me->next) {
 		if (strcmp(key, me->key) == 0)
 			goto done;
@@ -381,6 +384,9 @@ struct mapent *cache_lookup_distinct(struct mapent_cache *mc, const char *key)
 	struct mapent *me;
 
 	if (!me)
+		return NULL;
+
+	if (!key)
 		return NULL;
 
 	for (me = mc->hash[hash(key)]; me != NULL; me = me->next) {
@@ -665,6 +671,14 @@ int cache_delete(struct mapent_cache *mc, const char *key)
 	struct mapent *me = NULL, *pred;
 	unsigned int hashval = hash(key);
 	int status, ret = CHE_OK;
+	char *this;
+
+	this = alloca(strlen(key) + 1);
+	if (!this) {
+		ret = CHE_FAIL;
+		goto done;
+	}
+	strcpy(this, key);
 
 	me = mc->hash[hashval];
 	if (!me) {
@@ -675,7 +689,7 @@ int cache_delete(struct mapent_cache *mc, const char *key)
 	while (me->next != NULL) {
 		pred = me;
 		me = me->next;
-		if (strcmp(key, me->key) == 0) {
+		if (strcmp(this, me->key) == 0) {
 			if (me->multi && !list_empty(&me->multi_list)) {
 				ret = CHE_FAIL;
 				goto done;
@@ -699,7 +713,7 @@ int cache_delete(struct mapent_cache *mc, const char *key)
 	if (!me)
 		goto done;
 
-	if (strcmp(key, me->key) == 0) {
+	if (strcmp(this, me->key) == 0) {
 		if (me->multi && !list_empty(&me->multi_list)) {
 			ret = CHE_FAIL;
 			goto done;

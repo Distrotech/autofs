@@ -128,8 +128,12 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 	/* This should, but doesn't, take a const char ** */
 	err = yp_get_default_domain((char **) &ctxt->domainname);
 	if (err) {
+		size_t len = strlen(ctxt->mapname);
+		char *name = alloca(len + 1);
+		memcpy(name, ctxt->mapname, len);
+		name[len] = '\0';
 		free(ctxt);
-		debug(LOGOPT_NONE, MODPREFIX "map %s: %s", ctxt->mapname,
+		debug(LOGOPT_NONE, MODPREFIX "map %s: %s", name,
 		       yperr_string(err));
 		return 1;
 	}
