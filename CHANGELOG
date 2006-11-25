@@ -40,6 +40,7 @@
 - fix incorrect return from spawn (Gordon Lack).
 - fix parsing of bad mount mount point in master map.
 - fix use after free memory access in cache.c and lookup_yp.c.
+- eliminate use of pthread_kill to detect task completion.
 
 1/9/2006 autofs-5.0.1 rc2
 -------------------------

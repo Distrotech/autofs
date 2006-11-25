@@ -25,6 +25,7 @@ struct state_queue {
 	struct autofs_point *ap;
 	enum states state;
 	unsigned int busy;
+	unsigned int done;
 	unsigned int cancel;
 };
 
@@ -34,6 +35,7 @@ static unsigned int signaled = 0;
 static LIST_HEAD(state_queue);
 
 static void st_set_thid(struct autofs_point *, pthread_t);
+static void st_set_done(struct autofs_point *ap);
 
 #define st_mutex_lock() \
 do { \
@@ -190,6 +192,8 @@ void expire_cleanup(void *arg)
 
 	state_mutex_unlock(ap);
 
+	st_set_done(ap);
+
 	return;
 }
 
@@ -325,6 +329,8 @@ static void do_readmap_cleanup(void *arg)
 
 	state_mutex_unlock(ap);
 
+	st_set_done(ap);
+
 	free(ra);
 
 	return;
@@ -360,10 +366,8 @@ static void *do_readmap(void *arg)
 	status = pthread_cond_signal(&ra->cond);
 	if (status) {
 		error(ap->logopt, "failed to signal expire condition");
-		status = pthread_mutex_unlock(&ra->mutex);
-		if (status)
-			fatal(status);
-		pthread_exit(NULL);
+		pthread_mutex_unlock(&ra->mutex);
+		fatal(status);
 	}
 
 	status = pthread_mutex_unlock(&ra->mutex);
@@ -848,6 +852,27 @@ static void st_set_thid(struct autofs_point *ap, pthread_t thid)
 	return;
 }
 
+static void st_set_done(struct autofs_point *ap)
+{
+	struct list_head *p, *head;
+	struct state_queue *task;
+
+	st_mutex_lock();
+
+	head = &state_queue;
+	list_for_each(p, head) {
+		task = list_entry(p, struct state_queue, list);
+		if (task->ap == ap) {
+			task->done = 1;
+			break;
+		}
+	}
+
+	st_mutex_unlock();
+
+	return;
+}
+
 static void *st_queue_handler(void *arg)
 {
 	struct list_head *head;
@@ -940,11 +965,9 @@ static void *st_queue_handler(void *arg)
 				}
 
 				/* Still busy */
-				if (task->thid) {
-					status = pthread_kill(task->thid, 0);
-					if (status != ESRCH)
-						continue;
-				}
+				if (!task->done)
+					continue;
+
 remove:
 				/* No more tasks for this queue */
 				if (list_empty(&task->pending)) {
