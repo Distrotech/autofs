@@ -380,6 +380,9 @@ struct mapent *cache_lookup_distinct(struct mapent_cache *mc, const char *key)
 {
 	struct mapent *me;
 
+	if (!key)
+		return NULL;
+
 	for (me = mc->hash[hash(key)]; me != NULL; me = me->next) {
 		if (strcmp(key, me->key) == 0)
 			return me;
