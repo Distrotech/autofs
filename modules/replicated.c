@@ -332,14 +332,14 @@ void free_host_list(struct host **list)
 static unsigned short get_port_option(const char *options)
 {
 	const char *start;
-	unsigned short port = 0;
+	long port = 0;
 
 	if (!options)
-		htons(NFS_PORT);
+		return NFS_PORT;
 
 	start = strstr(options, "port=");
 	if (!start)
-		port = htons(NFS_PORT);
+		port = NFS_PORT;
 	else {
 		char optport[30], *opteq, *end;
 		int len;
@@ -350,10 +350,13 @@ static unsigned short get_port_option(const char *options)
 		optport[len] = '\0';
 		opteq = strchr(optport, '=');
 		if (opteq)
-			port = htons(atoi(opteq + 1));
+			port = atoi(opteq + 1);
 	}
 
-	return port;
+	if (port < 0)
+		port = 0;
+
+	return (unsigned short) port;
 }
 
 static unsigned int get_nfs_info(struct host *host,
@@ -410,10 +413,10 @@ v3_ver:
 	if (!(version & NFS3_REQUESTED))
 		goto v2_ver;
 
-	if (have_port_opt)
+	if (have_port_opt) {
 		if (!(rpc_info->port = get_port_option(options)))
 			goto done_ver;
-	else {
+	} else {
 		parms.pm_prot = rpc_info->proto->p_proto;
 		parms.pm_vers = NFS3_VERSION;
 		rpc_info->port = rpc_portmap_getport(pm_info, &parms);
@@ -440,10 +443,10 @@ v2_ver:
 	if (!(version & NFS2_REQUESTED))
 		goto done_ver;
 
-	if (have_port_opt)
+	if (have_port_opt) {
 		if (!(rpc_info->port = get_port_option(options)))
 			goto done_ver;
-	else {
+	} else {
 		parms.pm_prot = rpc_info->proto->p_proto;
 		parms.pm_vers = NFS2_VERSION;
 		rpc_info->port = rpc_portmap_getport(pm_info, &parms);
