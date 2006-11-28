@@ -134,7 +134,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 		warn(ap->logopt, MODPREFIX "no hosts available");
 		return 1;
 	}
-	prune_host_list(&hosts, vers);
+	prune_host_list(&hosts, vers, nfsoptions);
 
 	if (!hosts) {
 		warn(ap->logopt, MODPREFIX "no hosts available");

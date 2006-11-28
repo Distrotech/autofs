@@ -62,7 +62,7 @@ struct host {
 
 void free_host_list(struct host **);
 int parse_location(struct host **, const char *);
-int prune_host_list(struct host **, unsigned int);
+int prune_host_list(struct host **, unsigned int, const char *);
 void dump_host_list(struct host *);
 
 #endif

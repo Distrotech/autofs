@@ -329,10 +329,39 @@ void free_host_list(struct host **list)
 	*list = NULL;
 }
 
+static unsigned short get_port_option(const char *options)
+{
+	const char *start;
+	unsigned short port = 0;
+
+	if (!options)
+		htons(NFS_PORT);
+
+	start = strstr(options, "port=");
+	if (!start)
+		port = htons(NFS_PORT);
+	else {
+		char optport[30], *opteq, *end;
+		int len;
+
+		end = strchr(start, ',');
+		len = end ? end - start : strlen(start);
+		strncpy(optport, start, len);
+		optport[len] = '\0';
+		opteq = strchr(optport, '=');
+		if (opteq)
+			port = htons(atoi(opteq + 1));
+	}
+
+	return port;
+}
+
 static unsigned int get_nfs_info(struct host *host,
 			 struct conn_info *pm_info, struct conn_info *rpc_info,
-			 const char *proto, unsigned int version)
+			 const char *proto, unsigned int version,
+			 const char *options)
 {
+	char *have_port_opt = options ? strstr(options, "port=") : NULL;
 	struct pmap parms;
 	struct timeval start, end;
 	struct timezone tz;
@@ -349,19 +378,10 @@ static unsigned int get_nfs_info(struct host *host,
 	if (!rpc_info->proto)
 		return 0;
 
-	status = rpc_portmap_getclient(pm_info,
-				 host->name, proto, RPC_CLOSE_DEFAULT);
-	if (!status)
-		return 0;
-
-	parms.pm_prot = rpc_info->proto->p_proto;
-
 	if (!(version & NFS4_REQUESTED))
 		goto v3_ver;
 
-	parms.pm_vers = NFS4_VERSION;
-	rpc_info->port = rpc_portmap_getport(pm_info, &parms);
-	if (!rpc_info->port)
+	if (!(rpc_info->port = get_port_option(options)))
 		goto v3_ver;
 
 	if (rpc_info->proto->p_proto == IPPROTO_UDP)
@@ -380,13 +400,26 @@ static unsigned int get_nfs_info(struct host *host,
 	}
 
 v3_ver:
+	if (!have_port_opt) {
+		status = rpc_portmap_getclient(pm_info,
+				 host->name, proto, RPC_CLOSE_DEFAULT);
+		if (!status)
+			goto done_ver;
+	}
+
 	if (!(version & NFS3_REQUESTED))
 		goto v2_ver;
 
-	parms.pm_vers = NFS3_VERSION;
-	rpc_info->port = rpc_portmap_getport(pm_info, &parms);
-	if (!rpc_info->port)
-		goto v2_ver;
+	if (have_port_opt)
+		if (!(rpc_info->port = get_port_option(options)))
+			goto done_ver;
+	else {
+		parms.pm_prot = rpc_info->proto->p_proto;
+		parms.pm_vers = NFS3_VERSION;
+		rpc_info->port = rpc_portmap_getport(pm_info, &parms);
+		if (!rpc_info->port)
+			goto v2_ver;
+	}
 
 	if (rpc_info->proto->p_proto == IPPROTO_UDP)
 		status = rpc_udp_getclient(rpc_info, NFS_PROGRAM, NFS3_VERSION);
@@ -407,10 +440,16 @@ v2_ver:
 	if (!(version & NFS2_REQUESTED))
 		goto done_ver;
 
-	parms.pm_vers = NFS2_VERSION;
-	rpc_info->port = rpc_portmap_getport(pm_info, &parms);
-	if (!rpc_info->port)
-		goto done_ver;
+	if (have_port_opt)
+		if (!(rpc_info->port = get_port_option(options)))
+			goto done_ver;
+	else {
+		parms.pm_prot = rpc_info->proto->p_proto;
+		parms.pm_vers = NFS2_VERSION;
+		rpc_info->port = rpc_portmap_getport(pm_info, &parms);
+		if (!rpc_info->port)
+			goto done_ver;
+	}
 
 	if (rpc_info->proto->p_proto == IPPROTO_UDP)
 		status = rpc_udp_getclient(rpc_info, NFS_PROGRAM, NFS2_VERSION);
@@ -451,7 +490,7 @@ done_ver:
 	return supported;
 }
 
-static int get_vers_and_cost(struct host *host, unsigned int version)
+static int get_vers_and_cost(struct host *host, unsigned int version, const char *options)
 {
 	struct conn_info pm_info, rpc_info;
 	time_t timeout = RPC_TIMEOUT;
@@ -475,7 +514,7 @@ static int get_vers_and_cost(struct host *host, unsigned int version)
 	vers &= version;
 
 	if (version & UDP_REQUESTED) {
-		supported = get_nfs_info(host, &pm_info, &rpc_info, "udp", vers);
+		supported = get_nfs_info(host, &pm_info, &rpc_info, "udp", vers, options);
 		if (supported) {
 			ret = 1;
 			host->version |= (supported << 8);
@@ -483,7 +522,7 @@ static int get_vers_and_cost(struct host *host, unsigned int version)
 	}
 
 	if (version & TCP_REQUESTED) {
-		supported = get_nfs_info(host, &pm_info, &rpc_info, "tcp", vers);
+		supported = get_nfs_info(host, &pm_info, &rpc_info, "tcp", vers, options);
 		if (supported) {
 			ret = 1;
 			host->version |= supported;
@@ -493,8 +532,9 @@ static int get_vers_and_cost(struct host *host, unsigned int version)
 	return ret;
 }
 
-static int get_supported_ver_and_cost(struct host *host, unsigned int version)
+static int get_supported_ver_and_cost(struct host *host, unsigned int version, const char *options)
 {
+	char *have_port_opt = options ? strstr(options, "port=") : NULL;
 	struct conn_info pm_info, rpc_info;
 	struct pmap parms;
 	const char *proto;
@@ -534,18 +574,23 @@ static int get_supported_ver_and_cost(struct host *host, unsigned int version)
 	if (!rpc_info.proto)
 		return 0;
 
-	status = rpc_portmap_getclient(&pm_info,
-				 host->name, proto, RPC_CLOSE_DEFAULT);
-	if (!status)
-		return 0;
-
-	parms.pm_prot = rpc_info.proto->p_proto;
-
 	status = 0;
+
 	parms.pm_vers = vers;
-	rpc_info.port = rpc_portmap_getport(&pm_info, &parms);
-	if (!rpc_info.port)
-		goto done;
+	if (have_port_opt || (vers & NFS4_VERSION)) {
+		if (!(rpc_info.port = get_port_option(options)))
+			return 0;
+	} else {
+		int ret = rpc_portmap_getclient(&pm_info,
+				 host->name, proto, RPC_CLOSE_DEFAULT);
+		if (!ret)
+			return 0;
+
+		parms.pm_prot = rpc_info.proto->p_proto;
+		rpc_info.port = rpc_portmap_getport(&pm_info, &parms);
+		if (!rpc_info.port)
+			goto done;
+	}
 
 	if (rpc_info.proto->p_proto == IPPROTO_UDP)
 		status = rpc_udp_getclient(&rpc_info, NFS_PROGRAM, parms.pm_vers);
@@ -581,7 +626,7 @@ done:
 	return 0;
 }
 
-int prune_host_list(struct host **list, unsigned int vers)
+int prune_host_list(struct host **list, unsigned int vers, const char *options)
 {
 	struct host *this, *last, *first;
 	struct host *new = NULL;
@@ -604,7 +649,7 @@ int prune_host_list(struct host **list, unsigned int vers)
 		struct host *next = this->next;
 
 		if (this->name) {
-			status = get_vers_and_cost(this, vers);
+			status = get_vers_and_cost(this, vers, options);
 			if (!status) {
 				if (this == first) {
 					first = next;
@@ -695,7 +740,7 @@ int prune_host_list(struct host **list, unsigned int vers)
 		if (!this->name)
 			add_host(&new, this);
 		else {
-			status = get_supported_ver_and_cost(this, selected_version);
+			status = get_supported_ver_and_cost(this, selected_version, options);
 			if (status) {
 				this->version = selected_version;
 				remove_host(list, this);

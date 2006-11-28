@@ -41,6 +41,8 @@
 - fix parsing of bad mount mount point in master map.
 - fix use after free memory access in cache.c and lookup_yp.c.
 - eliminate use of pthread_kill to detect task completion.
+- alter nfs4 host probing to not use portmap lookup and add options
+  check for "port=" parameter.
 
 1/9/2006 autofs-5.0.1 rc2
 -------------------------
