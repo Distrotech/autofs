@@ -79,6 +79,18 @@ void cache_writelock(struct mapent_cache *mc)
 	return;
 }
 
+int cache_try_writelock(struct mapent_cache *mc)
+{
+	int status;
+
+	status = pthread_rwlock_trywrlock(&mc->rwlock);
+	if (status) {
+		debug(LOGOPT_ANY, "mapent cache rwlock busy");
+		return 0;
+	}
+	return 1;
+}
+
 void cache_unlock(struct mapent_cache *mc)
 {
 	int status;
@@ -160,6 +172,54 @@ struct mapent_cache *cache_init(struct map_source *map)
 
 	if (map->mc)
 		cache_release(map);
+
+	mc = malloc(sizeof(struct mapent_cache));
+	if (!mc)
+		return NULL;
+
+	mc->size = HASHSIZE;
+
+	mc->hash = malloc(mc->size * sizeof(struct entry *));
+	if (!mc->hash) {
+		free(mc);
+		return NULL;
+	}
+
+	mc->ino_index = malloc(mc->size * sizeof(struct list_head));
+	if (!mc->ino_index) {
+		free(mc->hash);
+		free(mc);
+		return NULL;
+	}
+
+	status = pthread_mutex_init(&mc->ino_index_mutex, NULL);
+	if (status)
+		fatal(status);
+
+	status = pthread_rwlock_init(&mc->rwlock, NULL);
+	if (status)
+		fatal(status);
+
+	cache_writelock(mc);
+
+	for (i = 0; i < mc->size; i++) {
+		mc->hash[i] = NULL;
+		INIT_LIST_HEAD(&mc->ino_index[i]);
+	}
+
+	cache_unlock(mc);
+
+	return mc;
+}
+
+struct mapent_cache *cache_init_null_cache(struct master *master)
+{
+	struct mapent_cache *mc;
+	unsigned int i;
+	int status;
+
+	if (master->nc)
+		cache_release_null_cache(master);
 
 	mc = malloc(sizeof(struct mapent_cache));
 	if (!mc)
@@ -833,6 +893,53 @@ void cache_release(struct map_source *map)
 	free(mc->ino_index);
 	free(mc);
 }
+
+void cache_release_null_cache(struct master *master)
+{
+	struct mapent_cache *mc;
+	struct mapent *me, *next;
+	int status;
+	unsigned int i;
+
+	mc = master->nc;
+
+	cache_writelock(mc);
+
+	for (i = 0; i < mc->size; i++) {
+		me = mc->hash[i];
+		if (me == NULL)
+			continue;
+		next = me->next;
+		free(me->key);
+		if (me->mapent)
+			free(me->mapent);
+		free(me);
+
+		while (next != NULL) {
+			me = next;
+			next = me->next;
+			free(me->key);
+			free(me);
+		}
+	}
+
+	master->nc = NULL;
+
+	cache_unlock(mc);
+
+	status = pthread_mutex_destroy(&mc->ino_index_mutex);
+	if (status)
+		fatal(status);
+
+	status = pthread_rwlock_destroy(&mc->rwlock);
+	if (status)
+		fatal(status);
+
+	free(mc->hash);
+	free(mc->ino_index);
+	free(mc);
+}
+
 
 
 /* cache must be read locked by caller */

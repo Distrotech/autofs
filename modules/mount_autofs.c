@@ -53,6 +53,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 	time_t timeout = ap->exp_timeout;
 	unsigned logopt = ap->logopt;
 	char *type, *format, *tmp, *tmp2;
+	struct master *master;
 	struct master_mapent *entry;
 	struct map_source *source;
 	struct autofs_point *nap;
@@ -137,7 +138,9 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 	      MODPREFIX "fullpath=%s what=%s options=%s",
 	      fullpath, what, options);
 
-	entry = master_new_mapent(fullpath, ap->entry->age);
+	master = ap->entry->master;
+
+	entry = master_new_mapent(master, fullpath, ap->entry->age);
 	if (!entry) {
 		error(ap->logopt,
 		      MODPREFIX "failed to malloc master_mapent struct");

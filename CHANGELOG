@@ -43,6 +43,7 @@
 - eliminate use of pthread_kill to detect task completion.
 - alter nfs4 host probing to not use portmap lookup and add options
   check for "port=" parameter.
+- correct semantics of "-null" map handling.
 
 1/9/2006 autofs-5.0.1 rc2
 -------------------------

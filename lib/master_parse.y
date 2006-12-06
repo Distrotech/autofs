@@ -510,6 +510,7 @@ void master_init_scan(void)
 int master_parse_entry(const char *buffer, unsigned int default_timeout, unsigned int logging, time_t age)
 {
 	struct master *master = master_list;
+	struct mapent_cache *nc;
 	struct master_mapent *entry, *new;
 	struct map_source *source;
 	unsigned int logopt = logging;
@@ -527,6 +528,26 @@ int master_parse_entry(const char *buffer, unsigned int default_timeout, unsigne
 		return 0;
 	}
 
+	nc = master->nc;
+
+	/* Add null map entries to the null map cache */
+	if (type && !strcmp(type, "null")) {
+		cache_writelock(nc);
+		cache_update(nc, path, NULL, lineno);
+		cache_unlock(nc);
+		local_free_vars();
+		return 1;
+	}
+
+	/* Ignore all subsequent matching nulled entries */
+	cache_readlock(nc);
+	if (cache_lookup_distinct(nc, path)) {
+		cache_unlock(nc);
+		local_free_vars();
+		return 1;
+	}
+	cache_unlock(nc);
+
 	if (debug || verbose) {
 		logopt = (debug ? LOGOPT_DEBUG : 0);
 		logopt |= (verbose ? LOGOPT_VERBOSE : 0);
@@ -538,7 +559,7 @@ int master_parse_entry(const char *buffer, unsigned int default_timeout, unsigne
 	new = NULL;
 	entry = master_find_mapent(master, path);
 	if (!entry) {
-		new = master_new_mapent(path, age);
+		new = master_new_mapent(master, path, age);
 		if (!new) {
 			local_free_vars();
 			return 0;
@@ -604,9 +625,9 @@ int master_parse_entry(const char *buffer, unsigned int default_timeout, unsigne
 			return 0;
 		}
 	}
+	source->master_line = lineno;
 
 	entry->age = age;
-	entry->first = entry->maps;
 	entry->current = NULL;
 
 	if (new)

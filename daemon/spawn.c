@@ -133,7 +133,6 @@ static int do_spawn(logger *log, unsigned int options, const char *prog, const c
 			char **pargv = (char **) argv;
 			int argc = 0;
 			pid_t pgrp = getpgrp();
-			DIR *dfd;
 
 			/* what to mount must always be second last */
 			while (*pargv++)

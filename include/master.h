@@ -28,6 +28,7 @@ struct map_source {
 	char *type;
 	char *format;
 	time_t age;
+	unsigned int master_line;
 	struct mapent_cache *mc;
 	unsigned int stale;
 	unsigned int recurse;
@@ -43,10 +44,10 @@ struct master_mapent {
 	char *path;
 	pthread_t thid;
 	time_t age;
+	struct master *master;
 	pthread_rwlock_t source_lock;
 	pthread_mutex_t current_mutex;
 	pthread_cond_t current_cond;
-	struct map_source *first;
 	struct map_source *current;
 	struct map_source *maps;
 	struct autofs_point *ap;
@@ -61,6 +62,7 @@ struct master {
 	unsigned int default_ghost;
 	unsigned int default_logging;
 	unsigned int default_timeout;
+	struct mapent_cache *nc;
 	struct list_head mounts;
 };
 
@@ -91,7 +93,7 @@ void master_source_lock_cleanup(void *);
 void master_source_current_wait(struct master_mapent *);
 void master_source_current_signal(struct master_mapent *);
 struct master_mapent *master_find_mapent(struct master *, const char *);
-struct master_mapent *master_new_mapent(const char *, time_t);
+struct master_mapent *master_new_mapent(struct master *, const char *, time_t);
 void master_add_mapent(struct master *, struct master_mapent *);
 void master_remove_mapent(struct master_mapent *);
 void master_free_mapent_sources(struct master_mapent *, unsigned int);

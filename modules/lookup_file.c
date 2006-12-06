@@ -402,7 +402,6 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 		fcntl(fd, F_SETFD, cl_flags);
 	}
 
-	master_init_scan();
 	while(1) {
 		entry = read_one(f, path, &path_len, ent, &ent_len);
 		if (!entry) {
@@ -516,6 +515,7 @@ static int check_self_include(const char *key, struct lookup_context *ctxt)
 static struct autofs_point *
 prepare_plus_include(struct autofs_point *ap, time_t age, char *key, unsigned int inc)
 {
+	struct master *master;
 	struct master_mapent *entry;
 	struct map_source *current;
 	struct map_source *source;
@@ -532,7 +532,9 @@ prepare_plus_include(struct autofs_point *ap, time_t age, char *key, unsigned in
 	ap->entry->current = NULL;
 	master_source_current_signal(ap->entry);
 
-	entry = master_new_mapent(ap->path, ap->entry->age);
+	master = ap->entry->master;
+
+	entry = master_new_mapent(master, ap->path, ap->entry->age);
 	if (!entry) {
 		error(ap->logopt, MODPREFIX "malloc failed for entry");
 		return NULL;

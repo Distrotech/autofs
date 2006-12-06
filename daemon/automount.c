@@ -379,7 +379,7 @@ static void update_map_cache(struct autofs_point *ap, const char *path)
 
 	pthread_cleanup_push(master_source_lock_cleanup, ap->entry);
 	master_source_readlock(ap->entry);
-	map = ap->entry->first;
+	map = ap->entry->maps;
 	while (map) {
 		struct mapent *me = NULL;
 
@@ -390,11 +390,13 @@ static void update_map_cache(struct autofs_point *ap, const char *path)
 		}
 
 		mc = map->mc;
-		cache_writelock(mc);
-		me = cache_lookup_distinct(mc, key);
-		if (me && me->ioctlfd == -1)
-			cache_delete(mc, key);
-		cache_unlock(mc);
+		/* If the lock is busy try later */
+		if (cache_try_writelock(mc)) {
+			me = cache_lookup_distinct(mc, key);
+			if (me && me->ioctlfd == -1)
+				cache_delete(mc, key);
+			cache_unlock(mc);
+		}
 
 		map = map->next;
 	}
@@ -487,11 +489,20 @@ static int umount_subtree_mounts(struct autofs_point *ap, const char *path, unsi
    it also tries to umount path itself */
 int umount_multi(struct autofs_point *ap, const char *path, int incl)
 {
+	struct mapent_cache *nc;
 	struct statfs fs;
 	int is_autofs_fs;
 	int ret, left;
 
 	debug(ap->logopt, "path %s incl %d", path, incl);
+
+	nc = ap->entry->master->nc;
+	cache_readlock(nc);
+	if (cache_lookup_distinct(nc, path)) {
+		cache_unlock(nc);
+		return 0;
+	}
+	cache_unlock(nc);
 
 	ret = statfs(path, &fs);
 	if (ret == -1) {
@@ -513,7 +524,7 @@ int umount_multi(struct autofs_point *ap, const char *path, int incl)
 	left += umount_subtree_mounts(ap, path, is_autofs_fs);
 
 	/* Delete detritus like unwanted mountpoints and symlinks */
-	if (left == 0) {
+	if (left == 0 && ap->state != ST_READMAP) {
 		update_map_cache(ap, path);
 		check_rm_dirs(ap, path, incl);
 	}

@@ -190,10 +190,9 @@ master_add_map_source(struct master_mapent *entry,
 
 	master_source_writelock(entry);
 
-	if (!entry->maps) {
+	if (!entry->maps)
 		entry->maps = source;
-		entry->first = source;
-	} else {
+	else {
 		struct map_source *this, *last, *next;
 
 		/* Typically there only a few map sources */
@@ -259,7 +258,7 @@ __master_find_map_source(struct master_mapent *entry,
 	struct map_source *source = NULL;
 	int res;
 
-	map = entry->first;
+	map = entry->maps;
 	while (map) {
 		res = compare_source_type_and_format(map, type, format);
 		if (!res)
@@ -417,6 +416,7 @@ master_add_source_instance(struct map_source *source, const char *type, const ch
 	}
 
 	new->age = age;
+	new->master_line = 0;
 	new->mc = source->mc;
 
 	tmpargv = copy_argv(source->argc, source->argv);
@@ -565,7 +565,7 @@ struct master_mapent *master_find_mapent(struct master *master, const char *path
 	return NULL;
 }
 
-struct master_mapent *master_new_mapent(const char *path, time_t age)
+struct master_mapent *master_new_mapent(struct master *master, const char *path, time_t age)
 {
 	struct master_mapent *entry;
 	int status;
@@ -586,7 +586,7 @@ struct master_mapent *master_new_mapent(const char *path, time_t age)
 
 	entry->thid = 0;
 	entry->age = age;
-	entry->first = NULL;
+	entry->master = master;
 	entry->current = NULL;
 	entry->maps = NULL;
 	entry->ap = NULL;
@@ -642,7 +642,6 @@ void master_free_mapent_sources(struct master_mapent *entry, unsigned int free_c
 			m = n;
 		}
 		entry->maps = NULL;
-		entry->first = NULL;
 	}
 
 	master_source_unlock(entry);
@@ -690,10 +689,13 @@ struct master *master_new(const char *name, unsigned int timeout, unsigned int g
 	else
 		tmp = strdup(name);
 
-	if (!tmp)
+	if (!tmp) {
+		free(master);
 		return NULL;
+	}
 
 	master->name = tmp;
+	master->nc = NULL;
 
 	master->recurse = 0;
 	master->depth = 0;
@@ -709,6 +711,18 @@ struct master *master_new(const char *name, unsigned int timeout, unsigned int g
 
 int master_read_master(struct master *master, time_t age, int readall)
 {
+	struct mapent_cache *nc;
+
+	nc = cache_init_null_cache(master);
+	if (!nc) {
+		error(LOGOPT_ANY,
+		      "failed to init null map cache for %s", master->name);
+		return 0;
+	}
+	master->nc = nc;
+
+	master_init_scan();
+
 	if (!lookup_nss_read_master(master, age)) {
 		error(LOGOPT_ANY,
 		      "can't read master map %s", master->name);
@@ -1013,30 +1027,28 @@ static void check_update_map_sources(struct master_mapent *entry, int readall)
 			struct mapent *me;
 			cache_readlock(source->mc);
 			me = cache_lookup_first(source->mc);
-			cache_unlock(source->mc);
 			if (!me) {
 				struct map_source *next = source->next;
+
+				cache_unlock(source->mc);
 
 				if (!last)
 					entry->maps = next;
 				else
 					last->next = next;
 
-				if (entry->first == source)
-					entry->first = next;
+				if (entry->maps == source)
+					entry->maps = next;
 
 				master_free_map_source(source, 1);
 
 				source = next;
 				continue;
-			}
-		} else if (source->type) {
-			if (!strcmp(source->type, "null")) {
-/*				entry->ap->mc = cache_init(entry->ap); */
-				entry->first = source->next;
-				readall = 1;
+			} else {
+				source->stale = 1;
 				map_stale = 1;
 			}
+			cache_unlock(source->mc);
 		}
 		last = source;
 		source = source->next;
@@ -1062,6 +1074,7 @@ static void check_update_map_sources(struct master_mapent *entry, int readall)
 
 int master_mount_mounts(struct master *master, time_t age, int readall)
 {
+	struct mapent_cache *nc = master->nc;
 	struct list_head *p, *head;
 	int cur_state;
 
@@ -1073,6 +1086,7 @@ int master_mount_mounts(struct master *master, time_t age, int readall)
 	while (p != head) {
 		struct master_mapent *this;
 		struct autofs_point *ap;
+		struct mapent *ne, *nested;
 		struct stat st;
 		int state_pipe, save_errno;
 		int ret;
@@ -1087,6 +1101,24 @@ int master_mount_mounts(struct master *master, time_t age, int readall)
 			shutdown_entry(this);
 			continue;
 		}
+
+		cache_readlock(nc);
+		ne = cache_lookup_distinct(nc, this->path);
+		if (ne && this->age > ne->age) {
+			cache_unlock(nc);
+			shutdown_entry(this);
+			continue;
+		}
+		nested = cache_partial_match(nc, this->path);
+		if (nested) {
+			error(ap->logopt,
+			     "removing invalid nested null entry %s",
+			     nested->key);
+			nested = cache_partial_match(nc, this->path);
+			if (nested)
+				cache_delete(nc, nested->key);
+		}
+		cache_unlock(nc);
 
 		check_update_map_sources(this, readall);
 
@@ -1134,6 +1166,7 @@ int master_kill(struct master *master)
 	if (master->name)
 		free(master->name);
 
+	cache_release_null_cache(master);
 	free(master);
 
 	return 1;

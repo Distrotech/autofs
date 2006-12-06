@@ -331,6 +331,9 @@ static void do_readmap_cleanup(void *arg)
 
 	st_set_done(ap);
 
+	if (!ap->submount)
+		alarm_add(ap, ap->exp_runfreq);
+
 	free(ra);
 
 	return;
@@ -347,7 +350,7 @@ static void *do_readmap(void *arg)
 {
 	struct autofs_point *ap;
 	struct map_source *map;
-	struct mapent_cache *mc;
+	struct mapent_cache *nc, *mc;
 	struct readmap_args *ra;
 	struct mnt_list *mnts;
 	int status;
@@ -384,15 +387,18 @@ static void *do_readmap(void *arg)
 		lookup_prune_cache(ap, now);
 		status = lookup_ghost(ap);
 	} else {
-		struct mapent *me;
+		struct mapent *me, *ne, *nested;
 		mnts = tree_make_mnt_tree(_PROC_MOUNTS, "/");
 		pthread_cleanup_push(tree_mnts_cleanup, mnts);
 		pthread_cleanup_push(master_source_lock_cleanup, ap->entry);
 		master_source_readlock(ap->entry);
-		map = ap->entry->first;
+		nc = ap->entry->master->nc;
+		cache_readlock(nc);
+		pthread_cleanup_push(cache_lock_cleanup, nc);
+		map = ap->entry->maps;
 		while (map) {
 			/* Is map source up to date or no longer valid */
-			if (!map->stale || ap->entry->age > map->age) {
+			if (!map->stale) {
 				map = map->next;
 				continue;
 			}
@@ -401,20 +407,35 @@ static void *do_readmap(void *arg)
 			cache_readlock(mc);
 			me = cache_enumerate(mc, NULL);
 			while (me) {
+				ne = cache_lookup_distinct(nc, me->key);
+				if (!ne) {
+					nested = cache_partial_match(nc, me->key);
+					if (nested) {
+						error(ap->logopt,
+						"removing invalid nested null entry %s",
+						nested->key);
+						nested = cache_partial_match(nc, me->key);
+						if (nested)
+							cache_delete(nc, nested->key);
+					}
+				}
+
 				/* TODO: check return of do_... */
-				if (me->age < now) {
+				if (me->age < now || (ne && map->master_line > ne->age)) {
 					if (!tree_is_mounted(mnts, me->key, MNTS_REAL))
 						do_umount_autofs_direct(ap, mnts, me);
 					else
                                 		debug(ap->logopt,
-						      "%s id mounted", me->key);
+						      "%s is mounted", me->key);
 				} else
 					do_mount_autofs_direct(ap, mnts, me);
+
 				me = cache_enumerate(mc, me);
 			}
 			pthread_cleanup_pop(1);
 			map = map->next;
 		}
+		pthread_cleanup_pop(1);
 		pthread_cleanup_pop(1);
 		pthread_cleanup_pop(1);
 		lookup_prune_cache(ap, now);
@@ -459,12 +480,21 @@ static unsigned int st_readmap(struct autofs_point *ap)
 	assert(ap->state == ST_READY);
 	assert(ap->readmap_thread == 0);
 
+	/* Turn off timeouts for this mountpoint */
+	if (!ap->submount)
+		alarm_delete(ap);
+
 	ap->state = ST_READMAP;
 
 	ra = malloc(sizeof(struct readmap_args));
 	if (!ra) {
 		error(ap->logopt, "failed to malloc reamap cond struct");
+		state_mutex_lock(ap);
 		nextstate(ap->state_pipe[1], ST_READY);
+		state_mutex_unlock(ap);
+		/* It didn't work: return to ready */
+		if (!ap->submount)
+			alarm_add(ap, ap->exp_runfreq);
 		return 0;
 	}
 
@@ -488,6 +518,12 @@ static unsigned int st_readmap(struct autofs_point *ap)
 		error(ap->logopt, "read map thread create failed");
 		st_readmap_cleanup(ra);
 		free(ra);
+		state_mutex_lock(ap);
+		nextstate(ap->state_pipe[1], ST_READY);
+		state_mutex_unlock(ap);
+		/* It didn't work: return to ready */
+		if (!ap->submount)
+			alarm_add(ap, ap->exp_runfreq);
 		return 0;
 	}
 	ap->readmap_thread = thid;

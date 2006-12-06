@@ -432,7 +432,7 @@ int lookup_nss_read_map(struct autofs_point *ap, time_t age)
 	 */
 	pthread_cleanup_push(master_source_lock_cleanup, entry);
 	master_source_readlock(entry);
-	map = entry->first;
+	map = entry->maps;
 	while (map) {
 		/* Is map source up to date or no longer valid */
 		if (!map->stale || entry->age > map->age) {
@@ -531,7 +531,7 @@ int lookup_ghost(struct autofs_point *ap)
 
 	pthread_cleanup_push(master_source_lock_cleanup, entry);
 	master_source_readlock(entry);
-	map = entry->first;
+	map = entry->maps;
 	while (map) {
 		/*
 		 * Only consider map sources that have been read since 
@@ -769,7 +769,7 @@ int lookup_nss_mount(struct autofs_point *ap, const char *name, int name_len)
 	 */
 	pthread_cleanup_push(master_source_lock_cleanup, entry);
 	master_source_readlock(entry);
-	map = entry->first;
+	map = entry->maps;
 	while (map) {
 		/*
 		 * Only consider map sources that have been read since 
@@ -859,7 +859,7 @@ void lookup_close_lookup(struct autofs_point *ap)
 {
 	struct map_source *map;
 
-	map = ap->entry->first;
+	map = ap->entry->maps;
 	if (!map)
 		return;
 
@@ -917,7 +917,7 @@ int lookup_prune_cache(struct autofs_point *ap, time_t age)
 	pthread_cleanup_push(master_source_lock_cleanup, entry);
 	master_source_readlock(entry);
 
-	map = entry->first;
+	map = entry->maps;
 	while (map) {
 		if (!map->stale) {
 			map = map->next;
@@ -1017,7 +1017,7 @@ struct mapent *lookup_source_valid_mapent(struct autofs_point *ap, const char *k
 	struct mapent *me = NULL;
 
 	master_source_readlock(entry);
-	map = entry->first;
+	map = entry->maps;
 	while (map) {
 		/*
 		 * Only consider map sources that have been read since
@@ -1053,7 +1053,7 @@ struct mapent *lookup_source_mapent(struct autofs_point *ap, const char *key, un
 	struct mapent *me = NULL;
 
 	master_source_readlock(entry);
-	map = entry->first;
+	map = entry->maps;
 	while (map) {
 		mc = map->mc;
 		cache_readlock(mc);
@@ -1081,7 +1081,7 @@ int lookup_source_close_ioctlfd(struct autofs_point *ap, const char *key)
 
 	pthread_cleanup_push(master_source_lock_cleanup, entry);
 	master_source_readlock(entry);
-	map = entry->first;
+	map = entry->maps;
 	while (map) {
 		mc = map->mc;
 		cache_readlock(mc);

@@ -160,8 +160,10 @@ struct mapent {
 void cache_lock_cleanup(void *arg);
 void cache_readlock(struct mapent_cache *mc);
 void cache_writelock(struct mapent_cache *mc);
+int cache_try_writelock(struct mapent_cache *mc);
 void cache_unlock(struct mapent_cache *mc);
 struct mapent_cache *cache_init(struct map_source *map);
+struct mapent_cache *cache_init_null_cache(struct master *master);
 int cache_set_ino_index(struct mapent_cache *mc, const char *key, dev_t dev, ino_t ino);
 /* void cache_set_ino(struct mapent *me, dev_t dev, ino_t ino); */
 struct mapent *cache_lookup_ino(struct mapent_cache *mc, dev_t dev, ino_t ino);
@@ -181,6 +183,7 @@ void cache_multi_lock(struct mapent *me);
 void cache_multi_unlock(struct mapent *me);
 int cache_delete_offset_list(struct mapent_cache *mc, const char *key);
 void cache_release(struct map_source *map);
+void cache_release_null_cache(struct master *master);
 struct mapent *cache_enumerate(struct mapent_cache *mc, struct mapent *me);
 char *cache_get_offset(const char *prefix, char *offset, int start, struct list_head *head, struct list_head **pos);
 
