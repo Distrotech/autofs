@@ -44,6 +44,7 @@
 - alter nfs4 host probing to not use portmap lookup and add options
   check for "port=" parameter.
 - correct semantics of "-null" map handling.
+- remove ability to use multiple indirect mount entries in master map.
 
 1/9/2006 autofs-5.0.1 rc2
 -------------------------

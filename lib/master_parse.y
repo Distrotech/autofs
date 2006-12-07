@@ -565,6 +565,13 @@ int master_parse_entry(const char *buffer, unsigned int default_timeout, unsigne
 			return 0;
 		}
 		entry = new;
+	} else {
+		if (strcmp(path, "/-")) {
+			warn(LOGOPT_VERBOSE,
+			     "ignoring duplicate indirect mount %s", path);
+			local_free_vars();
+			return 0;
+		}
 	}
 
 	if (!entry->ap) {
