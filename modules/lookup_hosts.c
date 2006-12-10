@@ -123,7 +123,6 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 	int mapent_len;
 	time_t now = time(NULL);
 	exports exp;
-	int status = NSS_STATUS_UNKNOWN;
 	int ret;
 
 	source = ap->entry->current;
