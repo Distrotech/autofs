@@ -135,6 +135,7 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 	cache_readlock(mc);
 	me = cache_lookup_distinct(mc, name);
 	if (!me) {
+		cache_unlock(mc);
 		/*
 		 * We haven't read the list of hosts into the
 		 * cache so go straight to the lookup.
@@ -146,12 +147,11 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 			 * so it's NOTFOUND otherwise this could be a
 			 * lookup for a new host.
 			 */
-			if (strchr(name, '/'))
-				status = NSS_STATUS_NOTFOUND;
+			if (*name != '/' && strchr(name, '/'))
+				return NSS_STATUS_NOTFOUND;
 			goto done;
 		}
 
-		pthread_cleanup_push(cache_lock_cleanup, mc);
 		if (*name == '/')
 			msg(MODPREFIX
 			      "can't find path in hosts map %s", name);
@@ -159,8 +159,9 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 			msg(MODPREFIX
 			      "can't find path in hosts map %s/%s",
 			      ap->path, name);
-		pthread_cleanup_pop(0);
-		status = NSS_STATUS_NOTFOUND;
+
+		debug(ap->logopt,
+		      MODPREFIX "lookup failed - update exports list");
 		goto done;
 	}
 	/*
@@ -175,11 +176,7 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 		pthread_cleanup_pop(0);
 		mapent[mapent_len] = '\0';
 	}
-done:
 	cache_unlock(mc);
-
-	if (status != NSS_STATUS_UNKNOWN)
-		return status;
 
 	if (mapent) {
 		master_source_current_wait(ap->entry);
@@ -190,14 +187,14 @@ done:
 		ret = ctxt->parse->parse_mount(ap, name, name_len,
 				 mapent, ctxt->parse->context);
 
-		if (ret)
-			return NSS_STATUS_TRYAGAIN;
+		if (!ret)
+			return NSS_STATUS_SUCCESS;
 
-		return NSS_STATUS_SUCCESS;
+		debug(ap->logopt, MODPREFIX "mount failed - update exports list");
 	}
-
+done:
 	/*
-	 * Otherwise we need to get the exports list and add then
+	 * Otherwise we need to get the exports list and add update
 	 * the cache.
 	 */
 	debug(ap->logopt, MODPREFIX "fetchng export list for %s", name);
@@ -207,6 +204,7 @@ done:
 	/* Check exports for obvious ones we don't have access to */
 	exp = rpc_exports_prune(exp);
 
+	mapent = NULL;
 	while (exp) {
 		if (mapent) {
 			int len = strlen(mapent) + 1;
@@ -256,8 +254,12 @@ done:
 	cache_update(mc, name, mapent, now);
 	cache_unlock(mc);
 
+	debug(LOGOPT_ANY, "source wait");
+
 	master_source_current_wait(ap->entry);
 	ap->entry->current = source;
+
+	debug(LOGOPT_ANY, "do parse_mount");
 
 	ret = ctxt->parse->parse_mount(ap, name, name_len,
 				 mapent, ctxt->parse->context);

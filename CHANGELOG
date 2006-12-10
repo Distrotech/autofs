@@ -46,6 +46,7 @@
 - correct semantics of "-null" map handling.
 - remove ability to use multiple indirect mount entries in master map.
 - expand export access checks to include missing syntax options.
+- make "-hosts" module try to be sensitive to exports list changes.
 
 1/9/2006 autofs-5.0.1 rc2
 -------------------------
