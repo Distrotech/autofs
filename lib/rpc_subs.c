@@ -44,6 +44,8 @@
 
 #define MAX_ERR_BUF	512
 
+static char *ypdomain = NULL;
+
 /*
  * Create a UDP RPC client
  */
@@ -910,51 +912,62 @@ static int pattern_match(const char *s, const char *pattern)
 
 static int string_match(const char *myname, const char *pattern)
 {
-	struct hostent he;
-	struct hostent *phe = &he;
-	struct hostent *result;
-	char buf[HOST_ENT_BUF_SIZE];
-	int ret, ghn_errno;
+	struct addrinfo hints, *ni;
+	int ret;
 
-	memset(buf, 0, HOST_ENT_BUF_SIZE);
-	memset(&he, 0, sizeof(struct hostent));
+	memset(&hints, 0, sizeof(hints));
+	hints.ai_flags = AI_CANONNAME;
+	hints.ai_family = 0;
+	hints.ai_socktype = 0;
 
-	ret = gethostbyname_r(myname, phe,
-			buf, HOST_ENT_BUF_SIZE, &result, &ghn_errno);
-	if (ret || !result)
+	ret = getaddrinfo(myname, NULL, &hints, &ni);
+	if (ret) {
+		error(LOGOPT_ANY, "name lookup failed: %s", gai_strerror(ret));
 		return 0;
+	}
 
 	if (strchr(pattern, '*') || strchr(pattern, '?')) {
 		ret = pattern_match(myname, pattern);
 		if (!ret)
-			ret = pattern_match(phe->h_name, pattern);
+			ret = pattern_match(ni->ai_canonname, pattern);
 	} else {
-		if (strchr(pattern, '.'))
-			ret = !memcmp(phe->h_name, pattern, strlen(pattern));
-		else
-			ret = !memcmp(myname, pattern, strlen(pattern));
+		/* Match simple nane or FQDN */
+		ret = !memcmp(myname, pattern, strlen(pattern));
+		if (!ret)
+			ret = !memcmp(ni->ai_canonname, pattern, strlen(pattern));
+
+		/* Name could still be a netgroup (Solaris) */
+		if (!ret && ypdomain) {
+			ret = innetgr(pattern, myname, NULL, ypdomain);
+			if (!ret)
+				ret = innetgr(pattern,
+					 ni->ai_canonname, NULL, ypdomain);
+		}
+
 	}
+	freeaddrinfo(ni);
 	return ret;
 }
 
 static int host_match(char *pattern)
 {
-	static char *ypdomain = NULL;
-	static char myname[MAXHOSTNAMELEN + 1] = "\0";
+	unsigned int negate = (*pattern == '-');
+	const char *m_pattern = (negate ? pattern + 1 : pattern);
+	char myname[MAXHOSTNAMELEN + 1] = "\0";
 	struct in_addr tmp;
 	int ret = 0;
 
-	if (!*myname)
-		if (gethostname(myname, MAXHOSTNAMELEN))
-			return 0;
+	if (gethostname(myname, MAXHOSTNAMELEN))
+		return 0;
 
-	if (*pattern == '@') {
-		if (!ypdomain)
-			if (yp_get_default_domain(&ypdomain))
-				return 0;
-		ret = innetgr(pattern + 1, myname, (char *) 0, ypdomain);
-	} else if (inet_aton(pattern, &tmp) || strchr(pattern, '/')) {
-		size_t len = strlen(pattern) + 1;
+	if (yp_get_default_domain(&ypdomain))
+		ypdomain = NULL;
+
+	if (*m_pattern == '@') {
+		if (ypdomain)
+			ret = innetgr(m_pattern + 1, myname, NULL, ypdomain);
+	} else if (inet_aton(m_pattern, &tmp) || strchr(m_pattern, '/')) {
+		size_t len = strlen(m_pattern) + 1;
 		char *addr, *mask;
 
 		addr = alloca(len);
@@ -962,18 +975,21 @@ static int host_match(char *pattern)
 			return 0;
 
 		memset(addr, 0, len);
-		memcpy(addr, pattern, len - 1);
+		memcpy(addr, m_pattern, len - 1);
 		mask = strchr(addr, '/');
 		if (mask) {
 			*mask++ = '\0';
 			ret = masked_match(addr, mask);
 		} else
 			ret = masked_match(addr, "32");
-	} else if (!strcmp(pattern, "gss/krb5")) {
+	} else if (!strcmp(m_pattern, "gss/krb5")) {
 		/* Leave this to the GSS layer */
 		ret = 1;
 	} else
-		ret = string_match(myname, pattern);
+		ret = string_match(myname, m_pattern);
+
+	if (negate)
+		ret = !ret;
 
 	return ret;
 }
