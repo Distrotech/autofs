@@ -38,16 +38,17 @@ static const char kver_options_template[]  = "fd=%d,pgrp=%u,minproto=3,maxproto=
 
 unsigned int query_kproto_ver(void)
 {
-	char options[MAX_OPTIONS_LEN + 1], *tmp;
+	char dir[] = "autoXXXXXX", *t_dir;
+	char options[MAX_OPTIONS_LEN + 1];
 	pid_t pgrp = getpgrp();
 	int pipefd[2], ioctlfd, len;
 
-	tmp = tempnam(NULL, "auto");
-	if (mkdir(tmp, 0700) == -1)
+	t_dir = mkdtemp(dir);
+	if (!t_dir)
 		return 0;
 
 	if (pipe(pipefd) == -1) {
-		rmdir(tmp);
+		rmdir(t_dir);
 		return 0;
 	}
 
@@ -56,24 +57,24 @@ unsigned int query_kproto_ver(void)
 	if (len < 0) {
 		close(pipefd[0]);
 		close(pipefd[1]);
-		rmdir(tmp);
+		rmdir(t_dir);
 		return 0;
 	}
 
-	if (mount("automount", tmp, "autofs", MS_MGC_VAL, options)) {
+	if (mount("automount", t_dir, "autofs", MS_MGC_VAL, options)) {
 		close(pipefd[0]);
 		close(pipefd[1]);
-		rmdir(tmp);
+		rmdir(t_dir);
 		return 0;
 	}
 
 	close(pipefd[1]);
 
-	ioctlfd = open(tmp, O_RDONLY);
+	ioctlfd = open(t_dir, O_RDONLY);
 	if (ioctlfd == -1) {
-		umount(tmp);
+		umount(t_dir);
 		close(pipefd[0]);
-		rmdir(tmp);
+		rmdir(t_dir);
 		return 0;
 	}
 
@@ -82,25 +83,25 @@ unsigned int query_kproto_ver(void)
 	/* If this ioctl() doesn't work, it is kernel version 2 */
 	if (ioctl(ioctlfd, AUTOFS_IOC_PROTOVER, &kver.major) == -1) {
 		close(ioctlfd);
-		umount(tmp);
+		umount(t_dir);
 		close(pipefd[0]);
-		rmdir(tmp);
+		rmdir(t_dir);
 		return 0;
 	}
 
 	/* If this ioctl() doesn't work, version is 4 or less */
 	if (ioctl(ioctlfd, AUTOFS_IOC_PROTOSUBVER, &kver.minor) == -1) {
 		close(ioctlfd);
-		umount(tmp);
+		umount(t_dir);
 		close(pipefd[0]);
-		rmdir(tmp);
+		rmdir(t_dir);
 		return 0;
 	}
 
 	close(ioctlfd);
-	umount(tmp);
+	umount(t_dir);
 	close(pipefd[0]);
-	rmdir(tmp);
+	rmdir(t_dir);
 
 	return 1;
 }

@@ -34,46 +34,39 @@ static int bind_works = 0;
 
 int mount_init(void **context)
 {
-	char *tmp1 = tempnam(NULL, "auto");
-	char *tmp2 = tempnam(NULL, "auto");
+	char tmp1[] = "autoXXXXXX", *t1_dir;
+	char tmp2[] = "autoXXXXXX", *t2_dir;
 	int err;
 	struct stat st1, st2;
 
-	if (tmp1 == NULL || tmp2 == NULL) {
-		if (tmp1)
-			free(tmp1);
-		if (tmp2)
-			free(tmp2);
+	t1_dir = mkdtemp(tmp1);
+	t2_dir = mkdtemp(tmp2);
+	if (t1_dir == NULL || t2_dir == NULL) {
+		if (t1_dir)
+			rmdir(t1_dir);
+		if (t2_dir)
+			rmdir(t2_dir);
 		return 0;
 	}
 
-	if (mkdir(tmp1, 0700) == -1)
-		goto out2;
-
-	if (mkdir(tmp2, 0700) == -1)
-		goto out1;
-
-	if (lstat(tmp1, &st1) == -1)
+	if (lstat(t1_dir, &st1) == -1)
 		goto out;
 
-	err = spawn_mount(log_debug, "-n", "--bind", tmp1, tmp2, NULL);
+	err = spawn_mount(log_debug, "-n", "--bind", t1_dir, t2_dir, NULL);
 	if (err == 0 &&
-	    lstat(tmp2, &st2) == 0 &&
+	    lstat(t2_dir, &st2) == 0 &&
 	    st1.st_dev == st2.st_dev && st1.st_ino == st2.st_ino) {
 		bind_works = 1;
 	}
 
 	debug(LOGOPT_NONE, MODPREFIX "bind_works = %d", bind_works);
 
-	spawn_umount(log_debug, "-n", tmp2, NULL);
+	spawn_umount(log_debug, "-n", t2_dir, NULL);
 
-      out:
-	rmdir(tmp2);
-      out1:
-	free(tmp2);
-	rmdir(tmp1);
-      out2:
-	free(tmp1);
+out:
+	rmdir(t2_dir);
+	rmdir(t2_dir);
+
 	return 0;
 }
 
