@@ -48,6 +48,7 @@
 - expand export access checks to include missing syntax options.
 - make "-hosts" module try to be sensitive to exports list changes.
 - change mount "device" from "automount" to the map name.
+- check for buffer overflow in mount_afs.c.
 
 1/9/2006 autofs-5.0.1 rc2
 -------------------------

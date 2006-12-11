@@ -30,11 +30,18 @@ int mount_init(void **context)
 int mount_mount(struct autofs_point *ap, const char *root, const char *name, int name_len,
 		const char *what, const char *fstype, const char *options, void *context)
 {
-	char dest[PATH_MAX * 2];
+	/* PATH_MAX is allegedly longest path allowed */
+	char dest[PATH_MAX + 1];
+	size_t r_len = strlen(root);
+	size_t d_len = r_len + name_len + 2;
 
-	strcpy(dest, root);	/* Convert the name to a mount point. */
-	strncat(dest, "/", sizeof(dest));
-	strncat(dest, name, sizeof(dest));
+	if (d_len > PATH_MAX)
+		return 1;
+
+	/* Convert the name to a mount point. */
+	strcpy(dest, root);
+	strcat(dest, "/");
+	strcat(dest, name);
 
 	/* remove trailing slash (http://bugs.debian.org/141775) */
 	if (dest[strlen(dest)-1] == '/')
