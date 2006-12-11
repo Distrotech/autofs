@@ -11,6 +11,9 @@ INCFILES = COPYING COPYRIGHT NEWS README* TODO Makefile Makefile.rules \
 	   Makefile.conf.in .version .autofs-* configure.in aclocal.m4 \
 	   configure *.patch autofs.spec
 
+# Attempt to be friends with autotools
+INSTALLROOT = $(DESTDIR)
+
 # autofs utility library
 AUTOFS_LIB = ../lib/autofs.a
 
