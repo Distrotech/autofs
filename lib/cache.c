@@ -207,6 +207,8 @@ struct mapent_cache *cache_init(struct map_source *map)
 		INIT_LIST_HEAD(&mc->ino_index[i]);
 	}
 
+	mc->map = map;
+
 	cache_unlock(mc);
 
 	return mc;

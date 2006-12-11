@@ -147,6 +147,7 @@ static int do_mount_autofs_indirect(struct autofs_point *ap)
 {
 	time_t timeout = ap->exp_timeout;
 	char *options = NULL;
+	const char *type, *map_name = NULL;
 	struct stat st;
 	struct mnt_list *mnts;
 	int cl_flags, ret;
@@ -183,7 +184,17 @@ static int do_mount_autofs_indirect(struct autofs_point *ap)
 		ap->dir_created = 1;
 	}
 
-	ret = mount("automount", ap->path, "autofs", MS_MGC_VAL, options);
+	type = ap->entry->maps->type;
+	if (type && !strcmp(ap->entry->maps->type, "hosts")) {
+		char *tmp = alloca(7);
+		if (tmp) {
+			strcpy(tmp, "-hosts");
+			map_name = (const char *) tmp;
+		}
+	} else
+		map_name = ap->entry->maps->argv[0];
+
+	ret = mount(map_name, ap->path, "autofs", MS_MGC_VAL, options);
 	if (ret) {
 		crit(ap->logopt, "failed to mount autofs path %s", ap->path);
 		goto out_rmdir;

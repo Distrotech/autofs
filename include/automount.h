@@ -131,6 +131,7 @@ struct mapent_cache {
 	unsigned int size;
 	pthread_mutex_t ino_index_mutex;
 	struct list_head *ino_index;
+	struct map_source *map;
 	struct mapent **hash;
 };
 

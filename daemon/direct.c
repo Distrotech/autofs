@@ -357,6 +357,7 @@ int do_mount_autofs_direct(struct autofs_point *ap, struct mnt_list *mnts, struc
 	struct stat st;
 	int status, ret, ioctlfd, cl_flags;
 	struct list_head list;
+	const char *map_name;
 
 	INIT_LIST_HEAD(&list);
 
@@ -448,7 +449,9 @@ int do_mount_autofs_direct(struct autofs_point *ap, struct mnt_list *mnts, struc
 		me->dir_created = 1;
 	}
 
-	ret = mount("automount", me->key, "autofs", MS_MGC_VAL, mp->options);
+	map_name = me->mc->map->argv[0];
+
+	ret = mount(map_name, me->key, "autofs", MS_MGC_VAL, mp->options);
 	if (ret) {
 		crit(ap->logopt, "failed to mount autofs path %s", me->key);
 		goto out_err;

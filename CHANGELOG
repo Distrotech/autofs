@@ -47,6 +47,7 @@
 - remove ability to use multiple indirect mount entries in master map.
 - expand export access checks to include missing syntax options.
 - make "-hosts" module try to be sensitive to exports list changes.
+- change mount "device" from "automount" to the map name.
 
 1/9/2006 autofs-5.0.1 rc2
 -------------------------
