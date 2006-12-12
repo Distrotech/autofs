@@ -38,7 +38,7 @@ static const char kver_options_template[]  = "fd=%d,pgrp=%u,minproto=3,maxproto=
 
 unsigned int query_kproto_ver(void)
 {
-	char dir[] = "autoXXXXXX", *t_dir;
+	char dir[] = "/tmp/autoXXXXXX", *t_dir;
 	char options[MAX_OPTIONS_LEN + 1];
 	pid_t pgrp = getpgrp();
 	int pipefd[2], ioctlfd, len;

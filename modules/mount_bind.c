@@ -34,8 +34,8 @@ static int bind_works = 0;
 
 int mount_init(void **context)
 {
-	char tmp1[] = "autoXXXXXX", *t1_dir;
-	char tmp2[] = "autoXXXXXX", *t2_dir;
+	char tmp1[] = "/tmp/autoXXXXXX", *t1_dir;
+	char tmp2[] = "/tmp/autoXXXXXX", *t2_dir;
 	int err;
 	struct stat st1, st2;
 
