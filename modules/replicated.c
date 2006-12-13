@@ -52,6 +52,8 @@
 #include <net/if.h>
 #include <netinet/in.h>
 #include <netdb.h>
+#include <unistd.h>
+#include <fcntl.h>
 
 #include "rpc_subs.h"
 #include "replicated.h"
@@ -79,7 +81,7 @@ static unsigned int get_proximity(const char *host_addr, int addr_len)
 	char tmp[20], buf[MAX_ERR_BUF], *ptr;
 	struct ifconf ifc;
 	struct ifreq *ifr, nmptr;
-	int sock, ret, i;
+	int sock, cl_flags, ret, i;
 	uint32_t mask, ha, ia;
 
 	memcpy(tmp, host_addr, addr_len);
@@ -92,6 +94,11 @@ static unsigned int get_proximity(const char *host_addr, int addr_len)
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
 		error(LOGOPT_ANY, "socket creation failed: %s", estr);
 		return PROXIMITY_ERROR;
+	}
+
+	if ((cl_flags = fcntl(sock, F_GETFD, 0)) != -1) {
+		cl_flags |= FD_CLOEXEC;
+		fcntl(sock, F_SETFD, cl_flags);
 	}
 
 	ifc.ifc_len = sizeof(buf);

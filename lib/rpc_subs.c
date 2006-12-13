@@ -51,7 +51,7 @@ static char *ypdomain = NULL;
  */
 static CLIENT *create_udp_client(struct conn_info *info)
 {
-	int fd, ret, ghn_errno;
+	int fd, cl_flags, ret, ghn_errno;
 	CLIENT *client;
 	struct sockaddr_in laddr, raddr;
 	struct hostent hp;
@@ -105,6 +105,12 @@ got_addr:
 		fd = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
 		if (fd < 0)
 			return NULL;
+
+		if ((cl_flags = fcntl(fd, F_GETFD, 0)) != -1) {
+			cl_flags |= FD_CLOEXEC;
+			fcntl(fd, F_SETFD, cl_flags);
+		}
+
 		laddr.sin_family = AF_INET;
 		laddr.sin_port = 0;
 		laddr.sin_addr.s_addr = htonl(INADDR_ANY);
@@ -255,7 +261,7 @@ done:
  */
 static CLIENT *create_tcp_client(struct conn_info *info)
 {
-	int fd, ghn_errno;
+	int fd, cl_flags, ghn_errno;
 	CLIENT *client;
 	struct sockaddr_in addr;
 	struct hostent hp;
@@ -303,6 +309,11 @@ got_addr:
 		fd = socket(PF_INET, SOCK_STREAM, info->proto->p_proto);
 		if (fd < 0)
 			return NULL;
+
+		if ((cl_flags = fcntl(fd, F_GETFD, 0)) != -1) {
+			cl_flags |= FD_CLOEXEC;
+			fcntl(fd, F_SETFD, cl_flags);
+		}
 
 		ret = connect_nb(fd, &addr, &info->timeout);
 		if (ret < 0)
@@ -749,7 +760,7 @@ static int masked_match(const char *addr, const char *mask)
 	struct sockaddr_in6 saddr6;
 	struct ifconf ifc;
 	struct ifreq *ifr;
-	int sock, ret, i, is_ipv4, is_ipv6;
+	int sock, cl_flags, ret, i, is_ipv4, is_ipv6;
 	unsigned int msize;
 
 	sock = socket(AF_INET, SOCK_DGRAM, 0);
@@ -757,6 +768,11 @@ static int masked_match(const char *addr, const char *mask)
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
 		error(LOGOPT_ANY, "socket creation failed: %s", estr);
 		return 0;
+	}
+
+	if ((cl_flags = fcntl(sock, F_GETFD, 0)) != -1) {
+		cl_flags |= FD_CLOEXEC;
+		fcntl(sock, F_SETFD, cl_flags);
 	}
 
 	ifc.ifc_len = sizeof(buf);
