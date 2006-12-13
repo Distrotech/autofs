@@ -92,6 +92,7 @@ CONT		\\\n{OPTWS}
 
 OPTIONSTR	([\-]?([[:alpha:]_]([[:alnum:]_\-])*(=([[:alnum:]_\-])+)*)+)
 MACROSTR	(-D{OPTWS}([[:alpha:]_]([[:alnum:]_\-])*)=([[:alnum:]_\-])+)
+SLASHIFYSTR	(--(no-)?slashify-colons)
 NUMBER		[0-9]+
 
 DNSERVSTR1	([[:alpha:]][[:alnum:]\-.]*(:[0-9]+)?:)
@@ -306,6 +307,11 @@ OPTTOUT		(-t{OPTWS}|-t{OPTWS}={OPTWS}|--timeout{OPTWS}|--timeout{OPTWS}={OPTWS})
 	{OPTWS}","{OPTWS}	{ return(COMMA); }
 
 	{OPTWS} {}
+
+	{SLASHIFYSTR} {
+		strcpy(master_lval.strtype, master_text);
+		return(OPTION);
+	}
 
 	{MACROSTR} {
 		strcpy(master_lval.strtype, master_text);
