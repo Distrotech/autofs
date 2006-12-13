@@ -50,6 +50,7 @@
 - change mount "device" from "automount" to the map name.
 - check for buffer overflow in mount_afs.c.
 - update master map tokenizer to admit "slasify-colons" option (Capelle Bonoit).
+- update location validation to accept "_" (Fabio Olive Leite).
 
 1/9/2006 autofs-5.0.1 rc2
 -------------------------

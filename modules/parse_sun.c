@@ -691,7 +691,7 @@ static int validate_location(char *loc)
 	if (check_colon(ptr)) {
 		while (*ptr && *ptr != ':') {
 			if (!(isalnum(*ptr) ||
-			    *ptr == '-' || *ptr == '.' ||
+			    *ptr == '-' || *ptr == '.' || *ptr == '_' ||
 			    *ptr == ',' || *ptr == '(' || *ptr == ')'))
 				return 0;
 			ptr++;
