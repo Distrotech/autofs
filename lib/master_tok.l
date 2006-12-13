@@ -293,8 +293,6 @@ OPTTOUT		(-t{OPTWS}|-t{OPTWS}={OPTWS}|--timeout{OPTWS}|--timeout{OPTWS}={OPTWS})
 
 	{OPTTOUT} { return(OPT_TIMEOUT); }
 
-	-D{OPTWS}
-
 	{NUMBER} {
 		master_lval.longtype = atol(master_text);
 		return(NUMBER);
