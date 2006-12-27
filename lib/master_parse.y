@@ -566,11 +566,14 @@ int master_parse_entry(const char *buffer, unsigned int default_timeout, unsigne
 		}
 		entry = new;
 	} else {
-		if (strcmp(path, "/-")) {
-			warn(LOGOPT_VERBOSE,
-			     "ignoring duplicate indirect mount %s", path);
-			local_free_vars();
-			return 0;
+		if (entry->age && entry->age == age) {
+			if (strcmp(path, "/-")) {
+				warn(LOGOPT_VERBOSE,
+				     "ignoring duplicate indirect mount %s",
+				     path);
+				local_free_vars();
+				return 0;
+			}
 		}
 	}
 
