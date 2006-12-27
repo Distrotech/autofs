@@ -1405,11 +1405,19 @@ cont:
 	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &state);
 	if (status) {
 		struct mapent *me;
+		int real_mount, set_fd;
 		cache_readlock(mt->mc);
 		me = cache_lookup_distinct(mt->mc, mt->name);
-		me->ioctlfd = mt->ioctlfd;
+		real_mount = is_mounted(_PATH_MOUNTED, me->key, MNTS_REAL);
+		set_fd = (real_mount || me->multi == me);
 		cache_unlock(mt->mc);
-		send_ready(mt->ioctlfd, mt->wait_queue_token);
+		if (set_fd) {
+			me->ioctlfd = mt->ioctlfd;
+			send_ready(mt->ioctlfd, mt->wait_queue_token);
+		} else {
+			send_ready(mt->ioctlfd, mt->wait_queue_token);
+			close(mt->ioctlfd);
+		}
 		msg("mounted %s", mt->name);
 	} else {
 		send_fail(mt->ioctlfd, mt->wait_queue_token);

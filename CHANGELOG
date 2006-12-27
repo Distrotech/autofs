@@ -52,6 +52,7 @@
 - update master map tokenizer to admit "slasify-colons" option (Capelle Bonoit).
 - update location validation to accept "_" (Fabio Olive Leite).
 - set close-on-exec flag on open sockets.
+- fix nonstrict multi-mount handling.
 
 1/9/2006 autofs-5.0.1 rc2
 -------------------------

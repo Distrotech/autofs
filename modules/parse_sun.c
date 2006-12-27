@@ -458,10 +458,10 @@ static int sun_mount(struct autofs_point *ap, const char *root,
 				fstype = alloca(typelen + 1);
 				memcpy(fstype, cp + 7, typelen);
 				fstype[typelen] = '\0';
-			} else if (strncmp("strict", cp, 6) == 0) {
-				nonstrict = 0;
 			} else if (strncmp("nonstrict", cp, 9) == 0) {
 				nonstrict = 1;
+			} else if (strncmp("strict", cp, 6) == 0) {
+				nonstrict = 0;
 			} else if (strncmp("nobrowse", cp, 8) == 0 ||
 				   strncmp("browse", cp, 6) == 0 ||
 				   strncmp("timeout=", cp, 8) == 0) {
@@ -837,14 +837,14 @@ static int mount_subtree_offsets(struct autofs_point *ap, struct mapent_cache *m
 {
 	struct mapent *mm;
 	char *m_key;
-	int start;
+	int ret, start;
 	char *base, *m_root;
 	char buf[MAX_ERR_BUF];
 
 	mm = me->multi;
 
 	if (!mm)
-		return 1;
+		return 0;
 
 	cache_multi_lock(me->parent);
 
@@ -861,7 +861,7 @@ static int mount_subtree_offsets(struct autofs_point *ap, struct mapent_cache *m
 			cache_multi_unlock(me->parent);
 			estr = strerror_r(errno, buf, MAX_ERR_BUF);
 			error(ap->logopt, MODPREFIX "alloca: %s", estr);
-			return 0;
+			return -1;
 		}
 		strcpy(m_root, ap->path);
 		strcat(m_root, "/");
@@ -870,15 +870,16 @@ static int mount_subtree_offsets(struct autofs_point *ap, struct mapent_cache *m
 
 	base = &me->key[start];
 
-	if (!mount_multi_triggers(ap, m_root, me->multi, base)) {
+	ret = mount_multi_triggers(ap, m_root, me->multi, base);
+	if (ret == -1) {
 		cache_multi_unlock(me->parent);
 		error(ap->logopt, MODPREFIX "failed to mount offset triggers");
-		return 0;
+		return -1;
 	}
 
 	cache_multi_unlock(me->parent);
 
-	return 1;
+	return ret;
 }
 
 /*
@@ -998,7 +999,7 @@ int parse_mount(struct autofs_point *ap, const char *name,
 		char *m_root = NULL;
 		int m_root_len;
 		time_t age = time(NULL);
-		int l;
+		int l, ret;
 
 		/* If name starts with "/" it's a direct mount */
 		if (*name == '/') {
@@ -1169,21 +1170,10 @@ int parse_mount(struct autofs_point *ap, const char *name,
 
 			free(myoptions);
 			free(loc);
-
-			if (rv < 0) {
-				warn(ap->logopt,
-				      MODPREFIX
-				      "mount multi-mount root %s failed", name);
-				cache_delete_offset_list(mc, name);
-				cache_multi_unlock(me);
-				cache_unlock(mc);
-				free(options);
-				pthread_setcancelstate(cur_state, NULL);
-				return rv;
-			}
 		}
 
-		if (!mount_multi_triggers(ap, m_root, me, "/")) {
+		ret = mount_multi_triggers(ap, m_root, me, "/");
+		if (ret == -1) {
 			warn(ap->logopt,
 			      MODPREFIX "failed to mount offset triggers");
 			cache_multi_unlock(me);
@@ -1192,6 +1182,13 @@ int parse_mount(struct autofs_point *ap, const char *name,
 			pthread_setcancelstate(cur_state, NULL);
 			return 1;
 		}
+
+		/*
+		 * Convert fail on nonstrict, non-empty multi-mount
+		 * to success
+		 */
+		if (rv < 0 && ret > 0)
+			rv = 0;
 
 		cache_multi_unlock(me);
 		cache_unlock(mc);
@@ -1293,15 +1290,9 @@ int parse_mount(struct autofs_point *ap, const char *name,
 
 		rv = sun_mount(ap, ap->path, name, name_len, loc, loclen, options, ctxt);
 
-		/* non-strict failure to normal failure for ordinary mount */
-		if (rv < 0)
-			rv = -rv;
-
 		free(loc);
 		free(options);
 
-		if (rv)
-			return rv;
 		/*
 		 * If it's a multi-mount insert the triggers
 		 * These are always direct mount triggers so root = ""
@@ -1310,7 +1301,10 @@ int parse_mount(struct autofs_point *ap, const char *name,
 		cache_readlock(mc);
 		me = cache_lookup_distinct(mc, name);
 		if (me) {
-			mount_subtree_offsets(ap, mc, me);
+			int ret = mount_subtree_offsets(ap, mc, me);
+			/* Convert fail on nonstrict, non-empty multi-mount to success */
+			if (rv < 0 && ret > 0)
+				rv = 0;
 		}
 		cache_unlock(mc);
 		pthread_setcancelstate(cur_state, NULL);

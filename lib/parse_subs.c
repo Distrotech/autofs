@@ -358,12 +358,12 @@ int mount_multi_triggers(struct autofs_point *ap, char *root, struct mapent *me,
 	unsigned int fs_path_len;
 	struct statfs fs;
 	struct stat st;
-	unsigned int is_autofs_fs;
+	unsigned int mounted, is_autofs_fs;
 	int ret, start;
 
 	fs_path_len = strlen(root) + strlen(base);
 	if (fs_path_len > PATH_MAX)
-		return 0;
+		return -1;
 
 	strcpy(path, root);
 	strcat(path, base);
@@ -373,10 +373,11 @@ int mount_multi_triggers(struct autofs_point *ap, char *root, struct mapent *me,
 		if (errno == ENOENT)
 			is_autofs_fs = 1;
 		else
-			return 0;
+			return -1;
 	} else
 		is_autofs_fs = fs.f_type == AUTOFS_SUPER_MAGIC ? 1 : 0;
 
+	mounted = 0;
 	start = strlen(root);
 	offset = cache_get_offset(base, offset, start, &me->multi_list, &pos);
 	while (offset) {
@@ -406,12 +407,14 @@ int mount_multi_triggers(struct autofs_point *ap, char *root, struct mapent *me,
 
 		if (mount_autofs_offset(ap, oe, is_autofs_fs) < 0)
 			warn(ap->logopt, "failed to mount offset");
+		else
+			mounted++;
 cont:
 		offset = cache_get_offset(base,
 				offset, start, &me->multi_list, &pos);
 	}
 
-	return 1;
+	return mounted;
 }
 
 int umount_multi_triggers(struct autofs_point *ap, char *root, struct mapent *me, const char *base)
@@ -439,10 +442,19 @@ int umount_multi_triggers(struct autofs_point *ap, char *root, struct mapent *me
 
 	/* Make sure "none" of the offsets have an active mount. */
 	while ((offset = cache_get_offset(mm_base, offset, start, mm_root, &pos))) {
+		char *oe_base;
+
 		oe = cache_lookup_offset(mm_base, offset, start, &me->multi_list);
 		/* root offset is a special case */
 		if (!oe || (strlen(oe->key) - start) == 1)
 			continue;
+
+		/*
+		 * Check for and umount subtree offsets resulting from
+		 * nonstrict mount fail.
+		 */
+		oe_base = oe->key + strlen(root);
+		left = umount_multi_triggers(ap, root, oe, oe_base);
 
 		if (oe->ioctlfd != -1)
 			left++;
