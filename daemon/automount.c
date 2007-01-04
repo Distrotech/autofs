@@ -1587,7 +1587,7 @@ int main(int argc, char *argv[])
 
 #ifdef _POSIX_THREAD_ATTR_STACKSIZE
 	if (pthread_attr_setstacksize(
-			&thread_attr, PTHREAD_STACK_MIN*128)) {
+			&thread_attr, PTHREAD_STACK_MIN*64)) {
 		crit(LOGOPT_ANY,
 		     "%s: failed to set stack size thread attribute!",
 		     program);
