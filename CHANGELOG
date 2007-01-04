@@ -54,6 +54,7 @@
 - set close-on-exec flag on open sockets.
 - fix nonstrict multi-mount handling.
 - reduce thread stack to less excessive size.
+- update kernel patches.
 
 1/9/2006 autofs-5.0.1 rc2
 -------------------------

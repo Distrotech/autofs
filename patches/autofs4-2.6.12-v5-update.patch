@@ -1,6 +1,17 @@
+diff -Nurp linux-2.6.12.orig/fs/autofs/autofs_i.h linux-2.6.12/fs/autofs/autofs_i.h
+--- linux-2.6.12.orig/fs/autofs/autofs_i.h	2005-06-18 03:48:29.000000000 +0800
++++ linux-2.6.12/fs/autofs/autofs_i.h	2007-01-03 21:37:53.000000000 +0900
+@@ -150,6 +150,7 @@ extern struct file_operations autofs_roo
+ /* Initializing function */
+ 
+ int autofs_fill_super(struct super_block *, void *, int);
++void autofs_kill_sb(struct super_block *);
+ 
+ /* Queue management functions */
+ 
 diff -Nurp linux-2.6.12.orig/fs/autofs/dirhash.c linux-2.6.12/fs/autofs/dirhash.c
 --- linux-2.6.12.orig/fs/autofs/dirhash.c	2005-06-18 03:48:29.000000000 +0800
-+++ linux-2.6.12/fs/autofs/dirhash.c	2006-08-31 14:11:53.000000000 +0800
++++ linux-2.6.12/fs/autofs/dirhash.c	2007-01-03 21:37:53.000000000 +0900
 @@ -92,7 +92,7 @@ struct autofs_dir_ent *autofs_expire(str
  			;
  		dput(dentry);
@@ -10,9 +21,100 @@ diff -Nurp linux-2.6.12.orig/fs/autofs/dirhash.c linux-2.6.12/fs/autofs/dirhash.
  			mntput(mnt);
  			DPRINTK(("autofs: signaling expire on %s\n", ent->name));
  			return ent; /* Expirable! */
+diff -Nurp linux-2.6.12.orig/fs/autofs/init.c linux-2.6.12/fs/autofs/init.c
+--- linux-2.6.12.orig/fs/autofs/init.c	2005-06-18 03:48:29.000000000 +0800
++++ linux-2.6.12/fs/autofs/init.c	2007-01-03 21:37:53.000000000 +0900
+@@ -24,7 +24,7 @@ static struct file_system_type autofs_fs
+ 	.owner		= THIS_MODULE,
+ 	.name		= "autofs",
+ 	.get_sb		= autofs_get_sb,
+-	.kill_sb	= kill_anon_super,
++	.kill_sb	= autofs_kill_sb,
+ };
+ 
+ static int __init init_autofs_fs(void)
+diff -Nurp linux-2.6.12.orig/fs/autofs/inode.c linux-2.6.12/fs/autofs/inode.c
+--- linux-2.6.12.orig/fs/autofs/inode.c	2005-06-18 03:48:29.000000000 +0800
++++ linux-2.6.12/fs/autofs/inode.c	2007-01-03 21:37:53.000000000 +0900
+@@ -19,11 +19,20 @@
+ #include "autofs_i.h"
+ #include <linux/module.h>
+ 
+-static void autofs_put_super(struct super_block *sb)
++void autofs4_kill_sb(struct super_block *sb)
+ {
+ 	struct autofs_sb_info *sbi = autofs_sbi(sb);
+ 	unsigned int n;
+ 
++	/*
++	 * In the event of a failure in get_sb_nodev the superblock
++	 * info is not present so nothing else has been setup, so
++	 * just call kill_anon_super when we are called from
++	 * deactivate_super.
++	 */
++	if (!sbi)
++		goto out_kill_sb;
++
+ 	if ( !sbi->catatonic )
+ 		autofs_catatonic_mode(sbi); /* Free wait queues, close pipe */
+ 
+@@ -35,14 +44,15 @@ static void autofs_put_super(struct supe
+ 
+ 	kfree(sb->s_fs_info);
+ 
++out_kill_sb:
+ 	DPRINTK(("autofs: shutting down\n"));
++	kill_anon_super(sb);
+ }
+ 
+ static void autofs_read_inode(struct inode *inode);
+ 
+ static struct super_operations autofs_sops = {
+ 	.read_inode	= autofs_read_inode,
+-	.put_super	= autofs_put_super,
+ 	.statfs		= simple_statfs,
+ };
+ 
+@@ -136,7 +146,8 @@ int autofs_fill_super(struct super_block
+ 
+ 	s->s_fs_info = sbi;
+ 	sbi->magic = AUTOFS_SBI_MAGIC;
+-	sbi->catatonic = 0;
++	sbi->pipe = NULL;
++	sbi->catatonic = 1;
+ 	sbi->exp_timeout = 0;
+ 	sbi->oz_pgrp = process_group(current);
+ 	autofs_initialize_hash(&sbi->dirhash);
+@@ -179,6 +190,7 @@ int autofs_fill_super(struct super_block
+ 	if ( !pipe->f_op || !pipe->f_op->write )
+ 		goto fail_fput;
+ 	sbi->pipe = pipe;
++	sbi->catatonic = 0;
+ 
+ 	/*
+ 	 * Success! Install the root dentry now to indicate completion.
+@@ -197,6 +209,7 @@ fail_iput:
+ 	iput(root_inode);
+ fail_free:
+ 	kfree(sbi);
++	s->s_fs_info = NULL;
+ fail_unlock:
+ 	return -EINVAL;
+ }
+diff -Nurp linux-2.6.12.orig/fs/autofs/waitq.c linux-2.6.12/fs/autofs/waitq.c
+--- linux-2.6.12.orig/fs/autofs/waitq.c	2005-06-18 03:48:29.000000000 +0800
++++ linux-2.6.12/fs/autofs/waitq.c	2007-01-03 21:37:53.000000000 +0900
+@@ -41,6 +41,7 @@ void autofs_catatonic_mode(struct autofs
+ 		wq = nwq;
+ 	}
+ 	fput(sbi->pipe);	/* Close the pipe */
++	sbi->pipe = NULL;
+ 	autofs_hash_dputall(&sbi->dirhash); /* Remove all dentry pointers */
+ }
+ 
 diff -Nurp linux-2.6.12.orig/fs/autofs4/autofs_i.h linux-2.6.12/fs/autofs4/autofs_i.h
 --- linux-2.6.12.orig/fs/autofs4/autofs_i.h	2005-06-18 03:48:29.000000000 +0800
-+++ linux-2.6.12/fs/autofs4/autofs_i.h	2006-08-31 14:11:53.000000000 +0800
++++ linux-2.6.12/fs/autofs4/autofs_i.h	2007-01-03 21:37:53.000000000 +0900
 @@ -3,6 +3,7 @@
   * linux/fs/autofs/autofs_i.h
   *
@@ -44,7 +146,7 @@ diff -Nurp linux-2.6.12.orig/fs/autofs4/autofs_i.h linux-2.6.12/fs/autofs4/autof
  
  	mode_t	mode;
  	size_t	size;
-@@ -79,25 +73,39 @@ struct autofs_wait_queue {
+@@ -79,25 +73,38 @@ struct autofs_wait_queue {
  	struct autofs_wait_queue *next;
  	autofs_wqt_t wait_queue_token;
  	/* We use the following to see what we are waiting for */
@@ -73,7 +175,6 @@ diff -Nurp linux-2.6.12.orig/fs/autofs4/autofs_i.h linux-2.6.12/fs/autofs4/autof
 +
  struct autofs_sb_info {
  	u32 magic;
-+	struct dentry *root;
 +	int pipefd;
  	struct file *pipe;
  	pid_t oz_pgrp;
@@ -87,7 +188,7 @@ diff -Nurp linux-2.6.12.orig/fs/autofs4/autofs_i.h linux-2.6.12/fs/autofs4/autof
  	int reghost_enabled;
  	int needs_reghost;
  	struct super_block *sb;
-@@ -164,6 +172,8 @@ int autofs4_expire_multi(struct super_bl
+@@ -164,6 +171,8 @@ int autofs4_expire_multi(struct super_bl
  extern struct inode_operations autofs4_symlink_inode_operations;
  extern struct inode_operations autofs4_dir_inode_operations;
  extern struct inode_operations autofs4_root_inode_operations;
@@ -96,7 +197,7 @@ diff -Nurp linux-2.6.12.orig/fs/autofs4/autofs_i.h linux-2.6.12/fs/autofs4/autof
  extern struct file_operations autofs4_dir_operations;
  extern struct file_operations autofs4_root_operations;
  
-@@ -174,23 +184,39 @@ struct autofs_info *autofs4_init_ino(str
+@@ -174,23 +183,39 @@ struct autofs_info *autofs4_init_ino(str
  
  /* Queue management functions */
  
@@ -144,16 +245,16 @@ diff -Nurp linux-2.6.12.orig/fs/autofs4/autofs_i.h linux-2.6.12/fs/autofs4/autof
  {
  	struct dentry *child;
  	int ret = 0;
-@@ -202,3 +228,6 @@ static inline int simple_empty_nolock(st
+@@ -202,3 +227,6 @@ static inline int simple_empty_nolock(st
  out:
  	return ret;
  }
 +
 +void autofs4_dentry_release(struct dentry *);
-+
++extern void autofs4_kill_sb(struct super_block *);
 diff -Nurp linux-2.6.12.orig/fs/autofs4/expire.c linux-2.6.12/fs/autofs4/expire.c
 --- linux-2.6.12.orig/fs/autofs4/expire.c	2005-06-18 03:48:29.000000000 +0800
-+++ linux-2.6.12/fs/autofs4/expire.c	2006-08-31 14:11:53.000000000 +0800
++++ linux-2.6.12/fs/autofs4/expire.c	2007-01-03 21:37:53.000000000 +0900
 @@ -4,7 +4,7 @@
   *
   *  Copyright 1997-1998 Transmeta Corporation -- All Rights Reserved
@@ -626,9 +727,21 @@ diff -Nurp linux-2.6.12.orig/fs/autofs4/expire.c linux-2.6.12/fs/autofs4/expire.
  	return ret;
  }
  
+diff -Nurp linux-2.6.12.orig/fs/autofs4/init.c linux-2.6.12/fs/autofs4/init.c
+--- linux-2.6.12.orig/fs/autofs4/init.c	2005-06-18 03:48:29.000000000 +0800
++++ linux-2.6.12/fs/autofs4/init.c	2007-01-03 21:37:53.000000000 +0900
+@@ -24,7 +24,7 @@ static struct file_system_type autofs_fs
+ 	.owner		= THIS_MODULE,
+ 	.name		= "autofs",
+ 	.get_sb		= autofs_get_sb,
+-	.kill_sb	= kill_anon_super,
++	.kill_sb	= autofs4_kill_sb,
+ };
+ 
+ static int __init init_autofs4_fs(void)
 diff -Nurp linux-2.6.12.orig/fs/autofs4/inode.c linux-2.6.12/fs/autofs4/inode.c
 --- linux-2.6.12.orig/fs/autofs4/inode.c	2005-06-18 03:48:29.000000000 +0800
-+++ linux-2.6.12/fs/autofs4/inode.c	2006-08-31 14:11:53.000000000 +0800
++++ linux-2.6.12/fs/autofs4/inode.c	2007-01-03 21:37:53.000000000 +0900
 @@ -3,6 +3,7 @@
   * linux/fs/autofs/inode.c
   *
@@ -678,10 +791,11 @@ diff -Nurp linux-2.6.12.orig/fs/autofs4/inode.c linux-2.6.12/fs/autofs4/inode.c
  		ino->dentry = NULL;
  	}
  	if (ino->free)
-@@ -76,6 +89,66 @@ void autofs4_free_ino(struct autofs_info
+@@ -76,26 +89,122 @@ void autofs4_free_ino(struct autofs_info
  	kfree(ino);
  }
  
+-static void autofs4_put_super(struct super_block *sb)
 +/*
 + * Deal with the infamous "Busy inodes after umount ..." message.
 + *
@@ -690,8 +804,11 @@ diff -Nurp linux-2.6.12.orig/fs/autofs4/inode.c linux-2.6.12/fs/autofs4/inode.c
 + */
 +static void autofs4_force_release(struct autofs_sb_info *sbi)
 +{
-+	struct dentry *this_parent = sbi->root;
++	struct dentry *this_parent = sbi->sb->s_root;
 +	struct list_head *next;
++
++	if (!sbi->sb->s_root)
++		return;
 +
 +	spin_lock(&dcache_lock);
 +repeat:
@@ -721,7 +838,7 @@ diff -Nurp linux-2.6.12.orig/fs/autofs4/inode.c linux-2.6.12/fs/autofs4/inode.c
 +		spin_lock(&dcache_lock);
 +	}
 +
-+	if (this_parent != sbi->root) {
++	if (this_parent != sbi->sb->s_root) {
 +		struct dentry *dentry = this_parent;
 +
 +		next = this_parent->d_child.next;
@@ -734,18 +851,24 @@ diff -Nurp linux-2.6.12.orig/fs/autofs4/inode.c linux-2.6.12/fs/autofs4/inode.c
 +		goto resume;
 +	}
 +	spin_unlock(&dcache_lock);
-+
-+	dput(sbi->root);
-+	sbi->root = NULL;
 +	shrink_dcache_sb(sbi->sb);
-+
-+	return;
 +}
 +
- static void autofs4_put_super(struct super_block *sb)
++void autofs4_kill_sb(struct super_block *sb)
  {
  	struct autofs_sb_info *sbi = autofs4_sbi(sb);
-@@ -85,17 +158,45 @@ static void autofs4_put_super(struct sup
+ 
++	/*
++	 * In the event of a failure in get_sb_nodev the superblock
++	 * info is not present so nothing else has been setup, so
++	 * just call kill_anon_super when we are called from
++	 * deactivate_super.
++	 */
++	if (!sbi)
++		goto out_kill_sb;
++
+ 	sb->s_fs_info = NULL;
+ 
  	if ( !sbi->catatonic )
  		autofs4_catatonic_mode(sbi); /* Free wait queues, close pipe */
  
@@ -754,9 +877,11 @@ diff -Nurp linux-2.6.12.orig/fs/autofs4/inode.c linux-2.6.12/fs/autofs4/inode.c
 +
  	kfree(sbi);
  
++out_kill_sb:
  	DPRINTK("shutting down");
- }
- 
++	kill_anon_super(sb);
++}
++
 +static int autofs4_show_options(struct seq_file *m, struct vfsmount *mnt)
 +{
 +	struct autofs_sb_info *sbi = autofs4_sbi(mnt->mnt_sb);
@@ -778,10 +903,10 @@ diff -Nurp linux-2.6.12.orig/fs/autofs4/inode.c linux-2.6.12/fs/autofs4/inode.c
 +		seq_printf(m, ",indirect");
 +
 +	return 0;
-+}
-+
+ }
+ 
  static struct super_operations autofs4_sops = {
- 	.put_super	= autofs4_put_super,
+-	.put_super	= autofs4_put_super,
  	.statfs		= simple_statfs,
 +	.show_options	= autofs4_show_options,
  };
@@ -792,7 +917,7 @@ diff -Nurp linux-2.6.12.orig/fs/autofs4/inode.c linux-2.6.12/fs/autofs4/inode.c
  
  static match_table_t tokens = {
  	{Opt_fd, "fd=%u"},
-@@ -104,11 +205,15 @@ static match_table_t tokens = {
+@@ -104,11 +213,15 @@ static match_table_t tokens = {
  	{Opt_pgrp, "pgrp=%u"},
  	{Opt_minproto, "minproto=%u"},
  	{Opt_maxproto, "maxproto=%u"},
@@ -809,7 +934,7 @@ diff -Nurp linux-2.6.12.orig/fs/autofs4/inode.c linux-2.6.12/fs/autofs4/inode.c
  {
  	char *p;
  	substring_t args[MAX_OPT_ARGS];
-@@ -162,6 +267,15 @@ static int parse_options(char *options, 
+@@ -162,6 +275,15 @@ static int parse_options(char *options, 
  				return 1;
  			*maxproto = option;
  			break;
@@ -825,7 +950,7 @@ diff -Nurp linux-2.6.12.orig/fs/autofs4/inode.c linux-2.6.12/fs/autofs4/inode.c
  		default:
  			return 1;
  		}
-@@ -180,6 +294,10 @@ static struct autofs_info *autofs4_mkroo
+@@ -180,6 +302,10 @@ static struct autofs_info *autofs4_mkroo
  	return ino;
  }
  
@@ -836,7 +961,7 @@ diff -Nurp linux-2.6.12.orig/fs/autofs4/inode.c linux-2.6.12/fs/autofs4/inode.c
  int autofs4_fill_super(struct super_block *s, void *data, int silent)
  {
  	struct inode * root_inode;
-@@ -188,7 +306,6 @@ int autofs4_fill_super(struct super_bloc
+@@ -188,7 +314,6 @@ int autofs4_fill_super(struct super_bloc
  	int pipefd;
  	struct autofs_sb_info *sbi;
  	struct autofs_info *ino;
@@ -844,13 +969,14 @@ diff -Nurp linux-2.6.12.orig/fs/autofs4/inode.c linux-2.6.12/fs/autofs4/inode.c
  
  	sbi = (struct autofs_sb_info *) kmalloc(sizeof(*sbi), GFP_KERNEL);
  	if ( !sbi )
-@@ -199,12 +316,17 @@ int autofs4_fill_super(struct super_bloc
+@@ -199,12 +324,17 @@ int autofs4_fill_super(struct super_bloc
  
  	s->s_fs_info = sbi;
  	sbi->magic = AUTOFS_SBI_MAGIC;
-+	sbi->root = NULL;
+-	sbi->catatonic = 0;
 +	sbi->pipefd = -1;
- 	sbi->catatonic = 0;
++	sbi->pipe = NULL;
++	sbi->catatonic = 1;
  	sbi->exp_timeout = 0;
  	sbi->oz_pgrp = process_group(current);
  	sbi->sb = s;
@@ -862,7 +988,7 @@ diff -Nurp linux-2.6.12.orig/fs/autofs4/inode.c linux-2.6.12/fs/autofs4/inode.c
  	init_MUTEX(&sbi->wq_sem);
  	spin_lock_init(&sbi->fs_lock);
  	sbi->queues = NULL;
-@@ -221,38 +343,46 @@ int autofs4_fill_super(struct super_bloc
+@@ -221,38 +351,46 @@ int autofs4_fill_super(struct super_bloc
  	if (!ino)
  		goto fail_free;
  	root_inode = autofs4_get_inode(s, ino);
@@ -921,22 +1047,16 @@ diff -Nurp linux-2.6.12.orig/fs/autofs4/inode.c linux-2.6.12/fs/autofs4/inode.c
  	sbi->sub_version = AUTOFS_PROTO_SUBVERSION;
  
  	DPRINTK("pipe fd = %d, pgrp = %u", pipefd, sbi->oz_pgrp);
-@@ -265,6 +395,14 @@ int autofs4_fill_super(struct super_bloc
+@@ -265,6 +403,8 @@ int autofs4_fill_super(struct super_bloc
  	if ( !pipe->f_op || !pipe->f_op->write )
  		goto fail_fput;
  	sbi->pipe = pipe;
 +	sbi->pipefd = pipefd;
-+
-+	/*
-+	 * Take a reference to the root dentry so we get a chance to
-+	 * clean up the dentry tree on umount.
-+	 * See autofs4_force_release.
-+	 */
-+	sbi->root = dget(root);
++	sbi->catatonic = 0;
  
  	/*
  	 * Success! Install the root dentry now to indicate completion.
-@@ -285,6 +423,8 @@ fail_dput:
+@@ -285,8 +425,11 @@ fail_dput:
  fail_iput:
  	printk("autofs: get root dentry failed\n");
  	iput(root_inode);
@@ -944,10 +1064,13 @@ diff -Nurp linux-2.6.12.orig/fs/autofs4/inode.c linux-2.6.12/fs/autofs4/inode.c
 +	kfree(ino);
  fail_free:
  	kfree(sbi);
++	s->s_fs_info = NULL;
  fail_unlock:
+ 	return -EINVAL;
+ }
 diff -Nurp linux-2.6.12.orig/fs/autofs4/root.c linux-2.6.12/fs/autofs4/root.c
 --- linux-2.6.12.orig/fs/autofs4/root.c	2005-06-18 03:48:29.000000000 +0800
-+++ linux-2.6.12/fs/autofs4/root.c	2006-08-31 14:11:53.000000000 +0800
++++ linux-2.6.12/fs/autofs4/root.c	2007-01-03 21:37:53.000000000 +0900
 @@ -4,7 +4,7 @@
   *
   *  Copyright 1997-1998 Transmeta Corporation -- All Rights Reserved
@@ -1573,7 +1696,7 @@ diff -Nurp linux-2.6.12.orig/fs/autofs4/root.c linux-2.6.12/fs/autofs4/root.c
  	DPRINTK("returning %d", status);
 diff -Nurp linux-2.6.12.orig/fs/autofs4/waitq.c linux-2.6.12/fs/autofs4/waitq.c
 --- linux-2.6.12.orig/fs/autofs4/waitq.c	2005-06-18 03:48:29.000000000 +0800
-+++ linux-2.6.12/fs/autofs4/waitq.c	2006-08-31 14:11:53.000000000 +0800
++++ linux-2.6.12/fs/autofs4/waitq.c	2007-01-03 21:37:53.000000000 +0900
 @@ -3,7 +3,7 @@
   * linux/fs/autofs/waitq.c
   *
@@ -1592,15 +1715,21 @@ diff -Nurp linux-2.6.12.orig/fs/autofs4/waitq.c linux-2.6.12/fs/autofs4/waitq.c
  		nwq = wq->next;
  		wq->status = -ENOENT; /* Magic is gone - report failure */
  		kfree(wq->name);
-@@ -45,7 +45,6 @@ void autofs4_catatonic_mode(struct autof
- 		fput(sbi->pipe);	/* Close the pipe */
- 		sbi->pipe = NULL;
+@@ -41,11 +41,8 @@ void autofs4_catatonic_mode(struct autof
+ 		wake_up_interruptible(&wq->queue);
+ 		wq = nwq;
  	}
+-	if (sbi->pipe) {
+-		fput(sbi->pipe);	/* Close the pipe */
+-		sbi->pipe = NULL;
+-	}
 -
++	fput(sbi->pipe);	/* Close the pipe */
++	sbi->pipe = NULL;
  	shrink_dcache_sb(sbi->sb);
  }
  
-@@ -98,7 +97,10 @@ static void autofs4_notify_daemon(struct
+@@ -98,7 +95,10 @@ static void autofs4_notify_daemon(struct
  
  	pkt.hdr.proto_version = sbi->version;
  	pkt.hdr.type = type;
@@ -1612,7 +1741,7 @@ diff -Nurp linux-2.6.12.orig/fs/autofs4/waitq.c linux-2.6.12/fs/autofs4/waitq.c
  		struct autofs_packet_missing *mp = &pkt.missing;
  
  		pktsz = sizeof(*mp);
-@@ -107,7 +109,10 @@ static void autofs4_notify_daemon(struct
+@@ -107,7 +107,10 @@ static void autofs4_notify_daemon(struct
  		mp->len = wq->len;
  		memcpy(mp->name, wq->name, wq->len);
  		mp->name[wq->len] = '\0';
@@ -1624,7 +1753,7 @@ diff -Nurp linux-2.6.12.orig/fs/autofs4/waitq.c linux-2.6.12/fs/autofs4/waitq.c
  		struct autofs_packet_expire_multi *ep = &pkt.expire_multi;
  
  		pktsz = sizeof(*ep);
-@@ -116,7 +121,34 @@ static void autofs4_notify_daemon(struct
+@@ -116,7 +119,34 @@ static void autofs4_notify_daemon(struct
  		ep->len = wq->len;
  		memcpy(ep->name, wq->name, wq->len);
  		ep->name[wq->len] = '\0';
@@ -1660,7 +1789,7 @@ diff -Nurp linux-2.6.12.orig/fs/autofs4/waitq.c linux-2.6.12/fs/autofs4/waitq.c
  		printk("autofs4_notify_daemon: bad type %d!\n", type);
  		return;
  	}
-@@ -157,43 +189,95 @@ static int autofs4_getpath(struct autofs
+@@ -157,43 +187,95 @@ static int autofs4_getpath(struct autofs
  	return len;
  }
  
@@ -1769,7 +1898,7 @@ diff -Nurp linux-2.6.12.orig/fs/autofs4/waitq.c linux-2.6.12/fs/autofs4/waitq.c
  			kfree(name);
  			up(&sbi->wq_sem);
  			return -ENOMEM;
-@@ -205,13 +289,40 @@ int autofs4_wait(struct autofs_sb_info *
+@@ -205,13 +287,40 @@ int autofs4_wait(struct autofs_sb_info *
  		wq->next = sbi->queues;
  		sbi->queues = wq;
  		init_waitqueue_head(&wq->queue);
@@ -1812,7 +1941,7 @@ diff -Nurp linux-2.6.12.orig/fs/autofs4/waitq.c linux-2.6.12/fs/autofs4/waitq.c
  	} else {
  		atomic_inc(&wq->wait_ctr);
  		up(&sbi->wq_sem);
-@@ -220,17 +331,6 @@ int autofs4_wait(struct autofs_sb_info *
+@@ -220,17 +329,6 @@ int autofs4_wait(struct autofs_sb_info *
  			(unsigned long) wq->wait_queue_token, wq->len, wq->name, notify);
  	}
  
@@ -1830,7 +1959,7 @@ diff -Nurp linux-2.6.12.orig/fs/autofs4/waitq.c linux-2.6.12/fs/autofs4/waitq.c
  	/* wq->name is NULL if and only if the lock is already released */
  
  	if ( sbi->catatonic ) {
-@@ -278,12 +378,12 @@ int autofs4_wait_release(struct autofs_s
+@@ -278,12 +376,12 @@ int autofs4_wait_release(struct autofs_s
  	struct autofs_wait_queue *wq, **wql;
  
  	down(&sbi->wq_sem);
@@ -1848,7 +1977,7 @@ diff -Nurp linux-2.6.12.orig/fs/autofs4/waitq.c linux-2.6.12/fs/autofs4/waitq.c
  	}
 diff -Nurp linux-2.6.12.orig/fs/namei.c linux-2.6.12/fs/namei.c
 --- linux-2.6.12.orig/fs/namei.c	2005-06-18 03:48:29.000000000 +0800
-+++ linux-2.6.12/fs/namei.c	2006-08-31 14:11:53.000000000 +0800
++++ linux-2.6.12/fs/namei.c	2007-01-03 21:37:53.000000000 +0900
 @@ -317,6 +317,29 @@ void path_release_on_umount(struct namei
  	_mntput(nd->mnt);
  }
@@ -1947,7 +2076,7 @@ diff -Nurp linux-2.6.12.orig/fs/namei.c linux-2.6.12/fs/namei.c
  	return PTR_ERR(dentry);
 diff -Nurp linux-2.6.12.orig/fs/namespace.c linux-2.6.12/fs/namespace.c
 --- linux-2.6.12.orig/fs/namespace.c	2005-06-18 03:48:29.000000000 +0800
-+++ linux-2.6.12/fs/namespace.c	2006-08-31 14:11:53.000000000 +0800
++++ linux-2.6.12/fs/namespace.c	2007-01-03 21:37:53.000000000 +0900
 @@ -308,9 +308,9 @@ resume:
  	spin_unlock(&vfsmount_lock);
  
@@ -1975,7 +2104,7 @@ diff -Nurp linux-2.6.12.orig/fs/namespace.c linux-2.6.12/fs/namespace.c
  EXPORT_SYMBOL(may_umount);
 diff -Nurp linux-2.6.12.orig/include/linux/auto_fs4.h linux-2.6.12/include/linux/auto_fs4.h
 --- linux-2.6.12.orig/include/linux/auto_fs4.h	2005-06-18 03:48:29.000000000 +0800
-+++ linux-2.6.12/include/linux/auto_fs4.h	2006-08-31 14:11:53.000000000 +0800
++++ linux-2.6.12/include/linux/auto_fs4.h	2007-01-03 21:37:53.000000000 +0900
 @@ -19,18 +19,37 @@
  #undef AUTOFS_MIN_PROTO_VERSION
  #undef AUTOFS_MAX_PROTO_VERSION

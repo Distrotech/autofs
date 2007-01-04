@@ -1,0 +1,66 @@
+diff -Nurp linux-2.6.19.orig/fs/autofs/inode.c linux-2.6.19/fs/autofs/inode.c
+--- linux-2.6.19.orig/fs/autofs/inode.c	2006-11-30 05:57:37.000000000 +0800
++++ linux-2.6.19/fs/autofs/inode.c	2007-01-03 21:53:41.000000000 +0900
+@@ -28,10 +28,11 @@ void autofs_kill_sb(struct super_block *
+ 	/*
+ 	 * In the event of a failure in get_sb_nodev the superblock
+ 	 * info is not present so nothing else has been setup, so
+-	 * just exit when we are called from deactivate_super.
++	 * just call kill_anon_super when we are called from
++	 * deactivate_super.
+ 	 */
+ 	if (!sbi)
+-		return;
++		goto out_kill_sb;
+ 
+ 	if ( !sbi->catatonic )
+ 		autofs_catatonic_mode(sbi); /* Free wait queues, close pipe */
+@@ -44,6 +45,7 @@ void autofs_kill_sb(struct super_block *
+ 
+ 	kfree(sb->s_fs_info);
+ 
++out_kill_sb:
+ 	DPRINTK(("autofs: shutting down\n"));
+ 	kill_anon_super(sb);
+ }
+@@ -209,7 +211,6 @@ fail_iput:
+ fail_free:
+ 	kfree(sbi);
+ 	s->s_fs_info = NULL;
+-	kill_anon_super(s);
+ fail_unlock:
+ 	return -EINVAL;
+ }
+diff -Nurp linux-2.6.19.orig/fs/autofs4/inode.c linux-2.6.19/fs/autofs4/inode.c
+--- linux-2.6.19.orig/fs/autofs4/inode.c	2006-11-30 05:57:37.000000000 +0800
++++ linux-2.6.19/fs/autofs4/inode.c	2007-01-03 21:53:41.000000000 +0900
+@@ -152,10 +152,11 @@ void autofs4_kill_sb(struct super_block 
+ 	/*
+ 	 * In the event of a failure in get_sb_nodev the superblock
+ 	 * info is not present so nothing else has been setup, so
+-	 * just exit when we are called from deactivate_super.
++	 * just call kill_anon_super when we are called from
++	 * deactivate_super.
+ 	 */
+ 	if (!sbi)
+-		return;
++		goto out_kill_sb;
+ 
+ 	sb->s_fs_info = NULL;
+ 
+@@ -167,6 +168,7 @@ void autofs4_kill_sb(struct super_block 
+ 
+ 	kfree(sbi);
+ 
++out_kill_sb:
+ 	DPRINTK("shutting down");
+ 	kill_anon_super(sb);
+ }
+@@ -426,7 +428,6 @@ fail_ino:
+ fail_free:
+ 	kfree(sbi);
+ 	s->s_fs_info = NULL;
+-	kill_anon_super(s);
+ fail_unlock:
+ 	return -EINVAL;
+ }

@@ -1,6 +1,6 @@
-diff -Nurp linux-2.6.17.orig/fs/autofs/autofs_i.h linux-2.6.17/fs/autofs/autofs_i.h
---- linux-2.6.17.orig/fs/autofs/autofs_i.h	2006-06-18 09:49:35.000000000 +0800
-+++ linux-2.6.17/fs/autofs/autofs_i.h	2007-01-03 21:49:35.000000000 +0900
+diff -Nurp linux-2.6.18.orig/fs/autofs/autofs_i.h linux-2.6.18/fs/autofs/autofs_i.h
+--- linux-2.6.18.orig/fs/autofs/autofs_i.h	2006-09-20 11:42:06.000000000 +0800
++++ linux-2.6.18/fs/autofs/autofs_i.h	2007-01-03 21:51:30.000000000 +0900
 @@ -151,6 +151,7 @@ extern const struct file_operations auto
  /* Initializing function */
  
@@ -9,9 +9,9 @@ diff -Nurp linux-2.6.17.orig/fs/autofs/autofs_i.h linux-2.6.17/fs/autofs/autofs_
  
  /* Queue management functions */
  
-diff -Nurp linux-2.6.17.orig/fs/autofs/init.c linux-2.6.17/fs/autofs/init.c
---- linux-2.6.17.orig/fs/autofs/init.c	2006-06-18 09:49:35.000000000 +0800
-+++ linux-2.6.17/fs/autofs/init.c	2007-01-03 21:49:35.000000000 +0900
+diff -Nurp linux-2.6.18.orig/fs/autofs/init.c linux-2.6.18/fs/autofs/init.c
+--- linux-2.6.18.orig/fs/autofs/init.c	2006-09-20 11:42:06.000000000 +0800
++++ linux-2.6.18/fs/autofs/init.c	2007-01-03 21:51:30.000000000 +0900
 @@ -24,7 +24,7 @@ static struct file_system_type autofs_fs
  	.owner		= THIS_MODULE,
  	.name		= "autofs",
@@ -21,9 +21,9 @@ diff -Nurp linux-2.6.17.orig/fs/autofs/init.c linux-2.6.17/fs/autofs/init.c
  };
  
  static int __init init_autofs_fs(void)
-diff -Nurp linux-2.6.17.orig/fs/autofs/inode.c linux-2.6.17/fs/autofs/inode.c
---- linux-2.6.17.orig/fs/autofs/inode.c	2006-06-18 09:49:35.000000000 +0800
-+++ linux-2.6.17/fs/autofs/inode.c	2007-01-03 21:49:35.000000000 +0900
+diff -Nurp linux-2.6.18.orig/fs/autofs/inode.c linux-2.6.18/fs/autofs/inode.c
+--- linux-2.6.18.orig/fs/autofs/inode.c	2006-09-20 11:42:06.000000000 +0800
++++ linux-2.6.18/fs/autofs/inode.c	2007-01-03 21:51:30.000000000 +0900
 @@ -19,11 +19,20 @@
  #include "autofs_i.h"
  #include <linux/module.h>
@@ -89,9 +89,9 @@ diff -Nurp linux-2.6.17.orig/fs/autofs/inode.c linux-2.6.17/fs/autofs/inode.c
  fail_unlock:
  	return -EINVAL;
  }
-diff -Nurp linux-2.6.17.orig/fs/autofs/waitq.c linux-2.6.17/fs/autofs/waitq.c
---- linux-2.6.17.orig/fs/autofs/waitq.c	2006-06-18 09:49:35.000000000 +0800
-+++ linux-2.6.17/fs/autofs/waitq.c	2007-01-03 21:49:35.000000000 +0900
+diff -Nurp linux-2.6.18.orig/fs/autofs/waitq.c linux-2.6.18/fs/autofs/waitq.c
+--- linux-2.6.18.orig/fs/autofs/waitq.c	2006-09-20 11:42:06.000000000 +0800
++++ linux-2.6.18/fs/autofs/waitq.c	2007-01-03 21:51:30.000000000 +0900
 @@ -41,6 +41,7 @@ void autofs_catatonic_mode(struct autofs
  		wq = nwq;
  	}
@@ -100,9 +100,9 @@ diff -Nurp linux-2.6.17.orig/fs/autofs/waitq.c linux-2.6.17/fs/autofs/waitq.c
  	autofs_hash_dputall(&sbi->dirhash); /* Remove all dentry pointers */
  }
  
-diff -Nurp linux-2.6.17.orig/fs/autofs4/autofs_i.h linux-2.6.17/fs/autofs4/autofs_i.h
---- linux-2.6.17.orig/fs/autofs4/autofs_i.h	2006-06-18 09:49:35.000000000 +0800
-+++ linux-2.6.17/fs/autofs4/autofs_i.h	2007-01-03 21:49:35.000000000 +0900
+diff -Nurp linux-2.6.18.orig/fs/autofs4/autofs_i.h linux-2.6.18/fs/autofs4/autofs_i.h
+--- linux-2.6.18.orig/fs/autofs4/autofs_i.h	2006-09-20 11:42:06.000000000 +0800
++++ linux-2.6.18/fs/autofs4/autofs_i.h	2007-01-03 21:51:30.000000000 +0900
 @@ -96,7 +96,6 @@ struct autofs_wait_queue {
  
  struct autofs_sb_info {
@@ -117,25 +117,9 @@ diff -Nurp linux-2.6.17.orig/fs/autofs4/autofs_i.h linux-2.6.17/fs/autofs4/autof
  void autofs4_dentry_release(struct dentry *);
 -
 +extern void autofs4_kill_sb(struct super_block *);
-diff -Nurp linux-2.6.17.orig/fs/autofs4/expire.c linux-2.6.17/fs/autofs4/expire.c
---- linux-2.6.17.orig/fs/autofs4/expire.c	2006-06-18 09:49:35.000000000 +0800
-+++ linux-2.6.17/fs/autofs4/expire.c	2007-01-03 21:49:35.000000000 +0900
-@@ -174,6 +174,12 @@ static int autofs4_tree_busy(struct vfsm
- 			struct autofs_info *ino = autofs4_dentry_ino(p);
- 			unsigned int ino_count = atomic_read(&ino->count);
- 
-+			/*
-+			 * Clean stale dentries below that have not been
-+			 * invalidated after a mount fail during lookup
-+			 */
-+			d_invalidate(p);
-+
- 			/* allow for dget above and top is already dgot */
- 			if (p == top)
- 				ino_count += 2;
-diff -Nurp linux-2.6.17.orig/fs/autofs4/init.c linux-2.6.17/fs/autofs4/init.c
---- linux-2.6.17.orig/fs/autofs4/init.c	2006-06-18 09:49:35.000000000 +0800
-+++ linux-2.6.17/fs/autofs4/init.c	2007-01-03 21:49:35.000000000 +0900
+diff -Nurp linux-2.6.18.orig/fs/autofs4/init.c linux-2.6.18/fs/autofs4/init.c
+--- linux-2.6.18.orig/fs/autofs4/init.c	2006-09-20 11:42:06.000000000 +0800
++++ linux-2.6.18/fs/autofs4/init.c	2007-01-03 21:51:30.000000000 +0900
 @@ -24,7 +24,7 @@ static struct file_system_type autofs_fs
  	.owner		= THIS_MODULE,
  	.name		= "autofs",
@@ -145,9 +129,9 @@ diff -Nurp linux-2.6.17.orig/fs/autofs4/init.c linux-2.6.17/fs/autofs4/init.c
  };
  
  static int __init init_autofs4_fs(void)
-diff -Nurp linux-2.6.17.orig/fs/autofs4/inode.c linux-2.6.17/fs/autofs4/inode.c
---- linux-2.6.17.orig/fs/autofs4/inode.c	2006-06-18 09:49:35.000000000 +0800
-+++ linux-2.6.17/fs/autofs4/inode.c	2007-01-03 21:49:35.000000000 +0900
+diff -Nurp linux-2.6.18.orig/fs/autofs4/inode.c linux-2.6.18/fs/autofs4/inode.c
+--- linux-2.6.18.orig/fs/autofs4/inode.c	2006-09-20 11:42:06.000000000 +0800
++++ linux-2.6.18/fs/autofs4/inode.c	2007-01-03 21:51:30.000000000 +0900
 @@ -95,9 +95,12 @@ void autofs4_free_ino(struct autofs_info
   */
  static void autofs4_force_release(struct autofs_sb_info *sbi)
@@ -253,9 +237,9 @@ diff -Nurp linux-2.6.17.orig/fs/autofs4/inode.c linux-2.6.17/fs/autofs4/inode.c
  fail_unlock:
  	return -EINVAL;
  }
-diff -Nurp linux-2.6.17.orig/fs/autofs4/root.c linux-2.6.17/fs/autofs4/root.c
---- linux-2.6.17.orig/fs/autofs4/root.c	2006-06-18 09:49:35.000000000 +0800
-+++ linux-2.6.17/fs/autofs4/root.c	2007-01-03 21:49:35.000000000 +0900
+diff -Nurp linux-2.6.18.orig/fs/autofs4/root.c linux-2.6.18/fs/autofs4/root.c
+--- linux-2.6.18.orig/fs/autofs4/root.c	2006-09-20 11:42:06.000000000 +0800
++++ linux-2.6.18/fs/autofs4/root.c	2007-01-03 21:51:30.000000000 +0900
 @@ -137,7 +137,9 @@ static int autofs4_dir_open(struct inode
  		nd.flags = LOOKUP_DIRECTORY;
  		ret = (dentry->d_op->d_revalidate)(dentry, &nd);
@@ -347,9 +331,9 @@ diff -Nurp linux-2.6.17.orig/fs/autofs4/root.c linux-2.6.17/fs/autofs4/root.c
  	}
  
  	/*
-diff -Nurp linux-2.6.17.orig/fs/autofs4/waitq.c linux-2.6.17/fs/autofs4/waitq.c
---- linux-2.6.17.orig/fs/autofs4/waitq.c	2006-06-18 09:49:35.000000000 +0800
-+++ linux-2.6.17/fs/autofs4/waitq.c	2007-01-03 21:49:35.000000000 +0900
+diff -Nurp linux-2.6.18.orig/fs/autofs4/waitq.c linux-2.6.18/fs/autofs4/waitq.c
+--- linux-2.6.18.orig/fs/autofs4/waitq.c	2006-09-20 11:42:06.000000000 +0800
++++ linux-2.6.18/fs/autofs4/waitq.c	2007-01-03 21:51:30.000000000 +0900
 @@ -41,10 +41,8 @@ void autofs4_catatonic_mode(struct autof
  		wake_up_interruptible(&wq->queue);
  		wq = nwq;
@@ -363,10 +347,10 @@ diff -Nurp linux-2.6.17.orig/fs/autofs4/waitq.c linux-2.6.17/fs/autofs4/waitq.c
  	shrink_dcache_sb(sbi->sb);
  }
  
-diff -Nurp linux-2.6.17.orig/fs/namei.c linux-2.6.17/fs/namei.c
---- linux-2.6.17.orig/fs/namei.c	2006-06-18 09:49:35.000000000 +0800
-+++ linux-2.6.17/fs/namei.c	2007-01-03 21:49:35.000000000 +0900
-@@ -365,6 +365,29 @@ void release_open_intent(struct nameidat
+diff -Nurp linux-2.6.18.orig/fs/namei.c linux-2.6.18/fs/namei.c
+--- linux-2.6.18.orig/fs/namei.c	2006-09-20 11:42:06.000000000 +0800
++++ linux-2.6.18/fs/namei.c	2007-01-03 21:51:30.000000000 +0900
+@@ -372,6 +372,29 @@ void release_open_intent(struct nameidat
  		fput(nd->intent.open.file);
  }
  
@@ -396,7 +380,7 @@ diff -Nurp linux-2.6.17.orig/fs/namei.c linux-2.6.17/fs/namei.c
  /*
   * Internal lookup() using the new generic dcache.
   * SMP-safe
-@@ -379,12 +402,9 @@ static struct dentry * cached_lookup(str
+@@ -386,12 +409,9 @@ static struct dentry * cached_lookup(str
  	if (!dentry)
  		dentry = d_lookup(parent, name);
  
@@ -412,7 +396,7 @@ diff -Nurp linux-2.6.17.orig/fs/namei.c linux-2.6.17/fs/namei.c
  	return dentry;
  }
  
-@@ -477,10 +497,9 @@ static struct dentry * real_lookup(struc
+@@ -484,10 +504,9 @@ static struct dentry * real_lookup(struc
  	 */
  	mutex_unlock(&dir->i_mutex);
  	if (result->d_op && result->d_op->d_revalidate) {
@@ -425,7 +409,7 @@ diff -Nurp linux-2.6.17.orig/fs/namei.c linux-2.6.17/fs/namei.c
  	}
  	return result;
  }
-@@ -760,12 +779,12 @@ need_lookup:
+@@ -767,12 +786,12 @@ need_lookup:
  	goto done;
  
  need_revalidate:
