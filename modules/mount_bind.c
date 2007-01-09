@@ -64,7 +64,7 @@ int mount_init(void **context)
 	spawn_umount(log_debug, "-n", t2_dir, NULL);
 
 out:
-	rmdir(t2_dir);
+	rmdir(t1_dir);
 	rmdir(t2_dir);
 
 	return 0;
