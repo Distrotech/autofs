@@ -44,7 +44,7 @@ CC        = gcc
 CXX       = g++
 CXXFLAGS  = $(CFLAGS)
 LD        = ld
-SOLDFLAGS = -shared -Xlinker -rpath -Xlinker $(autofslibdir)
+SOLDFLAGS = -shared
 
 CFLAGS += -D_REENTRANT
 LDFLAGS += -lpthread
