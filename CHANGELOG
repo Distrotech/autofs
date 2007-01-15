@@ -2,6 +2,7 @@
 ---------------------
 - fix typo in Fix typo in var when removing temp directory.
 - remove redundant rpath link option.
+- ignore "winbind" if it appears in "automount" nsswitch.conf.
 
 4/1/2007 autofs-5.0.1 rc3
 -------------------------

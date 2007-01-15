@@ -51,6 +51,7 @@ extern int nss_lineno;
 extern int nss_lex(void);
 extern FILE *nss_in;
 
+static int nss_ignore(const char *s);
 static int nss_error(const char *s);
 
 %}
@@ -82,18 +83,24 @@ sources: nss_source
 
 nss_source: SOURCE
 {
-	src = add_source(nss_list, $1);
+	if (strcmp($1, "winbind"))
+		src = add_source(nss_list, $1);
+	else
+		nss_ignore($1);
 } | SOURCE LBRACKET status_exp_list RBRACKET
 {
 	enum nsswitch_status a;
 
-	src = add_source(nss_list, $1);
-	for (a = 0; a < NSS_STATUS_MAX; a++) {
-		if (act[a].action != NSS_ACTION_UNKNOWN) {
-			src->action[a].action = act[a].action;
-			src->action[a].negated = act[a].negated;
+	if (strcmp($1, "winbind")) {
+		src = add_source(nss_list, $1);
+		for (a = 0; a < NSS_STATUS_MAX; a++) {
+			if (act[a].action != NSS_ACTION_UNKNOWN) {
+				src->action[a].action = act[a].action;
+				src->action[a].negated = act[a].negated;
+			}
 		}
-	}
+	} else
+		nss_ignore($1);
 } | SOURCE LBRACKET status_exp_list SOURCE { nss_error($4); YYABORT; }
   | SOURCE LBRACKET status_exp_list OTHER { nss_error($4); YYABORT; }
   | SOURCE LBRACKET status_exp_list NL { nss_error("no closing bracket"); YYABORT; }
@@ -117,6 +124,12 @@ status_exp: STATUS EQUAL ACTION
   | BANG OTHER {nss_error($2); YYABORT; };
 
 %%
+
+static int nss_ignore(const char *s)
+{
+	msg("ignored invalid nsswitch config near [ %s ]", s);
+	return(0);
+}
 
 static int nss_error(const char *s)
 {
