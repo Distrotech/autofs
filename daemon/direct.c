@@ -930,6 +930,7 @@ void *expire_proc_direct(void *arg)
 
 		if (!strcmp(next->fs_type, "autofs")) {
 			struct stat st;
+			struct statfs fs;
 			int ioctlfd;
 
 			cache_unlock(me->mc);
@@ -950,7 +951,14 @@ void *expire_proc_direct(void *arg)
 				continue;
 			}
 
-			if (tree_is_mounted(mnts, next->path, MNTS_REAL)) {
+			if (statfs(next->path, &fs) == -1) {
+				pthread_setcancelstate(cur_state, NULL);
+				warn(ap->logopt,
+				    "fstatfs failed for %s", next->path);
+				continue;
+			}
+
+			if (fs.f_type != AUTOFS_SUPER_MAGIC) {
 				pthread_setcancelstate(cur_state, NULL);
 				continue;
 			}
