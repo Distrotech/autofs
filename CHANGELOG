@@ -4,6 +4,7 @@
 - remove redundant rpath link option.
 - ignore "winbind" if it appears in "automount" nsswitch.conf.
 - fix another expire regression introduced in the "mitigate manual umount" patch.
+- correct check for busy offset mounts before offset umount.
 
 4/1/2007 autofs-5.0.1 rc3
 -------------------------
