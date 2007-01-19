@@ -456,10 +456,8 @@ int umount_multi_triggers(struct autofs_point *ap, char *root, struct mapent *me
 		oe_base = oe->key + strlen(root);
 		left += umount_multi_triggers(ap, root, oe, oe_base);
 
-		debug(LOGOPT_ANY, "check %s %d", oe->key, oe->ioctlfd);
 		if (oe->ioctlfd != -1)
 			left++;
-		debug(LOGOPT_ANY, "left %d", left);
 	}
 
 	if (left)
