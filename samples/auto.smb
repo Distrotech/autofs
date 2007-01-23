@@ -20,7 +20,16 @@ done
 
 $SMBCLIENT -gNL $key 2>/dev/null| awk -v key="$key" -v opts="$opts" -F'|' -- '
 	BEGIN	{ ORS=""; first=1 }
-	/Disk/	{ if (first) { print opts; first=0 }; sub(/ /, "\\ ", $2); print " \\\n\t /" $2, "://" key "/" $2 }
+	/Disk/	{
+		  if (first)
+			print opts; first=0
+		  dir = $2
+		  loc = $2
+		  # Enclose mount dir and location in quotes
+		  # Double quote "$" in location as it is special
+		  gsub(/\$$/, "\\$", loc);
+		  print " \\\n\t \"/" dir "\"", "\"://" key "/" loc "\""
+		}
 	END 	{ if (!first) print "\n"; else exit 1 }
 	'
 

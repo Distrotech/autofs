@@ -89,6 +89,18 @@ int chunklen(const char *whence, int expect_colon)
 				quote = 1;
 				continue;
 			}
+		case '"':
+			if (quote)
+				break;
+			while (*str) {
+				str++;
+				n++;
+				if (*str == '"')
+					break;
+				if (*str == ':')
+					expect_colon = 0;
+			}
+			break;
 		case ':':
 			if (expect_colon)
 				expect_colon = 0;
@@ -185,11 +197,19 @@ int span_space(const char *str, unsigned int maxlen)
 	const char *p = str;
 	unsigned int len = 0;
 
-	while (!isblank(*(p++)) && len++ < maxlen) {
-		if (*p == '\\') {
+	while (*p && !isblank(*p) && len < maxlen) {
+		if (*p == '"') {
+			while (*p++ && len++ < maxlen) {
+				if (*p == '"')
+					break;
+			}
+		} else if (*p == '\\') {
 			p += 2;
 			len += 2;
+			continue;
 		}
+		p++;
+		len++;
 	}
 	return len;
 }

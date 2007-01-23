@@ -193,6 +193,23 @@ int expandsunent(const char *src, char *dst, const char *key,
 			}
 			break;
 
+		case '"':
+			len++;
+			if (dst)
+				*dst++ = ch;
+
+			while (*src && *src != '"') {
+				len++;
+				if (dst)
+					*dst++ = *src;
+				src++;
+			}
+			if (*src && dst) {
+				len++;
+				*dst++ = *src++;
+			}
+			break;
+
 		case ':':
 			if (dst)
 				*(dst++) = 
@@ -573,7 +590,10 @@ static int check_is_multi(const char *mapent)
 		     MODPREFIX "unexpected NULL map entry pointer");
 		return 0;
 	}
-	
+
+	if (*p == '"')
+		p++;
+
 	/* If first character is "/" it's a multi-mount */
 	if (*p == '/')
 		return 1;
@@ -590,6 +610,8 @@ static int check_is_multi(const char *mapent)
 		 * entry.
 		 */
 		if (not_first_chunk) {
+			if (*p == '"')
+				p++;
 			if (*p == '/' || *p == '-') {
 				multi = 1;
 				break;
@@ -749,17 +771,17 @@ static int parse_mapent(const char *ent, char *g_options, char **options, char *
 
 	debug(logopt, MODPREFIX "gathered options: %s", myoptions);
 
-	/* Location can't begin with a '/' */
-	if (*p == '/') {
-		warn(logopt, MODPREFIX "error location begins with \"/\"");
-		free(myoptions);
-		return 0;
-	}
-
 	l = chunklen(p, check_colon(p));
 	loc = dequote(p, l, logopt);
 	if (!loc) {
 		warn(logopt, MODPREFIX "possible missing location");
+		free(myoptions);
+		return 0;
+	}
+
+	/* Location can't begin with a '/' */
+	if (*p == '/') {
+		warn(logopt, MODPREFIX "error location begins with \"/\"");
 		free(myoptions);
 		return 0;
 	}
@@ -776,22 +798,22 @@ static int parse_mapent(const char *ent, char *g_options, char **options, char *
 	p += l;
 	p = skipspace(p);
 
-	while (*p && *p != '/') {
+	while (*p && ((*p == '"' && *(p + 1) != '/') || (*p != '"' && *p != '/'))) {
 		char *tmp, *ent;
-
-		/* Location can't begin with a '/' */
-		if (*p == '/') {
-			warn(logopt,
-			      MODPREFIX "error location begins with \"/\"");
-			free(myoptions);
-			free(loc);
-			return 0;
-		}
 
 		l = chunklen(p, check_colon(p));
 		ent = dequote(p, l, logopt);
 		if (!ent) {
 			warn(logopt, MODPREFIX "null location or out of memory");
+			free(myoptions);
+			free(loc);
+			return 0;
+		}
+
+		/* Location can't begin with a '/' */
+		if (*p == '/') {
+			warn(logopt,
+			      MODPREFIX "error location begins with \"/\"");
 			free(myoptions);
 			free(loc);
 			return 0;
@@ -1077,7 +1099,7 @@ int parse_mount(struct autofs_point *ap, const char *name,
 			char *path, *myoptions, *loc;
 			int status;
 
-			if (*p != '/') {
+			if ((*p == '"' && *(p + 1) != '/') || (*p != '"' && *p != '/')) {
 				l = 0;
 				path = dequote("/", 1, ap->logopt);
 				debug(ap->logopt,
@@ -1139,7 +1161,7 @@ int parse_mount(struct autofs_point *ap, const char *name,
 			free(loc);
 			free(path);
 			free(myoptions);
-		} while (*p == '/');
+		} while (*p == '/' || (*p == '"' && *(p + 1) == '/'));
 
 		/*
 		 * We've got the ordered list of multi-mount entries so go
@@ -1203,19 +1225,19 @@ int parse_mount(struct autofs_point *ap, const char *name,
 		int loclen;
 		int l;
 
-		/* Location can't begin with a '/' */
-		if (*p == '/') {
-			free(options);
-			warn(ap->logopt,
-			      MODPREFIX "error location begins with \"/\"");
-			return 1;
-		}
-
 		l = chunklen(p, check_colon(p));
 		loc = dequote(p, l, ap->logopt);
 		if (!loc) {
 			free(options);
 			warn(ap->logopt, MODPREFIX "null location or out of memory");
+			return 1;
+		}
+
+		/* Location can't begin with a '/' */
+		if (*p == '/') {
+			free(options);
+			warn(ap->logopt,
+			      MODPREFIX "error location begins with \"/\"");
 			return 1;
 		}
 
