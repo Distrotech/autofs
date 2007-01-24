@@ -41,7 +41,7 @@ typedef enum {
 } LOOKUP_STATE;
 
 typedef enum { got_nothing, got_star, got_real, got_plus } FOUND_STATE;
-typedef enum { esc_none, esc_char, esc_val } ESCAPES;
+typedef enum { esc_none, esc_char, esc_val, esc_all } ESCAPES;
 
 
 struct lookup_context {
@@ -143,6 +143,8 @@ static int read_one(FILE *f, char *key, unsigned int *k_len, char *mapent, unsig
 				ungetc(nch, f);
 				escape = esc_char;
 			}
+			if (ch == '"')
+				escape = esc_all;
 			break;
 
 		case esc_char:
@@ -151,6 +153,11 @@ static int read_one(FILE *f, char *key, unsigned int *k_len, char *mapent, unsig
 
 		case esc_val:
 			escape = esc_none;
+			break;
+
+		case esc_all:
+			if (ch == '"')
+				escape = esc_none;
 			break;
 		}
 
@@ -171,6 +178,10 @@ static int read_one(FILE *f, char *key, unsigned int *k_len, char *mapent, unsig
 					*(kptr++) = ch;
 					key_len++;
 				}
+			} else if (escape == esc_all) {
+				state = st_compare;
+				*(kptr++) = ch;
+				key_len++;
 			} else if (escape == esc_char);
 			else
 				state = st_badent;
@@ -181,7 +192,11 @@ static int read_one(FILE *f, char *key, unsigned int *k_len, char *mapent, unsig
 				state = st_begin;
 				if (gotten == got_plus)
 					goto got_it;
-				if (escape != esc_val)
+				else if (escape == esc_all) {
+					warn(LOGOPT_ANY, MODPREFIX
+					    "unmatched \" in map key %s", key);
+					goto next;
+				} else if (escape != esc_val)
 					goto got_it;
 			} else if (isspace(ch) && !escape) {
 				getting = got_real;
@@ -199,6 +214,10 @@ static int read_one(FILE *f, char *key, unsigned int *k_len, char *mapent, unsig
 					      "length is %d", key,
 					      KEY_MAX_LEN);
 				} else {
+					if (escape == esc_val) {
+						*(kptr++) = '\\';
+						key_len++;
+					}
 					*(kptr++) = ch;
 					key_len++;
 				}
@@ -237,9 +256,12 @@ static int read_one(FILE *f, char *key, unsigned int *k_len, char *mapent, unsig
 						break;
 					}
 					p = mapent;
-					*(p++) = '\\';
+					if (escape == esc_val) {
+						*(p++) = '\\';
+						mapent_len++;
+					}
 					*(p++) = ch;
-					mapent_len = 2;
+					mapent_len++;
 				} else {
 					p = mapent;
 					*(p++) = ch;
@@ -264,6 +286,12 @@ static int read_one(FILE *f, char *key, unsigned int *k_len, char *mapent, unsig
 				}
 				ungetc(nch, f);
 				state = st_begin;
+				if (escape == esc_all) {
+					warn(LOGOPT_ANY, MODPREFIX
+					     "unmatched \" in %s for key %s",
+					     mapent, key);
+					goto next;
+				}
 				if (gotten == got_real || gotten == getting)
 					goto got_it;
 			} else if (mapent_len < MAPENT_MAX_LEN) {
