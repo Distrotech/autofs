@@ -135,9 +135,32 @@ int expandsunent(const char *src, char *dst, const char *key,
 		switch (ch) {
 		case '&':
 			l = strlen(key);
-			if (dst) {
-				strcpy(dst, key);
-				dst += l;
+			/*
+			 * In order to ensure that any spaces in the key
+			 * re preserved, we need to escape them here.
+			 */
+			if (strchr(key, ' ')) {
+				char *keyp = key;
+				while (*keyp) {
+					if (isspace(*keyp)) {
+						if (dst) {
+							*dst++ = '\\';
+							*dst++ = *keyp++;
+						} else
+							keyp++;
+						l++;
+					} else {
+						if (dst)
+							*dst++ = *keyp++;
+						else
+							keyp++;
+					}
+				}
+			} else {
+				if (dst) {
+					strcpy(dst, key);
+					dst += l;
+				}
 			}
 			len += l;
 			break;

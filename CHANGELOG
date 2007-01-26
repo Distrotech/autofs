@@ -6,6 +6,7 @@
 - fix another expire regression introduced in the "mitigate manual umount" patch.
 - correct check for busy offset mounts before offset umount.
 - make double quote handing consistent.
+- fix handling of trailing white space in wildcard lookup.
 
 4/1/2007 autofs-5.0.1 rc3
 -------------------------
