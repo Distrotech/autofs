@@ -42,7 +42,8 @@
 #include "log.h"
 #endif
 
-#define MAX_ERR_BUF	512
+#define MAX_IFC_BUF	1024
+#define MAX_ERR_BUF	128
 
 static char *ypdomain = NULL;
 
@@ -755,7 +756,7 @@ void rpc_exports_free(exports list)
 
 static int masked_match(const char *addr, const char *mask)
 {
-	char buf[MAX_ERR_BUF], *ptr;
+	char buf[MAX_IFC_BUF], *ptr;
 	struct sockaddr_in saddr;
 	struct sockaddr_in6 saddr6;
 	struct ifconf ifc;
@@ -926,42 +927,118 @@ static int pattern_match(const char *s, const char *pattern)
 	/* NOTREACHED */
 }
 
+static int name_match(const char *name, const char *pattern)
+{
+	int ret;
+
+	if (strchr(pattern, '*') || strchr(pattern, '?'))
+		ret = pattern_match(name, pattern);
+	else {
+		ret = !memcmp(name, pattern, strlen(pattern));
+		/* Name could still be a netgroup (Solaris) */
+		if (!ret && ypdomain)
+			ret = innetgr(pattern, name, NULL, ypdomain);
+	}
+
+	return ret;
+}
+
+static int fqdn_match(const char *pattern)
+{
+	char buf[MAX_IFC_BUF], *ptr;
+	struct ifconf ifc;
+	struct ifreq *ifr;
+	int sock, cl_flags, ret, i;
+	char fqdn[NI_MAXHOST + 1];
+
+	sock = socket(AF_INET, SOCK_DGRAM, 0);
+	if (sock < 0) {
+		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+		error(LOGOPT_ANY, "socket creation failed: %s", estr);
+		return 0;
+	}
+
+	if ((cl_flags = fcntl(sock, F_GETFD, 0)) != -1) {
+		cl_flags |= FD_CLOEXEC;
+		fcntl(sock, F_SETFD, cl_flags);
+	}
+
+	ifc.ifc_len = sizeof(buf);
+	ifc.ifc_req = (struct ifreq *) buf;
+	ret = ioctl(sock, SIOCGIFCONF, &ifc);
+	if (ret == -1) {
+		close(sock);
+		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+		error(LOGOPT_ANY, "ioctl: %s", estr);
+		return 0;
+	}
+
+	i = 0;
+	ptr = (char *) &ifc.ifc_buf[0];
+
+	while (ptr < buf + ifc.ifc_len) {
+		ifr = (struct ifreq *) ptr;
+
+		switch (ifr->ifr_addr.sa_family) {
+		case AF_INET:
+		{
+			socklen_t slen = sizeof(struct sockaddr);
+
+			ret = getnameinfo(&ifr->ifr_addr, slen, fqdn,
+					  NI_MAXHOST, NULL, 0, NI_NAMEREQD);
+			if (!ret) {
+				ret = name_match(fqdn, pattern);
+				if (ret) {
+					close(sock);
+					return 1;
+				}
+			}
+			break;
+		}
+
+		/* glibc rpc only understands IPv4 atm */
+		case AF_INET6:
+			break;
+
+		default:
+			break;
+		}
+
+		i++;
+		ptr = (char *) &ifc.ifc_req[i];
+	}
+
+	close(sock);
+	return 0;
+}
+
 static int string_match(const char *myname, const char *pattern)
 {
 	struct addrinfo hints, *ni;
 	int ret;
+
+	/* Try simple name match first */
+	ret = name_match(myname, pattern);
+	if (ret)
+		goto done;
 
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_flags = AI_CANONNAME;
 	hints.ai_family = 0;
 	hints.ai_socktype = 0;
 
-	ret = getaddrinfo(myname, NULL, &hints, &ni);
-	if (ret) {
-		error(LOGOPT_ANY, "name lookup failed: %s", gai_strerror(ret));
-		return 0;
-	}
+	/* See if our canonical name matches */
+	if (getaddrinfo(myname, NULL, &hints, &ni) == 0) {
+		ret = name_match(ni->ai_canonname, pattern);
+		freeaddrinfo(ni);
+	} else
+		warn(LOGOPT_ANY, "name lookup failed: %s", gai_strerror(ret));
+	if (ret)
+		goto done;
 
-	if (strchr(pattern, '*') || strchr(pattern, '?')) {
-		ret = pattern_match(myname, pattern);
-		if (!ret)
-			ret = pattern_match(ni->ai_canonname, pattern);
-	} else {
-		/* Match simple nane or FQDN */
-		ret = !memcmp(myname, pattern, strlen(pattern));
-		if (!ret)
-			ret = !memcmp(ni->ai_canonname, pattern, strlen(pattern));
-
-		/* Name could still be a netgroup (Solaris) */
-		if (!ret && ypdomain) {
-			ret = innetgr(pattern, myname, NULL, ypdomain);
-			if (!ret)
-				ret = innetgr(pattern,
-					 ni->ai_canonname, NULL, ypdomain);
-		}
-
-	}
-	freeaddrinfo(ni);
+	/* Lastly see if the name of an interfaces matches */
+	ret = fqdn_match(pattern);
+done:
 	return ret;
 }
 
