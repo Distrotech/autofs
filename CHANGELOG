@@ -8,6 +8,7 @@
 - make double quote handing consistent.
 - fix handling of trailing white space in wildcard lookup.
 - check fqdn of each interface when matching export access list.
+- fix race when setting task done.
 
 4/1/2007 autofs-5.0.1 rc3
 -------------------------

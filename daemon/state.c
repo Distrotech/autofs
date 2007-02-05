@@ -190,9 +190,9 @@ void expire_cleanup(void *arg)
 	if (next != ST_INVAL)
 		nextstate(statefd, next);
 
-	state_mutex_unlock(ap);
-
 	st_set_done(ap);
+
+	state_mutex_unlock(ap);
 
 	return;
 }
@@ -326,10 +326,9 @@ static void do_readmap_cleanup(void *arg)
 	state_mutex_lock(ap);
 
 	nextstate(ap->state_pipe[1], ST_READY);
+	st_set_done(ap);
 
 	state_mutex_unlock(ap);
-
-	st_set_done(ap);
 
 	if (!ap->submount)
 		alarm_add(ap, ap->exp_runfreq);
@@ -723,7 +722,7 @@ int st_add_task(struct autofs_point *ap, enum states state)
 		empty = 0;
 
 		/* Don't add duplicate tasks */
-		if (task->state == state ||
+		if ((task->state == state && !task->done) ||
 		   (ap_state == ST_SHUTDOWN_PENDING ||
 		    ap_state == ST_SHUTDOWN_FORCE))
 			break;
@@ -888,6 +887,7 @@ static void st_set_thid(struct autofs_point *ap, pthread_t thid)
 	return;
 }
 
+/* Requires state mutex to be held */
 static void st_set_done(struct autofs_point *ap)
 {
 	struct list_head *p, *head;
