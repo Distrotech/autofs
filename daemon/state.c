@@ -479,10 +479,6 @@ static unsigned int st_readmap(struct autofs_point *ap)
 	assert(ap->state == ST_READY);
 	assert(ap->readmap_thread == 0);
 
-	/* Turn off timeouts for this mountpoint */
-	if (!ap->submount)
-		alarm_delete(ap);
-
 	ap->state = ST_READMAP;
 
 	ra = malloc(sizeof(struct readmap_args));
@@ -548,10 +544,6 @@ static unsigned int st_prepare_shutdown(struct autofs_point *ap)
 
 	debug(ap->logopt, "state %d path %s", ap->state, ap->path);
 
-	/* Turn off timeouts for this mountpoint */
-	if (!ap->submount)
-		alarm_delete(ap);
-
 	assert(ap->state == ST_READY || ap->state == ST_EXPIRE);
 	ap->state = ST_SHUTDOWN_PENDING;
 
@@ -577,10 +569,6 @@ static unsigned int st_force_shutdown(struct autofs_point *ap)
 	int exp;
 
 	debug(ap->logopt, "state %d path %s", ap->state, ap->path);
-
-	/* Turn off timeouts for this mountpoint */
-	if (!ap->submount)
-		alarm_delete(ap);
 
 	assert(ap->state == ST_READY || ap->state == ST_EXPIRE);
 	ap->state = ST_SHUTDOWN_FORCE;
@@ -609,10 +597,6 @@ static unsigned int st_prune(struct autofs_point *ap)
 	assert(ap->state == ST_READY);
 	ap->state = ST_PRUNE;
 
-	/* Turn off timeouts while we prune */
-	if (!ap->submount)
-		alarm_delete(ap);
-
 	switch (expire_proc(ap, 1)) {
 	case EXP_ERROR:
 	case EXP_PARTIAL:
@@ -633,10 +617,6 @@ static unsigned int st_expire(struct autofs_point *ap)
 
 	assert(ap->state == ST_READY);
 	ap->state = ST_EXPIRE;
-
-	/* Turn off timeouts while we expire */
-	if (!ap->submount)
-		alarm_delete(ap);
 
 	switch (expire_proc(ap, 0)) {
 	case EXP_ERROR:
