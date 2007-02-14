@@ -81,27 +81,23 @@ static int do_mkdir(const char *parent, const char *path, mode_t mode)
 	/* If path exists we're done */
 	status = stat(path, &st);
 	if (status == 0) {
-		if (!S_ISDIR(st.st_mode)) {
+		if (!S_ISDIR(st.st_mode))
 			errno = ENOTDIR;
-			return 0;
-		}
-		return 1;
+		errno = EEXIST;
+		return 0;
 	}
 
 	/*
 	 * If we're trying to create a directory within an autofs fs
-	 * of the path is contained in a localy mounted fs go ahead.
+	 * or the path is contained in a localy mounted fs go ahead.
 	 */
 	status = -1;
 	if (*parent)
 		status = statfs(parent, &fs);
 	if ((status != -1 && fs.f_type == AUTOFS_SUPER_MAGIC) ||
 	    contained_in_local_fs(path)) {
-		if (mkdir(path, mode) == -1) {
-			if (errno == EEXIST)
-				return 1;
+		if (mkdir(path, mode) == -1)
 			return 0;
-		}
 		return 1;
 	}
 
