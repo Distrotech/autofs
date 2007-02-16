@@ -60,6 +60,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 {
 	char *fullpath, buf[MAX_ERR_BUF];
 	struct host *this, *hosts = NULL;
+	unsigned int save_ghost = ap->ghost;
 	unsigned int vers;
 	char *nfsoptions = NULL;
 	int len, rlen, status, err, existed = 1;
@@ -183,19 +184,35 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 	if (!status)
 		existed = 0;
 
+	/*
+	 * We need to stop the bind mount module from removing the
+	 * mount point directory if a bind attempt fails so abuse
+	 * the ap->ghost field for this.
+	 */
+	ap->ghost = 1;
+
 	this = hosts;
 	while (this) {
-		char *loc;
+		char *loc, *port_opt = NULL;
 
 		if (is_mounted(_PATH_MOUNTED, fullpath, MNTS_REAL)) {
 			error(ap->logopt,
 			      MODPREFIX
 			      "warning: %s is already mounted", fullpath);
-			free_host_list(&hosts);
 			break;
 		}
 
-		if (this->proximity == PROXIMITY_LOCAL) {
+		/*
+		 * If the "port" option is specified, then we don't want
+		 * a bind mount. Use the "port" option if you want to
+		 * avoid attempting a local bind mount, such as when
+		 * tunneling NFS via localhost.
+		 */
+		if (nfsoptions && *nfsoptions)
+			port_opt = strstr(nfsoptions, "port=");
+
+		/* Port option specified, don't try to bind */
+		if (!port_opt && this->proximity == PROXIMITY_LOCAL) {
 			/* Local host -- do a "bind" */
 			const char *bind_options = ro ? "ro" : "";
 
@@ -210,11 +227,15 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 			/* Success - we're done */
 			if (!err) {
 				free_host_list(&hosts);
+				ap->ghost = save_ghost;
 				return 0;
 			}
 
-			this = this->next;
-			continue;
+			/* No hostname, can't be NFS */
+			if (!this->name) {
+				this = this->next;
+				continue;
+			}
 		}
 
 		/* Not a local host - do an NFS mount */
@@ -244,6 +265,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 			msg(MODPREFIX "mounted %s on %s", loc, fullpath);
 			free(loc);
 			free_host_list(&hosts);
+			ap->ghost = save_ghost;
 			return 0;
 		}
 
@@ -252,6 +274,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 	}
 
 	free_host_list(&hosts);
+	ap->ghost = save_ghost;
 
 	/* If we get here we've failed to complete the mount */
 

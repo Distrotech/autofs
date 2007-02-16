@@ -652,11 +652,27 @@ int prune_host_list(struct host **list, unsigned int vers, const char *options)
 	/* Use closest hosts to choose NFS version */
 
 	first = *list;
-	this = first;
-	proximity = this->proximity;
 
-	while (this && this->proximity == proximity) {
+	/* Get proximity of first entry after local entries */
+	this = first;
+	while (this && this->proximity == PROXIMITY_LOCAL)
+		this = this->next;
+
+	proximity = PROXIMITY_LOCAL;
+	if (this)
+		proximity = this->proximity;
+
+	this = first;
+	while (this) {
 		struct host *next = this->next;
+
+		if (this->proximity == PROXIMITY_LOCAL) {
+			this = next;
+			continue;
+		}
+
+		if (this->proximity != proximity)
+			break;
 
 		if (this->name) {
 			status = get_vers_and_cost(this, vers, options);
@@ -674,6 +690,7 @@ int prune_host_list(struct host **list, unsigned int vers, const char *options)
 
 	last = this;
 
+	/* If there are only local entries on the list, just return it. */
 	if (!first)
 		return 0;
 
@@ -722,15 +739,12 @@ int prune_host_list(struct host **list, unsigned int vers, const char *options)
 	else if (max_count == v2_udp_count)
 		selected_version = NFS2_UDP_SUPPORTED;
 
-	if (!selected_version)
-		return 0;
-
-	/* Add hosts with selected version to new list */
-
-	this = first;
+	/* Add local and hosts with selected version to new list */
+	this = *list;
 	do {
 		struct host *next = this->next;
-		if (this->version & selected_version) {
+		if (this->version & selected_version ||
+		    this->proximity == PROXIMITY_LOCAL) {
 			this->version = selected_version;
 			remove_host(list, this);
 			add_host(&new, this);
@@ -740,16 +754,17 @@ int prune_host_list(struct host **list, unsigned int vers, const char *options)
 
 	/*
 	 * Now go through rest of list and check for chosen version
-	 * and add to new list if supported.
+	 * and add to new list if selected version is supported.
 	 */ 
 
 	first = last;
 	this = first;
 	while (this) {
 		struct host *next = this->next;
-		if (!this->name)
+		if (!this->name) {
+			remove_host(list, this);
 			add_host(&new, this);
-		else {
+		} else {
 			status = get_supported_ver_and_cost(this, selected_version, options);
 			if (status) {
 				this->version = selected_version;
