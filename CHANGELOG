@@ -11,6 +11,7 @@
 - fix race when setting task done.
 - correct return status from do_mkdir.
 - fix localhost replicated mounts not working.
+- add "condrestart" to RedHat init script.
 
 4/1/2007 autofs-5.0.1 rc3
 -------------------------

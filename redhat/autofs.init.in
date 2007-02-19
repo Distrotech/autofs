@@ -131,8 +131,13 @@ case "$1" in
 	reload)
 		reload
 		;;
+	condrestart)
+		if [ -f /var/lock/subsys/autofs ]; then
+			restart
+		fi
+		;;
 	*)
-		echo $"Usage: $0 {start|stop|status|restart|reload}"
+		echo $"Usage: $0 {start|stop|status|restart|reload|condrestart}"
 		exit 1;
 		;;
 esac
