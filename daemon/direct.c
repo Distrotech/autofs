@@ -698,7 +698,7 @@ int mount_autofs_offset(struct autofs_point *ap, struct mapent *me, int is_autof
 	time_t timeout = ap->exp_timeout;
 	struct stat st;
 	int ioctlfd, cl_flags, status, ret;
-	const char *map_name;
+	const char *type, *map_name = NULL;
 
 	if (is_mounted(_PROC_MOUNTS, me->key, MNTS_AUTOFS)) {
 		if (ap->state != ST_READMAP)
@@ -776,7 +776,15 @@ int mount_autofs_offset(struct autofs_point *ap, struct mapent *me, int is_autof
 	      "calling mount -t autofs " SLOPPY " -o %s automount %s",
 	      mp->options, me->key);
 
-	map_name = me->mc->map->argv[0];
+	type = ap->entry->maps->type;
+	if (type && !strcmp(ap->entry->maps->type, "hosts")) {
+		char *tmp = alloca(7);
+		if (tmp) {
+			strcpy(tmp, "-hosts");
+			map_name = (const char *) tmp;
+		}
+	} else
+		map_name = me->mc->map->argv[0];
 
 	ret = mount(map_name, me->key, "autofs", MS_MGC_VAL, mp->options);
 	if (ret) {
