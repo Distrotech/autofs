@@ -31,6 +31,7 @@
 #include <rpcsvc/ypclnt.h>
 #include <errno.h>
 #include <sys/ioctl.h>
+#include <pthread.h>
 
 #include "mount.h"
 #include "rpc_subs.h"
@@ -45,7 +46,13 @@
 #define MAX_IFC_BUF	1024
 #define MAX_ERR_BUF	128
 
+/* Get numeric value of the n bits starting at position p */
+#define getbits(x, p, n)      ((x >> (p + 1 - n)) & ~(~0 << n))
+
 static char *ypdomain = NULL;
+
+inline void dump_core(void);
+static pthread_mutex_t networks_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /*
  * Create a UDP RPC client
@@ -1042,12 +1049,140 @@ done:
 	return ret;
 }
 
+static unsigned int inet_get_net_len(uint32_t net)
+{
+	int i;
+
+	for (i = 0; i < 32; i += 8) {
+		if (getbits(net, i + 7, 8))
+			break;
+	}
+
+	return (unsigned int) 32 - i;
+}
+
+static char *inet_fill_net(const char *net_num, char *net)
+{
+	char *np;
+	unsigned int dots = 3;
+
+	*net = '\0';
+	strcpy(net, net_num);
+
+	np = net;
+	while (*np) {
+		if (*np++ == '.') {
+			dots--;
+			if (!*np && dots)
+				strcat(net, "0");
+		}
+	}
+
+	while (dots--)
+		strcat(net, ".0");
+
+	return net;
+}
+
+static int match_network(const char *network)
+{
+	struct netent *pnent, nent;
+	const char *pcnet;
+	char *net, cnet[INET_ADDRSTRLEN + 1], mask[4], *pmask;
+	unsigned int size;
+	int status;
+
+	net = alloca(strlen(network) + 1);
+	if (!net)
+		return 0;
+	strcpy(net, network);
+
+	if ((pmask = strchr(net, '/')))
+		*pmask++ = '\0';
+
+	status = pthread_mutex_lock(&networks_mutex);
+	if (status)
+		fatal(status);
+
+	pnent = getnetbyname(net);
+	if (pnent)
+		memcpy(&nent, pnent, sizeof(struct netent));
+
+	status = pthread_mutex_unlock(&networks_mutex);
+	if (status)
+		fatal(status);
+
+	if (pnent) {
+		uint32_t n_net;
+
+		n_net = ntohl(nent.n_net);
+		pcnet = inet_ntop(nent.n_addrtype, &n_net, cnet, INET_ADDRSTRLEN);
+		if (!pcnet)
+			return 0;
+
+		if (!pmask) {
+			size = inet_get_net_len(nent.n_net);
+			if (!size)
+				return 0;
+		}
+	} else {
+		struct in_addr addr;
+		int ret;
+
+		pcnet = inet_fill_net(net, cnet);
+		if (!pcnet)
+			return 0;
+
+		ret = inet_pton(AF_INET, pcnet, &addr);
+		if (ret <= 0)
+			return 0;
+
+		if (!pmask) {
+			size = inet_get_net_len(htonl(addr.s_addr));
+			if (!size)
+				return 0;
+		}
+	}
+
+	if (!pmask) {
+		if (sprintf(mask, "%u", size) <= 0)
+			return 0;
+		pmask = mask;
+	}
+
+	debug(LOGOPT_ANY, "pcnet %s pmask %s", pcnet, pmask);
+
+	return masked_match(pcnet, pmask);
+}
+
+/*
+ * Two export formats need to be understood to cater for different
+ * NFS server exports.
+ *
+ * (host|wildcard|network[/mask]|@netgroup)
+ *
+ *     A host name which can be cannonical.
+ *     A wildcard host name containing "*" and "?" with the usual meaning.
+ *     A network in numbers and dots form with optional mask given as
+ *     either a length or as numbers and dots.
+ *     A netgroup identified by the prefix "@".
+ *
+ * [-](host|domain suffix|netgroup|@network[/mask])
+ *
+ *     A host name which can be cannonical.
+ *     A domain suffix identified by a leading "." which will match all
+ *     hosts in the given domain.
+ *     A netgroup.
+ *     A network identified by the prefix "@" given in numbers and dots
+ *     form or as a network name with optional mask given as either a
+ *     length or as numbers and dots.
+ *     A "-" prefix can be appended to indicate access is denied.
+ */
 static int host_match(char *pattern)
 {
 	unsigned int negate = (*pattern == '-');
 	const char *m_pattern = (negate ? pattern + 1 : pattern);
 	char myname[MAXHOSTNAMELEN + 1] = "\0";
-	struct in_addr tmp;
 	int ret = 0;
 
 	if (gethostname(myname, MAXHOSTNAMELEN))
@@ -1057,32 +1192,52 @@ static int host_match(char *pattern)
 		ypdomain = NULL;
 
 	if (*m_pattern == '@') {
-		if (ypdomain)
+		/*
+		 * The pattern begins with an "@" so it's a network
+		 * spec or it's a netgroup.
+		 */
+		ret = match_network(m_pattern + 1);
+		if (!ret && ypdomain)
 			ret = innetgr(m_pattern + 1, myname, NULL, ypdomain);
-	} else if (inet_aton(m_pattern, &tmp) || strchr(m_pattern, '/')) {
-		size_t len = strlen(m_pattern) + 1;
-		char *addr, *mask;
-
-		addr = alloca(len);
-		if (!addr)
-			return 0;
-
-		memset(addr, 0, len);
-		memcpy(addr, m_pattern, len - 1);
-		mask = strchr(addr, '/');
-		if (mask) {
-			*mask++ = '\0';
-			ret = masked_match(addr, mask);
-		} else
-			ret = masked_match(addr, "32");
+	} else if (*m_pattern == '.') {
+		size_t m_len = strlen(m_pattern);
+		char *has_dot = strchr(myname, '.');
+		/*
+		 * The pattern starts with a "." so it's a domain spec
+		 * of some sort.
+		 *
+		 * If the host name contains a dot then it must be either
+		 * a cannonical name or a simple NIS name.domain. So
+		 * perform a string match. Otherwise, append the domain
+		 * pattern to our simple name and try a wildcard pattern
+		 * match against the interfaces.
+		 */
+		if (has_dot) {
+			if (strlen(has_dot) == m_len)
+				ret = !memcmp(has_dot, m_pattern, m_len);
+		} else {
+			char *w_pattern = alloca(m_len + 2);
+			if (w_pattern) {
+				strcpy(w_pattern, "*");
+				strcat(w_pattern, m_pattern);
+				ret = fqdn_match(w_pattern);
+			}
+		}
 	} else if (!strcmp(m_pattern, "gss/krb5")) {
 		/* Leave this to the GSS layer */
-		ret = 1;
-	} else
-		ret = string_match(myname, m_pattern);
+		return 1;
+	} else {
+		/*
+		 * Otherwise it's a network name or host name 
+		 */
+		ret = match_network(m_pattern);
+		if (!ret)
+			/* if not then try to match host name */
+			ret = string_match(myname, m_pattern);
+	}
 
-	if (negate)
-		ret = !ret;
+	if (negate && ret)
+		ret = -1;
 
 	return ret;
 }
@@ -1096,7 +1251,11 @@ static int rpc_export_allowed(groups grouplist)
 		return 1;
 
 	while (grp) {
-		if (host_match(grp->gr_name))
+		int allowed = host_match(grp->gr_name);
+		/* Explicitly denied access */
+		if (allowed == -1)
+			return 0;
+		else if (allowed)
 			return 1;
 		grp = grp->gr_next;
 	}
