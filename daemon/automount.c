@@ -37,6 +37,7 @@
 #include <sys/poll.h>
 #include <dirent.h>
 #include <sys/vfs.h>
+#include <sys/utsname.h>
 
 #include "automount.h"
 
@@ -50,6 +51,9 @@ static char *pid_file = NULL;	/* File in which to keep pid */
 static int start_pipefd[2];
 static int st_stat = 0;
 static int *pst_stat = &st_stat;
+
+/* Pre-calculated kernel packet length */
+static size_t kpkt_len;
 
 /* Attribute to create detached thread */
 pthread_attr_t thread_attr;
@@ -598,6 +602,25 @@ int send_fail(int ioctlfd, unsigned int wait_queue_token)
 	return 0;
 }
 
+static size_t get_kpkt_len(void)
+{
+	size_t pkt_len = sizeof(struct autofs_v5_packet);
+	struct utsname un;
+
+	uname(&un);
+
+	if (pkt_len % 8) {
+		if (strcmp(un.machine, "alpha") == 0 ||
+		    strcmp(un.machine, "ia64") == 0 ||
+		    strcmp(un.machine, "x86_64") == 0 ||
+		    strcmp(un.machine, "ppc64") == 0)
+			pkt_len += 4;
+
+	}
+
+	return pkt_len;
+}
+
 static int fullread(int fd, void *ptr, size_t len)
 {
 	char *buf = (char *) ptr;
@@ -676,10 +699,8 @@ static int get_pkt(struct autofs_point *ap, union autofs_packet_union *pkt)
 				return -1;
 		}
 
-		if (fds[0].revents & POLLIN) {
-			int len = sizeof(pkt->v5_packet);
-			return fullread(ap->pipefd, pkt, len);
-		}
+		if (fds[0].revents & POLLIN)
+			return fullread(ap->pipefd, pkt, kpkt_len);
 	}
 }
 
@@ -1451,6 +1472,7 @@ int main(int argc, char *argv[])
 
 	defaults_read_config();
 
+	kpkt_len = get_kpkt_len();
 	timeout = defaults_get_timeout();
 	ghost = defaults_get_browse_mode();
 	logging = defaults_get_logging();
