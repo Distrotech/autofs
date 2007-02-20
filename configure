@@ -271,7 +271,7 @@ PACKAGE_VERSION=
 PACKAGE_STRING=
 PACKAGE_BUGREPORT=
 
-ac_unique_file=".autofs-5.0.1-rc3"
+ac_unique_file=".autofs-5.0.1"
 ac_default_prefix=/usr
 # Factoring default headers for most tests.
 ac_includes_default="\
