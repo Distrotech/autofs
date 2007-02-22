@@ -46,6 +46,8 @@
 #define MAX_IFC_BUF	1024
 #define MAX_ERR_BUF	128
 
+#define MAX_NETWORK_LEN		INET6_ADDRSTRLEN + INET_ADDRSTRLEN
+
 /* Get numeric value of the n bits starting at position p */
 #define getbits(x, p, n)      ((x >> (p + 1 - n)) & ~(~0 << n))
 
@@ -1066,6 +1068,9 @@ static char *inet_fill_net(const char *net_num, char *net)
 	char *np;
 	unsigned int dots = 3;
 
+	if (strlen(net_num) >= INET_ADDRSTRLEN)
+		return NULL;
+
 	*net = '\0';
 	strcpy(net, net_num);
 
@@ -1088,13 +1093,21 @@ static int match_network(const char *network)
 {
 	struct netent *pnent, nent;
 	const char *pcnet;
-	char *net, cnet[INET_ADDRSTRLEN + 1], mask[4], *pmask;
+	char *net, cnet[MAX_NETWORK_LEN], mask[4], *pmask;
 	unsigned int size;
+	size_t l_network = strlen(network) + 1;
 	int status;
 
-	net = alloca(strlen(network) + 1);
+	if (l_network >= MAX_NETWORK_LEN) {
+		error(LOGOPT_ANY,
+		      "network string \"%s\" too long", network);
+		return 0;
+	}
+
+	net = alloca(l_network);
 	if (!net)
 		return 0;
+	memset(net, 0, l_network);
 	strcpy(net, network);
 
 	if ((pmask = strchr(net, '/')))
@@ -1115,32 +1128,48 @@ static int match_network(const char *network)
 	if (pnent) {
 		uint32_t n_net;
 
-		n_net = ntohl(nent.n_net);
-		pcnet = inet_ntop(nent.n_addrtype, &n_net, cnet, INET_ADDRSTRLEN);
-		if (!pcnet)
+		switch (nent.n_addrtype) {
+		case AF_INET:
+			n_net = ntohl(nent.n_net);
+			pcnet = inet_ntop(AF_INET, &n_net, cnet, INET_ADDRSTRLEN);
+			if (!pcnet)
+				return 0;
+
+			if (!pmask) {
+				size = inet_get_net_len(nent.n_net);
+				if (!size)
+					return 0;
+			}
+			break;
+
+		case AF_INET6:
 			return 0;
 
-		if (!pmask) {
-			size = inet_get_net_len(nent.n_net);
-			if (!size)
-				return 0;
+		default:
+			return 0;
 		}
 	} else {
-		struct in_addr addr;
 		int ret;
 
-		pcnet = inet_fill_net(net, cnet);
-		if (!pcnet)
+		if (strchr(net, ':')) {
 			return 0;
+		} else {
+			struct in_addr addr;
 
-		ret = inet_pton(AF_INET, pcnet, &addr);
-		if (ret <= 0)
-			return 0;
-
-		if (!pmask) {
-			size = inet_get_net_len(htonl(addr.s_addr));
-			if (!size)
+			pcnet = inet_fill_net(net, cnet);
+			if (!pcnet)
 				return 0;
+
+			ret = inet_pton(AF_INET, pcnet, &addr);
+			if (ret <= 0)
+				return 0;
+
+			if (!pmask) {
+				uint32_t nl_addr = htonl(addr.s_addr);
+				size = inet_get_net_len(nl_addr);
+				if (!size)
+					return 0;
+			}
 		}
 	}
 
