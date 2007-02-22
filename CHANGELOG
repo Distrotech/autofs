@@ -1,6 +1,7 @@
 ??/??/2007 autofs-5.0.2
 -----------------------
 - fix return check for getpwuid_r and getgrgid_r.
+- give up trying to update exports list while host is mounted.
 
 20/2/2007 autofs-5.0.1
 ----------------------

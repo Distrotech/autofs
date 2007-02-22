@@ -189,7 +189,7 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 		if (!ret)
 			return NSS_STATUS_SUCCESS;
 
-		debug(ap->logopt, MODPREFIX "mount failed - update exports list");
+		return NSS_STATUS_TRYAGAIN;
 	}
 done:
 	/*
