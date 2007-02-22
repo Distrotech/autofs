@@ -3,6 +3,7 @@
 - fix return check for getpwuid_r and getgrgid_r.
 - give up trying to update exports list while host is mounted.
 - fix to "@network" matching.
+- check for fstab update and retry if not updated.
 
 20/2/2007 autofs-5.0.1
 ----------------------
