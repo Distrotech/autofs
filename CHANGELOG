@@ -1,3 +1,7 @@
+??/??/2007 autofs-5.0.2
+-----------------------
+- fix return check for getpwuid_r and getgrgid_r.
+
 20/2/2007 autofs-5.0.1
 ----------------------
 - fix typo in Fix typo in var when removing temp directory.

@@ -1335,7 +1335,7 @@ static void *do_mount_direct(void *arg)
 	}
 
 	status = getpwuid_r(mt->uid, ppw, pw_tmp, tmplen, pppw);
-	if (status) {
+	if (status || !ppw) {
 		error(ap->logopt, "failed to get passwd info from getpwuid_r");
 		free(tsv);
 		free(pw_tmp);
@@ -1382,7 +1382,7 @@ static void *do_mount_direct(void *arg)
 	}
 
 	status = getgrgid_r(mt->gid, pgr, gr_tmp, tmplen, ppgr);
-	if (status) {
+	if (status || !pgr) {
 		error(ap->logopt, "failed to get group info from getgrgid_r");
 		free(tsv->user);
 		free(tsv->home);
