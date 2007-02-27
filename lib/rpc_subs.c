@@ -31,6 +31,7 @@
 #include <rpcsvc/ypclnt.h>
 #include <errno.h>
 #include <sys/ioctl.h>
+#include <ctype.h>
 #include <pthread.h>
 
 #include "mount.h"
@@ -46,7 +47,7 @@
 #define MAX_IFC_BUF	1024
 #define MAX_ERR_BUF	128
 
-#define MAX_NETWORK_LEN		INET6_ADDRSTRLEN + INET_ADDRSTRLEN
+#define MAX_NETWORK_LEN		255
 
 /* Get numeric value of the n bits starting at position p */
 #define getbits(x, p, n)      ((x >> (p + 1 - n)) & ~(~0 << n))
@@ -1068,7 +1069,7 @@ static char *inet_fill_net(const char *net_num, char *net)
 	char *np;
 	unsigned int dots = 3;
 
-	if (strlen(net_num) >= INET_ADDRSTRLEN)
+	if (strlen(net_num) > INET_ADDRSTRLEN)
 		return NULL;
 
 	*net = '\0';
@@ -1080,6 +1081,11 @@ static char *inet_fill_net(const char *net_num, char *net)
 			dots--;
 			if (!*np && dots)
 				strcat(net, "0");
+		}
+
+		if (!isdigit(*np) || dots < 0) {
+			*net = '\0';
+			return NULL;
 		}
 	}
 
@@ -1098,9 +1104,9 @@ static int match_network(const char *network)
 	size_t l_network = strlen(network) + 1;
 	int status;
 
-	if (l_network >= MAX_NETWORK_LEN) {
+	if (l_network > MAX_NETWORK_LEN) {
 		error(LOGOPT_ANY,
-		      "network string \"%s\" too long", network);
+		      "match string \"%s\" too long", network);
 		return 0;
 	}
 
