@@ -5,6 +5,7 @@
 - fix to "@network" matching.
 - check for fstab update and retry if not updated.
 - change file map lexer to allow white-space only blank lines.
+- remove macro substitution in automount.8 man page (Guillaume Rousse).
 
 20/2/2007 autofs-5.0.1
 ----------------------
