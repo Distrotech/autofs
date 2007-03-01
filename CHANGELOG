@@ -6,6 +6,7 @@
 - check for fstab update and retry if not updated.
 - change file map lexer to allow white-space only blank lines.
 - remove macro substitution in automount.8 man page (Guillaume Rousse).
+- correct hesiod library check in configure (Guillaume Rousse).
 
 20/2/2007 autofs-5.0.1
 ----------------------
