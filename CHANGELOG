@@ -4,6 +4,7 @@
 - give up trying to update exports list while host is mounted.
 - fix to "@network" matching.
 - check for fstab update and retry if not updated.
+- change file map lexer to allow white-space only blank lines.
 
 20/2/2007 autofs-5.0.1
 ----------------------
