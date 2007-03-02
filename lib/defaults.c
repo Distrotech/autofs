@@ -23,21 +23,21 @@
 #define DEFAULTS_CONFIG_FILE		AUTOFS_CONF_DIR "/autofs"
 #define MAX_LINE_LEN			256
 
-#define ENV_NAME_MASTER_MAP		"DEFAULT_MASTER_MAP_NAME"
+#define ENV_NAME_MASTER_MAP		"MASTER_MAP_NAME"
 
-#define ENV_NAME_TIMEOUT		"DEFAULT_TIMEOUT"
-#define ENV_NAME_BROWSE_MODE		"DEFAULT_BROWSE_MODE"
-#define ENV_NAME_LOGGING		"DEFAULT_LOGGING"
+#define ENV_NAME_TIMEOUT		"TIMEOUT"
+#define ENV_NAME_BROWSE_MODE		"BROWSE_MODE"
+#define ENV_NAME_LOGGING		"LOGGING"
 
-#define ENV_LDAP_SERVER			"DEFAULT_LDAP_SERVER"
+#define ENV_LDAP_SERVER			"LDAP_SERVER"
 
-#define ENV_NAME_MAP_OBJ_CLASS		"DEFAULT_MAP_OBJECT_CLASS"
-#define ENV_NAME_ENTRY_OBJ_CLASS	"DEFAULT_ENTRY_OBJECT_CLASS"
-#define ENV_NAME_MAP_ATTR		"DEFAULT_MAP_ATTRIBUTE"
-#define ENV_NAME_ENTRY_ATTR		"DEFAULT_ENTRY_ATTRIBUTE"
-#define ENV_NAME_VALUE_ATTR		"DEFAULT_VALUE_ATTRIBUTE"
+#define ENV_NAME_MAP_OBJ_CLASS		"MAP_OBJECT_CLASS"
+#define ENV_NAME_ENTRY_OBJ_CLASS	"ENTRY_OBJECT_CLASS"
+#define ENV_NAME_MAP_ATTR		"MAP_ATTRIBUTE"
+#define ENV_NAME_ENTRY_ATTR		"ENTRY_ATTRIBUTE"
+#define ENV_NAME_VALUE_ATTR		"VALUE_ATTRIBUTE"
 
-#define ENV_AUTH_CONF_FILE		"DEFAULT_AUTH_CONF_FILE"
+#define ENV_AUTH_CONF_FILE		"AUTH_CONF_FILE"
 
 static const char *default_master_map_name = DEFAULT_MASTER_MAP_NAME;
 
@@ -104,6 +104,39 @@ static int get_env_yesno(const char *name)
 }
 
 /*
+ * We've changed the key names so we need to check for the
+ * config key and it's old name for backward conpatibility.
+*/
+static int check_set_config_value(const char *res, const char *name, const char *value)
+{
+	char *old_name;
+	int ret;
+
+	if (!strcasecmp(res, name)) {
+		ret = setenv(name, value, 0);
+		if (ret)
+			fprintf(stderr,
+			        "can't set config value for %s, "
+				"error %d", name, ret);
+		return 1;
+	}
+
+	old_name = alloca(strlen(name) + 9);
+	strcpy(old_name, "DEFAULT_");
+	strcat(old_name, name);
+
+	if (!strcasecmp(res, old_name)) {
+		ret = setenv(name, value, 0);
+		if (ret)
+			fprintf(stderr,
+			        "can't set config value for %s, "
+				"error %d", name, ret);
+		return 1;
+	}
+	return 0;
+}
+
+/*
  * Read config env variables and check they have been set.
  *
  * This simple minded routine assumes the config file
@@ -115,7 +148,6 @@ unsigned int defaults_read_config(void)
 	FILE *f;
 	char buf[MAX_LINE_LEN];
 	char *res, *value;
-	unsigned int ret;
 
 	f = fopen(DEFAULTS_CONFIG_FILE, "r");
 	if (!f)
@@ -158,23 +190,18 @@ unsigned int defaults_read_config(void)
 		while (*trailer && (*trailer == '"' || isblank(*trailer)))
 			*(trailer--) = '\0';;
 
-		if (!strcasecmp(res, ENV_NAME_MASTER_MAP) ||
-		    !strcasecmp(res, ENV_NAME_TIMEOUT) ||
-		    !strcasecmp(res, ENV_NAME_BROWSE_MODE) ||
-		    !strcasecmp(res, ENV_NAME_LOGGING) ||
-		    !strcasecmp(res, ENV_LDAP_SERVER) ||
-		    !strcasecmp(res, ENV_NAME_MAP_OBJ_CLASS) ||
-		    !strcasecmp(res, ENV_NAME_ENTRY_OBJ_CLASS) ||
-		    !strcasecmp(res, ENV_NAME_MAP_ATTR) ||
-		    !strcasecmp(res, ENV_NAME_ENTRY_ATTR) ||
-		    !strcasecmp(res, ENV_NAME_VALUE_ATTR) ||
-		    !strcasecmp(res, ENV_AUTH_CONF_FILE)) {
-			ret = setenv(res, value, 0);
-			if (ret)
-				fprintf(stderr,
-				        "can't set config value for %s, "
-					"error %d", res, ret);
-		}
+		if (check_set_config_value(res, ENV_NAME_MASTER_MAP, value) ||
+		    check_set_config_value(res, ENV_NAME_TIMEOUT, value) ||
+		    check_set_config_value(res, ENV_NAME_BROWSE_MODE, value) ||
+		    check_set_config_value(res, ENV_NAME_LOGGING, value) ||
+		    check_set_config_value(res, ENV_LDAP_SERVER, value) ||
+		    check_set_config_value(res, ENV_NAME_MAP_OBJ_CLASS, value) ||
+		    check_set_config_value(res, ENV_NAME_ENTRY_OBJ_CLASS, value) ||
+		    check_set_config_value(res, ENV_NAME_MAP_ATTR, value) ||
+		    check_set_config_value(res, ENV_NAME_ENTRY_ATTR, value) ||
+		    check_set_config_value(res, ENV_NAME_VALUE_ATTR, value) ||
+		    check_set_config_value(res, ENV_AUTH_CONF_FILE, value))
+			;
 	}
 
 	if (!feof(f)) {

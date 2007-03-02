@@ -7,6 +7,7 @@
 - change file map lexer to allow white-space only blank lines.
 - remove macro substitution in automount.8 man page (Guillaume Rousse).
 - correct hesiod library check in configure (Guillaume Rousse).
+- drop "DEFAULT_" prefix from configuration names (Guillaume Rousse).
 
 20/2/2007 autofs-5.0.1
 ----------------------
