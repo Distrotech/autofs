@@ -824,8 +824,6 @@ int lookup_nss_mount(struct autofs_point *ap, const char *name, int name_len)
 
 		head = &nsslist;
 		list_for_each(p, head) {
-			enum nsswitch_status status;
-
 			this = list_entry(p, struct nss_source, list);
 
 			result = lookup_map_name(this, ap, map, name, name_len);

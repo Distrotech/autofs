@@ -98,7 +98,7 @@ static int do_mkdir(const char *parent, const char *path, mode_t mode)
 	status = -1;
 	if (*parent)
 		status = statfs(parent, &fs);
-	if ((status != -1 && fs.f_type == AUTOFS_SUPER_MAGIC) ||
+	if ((status != -1 && fs.f_type == (__SWORD_TYPE) AUTOFS_SUPER_MAGIC) ||
 	    contained_in_local_fs(path)) {
 		if (mkdir(path, mode) == -1)
 			return 0;
@@ -178,7 +178,7 @@ int rmdir_path(struct autofs_point *ap, const char *path, dev_t dev)
 			return -1;
 		}
 
-		if (fs.f_type != AUTOFS_SUPER_MAGIC) {
+		if (fs.f_type != (__SWORD_TYPE) AUTOFS_SUPER_MAGIC) {
 			crit(ap->logopt, "attempt to remove directory from a "
 			     "non-autofs filesystem!");
 			crit(ap->logopt,
@@ -510,7 +510,7 @@ int umount_multi(struct autofs_point *ap, const char *path, int incl)
 		return 1;
 	}
 
-	is_autofs_fs = fs.f_type == AUTOFS_SUPER_MAGIC ? 1 : 0;
+	is_autofs_fs = fs.f_type == (__SWORD_TYPE) AUTOFS_SUPER_MAGIC ? 1 : 0;
 
 	left = 0;
 

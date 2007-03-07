@@ -21,7 +21,13 @@
 #include <sys/stat.h>
 #include <netdb.h>
 
+/* 
+ * Avoid annoying compiler noise by using an alternate name for
+ * typedef name in mount.h
+ */
+#define name __dummy_type_name
 #include "mount.h"
+#undef name
 
 #define MODULE_LOOKUP
 #include "automount.h"
@@ -170,10 +176,11 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 	 */
 	if (*name == '/') {
 		pthread_cleanup_push(cache_lock_cleanup, mc);
-		mapent = alloca(strlen(me->mapent) + 1);
-		mapent_len = sprintf(mapent, me->mapent);
+		mapent_len = strlen(me->mapent);
+		mapent = alloca(mapent_len + 1);
+		if (mapent)
+			strcpy(mapent, me->mapent);
 		pthread_cleanup_pop(0);
-		mapent[mapent_len] = '\0';
 	}
 	cache_unlock(mc);
 

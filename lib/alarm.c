@@ -28,16 +28,16 @@ static LIST_HEAD(alarms);
 
 #define alarm_lock() \
 do { \
-	int status = pthread_mutex_lock(&mutex); \
-	if (status) \
-		fatal(status); \
+	int _alm_lock = pthread_mutex_lock(&mutex); \
+	if (_alm_lock) \
+		fatal(_alm_lock); \
 } while (0)
 
 #define alarm_unlock() \
 do { \
-	int status = pthread_mutex_unlock(&mutex); \
-	if (status) \
-		fatal(status); \
+	int _alm_unlock = pthread_mutex_unlock(&mutex); \
+	if (_alm_unlock) \
+		fatal(_alm_unlock); \
 } while (0)
 
 void dump_alarms(void)

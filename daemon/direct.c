@@ -966,7 +966,7 @@ void *expire_proc_direct(void *arg)
 				continue;
 			}
 
-			if (fs.f_type != AUTOFS_SUPER_MAGIC) {
+			if (fs.f_type != (__SWORD_TYPE) AUTOFS_SUPER_MAGIC) {
 				pthread_setcancelstate(cur_state, NULL);
 				continue;
 			}

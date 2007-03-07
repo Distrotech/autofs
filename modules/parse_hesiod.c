@@ -106,7 +106,7 @@ static int parse_nfs(struct autofs_point *ap,
 		p++;
 
 	/* Isolate the remote mountpoint for this NFS fs. */
-	for (i = 0; (!isspace(p[i]) && i < sizeof(mount)); i++) {
+	for (i = 0; (!isspace(p[i]) && i < (int) sizeof(mount)); i++) {
 		mount[i] = p[i];
 	}
 

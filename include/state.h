@@ -61,16 +61,16 @@ struct expire_args {
 
 #define expire_args_mutex_lock(ea) \
 do { \
-	int status = pthread_mutex_lock(&ea->mutex); \
-	if (status) \
-		fatal(status); \
+	int _ea_lock = pthread_mutex_lock(&ea->mutex); \
+	if (_ea_lock) \
+		fatal(_ea_lock); \
 } while (0)
 
 #define expire_args_mutex_unlock(ea) \
 do { \
-	int status = pthread_mutex_unlock(&ea->mutex); \
-	if (status) \
-		fatal(status); \
+	int _ea_unlock = pthread_mutex_unlock(&ea->mutex); \
+	if (_ea_unlock) \
+		fatal(_ea_unlock); \
 } while (0)
 
 struct readmap_args {

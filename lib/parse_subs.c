@@ -316,8 +316,8 @@ int umount_ent(struct autofs_point *ap, const char *path)
 		warn(ap->logopt, "could not stat fs of %s", path);
 		is_smbfs = 0;
 	} else {
-		int cifsfs = fs.f_type == CIFS_MAGIC_NUMBER;
-		int smbfs = fs.f_type == SMB_SUPER_MAGIC;
+		int cifsfs = fs.f_type == (__SWORD_TYPE) CIFS_MAGIC_NUMBER;
+		int smbfs = fs.f_type == (__SWORD_TYPE) SMB_SUPER_MAGIC;
 		is_smbfs = (cifsfs | smbfs) ? 1 : 0;
 	}
 
@@ -407,7 +407,7 @@ int mount_multi_triggers(struct autofs_point *ap, char *root, struct mapent *me,
 		else
 			return -1;
 	} else
-		is_autofs_fs = fs.f_type == AUTOFS_SUPER_MAGIC ? 1 : 0;
+		is_autofs_fs = fs.f_type == (__SWORD_TYPE) AUTOFS_SUPER_MAGIC ? 1 : 0;
 
 	mounted = 0;
 	start = strlen(root);

@@ -822,11 +822,11 @@ static int parse_mapent(const char *ent, char *g_options, char **options, char *
 	p = skipspace(p);
 
 	while (*p && ((*p == '"' && *(p + 1) != '/') || (*p != '"' && *p != '/'))) {
-		char *tmp, *ent;
+		char *tmp, *ent_chunk;
 
 		l = chunklen(p, check_colon(p));
-		ent = dequote(p, l, logopt);
-		if (!ent) {
+		ent_chunk = dequote(p, l, logopt);
+		if (!ent_chunk) {
 			warn(logopt, MODPREFIX "null location or out of memory");
 			free(myoptions);
 			free(loc);
@@ -837,26 +837,27 @@ static int parse_mapent(const char *ent, char *g_options, char **options, char *
 		if (*p == '/') {
 			warn(logopt,
 			      MODPREFIX "error location begins with \"/\"");
+			free(ent_chunk);
 			free(myoptions);
 			free(loc);
 			return 0;
 		}
 
-		if (!validate_location(ent)) {
+		if (!validate_location(ent_chunk)) {
 			warn(logopt,
 			      MODPREFIX "invalid location %s", ent);
-			free(ent);
+			free(ent_chunk);
 			free(myoptions);
 			free(loc);
 			return 0;
 		}
 
-		debug(logopt, MODPREFIX "dequote(\"%.*s\") -> %s", l, p, ent);
+		debug(logopt, MODPREFIX "dequote(\"%.*s\") -> %s", l, p, ent_chunk);
 
 		tmp = realloc(loc, strlen(loc) + l + 2);
 		if (!tmp) {
 			error(logopt, MODPREFIX "out of memory");
-			free(ent);
+			free(ent_chunk);
 			free(myoptions);
 			free(loc);
 			return 0;
@@ -864,9 +865,9 @@ static int parse_mapent(const char *ent, char *g_options, char **options, char *
 		loc = tmp;
 
 		strcat(loc, " ");
-		strcat(loc, ent);
+		strcat(loc, ent_chunk);
 
-		free(ent);
+		free(ent_chunk);
 
 		p += l;
 		p = skipspace(p);

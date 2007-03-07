@@ -149,7 +149,7 @@ struct mapent {
 	char *mapent;
 	time_t age;
 	/* Time of last mount fail */
-	unsigned int status;
+	time_t status;
 	/* For direct mounts per entry context is kept here */
 	int dir_created;
 	/* File descriptor for ioctls */
@@ -484,30 +484,30 @@ int count_mounts(const char *path, dev_t dev);
 
 #define state_mutex_lock(ap) \
 do { \
-	int status = pthread_mutex_lock(&ap->state_mutex); \
-	if (status) \
-		fatal(status); \
+	int _st_lock = pthread_mutex_lock(&ap->state_mutex); \
+	if (_st_lock) \
+		fatal(_st_lock); \
 } while(0)
 
 #define state_mutex_unlock(ap) \
 do{ \
-	int status = pthread_mutex_unlock(&ap->state_mutex); \
-	if (status) \
-		fatal(status); \
+	int _st_unlock = pthread_mutex_unlock(&ap->state_mutex); \
+	if (_st_unlock) \
+		fatal(_st_unlock); \
 } while (0)
 
 #define mounts_mutex_lock(ap) \
 do { \
-	int status = pthread_mutex_lock(&ap->mounts_mutex); \
-	if (status) \
-		fatal(status); \
+	int _m_lock = pthread_mutex_lock(&ap->mounts_mutex); \
+	if (_m_lock) \
+		fatal(_m_lock); \
 } while (0)
 
 #define mounts_mutex_unlock(ap) \
 do { \
-	int status = pthread_mutex_unlock(&ap->mounts_mutex); \
-	if (status) \
-		fatal(status); \
+	int _m_unlock = pthread_mutex_unlock(&ap->mounts_mutex); \
+	if (_m_unlock) \
+		fatal(_m_unlock); \
 } while(0)
 
 /* Expire alarm handling routines */
