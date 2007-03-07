@@ -13,8 +13,7 @@ Differences between version 4 and version 5.
   installed "/etc/auto.master" to ensure that those using NIS will
   still find their master map. This is in line with other industry
   automount implementations. The name of the default master map can
-  be overridden by setting the DEFAULT_MASTER_MAP_NAME configuration
-  variable.
+  be overridden by setting the MASTER_MAP_NAME configuration variable.
 
 - The `automount' daemon is now a multi-threaded application and so
   appears as a single process (unless a thread process display option
