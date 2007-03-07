@@ -80,3 +80,5 @@ mandir = @mandir@
 # Location for init.d files
 initdir = @initdir@
 
+# This is here just to keep config.status quiet
+UNUSED_datarootdir = @datarootdir@
