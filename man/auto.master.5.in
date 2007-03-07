@@ -25,7 +25,7 @@ The default location of the master map is
 but an alternate name may be given on the command line when running
 the automounter and the default master map may changed by setting the
 .nh
-.B "DEFAULT_MASTER_MAP_NAME"
+.B "MASTER_MAP_NAME"
 .hy
 configuration variable in
 .nh
@@ -144,13 +144,13 @@ configuration file
 .hy
 They are:
 .TP
-.B DEFAULT_TIMEOUT
+.B TIMEOUT
 sets the default mount timeout (program default 600).
 .TP
-.B DEFAULT_BROWSE_MODE
+.B BROWSE_MODE
 Maps are browsable by default (program default "yes").
 .TP
-.B DEFAULT_LOGGING
+.B LOGGING
 set default log level "none", "verbose" or "debug" (program default "none").
 =======
 .SH GENERAL SYSTEM DEFAULTS CONFIGURATION
@@ -163,13 +163,13 @@ configuration file
 .P
 They are:
 .TP
-.B DEFAULT_TIMEOUT
+.B TIMEOUT
 sets the default mount timeout (program default 600).
 .TP
-.B DEFAULT_BROWSE_MODE
+.B BROWSE_MODE
 Maps are browsable by default (program default "yes").
 .TP
-.B DEFAULT_LOGGING
+.B LOGGING
 set default log level "none", "verbose" or "debug" (program default "none").
 .SH BUILTIN MAP -hosts
 If "-hosts" is given as the map then accessing a key under the mount point
@@ -215,7 +215,7 @@ located in
 .P
 The configuration settings available are:
 .TP
-\fBDEFAULT_MAP_OBJECT_CLASS\fP
+\fBMAP_OBJECT_CLASS\fP
 The map object class. Its Default value is "nisMap". In the
 .nh
 automountMap
@@ -225,14 +225,14 @@ schema this corresponds to the class
 .BR automountMap .
 .hy
 .TP
-.B DEFAULT_ENTRY_OBJECT_CLASS
+.B ENTRY_OBJECT_CLASS
 The map entry object class. Its default value is \fBnisObject\fP.
 In the automountMap schema this corresponds to the class
 .nh
 .BR automount .
 .hy
 .TP
-.B DEFAULT_MAP_ATTRIBUTE
+.B MAP_ATTRIBUTE
 The attribute used to identify the name of the map to which this
 entry belongs. Its default value is
 .nh
@@ -247,7 +247,7 @@ schema this corresponds to the attributes \fBou\fP or
 .BR automountMapName .
 .hy
 .TP
-.B DEFAULT_ENTRY_ATTRIBUTE
+.B ENTRY_ATTRIBUTE
 The attribute used to identify a map key. Its default value is
 In the
 .nh
@@ -258,7 +258,7 @@ schema this corresponds to the attribute
 .BR automountKey .
 .hy
 .TP
-.B DEFAULT_VALUE_ATTRIBUTE
+.B VALUE_ATTRIBUTE
 The attribute used to identify the value of the map entry. Its default
 value is
 .nh
