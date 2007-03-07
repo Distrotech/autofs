@@ -50,6 +50,7 @@ backup: mrproper
 
 configure: configure.in aclocal.m4
 	autoconf
+	autoheader
 	rm -rf config.* *.cache
 
 configure.in: .version
