@@ -9,6 +9,7 @@
 - correct hesiod library check in configure (Guillaume Rousse).
 - drop "DEFAULT_" prefix from configuration names (Guillaume Rousse).
 - remove redundant ident macros.
+- various configure cleanups (Richard Daniel).
 
 20/2/2007 autofs-5.0.1
 ----------------------
