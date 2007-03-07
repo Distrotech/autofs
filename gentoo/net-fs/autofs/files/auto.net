@@ -1,7 +1,5 @@
 #!/bin/bash
 
-# $Id: auto.net,v 1.4 2005/04/11 11:30:54 raven Exp $
-
 # This file must be executable to work! chmod 755!
 
 # Look at what a host is exporting to determine what we can mount.

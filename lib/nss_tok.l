@@ -1,8 +1,6 @@
 %{
 /* ----------------------------------------------------------------------- *
  *   
- *  "$Id: nss_tok.l,v 1.3 2006/03/21 04:28:53 raven Exp $"
- *
  *  nss_tok.l - nsswitch tokenizer.
  *
  *   Copyright 2006 Ian Kent <raven@themaw.net>

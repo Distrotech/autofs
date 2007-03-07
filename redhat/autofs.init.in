@@ -1,7 +1,5 @@
 #!/bin/bash
 #
-# $Id: rc.autofs.in,v 1.63 2006/03/30 02:09:51 raven Exp $
-#
 # rc file for automount using a Sun-style "master map".
 #
 # chkconfig: 345 28 72

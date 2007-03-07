@@ -1,6 +1,4 @@
 #
-# $Id: auto.misc,v 1.2 2003/09/29 08:22:35 raven Exp $
-#
 # This is an automounter map and it has the following format
 # key [ -mount-options-separated-by-comma ] location
 # Details may be found in the autofs(5) manpage

@@ -1,6 +1,4 @@
 #
-# ident $Id: ldap-automount-auto.direct,v 1.2 2003/12/10 14:54:33 raven Exp $
-#
 dn: ou=auto.direct,dc=bogus
 objectClass: top
 objectClass: automountMap

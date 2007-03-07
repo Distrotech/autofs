@@ -1,6 +1,4 @@
-#
-# $Id: Makefile,v 1.12 2006/04/03 23:00:05 raven Exp $
-#
+
 -include ../Makefile.conf
 include ../Makefile.rules
 

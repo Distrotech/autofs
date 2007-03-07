@@ -8,6 +8,7 @@
 - remove macro substitution in automount.8 man page (Guillaume Rousse).
 - correct hesiod library check in configure (Guillaume Rousse).
 - drop "DEFAULT_" prefix from configuration names (Guillaume Rousse).
+- remove redundant ident macros.
 
 20/2/2007 autofs-5.0.1
 ----------------------

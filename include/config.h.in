@@ -1,4 +1,3 @@
-#ident "$Id: config.h.in,v 1.8 2006/04/01 06:48:05 raven Exp $"
 /* -*- c -*-
  *
  * config.h.in: Pattern file for autofs to be filled in by configure

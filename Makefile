@@ -1,6 +1,4 @@
 #
-# $Id: Makefile,v 1.5 2005/11/27 04:55:15 raven Exp $
-#
 # Main Makefile for the autofs user-space tools
 #
 

@@ -1,7 +1,5 @@
 #
-# $Id: autofs.spec,v 1.35 2006/03/30 02:09:51 raven Exp $
 #
-
 %ifarch sparc i386 i586 i686
 %define _lib lib
 %endif

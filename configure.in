@@ -1,6 +1,4 @@
 #
-#ident $Id: configure.in,v 1.30 2006/04/06 20:02:04 raven Exp $
-#
 # configure.in for the autofs daemon
 
 AC_PREREQ(2.5)

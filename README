@@ -1,7 +1,5 @@
 -*- text -*-
 
-ident $Id: README,v 1.5 2003/12/04 15:34:52 raven Exp $
-
 autofs is a kernel-based automounter for Linux.  It performs a job
 similar to amd(8) but relies on a small stub of kernel code instead of
 pretending to be an NFS server.  The result is simpler code, better

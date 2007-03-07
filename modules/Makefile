@@ -1,4 +1,3 @@
-# $Id: Makefile,v 1.11 2006/04/06 20:02:04 raven Exp $
 #
 # Makefile for autofs
 #

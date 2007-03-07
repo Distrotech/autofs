@@ -1,8 +1,6 @@
 %{
 /* ----------------------------------------------------------------------- *
  *   
- *  "$Id: master_tok.l,v 1.2 2006/03/26 17:26:32 raven Exp $"
- *
  *  master_tok.l - master map tokenizer.
  *
  *   Copyright 2006 Ian Kent <raven@themaw.net>

@@ -1,8 +1,6 @@
 %{
 /* ----------------------------------------------------------------------- *
  *   
- *  "$Id: nss_parse.y,v 1.5 2006/03/21 04:28:53 raven Exp $"
- *
  *  nss_parser.y - nsswitch parser.
  *
  *   Copyright 2006 Ian Kent <raven@themaw.net>

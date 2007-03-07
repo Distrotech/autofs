@@ -1,5 +1,4 @@
 .\" t
-.\" $Id: auto.master.5,v 1.2 2003/09/29 08:22:35 raven Exp $
 .TH AUTO.MASTER 5 "11 Apr 2006"
 .SH NAME
 auto.master \- Master Map for automounter

@@ -1,8 +1,6 @@
 %{
 /* ----------------------------------------------------------------------- *
  *   
- *  "$Id: master_parse.y,v 1.6 2006/03/29 10:32:36 raven Exp $"
- *
  *  master_parser.y - master map buffer parser.
  *
  *   Copyright 2006 Ian Kent <raven@themaw.net>
