@@ -10,7 +10,7 @@
 - drop "DEFAULT_" prefix from configuration names (Guillaume Rousse).
 - remove redundant ident macros.
 - various configure cleanups (Richard Daniel).
-- various code cleanups ((Richard Daniel).
+- various code cleanups (Richard Daniel).
 - fixed numeric export match.
 - add option to select replicated server at random (instead of response time).
 
