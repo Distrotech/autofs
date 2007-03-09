@@ -51,6 +51,8 @@ int mount_init(void **context)
 	} else
 		init_ctr++;
 
+	seed_random();
+
 	return !mount_bind;
 }
 

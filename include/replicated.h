@@ -60,6 +60,7 @@ struct host {
 	struct host *next;
 };
 
+void seed_random(void);
 void free_host_list(struct host **);
 int parse_location(struct host **, const char *);
 int prune_host_list(struct host **, unsigned int, const char *);

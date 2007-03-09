@@ -12,6 +12,7 @@
 - various configure cleanups (Richard Daniel).
 - various code cleanups ((Richard Daniel).
 - fixed numeric export match.
+- add option to select replicated server at random (instead of response time).
 
 20/2/2007 autofs-5.0.1
 ----------------------

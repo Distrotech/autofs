@@ -48,6 +48,8 @@ const char *mapdir = AUTOFS_MAP_DIR;	/* Location of mount maps */
 const char *confdir = AUTOFS_CONF_DIR;	/* Location of autofs config file */
 
 static char *pid_file = NULL;	/* File in which to keep pid */
+unsigned int random_selection;	/* use random policy when selecting
+				 * which multi-mount host to mount */
 static int start_pipefd[2];
 static int st_stat = 0;
 static int *pst_stat = &st_stat;
@@ -1363,6 +1365,8 @@ static void usage(void)
 		"	-d --debug	log debuging info\n"
 		"	-D --define	define global macro variable\n"
 		/*"	-f --foreground do not fork into background\n" */
+		"	-r --random-replicated-selection"
+		"			use ramdom replicated server selection\n"
 		"	-V --version	print version, build config and exit\n"
 		, program);
 }
@@ -1461,6 +1465,7 @@ int main(int argc, char *argv[])
 		{"debug", 0, 0, 'd'},
 		{"define", 1, 0, 'D'},
 		{"foreground", 0, 0, 'f'},
+		{"random-selection", 0, 0, 'r'},
 		{"version", 0, 0, 'V'},
 		{0, 0, 0, 0}
 	};
@@ -1476,10 +1481,11 @@ int main(int argc, char *argv[])
 	timeout = defaults_get_timeout();
 	ghost = defaults_get_browse_mode();
 	logging = defaults_get_logging();
+	random_selection = 0;
 	foreground = 0;
 
 	opterr = 0;
-	while ((opt = getopt_long(argc, argv, "+hp:t:vdD:fV", long_options, NULL)) != EOF) {
+	while ((opt = getopt_long(argc, argv, "+hp:t:vdD:fVr", long_options, NULL)) != EOF) {
 		switch (opt) {
 		case 'h':
 			usage();
@@ -1512,6 +1518,10 @@ int main(int argc, char *argv[])
 		case 'V':
 			show_build_info();
 			exit(0);
+
+		case 'r':
+			random_selection = 1;
+			break;
 
 		case '?':
 		case ':':

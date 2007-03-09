@@ -74,6 +74,29 @@
 #define max(x, y)	(x >= y ? x : y)
 #define mmax(x, y, z)	(max(x, y) == x ? max(x, z) : max(y, z))
 
+extern unsigned int random_selection;
+
+void seed_random(void)
+{
+	int fd;
+	unsigned int seed;
+
+	fd = open("/dev/random", O_RDONLY);
+	if (fd < 0) {
+		srandom(time(NULL));
+		return;
+	}
+
+	if (read(fd, &seed, sizeof(seed)) != -1)
+		srandom(seed);
+	else
+		srandom(time(NULL));
+
+	close(fd);
+
+	return;
+}
+
 static unsigned int get_proximity(const char *host_addr, int addr_len)
 {
 	struct sockaddr_in *msk_addr, *if_addr;
@@ -403,7 +426,11 @@ static unsigned int get_nfs_info(struct host *host,
 		status = rpc_ping_proto(rpc_info);
 		gettimeofday(&end, &tz);
 		if (status) {
-			taken += elapsed(start, end);
+			if (random_selection)
+				/* Random value between 0 and 1 */
+				taken += ((float) random())/((float) RAND_MAX+1);
+			else
+				taken += elapsed(start, end);;
 			count++;
 			supported = NFS4_SUPPORTED;
 		}
@@ -440,7 +467,11 @@ v3_ver:
 		status = rpc_ping_proto(rpc_info);
 		gettimeofday(&end, &tz);
 		if (status) {
-			taken += elapsed(start, end);
+			if (random_selection)
+				/* Random value between 0 and 1 */
+				taken += ((float) random())/((float) RAND_MAX+1);
+			else
+				taken += elapsed(start, end);;
 			count++;
 			supported |= NFS3_SUPPORTED;
 		}
@@ -470,7 +501,11 @@ v2_ver:
 		status = rpc_ping_proto(rpc_info);
 		gettimeofday(&end, &tz);
 		if (status) {
-			taken += elapsed(start, end);
+			if (random_selection)
+				/* Random value between 0 and 1 */
+				taken += ((float) random())/((float) RAND_MAX+1);
+			else
+				taken += elapsed(start, end);;
 			count++;
 			supported |= NFS2_SUPPORTED;
 		}
@@ -610,8 +645,13 @@ static int get_supported_ver_and_cost(struct host *host, unsigned int version, c
 		gettimeofday(&start, &tz);
 		status = rpc_ping_proto(&rpc_info);
 		gettimeofday(&end, &tz);
-		if (status)
-			taken = elapsed(start, end);
+		if (status) {
+			if (random_selection)
+				/* Random value between 0 and 1 */
+				taken = ((float) random())/((float) RAND_MAX+1);
+			else
+				taken = elapsed(start, end);
+		}
 	}
 done:
 	if (rpc_info.proto->p_proto == IPPROTO_UDP) {
