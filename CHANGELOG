@@ -11,6 +11,7 @@
 - remove redundant ident macros.
 - various configure cleanups (Richard Daniel).
 - various code cleanups ((Richard Daniel).
+- fixed numeric export match.
 
 20/2/2007 autofs-5.0.1
 ----------------------
