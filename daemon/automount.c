@@ -276,7 +276,7 @@ static int walk_tree(const char *base, int (*fn) (const char *file,
 
 static int rm_unwanted_fn(const char *file, const struct stat *st, int when, void *arg)
 {
-	dev_t dev = *(int *) arg;
+	dev_t dev = *(dev_t *) arg;
 	char buf[MAX_ERR_BUF];
 	struct stat newst;
 
