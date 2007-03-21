@@ -423,6 +423,7 @@ int lookup_nss_read_map(struct autofs_point *ap, time_t age)
 	struct nss_source *this;
 	struct map_source *map;
 	enum nsswitch_status status;
+	unsigned int at_least_one = 0;
 	int result = 0;
 
 	/*
@@ -493,9 +494,13 @@ int lookup_nss_read_map(struct autofs_point *ap, time_t age)
 			if (result == NSS_STATUS_UNKNOWN)
 				continue;
 
+			if (result == NSS_STATUS_SUCCESS) {
+				at_least_one = 1;
+				result = NSS_STATUS_TRYAGAIN;
+			}
+
 			status = check_nss_result(this, result);
 			if (status >= 0) {
-				result = !status;
 				map = NULL;
 				break;
 			}
@@ -509,7 +514,10 @@ int lookup_nss_read_map(struct autofs_point *ap, time_t age)
 	}
 	pthread_cleanup_pop(1);
 
-	return !result;
+	if (!result ||  at_least_one)
+		return 1;
+
+	return 0;
 }
 
 int lookup_ghost(struct autofs_point *ap)

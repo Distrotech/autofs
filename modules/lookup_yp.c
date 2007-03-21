@@ -305,7 +305,7 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 
 	mapname = alloca(strlen(ctxt->mapname) + 1);
 	if (!mapname)
-		return 0;
+		return NSS_STATUS_UNKNOWN;
 
 	strcpy(mapname, ctxt->mapname);
 

@@ -14,6 +14,7 @@
 - fixed numeric export match.
 - add option to select replicated server at random (instead of response time).
 - fix incorrect cast in directory cleanup routines.
+- fix directory creation for browse mounts.
 
 20/2/2007 autofs-5.0.1
 ----------------------
