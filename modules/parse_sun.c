@@ -1080,7 +1080,7 @@ int parse_mount(struct autofs_point *ap, const char *name,
 			 * Not in the cache, perhaps it's a program map
 			 * or one that doesn't support enumeration
 			 */
-			ret = cache_add(mc, name, mapent, time(NULL));
+			ret = cache_add(mc, source, name, mapent, time(NULL));
 			if (ret == CHE_FAIL) {
 				cache_unlock(mc);
 				free(options);

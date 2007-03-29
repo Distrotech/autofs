@@ -103,7 +103,7 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 	while ((host = gethostent()) != NULL) {
 		pthread_cleanup_push(cache_lock_cleanup, mc);
 		cache_writelock(mc);
-		cache_update(mc, host->h_name, NULL, age);
+		cache_update(mc, source, host->h_name, NULL, age);
 		cache_unlock(mc);
 		pthread_cleanup_pop(0);
 	}
@@ -257,7 +257,7 @@ done:
 	debug(ap->logopt, MODPREFIX "%s -> %s", name, mapent);
 
 	cache_writelock(mc);
-	cache_update(mc, name, mapent, now);
+	cache_update(mc, source, name, mapent, now);
 	cache_unlock(mc);
 
 	debug(LOGOPT_ANY, "source wait");

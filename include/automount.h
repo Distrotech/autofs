@@ -141,6 +141,7 @@ struct mapent {
 	pthread_mutex_t multi_mutex;
 	struct list_head multi_list;
 	struct mapent_cache *mc;
+	struct map_source *source;
 	/* Need to know owner if we're a multi-mount */
 	struct mapent *multi;
 	/* Parent nesting point within multi-mount */
@@ -175,10 +176,10 @@ struct mapent *cache_lookup(struct mapent_cache *mc, const char *key);
 struct mapent *cache_lookup_distinct(struct mapent_cache *mc, const char *key);
 struct mapent *cache_lookup_offset(const char *prefix, const char *offset, int start, struct list_head *head);
 struct mapent *cache_partial_match(struct mapent_cache *mc, const char *prefix);
-int cache_add(struct mapent_cache *mc, const char *key, const char *mapent, time_t age);
+int cache_add(struct mapent_cache *mc, struct map_source *ms, const char *key, const char *mapent, time_t age);
 int cache_add_offset(struct mapent_cache *mc, const char *mkey, const char *key, const char *mapent, time_t age);
 int cache_set_parents(struct mapent *mm);
-int cache_update(struct mapent_cache *mc, const char *key, const char *mapent, time_t age);
+int cache_update(struct mapent_cache *mc, struct map_source *ms, const char *key, const char *mapent, time_t age);
 int cache_delete(struct mapent_cache *mc, const char *key);
 void cache_multi_lock(struct mapent *me);
 void cache_multi_unlock(struct mapent *me);
@@ -221,11 +222,11 @@ int rmdir_path(struct autofs_point *ap, const char *path, dev_t dev);
 #define PARSE_MAX_BUF	KEY_MAX_LEN + MAPENT_MAX_LEN + 2
 
 int lookup_nss_read_master(struct master *master, time_t age);
-int lookup_nss_read_map(struct autofs_point *ap, time_t age);
+int lookup_nss_read_map(struct autofs_point *ap, struct map_source *source, time_t age);
 int lookup_enumerate(struct autofs_point *ap,
 	int (*fn)(struct autofs_point *,struct mapent *, int), time_t now);
 int lookup_ghost(struct autofs_point *ap);
-int lookup_nss_mount(struct autofs_point *ap, const char *name, int name_len);
+int lookup_nss_mount(struct autofs_point *ap, struct map_source *source, const char *name, int name_len);
 void lookup_close_lookup(struct autofs_point *ap);
 int lookup_prune_cache(struct autofs_point *ap, time_t age);
 struct mapent *lookup_source_valid_mapent(struct autofs_point *ap, const char *key, unsigned int type);

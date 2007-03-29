@@ -261,10 +261,15 @@ static int do_read_map(struct autofs_point *ap, struct map_source *map, time_t a
 	if (!ap->ghost && ap->type != LKP_DIRECT)
 		return NSS_STATUS_SUCCESS;
 
+	if (!map->stale)
+		return NSS_STATUS_SUCCESS;
+
 	master_source_current_wait(ap->entry);
 	ap->entry->current = map;
 
 	status = lookup->lookup_read_map(ap, age, lookup->context);
+
+	map->stale = 0;
 
 	/*
 	 * For maps that don't support enumeration return success
@@ -302,7 +307,9 @@ static int read_file_source_instance(struct autofs_point *ap, struct map_source 
 
 	instance = master_find_source_instance(map, type, format, 0, NULL);
 	if (!instance) {
-		instance = master_add_source_instance(map, type, format, age);
+		int argc = map->argc;
+		const char **argv = map->argv;
+		instance = master_add_source_instance(map, type, format, age, argc, argv);
 		if (!instance)
 			return NSS_STATUS_UNAVAIL;
 		instance->recurse = map->recurse;
@@ -321,7 +328,9 @@ static int read_source_instance(struct autofs_point *ap, struct map_source *map,
 
 	instance = master_find_source_instance(map, type, format, 0, NULL);
 	if (!instance) {
-		instance = master_add_source_instance(map, type, format, age);
+		int argc = map->argc;
+		const char **argv = map->argv;
+		instance = master_add_source_instance(map, type, format, age, argc, argv);
 		if (!instance)
 			return NSS_STATUS_UNAVAIL;
 		instance->recurse = map->recurse;
@@ -343,7 +352,6 @@ static enum nsswitch_status read_map_source(struct nss_source *this,
 		struct autofs_point *ap, struct map_source *map, time_t age)
 {
 	enum nsswitch_status result;
-	struct map_source *instance;
 	struct map_source tmap;
 	char *path;
 
@@ -362,15 +370,6 @@ static enum nsswitch_status read_map_source(struct nss_source *this,
 		error(ap->logopt, "relative path invalid in files map name");
 		return NSS_STATUS_NOTFOUND;
 	}
-
-	instance = master_find_source_instance(map,
-				"file", map->format, map->argc, map->argv);
-	if (!instance)
-		instance = master_find_source_instance(map,
-				"program", map->format, map->argc, map->argv);
-
-	if (instance)
-		return read_file_source_instance(ap, map, age);
 
 	this->source[4] = '\0';
 	tmap.type = this->source;
@@ -412,10 +411,12 @@ static enum nsswitch_status read_map_source(struct nss_source *this,
 	result = read_file_source_instance(ap, &tmap, age);
 	pthread_cleanup_pop(1);
 
+	map->instance = tmap.instance;
+
 	return result;
 }
 
-int lookup_nss_read_map(struct autofs_point *ap, time_t age)
+int lookup_nss_read_map(struct autofs_point *ap, struct map_source *source, time_t age)
 {
 	struct master_mapent *entry = ap->entry;
 	struct list_head nsslist;
@@ -433,7 +434,10 @@ int lookup_nss_read_map(struct autofs_point *ap, time_t age)
 	 */
 	pthread_cleanup_push(master_source_lock_cleanup, entry);
 	master_source_readlock(entry);
-	map = entry->maps;
+	if (source)
+		map = source;
+	else
+		map = entry->maps;
 	while (map) {
 		/* Is map source up to date or no longer valid */
 		if (!map->stale || entry->age > map->age) {
@@ -655,7 +659,9 @@ static int lookup_name_file_source_instance(struct autofs_point *ap, struct map_
 
 	instance = master_find_source_instance(map, type, format, 0, NULL);
 	if (!instance) {
-		instance = master_add_source_instance(map, type, format, age);
+		int argc = map->argc;
+		const char **argv = map->argv;
+		instance = master_add_source_instance(map, type, format, age, argc, argv);
 		if (!instance)
 			return NSS_STATUS_NOTFOUND;
 		instance->recurse = map->recurse;
@@ -675,7 +681,9 @@ static int lookup_name_source_instance(struct autofs_point *ap, struct map_sourc
 
 	instance = master_find_source_instance(map, type, format, 0, NULL);
 	if (!instance) {
-		instance = master_add_source_instance(map, type, format, age);
+		int argc = map->argc;
+		const char **argv = map->argv;
+		instance = master_add_source_instance(map, type, format, age, argc, argv);
 		if (!instance)
 			return NSS_STATUS_NOTFOUND;
 		instance->recurse = map->recurse;
@@ -690,7 +698,6 @@ static enum nsswitch_status lookup_map_name(struct nss_source *this,
 			const char *name, int name_len)
 {
 	enum nsswitch_status result;
-	struct map_source *instance;
 	struct map_source tmap;
 	char *path;
 
@@ -709,13 +716,6 @@ static enum nsswitch_status lookup_map_name(struct nss_source *this,
 		error(ap->logopt, "relative path invalid in files map name");
 		return NSS_STATUS_NOTFOUND;
 	}
-
-	instance = master_find_source_instance(map, "file", map->format, 0, NULL);
-	if (!instance)
-		instance = master_find_source_instance(map, "program", map->format, 0, NULL);
-
-	if (instance)
-		return lookup_name_file_source_instance(ap, map, name, name_len);
 
 	this->source[4] = '\0';
 	tmap.type = this->source;
@@ -754,13 +754,15 @@ static enum nsswitch_status lookup_map_name(struct nss_source *this,
 
 	result = lookup_name_file_source_instance(ap, &tmap, name, name_len);
 
+	map->instance = tmap.instance;
+
 	/* path is freed in free_argv */
 	free_argv(tmap.argc, tmap.argv);
 
 	return result;
 }
 
-int lookup_nss_mount(struct autofs_point *ap, const char *name, int name_len)
+int lookup_nss_mount(struct autofs_point *ap, struct map_source *source, const char *name, int name_len)
 {
 	struct master_mapent *entry = ap->entry;
 	struct list_head nsslist;
@@ -777,7 +779,10 @@ int lookup_nss_mount(struct autofs_point *ap, const char *name, int name_len)
 	 */
 	pthread_cleanup_push(master_source_lock_cleanup, entry);
 	master_source_readlock(entry);
-	map = entry->maps;
+	if (source)
+		map = source;
+	else
+		map = entry->maps;
 	while (map) {
 		/*
 		 * Only consider map sources that have been read since 
@@ -856,9 +861,26 @@ int lookup_nss_mount(struct autofs_point *ap, const char *name, int name_len)
 
 		map = map->next;
 	}
+	send_map_update_request(ap);
 	pthread_cleanup_pop(1);
 
 	return !result;
+}
+
+static void lookup_close_lookup_instances(struct map_source *map)
+{
+	struct map_source *instance;
+
+	instance = map->instance;
+	while (instance) {
+		lookup_close_lookup_instances(instance);
+		instance = instance->next;
+	}
+
+	if (map->lookup) {
+		close_lookup(map->lookup);
+		map->lookup = NULL;
+	}
 }
 
 void lookup_close_lookup(struct autofs_point *ap)
@@ -870,21 +892,7 @@ void lookup_close_lookup(struct autofs_point *ap)
 		return;
 
 	while (map) {
-		struct map_source *instance;
-
-		instance = map->instance;
-		while (instance) {
-			if (instance->lookup) {
-				close_lookup(instance->lookup);
-				instance->lookup = NULL;
-			}
-			instance = instance->next;
-		}
-
-		if (map->lookup) {
-			close_lookup(map->lookup);
-			map->lookup = NULL;
-		}
+		lookup_close_lookup_instances(map);
 		map = map->next;
 	}
 	return;
@@ -925,6 +933,7 @@ int lookup_prune_cache(struct autofs_point *ap, time_t age)
 
 	map = entry->maps;
 	while (map) {
+		/* Is the map stale */
 		if (!map->stale) {
 			map = map->next;
 			continue;
@@ -956,7 +965,7 @@ int lookup_prune_cache(struct autofs_point *ap, time_t age)
 
 			if (is_mounted(_PATH_MOUNTED, path, MNTS_REAL)) {
 				debug(ap->logopt,
-				      "prune posponed, %s is mounted", path);
+				      "prune check posponed, %s mounted", path);
 				free(key);
 				free(path);
 				continue;

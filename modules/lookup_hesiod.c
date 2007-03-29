@@ -154,7 +154,7 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 	}
 
 	cache_writelock(mc);
-	rv = cache_update(mc, name, best_record, time(NULL));
+	rv = cache_update(mc, source, name, best_record, time(NULL));
 	cache_unlock(mc);
 	if (rv == CHE_FAIL)
 		return NSS_STATUS_UNAVAIL;

@@ -526,7 +526,7 @@ int mount_autofs_direct(struct autofs_point *ap)
 		return -1;
 
 	/* TODO: check map type */
-	if (lookup_nss_read_map(ap, now))
+	if (lookup_nss_read_map(ap, NULL, now))
 		lookup_prune_cache(ap, now);
 	else {
 		error(ap->logopt, "failed to read direct map");
@@ -1413,7 +1413,7 @@ static void *do_mount_direct(void *arg)
 	}
 
 cont:
-	status = lookup_nss_mount(ap, mt->name, strlen(mt->name));
+	status = lookup_nss_mount(ap, NULL, mt->name, strlen(mt->name));
 	/*
 	 * Direct mounts are always a single mount. If it fails there's
 	 * nothing to undo so just complain

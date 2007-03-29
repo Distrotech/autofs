@@ -531,7 +531,7 @@ int master_parse_entry(const char *buffer, unsigned int default_timeout, unsigne
 	/* Add null map entries to the null map cache */
 	if (type && !strcmp(type, "null")) {
 		cache_writelock(nc);
-		cache_update(nc, path, NULL, lineno);
+		cache_update(nc, NULL, path, NULL, lineno);
 		cache_unlock(nc);
 		local_free_vars();
 		return 1;

@@ -272,7 +272,7 @@ int yp_all_callback(int status, char *ypkey, int ypkeylen,
 	*(mapent + vallen) = '\0';
 
 	cache_writelock(mc);
-	ret = cache_update(mc, key, mapent, age);
+	ret = cache_update(mc, source, key, mapent, age);
 	cache_unlock(mc);
 
 	free(key);
@@ -389,7 +389,7 @@ static int lookup_one(struct autofs_point *ap,
 	}
 
 	cache_writelock(mc);
-	ret = cache_update(mc, key, mapent, age);
+	ret = cache_update(mc, source, key, mapent, age);
 	cache_unlock(mc);
 	free(mapent);
 
@@ -441,7 +441,7 @@ static int lookup_wild(struct autofs_point *ap, struct lookup_context *ctxt)
 	}
 
 	cache_writelock(mc);
-	ret = cache_update(mc, "*", mapent, age);
+	ret = cache_update(mc, source, "*", mapent, age);
 	cache_unlock(mc);
 	free(mapent);
 
@@ -456,7 +456,6 @@ static int check_map_indirect(struct autofs_point *ap,
 	struct mapent_cache *mc;
 	struct mapent *exists;
 	unsigned int map_order;
-	int need_map = 0;
 	int ret = 0;
 
 	source = ap->entry->current;
@@ -464,12 +463,6 @@ static int check_map_indirect(struct autofs_point *ap,
 	master_source_current_signal(ap->entry);
 
 	mc = source->mc;
-
-	cache_readlock(mc);
-	exists = cache_lookup_distinct(mc, key);
-	if (exists && exists->mc != mc)
-		exists = NULL;
-	cache_unlock(mc);
 
 	master_source_current_wait(ap->entry);
 	ap->entry->current = source;
@@ -490,44 +483,53 @@ static int check_map_indirect(struct autofs_point *ap,
 	map_order = get_map_order(ctxt->domainname, ctxt->mapname);
 	if (map_order > ctxt->order) {
 		ctxt->order = map_order;
-		need_map = 1;
+		source->stale = 1;
 	}
 
+	pthread_cleanup_push(cache_lock_cleanup, mc);
+	cache_writelock(mc);
+	exists = cache_lookup_distinct(mc, key);
+	/* Not found in the map but found in the cache */
+	if (exists && exists->source == source && ret & CHE_MISSING) {
+		if (exists->mapent) {
+			free(exists->mapent);
+			exists->mapent = NULL;
+			source->stale = 1;
+			exists->status = 0;
+		}
+	}
+	pthread_cleanup_pop(1);
+
 	if (ret == CHE_MISSING) {
+		struct mapent *we;
 		int wild = CHE_MISSING;
 
 		master_source_current_wait(ap->entry);
 		ap->entry->current = source;
 
 		wild = lookup_wild(ap, ctxt);
-		if (wild == CHE_UPDATED || CHE_OK)
-			return NSS_STATUS_SUCCESS;
-
+		/*
+		 * Check for map change and update as needed for
+		 * following cache lookup.
+		 */
 		pthread_cleanup_push(cache_lock_cleanup, mc);
 		cache_writelock(mc);
-		if (wild == CHE_MISSING)
-			cache_delete(mc, "*");
-
-		if (cache_delete(mc, key) && wild & (CHE_MISSING | CHE_FAIL))
-			rmdir_path(ap, key, ap->dev);
+		we = cache_lookup_distinct(mc, "*");
+		if (we) {
+			/* Wildcard entry existed and is now gone */
+			if (we->source == source && (wild & CHE_MISSING)) {
+				cache_delete(mc, "*");
+				source->stale = 1;
+			}
+		} else {
+			/* Wildcard not in map but now is */
+			if (wild & (CHE_OK || CHE_UPDATED))
+				source->stale = 1;
+		}
 		pthread_cleanup_pop(1);
-	}
 
-	/* Have parent update its map if needed */
-	if (ap->ghost && need_map) {
-		int status;
-
-		source->stale = 1;
-
-		status = pthread_mutex_lock(&ap->state_mutex);
-		if (status)
-			fatal(status);
-
-		nextstate(ap->state_pipe[1], ST_READMAP);
-
-		status = pthread_mutex_unlock(&ap->state_mutex);
-		if (status)
-			fatal(status);
+		if (wild & (CHE_OK || CHE_UPDATED))
+			return NSS_STATUS_SUCCESS;
 	}
 
 	if (ret == CHE_MISSING)
@@ -602,7 +604,10 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 
 	cache_readlock(mc);
 	me = cache_lookup(mc, key);
-	if (me && me->mapent && *me->mapent) {
+	/* Stale mapent => check for wildcard */
+	if (me && !me->mapent)
+		me = cache_lookup_distinct(mc, "*");
+	if (me && (me->source == source || *me->key == '/')) {
 		mapent_len = strlen(me->mapent);
 		mapent = alloca(mapent_len + 1);
 		strcpy(mapent, me->mapent);
@@ -623,7 +628,7 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 			cache_writelock(mc);
 			me = cache_lookup_distinct(mc, key);
 			if (!me)
-				rv = cache_update(mc, key, NULL, now);
+				rv = cache_update(mc, source, key, NULL, now);
 			if (rv != CHE_FAIL) {
 				me = cache_lookup_distinct(mc, key);
 				me->status = now + NEGATIVE_TIMEOUT;

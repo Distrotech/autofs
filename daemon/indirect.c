@@ -261,7 +261,7 @@ int mount_autofs_indirect(struct autofs_point *ap)
 		return -1;
 
 	/* TODO: read map, determine map type is OK */
-	if (lookup_nss_read_map(ap, now))
+	if (lookup_nss_read_map(ap, NULL, now))
 		lookup_prune_cache(ap, now);
 	else {
 		error(ap->logopt, "failed to read map for %s", ap->path);
@@ -884,7 +884,7 @@ static void *do_mount_indirect(void *arg)
 		free(tsv);
 	}
 cont:
-	status = lookup_nss_mount(ap, mt->name, mt->len);
+	status = lookup_nss_mount(ap, NULL, mt->name, mt->len);
 	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &state);
 	if (status) {
 		send_ready(ap->ioctlfd, mt->wait_queue_token);

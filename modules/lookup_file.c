@@ -547,44 +547,19 @@ static int check_self_include(const char *key, struct lookup_context *ctxt)
 	return 0;
 }
 
-static struct autofs_point *
+static struct map_source *
 prepare_plus_include(struct autofs_point *ap, time_t age, char *key, unsigned int inc)
 {
-	struct master *master;
-	struct master_mapent *entry;
 	struct map_source *current;
 	struct map_source *source;
-	struct autofs_point *iap;
 	char *type, *map, *fmt;
 	const char *argv[2];
-	int ret, argc;
-	unsigned int timeout = ap->exp_timeout;
-	unsigned int logopt = ap->logopt;
-	unsigned int ghost = ap->ghost;
+	int argc;
 	char *buf, *tmp;
 
 	current = ap->entry->current;
 	ap->entry->current = NULL;
 	master_source_current_signal(ap->entry);
-
-	master = ap->entry->master;
-
-	entry = master_new_mapent(master, ap->path, ap->entry->age);
-	if (!entry) {
-		error(ap->logopt, MODPREFIX "malloc failed for entry");
-		return NULL;
-	}
-
-	ret = master_add_autofs_point(entry, timeout, logopt, ghost, 0);
-	if (!ret) {
-		master_free_mapent(entry);
-		error(ap->logopt,
-		      MODPREFIX "failed to add autofs_point to entry");
-		return NULL;
-	}
-	iap = entry->ap;
-	iap->kpipefd = ap->kpipefd;
-	set_mnt_logging(iap);
 
 	/*
 	 * TODO:
@@ -598,7 +573,6 @@ prepare_plus_include(struct autofs_point *ap, time_t age, char *key, unsigned in
 	/* skip plus */
 	buf = strdup(key + 1);
 	if (!buf) {
-		master_free_mapent(entry);
 		error(ap->logopt, MODPREFIX "failed to strdup key");
 		return NULL;
 	}
@@ -629,21 +603,23 @@ prepare_plus_include(struct autofs_point *ap, time_t age, char *key, unsigned in
 	argv[0] = map;
 	argv[1] = NULL;
 
-	source = master_add_map_source(entry, type, fmt, age, argc, argv);
+	source = master_find_source_instance(current, type, fmt, argc, argv);
 	if (!source) {
-		master_free_mapent(entry);
-		free(buf);
-		error(ap->logopt, "failed to creat map_source");
-		return NULL;
+		source = master_add_source_instance(current, type, fmt, age, argc, argv);
+		if (!source) {
+			free(buf);
+			error(ap->logopt, "failed to add included map instance");
+			return NULL;
+		}
 	}
-	source->mc = current->mc;
+
 	source->depth = current->depth + 1;
 	if (inc)
 		source->recurse = 1;
 
 	free(buf);
 
-	return iap;
+	return source;
 }
 
 int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
@@ -715,7 +691,7 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 		 * included map.
 		 */
 		if (*key == '+') {
-			struct autofs_point *iap;
+			struct map_source *inc_source;
 			unsigned int inc;
 			int status;
 
@@ -726,21 +702,18 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 			master_source_current_wait(ap->entry);
 			ap->entry->current = source;
 
-			iap = prepare_plus_include(ap, age, key, inc);
-			if (!iap) {
+			inc_source = prepare_plus_include(ap, age, key, inc);
+			if (!inc_source) {
 				debug(ap->logopt,
 				      "failed to select included map %s", key);
 				continue;
 			}
 
 			/* Gim'ee some o' that 16k stack baby !! */
-			status = lookup_nss_read_map(iap, age);
+			status = lookup_nss_read_map(ap, inc_source, age);
 			if (!status)
 				warn(ap->logopt,
 				     "failed to read included map %s", key);
-
-			master_free_mapent_sources(iap->entry, 0);
-			master_free_mapent(iap->entry);
 		} else {
 			char *s_key; 
 
@@ -749,7 +722,7 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 				continue;
 
 			cache_writelock(mc);
-			cache_update(mc, s_key, mapent, age);
+			cache_update(mc, source, s_key, mapent, age);
 			cache_unlock(mc);
 
 			free(s_key);
@@ -815,7 +788,7 @@ static int lookup_one(struct autofs_point *ap,
 			 * included map.
 			 */
 			if (*mkey == '+') {
-				struct autofs_point *iap;
+				struct map_source *inc_source;
 				unsigned int inc;
 				int status;
 
@@ -827,8 +800,8 @@ static int lookup_one(struct autofs_point *ap,
 				master_source_current_wait(ap->entry);
 				ap->entry->current = source;
 
-				iap = prepare_plus_include(ap, age, mkey, inc);
-				if (!iap) {
+				inc_source = prepare_plus_include(ap, age, mkey, inc);
+				if (!inc_source) {
 					debug(ap->logopt,
 					      MODPREFIX
 					      "failed to select included map %s",
@@ -837,11 +810,7 @@ static int lookup_one(struct autofs_point *ap,
 				}
 
 				/* Gim'ee some o' that 16k stack baby !! */
-				status = lookup_nss_mount(iap, key, key_len);
-
-				master_free_mapent_sources(iap->entry, 0);
-				master_free_mapent(iap->entry);
-
+				status = lookup_nss_mount(ap, inc_source, key, key_len);
 				if (status) {
 					fclose(f);
 					return CHE_COMPLETED;
@@ -868,7 +837,7 @@ static int lookup_one(struct autofs_point *ap,
 				free(s_key);
 
 				cache_writelock(mc);
-				ret = cache_update(mc, key, mapent, age);
+				ret = cache_update(mc, source, key, mapent, age);
 				cache_unlock(mc);
 
 				fclose(f);
@@ -928,7 +897,7 @@ static int lookup_wild(struct autofs_point *ap, struct lookup_context *ctxt)
 				continue;
 
 			cache_writelock(mc);
-			ret = cache_update(mc, "*", mapent, age);
+			ret = cache_update(mc, source, "*", mapent, age);
 			cache_unlock(mc);
 
 			fclose(f);
@@ -952,7 +921,6 @@ static int check_map_indirect(struct autofs_point *ap,
 	struct map_source *source;
 	struct mapent_cache *mc;
 	struct mapent *exists;
-	int need_map = 0;
 	int ret = CHE_OK;
 
 	source = ap->entry->current;
@@ -960,12 +928,6 @@ static int check_map_indirect(struct autofs_point *ap,
 	master_source_current_signal(ap->entry);
 
 	mc = source->mc;
-
-	cache_readlock(mc);
-	exists = cache_lookup_distinct(mc, key);
-	if (exists && exists->mc != mc)
-		exists = NULL;
-	cache_unlock(mc);
 
 	master_source_current_wait(ap->entry);
 	ap->entry->current = source;
@@ -977,49 +939,53 @@ static int check_map_indirect(struct autofs_point *ap,
 	if (ret == CHE_FAIL)
 		return NSS_STATUS_NOTFOUND;
 
-	if ((ret & CHE_UPDATED) ||
-	    (exists && (ret & CHE_MISSING)))
-		need_map = 1;
+	if (ret & CHE_UPDATED)
+		source->stale = 1;
+
+	pthread_cleanup_push(cache_lock_cleanup, mc);
+	cache_writelock(mc);
+	exists = cache_lookup_distinct(mc, key);
+	/* Not found in the map but found in the cache */
+	if (exists && exists->source == source && ret & CHE_MISSING) {
+		if (exists->mapent) {
+			free(exists->mapent);
+			exists->mapent = NULL;
+			exists->status = 0;
+			source->stale = 1;
+		}
+	}
+	pthread_cleanup_pop(1);
 
 	if (ret == CHE_MISSING) {
+		struct mapent *we;
 		int wild = CHE_MISSING;
 
 		master_source_current_wait(ap->entry);
 		ap->entry->current = source;
 
 		wild = lookup_wild(ap, ctxt);
-		if (wild == CHE_COMPLETED || CHE_UPDATED || CHE_OK)
-			return NSS_STATUS_SUCCESS;
-/*
-		if (wild == CHE_FAIL)
-			return NSS_STATUS_NOTFOUND;
-*/
+		/*
+		 * Check for map change and update as needed for
+		 * following cache lookup.
+		 */
 		pthread_cleanup_push(cache_lock_cleanup, mc);
 		cache_writelock(mc);
-		if (wild == CHE_MISSING)
-			cache_delete(mc, "*");
-
-		if (cache_delete(mc, key) && wild & (CHE_MISSING | CHE_FAIL))
-			rmdir_path(ap, key, ap->dev);
+		we = cache_lookup_distinct(mc, "*");
+		if (we) {
+			/* Wildcard entry existed and is now gone */
+			if (we->source == source && (wild & CHE_MISSING)) {
+				cache_delete(mc, "*");
+				source->stale = 1;
+			}
+		} else {
+			/* Wildcard not in map but now is */
+			if (wild & (CHE_OK || CHE_UPDATED))
+				source->stale = 1;
+		}
 		pthread_cleanup_pop(1);
-	}
 
-	/* Have parent update its map ? */
-	/* TODO: update specific map */
-	if (ap->ghost && need_map) {
-		int status;
-
-		source->stale = 1;
-
-		status = pthread_mutex_lock(&ap->state_mutex);
-		if (status)
-			fatal(status);
-
-		nextstate(ap->state_pipe[1], ST_READMAP);
-
-		status = pthread_mutex_unlock(&ap->state_mutex);
-		if (status)
-			fatal(status);
+		if (wild & (CHE_OK || CHE_UPDATED))
+			return NSS_STATUS_SUCCESS;
 	}
 
 	if (ret == CHE_MISSING)
@@ -1109,7 +1075,10 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 
 	cache_readlock(mc);
 	me = cache_lookup(mc, key);
-	if (me && me->mapent && *me->mapent) {
+	/* Stale mapent => check for wildcard */
+	if (me && !me->mapent)
+		me = cache_lookup_distinct(mc, "*");
+	if (me && (me->source == source || *me->key == '/')) {
 		pthread_cleanup_push(cache_lock_cleanup, mc);
 		mapent_len = strlen(me->mapent);
 		mapent = alloca(mapent_len + 1);
@@ -1132,7 +1101,7 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 			cache_writelock(mc);
 			me = cache_lookup_distinct(mc, key);
 			if (!me)
-				rv = cache_update(mc, key, NULL, now);
+				rv = cache_update(mc, source, key, NULL, now);
 			if (rv != CHE_FAIL) {
 				me = cache_lookup_distinct(mc, key);
 				me->status = now + NEGATIVE_TIMEOUT;

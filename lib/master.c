@@ -292,10 +292,8 @@ struct map_source *master_find_map_source(struct master_mapent *entry,
 	return source;
 }
 
-void master_free_map_source(struct map_source *source, unsigned int free_cache)
+static void __master_free_map_source(struct map_source *source, unsigned int free_cache)
 {
-	int status;
-
 	if (source->type)
 		free(source->type);
 	if (source->format)
@@ -318,25 +316,32 @@ void master_free_map_source(struct map_source *source, unsigned int free_cache)
 	if (source->instance) {
 		struct map_source *instance, *next;
 
-		status = pthread_mutex_lock(&instance_mutex);
-		if (status)
-			fatal(status);
-
 		instance = source->instance;
 		while (instance) {
 			next = instance->next;
-			master_free_map_source(instance, 0);
+			__master_free_map_source(instance, 0);
 			instance = next;
 		}
-
-		status = pthread_mutex_unlock(&instance_mutex);
-		if (status)
-			fatal(status);
 	}
 
 	free(source);
 
 	return;
+}
+
+void master_free_map_source(struct map_source *source, unsigned int free_cache)
+{
+	int status;
+
+	status = pthread_mutex_lock(&instance_mutex);
+	if (status)
+		fatal(status);
+
+	__master_free_map_source(source, free_cache);
+
+	status = pthread_mutex_unlock(&instance_mutex);
+	if (status)
+		fatal(status);
 }
 
 struct map_source *master_find_source_instance(struct map_source *source, const char *type, const char *format, int argc, const char **argv)
@@ -378,19 +383,15 @@ next:
 }
 
 struct map_source *
-master_add_source_instance(struct map_source *source, const char *type, const char *format, time_t age)
+master_add_source_instance(struct map_source *source, const char *type, const char *format, time_t age, int argc, const char **argv)
 {
 	struct map_source *instance;
 	struct map_source *new;
 	char *ntype, *nformat;
-	const char **tmpargv, *name;
+	const char **tmpargv;
 	int status;
 
-	if (!type)
-		return NULL;
-
-	instance = master_find_source_instance(source,
-			type, format, source->argc, source->argv);
+	instance = master_find_source_instance(source, type, format, argc, argv);
 	if (instance)
 		return instance;
 
@@ -399,12 +400,14 @@ master_add_source_instance(struct map_source *source, const char *type, const ch
 		return NULL;
 	memset(new, 0, sizeof(struct map_source));
 
-	ntype = strdup(type);
-	if (!ntype) {
-		master_free_map_source(new, 0);
-		return NULL;
+	if (type) {
+		ntype = strdup(type);
+		if (!ntype) {
+			master_free_map_source(new, 0);
+			return NULL;
+		}
+		new->type = ntype;
 	}
-	new->type = ntype;
 
 	if (format) {
 		nformat = strdup(format);
@@ -418,16 +421,15 @@ master_add_source_instance(struct map_source *source, const char *type, const ch
 	new->age = age;
 	new->master_line = 0;
 	new->mc = source->mc;
+	new->stale = 1;
 
-	tmpargv = copy_argv(source->argc, source->argv);
+	tmpargv = copy_argv(argc, argv);
 	if (!tmpargv) {
 		master_free_map_source(new, 0);
 		return NULL;
 	}
-	new->argc = source->argc;
+	new->argc = argc;
 	new->argv = tmpargv;
-
-	name = new->argv[0];
 
 	status = pthread_mutex_lock(&instance_mutex);
 	if (status)
@@ -449,6 +451,71 @@ master_add_source_instance(struct map_source *source, const char *type, const ch
 		fatal(status);
 
 	return new;
+}
+
+static void check_stale_instances(struct map_source *source)
+{
+	struct map_source *map;
+
+	if (!source)
+		return;
+
+	map = source->instance;
+	while (map) {
+		if (map->stale) {
+			source->stale = 1;
+			break;
+		}
+		check_stale_instances(map->instance);
+		map = map->next;
+	}
+
+	return;
+}
+
+void send_map_update_request(struct autofs_point *ap)
+{
+	struct map_source *map;
+	int status, need_update = 0;
+
+	if (!ap->ghost)
+		return;
+
+	status = pthread_mutex_lock(&instance_mutex);
+	if (status)
+		fatal(status);
+
+	map = ap->entry->maps;
+	while (map) {
+		check_stale_instances(map);
+		map = map->next;
+	}
+
+	map = ap->entry->maps;
+	while (map) {
+		if (map->stale) {
+			need_update = 1;
+			break;
+		}
+		map = map->next;
+	}
+
+	status = pthread_mutex_unlock(&instance_mutex);
+	if (status)
+		fatal(status);
+
+	if (!need_update)
+		return;
+
+	status = pthread_mutex_lock(&ap->state_mutex);
+	if (status)
+		fatal(status);
+	nextstate(ap->state_pipe[1], ST_READMAP);
+	status = pthread_mutex_unlock(&ap->state_mutex);
+	if (status)
+		fatal(status);
+
+	return;
 }
 
 void master_source_writelock(struct master_mapent *entry)
