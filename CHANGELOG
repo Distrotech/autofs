@@ -17,6 +17,7 @@
 - fix directory creation for browse mounts.
 - fix wildcard map handling and improve nsswitch source map re-reading.
 - fix "null" domain netgroup match for "-hosts" map.
+- update kernel patches.
 
 20/2/2007 autofs-5.0.1
 ----------------------
