@@ -1367,9 +1367,9 @@ static void usage(void)
 		"	-d --debug	log debuging info\n"
 		"	-D --define	define global macro variable\n"
 		/*"	-f --foreground do not fork into background\n" */
-		"	-r --random-replicated-selection"
+		"	-r --random-replicated-selection\n"
 		"			use ramdom replicated server selection\n"
-		"	-O --global-options"
+		"	-O --global-options\n"
 		"			specify global mount options\n"
 		"	-V --version	print version, build config and exit\n"
 		, program);
