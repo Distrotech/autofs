@@ -42,6 +42,8 @@ int parse_version = AUTOFS_PARSE_VERSION;	/* Required by protocol */
 static struct mount_mod *mount_nfs = NULL;
 static int init_ctr = 0;
 
+extern const char *global_options;
+
 struct parse_context {
 	char *optstr;		/* Mount options */
 	char *macros;		/* Map wide macro defines */
@@ -64,6 +66,8 @@ static struct parse_context default_context = {
 	NULL,			/* The substvar local vars table */
 	1			/* Do slashify_colons */
 };
+
+static char *concat_options(char *left, char *right);
 
 /* Free all storage associated with this context */
 static void kill_context(struct parse_context *ctxt)
@@ -264,6 +268,7 @@ int parse_init(int argc, const char *const *argv, void **context)
 	const char *xopt;
 	int optlen, len, offset;
 	int i, bval;
+	unsigned int append_options;
 
 	/* Get processor information for predefined escapes */
 
@@ -389,6 +394,25 @@ int parse_init(int argc, const char *const *argv, void **context)
 				return 1;
 			}
 			ctxt->optstr = noptstr;
+		}
+	}
+
+	if (global_options) {
+		append_options = defaults_get_append_options();
+		if (append_options) {
+			char *tmp = concat_options(global_options, ctxt->optstr);
+			if (!tmp) {
+				char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+				error(LOGOPT_ANY, MODPREFIX "concat_options: %s", estr);
+			} else
+				ctxt->optstr = tmp;
+		} else {
+			if (!ctxt->optstr)
+				ctxt->optstr = strdup(global_options);
+			if (!ctxt->optstr) {
+				char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+				warn(LOGOPT_ANY, MODPREFIX "%s", estr);
+			}
 		}
 	}
 

@@ -51,6 +51,12 @@ mount entries.
 Enables the use of ramdom selection when choosing a host from a
 list of replicated servers.
 .TP
+.I "\-O, \-\-global-options"
+Allows the specification of global mount options used for all master
+map entries. These options will either replace or be appened to options
+given in a master map entry depending on the APPEND_OPTIONS configuration
+setting.
+.TP
 .I "\-V, \-\-version"
 Display the version number, then exit.
 .SH ARGUMENTS

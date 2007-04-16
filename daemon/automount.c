@@ -47,6 +47,8 @@ const char *libdir = AUTOFS_LIB_DIR;	/* Location of library modules */
 const char *mapdir = AUTOFS_MAP_DIR;	/* Location of mount maps */
 const char *confdir = AUTOFS_CONF_DIR;	/* Location of autofs config file */
 
+const char *global_options;		/* Global option, from command line */
+
 static char *pid_file = NULL;	/* File in which to keep pid */
 unsigned int random_selection;	/* use random policy when selecting
 				 * which multi-mount host to mount */
@@ -1367,6 +1369,8 @@ static void usage(void)
 		/*"	-f --foreground do not fork into background\n" */
 		"	-r --random-replicated-selection"
 		"			use ramdom replicated server selection\n"
+		"	-O --global-options"
+		"			specify global mount options\n"
 		"	-V --version	print version, build config and exit\n"
 		, program);
 }
@@ -1452,7 +1456,7 @@ int main(int argc, char *argv[])
 {
 	int res, opt, status;
 	unsigned ghost, logging;
-	unsigned foreground;
+	unsigned foreground, have_global_options;
 	time_t timeout;
 	time_t age = time(NULL);
 	sigset_t allsigs;
@@ -1466,6 +1470,7 @@ int main(int argc, char *argv[])
 		{"define", 1, 0, 'D'},
 		{"foreground", 0, 0, 'f'},
 		{"random-selection", 0, 0, 'r'},
+		{"global-options", 1, 0, 'O'},
 		{"version", 0, 0, 'V'},
 		{0, 0, 0, 0}
 	};
@@ -1482,10 +1487,12 @@ int main(int argc, char *argv[])
 	ghost = defaults_get_browse_mode();
 	logging = defaults_get_logging();
 	random_selection = 0;
+	global_options = NULL;
+	have_global_options = 0;
 	foreground = 0;
 
 	opterr = 0;
-	while ((opt = getopt_long(argc, argv, "+hp:t:vdD:fVr", long_options, NULL)) != EOF) {
+	while ((opt = getopt_long(argc, argv, "+hp:t:vdD:fVrO:", long_options, NULL)) != EOF) {
 		switch (opt) {
 		case 'h':
 			usage();
@@ -1521,6 +1528,16 @@ int main(int argc, char *argv[])
 
 		case 'r':
 			random_selection = 1;
+			break;
+
+		case 'O':
+			if (!have_global_options) {
+				global_options = strdup(optarg);
+				have_global_options = 1;
+				break;
+			}
+			printf("%s: global options already specified.\n",
+				program);
 			break;
 
 		case '?':
