@@ -140,7 +140,7 @@ int expandsunent(const char *src, char *dst, const char *key,
 			 * re preserved, we need to escape them here.
 			 */
 			if (strchr(key, ' ')) {
-				char *keyp = key;
+				const char *keyp = key;
 				while (*keyp) {
 					if (isspace(*keyp)) {
 						if (dst) {
@@ -953,6 +953,7 @@ int parse_mount(struct autofs_point *ap, const char *name,
 	int mapent_len, rv = 0;
 	int optlen, cur_state;
 	int slashify = ctxt->slashify_colons;
+	unsigned int append_options;
 
 	source = ap->entry->current;
 	ap->entry->current = NULL;
@@ -998,6 +999,7 @@ int parse_mount(struct autofs_point *ap, const char *name,
 
 	debug(ap->logopt, MODPREFIX "expanded entry: %s", pmapent);
 
+	append_options = defaults_get_append_options();
 	options = strdup(ctxt->optstr ? ctxt->optstr : "");
 	if (!options) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
@@ -1010,10 +1012,10 @@ int parse_mount(struct autofs_point *ap, const char *name,
 
 	/* Deal with 0 or more options */
 	if (*p == '-') {
-		char *mnt_options = NULL;
+		char *tmp, *mnt_options = NULL;
 
 		do {
-			char *tmp, *noptions = NULL;
+			char *noptions = NULL;
 
 			p = parse_options(p, &noptions, ap->logopt);
 			tmp = concat_options(mnt_options, noptions);
@@ -1033,10 +1035,25 @@ int parse_mount(struct autofs_point *ap, const char *name,
 			p = skipspace(p);
 		} while (*p == '-');
 
-		if (options)
+		if (options && !append_options) {
 			free(options);
+			options = NULL;
+		}
 
-		options = mnt_options;
+		if (append_options) {
+			tmp = concat_options(options, mnt_options);
+			if (!tmp) {
+				char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+				error(ap->logopt, MODPREFIX "concat_options: %s", estr);
+				if (options)
+					free(options);
+				if (mnt_options)
+					free(mnt_options);
+				return 1;
+			}
+			options = tmp;
+		} else
+			options = mnt_options;
 	}
 
 	debug(ap->logopt, MODPREFIX "gathered options: %s", options);

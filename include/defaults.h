@@ -34,6 +34,7 @@
 #define DEFAULT_ENTRY_ATTR		"cn"
 #define DEFAULT_VALUE_ATTR		"nisMapEntry"
 
+#define DEFAULT_APPEND_OPTIONS		1
 #define DEFAULT_AUTH_CONF_FILE		AUTOFS_MAP_DIR "/autofs_ldap_auth.conf"
 
 unsigned int defaults_read_config(void);
@@ -47,6 +48,7 @@ const char *defaults_get_entry_obj_class(void);
 const char *defaults_get_map_attr(void);
 const char *defaults_get_entry_attr(void);
 const char *defaults_get_value_attr(void);
+unsigned int defaults_get_append_options(void);
 const char *defaults_get_auth_conf_file(void);
 
 #endif

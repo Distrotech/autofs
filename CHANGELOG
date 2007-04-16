@@ -18,6 +18,7 @@
 - fix wildcard map handling and improve nsswitch source map re-reading.
 - fix "null" domain netgroup match for "-hosts" map.
 - update kernel patches.
+- add configuration variable to control appending of global options.
 
 20/2/2007 autofs-5.0.1
 ----------------------

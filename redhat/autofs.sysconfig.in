@@ -13,6 +13,10 @@ TIMEOUT=300
 #
 BROWSE_MODE="no"
 #
+# APPEND_OPTIONS - append to global options instead of replace.
+#
+#APPEND_OPTIONS="yes"
+#
 # LOGGING - set default log level "none", "verbose" or "debug"
 #
 #LOGGING="none"

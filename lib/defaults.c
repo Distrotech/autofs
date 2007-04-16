@@ -37,6 +37,7 @@
 #define ENV_NAME_ENTRY_ATTR		"ENTRY_ATTRIBUTE"
 #define ENV_NAME_VALUE_ATTR		"VALUE_ATTRIBUTE"
 
+#define ENV_APPEND_OPTIONS		"APPEND_OPTIONS"
 #define ENV_AUTH_CONF_FILE		"AUTH_CONF_FILE"
 
 static const char *default_master_map_name = DEFAULT_MASTER_MAP_NAME;
@@ -200,6 +201,7 @@ unsigned int defaults_read_config(void)
 		    check_set_config_value(res, ENV_NAME_MAP_ATTR, value) ||
 		    check_set_config_value(res, ENV_NAME_ENTRY_ATTR, value) ||
 		    check_set_config_value(res, ENV_NAME_VALUE_ATTR, value) ||
+		    check_set_config_value(res, ENV_APPEND_OPTIONS, value) ||
 		    check_set_config_value(res, ENV_AUTH_CONF_FILE, value))
 			;
 	}
@@ -336,6 +338,17 @@ const char *defaults_get_value_attr(void)
 		return strdup(default_value_attr);
 
 	return (const char *) va;
+}
+
+unsigned int defaults_get_append_options(void)
+{
+	int res;
+
+	res = get_env_yesno(ENV_APPEND_OPTIONS);
+	if (res < 0)
+		res = DEFAULT_APPEND_OPTIONS;
+
+	return res;
 }
 
 const char *defaults_get_auth_conf_file(void)
