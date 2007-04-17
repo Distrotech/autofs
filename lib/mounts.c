@@ -371,7 +371,9 @@ int contained_in_local_fs(const char *path)
 						ret = 1;
 				} else
 					ret = 1;
-			}
+			} else if (!strncmp("LABEL=", this->fs_name, 6) ||
+				   !strncmp("UUID=", this->fs_name, 5))
+				ret = 1;
 			break;
 		}
 	}

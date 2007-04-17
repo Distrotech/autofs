@@ -20,6 +20,7 @@
 - update kernel patches.
 - add configuration variable to control appending of global options.
 - add command option to set a global mount options string.
+- add check for labeled local filesystems (Matthias Koenig).
 
 20/2/2007 autofs-5.0.1
 ----------------------
