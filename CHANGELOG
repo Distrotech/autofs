@@ -22,6 +22,7 @@
 - add command option to set a global mount options string.
 - add check for labeled local filesystems (Matthias Koenig).
 - disable exports check for "-hosts" map.
+- fix memory allocation problem with global options patch.
 
 20/2/2007 autofs-5.0.1
 ----------------------
