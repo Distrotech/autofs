@@ -208,7 +208,7 @@ done:
 	exp = rpc_get_exports(name, 10, 0, RPC_CLOSE_NOLINGER);
 
 	/* Check exports for obvious ones we don't have access to */
-	exp = rpc_exports_prune(exp);
+	/*exp = rpc_exports_prune(exp);*/
 
 	mapent = NULL;
 	while (exp) {
