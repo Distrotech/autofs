@@ -23,6 +23,7 @@
 - add check for labeled local filesystems (Matthias Koenig).
 - disable exports check for "-hosts" map.
 - fix memory allocation problem with global options patch.
+- fix master map lexer to admit "." in macro values (Mike Matera).
 
 20/2/2007 autofs-5.0.1
 ----------------------
