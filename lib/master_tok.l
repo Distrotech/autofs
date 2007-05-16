@@ -98,7 +98,15 @@ DNSERVSTR2	(\/\/[[:alpha:]][[:alnum:]\-.]*(:[0-9]+)?\/)
 DNSERVSTR3	(([[:digit:]]{1,3}\.){3}[[:digit:]]{1,3}(:[0-9]+)?:)
 DNSERVSTR4	(\/\/([[:digit:]]{1,3}\.){3}[[:digit:]]{1,3}(:[0-9]+)?\/)
 DNSERVERSTR	{DNSERVSTR1}|{DNSERVSTR2}|{DNSERVSTR3}|{DNSERVSTR4}
-DNATTRSTR	(cn|nisMapName|automountMapName|ou|dc|o|c)
+
+AT_CN		([cC][[nN])
+AT_NMN		([nN][iI][sS][Mm][aA][pP][Nn][aA][mM][eE])
+AT_AMN		([aA][uU][tT][oO][mM][oO][uU][tT][Mm][aA][pP][Nn][aA][mM][eE])
+AT_OU		([oO][[uU])
+AT_DC		([dD][[cC])
+AT_O		([oO])
+AT_C		([cC])
+DNATTRSTR	(AT_CN|AT_NMN|AT_AMN|AT_OU|AT_DC|AT_O|AT_C)
 DNNAMESTR	([[:alnum:]_.\-]+)
 
 INTMAP		(-hosts|-null)
