@@ -101,12 +101,12 @@ DNSERVERSTR	{DNSERVSTR1}|{DNSERVSTR2}|{DNSERVSTR3}|{DNSERVSTR4}
 
 AT_CN		([cC][[nN])
 AT_NMN		([nN][iI][sS][Mm][aA][pP][Nn][aA][mM][eE])
-AT_AMN		([aA][uU][tT][oO][mM][oO][uU][tT][Mm][aA][pP][Nn][aA][mM][eE])
+AT_AMN		([aA][uU][tT][oO][mM][oO][uU][nN][tT][Mm][aA][pP][Nn][aA][mM][eE])
 AT_OU		([oO][[uU])
 AT_DC		([dD][[cC])
 AT_O		([oO])
 AT_C		([cC])
-DNATTRSTR	(AT_CN|AT_NMN|AT_AMN|AT_OU|AT_DC|AT_O|AT_C)
+DNATTRSTR	{AT_CN}|{AT_NMN}|{AT_AMN}|{AT_OU}|{AT_DC}|{AT_O}|{AT_C}
 DNNAMESTR	([[:alnum:]_.\-]+)
 
 INTMAP		(-hosts|-null)
