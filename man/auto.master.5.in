@@ -100,8 +100,9 @@ The map is a hesiod database whose
 .B filsys
 entries are used for maps.
 .TP
-.B ldap
-The map is stored in an LDAP directory.
+.B ldap \fPor\fB ldaps
+The map is stored in an LDAP directory. If \fBldaps\fP is used the
+appropriate certificate must be configured in the LDAP client.
 .RE
 .TP
 \fBformat\fP

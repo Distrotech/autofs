@@ -100,14 +100,8 @@ LDAP *init_ldap_connection(struct lookup_context *ctxt)
 	ctxt->version = 3;
 
 	/* Initialize the LDAP context. */
-	/* LDAP_PORT should not be hard-coded, here.  If we are going to
-	 * parse ldap strings ourselves, then we can put the port specified
-	 * in the host:port format here.  Otherwise, we can just pass the
-	 * host:port string to the ldap_init call and let the library handle
-	 * it.   -JM
-	 */
-	ldap = ldap_init(ctxt->server, LDAP_PORT);
-	if (!ldap) {
+	rv = ldap_initialize(&ldap, ctxt->server);
+	if (rv != LDAP_OPT_SUCCESS) {
 		crit(LOGOPT_ANY,
 		     MODPREFIX "couldn't initialize LDAP connection to %s",
 		     ctxt->server ? ctxt->server : "default server");
@@ -348,7 +342,7 @@ int parse_ldap_config(struct lookup_context *ctxt)
 		goto out;
 	}
 
-	if (!usetls)
+	if (!usetls || ctxt->port == LDAPS_PORT)
 		use_tls = LDAP_TLS_DONT_USE;
 	else {
 		if (!strcasecmp(usetls, "yes"))
@@ -551,15 +545,30 @@ int auth_init(struct lookup_context *ctxt)
  */
 static int parse_server_string(const char *url, struct lookup_context *ctxt)
 {
-	char buf[MAX_ERR_BUF], *tmp = NULL;
-	const char *ptr;
-	int l;
+	char buf[MAX_ERR_BUF], *tmp = NULL, proto[9];
+	const char *ptr, *name;
+	int l, al_len;
 
+	*proto = '\0';
 	ptr = url;
 
 	debug(LOGOPT_NONE,
 	      MODPREFIX
 	      "Attempting to parse LDAP information from string \"%s\".", ptr);
+
+	ctxt->port = LDAP_PORT;
+	if (!strncmp(ptr, "ldap:", 5) || !strncmp(ptr, "ldaps:", 6)) {
+		if (*(ptr + 4) == 's') {
+			ctxt->port = LDAPS_PORT;
+			memcpy(proto, ptr, 6);
+			strcat(proto, "//");
+			ptr += 6;
+		} else {
+			memcpy(proto, ptr, 5);
+			strcat(proto, "//");
+			ptr += 5;
+		}
+	}
 
 	if (!strncmp(ptr, "//", 2)) {
 		const char *s = ptr + 2;
@@ -568,7 +577,13 @@ static int parse_server_string(const char *url, struct lookup_context *ctxt)
 		/* Isolate the server(s). */
 		if ((q = strchr(s, '/'))) {
 			l = q - s;
-			tmp = malloc(l + 1);
+			if (*proto) {
+				al_len = l + strlen(proto) + 2;
+				tmp = malloc(al_len);
+			} else {
+				al_len = l + 1;
+				tmp = malloc(al_len);
+			}
 			if (!tmp) {
 				char *estr;
 				estr = strerror_r(errno, buf, MAX_ERR_BUF);
@@ -576,8 +591,13 @@ static int parse_server_string(const char *url, struct lookup_context *ctxt)
 				return 0;
 			}
 			ctxt->server = tmp;
-			memset(ctxt->server, 0, l + 1);
-			memcpy(ctxt->server, s, l);
+			memset(ctxt->server, 0, al_len);
+			if (*proto) {
+				strcpy(ctxt->server, proto);
+				memcpy(ctxt->server + strlen(proto), s, l);
+				strcat(ctxt->server, "/");
+			} else
+				memcpy(ctxt->server, s, l);
 			ptr = q + 1;
 		} else {
 			crit(LOGOPT_ANY,
@@ -613,8 +633,14 @@ static int parse_server_string(const char *url, struct lookup_context *ctxt)
 		}
 
 		l = q - ptr;
+		if (proto) {
+			al_len = l + strlen(proto) + 2;
+			tmp = malloc(al_len);
+		} else {
+			al_len = l + 1;
+			tmp = malloc(al_len);
+		}
 		/* Isolate the server's name. */
-		tmp = malloc(l + 1);
 		if (!tmp) {
 			char *estr;
 			estr = strerror_r(errno, buf, MAX_ERR_BUF);
@@ -622,8 +648,13 @@ static int parse_server_string(const char *url, struct lookup_context *ctxt)
 			return 0;
 		}
 		ctxt->server = tmp;
-		memset(ctxt->server, 0, l + 1);
-		memcpy(ctxt->server, ptr, l);
+		memset(ctxt->server, 0, al_len);
+		if (*proto) {
+			strcpy(ctxt->server, proto);
+			memcpy(ctxt->server + strlen(proto), ptr, l);
+			strcat(ctxt->server, "/");
+		} else
+			memcpy(ctxt->server, ptr, l);
 		ptr += l + 1;
 	}
 
@@ -639,29 +670,41 @@ static int parse_server_string(const char *url, struct lookup_context *ctxt)
 	 * the later LDAP calls will fail.
 	 */
 	l = strlen(ptr);
-	if (strchr(ptr, '=')) {
+	if ((name = strchr(ptr, '='))) {
 		char *base;
 
+		/*
+		 * An '=' with no ',' means a mapname has been given so just
+		 * grab it alone to keep it independent of schema otherwize
+		 * we expect a full dn.
+		 */
 		if (!strchr(ptr, ',')) {
-			debug(LOGOPT_NONE,
-			      MODPREFIX "LDAP dn not fuly specified");
-			if (ctxt->server)
-				free(ctxt->server);
-			return 0;
+			char *map = strdup(name + 1);
+			if (map)
+				ctxt->mapname = map;
+			else {
+				char *estr;
+				estr = strerror_r(errno, buf, MAX_ERR_BUF);
+				crit(LOGOPT_ANY, MODPREFIX "malloc: %s", estr);
+				if (ctxt->server)
+					free(ctxt->server);
+				return 0;
+			}
+			
+		} else {
+			base = malloc(l + 1);
+			if (!base) {
+				char *estr;
+				estr = strerror_r(errno, buf, MAX_ERR_BUF);
+				crit(LOGOPT_ANY, MODPREFIX "malloc: %s", estr);
+				if (ctxt->server)
+					free(ctxt->server);
+				return 0;
+			}
+			ctxt->base = base;
+			memset(ctxt->base, 0, l + 1);
+			memcpy(ctxt->base, ptr, l);
 		}
-
-		base = malloc(l + 1);
-		if (!base) {
-			char *estr;
-			estr = strerror_r(errno, buf, MAX_ERR_BUF);
-			crit(LOGOPT_ANY, MODPREFIX "malloc: %s", estr);
-			if (ctxt->server)
-				free(ctxt->server);
-			return 0;
-		}
-		ctxt->base = base;
-		memset(ctxt->base, 0, l + 1);
-		memcpy(ctxt->base, ptr, l);
 	} else {
 		char *map = malloc(l + 1);
 		if (!map) {
@@ -675,6 +718,14 @@ static int parse_server_string(const char *url, struct lookup_context *ctxt)
 		ctxt->mapname = map;
 		memset(ctxt->mapname, 0, l + 1);
 		memcpy(map, ptr, l);
+	}
+
+	if (!ctxt->server && *proto) {
+		if (!strncmp(proto, "ldaps", 5)) {
+			warn(LOGOPT_ANY, MODPREFIX
+			     "server must be given to force ldaps, connection "
+			     "will use LDAP client configured protocol");
+		}
 	}
 done:
 	if (ctxt->mapname)

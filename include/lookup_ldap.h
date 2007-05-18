@@ -13,6 +13,7 @@ struct lookup_context {
 	char *mapname;
 
 	char *server;
+	int port;
 	char *base;
 	char *qdn;
 

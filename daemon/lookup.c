@@ -169,20 +169,30 @@ int lookup_nss_read_master(struct master *master, time_t age)
 			char source[10];
 
 			memset(source, 0, 10);
-			/* TODO: ldaps is not yet handled by ldap module */
-			/* TODO: must tighten up this test */
-			if (!strncmp(name, "file", 4) ||
-			    !strncmp(name, "yp", 2) ||
-			    !strncmp(name, "nis", 3) ||
-			    !strncmp(name, "nisplus", 7) ||
-			    !strncmp(name, "ldap", 4)) {
+			if (!strncmp(name, "file:", 5) ||
+			    !strncmp(name, "yp:", 3) ||
+			    !strncmp(name, "nis:", 4) ||
+			    !strncmp(name, "nisplus:", 8) ||
+			    !strncmp(name, "ldap:", 5) ||
+			    !strncmp(name, "ldaps:", 6)) {
 				strncpy(source, name, tmp - name);
 
-				master->name = tmp + 1;
-
-				debug(LOGOPT_NONE,
-				      "reading master %s %s",
-				      source, master->name);
+				/*
+				 * If it's an ldap map leave the source in the
+				 * name so the lookup module can work out if
+				 * ldaps has been requested.
+				 */
+				if (strncmp(name, "ldap", 4)) {
+					master->name = tmp + 1;
+					debug(LOGOPT_NONE,
+					      "reading master %s %s",
+					      source, master->name);
+				} else {
+					master->name = name;
+					debug(LOGOPT_NONE,
+					      "reading master %s %s",
+					      source, tmp + 1);
+				}
 
 				result = do_read_master(master, source, age);
 				master->name = name;

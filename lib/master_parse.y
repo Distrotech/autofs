@@ -288,6 +288,19 @@ map:	PATH
 			local_free_vars();
 			YYABORT;
 		}
+		/* Add back the type for lookup_ldap.c to handle ldaps */
+		if (*local_argv[0]) {
+			tmp = malloc(strlen(type) + strlen(local_argv[0]) + 2);
+			if (!tmp) {
+				local_free_vars();
+				YYABORT;
+			}
+			strcpy(tmp, type);
+			strcat(tmp, ":");
+			strcat(tmp, local_argv[0]);
+			free(local_argv[0]);
+			local_argv[0] = tmp;
+		}
 	}
 	;
 
@@ -341,12 +354,12 @@ dnattrs: DNATTR EQUAL DNNAME
 		strcat($$, ",");
 		strcat($$, $5);
 	}
-	| DNATTR
-	{
-		master_notify($1);
-		YYABORT;
-	}
 	| DNNAME
+	{
+		/* Matches map in old style syntax ldap:server:map */
+		strcpy($$, $1);
+	}
+	| DNATTR
 	{
 		master_notify($1);
 		YYABORT;
