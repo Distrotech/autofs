@@ -133,7 +133,6 @@ Treat errors when mounting file systems as fatal. This is important when
 multiple file systems should be mounted (`multimounts'). If this option
 is given, no file system is mounted at all if at least one file system
 can't be mounted.
-<<<<<<< master
 .SH GENERAL SYSTEM DEFAULTS CONFIGURATION
 .P
 The default value of several general settings may be changed in the
@@ -149,24 +148,10 @@ sets the default mount timeout (program default 600).
 .B BROWSE_MODE
 Maps are browsable by default (program default "yes").
 .TP
-.B LOGGING
-set default log level "none", "verbose" or "debug" (program default "none").
-=======
-.SH GENERAL SYSTEM DEFAULTS CONFIGURATION
-.P
-The default value of several general settings may be changed in the
-configuration file
-.nh
-.BR @@autofsconfdir@@/autofs .
-.hy
-.P
-They are:
-.TP
-.B TIMEOUT
-sets the default mount timeout (program default 600).
-.TP
-.B BROWSE_MODE
-Maps are browsable by default (program default "yes").
+.B APPEND_OPTIONS
+Determine whether global options, given on the command line or per mount
+in the master map, are appended to map entry options or if the map entry
+options replace the global options (program default "yes", append options).
 .TP
 .B LOGGING
 set default log level "none", "verbose" or "debug" (program default "none").

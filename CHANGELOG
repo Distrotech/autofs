@@ -25,6 +25,7 @@
 - fix memory allocation problem with global options patch.
 - fix master map lexer to admit "." in macro values (Mike Matera).
 - make ldap attribute match case insensitive.
+- add missed man page update for APPEND_OPTIONS config option.
 
 20/2/2007 autofs-5.0.1
 ----------------------
