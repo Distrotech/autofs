@@ -438,12 +438,12 @@ static int check_map_indirect(struct autofs_point *ap,
 			}
 		} else {
 			/* Wildcard not in map but now is */
-			if (wild & (CHE_OK || CHE_UPDATED))
+			if (wild & (CHE_OK | CHE_UPDATED))
 				source->stale = 1;
 		}
 		pthread_cleanup_pop(1);
 
-		if (wild & (CHE_UPDATED || CHE_OK))
+		if (wild & (CHE_UPDATED | CHE_OK))
 			return NSS_STATUS_SUCCESS;
 	}
 

@@ -30,6 +30,7 @@
   - note: it's no longer possible to multiple hosts in an ldap map spec.
   - note: if this is needed use only the map name and configure the URI
     entry in the ldap client configuration.
+- correct mistake in logic test in wildcard lookup.
 
 20/2/2007 autofs-5.0.1
 ----------------------
