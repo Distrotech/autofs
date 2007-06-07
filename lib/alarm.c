@@ -168,7 +168,6 @@ void alarm_delete(struct autofs_point *ap)
 static void *alarm_handler(void *arg)
 {
 	struct list_head *head;
-	struct autofs_point *ap;
 	struct timespec expire;
 	time_t now;
 	int status;
@@ -192,10 +191,11 @@ static void *alarm_handler(void *arg)
 
 		current = list_entry(head->next, struct alarm, list);
 
-		ap = current->ap;
 		now = time(NULL);
 
 		if (current->time <= now) {
+			struct autofs_point *ap;
+
 			list_del(&current->list);
 
 			if (current->cancel) {
@@ -203,11 +203,15 @@ static void *alarm_handler(void *arg)
 				continue;
 			}
 
+			ap = current->ap;
+			free(current);
+			alarm_unlock();
+
 			state_mutex_lock(ap);
 			nextstate(ap->state_pipe[1], ST_EXPIRE);
 			state_mutex_unlock(ap);
 
-			free(current);
+			alarm_lock();
 			continue;
 		}
 
@@ -215,6 +219,7 @@ static void *alarm_handler(void *arg)
 		expire.tv_nsec = 0;
 
 		while (1) {
+			struct autofs_point *ap;
 			struct alarm *next;
 
 			status = pthread_cond_timedwait(&cond, &mutex, &expire);
@@ -232,12 +237,15 @@ static void *alarm_handler(void *arg)
 				break;
 
 			list_del(&current->list);
+			ap = current->ap;
 			free(current);
+			alarm_unlock();
 
 			state_mutex_lock(ap);
 			nextstate(ap->state_pipe[1], ST_EXPIRE);
 			state_mutex_unlock(ap);
 
+			alarm_lock();
 			break;
 		}
 	}

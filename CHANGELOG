@@ -31,6 +31,7 @@
   - note: if this is needed use only the map name and configure the URI
     entry in the ldap client configuration.
 - correct mistake in logic test in wildcard lookup.
+- fix deadlock in alarm manager module.
 
 20/2/2007 autofs-5.0.1
 ----------------------
