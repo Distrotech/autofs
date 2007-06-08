@@ -1213,16 +1213,57 @@ static int read_one_map(struct autofs_point *ap,
 		 * By definition keys must be unique within
 		 * each map entry
 		 */
-		if (ldap_count_values_len(bvKey) > 1) {
+		k_val = NULL;
+		k_len = 0;
+
+		/*
+		 * Keys must be unique so, in general, there shouldn't be
+		 * more than one attribute value. We make an exception for
+		 * wildcard entries as people may have values for '*' or
+		 * '/' for compaibility reasons. We use the '/' as the
+		 * wildcard in LDAP but allow '*' as well to allow for
+		 * people using older schemas that allow '*' as a key
+		 * value.
+		 */
+		count = ldap_count_values_len(bvKey);
+		if (count > 2) {
 			error(ap->logopt,
 			      MODPREFIX
 			      "key %.*s has duplicate entries - ignoring",
 			      bvKey[0]->bv_len, bvKey[0]->bv_val);
 			goto next;
-		}
+		} else if (count == 2) {
+			unsigned int i;
 
-		k_val = bvKey[0]->bv_val;
-		k_len = bvKey[0]->bv_len;
+			/* Check for the "/" and "*" and use as "/" if found */
+			for (i = 0; i < count; i++) {
+				/* check for wildcard */
+				if (bvKey[i]->bv_len != 1)
+					continue;
+				if (*bvKey[i]->bv_val != '/' &&
+				    *bvKey[i]->bv_val != '*')
+					continue;
+				/* always use '/' internally */
+				*bvKey[i]->bv_val = '/';
+				k_val = bvKey[i]->bv_val;
+				k_len = 1;
+				break;
+			}
+
+			if (!k_val) {
+				error(ap->logopt,
+				      MODPREFIX
+				      "key %.*s has duplicate entries - ignoring",
+				      bvKey[0]->bv_len, bvKey[0]->bv_val);
+				goto next;
+			}
+		} else {
+			/* Check for the "*" and use as "/" if found */
+			if (bvKey[0]->bv_len == 1 && *bvKey[0]->bv_val == '*')
+				*bvKey[0]->bv_val = '/';
+			k_val = bvKey[0]->bv_val;
+			k_len = bvKey[0]->bv_len;
+		}
 
 		/*
 		 * Ignore keys beginning with '+' as plus map
@@ -1455,18 +1496,59 @@ static int lookup_one(struct autofs_point *ap,
 		}
 
 		/* By definition keys must be unique within each map entry */
-		if (ldap_count_values_len(bvKey) > 1) {
+		k_val = NULL;
+		k_len = 0;
+
+		/*
+		 * Keys must be unique so, in general, there shouldn't be
+		 * more than one attribute value. We make an exception for
+		 * wildcard entries as people may have values for '*' or
+		 * '/' for compaibility reasons. We use the '/' as the
+		 * wildcard in LDAP but allow '*' as well to allow for
+		 * people using older schemas that allow '*' as a key
+		 * value.
+		 */
+		count = ldap_count_values_len(bvKey);
+		if (count > 2) {
 			error(ap->logopt,
-			      MODPREFIX "key %.*s has duplicate entries",
+			      MODPREFIX
+			      "key %.*s has duplicate entries - ignoring",
 			      bvKey[0]->bv_len, bvKey[0]->bv_val);
-			ret = CHE_FAIL;
 			goto next;
+		} else if (count == 2) {
+			unsigned int i;
+
+			/* Check for the "/" and "*" and use as "/" if found */
+			for (i = 0; i < count; i++) {
+				/* check for wildcard */
+				if (bvKey[i]->bv_len != 1)
+					continue;
+				if (*bvKey[i]->bv_val != '/' &&
+				    *bvKey[i]->bv_val != '*')
+					continue;
+				/* always use '/' internally */
+				*bvKey[i]->bv_val = '/';
+				k_val = bvKey[i]->bv_val;
+				k_len = 1;
+				break;
+			}
+
+			if (!k_val) {
+				error(ap->logopt,
+					MODPREFIX "key %.*s has duplicate entries",
+					bvKey[0]->bv_len, bvKey[0]->bv_val);
+				ret = CHE_FAIL;
+				goto next;
+			}
+		} else {
+			/* Check for the "*" and use as "/" if found */
+			if (bvKey[0]->bv_len == 1 && *bvKey[0]->bv_val == '*')
+				*bvKey[0]->bv_val = '/';
+			k_val = bvKey[0]->bv_val;
+			k_len = bvKey[0]->bv_len;
 		}
 
 		debug(ap->logopt, MODPREFIX "examining first entry");
-
-		k_val = bvKey[0]->bv_val;
-		k_len = bvKey[0]->bv_len;
 
 		bvValues = ldap_get_values_len(ldap, e, info);
 		if (!bvValues || !*bvValues) {
