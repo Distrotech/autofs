@@ -33,6 +33,7 @@
 - correct mistake in logic test in wildcard lookup.
 - fix deadlock in alarm manager module.
 - allow for older schemas that allow "*" as a key value.
+- update master map lexer to also allow "." in macro name.
 
 20/2/2007 autofs-5.0.1
 ----------------------
