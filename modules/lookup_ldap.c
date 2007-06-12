@@ -113,8 +113,8 @@ LDAP *init_ldap_connection(struct lookup_context *ctxt)
 	if (rv != LDAP_OPT_SUCCESS) {
 		/* fall back to LDAPv2 */
 		ldap_unbind_ext(ldap, NULL, NULL);
-		ldap = ldap_init(ctxt->server, LDAP_PORT);
-		if (!ldap) {
+		rv = ldap_initialize(&ldap, ctxt->server);
+		if (rv != LDAP_OPT_SUCCESS) {
 			crit(LOGOPT_ANY, MODPREFIX "couldn't initialize LDAP");
 			return NULL;
 		}
