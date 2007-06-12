@@ -1169,10 +1169,6 @@ int master_mount_mounts(struct master *master, time_t age, int readall)
 			continue;
 		}
 
-		master_source_writelock(this);
-		lookup_close_lookup(ap);
-		master_source_unlock(this);
-
 		cache_readlock(nc);
 		ne = cache_lookup_distinct(nc, this->path);
 		if (ne && this->age > ne->age) {
