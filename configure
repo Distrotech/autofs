@@ -3170,7 +3170,11 @@ then
 	HAVE_HESIOD=0
 	echo "$as_me:$LINENO: checking for libhesiod" >&5
 echo $ECHO_N "checking for libhesiod... $ECHO_C" >&6
-LIBS="$LIBHESIOD -lhesiod -lresolv"
+
+# save current ldflags
+af_check_hesiod_save_ldflags="$LDFLAGS"
+LDFLAGS="$LDFLAGS -lhesiod -lresolv"
+
 cat >conftest.$ac_ext <<_ACEOF
 /* confdefs.h.  */
 _ACEOF
@@ -3221,6 +3225,9 @@ echo "${ECHO_T}no" >&6
 fi
 rm -f conftest.err conftest.$ac_objext \
       conftest$ac_exeext conftest.$ac_ext
+
+# restore ldflags
+LDFLAGS="$af_check_hesiod_save_ldflags"
 
 	if test "$HAVE_HESIOD" == "1"; then
 
@@ -3895,9 +3902,9 @@ fi;
 if test -z "$HAVE_LDAP"; then
 	HAVE_LDAP=0
 	LDAP_FLAGS="$LDAP_FLAGS -DLDAP_DEPRECATED=1"
-	echo "$as_me:$LINENO: checking for ldap_init in -lldap" >&5
-echo $ECHO_N "checking for ldap_init in -lldap... $ECHO_C" >&6
-if test "${ac_cv_lib_ldap_ldap_init+set}" = set; then
+	echo "$as_me:$LINENO: checking for ldap_initialize in -lldap" >&5
+echo $ECHO_N "checking for ldap_initialize in -lldap... $ECHO_C" >&6
+if test "${ac_cv_lib_ldap_ldap_initialize+set}" = set; then
   echo $ECHO_N "(cached) $ECHO_C" >&6
 else
   ac_check_lib_save_LIBS=$LIBS
@@ -3915,11 +3922,11 @@ extern "C"
 #endif
 /* We use char because int might match the return type of a gcc2
    builtin and then its argument prototype would still apply.  */
-char ldap_init ();
+char ldap_initialize ();
 int
 main ()
 {
-ldap_init ();
+ldap_initialize ();
   ;
   return 0;
 }
@@ -3946,20 +3953,20 @@ if { (eval echo "$as_me:$LINENO: \"$ac_link\"") >&5
   ac_status=$?
   echo "$as_me:$LINENO: \$? = $ac_status" >&5
   (exit $ac_status); }; }; then
-  ac_cv_lib_ldap_ldap_init=yes
+  ac_cv_lib_ldap_ldap_initialize=yes
 else
   echo "$as_me: failed program was:" >&5
 sed 's/^/| /' conftest.$ac_ext >&5
 
-ac_cv_lib_ldap_ldap_init=no
+ac_cv_lib_ldap_ldap_initialize=no
 fi
 rm -f conftest.err conftest.$ac_objext \
       conftest$ac_exeext conftest.$ac_ext
 LIBS=$ac_check_lib_save_LIBS
 fi
-echo "$as_me:$LINENO: result: $ac_cv_lib_ldap_ldap_init" >&5
-echo "${ECHO_T}$ac_cv_lib_ldap_ldap_init" >&6
-if test $ac_cv_lib_ldap_ldap_init = yes; then
+echo "$as_me:$LINENO: result: $ac_cv_lib_ldap_ldap_initialize" >&5
+echo "${ECHO_T}$ac_cv_lib_ldap_ldap_initialize" >&6
+if test $ac_cv_lib_ldap_ldap_initialize = yes; then
   HAVE_LDAP=1 LIBLDAP="$LIBLDAP -lldap_r -llber -lresolv"
 fi
 
@@ -4915,7 +4922,8 @@ else
   enableval=yes
 fi;
 if test x$enable_mount_locking = xyes -o x$enableval = xyes; then
-	cat >>confdefs.h <<\_ACEOF
+
+cat >>confdefs.h <<\_ACEOF
 #define ENABLE_MOUNT_LOCKING 1
 _ACEOF
 
@@ -4932,7 +4940,8 @@ else
   enableval=no
 fi;
 if test x$enable_forced_shutdown = xyes -o x$enableval = xyes; then
-	cat >>confdefs.h <<\_ACEOF
+
+cat >>confdefs.h <<\_ACEOF
 #define ENABLE_FORCED_SHUTDOWN 1
 _ACEOF
 
@@ -4949,7 +4958,8 @@ else
   enableval=no
 fi;
 if test x$enable_ignore_busy_mounts = xyes -o x$enableval = xyes; then
-	cat >>confdefs.h <<\_ACEOF
+
+cat >>confdefs.h <<\_ACEOF
 #define ENABLE_IGNORE_BUSY_MOUNTS 1
 _ACEOF
 

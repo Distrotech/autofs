@@ -180,7 +180,7 @@ AC_ARG_WITH(openldap,
 if test -z "$HAVE_LDAP"; then
 	HAVE_LDAP=0
 	LDAP_FLAGS="$LDAP_FLAGS -DLDAP_DEPRECATED=1"
-	AC_CHECK_LIB(ldap, ldap_init, HAVE_LDAP=1 LIBLDAP="$LIBLDAP -lldap_r -llber -lresolv", ,
+	AC_CHECK_LIB(ldap, ldap_initialize, HAVE_LDAP=1 LIBLDAP="$LIBLDAP -lldap_r -llber -lresolv", ,
 		     -llber -lresolv $LIBS)
 	if test "$HAVE_LDAP" == "1"; then
 		AC_DEFINE(WITH_LDAP,1,
