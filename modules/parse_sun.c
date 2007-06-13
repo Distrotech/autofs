@@ -762,12 +762,17 @@ static int validate_location(char *loc)
 	if (*ptr == ':')
 		return 1;
 
-	/* If a ':' is present now it must be a host name */
+	/*
+	 * If a ':' is present now it must be a host name, except
+	 * for those special file systems like sshfs which use "#"
+	 * and "@" in the host name part.
+	 */
 	if (check_colon(ptr)) {
 		while (*ptr && *ptr != ':') {
 			if (!(isalnum(*ptr) ||
 			    *ptr == '-' || *ptr == '.' || *ptr == '_' ||
-			    *ptr == ',' || *ptr == '(' || *ptr == ')'))
+			    *ptr == ',' || *ptr == '(' || *ptr == ')' ||
+			    *ptr == '#' || *ptr == '@'))
 				return 0;
 			ptr++;
 		}
