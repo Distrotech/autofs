@@ -202,6 +202,10 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 		dup2(epipefd[1], STDERR_FILENO);
 		close(pipefd[1]);
 		close(epipefd[1]);
+		if (chdir(ap->path))
+			warn(ap->logopt,
+			     MODPREFIX "failed to set PWD to %s for map %s",
+			     ap->path, ctxt->mapname);
 		execl(ctxt->mapname, ctxt->mapname, name, NULL);
 		_exit(255);	/* execl() failed */
 	}

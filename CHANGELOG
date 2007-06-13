@@ -35,6 +35,7 @@
 - allow for older schemas that allow "*" as a key value.
 - update master map lexer to also allow "." in macro name.
 - allow for "#" and "@" in hostname validation for sshfs mounts.
+- set working directory to base of mount before invoking program map.
 
 20/2/2007 autofs-5.0.1
 ----------------------
