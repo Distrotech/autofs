@@ -169,6 +169,7 @@ static void *alarm_handler(void *arg)
 {
 	struct list_head *head;
 	struct timespec expire;
+	struct alarm *first;
 	time_t now;
 	int status;
 
@@ -177,78 +178,56 @@ static void *alarm_handler(void *arg)
 	head = &alarms;
 
 	while (1) {
-		struct alarm *current;
 
-		/*
-		 * If the alarm list is empty, wait until an alarm is
-		 * added.
-		 */
-		while (list_empty(head)) {
+		if (list_empty(head)) {
+			/* No alarms, wait for one to be added */
 			status = pthread_cond_wait(&cond, &mutex);
 			if (status)
 				fatal(status);
-		}
-
-		current = list_entry(head->next, struct alarm, list);
-
-		now = time(NULL);
-
-		if (current->time <= now) {
-			struct autofs_point *ap;
-
-			list_del(&current->list);
-
-			if (current->cancel) {
-				free(current);
-				continue;
-			}
-
-			ap = current->ap;
-			free(current);
-			alarm_unlock();
-
-			state_mutex_lock(ap);
-			nextstate(ap->state_pipe[1], ST_EXPIRE);
-			state_mutex_unlock(ap);
-
-			alarm_lock();
 			continue;
 		}
 
-		expire.tv_sec = current->time;
-		expire.tv_nsec = 0;
+		first = list_entry(head->next, struct alarm, list);
 
-		while (1) {
-			struct autofs_point *ap;
-			struct alarm *next;
+		now = time(NULL);
+
+		if (first->time > now) {
+			/* 
+			 * Wait for alarm to trigger or a new alarm 
+			 * to be added.
+			 */
+			expire.tv_sec = first->time;
+			expire.tv_nsec = 0;
 
 			status = pthread_cond_timedwait(&cond, &mutex, &expire);
 			if (status && status != ETIMEDOUT)
 				fatal(status);
+		} else {
+			/* First alarm has triggered, run it */
 
-			next = list_entry(head->next, struct alarm, list);
-			if (next->cancel) {
-				list_del(&next->list);
-				free(next);
-				break;
+			list_del(&first->list);
+
+			if (!first->cancel) {
+				struct autofs_point *ap = first->ap;
+				/* 
+				 * We need to unlock the alarm list in case
+				 * some other thread holds the state_mutex
+				 *_lock(ap), and is currently trying to do
+				 * some alarm_* function (i.e if we don't 
+				 * unlock, we might deadlock).
+				 */
+				alarm_unlock(); 
+
+				state_mutex_lock(ap);
+				nextstate(ap->state_pipe[1], ST_EXPIRE);
+				state_mutex_unlock(ap);
+
+				alarm_lock();
 			}
-
-			if (next != current)
-				break;
-
-			list_del(&current->list);
-			ap = current->ap;
-			free(current);
-			alarm_unlock();
-
-			state_mutex_lock(ap);
-			nextstate(ap->state_pipe[1], ST_EXPIRE);
-			state_mutex_unlock(ap);
-
-			alarm_lock();
-			break;
+			free(first);
 		}
 	}
+	/* Will never come here, so alarm_unlock is not necessary */
 }
 
 int alarm_start_handler(void)

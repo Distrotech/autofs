@@ -10,7 +10,7 @@
 
 Summary: A tool from automatically mounting and umounting filesystems.
 Name: autofs
-%define version 5.0.1
+%define version 5.0.2
 %define release 1
 Version: %{version}
 Release: %{release}
@@ -106,6 +106,9 @@ fi
 %{_mandir}/*/*
 
 %changelog
+* Tue Jun 18 2007 Ian Kent <raven@themaw.net>
+- Update package to version 5.0.2.
+
 * Thu Jul 13 2006 Ian Kent <raven@themaw.net>
 - Rename package to version 5.0.1 to prevent problems when upgrading
   from packages labeled with beta.

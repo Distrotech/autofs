@@ -1,4 +1,4 @@
-??/??/2007 autofs-5.0.2
+18/06/2007 autofs-5.0.2
 -----------------------
 - fix return check for getpwuid_r and getgrgid_r.
 - give up trying to update exports list while host is mounted.
@@ -36,6 +36,7 @@
 - update master map lexer to also allow "." in macro name.
 - allow for "#" and "@" in hostname validation for sshfs mounts.
 - set working directory to base of mount before invoking program map.
+- simplify alarm_handler function (Anders Blomdell).
 
 20/2/2007 autofs-5.0.1
 ----------------------
