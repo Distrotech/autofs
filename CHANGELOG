@@ -1,3 +1,7 @@
+??/??/2007 autofs-5.0.3
+-----------------------
+- include krb5.h in lookup_ldap.h (some openssl doesn't implicitly include it).
+
 18/06/2007 autofs-5.0.2
 -----------------------
 - fix return check for getpwuid_r and getgrgid_r.

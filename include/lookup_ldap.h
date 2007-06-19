@@ -7,6 +7,7 @@
 #include <openssl/err.h>
 #include <sasl/sasl.h>
 #include <libxml/tree.h>
+#include <krb5.h>
 #endif
 
 struct lookup_context {
