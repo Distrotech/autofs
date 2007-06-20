@@ -1,6 +1,7 @@
 ??/??/2007 autofs-5.0.3
 -----------------------
 - include krb5.h in lookup_ldap.h (some openssl doesn't implicitly include it).
+- correct initialization of local var in parse_server_string.
 
 18/06/2007 autofs-5.0.2
 -----------------------

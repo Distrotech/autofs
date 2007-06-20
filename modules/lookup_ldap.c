@@ -549,7 +549,7 @@ static int parse_server_string(const char *url, struct lookup_context *ctxt)
 	const char *ptr, *name;
 	int l, al_len;
 
-	*proto = '\0';
+	memset(proto, 0, 9);
 	ptr = url;
 
 	debug(LOGOPT_NONE,
@@ -620,7 +620,7 @@ static int parse_server_string(const char *url, struct lookup_context *ctxt)
 	} else if (strchr(ptr, ':') != NULL) {
 		char *q = NULL;
 
-		/* Isolate the server(s). Include the port spec */
+		/* Isolate the server. Include the port spec */
 		q = strchr(ptr, ':');
 		if (isdigit(*q))
 			while (isdigit(*q))
@@ -633,7 +633,7 @@ static int parse_server_string(const char *url, struct lookup_context *ctxt)
 		}
 
 		l = q - ptr;
-		if (proto) {
+		if (*proto) {
 			al_len = l + strlen(proto) + 2;
 			tmp = malloc(al_len);
 		} else {
