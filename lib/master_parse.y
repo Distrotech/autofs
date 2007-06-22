@@ -22,6 +22,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdarg.h>
+#include <ctype.h>
 #include <sys/ioctl.h>
 
 #include "automount.h"
@@ -44,6 +45,7 @@ extern void master_set_scan_buffer(const char *);
 static char *master_strdup(char *);
 static void local_init_vars(void);
 static void local_free_vars(void);
+static int add_multi_mapstr(void);
 
 static int master_error(const char *s);
 static int master_notify(const char *s);
@@ -53,6 +55,8 @@ static char *type;
 static char *format;
 static long timeout;
 static unsigned ghost;
+static char **tmp_argv;
+static int tmp_argc;
 static char **local_argv;
 static int local_argc;
 
@@ -89,7 +93,7 @@ static int master_fprintf(FILE *, char *, ...);
 %token COMMENT
 %token MAP
 %token OPT_TIMEOUT OPT_NOGHOST OPT_GHOST OPT_VERBOSE OPT_DEBUG
-%token COLON COMMA NL
+%token COLON COMMA NL DDASH
 %type <strtype> map
 %type <strtype> options
 %type <strtype> dn
@@ -103,6 +107,7 @@ static int master_fprintf(FILE *, char *, ...);
 %token <strtype> NILL
 %token <strtype> SPACE
 %token <strtype> EQUAL
+%token <strtype> MULTITYPE
 %token <strtype> MAPTYPE
 %token <strtype> DNSERVER
 %token <strtype> DNATTR
@@ -126,7 +131,7 @@ file: {
 	;
 
 line:
-	| PATH map
+	| PATH mapspec
 	{
 		path = master_strdup($1);
 		if (!path) {
@@ -134,14 +139,49 @@ line:
 			YYABORT;
 		}
 	}
-	| PATH map options
+	| PATH MULTITYPE maplist
 	{
+		char *tmp;
+
+		tmp = strchr($2, ':');
+		if (tmp)
+			*tmp = '\0';
+		else {
+			int len = strlen($2);
+			while (len-- && isblank($2[len]))
+				$2[len] = '\0';
+			if (len < 4) {
+				master_notify($2);
+				local_free_vars();
+				YYABORT;
+			}
+		}
+
 		path = master_strdup($1);
 		if (!path) {
+			master_error("memory allocation error");
 			local_free_vars();
 			YYABORT;
 		}
-	} 
+
+		if ((tmp = strchr($2, ',')))
+			*tmp++ = '\0';
+
+		type = master_strdup($2);
+		if (!type) {
+			master_error("memory allocation error");
+			local_free_vars();
+			YYABORT;
+		}
+		if (tmp) {
+			format = master_strdup(tmp);
+			if (!format) {
+				master_error("memory allocation error");
+				local_free_vars();
+				YYABORT;
+			}
+		}
+	}
 	| PATH COLON { master_notify($1); YYABORT; }
 	| PATH OPTION { master_notify($2); YYABORT; }
 	| PATH NILL { master_notify($2); YYABORT; }
@@ -157,11 +197,75 @@ line:
 	| COMMENT { YYABORT; }
 	;
 
-map:	PATH
+mapspec: map
+	{
+		local_argc = tmp_argc;
+		local_argv = tmp_argv;
+		tmp_argc = 0;
+		tmp_argv = NULL;
+	}
+	| map options
+	{
+		local_argc = tmp_argc;
+		local_argv = tmp_argv;
+		tmp_argc = 0;
+		tmp_argv = NULL;
+	}
+	;
+
+maplist: map
+	{
+		if (!add_multi_mapstr()) {
+			master_error("memory allocation error");
+			local_free_vars();
+			YYABORT;
+		}
+	}
+	| map options
+	{
+		if (!add_multi_mapstr()) {
+			master_error("memory allocation error");
+			local_free_vars();
+			YYABORT;
+		}
+	}
+	| maplist DDASH map
 	{
 		local_argc++;
-		local_argv = add_argv(local_argc, local_argv, $1);
+		local_argv = add_argv(local_argc, local_argv, "--");
 		if (!local_argv) {
+			master_error("memory allocation error");
+			local_free_vars();
+			YYABORT;
+		}
+		if (!add_multi_mapstr()) {
+			master_error("memory allocation error");
+			local_free_vars();
+			YYABORT;
+		}
+	}
+	| maplist DDASH map options
+	{
+		local_argc++;
+		local_argv = add_argv(local_argc, local_argv, "--");
+		if (!local_argv) {
+			master_error("memory allocation error");
+			local_free_vars();
+			YYABORT;
+		}
+		if (!add_multi_mapstr()) {
+			master_error("memory allocation error");
+			local_free_vars();
+			YYABORT;
+		}
+	}
+	;
+
+map:	PATH
+	{
+		tmp_argc++;
+		tmp_argv = add_argv(tmp_argc, tmp_argv, $1);
+		if (!tmp_argv) {
 			master_error("memory allocation error");
 			local_free_vars();
 			YYABORT;
@@ -169,9 +273,9 @@ map:	PATH
 	}
 	| MAPNAME
 	{
-		local_argc++;
-		local_argv = add_argv(local_argc, local_argv, $1);
-		if (!local_argv) {
+		tmp_argc++;
+		tmp_argv = add_argv(tmp_argc, tmp_argv, $1);
+		if (!tmp_argv) {
 			master_error("memory allocation error");
 			local_free_vars();
 			YYABORT;
@@ -200,9 +304,9 @@ map:	PATH
 			local_free_vars();
 			YYABORT;
 		}
-		local_argc++;
-		local_argv = add_argv(local_argc, local_argv, $1);
-		if (!local_argv) {
+		tmp_argc++;
+		tmp_argv = add_argv(tmp_argc, tmp_argv, $1);
+		if (!tmp_argv) {
 			master_error("memory allocation error");
 			local_free_vars();
 			YYABORT;
@@ -227,9 +331,9 @@ map:	PATH
 				YYABORT;
 			}
 		}
-		local_argc++;
-		local_argv = add_argv(local_argc, local_argv, $3);
-		if (!local_argv) {
+		tmp_argc++;
+		tmp_argv = add_argv(tmp_argc, tmp_argv, $3);
+		if (!tmp_argv) {
 			master_error("memory allocation error");
 			local_free_vars();
 			YYABORT;
@@ -254,9 +358,9 @@ map:	PATH
 				YYABORT;
 			}
 		}
-		local_argc++;
-		local_argv = add_argv(local_argc, local_argv, $3);
-		if (!local_argv) {
+		tmp_argc++;
+		tmp_argv = add_argv(tmp_argc, tmp_argv, $3);
+		if (!tmp_argv) {
 			master_error("memory allocation error");
 			local_free_vars();
 			YYABORT;
@@ -281,25 +385,25 @@ map:	PATH
 				YYABORT;
 			}
 		}
-		local_argc++;
-		local_argv = add_argv(local_argc, local_argv, $3);
-		if (!local_argv) {
+		tmp_argc++;
+		tmp_argv = add_argv(tmp_argc, tmp_argv, $3);
+		if (!tmp_argv) {
 			master_error("memory allocation error");
 			local_free_vars();
 			YYABORT;
 		}
 		/* Add back the type for lookup_ldap.c to handle ldaps */
-		if (*local_argv[0]) {
-			tmp = malloc(strlen(type) + strlen(local_argv[0]) + 2);
+		if (*tmp_argv[0]) {
+			tmp = malloc(strlen(type) + strlen(tmp_argv[0]) + 2);
 			if (!tmp) {
 				local_free_vars();
 				YYABORT;
 			}
 			strcpy(tmp, type);
 			strcat(tmp, ":");
-			strcat(tmp, local_argv[0]);
-			free(local_argv[0]);
-			local_argv[0] = tmp;
+			strcat(tmp, tmp_argv[0]);
+			free(tmp_argv[0]);
+			tmp_argv[0] = tmp;
 		}
 	}
 	;
@@ -441,9 +545,9 @@ daemon_option: OPT_TIMEOUT NUMBER { timeout = $2; }
 
 mount_option: OPTION
 	{
-		local_argc++;
-		local_argv = add_argv(local_argc, local_argv, $1);
-		if (!local_argv) {
+		tmp_argc++;
+		tmp_argv = add_argv(tmp_argc, tmp_argv, $1);
+		if (!tmp_argv) {
 			master_error("memory allocation error");
 			local_free_vars();
 			YYABORT;
@@ -494,6 +598,8 @@ static void local_init_vars(void)
 	debug = 0;
 	timeout = -1;
 	ghost = defaults_get_browse_mode();
+	tmp_argv = NULL;
+	tmp_argc = 0;
 	local_argv = NULL;
 	local_argc = 0;
 }
@@ -509,8 +615,62 @@ static void local_free_vars(void)
 	if (format)
 		free(format);
 
-	if (local_argv)
+	if (local_argv) {
 		free_argv(local_argc, (const char **) local_argv);
+		local_argv = NULL;
+		local_argc = 0;
+	}
+
+	if (tmp_argv) {
+		free_argv(tmp_argc, (const char **) tmp_argv);
+		tmp_argv = NULL;
+		tmp_argc = 0;
+	}
+}
+
+static int add_multi_mapstr(void)
+{
+	/* We need the individual map types for a multi map */
+	if (!type) {
+		if (tmp_argc > 0 && *tmp_argv[0] == '/')
+			type = strdup("file");
+		else
+			return 0;
+	}
+
+	if (format) {
+		char *tmp = realloc(type, strlen(type) + strlen(format) + 2);
+		if (!tmp)
+			return 0;
+		type = tmp;
+		strcat(type, ",");
+		strcat(type, format);
+		free(format);
+		format = NULL;
+	}
+
+	local_argc++;
+	local_argv = add_argv(local_argc, local_argv, type);
+	if (!local_argv) {
+		free(type);
+		type = NULL;
+		return 0;
+	}
+
+	local_argv = append_argv(local_argc, local_argv, tmp_argc, tmp_argv);
+	if (!local_argv) {
+		free(type);
+		type = NULL;
+		return 0;
+	}
+	local_argc += tmp_argc;
+
+	tmp_argc = 0;
+	tmp_argv = NULL;
+	free(type);
+	type = NULL;
+
+	return 1;
 }
 
 void master_init_scan(void)

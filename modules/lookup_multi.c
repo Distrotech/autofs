@@ -45,7 +45,7 @@ int lookup_init(const char *my_mapfmt, int argc, const char *const *argv, void *
 	struct lookup_context *ctxt;
 	char buf[MAX_ERR_BUF];
 	char *map, *mapfmt;
-	int i, j, an;
+	int i, an;
 	char *estr;
 
 	ctxt = malloc(sizeof(struct lookup_context));
@@ -73,7 +73,7 @@ int lookup_init(const char *my_mapfmt, int argc, const char *const *argv, void *
 
 	memcpy(ctxt->argl, argv, (argc + 1) * sizeof(const char *));
 
-	for (i = j = an = 0; ctxt->argl[an]; an++) {
+	for (i = an = 0; ctxt->argl[an]; an++) {
 		if (ctxt->m[i].argc == 0) {
 			ctxt->m[i].argv = &ctxt->argl[an];
 		}
@@ -100,9 +100,12 @@ int lookup_init(const char *my_mapfmt, int argc, const char *const *argv, void *
 		if (!(ctxt->m[i].mod = open_lookup(map, MODPREFIX,
 						   mapfmt ? mapfmt : my_mapfmt,
 						   ctxt->m[i].argc - 1,
-						   ctxt->m[i].argv + 1)))
+						   ctxt->m[i].argv + 1))) {
 			error(LOGOPT_ANY, MODPREFIX "error opening module");
+			free(map);
 			goto error_out;
+		}
+		free(map);
 	}
 
 	*context = ctxt;

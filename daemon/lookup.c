@@ -456,8 +456,12 @@ int lookup_nss_read_map(struct autofs_point *ap, struct map_source *source, time
 		}
 
 		if (map->type) {
-			debug(ap->logopt,
-			      "reading map %s %s", map->type, map->argv[0]);
+			if (!strncmp(map->type, "multi", 5))
+				debug(ap->logopt, "reading multi map");
+			else
+				debug(ap->logopt,
+				      "reading map %s %s",
+				       map->type, map->argv[0]);
 			result = do_read_map(ap, map, age);
 			map = map->next;
 			continue;

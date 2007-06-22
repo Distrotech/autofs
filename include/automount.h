@@ -192,6 +192,7 @@ char *cache_get_offset(const char *prefix, char *offset, int start, struct list_
 /* Utility functions */
 
 char **add_argv(int argc, char **argv, char *str);
+char **append_argv(int argc1, char **argv1, int argc2, char **argv2);
 const char **copy_argv(int argc, const char **argv);
 int compare_argv(int argc1, const char **argv1, int argc2, const char **argv2);
 int free_argv(int argc, const char **argv);

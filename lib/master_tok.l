@@ -27,6 +27,7 @@ static void master_echo(void);	/* forward definition */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 #include "master_parse.tab.h"
 
 /*
@@ -110,7 +111,9 @@ DNATTRSTR	{AT_CN}|{AT_NMN}|{AT_AMN}|{AT_OU}|{AT_DC}|{AT_O}|{AT_C}
 DNNAMESTR	([[:alnum:]_.\-]+)
 
 INTMAP		(-hosts|-null)
-MTYPE           ((file|program|yp|nis|nisplus|ldap|ldaps|hesiod|userdir)(,(sun|hesiod))?)
+MULTI		((multi)(,(sun|hesiod))?[\:]?{OPTWS})
+MULTISEP	([\-]{2}[[:blank:]]+)
+MTYPE		((file|program|yp|nis|nisplus|ldap|ldaps|hesiod|userdir)(,(sun|hesiod))?)
 
 
 OPTTOUT		(-t{OPTWS}|-t{OPTWS}={OPTWS}|--timeout{OPTWS}|--timeout{OPTWS}={OPTWS})
@@ -184,10 +187,17 @@ OPTTOUT		(-t{OPTWS}|-t{OPTWS}={OPTWS}|--timeout{OPTWS}|--timeout{OPTWS}={OPTWS})
 <MAPSTR>{
 	{OPTWS}\\\n{OPTWS} {}
 
+	{MULTI} {
+		strcpy(master_lval.strtype, master_text);
+		return(MULTITYPE);
+	}
+
 	{MTYPE}/":" {
 		strcpy(master_lval.strtype, master_text);
 		return(MAPTYPE);
 	}
+
+	{MULTISEP} { return(DDASH); }
 
 	":"	{ return(COLON); }
 
@@ -297,6 +307,11 @@ OPTTOUT		(-t{OPTWS}|-t{OPTWS}={OPTWS}|--timeout{OPTWS}|--timeout{OPTWS}={OPTWS})
 
 <OPTSTR>{
 	{OPTWS}\\\n{OPTWS} {}
+
+	{MULTISEP} {
+		BEGIN(MAPSTR);
+		return(DDASH);
+	}
 
 	{OPTTOUT} { return(OPT_TIMEOUT); }
 
