@@ -19,6 +19,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/stat.h>
 
 #define MODULE_LOOKUP
 #include "automount.h"
@@ -83,7 +84,10 @@ static struct lookup_mod *nss_open_lookup(const char *format, int argc, const ch
 		this = list_entry(p, struct nss_source, list);
 
 		if (!strcmp(this->source, "files")) {
-			char *path;
+			char src_file[] = "file";
+			char src_prog[] = "program";
+			struct stat st;
+			char *type, *path, *save_argv0;
 
 			path = malloc(strlen(AUTOFS_MAP_DIR) + strlen(argv[0]) + 2);
 			if (!path) {
@@ -95,8 +99,29 @@ static struct lookup_mod *nss_open_lookup(const char *format, int argc, const ch
 			strcpy(path, AUTOFS_MAP_DIR);
 			strcat(path, "/");
 			strcat(path, argv[0]);
-			free((char *) argv[0]);
+
+			if (stat(path, &st) == -1 || !S_ISREG(st.st_mode)) {
+				free(path);
+				continue;
+			}
+
+			if (st.st_mode & __S_IEXEC)
+				type = src_prog;
+			else
+				type = src_file;
+
+			save_argv0 = (char *) argv[0];
 			argv[0] = path;
+
+			mod = open_lookup(type, MODPREFIX, format, argc, argv);
+			if (mod) {
+				free_sources(&nsslist);
+				free(save_argv0);
+				return mod;
+			}
+
+			argv[0] = save_argv0;
+			free(path);
 		}
 
 		mod = open_lookup(this->source, MODPREFIX, format, argc, argv);
