@@ -45,6 +45,7 @@ extern void master_set_scan_buffer(const char *);
 static char *master_strdup(char *);
 static void local_init_vars(void);
 static void local_free_vars(void);
+static void trim_maptype(char *);
 static int add_multi_mapstr(void);
 
 static int master_error(const char *s);
@@ -141,21 +142,9 @@ line:
 	}
 	| PATH MULTITYPE maplist
 	{
-		char *tmp;
+		char *tmp = NULL;
 
-		tmp = strchr($2, ':');
-		if (tmp)
-			*tmp = '\0';
-		else {
-			int len = strlen($2);
-			while (len-- && isblank($2[len]))
-				$2[len] = '\0';
-			if (len < 4) {
-				master_notify($2);
-				local_free_vars();
-				YYABORT;
-			}
-		}
+		trim_maptype($2);
 
 		path = master_strdup($1);
 		if (!path) {
@@ -312,81 +301,93 @@ map:	PATH
 			YYABORT;
 		}
 	}
-	| MAPTYPE COLON PATH
+	| MAPTYPE PATH
 	{
 		char *tmp = NULL;
+
+		trim_maptype($1);
 
 		if ((tmp = strchr($1, ',')))
 			*tmp++ = '\0';
 
 		type = master_strdup($1);
 		if (!type) {
+			master_error("memory allocation error");
 			local_free_vars();
 			YYABORT;
 		}
 		if (tmp) {
 			format = master_strdup(tmp);
 			if (!format) {
+				master_error("memory allocation error");
 				local_free_vars();
 				YYABORT;
 			}
 		}
 		tmp_argc++;
-		tmp_argv = add_argv(tmp_argc, tmp_argv, $3);
+		tmp_argv = add_argv(tmp_argc, tmp_argv, $2);
 		if (!tmp_argv) {
 			master_error("memory allocation error");
 			local_free_vars();
 			YYABORT;
 		}
 	}
-	| MAPTYPE COLON MAPNAME
+	| MAPTYPE MAPNAME
 	{
 		char *tmp = NULL;
+
+		trim_maptype($1);
 
 		if ((tmp = strchr($1, ',')))
 			*tmp++ = '\0';
 
 		type = master_strdup($1);
 		if (!type) {
+			master_error("memory allocation error");
 			local_free_vars();
 			YYABORT;
 		}
 		if (tmp) {
 			format = master_strdup(tmp);
 			if (!format) {
+				master_error("memory allocation error");
 				local_free_vars();
 				YYABORT;
 			}
 		}
 		tmp_argc++;
-		tmp_argv = add_argv(tmp_argc, tmp_argv, $3);
+		tmp_argv = add_argv(tmp_argc, tmp_argv, $2);
 		if (!tmp_argv) {
 			master_error("memory allocation error");
 			local_free_vars();
 			YYABORT;
 		}
 	}
-	| MAPTYPE COLON dn
+	| MAPTYPE dn
 	{
 		char *tmp = NULL;
+
+		trim_maptype($1);
 
 		if ((tmp = strchr($1, ',')))
 			*tmp++ = '\0';
 
 		type = master_strdup($1);
 		if (!type) {
+			master_error("memory allocation error");
 			local_free_vars();
 			YYABORT;
 		}
 		if (tmp) {
 			format = master_strdup(tmp);
 			if (!format) {
+				master_error("memory allocation error");
 				local_free_vars();
 				YYABORT;
 			}
 		}
 		tmp_argc++;
-		tmp_argv = add_argv(tmp_argc, tmp_argv, $3);
+		tmp_argv = add_argv(tmp_argc, tmp_argv, $2);
 		if (!tmp_argv) {
 			master_error("memory allocation error");
 			local_free_vars();
@@ -396,6 +397,7 @@ map:	PATH
 		if (*tmp_argv[0]) {
 			tmp = malloc(strlen(type) + strlen(tmp_argv[0]) + 2);
 			if (!tmp) {
+				master_error("memory allocation error");
 				local_free_vars();
 				YYABORT;
 			}
@@ -628,33 +630,47 @@ static void local_free_vars(void)
 	}
 }
 
+static void trim_maptype(char *type)
+{
+	char *tmp;
+
+	tmp = strchr(type, ':');
+	if (tmp)
+		*tmp = '\0';
+	else {
+		int len = strlen(type);
+		while (len-- && isblank(type[len]))
+			type[len] = '\0';
+	}
+	return;
+}
+
 static int add_multi_mapstr(void)
 {
-	/* We need the individual map types for a multi map */
-	if (!type) {
-		if (tmp_argc > 0 && *tmp_argv[0] == '/')
-			type = strdup("file");
-		else
-			return 0;
-	}
+	if (type) {
+		/* If type given and format is non-null add it back */
+		if (format) {
+			int len = strlen(type) + strlen(format) + 2;
+			char *tmp = realloc(type, len);
+			if (!tmp)
+				return 0;
+			type = tmp;
+			strcat(type, ",");
+			strcat(type, format);
+			free(format);
+			format = NULL;
+		}
 
-	if (format) {
-		char *tmp = realloc(type, strlen(type) + strlen(format) + 2);
-		if (!tmp)
+		local_argc++;
+		local_argv = add_argv(local_argc, local_argv, type);
+		if (!local_argv) {
+			free(type);
+			type = NULL;
 			return 0;
-		type = tmp;
-		strcat(type, ",");
-		strcat(type, format);
-		free(format);
-		format = NULL;
-	}
+		}
 
-	local_argc++;
-	local_argv = add_argv(local_argc, local_argv, type);
-	if (!local_argv) {
 		free(type);
 		type = NULL;
-		return 0;
 	}
 
 	local_argv = append_argv(local_argc, local_argv, tmp_argc, tmp_argv);
@@ -667,8 +683,6 @@ static int add_multi_mapstr(void)
 
 	tmp_argc = 0;
 	tmp_argv = NULL;
-	free(type);
-	type = NULL;
 
 	return 1;
 }

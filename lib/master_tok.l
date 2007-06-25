@@ -111,9 +111,9 @@ DNATTRSTR	{AT_CN}|{AT_NMN}|{AT_AMN}|{AT_OU}|{AT_DC}|{AT_O}|{AT_C}
 DNNAMESTR	([[:alnum:]_.\-]+)
 
 INTMAP		(-hosts|-null)
-MULTI		((multi)(,(sun|hesiod))?[\:]?{OPTWS})
+MULTI		((multi)(,(sun|hesiod))?(:{OPTWS}|{WS}))
 MULTISEP	([\-]{2}[[:blank:]]+)
-MTYPE		((file|program|yp|nis|nisplus|ldap|ldaps|hesiod|userdir)(,(sun|hesiod))?)
+MTYPE		((file|program|yp|nis|nisplus|ldap|ldaps|hesiod|userdir)(,(sun|hesiod))?(:{OPTWS}|{WS}))
 
 
 OPTTOUT		(-t{OPTWS}|-t{OPTWS}={OPTWS}|--timeout{OPTWS}|--timeout{OPTWS}={OPTWS})
@@ -192,7 +192,7 @@ OPTTOUT		(-t{OPTWS}|-t{OPTWS}={OPTWS}|--timeout{OPTWS}|--timeout{OPTWS}={OPTWS})
 		return(MULTITYPE);
 	}
 
-	{MTYPE}/":" {
+	{MTYPE} {
 		strcpy(master_lval.strtype, master_text);
 		return(MAPTYPE);
 	}

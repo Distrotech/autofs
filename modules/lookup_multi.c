@@ -28,7 +28,7 @@
 
 struct module_info {
 	int argc;
-	const char *const *argv;
+	const char **argv;
 	struct lookup_mod *mod;
 };
 
@@ -40,11 +40,81 @@ struct lookup_context {
 
 int lookup_version = AUTOFS_LOOKUP_VERSION;	/* Required by protocol */
 
+static struct lookup_mod *nss_open_lookup(const char *format, int argc, const char **argv)
+{
+	struct list_head nsslist;
+	struct list_head *head, *p;
+	struct lookup_mod *mod;
+	char buf[MAX_ERR_BUF], *estr;
+
+	if (!argv || !argv[0])
+		return NULL;
+
+	if (*argv[0] == '/')
+		return open_lookup("file", MODPREFIX, format, argc, argv);
+
+	if (!strncmp(argv[0], "file", 4) ||
+	    !strncmp(argv[0], "yp", 2) ||
+	    !strncmp(argv[0], "nisplus", 7) ||
+	    !strncmp(argv[0], "nis", 3) ||
+	    !strncmp(argv[0], "ldaps", 5) ||
+	    !strncmp(argv[0], "ldap", 4)) {
+		const char *fmt = strchr(argv[0], ',');
+		if (fmt)
+			fmt++;
+		else
+			fmt = format;
+		return open_lookup(argv[0], MODPREFIX, fmt, argc -1, argv + 1);
+	}
+
+	INIT_LIST_HEAD(&nsslist);
+
+	if (nsswitch_parse(&nsslist)) {
+		if (!list_empty(&nsslist))
+			free_sources(&nsslist);
+		error(LOGOPT_ANY, "can't to read name service switch config.");
+		return NULL;
+	}
+
+	head = &nsslist;
+	list_for_each(p, head) {
+		struct nss_source *this;
+
+		this = list_entry(p, struct nss_source, list);
+
+		if (!strcmp(this->source, "files")) {
+			char *path;
+
+			path = malloc(strlen(AUTOFS_MAP_DIR) + strlen(argv[0]) + 2);
+			if (!path) {
+				estr = strerror_r(errno, buf, MAX_ERR_BUF);
+				crit(LOGOPT_ANY, MODPREFIX "error: %s", estr);
+				free_sources(&nsslist);
+				return NULL;
+			}
+			strcpy(path, AUTOFS_MAP_DIR);
+			strcat(path, "/");
+			strcat(path, argv[0]);
+			free((char *) argv[0]);
+			argv[0] = path;
+		}
+
+		mod = open_lookup(this->source, MODPREFIX, format, argc, argv);
+		if (mod) {
+			free_sources(&nsslist);
+			return mod;
+		}
+	}
+	free_sources(&nsslist);
+
+	return NULL;
+}
+
 int lookup_init(const char *my_mapfmt, int argc, const char *const *argv, void **context)
 {
 	struct lookup_context *ctxt;
 	char buf[MAX_ERR_BUF];
-	char *map, *mapfmt;
+	char **args;
 	int i, an;
 	char *estr;
 
@@ -73,39 +143,42 @@ int lookup_init(const char *my_mapfmt, int argc, const char *const *argv, void *
 
 	memcpy(ctxt->argl, argv, (argc + 1) * sizeof(const char *));
 
+	args = NULL;
 	for (i = an = 0; ctxt->argl[an]; an++) {
 		if (ctxt->m[i].argc == 0) {
-			ctxt->m[i].argv = &ctxt->argl[an];
+			args = (char **) &ctxt->argl[an];
 		}
 		if (!strcmp(ctxt->argl[an], "--")) {
 			ctxt->argl[an] = NULL;
+			if (!args) {
+				crit(LOGOPT_ANY,
+				     MODPREFIX "error assigning map args");
+				goto error_out;
+			}
+			ctxt->m[i].argv = copy_argv(ctxt->m[i].argc, (const char **) args);
+			if (!ctxt->m[i].argv)
+				goto nomem;
+			args = NULL;
 			i++;
 		} else {
 			ctxt->m[i].argc++;
 		}
 	}
 
-	for (i = 0; i < ctxt->n; i++) {
-		if (!ctxt->m[i].argv[0]) {
-			crit(LOGOPT_ANY, MODPREFIX "missing module name");
-			goto error_out;
-		}
-		map = strdup(ctxt->m[i].argv[0]);
-		if (!map)
+	/* catch the last one */
+	if (args) {
+		ctxt->m[i].argv = copy_argv(ctxt->m[i].argc, (const char **) args);
+		if (!ctxt->m[i].argv)
 			goto nomem;
+	}
 
-		if ((mapfmt = strchr(map, ',')))
-			*(mapfmt++) = '\0';
-
-		if (!(ctxt->m[i].mod = open_lookup(map, MODPREFIX,
-						   mapfmt ? mapfmt : my_mapfmt,
-						   ctxt->m[i].argc - 1,
-						   ctxt->m[i].argv + 1))) {
+	for (i = 0; i < ctxt->n; i++) {
+		ctxt->m[i].mod = nss_open_lookup(my_mapfmt,
+				 ctxt->m[i].argc, ctxt->m[i].argv);
+		if (!ctxt->m[i].mod) {
 			error(LOGOPT_ANY, MODPREFIX "error opening module");
-			free(map);
 			goto error_out;
 		}
-		free(map);
 	}
 
 	*context = ctxt;
@@ -116,9 +189,12 @@ nomem:
 	crit(LOGOPT_ANY, MODPREFIX "error: %s", estr);
 error_out:
 	if (ctxt) {
-		for (i = 0; i < ctxt->n; i++)
+		for (i = 0; i < ctxt->n; i++) {
 			if (ctxt->m[i].mod)
 				close_lookup(ctxt->m[i].mod);
+			if (ctxt->m[i].argv)
+				free_argv(ctxt->m[i].argc, ctxt->m[i].argv);
+		}
 		if (ctxt->m)
 			free(ctxt->m);
 		if (ctxt->argl)
@@ -188,6 +264,8 @@ int lookup_done(void *context)
 	for (i = 0; i < ctxt->n; i++) {
 		if (ctxt->m[i].mod)
 			rv = rv || close_lookup(ctxt->m[i].mod);
+		if (ctxt->m[i].argv)
+			free_argv(ctxt->m[i].argc, ctxt->m[i].argv);
 	}
 	free(ctxt->argl);
 	free(ctxt->m);
