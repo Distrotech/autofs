@@ -103,6 +103,10 @@ entries are used for maps.
 .B ldap \fPor\fB ldaps
 The map is stored in an LDAP directory. If \fBldaps\fP is used the
 appropriate certificate must be configured in the LDAP client.
+.TP
+.B multi
+This map type allows the specification of multiple maps separated
+by "--". These maps are searched in order to resolve key lookups.
 .RE
 .TP
 \fBformat\fP
