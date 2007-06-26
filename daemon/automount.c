@@ -1367,7 +1367,7 @@ static void usage(void)
 		"	-d --debug	log debuging info\n"
 		"	-D --define	define global macro variable\n"
 		/*"	-f --foreground do not fork into background\n" */
-		"	-r --random-replicated-selection\n"
+		"	-r --random-multimount-selection\n"
 		"			use ramdom replicated server selection\n"
 		"	-O --global-options\n"
 		"			specify global mount options\n"
@@ -1469,7 +1469,7 @@ int main(int argc, char *argv[])
 		{"debug", 0, 0, 'd'},
 		{"define", 1, 0, 'D'},
 		{"foreground", 0, 0, 'f'},
-		{"random-selection", 0, 0, 'r'},
+		{"random-multimount-selection", 0, 0, 'r'},
 		{"global-options", 1, 0, 'O'},
 		{"version", 0, 0, 'V'},
 		{0, 0, 0, 0}

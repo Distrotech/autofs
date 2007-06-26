@@ -4,6 +4,8 @@
 - correct initialization of local var in parse_server_string.
 - add missing "multi" map support.
 - add multi nsswitch lookup.
+- change random multiple server selection option name to be consistent
+  with existing downstream version 4 naming.
 
 18/06/2007 autofs-5.0.2
 -----------------------
