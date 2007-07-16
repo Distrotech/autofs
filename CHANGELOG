@@ -7,6 +7,7 @@
 - change random multiple server selection option name to be consistent
   with existing downstream version 4 naming.
 - fix mount point directory creation for bind mounts.
+- add quoting for exports gathered by hosts map.
 
 18/06/2007 autofs-5.0.2
 -----------------------

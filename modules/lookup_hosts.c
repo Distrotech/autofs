@@ -215,7 +215,7 @@ done:
 		if (mapent) {
 			int len = strlen(mapent) + 1;
 
-			len += strlen(name) + 2*strlen(exp->ex_dir) + 3;
+			len += strlen(name) + 2*(strlen(exp->ex_dir) + 2) + 3;
 			mapent = realloc(mapent, len);
 			if (!mapent) {
 				char *estr;
@@ -224,10 +224,11 @@ done:
 				rpc_exports_free(exp);
 				return NSS_STATUS_UNAVAIL;
 			}
-			strcat(mapent, " ");
+			strcat(mapent, " \"");
 			strcat(mapent, exp->ex_dir);
+			strcat(mapent, "\"");
 		} else {
-			int len = 2*strlen(exp->ex_dir) + strlen(name) + 3;
+			int len = 2*(strlen(exp->ex_dir) + 2) + strlen(name) + 3;
 
 			mapent = malloc(len);
 			if (!mapent) {
@@ -237,12 +238,15 @@ done:
 				rpc_exports_free(exp);
 				return NSS_STATUS_UNAVAIL;
 			}
-			strcpy(mapent, exp->ex_dir);
+			strcpy(mapent, "\"");
+			strcat(mapent, exp->ex_dir);
+			strcat(mapent, "\"");
 		}
-		strcat(mapent, " ");
+		strcat(mapent, " \"");
 		strcat(mapent, name);
 		strcat(mapent, ":");
 		strcat(mapent, exp->ex_dir);
+		strcat(mapent, "\"");
 
 		exp = exp->ex_next;
 	}
@@ -260,12 +264,8 @@ done:
 	cache_update(mc, source, name, mapent, now);
 	cache_unlock(mc);
 
-	debug(LOGOPT_ANY, "source wait");
-
 	master_source_current_wait(ap->entry);
 	ap->entry->current = source;
-
-	debug(LOGOPT_ANY, "do parse_mount");
 
 	ret = ctxt->parse->parse_mount(ap, name, name_len,
 				 mapent, ctxt->parse->context);
