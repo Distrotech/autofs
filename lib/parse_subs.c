@@ -388,10 +388,8 @@ int mount_multi_triggers(struct autofs_point *ap, char *root, struct mapent *me,
 	struct mapent *oe;
 	struct list_head *pos = NULL;
 	unsigned int fs_path_len;
-	struct statfs fs;
-	struct stat st;
-	unsigned int mounted, is_autofs_fs;
-	int ret, start;
+	unsigned int mounted;
+	int start;
 
 	fs_path_len = strlen(root) + strlen(base);
 	if (fs_path_len > PATH_MAX)
@@ -399,15 +397,6 @@ int mount_multi_triggers(struct autofs_point *ap, char *root, struct mapent *me,
 
 	strcpy(path, root);
 	strcat(path, base);
-	ret = statfs(path, &fs);
-	if (ret == -1) {
-		/* There's no mount yet - it must be autofs */
-		if (errno == ENOENT)
-			is_autofs_fs = 1;
-		else
-			return -1;
-	} else
-		is_autofs_fs = fs.f_type == (__SWORD_TYPE) AUTOFS_SUPER_MAGIC ? 1 : 0;
 
 	mounted = 0;
 	start = strlen(root);
@@ -424,20 +413,9 @@ int mount_multi_triggers(struct autofs_point *ap, char *root, struct mapent *me,
 		if (!oe)
 			goto cont;
 
-		/*
-		 * If the host filesystem is not an autofs fs
-		 * we require the mount point directory exist
-		 * and that permissions are OK.
-		 */
-		if (!is_autofs_fs) {
-			ret = stat(oe->key, &st);
-			if (ret == -1)
-				goto cont;
-		}
-
 		debug(ap->logopt, "mount offset %s", oe->key);
 
-		if (mount_autofs_offset(ap, oe, is_autofs_fs) < 0)
+		if (mount_autofs_offset(ap, oe) < 0)
 			warn(ap->logopt, "failed to mount offset");
 		else
 			mounted++;

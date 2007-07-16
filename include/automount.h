@@ -470,7 +470,7 @@ void *expire_proc_direct(void *);
 int expire_offsets_direct(struct autofs_point *ap, struct mapent *me, int now);
 int mount_autofs_indirect(struct autofs_point *ap);
 int mount_autofs_direct(struct autofs_point *ap);
-int mount_autofs_offset(struct autofs_point *ap, struct mapent *me, int is_autofs_fs);
+int mount_autofs_offset(struct autofs_point *ap, struct mapent *me);
 void submount_signal_parent(struct autofs_point *ap, unsigned int success);
 int umount_autofs(struct autofs_point *ap, int force);
 int umount_autofs_indirect(struct autofs_point *ap);

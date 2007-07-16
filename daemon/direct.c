@@ -604,6 +604,14 @@ int umount_autofs_offset(struct autofs_point *ap, struct mapent *me)
 		}
 		ioctlfd = me->ioctlfd;
 	} else {
+		/* offset isn't mounted, return success and try to recover */
+		if (!is_mounted(_PROC_MOUNTS, me->key, MNTS_AUTOFS)) {
+			debug(ap->logopt,
+			      "offset %s unexpectedly not mounted",
+			      me->key);
+			return 0;
+		}
+
 		ioctlfd = open(me->key, O_RDONLY);
 		if (ioctlfd != -1) {
 			if ((cl_flags = fcntl(ioctlfd, F_GETFD, 0)) != -1) {
@@ -689,11 +697,19 @@ force_umount:
 	} else
 		msg("umounted offset mount %s", me->key);
 
+	if (!rv && me->dir_created) {
+		if  (rmdir(me->key) == -1) {
+			char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+			warn(ap->logopt, "failed to remove dir %s: %s",
+			     me->key, estr);
+		}
+	}
 	return rv;
 }
 
-int mount_autofs_offset(struct autofs_point *ap, struct mapent *me, int is_autofs_fs)
+int mount_autofs_offset(struct autofs_point *ap, struct mapent *me)
 {
+	char buf[MAX_ERR_BUF];
 	struct mnt_params *mp;
 	time_t timeout = ap->exp_timeout;
 	struct stat st;
@@ -740,36 +756,38 @@ int mount_autofs_offset(struct autofs_point *ap, struct mapent *me, int is_autof
 			return 0;
 	}
 
-	if (is_autofs_fs) {
-		/* In case the directory doesn't exist, try to mkdir it */
-		if (mkdir_path(me->key, 0555) < 0) {
-			if (errno != EEXIST) {
-				crit(ap->logopt,
-				     "failed to create mount directory %s %d",
-				     me->key, errno);
-				return -1;
-			}
+	/* In case the directory doesn't exist, try to mkdir it */
+	if (mkdir_path(me->key, 0555) < 0) {
+		if (errno == EEXIST) {
 			/* 
 			 * If we recieve an error, and it's EEXIST
 			 * we know the directory was not created.
 			 */
 			me->dir_created = 0;
+		} else if (errno == EACCES) {
+			/*
+			 * We require the mount point directory to exist when
+			 * installing multi-mount triggers into a host
+			 * filesystem.
+			 *
+			 * If it doesn't exist it is not a valid part of the
+			 * mount heirachy.
+			 */
+			char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+			debug(ap->logopt,
+			     "can't create mount directory: %s, %s",
+			     me->key, estr);
+			return -1;
 		} else {
-			/* No errors so the directory was successfully created */
-			me->dir_created = 1;
+			char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+			crit(ap->logopt,
+			     "failed to create mount directory: %s, %s",
+			     me->key, estr);
+			return -1;
 		}
 	} else {
-		me->dir_created = 0;
-
-		/*
-		 * We require the mount point directory to exist when
-		 * installing multi-mount triggers into a host filesystem.
-		 *
-		 * If it doesn't exist it is not a valid part of the
-		 * mount heirachy so we silently succeed here.
-		 */
-		if (stat(me->key, &st) == -1 && errno == ENOENT)
-			return 0;
+		/* No errors so the directory was successfully created */
+		me->dir_created = 1;
 	}
 
 	debug(ap->logopt,
@@ -832,10 +850,8 @@ out_close:
 out_umount:
 	umount(me->key);
 out_err:
-	if (is_autofs_fs) {
-		if (stat(me->key, &st) == 0 && me->dir_created)
-			 rmdir_path(ap, me->key, st.st_dev);
-	}
+	if (stat(me->key, &st) == 0 && me->dir_created)
+		 rmdir_path(ap, me->key, st.st_dev);
 
 	return -1;
 }
