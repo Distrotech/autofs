@@ -192,12 +192,14 @@ static void *alarm_handler(void *arg)
 		now = time(NULL);
 
 		if (first->time > now) {
+			struct timeval usecs;
 			/* 
 			 * Wait for alarm to trigger or a new alarm 
 			 * to be added.
 			 */
+			gettimeofday(&usecs, NULL);
 			expire.tv_sec = first->time;
-			expire.tv_nsec = 0;
+			expire.tv_nsec = usecs.tv_usec * 1000;
 
 			status = pthread_cond_timedwait(&cond, &mutex, &expire);
 			if (status && status != ETIMEDOUT)

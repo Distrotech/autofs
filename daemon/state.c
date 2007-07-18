@@ -894,6 +894,7 @@ static void *st_queue_handler(void *arg)
 	struct list_head *head;
 	struct list_head *p;
 	struct timespec wait;
+	struct timeval now;
 	int status, ret;
 
 	st_mutex_lock();
@@ -904,8 +905,9 @@ static void *st_queue_handler(void *arg)
 		 * entry is added.
 		 */
 		head = &state_queue;
-		wait.tv_sec = time(NULL) + 1;
-		wait.tv_nsec = 0;
+		gettimeofday(&now, NULL);
+		wait.tv_sec = now.tv_sec + 1;
+		wait.tv_nsec = now.tv_usec * 1000;
 
 		while (list_empty(head)) {
 			status = pthread_cond_timedwait(&cond, &mutex, &wait);
@@ -939,8 +941,9 @@ static void *st_queue_handler(void *arg)
 		}
 
 		while (1) {
-			wait.tv_sec = time(NULL) + 1;
-			wait.tv_nsec = 0;
+			gettimeofday(&now, NULL);
+			wait.tv_sec = now.tv_sec + 1;
+			wait.tv_nsec = now.tv_usec * 1000;
 
 			signaled = 0;
 			while (!signaled) {
