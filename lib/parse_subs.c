@@ -297,7 +297,8 @@ char *sanitize_path(const char *path, int origlen, unsigned int type, unsigned i
 		return NULL;
 	}
 
-	if (origlen > 1 && *(cp - 1) == '/')
+	/* Remove trailing / but watch out for a quoted / alone */
+	if (strlen(cp) > 1 && origlen > 1 && *(cp - 1) == '/')
 		*(cp - 1) = '\0';
 
 	return s_path;

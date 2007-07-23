@@ -9,6 +9,7 @@
 - fix mount point directory creation for bind mounts.
 - add quoting for exports gathered by hosts map.
 - fix wait time resolution in alarm and state queue handlers.
+- fix handling of quoted slash alone.
 
 18/06/2007 autofs-5.0.2
 -----------------------
