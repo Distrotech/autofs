@@ -10,6 +10,7 @@
 - add quoting for exports gathered by hosts map.
 - fix wait time resolution in alarm and state queue handlers.
 - fix handling of quoted slash alone.
+- fix parse confusion between attribute and attribute value.
 
 18/06/2007 autofs-5.0.2
 -----------------------

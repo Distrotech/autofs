@@ -272,7 +272,7 @@ OPTTOUT		(-t{OPTWS}|-t{OPTWS}={OPTWS}|--timeout{OPTWS}|--timeout{OPTWS}={OPTWS})
 		return DNSERVER;
 	}
 
-	{DNATTRSTR} {
+	{DNATTRSTR}/"=" {
 		strcpy(master_lval.strtype, master_text);
 		return DNATTR;
 	}
