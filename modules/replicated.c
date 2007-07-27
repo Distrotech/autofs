@@ -607,12 +607,31 @@ static int get_supported_ver_and_cost(struct host *host, unsigned int version, c
 
 	parms.pm_prog = NFS_PROGRAM;
 
+	/*
+	 *  The version passed in is the version as defined in
+	 *  include/replicated.h.  However, the version we want to send
+	 *  off to the rpc calls should match the program version of NFS.
+	 *  So, we do the conversion here.
+	 */
 	if (version & UDP_SELECTED_MASK) {
 		proto = "udp";
-		vers = (version << 8);
-	} else {
+		version >>= 8;
+	} else
 		proto = "tcp";
-		vers = version;
+
+	switch (version) {
+	case NFS2_SUPPORTED:
+		vers = NFS2_VERSION;
+		break;
+	case NFS3_SUPPORTED:
+		vers = NFS3_VERSION;
+		break;
+	case NFS4_SUPPORTED:
+		vers = NFS4_VERSION;
+		break;
+	default:
+		crit(LOGOPT_ANY, "called with invalid version: 0x%x\n", version);
+		return 0;
 	}
 
 	rpc_info.proto = getprotobyname(proto);
