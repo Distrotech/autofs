@@ -13,6 +13,7 @@
 - fix parse confusion between attribute and attribute value.
 - fix version passed to get_supported_ver_and_cost.
 - mark map instances stale so they aren't "cleaned" during updates.
+- fix large file compile time option.
 
 18/06/2007 autofs-5.0.2
 -----------------------
