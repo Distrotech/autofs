@@ -325,6 +325,7 @@ static int read_file_source_instance(struct autofs_point *ap, struct map_source 
 		instance->recurse = map->recurse;
 		instance->depth = map->depth;
 	}
+	instance->stale = map->stale;
 
 	return do_read_map(ap, instance, age);
 }
@@ -346,6 +347,7 @@ static int read_source_instance(struct autofs_point *ap, struct map_source *map,
 		instance->recurse = map->recurse;
 		instance->depth = map->depth;
 	}
+	instance->stale = map->stale;
 
 	return do_read_map(ap, instance, age);
 }
