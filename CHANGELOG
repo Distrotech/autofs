@@ -15,6 +15,7 @@
 - mark map instances stale so they aren't "cleaned" during updates.
 - fix large file compile time option.
 - don't fail on empty master map.
+- add support for the "%" hack for case insensitive attribute schemas.
 
 18/06/2007 autofs-5.0.2
 -----------------------

@@ -1210,50 +1210,68 @@ static int read_one_map(struct autofs_point *ap,
 		}
 
 		/*
-		 * By definition keys must be unique within
-		 * each map entry
+		 * By definition keys should be unique within each map entry,
+		 * but as always there are exceptions.
 		 */
 		k_val = NULL;
 		k_len = 0;
 
 		/*
-		 * Keys must be unique so, in general, there shouldn't be
+		 * Keys should be unique so, in general, there shouldn't be
 		 * more than one attribute value. We make an exception for
 		 * wildcard entries as people may have values for '*' or
 		 * '/' for compaibility reasons. We use the '/' as the
 		 * wildcard in LDAP but allow '*' as well to allow for
 		 * people using older schemas that allow '*' as a key
-		 * value.
+		 * value. Another case where there can be multiple key
+		 * values is when people have used the "%" hack to specify
+		 * case matching ctriteria in a caase insensitive attribute.
 		 */
 		count = ldap_count_values_len(bvKey);
-		if (count > 2) {
-			error(ap->logopt,
-			      MODPREFIX
-			      "key %.*s has duplicate entries - ignoring",
-			      bvKey[0]->bv_len, bvKey[0]->bv_val);
-			goto next;
-		} else if (count == 2) {
+		if (count > 1) {
 			unsigned int i;
 
 			/* Check for the "/" and "*" and use as "/" if found */
 			for (i = 0; i < count; i++) {
+				bvKey[i]->bv_val[bvKey[i]->bv_len] = '\0';
+
+				/*
+				 * If multiple entries are present they could
+				 * be the result of people using the "%" hack so
+				 * ignore them.
+				 */
+				if (strchr(bvKey[i]->bv_val, '%'))
+					continue;
+
 				/* check for wildcard */
-				if (bvKey[i]->bv_len != 1)
-					continue;
-				if (*bvKey[i]->bv_val != '/' &&
-				    *bvKey[i]->bv_val != '*')
-					continue;
-				/* always use '/' internally */
-				*bvKey[i]->bv_val = '/';
+				if (bvKey[i]->bv_len == 1 &&
+				    (*bvKey[i]->bv_val == '/' ||
+				     *bvKey[i]->bv_val == '*')) {
+					/* always use '/' internally */
+					*bvKey[i]->bv_val = '/';
+					k_val = bvKey[i]->bv_val;
+					k_len = 1;
+					break;
+				}
+
+				/*
+				 * We have a result from LDAP so this is a
+				 * valid entry. Set the result to the LDAP
+				 * key that isn't a wildcard and doesn't have
+				 * any "%" hack values present. This should be
+				 * the case insensitive match string for the
+				 * nis schema, the default value.
+				 */
 				k_val = bvKey[i]->bv_val;
-				k_len = 1;
+				k_len = bvKey[i]->bv_len;
+
 				break;
 			}
 
 			if (!k_val) {
 				error(ap->logopt,
 				      MODPREFIX
-				      "key %.*s has duplicate entries - ignoring",
+				      "invalid entry %.*s - ignoring",
 				      bvKey[0]->bv_len, bvKey[0]->bv_val);
 				goto next;
 			}
@@ -1495,7 +1513,10 @@ static int lookup_one(struct autofs_point *ap,
 			continue;
 		}
 
-		/* By definition keys must be unique within each map entry */
+		/*
+		 * By definition keys should be unique within each map entry,
+		 * but as always there are exceptions.
+		 */
 		k_val = NULL;
 		k_len = 0;
 
@@ -1506,37 +1527,53 @@ static int lookup_one(struct autofs_point *ap,
 		 * '/' for compaibility reasons. We use the '/' as the
 		 * wildcard in LDAP but allow '*' as well to allow for
 		 * people using older schemas that allow '*' as a key
-		 * value.
+		 * value. Another case where there can be multiple key
+		 * values is when people have used the "%" hack to specify
+		 * case matching ctriteria in a caase insensitive attribute.
 		 */
 		count = ldap_count_values_len(bvKey);
-		if (count > 2) {
-			error(ap->logopt,
-			      MODPREFIX
-			      "key %.*s has duplicate entries - ignoring",
-			      bvKey[0]->bv_len, bvKey[0]->bv_val);
-			goto next;
-		} else if (count == 2) {
+		if (count > 1) {
 			unsigned int i;
 
 			/* Check for the "/" and "*" and use as "/" if found */
 			for (i = 0; i < count; i++) {
+				bvKey[i]->bv_val[bvKey[i]->bv_len] = '\0';
+
+				/*
+				 * If multiple entries are present they could
+				 * be the result of people using the "%" hack so
+				 * ignore them.
+				 */
+				if (strchr(bvKey[i]->bv_val, '%'))
+					continue;
+
 				/* check for wildcard */
-				if (bvKey[i]->bv_len != 1)
-					continue;
-				if (*bvKey[i]->bv_val != '/' &&
-				    *bvKey[i]->bv_val != '*')
-					continue;
-				/* always use '/' internally */
-				*bvKey[i]->bv_val = '/';
-				k_val = bvKey[i]->bv_val;
-				k_len = 1;
+				if (bvKey[i]->bv_len == 1 &&
+				    (*bvKey[i]->bv_val == '/' ||
+				     *bvKey[i]->bv_val == '*')) {
+					/* always use '/' internally */
+					*bvKey[i]->bv_val = '/';
+					k_val = bvKey[i]->bv_val;
+					k_len = 1;
+					break;
+				}
+
+				/*
+				 * The key was matched by LDAP so this is a
+				 * valid entry. Set the result key to the
+				 * lookup key to provide the mixed case
+				 * matching provided by the "%" hack.
+				 */
+				k_val = qKey;
+				k_len = strlen(qKey);
+
 				break;
 			}
 
 			if (!k_val) {
 				error(ap->logopt,
-					MODPREFIX "key %.*s has duplicate entries",
-					bvKey[0]->bv_len, bvKey[0]->bv_val);
+					MODPREFIX "no valid key found for %.*s",
+					qKey_len, qKey);
 				ret = CHE_FAIL;
 				goto next;
 			}
