@@ -138,6 +138,14 @@ Treat errors when mounting file systems as fatal. This is important when
 multiple file systems should be mounted (`multimounts'). If this option
 is given, no file system is mounted at all if at least one file system
 can't be mounted.
+.TP
+.I "nosymlink"
+This is an autofs specific option that is a pseudo mount option and
+so is given without a leading dash. Historically this option was used
+to prevent symlinking of local NFS mounts. Nowadays it can be used to
+prevent bind mounting of local NFS filesystems as well. If you need to
+prevent bind mounting for only specific entrys in a map then this
+can be done by adding the "port=" mount option to the given entries.
 .SH GENERAL SYSTEM DEFAULTS CONFIGURATION
 .P
 The default value of several general settings may be changed in the

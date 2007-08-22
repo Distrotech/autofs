@@ -16,6 +16,7 @@
 - fix large file compile time option.
 - don't fail on empty master map.
 - add support for the "%" hack for case insensitive attribute schemas.
+- fix "nosymlink" option handling and add desription to man page.
 
 18/06/2007 autofs-5.0.2
 -----------------------
