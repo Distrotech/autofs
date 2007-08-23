@@ -45,6 +45,8 @@ struct nss_action act[NSS_STATUS_MAX];
 #define YYLTYPE_IS_TRIVIAL 0
 #endif
 
+unsigned int nss_automount_found;
+
 extern int nss_lineno;
 extern int nss_lex(void);
 extern FILE *nss_in;
@@ -183,9 +185,15 @@ int nsswitch_parse(struct list_head *list)
 
 	nss_in = nsswitch;
 
+	nss_automount_found = 0;
 	nss_list = list;
 	status = nss_parse();
 	nss_list = NULL;
+
+	/* No "automount" nsswitch entry, use "files" */
+	if (!nss_automount_found)
+		if (add_source(list, "files"))
+			status = 0;
 
 	pthread_cleanup_pop(1);
 	pthread_cleanup_pop(1);

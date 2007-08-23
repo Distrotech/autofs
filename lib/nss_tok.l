@@ -56,6 +56,8 @@ int nss_wrap(void);
 #define YY_MAIN 0
 #endif
 
+extern unsigned int nss_automount_found;
+
 %}
 
 %option nounput
@@ -85,6 +87,7 @@ other		[[:alnum:]@$%^&*()-+_":;?,<>./'{}~`]+
 %%
 
 ^{automount}: {
+	nss_automount_found = 1;
 	BEGIN(AUTOMOUNT);
 }
 
