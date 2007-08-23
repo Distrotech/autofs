@@ -17,6 +17,7 @@
 - don't fail on empty master map.
 - add support for the "%" hack for case insensitive attribute schemas.
 - fix "nosymlink" option handling and add desription to man page.
+- fix don't fail on empty master map.
 
 18/06/2007 autofs-5.0.2
 -----------------------

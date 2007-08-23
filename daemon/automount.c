@@ -61,6 +61,8 @@ static size_t kpkt_len;
 
 /* Attribute to create detached thread */
 pthread_attr_t thread_attr;
+/* Attribute to create normal thread */
+pthread_attr_t thread_attr_nodetach;
 
 struct master_readmap_cond mrc = {
 	PTHREAD_MUTEX_INITIALIZER, PTHREAD_COND_INITIALIZER, 0, NULL, 0, 0, 0, 0};
@@ -914,7 +916,7 @@ static void *do_notify_state(void *arg)
 	return NULL;
 }
 
-static int do_signals(struct master *master, int sig)
+static pthread_t do_signals(struct master *master, int sig)
 {
 	pthread_t thid;
 	int r_sig = sig;
@@ -924,7 +926,7 @@ static int do_signals(struct master *master, int sig)
 	if (status)
 		fatal(status);
 
-	status = pthread_create(&thid, &thread_attr, do_notify_state, &r_sig);
+	status = pthread_create(&thid, &thread_attr_nodetach, do_notify_state, &r_sig);
 	if (status) {
 		error(master->default_logging,
 		      "mount state notify thread create failed");
@@ -948,7 +950,7 @@ static int do_signals(struct master *master, int sig)
 
 	pthread_cleanup_pop(1);
 
-	return 1;
+	return thid;
 }
 
 static void *do_read_master(void *arg)
@@ -1038,6 +1040,7 @@ static int do_hup_signal(struct master *master, time_t age)
 /* Deal with all the signal-driven events in the state machine */
 static void *statemachine(void *arg)
 {
+	pthread_t thid = 0;
 	sigset_t signalset;
 	int sig;
 
@@ -1048,15 +1051,17 @@ static void *statemachine(void *arg)
 	while (1) {
 		sigwait(&signalset, &sig);
 
-
-		if (master_list_empty(master_list))
-			return NULL;
-
 		switch (sig) {
 		case SIGTERM:
 		case SIGUSR2:
 		case SIGUSR1:
-			do_signals(master_list, sig);
+			thid = do_signals(master_list, sig);
+			if (thid) {
+				pthread_join(thid, NULL);
+				if (master_list_empty(master_list))
+					return NULL;
+				thid = 0;
+			}
 			break;
 
 		case SIGHUP:
@@ -1170,10 +1175,6 @@ static void handle_mounts_cleanup(void *arg)
 	}
 
 	msg("shut down path %s", path);
-
-	/* If we are the last tell the state machine to shutdown */
-	if (!submount && master_list_empty(master_list))
-		kill(getpid(), SIGTERM);
 
 	return;
 }
@@ -1643,6 +1644,14 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 #endif
+
+	if (pthread_attr_init(&thread_attr_nodetach)) {
+		crit(LOGOPT_ANY,
+		     "%s: failed to init thread attribute struct!",
+		     program);
+		close(start_pipefd[1]);
+		exit(1);
+	}
 
 	msg("Starting automounter version %s, master map %s",
 		version, master_list->name);
