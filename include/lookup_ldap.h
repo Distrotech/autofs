@@ -10,6 +10,14 @@
 #include <krb5.h>
 #endif
 
+struct ldap_schema {
+	char *map_class;
+	char *map_attr;
+	char *entry_class;
+	char *entry_attr;
+	char *value_attr;
+};
+
 struct lookup_context {
 	char *mapname;
 
@@ -22,11 +30,7 @@ struct lookup_context {
 	int version;
 
 	/* LDAP lookup configuration */
-	char *map_obj_class;
-	char *entry_obj_class;
-	char *map_attr;
-	char *entry_attr;
-	char *value_attr;
+	struct ldap_schema *schema;
 
 	/* TLS and SASL authentication information */
 	char        *auth_conf;

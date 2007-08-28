@@ -42,6 +42,13 @@
 
 int lookup_version = AUTOFS_LOOKUP_VERSION;	/* Required by protocol */
 
+static struct ldap_schema common_schema[] = {
+	{"nisMap", "nisMapName", "nisObject", "cn", "nisMapEntry"},
+	{"automountMap", "ou", "automount", "cn", "automountInformation"},
+	{"automountMap", "automountMapName", "automount", "automountKey", "automountInformation"},
+};
+static unsigned int common_schema_count = sizeof(common_schema)/sizeof(struct ldap_schema);
+
 int bind_ldap_anonymous(LDAP *ldap, struct lookup_context *ctxt)
 {
 	int rv;
@@ -738,54 +745,15 @@ done:
 	return 1;
 }
 
-static int get_default_schema(struct lookup_context *ctxt)
-{
-	ctxt->map_obj_class = (char *) defaults_get_map_obj_class();
-	if (!ctxt->map_obj_class)
-		return 0;
-
-	ctxt->entry_obj_class = (char *) defaults_get_entry_obj_class();
-	if (!ctxt->entry_obj_class)
-		goto free_moc;
-
-	ctxt->map_attr = (char *) defaults_get_map_attr();
-	if (!ctxt->map_attr)
-		goto free_eoc;
-
-	ctxt->entry_attr = (char *) defaults_get_entry_attr();
-	if (!ctxt->entry_attr)
-		goto free_ma;
-
-	ctxt->value_attr = (char *) defaults_get_value_attr();
-	if (!ctxt->value_attr)
-		goto free_ea;
-
-	return 1;
-
-free_ea:
-	free(ctxt->entry_attr);
-free_ma:
-	free(ctxt->map_attr);
-free_eoc:
-	free(ctxt->entry_obj_class);
-free_moc:
-	free(ctxt->map_obj_class);
-
-	ctxt->map_obj_class = NULL;
-	ctxt->entry_obj_class = NULL;
-	ctxt->map_attr = NULL;
-	ctxt->entry_attr = NULL;
-
-	return 0;
-}
-
 static void free_context(struct lookup_context *ctxt)
 {
-	if (ctxt->map_obj_class) {
-		free(ctxt->map_obj_class);
-		free(ctxt->entry_obj_class);
-		free(ctxt->map_attr);
-		free(ctxt->entry_attr);
+	if (ctxt->schema) {
+		free(ctxt->schema->map_class);
+		free(ctxt->schema->map_attr);
+		free(ctxt->schema->entry_class);
+		free(ctxt->schema->entry_attr);
+		free(ctxt->schema->value_attr);
+		free(ctxt->schema);
 	}
 	if (ctxt->auth_conf)
 		free(ctxt->auth_conf);
@@ -808,18 +776,14 @@ static void free_context(struct lookup_context *ctxt)
 	return;
 }
 
-static int get_query_dn(LDAP *ldap, struct lookup_context *ctxt)
+static int get_query_dn(LDAP *ldap, struct lookup_context *ctxt, const char *class, const char *key)
 {
 	char buf[PARSE_MAX_BUF];
 	char *query, *dn;
 	LDAPMessage *result, *e;
-	char *class, *key;
 	char *attrs[2];
 	int scope;
 	int rv, l;
-
-	class = ctxt->map_obj_class;
-	key = ctxt->map_attr;
 
 	attrs[0] = LDAP_NO_ATTRS;
 	attrs[1] = NULL;
@@ -890,6 +854,90 @@ static int get_query_dn(LDAP *ldap, struct lookup_context *ctxt)
 	return 1;
 }
 
+static struct ldap_schema *alloc_common_schema(struct ldap_schema *s)
+{
+	struct ldap_schema *schema;
+	char *mc, *ma, *ec, *ea, *va;
+
+	mc = strdup(s->map_class);
+	if (!mc)
+		return NULL;
+
+	ma = strdup(s->map_attr);
+	if (!ma) {
+		free(mc);
+		return NULL;
+	}
+
+	ec = strdup(s->entry_class);
+	if (!ec) {
+		free(mc);
+		free(ma);
+		return NULL;
+	}
+
+	ea = strdup(s->entry_attr);
+	if (!ea) {
+		free(mc);
+		free(ma);
+		free(ec);
+		return NULL;
+	}
+
+	va = strdup(s->value_attr);
+	if (!va) {
+		free(mc);
+		free(ma);
+		free(ec);
+		free(ea);
+		return NULL;
+	}
+
+	schema = malloc(sizeof(struct ldap_schema));
+	if (!schema) {
+		free(mc);
+		free(ma);
+		free(ec);
+		free(ea);
+		free(va);
+		return NULL;
+	}
+
+	schema->map_class = mc;
+	schema->map_attr = ma;
+	schema->entry_class = ec;
+	schema->entry_attr = ea;
+	schema->value_attr = va;
+
+	return schema;
+}
+
+static int find_query_dn(LDAP *ldap, struct lookup_context *ctxt)
+{
+	struct ldap_schema *schema;
+	unsigned int i;
+
+	if (ctxt->schema)
+		return 0;
+
+	for (i = 0; i < common_schema_count; i++) {
+		const char *class = common_schema[i].map_class;
+		const char *key = common_schema[i].map_attr;
+		if (get_query_dn(ldap, ctxt, class, key)) {
+			schema = alloc_common_schema(&common_schema[i]);
+			if (!schema) {
+				error(LOGOPT_ANY,
+				      MODPREFIX "failed to allocate schema");
+				return 0;
+			}
+			ctxt->schema = schema;
+			return 1;
+		}
+	}
+
+	return 0;
+}
+
 /*
  * This initializes a context (persistent non-global data) for queries to
  * this module.  Return zero if we succeed.
@@ -926,13 +974,6 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 		return 1;
 	}
 
-	/* Get default schema for queries */
-	if (!get_default_schema(ctxt)) {
-		error(LOGOPT_ANY, MODPREFIX "cannot set default schema");
-		free_context(ctxt);
-		return 1;
-	}
-
 #ifdef WITH_SASL
 	/*
 	 * Determine which authentication mechanism to use.  We sanity-
@@ -954,13 +995,22 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 		return 1;
 	}
 
-	ret = get_query_dn(ldap, ctxt);
-	unbind_ldap_connection(ldap, ctxt);
-	if (!ret) {
-		error(LOGOPT_ANY, MODPREFIX "failed to get query dn");
-		free_context(ctxt);
-		return 1;
+	/*
+	 * Get default schema for queries.
+	 * If the schema isn't defined in the configuration then check for
+	 * presence of a map dn in the common schemas.
+	 */
+	ctxt->schema = defaults_get_schema();
+	if (!ctxt->schema) {
+		if (!find_query_dn(ldap, ctxt)) {
+			unbind_ldap_connection(ldap, ctxt);
+			error(LOGOPT_ANY,
+			      MODPREFIX "failed to find valid query dn");
+			free_context(ctxt);
+			return 1;
+		}
 	}
+	unbind_ldap_connection(ldap, ctxt);
 
 	/* Open the parser, if we can. */
 	ctxt->parse = open_parse(mapfmt, MODPREFIX, argc - 1, argv + 1);
@@ -990,9 +1040,9 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 	int scope = LDAP_SCOPE_SUBTREE;
 	LDAP *ldap;
 
-	class = ctxt->entry_obj_class;
-	entry = ctxt->entry_attr;
-	info = ctxt->value_attr;
+	class = ctxt->schema->entry_class;
+	entry = ctxt->schema->entry_attr;
+	info = ctxt->schema->value_attr;
 
 	attrs[0] = entry;
 	attrs[1] = info;
@@ -1141,9 +1191,9 @@ static int read_one_map(struct autofs_point *ap,
 
 	mc = source->mc;
 
-	class = ctxt->entry_obj_class;
-	entry = ctxt->entry_attr;
-	info = ctxt->value_attr;
+	class = ctxt->schema->entry_class;
+	entry = ctxt->schema->entry_attr;
+	info = ctxt->schema->value_attr;
 
 	attrs[0] = entry;
 	attrs[1] = info;
@@ -1438,9 +1488,9 @@ static int lookup_one(struct autofs_point *ap,
 		return CHE_FAIL;
 	}
 
-	class = ctxt->entry_obj_class;
-	entry = ctxt->entry_attr;
-	info = ctxt->value_attr;
+	class = ctxt->schema->entry_class;
+	entry = ctxt->schema->entry_attr;
+	info = ctxt->schema->value_attr;
 
 	attrs[0] = entry;
 	attrs[1] = info;

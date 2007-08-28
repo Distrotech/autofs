@@ -191,17 +191,25 @@ The old style
 is also understood. Alternatively, the type can be obtained from the Name Service Switch
 configuration, in which case the map name alone must be given.
 .P
-The default LDAP schema is the NIS schema described in RFC 2307.
-Entries in the nisMap schema are \fBnisObject\fP objects in
+If no schema is set in the autofs configuration then autofs will check
+each of the commonly used schema for a valid entry and if one is found
+it will used for subsequent lookups.
+.P
+There are three common schemas in use:
+.TP
+.I nisMap
+Entries in the \fBnisMap\fP schema are \fBnisObject\fP objects in
 the specified subtree, where the \fBcn\fP attribute is the key
 (the wildcard key is "/"), and the \fBnisMapEntry\fP attribute
 contains the information used by the automounter.
-.P
-Entries in the automountMap schema are \fBautomount\fP objects in
-the specified subtree, where the \fBcn\fP or \fBautomountKey\fP attribute
-(depending on local usage) is the key (the wildcard key is "/"), and the
-\fBautomountInformation\fP attribute contains the information used by the
-automounter.
+.TP
+.I automountMap
+The \fBautomountMap\fP schema has two variations that differ in the attribute
+used for the map key. Entries in the automountMap schema are \fBautomount\fP
+objects in the specified subtree, where the \fBcn\fP or \fBautomountKey\fP
+attribute (depending on local usage) is the key (the wildcard key is "/"),
+and the \fBautomountInformation\fP attribute contains the information used
+by the automounter. Note that the \fBcn\fP attribute is case insensitive.
 .P
 The object classes and attributes used for accessing automount maps in
 LDAP can be changed by setting entries in the autofs configuration
@@ -209,61 +217,44 @@ located in
 .nh
 .BR @@autofsconfdir@@/autofs .
 .hy
+.TP
+.B NOTE:
+If a schema is given in the configuration then all the schema configuration
+values must be set, any partial schema specification will be ignored.
 .P
 The configuration settings available are:
 .TP
-\fBMAP_OBJECT_CLASS\fP
-The map object class. Its Default value is "nisMap". In the
-.nh
-automountMap
-.hy
-schema this corresponds to the class
-.nh
-.BR automountMap .
-.hy
+.B MAP_OBJECT_CLASS
+The map object class. In the \fBnisMap\fP schema this corresponds to the class
+\fBnisMap\fP and in the \fBautomountMap\fP schema it corresponds to the class
+\fBautomountMap\fP.
 .TP
 .B ENTRY_OBJECT_CLASS
-The map entry object class. Its default value is \fBnisObject\fP.
-In the automountMap schema this corresponds to the class
-.nh
-.BR automount .
-.hy
+The map entry object class. In the \fBnisMap\fP schema this corresponds
+to the class \fBnisObject\fP and in the \fBautomountMap\fP schema it
+corresponds to the class \fBautomount\fP.
 .TP
 .B MAP_ATTRIBUTE
 The attribute used to identify the name of the map to which this
-entry belongs. Its default value is
-.nh
-.BR nisMapName .
-.hy
-In the
-.nh
-automountMap
-.hy
-schema this corresponds to the attributes \fBou\fP or
-.nh
-.BR automountMapName .
-.hy
+entry belongs.  In the \fBnisMap\fP schema this corresponds to the attribute
+\fBnisMapName\fP and in the \fBautomountMap\fP schema it corresponds to the
+attribute \fBou\fP or \fBautomountMapName\fP.
 .TP
 .B ENTRY_ATTRIBUTE
-The attribute used to identify a map key. Its default value is
-In the
-.nh
-automountMap
-.hy
-schema this corresponds to the attribute
-.nh
-.BR automountKey .
-.hy
+The attribute used to identify a map key. In the \fBnisMap\fP schema this
+corresponds to the attribute \fBcn\fP and in the \fBautomountMap\fP schema
+it corresponds to the attribute \fBautomountKey\fP.
 .TP
 .B VALUE_ATTRIBUTE
-The attribute used to identify the value of the map entry. Its default
-value is
-.nh
-.BR BnisMapEntry .
-.hy
-In the automountMap schema this corresponds to the attribute
-.nh
-.BR automountInformation .
+The attribute used to identify the value of the map entry. In the \fBnisMap\fP
+schema this corresponds to the attribute \fBnisMapEntry\fP and in the \fBautomountMap\fP
+schema it corresponds to the attribute \fBautomountInformation\fP.
+.TP
+.B NOTE:
+It is essential that entries use class and attribute in a consistent
+manner for correct operation of autofs. For example mixing \fBcn\fP and
+\fBautomountKey\fP attributes in \fBautomount\fP schema map entries won't
+work as expected.
 .SH LDAP AUTHENTICATION, ENCRYPTED AND CERTIFIED CONNECTIONS
 LDAP authenticated binds, TLS encrypted connections and certification
 may be used by setting appropriate values in the autofs authentication

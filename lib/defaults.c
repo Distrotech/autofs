@@ -18,6 +18,7 @@
 #include <string.h>
 
 #include "defaults.h"
+#include "lookup_ldap.h"
 #include "log.h"
 
 #define DEFAULTS_CONFIG_FILE		AUTOFS_CONF_DIR "/autofs"
@@ -41,16 +42,8 @@
 #define ENV_AUTH_CONF_FILE		"AUTH_CONF_FILE"
 
 static const char *default_master_map_name = DEFAULT_MASTER_MAP_NAME;
-
-static const char *default_ldap_server		= DEFAULT_LDAP_SERVER;
-
-static const char *default_map_obj_class	= DEFAULT_MAP_OBJ_CLASS;
-static const char *default_entry_obj_class	= DEFAULT_ENTRY_OBJ_CLASS;
-static const char *default_map_attr		= DEFAULT_MAP_ATTR;
-static const char *default_entry_attr		= DEFAULT_ENTRY_ATTR;
-static const char *default_value_attr		= DEFAULT_VALUE_ATTR;
-
-static const char *default_auth_conf_file = DEFAULT_AUTH_CONF_FILE;
+static const char *default_ldap_server	   = DEFAULT_LDAP_SERVER;
+static const char *default_auth_conf_file  = DEFAULT_AUTH_CONF_FILE;
 
 static char *get_env_string(const char *name)
 {
@@ -285,59 +278,120 @@ const char *defaults_get_ldap_server(void)
 	return (const char *) server;
 }
 
-const char *defaults_get_map_obj_class(void)
+struct ldap_schema *defaults_get_default_schema(void)
 {
-	char *moc;
+	struct ldap_schema *schema;
+	char *mc, *ma, *ec, *ea, *va;
 
-	moc = get_env_string(ENV_NAME_MAP_OBJ_CLASS);
-	if (!moc)
-		return strdup(default_map_obj_class);
+	mc = strdup(DEFAULT_MAP_OBJ_CLASS);
+	if (!mc)
+		return NULL;
 
-	return (const char *) moc;
+	ma = strdup(DEFAULT_MAP_ATTR);
+	if (!ma) {
+		free(mc);
+		return NULL;
+	}
+
+	ec = strdup(DEFAULT_ENTRY_OBJ_CLASS);
+	if (!ec) {
+		free(mc);
+		free(ma);
+		return NULL;
+	}
+
+	ea = strdup(DEFAULT_ENTRY_ATTR);
+	if (!ea) {
+		free(mc);
+		free(ma);
+		free(ec);
+		return NULL;
+	}
+
+	va = strdup(DEFAULT_VALUE_ATTR);
+	if (!va) {
+		free(mc);
+		free(ma);
+		free(ec);
+		free(ea);
+		return NULL;
+	}
+
+	schema = malloc(sizeof(struct ldap_schema));
+	if (!schema) {
+		free(mc);
+		free(ma);
+		free(ec);
+		free(ea);
+		free(va);
+		return NULL;
+	}
+
+	schema->map_class = mc;
+	schema->map_attr = ma;
+	schema->entry_class = ec;
+	schema->entry_attr = ea;
+	schema->value_attr = va;
+
+	return schema;
 }
 
-const char *defaults_get_entry_obj_class(void)
+struct ldap_schema *defaults_get_schema(void)
 {
-	char *eoc;
+	struct ldap_schema *schema;
+	char *mc, *ma, *ec, *ea, *va;
 
-	eoc = get_env_string(ENV_NAME_ENTRY_OBJ_CLASS);
-	if (!eoc)
-		return strdup(default_entry_obj_class);
-
-	return (const char *) eoc;
-}
-
-const char *defaults_get_map_attr(void)
-{
-	char *ma;
+	mc = get_env_string(ENV_NAME_MAP_OBJ_CLASS);
+	if (!mc)
+		return NULL;
 
 	ma = get_env_string(ENV_NAME_MAP_ATTR);
-	if (!ma)
-		return strdup(default_map_attr);
+	if (!ma) {
+		free(mc);
+		return NULL;
+	}
 
-	return (const char *) ma;
-}
-
-const char *defaults_get_entry_attr(void)
-{
-	char *ea;
+	ec = get_env_string(ENV_NAME_ENTRY_OBJ_CLASS);
+	if (!ec) {
+		free(mc);
+		free(ma);
+		return NULL;
+	}
 
 	ea = get_env_string(ENV_NAME_ENTRY_ATTR);
-	if (!ea)
-		return strdup(default_entry_attr);
-
-	return (const char *) ea;
-}
-
-const char *defaults_get_value_attr(void)
-{
-	char *va;
+	if (!ea) {
+		free(mc);
+		free(ma);
+		free(ec);
+		return NULL;
+	}
 
 	va = get_env_string(ENV_NAME_VALUE_ATTR);
-	if (!va)
-		return strdup(default_value_attr);
+	if (!va) {
+		free(mc);
+		free(ma);
+		free(ec);
+		free(ea);
+		return NULL;
+	}
 
-	return (const char *) va;
+	schema = malloc(sizeof(struct ldap_schema));
+	if (!schema) {
+		free(mc);
+		free(ma);
+		free(ec);
+		free(ea);
+		free(va);
+		return NULL;
+	}
+
+	schema->map_class = mc;
+	schema->map_attr = ma;
+	schema->entry_class = ec;
+	schema->entry_attr = ea;
+	schema->value_attr = va;
+
+	return schema;
 }
 
 unsigned int defaults_get_append_options(void)

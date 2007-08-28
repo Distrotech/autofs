@@ -43,11 +43,8 @@ unsigned int defaults_get_timeout(void);
 unsigned int defaults_get_browse_mode(void);
 unsigned int defaults_get_logging(void);
 const char *defaults_get_ldap_server(void);
-const char *defaults_get_map_obj_class(void);
-const char *defaults_get_entry_obj_class(void);
-const char *defaults_get_map_attr(void);
-const char *defaults_get_entry_attr(void);
-const char *defaults_get_value_attr(void);
+struct ldap_schema *defaults_get_default_schema(void);
+struct ldap_schema *defaults_get_schema(void);
 unsigned int defaults_get_append_options(void);
 const char *defaults_get_auth_conf_file(void);
 
