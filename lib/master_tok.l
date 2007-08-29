@@ -313,7 +313,7 @@ OPTTOUT		(-t{OPTWS}|-t{OPTWS}={OPTWS}|--timeout{OPTWS}|--timeout{OPTWS}={OPTWS})
 		return(DDASH);
 	}
 
-	{OPTTOUT} { return(OPT_TIMEOUT); }
+	{OPTTOUT}/{NUMBER} { return(OPT_TIMEOUT); }
 
 	{NUMBER} {
 		master_lval.longtype = atol(master_text);
