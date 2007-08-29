@@ -448,6 +448,8 @@ struct autofs_point {
 	enum states state;		/* Current state */
 	int state_pipe[2];		/* State change router pipe */
 	unsigned dir_created;		/* Directory created for this mount? */
+	unsigned random_selection;	/* Use random policy when selecting a
+					 * host from which to mount */
 	struct autofs_point *parent;	/* Owner of mounts list for submount */
 	pthread_mutex_t mounts_mutex;	/* Protect mount lists */
 	pthread_cond_t mounts_cond;	/* Submounts condition variable */

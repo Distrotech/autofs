@@ -49,9 +49,9 @@ const char *confdir = AUTOFS_CONF_DIR;	/* Location of autofs config file */
 
 const char *global_options;		/* Global option, from command line */
 
-static char *pid_file = NULL;	/* File in which to keep pid */
-unsigned int random_selection;	/* use random policy when selecting
-				 * which multi-mount host to mount */
+static char *pid_file = NULL;		/* File in which to keep pid */
+unsigned int global_random_selection;	/* use random policy when selecting
+					 * which multi-mount host to mount */
 static int start_pipefd[2];
 static int st_stat = 0;
 static int *pst_stat = &st_stat;
@@ -1490,7 +1490,7 @@ int main(int argc, char *argv[])
 	timeout = defaults_get_timeout();
 	ghost = defaults_get_browse_mode();
 	logging = defaults_get_logging();
-	random_selection = 0;
+	global_random_selection = 0;
 	global_options = NULL;
 	have_global_options = 0;
 	foreground = 0;
@@ -1531,7 +1531,7 @@ int main(int argc, char *argv[])
 			exit(0);
 
 		case 'r':
-			random_selection = 1;
+			global_random_selection = 1;
 			break;
 
 		case 'O':

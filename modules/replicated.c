@@ -74,8 +74,6 @@
 #define max(x, y)	(x >= y ? x : y)
 #define mmax(x, y, z)	(max(x, y) == x ? max(x, z) : max(y, z))
 
-extern unsigned int random_selection;
-
 void seed_random(void)
 {
 	int fd;
@@ -392,7 +390,7 @@ static unsigned short get_port_option(const char *options)
 static unsigned int get_nfs_info(struct host *host,
 			 struct conn_info *pm_info, struct conn_info *rpc_info,
 			 const char *proto, unsigned int version,
-			 const char *options)
+			 const char *options, unsigned int random_selection)
 {
 	char *have_port_opt = options ? strstr(options, "port=") : NULL;
 	struct pmap parms;
@@ -535,7 +533,9 @@ done_ver:
 	return supported;
 }
 
-static int get_vers_and_cost(struct host *host, unsigned int version, const char *options)
+static int get_vers_and_cost(struct host *host,
+			     unsigned int version, const char *options,
+			     unsigned int random_selection)
 {
 	struct conn_info pm_info, rpc_info;
 	time_t timeout = RPC_TIMEOUT;
@@ -559,7 +559,9 @@ static int get_vers_and_cost(struct host *host, unsigned int version, const char
 	vers &= version;
 
 	if (version & UDP_REQUESTED) {
-		supported = get_nfs_info(host, &pm_info, &rpc_info, "udp", vers, options);
+		supported = get_nfs_info(host,
+					&pm_info, &rpc_info, "udp", vers,
+					options, random_selection);
 		if (supported) {
 			ret = 1;
 			host->version |= (supported << 8);
@@ -567,7 +569,9 @@ static int get_vers_and_cost(struct host *host, unsigned int version, const char
 	}
 
 	if (version & TCP_REQUESTED) {
-		supported = get_nfs_info(host, &pm_info, &rpc_info, "tcp", vers, options);
+		supported = get_nfs_info(host,
+					 &pm_info, &rpc_info, "tcp", vers,
+					 options, random_selection);
 		if (supported) {
 			ret = 1;
 			host->version |= supported;
@@ -577,7 +581,9 @@ static int get_vers_and_cost(struct host *host, unsigned int version, const char
 	return ret;
 }
 
-static int get_supported_ver_and_cost(struct host *host, unsigned int version, const char *options)
+static int get_supported_ver_and_cost(struct host *host,
+				      unsigned int version, const char *options,
+				      unsigned int random_selection)
 {
 	char *have_port_opt = options ? strstr(options, "port=") : NULL;
 	struct conn_info pm_info, rpc_info;
@@ -695,7 +701,9 @@ done:
 	return 0;
 }
 
-int prune_host_list(struct host **list, unsigned int vers, const char *options)
+int prune_host_list(struct host **list,
+		    unsigned int vers, const char *options,
+		    unsigned int random_selection)
 {
 	struct host *this, *last, *first;
 	struct host *new = NULL;
@@ -734,7 +742,8 @@ int prune_host_list(struct host **list, unsigned int vers, const char *options)
 			break;
 
 		if (this->name) {
-			status = get_vers_and_cost(this, vers, options);
+			status = get_vers_and_cost(this, vers,
+						   options, random_selection);
 			if (!status) {
 				if (this == first) {
 					first = next;
@@ -824,7 +833,9 @@ int prune_host_list(struct host **list, unsigned int vers, const char *options)
 			remove_host(list, this);
 			add_host(&new, this);
 		} else {
-			status = get_supported_ver_and_cost(this, selected_version, options);
+			status = get_supported_ver_and_cost(this,
+						selected_version, options,
+						random_selection);
 			if (status) {
 				this->version = selected_version;
 				remove_host(list, this);

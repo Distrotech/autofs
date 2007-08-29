@@ -20,6 +20,7 @@
 - fix don't fail on empty master map.
 - if there's no "automount" entry in nsswitch.conf use "files" source.
 - add LDAP schema discovery if no schema is configured.
+- add random selection as a master map entry option.
 
 18/06/2007 autofs-5.0.2
 -----------------------

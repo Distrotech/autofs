@@ -63,7 +63,7 @@ struct host {
 void seed_random(void);
 void free_host_list(struct host **);
 int parse_location(struct host **, const char *);
-int prune_host_list(struct host **, unsigned int, const char *);
+int prune_host_list(struct host **, unsigned int, const char *, unsigned int);
 void dump_host_list(struct host *);
 
 #endif

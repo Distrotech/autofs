@@ -324,6 +324,7 @@ OPTTOUT		(-t{OPTWS}|-t{OPTWS}={OPTWS}|--timeout{OPTWS}|--timeout{OPTWS}={OPTWS})
 	-g|--ghost|-?browse	{ return(OPT_GHOST); }
 	-v|--verbose		{ return(OPT_VERBOSE); }
 	-d|--debug		{ return(OPT_DEBUG); }
+	-r|--random-multimount-selection { return(OPT_RANDOM); }
 
 	{OPTWS}","{OPTWS}	{ return(COMMA); }
 

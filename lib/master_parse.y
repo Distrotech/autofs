@@ -56,6 +56,8 @@ static char *type;
 static char *format;
 static long timeout;
 static unsigned ghost;
+extern unsigned global_random_selection;
+static unsigned random_selection;
 static char **tmp_argv;
 static int tmp_argc;
 static char **local_argv;
@@ -93,7 +95,7 @@ static int master_fprintf(FILE *, char *, ...);
 
 %token COMMENT
 %token MAP
-%token OPT_TIMEOUT OPT_NOGHOST OPT_GHOST OPT_VERBOSE OPT_DEBUG
+%token OPT_TIMEOUT OPT_NOGHOST OPT_GHOST OPT_VERBOSE OPT_DEBUG OPT_RANDOM
 %token COLON COMMA NL DDASH
 %type <strtype> map
 %type <strtype> options
@@ -174,6 +176,7 @@ line:
 	| PATH COLON { master_notify($1); YYABORT; }
 	| PATH OPTION { master_notify($2); YYABORT; }
 	| PATH NILL { master_notify($2); YYABORT; }
+	| PATH OPT_RANDOM { master_notify($1); YYABORT; }
 	| PATH OPT_DEBUG { master_notify($1); YYABORT; }
 	| PATH OPT_TIMEOUT { master_notify($1); YYABORT; }
 	| PATH OPT_GHOST { master_notify($1); YYABORT; }
@@ -543,6 +546,7 @@ daemon_option: OPT_TIMEOUT NUMBER { timeout = $2; }
 	| OPT_GHOST	{ ghost = 1; }
 	| OPT_VERBOSE	{ verbose = 1; }
 	| OPT_DEBUG	{ debug = 1; }
+	| OPT_RANDOM	{ random_selection = 1; }
 	;
 
 mount_option: OPTION
@@ -600,6 +604,7 @@ static void local_init_vars(void)
 	debug = 0;
 	timeout = -1;
 	ghost = defaults_get_browse_mode();
+	random_selection = global_random_selection;
 	tmp_argv = NULL;
 	tmp_argc = 0;
 	local_argv = NULL;
@@ -790,6 +795,7 @@ int master_parse_entry(const char *buffer, unsigned int default_timeout, unsigne
 		}
 		set_mnt_logging(ap);
 	}
+	entry->ap->random_selection = random_selection;
 
 /*
 	source = master_find_map_source(entry, type, format,

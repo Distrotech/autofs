@@ -146,6 +146,12 @@ to prevent symlinking of local NFS mounts. Nowadays it can be used to
 prevent bind mounting of local NFS filesystems as well. If you need to
 prevent bind mounting for only specific entrys in a map then this
 can be done by adding the "port=" mount option to the given entries.
+.TP
+.I "\-r, \-\-random-multimount-selection"
+Enables the use of ramdom selection when choosing a host from a
+list of replicated servers. This option is applied to this mount
+only, overriding the global setting that may be specified on the
+command line.
 .SH GENERAL SYSTEM DEFAULTS CONFIGURATION
 .P
 The default value of several general settings may be changed in the
