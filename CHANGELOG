@@ -22,6 +22,7 @@
 - add LDAP schema discovery if no schema is configured.
 - add random selection as a master map entry option.
 - fix couple of edge case parse fails of timeout option.
+- check for "*" when looking up wildcard in LDAP.
 
 18/06/2007 autofs-5.0.2
 -----------------------

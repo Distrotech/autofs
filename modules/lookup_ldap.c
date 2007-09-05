@@ -1500,7 +1500,7 @@ static int lookup_one(struct autofs_point *ap,
 		*qKey = '/';
 
 	/* Build a query string. */
-	l = strlen(class) + 2*strlen(entry) + strlen(qKey) + 29;
+	l = strlen(class) + 3*strlen(entry) + strlen(qKey) + 35;
 
 	query = alloca(l);
 	if (query == NULL) {
@@ -1514,7 +1514,7 @@ static int lookup_one(struct autofs_point *ap,
 	 * whose entry is equal to qKey.
 	 */
 	ql = sprintf(query,
-	      "(&(objectclass=%s)(|(%s=%s)(%s=/)))", class, entry, qKey, entry);
+	      "(&(objectclass=%s)(|(%s=%s)(%s=/)(%s=\\2A)))", class, entry, qKey, entry, entry);
 	if (ql >= l) {
 		error(ap->logopt,
 		      MODPREFIX "error forming query string");
