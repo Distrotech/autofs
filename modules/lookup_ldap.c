@@ -1009,6 +1009,15 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 			free_context(ctxt);
 			return 1;
 		}
+	} else {
+		const char *class = ctxt->schema->map_class;
+		const char *key = ctxt->schema->map_attr;
+		if (!get_query_dn(ldap, ctxt, class, key)) {
+			unbind_ldap_connection(ldap, ctxt);
+			error(LOGOPT_ANY, MODPREFIX "failed to get query dn");
+			free_context(ctxt);
+			return 1;
+		}
 	}
 	unbind_ldap_connection(ldap, ctxt);
 
