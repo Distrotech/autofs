@@ -230,6 +230,11 @@ values must be set, any partial schema specification will be ignored.
 .P
 The configuration settings available are:
 .TP
+.B SEARCH_BASE
+The base dn to use when searching for amap base dn. This entry may be
+given multiple times and each will be checked for a map base dn in
+the order they occur in the configuration.
+.TP
 .B MAP_OBJECT_CLASS
 The map object class. In the \fBnisMap\fP schema this corresponds to the class
 \fBnisMap\fP and in the \fBautomountMap\fP schema it corresponds to the class

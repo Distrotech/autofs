@@ -24,6 +24,7 @@
 - fix couple of edge case parse fails of timeout option.
 - check for "*" when looking up wildcard in LDAP.
 - fix LDAP schema discovery.
+- add SEARCH_BASE configuration option.
 
 18/06/2007 autofs-5.0.2
 -----------------------

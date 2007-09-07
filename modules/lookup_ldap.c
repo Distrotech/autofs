@@ -771,6 +771,8 @@ static void free_context(struct lookup_context *ctxt)
 		free(ctxt->server);
 	if (ctxt->base)
 		free(ctxt->base);
+	if (ctxt->sdns)
+		defaults_free_searchdns(ctxt->sdns);
 	free(ctxt);
 
 	return;
@@ -780,7 +782,8 @@ static int get_query_dn(LDAP *ldap, struct lookup_context *ctxt, const char *cla
 {
 	char buf[PARSE_MAX_BUF];
 	char *query, *dn;
-	LDAPMessage *result, *e;
+	LDAPMessage *result = NULL, *e;
+	struct ldap_searchdn *sdns = NULL;
 	char *attrs[2];
 	int scope;
 	int rv, l;
@@ -827,7 +830,40 @@ static int get_query_dn(LDAP *ldap, struct lookup_context *ctxt, const char *cla
 	}
 	query[l] = '\0';
 
-	rv = ldap_search_s(ldap, ctxt->base, scope, query, attrs, 0, &result);
+	if (!ctxt->base) {
+		sdns = defaults_get_searchdns();
+		if (sdns)
+			ctxt->sdns = sdns;
+	}
+
+	if (!sdns)
+		rv = ldap_search_s(ldap, ctxt->base,
+				   scope, query, attrs, 0, &result);
+	else {
+		struct ldap_searchdn *this = sdns;
+
+		debug(LOGOPT_NONE, MODPREFIX
+			      "check search base list");
+
+		while (this) {
+			rv = ldap_search_s(ldap, this->basedn,
+					   scope, query, attrs, 0, &result);
+
+			if ((rv == LDAP_SUCCESS) && result) {
+				debug(LOGOPT_NONE, MODPREFIX
+				      "found search base under %s",
+				      this->basedn);
+				break;
+			}
+
+			this = this->next;
+
+			if (result) {
+				ldap_msgfree(result);
+				result = NULL;
+			}
+		}
+	}
 
 	if ((rv != LDAP_SUCCESS) || !result) {
 		error(LOGOPT_NONE,

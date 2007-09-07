@@ -18,6 +18,11 @@ struct ldap_schema {
 	char *value_attr;
 };
 
+struct ldap_searchdn {
+	char *basedn;
+	struct ldap_searchdn *next;
+};
+
 struct lookup_context {
 	char *mapname;
 
@@ -31,6 +36,9 @@ struct lookup_context {
 
 	/* LDAP lookup configuration */
 	struct ldap_schema *schema;
+
+	/* List of base dns for searching */
+	struct ldap_searchdn *sdns;
 
 	/* TLS and SASL authentication information */
 	char        *auth_conf;

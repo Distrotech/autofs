@@ -37,6 +37,9 @@
 #define DEFAULT_APPEND_OPTIONS		1
 #define DEFAULT_AUTH_CONF_FILE		AUTOFS_MAP_DIR "/autofs_ldap_auth.conf"
 
+struct ldap_schema;
+struct ldap_searchdn;
+
 unsigned int defaults_read_config(void);
 const char *defaults_get_master_map(void);
 unsigned int defaults_get_timeout(void);
@@ -45,6 +48,8 @@ unsigned int defaults_get_logging(void);
 const char *defaults_get_ldap_server(void);
 struct ldap_schema *defaults_get_default_schema(void);
 struct ldap_schema *defaults_get_schema(void);
+struct ldap_searchdn *defaults_get_searchdns(void);
+void defaults_free_searchdns(struct ldap_searchdn *);
 unsigned int defaults_get_append_options(void);
 const char *defaults_get_auth_conf_file(void);
 

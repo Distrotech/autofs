@@ -21,6 +21,14 @@ BROWSE_MODE="no"
 #
 #LOGGING="none"
 #
+# Define base dn for map dn lookup.
+#
+# SEARCH_BASE - base dn to use for searching for map search dn.
+# 		Multiple entries can be given and they are checked
+# 		in the order they occur here.
+#
+#SEARCH_BASE=""
+#
 # Define the LDAP schema to used for lookups
 #
 # If no schema is set autofs will check each of the schemas

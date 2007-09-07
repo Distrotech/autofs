@@ -32,6 +32,8 @@
 
 #define ENV_LDAP_SERVER			"LDAP_SERVER"
 
+#define SEARCH_BASE			"SEARCH_BASE"
+
 #define ENV_NAME_MAP_OBJ_CLASS		"MAP_OBJECT_CLASS"
 #define ENV_NAME_ENTRY_OBJ_CLASS	"ENTRY_OBJECT_CLASS"
 #define ENV_NAME_MAP_ATTR		"MAP_ATTRIBUTE"
@@ -130,6 +132,52 @@ static int check_set_config_value(const char *res, const char *name, const char 
 	return 0;
 }
 
+static int parse_line(char *line, char **res, char **value)
+{
+	volatile char *key, *val, *trailer;
+	int len;
+
+	key = line;
+
+	if (*key == '#' || !isalpha(*key))
+		return 0;
+
+	while (*key && *key == ' ')
+		key++;
+
+	if (!key)
+		return 0;
+
+	if (!(val = strchr(key, '=')))
+		return 0;
+
+	*val++ = '\0';
+
+	while (*val && (*val == '"' || isblank(*val)))
+		val++;
+
+	len = strlen(val);
+
+	if (val[len - 1] == '\n') {
+		val[len - 1] = '\0';
+		len--;
+	}
+
+	trailer = strchr(val, '#');
+	if (!trailer)
+		trailer = val + len - 1;
+	else
+		trailer--;
+
+	while (*trailer && (*trailer == '"' || isblank(*trailer)))
+		*(trailer--) = '\0';;
+
+	*res = key;
+	*value = val;
+
+	return 1;
+}
+
 /*
  * Read config env variables and check they have been set.
  *
@@ -141,61 +189,30 @@ unsigned int defaults_read_config(void)
 {
 	FILE *f;
 	char buf[MAX_LINE_LEN];
-	char *res, *value;
+	char *res;
 
 	f = fopen(DEFAULTS_CONFIG_FILE, "r");
 	if (!f)
 		return 0;
 
 	while ((res = fgets(buf, MAX_LINE_LEN, f))) {
-		char *trailer;
-		int len;
+		char *key, *value;
 
-		if (*res == '#' || !isalpha(*res))
+		if (!parse_line(res, &key, &value))
 			continue;
 
-		while (*res && *res == ' ')
-			res++;
-
-		if (!res)
-			continue;
-
-		if (!(value = strchr(res, '=')))
-			continue;
-
-		*value++ = '\0';
-
-		while (*value && (*value == '"' || isblank(*value)))
-			value++;
-
-		len = strlen(value);
-
-		if (value[len - 1] == '\n') {
-			value[len - 1] = '\0';
-			len--;
-		}
-
-		trailer = strchr(value, '#');
-		if (!trailer)
-			trailer = value + len - 1;
-		else
-			trailer--;
-
-		while (*trailer && (*trailer == '"' || isblank(*trailer)))
-			*(trailer--) = '\0';;
-
-		if (check_set_config_value(res, ENV_NAME_MASTER_MAP, value) ||
-		    check_set_config_value(res, ENV_NAME_TIMEOUT, value) ||
-		    check_set_config_value(res, ENV_NAME_BROWSE_MODE, value) ||
-		    check_set_config_value(res, ENV_NAME_LOGGING, value) ||
-		    check_set_config_value(res, ENV_LDAP_SERVER, value) ||
-		    check_set_config_value(res, ENV_NAME_MAP_OBJ_CLASS, value) ||
-		    check_set_config_value(res, ENV_NAME_ENTRY_OBJ_CLASS, value) ||
-		    check_set_config_value(res, ENV_NAME_MAP_ATTR, value) ||
-		    check_set_config_value(res, ENV_NAME_ENTRY_ATTR, value) ||
-		    check_set_config_value(res, ENV_NAME_VALUE_ATTR, value) ||
-		    check_set_config_value(res, ENV_APPEND_OPTIONS, value) ||
-		    check_set_config_value(res, ENV_AUTH_CONF_FILE, value))
+		if (check_set_config_value(key, ENV_NAME_MASTER_MAP, value) ||
+		    check_set_config_value(key, ENV_NAME_TIMEOUT, value) ||
+		    check_set_config_value(key, ENV_NAME_BROWSE_MODE, value) ||
+		    check_set_config_value(key, ENV_NAME_LOGGING, value) ||
+		    check_set_config_value(key, ENV_LDAP_SERVER, value) ||
+		    check_set_config_value(key, ENV_NAME_MAP_OBJ_CLASS, value) ||
+		    check_set_config_value(key, ENV_NAME_ENTRY_OBJ_CLASS, value) ||
+		    check_set_config_value(key, ENV_NAME_MAP_ATTR, value) ||
+		    check_set_config_value(key, ENV_NAME_ENTRY_ATTR, value) ||
+		    check_set_config_value(key, ENV_NAME_VALUE_ATTR, value) ||
+		    check_set_config_value(key, ENV_APPEND_OPTIONS, value) ||
+		    check_set_config_value(key, ENV_AUTH_CONF_FILE, value))
 			;
 	}
 
@@ -334,6 +351,86 @@ struct ldap_schema *defaults_get_default_schema(void)
 	schema->value_attr = va;
 
 	return schema;
+}
+
+static struct ldap_searchdn *alloc_searchdn(const char *value)
+{
+	struct ldap_searchdn *sdn;
+	char *val;
+
+	sdn = malloc(sizeof(struct ldap_searchdn));
+	if (!sdn)
+		return NULL;
+
+	val = strdup(value);
+	if (!val) {
+		free(sdn);
+		return NULL;
+	}
+
+	sdn->basedn = val;
+	sdn->next = NULL;
+
+	return sdn;
+}
+
+void defaults_free_searchdns(struct ldap_searchdn *sdn)
+{
+	struct ldap_searchdn *this = sdn;
+	struct ldap_searchdn *next;
+
+	next = this;
+	while (this) {
+		next = this->next;
+		free(this->basedn);
+		free(this);
+		this = next;
+	}
+
+	return;
+}
+
+struct ldap_searchdn *defaults_get_searchdns(void)
+{
+	FILE *f;
+	char buf[MAX_LINE_LEN];
+	char *res;
+	struct ldap_searchdn *sdn, *last;
+
+	f = fopen(DEFAULTS_CONFIG_FILE, "r");
+	if (!f)
+		return NULL;
+
+	sdn = last = NULL;
+
+	while ((res = fgets(buf, MAX_LINE_LEN, f))) {
+		char *key, *value;
+
+		if (!parse_line(res, &key, &value))
+			continue;
+
+		if (!strcasecmp(key, SEARCH_BASE)) {
+			struct ldap_searchdn *new = alloc_searchdn(value);
+
+			if (!new) {
+				defaults_free_searchdns(sdn);
+				return NULL;
+			}
+
+			if (!last)
+				last = new;
+			else {
+				last->next = new;
+				last = new;
+			}
+
+			if (!sdn)
+				sdn = new;
+		}
+	}
+
+	fclose(f);
+	return sdn;
 }
 
 struct ldap_schema *defaults_get_schema(void)
