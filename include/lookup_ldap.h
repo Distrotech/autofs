@@ -38,6 +38,7 @@ struct lookup_context {
 	struct ldap_schema *schema;
 
 	/* List of base dns for searching */
+	char *cur_host;
 	struct ldap_searchdn *sdns;
 
 	/* TLS and SASL authentication information */

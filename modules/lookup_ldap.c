@@ -171,10 +171,207 @@ LDAP *init_ldap_connection(struct lookup_context *ctxt)
 	return ldap;
 }
 
+static int get_query_dn(LDAP *ldap, struct lookup_context *ctxt, const char *class, const char *key)
+{
+	char buf[PARSE_MAX_BUF];
+	char *query, *dn;
+	LDAPMessage *result = NULL, *e;
+	struct ldap_searchdn *sdns = NULL;
+	char *attrs[2];
+	int scope;
+	int rv, l;
+
+	attrs[0] = LDAP_NO_ATTRS;
+	attrs[1] = NULL;
+
+	if (!ctxt->mapname && !ctxt->base) {
+		error(LOGOPT_ANY, MODPREFIX "no master map to lookup");
+		return 0;
+	}
+
+	/* Build a query string. */
+	l = strlen("(objectclass=)") + strlen(class) + 1;
+	if (ctxt->mapname)
+		l += strlen(key) + strlen(ctxt->mapname) + strlen("(&(=))");
+
+	query = alloca(l);
+	if (query == NULL) {
+		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+		crit(LOGOPT_ANY, MODPREFIX "alloca: %s", estr);
+		return NSS_STATUS_UNAVAIL;
+	}
+
+	/*
+	 * If we have a master mapname construct a query using it
+	 * otherwise assume the base dn will catch it.
+	 */
+	if (ctxt->mapname) {
+		if (sprintf(query, "(&(objectclass=%s)(%s=%.*s))", class,
+		     key, (int) strlen(ctxt->mapname), ctxt->mapname) >= l) {
+			debug(LOGOPT_NONE,
+			      MODPREFIX "error forming query string");
+			return 0;
+		}
+		scope = LDAP_SCOPE_SUBTREE;
+	} else {
+		if (sprintf(query, "(objectclass=%s)", class) >= l) {
+			debug(LOGOPT_NONE,
+			      MODPREFIX "error forming query string");
+			return 0;
+		}
+		scope = LDAP_SCOPE_SUBTREE;
+	}
+	query[l] = '\0';
+
+	if (!ctxt->base) {
+		sdns = defaults_get_searchdns();
+		if (sdns)
+			ctxt->sdns = sdns;
+	}
+
+	if (!sdns)
+		rv = ldap_search_s(ldap, ctxt->base,
+				   scope, query, attrs, 0, &result);
+	else {
+		struct ldap_searchdn *this = sdns;
+
+		debug(LOGOPT_NONE, MODPREFIX
+			      "check search base list");
+
+		while (this) {
+			rv = ldap_search_s(ldap, this->basedn,
+					   scope, query, attrs, 0, &result);
+
+			if ((rv == LDAP_SUCCESS) && result) {
+				debug(LOGOPT_NONE, MODPREFIX
+				      "found search base under %s",
+				      this->basedn);
+				break;
+			}
+
+			this = this->next;
+
+			if (result) {
+				ldap_msgfree(result);
+				result = NULL;
+			}
+		}
+	}
+
+	if ((rv != LDAP_SUCCESS) || !result) {
+		error(LOGOPT_NONE,
+		      MODPREFIX "query failed for %s: %s",
+		      query, ldap_err2string(rv));
+		return 0;
+	}
+
+	e = ldap_first_entry(ldap, result);
+	if (e) {
+		dn = ldap_get_dn(ldap, e);
+		debug(LOGOPT_NONE, MODPREFIX "query dn %s", dn);
+		ldap_msgfree(result);
+	} else {
+		debug(LOGOPT_NONE,
+		      MODPREFIX "query succeeded, no matches for %s",
+		      query);
+		ldap_msgfree(result);
+		return 0;
+	}
+
+	ctxt->qdn = dn;
+
+	return 1;
+}
+
+static struct ldap_schema *alloc_common_schema(struct ldap_schema *s)
+{
+	struct ldap_schema *schema;
+	char *mc, *ma, *ec, *ea, *va;
+
+	mc = strdup(s->map_class);
+	if (!mc)
+		return NULL;
+
+	ma = strdup(s->map_attr);
+	if (!ma) {
+		free(mc);
+		return NULL;
+	}
+
+	ec = strdup(s->entry_class);
+	if (!ec) {
+		free(mc);
+		free(ma);
+		return NULL;
+	}
+
+	ea = strdup(s->entry_attr);
+	if (!ea) {
+		free(mc);
+		free(ma);
+		free(ec);
+		return NULL;
+	}
+
+	va = strdup(s->value_attr);
+	if (!va) {
+		free(mc);
+		free(ma);
+		free(ec);
+		free(ea);
+		return NULL;
+	}
+
+	schema = malloc(sizeof(struct ldap_schema));
+	if (!schema) {
+		free(mc);
+		free(ma);
+		free(ec);
+		free(ea);
+		free(va);
+		return NULL;
+	}
+
+	schema->map_class = mc;
+	schema->map_attr = ma;
+	schema->entry_class = ec;
+	schema->entry_attr = ea;
+	schema->value_attr = va;
+
+	return schema;
+}
+
+static int find_query_dn(LDAP *ldap, struct lookup_context *ctxt)
+{
+	struct ldap_schema *schema;
+	unsigned int i;
+
+	if (ctxt->schema)
+		return 0;
+
+	for (i = 0; i < common_schema_count; i++) {
+		const char *class = common_schema[i].map_class;
+		const char *key = common_schema[i].map_attr;
+		if (get_query_dn(ldap, ctxt, class, key)) {
+			schema = alloc_common_schema(&common_schema[i]);
+			if (!schema) {
+				error(LOGOPT_ANY,
+				      MODPREFIX "failed to allocate schema");
+				return 0;
+			}
+			ctxt->schema = schema;
+			return 1;
+		}
+	}
+
+	return 0;
+}
+
 static LDAP *do_connect(struct lookup_context *ctxt)
 {
 	LDAP *ldap;
-	int rv;
+	char *host = NULL, *nhost;
+	int rv, need_base = 1;
 
 	ldap = init_ldap_connection(ctxt);
 	if (!ldap)
@@ -202,6 +399,61 @@ static LDAP *do_connect(struct lookup_context *ctxt)
 	if (rv != 0) {
 		unbind_ldap_connection(ldap, ctxt);
 		return NULL;
+	}
+
+	rv = ldap_get_option(ldap, LDAP_OPT_HOST_NAME, &host);
+        if (rv != LDAP_SUCCESS || !host) {
+		unbind_ldap_connection(ldap, ctxt);
+		debug(LOGOPT_ANY, "failed to get hostname for connection");
+		return NULL;
+	}
+
+	nhost = strdup(host);
+	if (!nhost) {
+		unbind_ldap_connection(ldap, ctxt);
+		debug(LOGOPT_ANY, "failed to alloc context for hostname");
+		return NULL;
+	}
+	ldap_memfree(host);
+
+	if (!ctxt->cur_host) {
+		ctxt->cur_host = nhost;
+		/* Check if schema defined in conf first time only */
+		ctxt->schema = defaults_get_schema();
+	} else {
+		/* If connection host has changed update */
+		if (strcmp(ctxt->cur_host, nhost)) {
+			free(ctxt->cur_host);
+			ctxt->cur_host = nhost;
+		} else {
+			free(nhost);
+			need_base = 0;
+		}
+	}
+
+	if (!need_base)
+		return ldap;
+
+	/*
+	 * If the schema isn't defined in the configuration then check for
+	 * presence of a map dn with a the common schema. Then calculate the
+	 * base dn for searches.
+	 */
+	if (!ctxt->schema) {
+		if (!find_query_dn(ldap, ctxt)) {
+			unbind_ldap_connection(ldap, ctxt);
+			error(LOGOPT_ANY,
+		      	      MODPREFIX "failed to find valid query dn");
+			return NULL;
+		}
+	} else {
+		const char *class = ctxt->schema->map_class;
+		const char *key = ctxt->schema->map_attr;
+		if (!get_query_dn(ldap, ctxt, class, key)) {
+			unbind_ldap_connection(ldap, ctxt);
+			error(LOGOPT_ANY, MODPREFIX "failed to get query dn");
+			return NULL;
+		}
 	}
 
 	return ldap;
@@ -769,6 +1021,8 @@ static void free_context(struct lookup_context *ctxt)
 		ldap_memfree(ctxt->qdn);
 	if (ctxt->server)
 		free(ctxt->server);
+	if (ctxt->cur_host)
+		free(ctxt->cur_host);
 	if (ctxt->base)
 		free(ctxt->base);
 	if (ctxt->sdns)
@@ -776,202 +1030,6 @@ static void free_context(struct lookup_context *ctxt)
 	free(ctxt);
 
 	return;
-}
-
-static int get_query_dn(LDAP *ldap, struct lookup_context *ctxt, const char *class, const char *key)
-{
-	char buf[PARSE_MAX_BUF];
-	char *query, *dn;
-	LDAPMessage *result = NULL, *e;
-	struct ldap_searchdn *sdns = NULL;
-	char *attrs[2];
-	int scope;
-	int rv, l;
-
-	attrs[0] = LDAP_NO_ATTRS;
-	attrs[1] = NULL;
-
-	if (!ctxt->mapname && !ctxt->base) {
-		error(LOGOPT_ANY, MODPREFIX "no master map to lookup");
-		return 0;
-	}
-
-	/* Build a query string. */
-	l = strlen("(objectclass=)") + strlen(class) + 1;
-	if (ctxt->mapname)
-		l += strlen(key) + strlen(ctxt->mapname) + strlen("(&(=))");
-
-	query = alloca(l);
-	if (query == NULL) {
-		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		crit(LOGOPT_ANY, MODPREFIX "alloca: %s", estr);
-		return NSS_STATUS_UNAVAIL;
-	}
-
-	/*
-	 * If we have a master mapname construct a query using it
-	 * otherwise assume the base dn will catch it.
-	 */
-	if (ctxt->mapname) {
-		if (sprintf(query, "(&(objectclass=%s)(%s=%.*s))", class,
-		     key, (int) strlen(ctxt->mapname), ctxt->mapname) >= l) {
-			debug(LOGOPT_NONE,
-			      MODPREFIX "error forming query string");
-			return 0;
-		}
-		scope = LDAP_SCOPE_SUBTREE;
-	} else {
-		if (sprintf(query, "(objectclass=%s)", class) >= l) {
-			debug(LOGOPT_NONE,
-			      MODPREFIX "error forming query string");
-			return 0;
-		}
-		scope = LDAP_SCOPE_SUBTREE;
-	}
-	query[l] = '\0';
-
-	if (!ctxt->base) {
-		sdns = defaults_get_searchdns();
-		if (sdns)
-			ctxt->sdns = sdns;
-	}
-
-	if (!sdns)
-		rv = ldap_search_s(ldap, ctxt->base,
-				   scope, query, attrs, 0, &result);
-	else {
-		struct ldap_searchdn *this = sdns;
-
-		debug(LOGOPT_NONE, MODPREFIX
-			      "check search base list");
-
-		while (this) {
-			rv = ldap_search_s(ldap, this->basedn,
-					   scope, query, attrs, 0, &result);
-
-			if ((rv == LDAP_SUCCESS) && result) {
-				debug(LOGOPT_NONE, MODPREFIX
-				      "found search base under %s",
-				      this->basedn);
-				break;
-			}
-
-			this = this->next;
-
-			if (result) {
-				ldap_msgfree(result);
-				result = NULL;
-			}
-		}
-	}
-
-	if ((rv != LDAP_SUCCESS) || !result) {
-		error(LOGOPT_NONE,
-		      MODPREFIX "query failed for %s: %s",
-		      query, ldap_err2string(rv));
-		return 0;
-	}
-
-	e = ldap_first_entry(ldap, result);
-	if (e) {
-		dn = ldap_get_dn(ldap, e);
-		debug(LOGOPT_NONE, MODPREFIX "query dn %s", dn);
-		ldap_msgfree(result);
-	} else {
-		debug(LOGOPT_NONE,
-		      MODPREFIX "query succeeded, no matches for %s",
-		      query);
-		ldap_msgfree(result);
-		return 0;
-	}
-
-	ctxt->qdn = dn;
-
-	return 1;
-}
-
-static struct ldap_schema *alloc_common_schema(struct ldap_schema *s)
-{
-	struct ldap_schema *schema;
-	char *mc, *ma, *ec, *ea, *va;
-
-	mc = strdup(s->map_class);
-	if (!mc)
-		return NULL;
-
-	ma = strdup(s->map_attr);
-	if (!ma) {
-		free(mc);
-		return NULL;
-	}
-
-	ec = strdup(s->entry_class);
-	if (!ec) {
-		free(mc);
-		free(ma);
-		return NULL;
-	}
-
-	ea = strdup(s->entry_attr);
-	if (!ea) {
-		free(mc);
-		free(ma);
-		free(ec);
-		return NULL;
-	}
-
-	va = strdup(s->value_attr);
-	if (!va) {
-		free(mc);
-		free(ma);
-		free(ec);
-		free(ea);
-		return NULL;
-	}
-
-	schema = malloc(sizeof(struct ldap_schema));
-	if (!schema) {
-		free(mc);
-		free(ma);
-		free(ec);
-		free(ea);
-		free(va);
-		return NULL;
-	}
-
-	schema->map_class = mc;
-	schema->map_attr = ma;
-	schema->entry_class = ec;
-	schema->entry_attr = ea;
-	schema->value_attr = va;
-
-	return schema;
-}
-
-static int find_query_dn(LDAP *ldap, struct lookup_context *ctxt)
-{
-	struct ldap_schema *schema;
-	unsigned int i;
-
-	if (ctxt->schema)
-		return 0;
-
-	for (i = 0; i < common_schema_count; i++) {
-		const char *class = common_schema[i].map_class;
-		const char *key = common_schema[i].map_attr;
-		if (get_query_dn(ldap, ctxt, class, key)) {
-			schema = alloc_common_schema(&common_schema[i]);
-			if (!schema) {
-				error(LOGOPT_ANY,
-				      MODPREFIX "failed to allocate schema");
-				return 0;
-			}
-			ctxt->schema = schema;
-			return 1;
-		}
-	}
-
-	return 0;
 }
 
 /*
@@ -1029,31 +1087,6 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 		error(LOGOPT_ANY, MODPREFIX "cannot connect to server");
 		free_context(ctxt);
 		return 1;
-	}
-
-	/*
-	 * Get default schema for queries.
-	 * If the schema isn't defined in the configuration then check for
-	 * presence of a map dn in the common schemas.
-	 */
-	ctxt->schema = defaults_get_schema();
-	if (!ctxt->schema) {
-		if (!find_query_dn(ldap, ctxt)) {
-			unbind_ldap_connection(ldap, ctxt);
-			error(LOGOPT_ANY,
-			      MODPREFIX "failed to find valid query dn");
-			free_context(ctxt);
-			return 1;
-		}
-	} else {
-		const char *class = ctxt->schema->map_class;
-		const char *key = ctxt->schema->map_attr;
-		if (!get_query_dn(ldap, ctxt, class, key)) {
-			unbind_ldap_connection(ldap, ctxt);
-			error(LOGOPT_ANY, MODPREFIX "failed to get query dn");
-			free_context(ctxt);
-			return 1;
-		}
 	}
 	unbind_ldap_connection(ldap, ctxt);
 
