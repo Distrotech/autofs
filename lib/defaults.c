@@ -134,7 +134,7 @@ static int check_set_config_value(const char *res, const char *name, const char 
 
 static int parse_line(char *line, char **res, char **value)
 {
-	volatile char *key, *val, *trailer;
+	char *key, *val, *trailer;
 	int len;
 
 	key = line;
