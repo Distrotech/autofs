@@ -528,6 +528,7 @@ sasl_do_kinit(struct lookup_context *ctxt)
 	return 0;
 
 out_cleanup_unparse:
+	krb5cc_in_use--;
 	krb5_free_unparsed_name(ctxt->krb5ctxt, tgs_name);
 out_cleanup_cc:
 	status = pthread_mutex_lock(&krb5cc_mutex);

@@ -26,6 +26,7 @@
 - fix LDAP schema discovery.
 - add SEARCH_BASE configuration option.
 - work around segv at exit due to libxml2 tsd usage.
+- re-read config on HUP signal.
 
 18/06/2007 autofs-5.0.2
 -----------------------

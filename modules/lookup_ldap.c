@@ -174,7 +174,7 @@ LDAP *init_ldap_connection(struct lookup_context *ctxt)
 static int get_query_dn(LDAP *ldap, struct lookup_context *ctxt, const char *class, const char *key)
 {
 	char buf[PARSE_MAX_BUF];
-	char *query, *dn;
+	char *query, *dn, *qdn;
 	LDAPMessage *result = NULL, *e;
 	struct ldap_searchdn *sdns = NULL;
 	char *attrs[2];
@@ -225,15 +225,18 @@ static int get_query_dn(LDAP *ldap, struct lookup_context *ctxt, const char *cla
 
 	if (!ctxt->base) {
 		sdns = defaults_get_searchdns();
-		if (sdns)
+		if (sdns) {
+			if (ctxt->sdns)
+				defaults_free_searchdns(ctxt->sdns);
 			ctxt->sdns = sdns;
+		}
 	}
 
-	if (!sdns)
+	if (!ctxt->sdns)
 		rv = ldap_search_s(ldap, ctxt->base,
 				   scope, query, attrs, 0, &result);
 	else {
-		struct ldap_searchdn *this = sdns;
+		struct ldap_searchdn *this = ctxt->sdns;
 
 		debug(LOGOPT_NONE, MODPREFIX
 			      "check search base list");
@@ -269,7 +272,6 @@ static int get_query_dn(LDAP *ldap, struct lookup_context *ctxt, const char *cla
 	if (e) {
 		dn = ldap_get_dn(ldap, e);
 		debug(LOGOPT_NONE, MODPREFIX "query dn %s", dn);
-		ldap_msgfree(result);
 	} else {
 		debug(LOGOPT_NONE,
 		      MODPREFIX "query succeeded, no matches for %s",
@@ -278,7 +280,16 @@ static int get_query_dn(LDAP *ldap, struct lookup_context *ctxt, const char *cla
 		return 0;
 	}
 
-	ctxt->qdn = dn;
+	qdn = strdup(dn);
+	ldap_memfree(dn);
+	ldap_msgfree(result);
+	if (!qdn)
+		return 0;
+
+	if (ctxt->qdn)
+		free(ctxt->qdn);
+
+	ctxt->qdn = qdn;
 
 	return 1;
 }
@@ -1018,7 +1029,7 @@ static void free_context(struct lookup_context *ctxt)
 	if (ctxt->mapname)
 		free(ctxt->mapname);
 	if (ctxt->qdn)
-		ldap_memfree(ctxt->qdn);
+		free(ctxt->qdn);
 	if (ctxt->server)
 		free(ctxt->server);
 	if (ctxt->cur_host)
@@ -1600,13 +1611,13 @@ static int lookup_one(struct autofs_point *ap,
 	}
 	query[ql] = '\0';
 
-	debug(ap->logopt,
-	      MODPREFIX "searching for \"%s\" under \"%s\"", query, ctxt->qdn);
-
 	/* Initialize the LDAP context. */
 	ldap = do_connect(ctxt);
 	if (!ldap)
 		return CHE_FAIL;
+
+	debug(ap->logopt,
+	      MODPREFIX "searching for \"%s\" under \"%s\"", query, ctxt->qdn);
 
 	rv = ldap_search_s(ldap, ctxt->qdn, scope, query, attrs, 0, &result);
 

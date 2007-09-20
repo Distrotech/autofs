@@ -986,6 +986,8 @@ static void *do_read_master(void *arg)
 	if (status)
 		fatal(status);
 
+	defaults_read_config();
+
 	status = master_read_master(master, age, readall);
 
 	master->reading = 0;
