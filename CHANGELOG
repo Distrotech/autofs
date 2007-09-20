@@ -25,6 +25,7 @@
 - check for "*" when looking up wildcard in LDAP.
 - fix LDAP schema discovery.
 - add SEARCH_BASE configuration option.
+- work around segv at exit due to libxml2 tsd usage.
 
 18/06/2007 autofs-5.0.2
 -----------------------

@@ -1998,9 +1998,6 @@ int lookup_done(void *context)
 	struct lookup_context *ctxt = (struct lookup_context *) context;
 	int rv = close_parse(ctxt->parse);
 #ifdef WITH_SASL
-	EVP_cleanup();
-	ERR_free_strings();
-
 	autofs_sasl_done(ctxt);
 #endif
 	free_context(ctxt);

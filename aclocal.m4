@@ -167,6 +167,19 @@ else
   HAVE_LIBXML=1
   XML_LIBS=`$XML_CONFIG --libs`
   XML_FLAGS=`$XML_CONFIG --cflags`
+  XML_VER=`$XML_CONFIG --version`
+  XML_MAJOR=`echo $XML_VER|cut -d\. -f1`
+  if test $XML_MAJOR -le 2
+  then
+    XML_MINOR=`echo $XML_VER|cut -d\. -f2`
+    if test $XML_MINOR -le 6
+    then
+      XML_REV=`echo $XML_VER|cut -d\. -f3`
+      if test $XML_REV -le 99; then
+        AC_DEFINE(LIBXML2_WORKAROUND,1, [Use libxml2 tsd usage workaround])
+      fi
+    fi
+  fi
 fi])
 
 dnl --------------------------------------------------------------------------

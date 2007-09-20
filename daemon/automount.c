@@ -40,6 +40,9 @@
 #include <sys/utsname.h>
 
 #include "automount.h"
+#ifdef LIBXML2_WORKAROUND
+#include <dlfcn.h>
+#endif
 
 const char *program;		/* Initialized with argv[0] */
 const char *version = VERSION_STRING;	/* Program version */
@@ -1681,6 +1684,11 @@ int main(int argc, char *argv[])
 		close(start_pipefd[1]);
 		exit(1);
 	}
+
+#ifdef LIBXML2_WORKAROUND
+	void *dh = dlopen("libxml2.so", RTLD_NOW);
+#endif
+
 	if (!master_read_master(master_list, age, 0)) {
 		master_kill(master_list);
 		*pst_stat = 3;
@@ -1702,5 +1710,9 @@ int main(int argc, char *argv[])
 	}
 	closelog();
 
+#ifdef LIBXML2_WORKAROUND
+	if (dh)
+		dlclose(dh);
+#endif
 	exit(0);
 }
