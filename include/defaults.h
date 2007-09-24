@@ -26,7 +26,8 @@
 #define DEFAULT_BROWSE_MODE	1
 #define DEFAULT_LOGGING		0
 
-#define DEFAULT_LDAP_SERVER		NULL
+#define DEFAULT_LDAP_TIMEOUT		-1
+#define DEFAULT_LDAP_NETWORK_TIMEOUT	8
 
 #define DEFAULT_MAP_OBJ_CLASS		"nisMap"
 #define DEFAULT_ENTRY_OBJ_CLASS		"nisObject"
@@ -46,6 +47,10 @@ unsigned int defaults_get_timeout(void);
 unsigned int defaults_get_browse_mode(void);
 unsigned int defaults_get_logging(void);
 const char *defaults_get_ldap_server(void);
+unsigned int defaults_get_ldap_timeout(void);
+unsigned int defaults_get_ldap_network_timeout(void);
+struct list_head *defaults_get_uris(void);
+void defaults_free_uris(struct list_head *);
 struct ldap_schema *defaults_get_default_schema(void);
 struct ldap_schema *defaults_get_schema(void);
 struct ldap_searchdn *defaults_get_searchdns(void);

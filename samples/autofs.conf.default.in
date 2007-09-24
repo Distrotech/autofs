@@ -21,6 +21,25 @@ BROWSE_MODE="no"
 #
 #LOGGING="none"
 #
+# Define server URIs
+#
+# LDAP_URI - space seperated list of server uris of the form
+# 	     <proto>://<server>[/] where <proto> can be ldap
+# 	     or ldaps. The option can be given multiple times.
+# 	     Map entries that include a server name override
+# 	     this option.
+#
+#LDAP_URI=""
+#
+# LDAP__TIMEOUT - timeout value for the synchronous API  calls
+#		  (default is LDAP library default).
+#
+#LDAP_TIMEOUT=-1
+#
+# LDAP_NETWORK_TIMEOUT - set the network response timeout (default 8).
+#
+#LDAP_NETWORK_TIMEOUT=8
+#
 # Define base dn for map dn lookup.
 #
 # SEARCH_BASE - base dn to use for searching for map search dn.

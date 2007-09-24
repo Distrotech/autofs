@@ -230,10 +230,27 @@ values must be set, any partial schema specification will be ignored.
 .P
 The configuration settings available are:
 .TP
+.B LDAP_TIMEOUT
+Set the network response timeout (default 8).
+Set timeout value for the synchronous API  calls. The default is the LDAP
+library default of an infinite timeout.
+.TP
+.B LDAP_NETWORK_TIMEOUT
+Set the network response timeout (default 8).
+.TP
+.B LDAP_URI
+A space seperated list of server uris of the form <proto>://<server>[/]
+where <proto> can be ldap or ldaps. The option can be given multiple times.
+Map entries that include a server name override this option and it is then
+not used. Default is an empty list in which case either the server given
+in a map entry or the LDAP configured default is used. This uri list is read at
+startup and whenever the daemon receives a HUP signal.
+.TP
 .B SEARCH_BASE
 The base dn to use when searching for amap base dn. This entry may be
 given multiple times and each will be checked for a map base dn in
-the order they occur in the configuration.
+the order they occur in the configuration. The search base list is read
+at startup and whenever the daemon recieves a HUP signal.
 .TP
 .B MAP_OBJECT_CLASS
 The map object class. In the \fBnisMap\fP schema this corresponds to the class

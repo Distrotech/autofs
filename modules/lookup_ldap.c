@@ -49,6 +49,8 @@ static struct ldap_schema common_schema[] = {
 };
 static unsigned int common_schema_count = sizeof(common_schema)/sizeof(struct ldap_schema);
 
+static LDAP *auth_init(const char *, struct lookup_context *);
+
 int bind_ldap_anonymous(LDAP *ldap, struct lookup_context *ctxt)
 {
 	int rv;
@@ -59,10 +61,18 @@ int bind_ldap_anonymous(LDAP *ldap, struct lookup_context *ctxt)
 		rv = ldap_simple_bind_s(ldap, NULL, NULL);
 
 	if (rv != LDAP_SUCCESS) {
-		crit(LOGOPT_ANY,
-		     MODPREFIX "Unable to bind to the LDAP server: "
-		     "%s, error %s", ctxt->server ? "" : "(default)",
-		     ldap_err2string(rv));
+		if (!ctxt->uri) {
+			crit(LOGOPT_ANY,
+			     MODPREFIX "Unable to bind to the LDAP server: "
+			     "%s, error %s", ctxt->server ? "" : "(default)",
+			     ldap_err2string(rv));
+		} else {
+			struct ldap_uri *uri;
+			uri = list_entry(ctxt->uri->next, struct ldap_uri, list);
+			warn(LOGOPT_ANY,
+			     MODPREFIX "Unable to bind to the LDAP server: "
+			     "%s, error %s", uri->uri, ldap_err2string(rv));
+		}
 		return -1;
 	}
 
@@ -98,20 +108,21 @@ int unbind_ldap_connection(LDAP *ldap, struct lookup_context *ctxt)
 	return rv;
 }
 
-LDAP *init_ldap_connection(struct lookup_context *ctxt)
+LDAP *init_ldap_connection(const char *uri, struct lookup_context *ctxt)
 {
 	LDAP *ldap = NULL;
-	int timeout = 8;
+	struct timeval timeout     = { ctxt->timeout, 0 };
+	struct timeval net_timeout = { ctxt->network_timeout, 0 };
 	int rv;
 
 	ctxt->version = 3;
 
 	/* Initialize the LDAP context. */
-	rv = ldap_initialize(&ldap, ctxt->server);
+	rv = ldap_initialize(&ldap, uri);
 	if (rv != LDAP_OPT_SUCCESS) {
 		crit(LOGOPT_ANY,
 		     MODPREFIX "couldn't initialize LDAP connection to %s",
-		     ctxt->server ? ctxt->server : "default server");
+		     uri ? uri : "default server");
 		return NULL;
 	}
 
@@ -120,7 +131,7 @@ LDAP *init_ldap_connection(struct lookup_context *ctxt)
 	if (rv != LDAP_OPT_SUCCESS) {
 		/* fall back to LDAPv2 */
 		ldap_unbind_ext(ldap, NULL, NULL);
-		rv = ldap_initialize(&ldap, ctxt->server);
+		rv = ldap_initialize(&ldap, uri);
 		if (rv != LDAP_OPT_SUCCESS) {
 			crit(LOGOPT_ANY, MODPREFIX "couldn't initialize LDAP");
 			return NULL;
@@ -128,12 +139,22 @@ LDAP *init_ldap_connection(struct lookup_context *ctxt)
 		ctxt->version = 2;
 	}
 
-	/* Sane network connection timeout */
-	rv = ldap_set_option(ldap, LDAP_OPT_NETWORK_TIMEOUT, &timeout);
+
+	if (ctxt->timeout != -1) {
+		/* Set synchronous call timeout */
+		rv = ldap_set_option(ldap, LDAP_OPT_TIMEOUT, &timeout);
+		if (rv != LDAP_OPT_SUCCESS)
+			info(LOGOPT_ANY, MODPREFIX
+			     "failed to set synchronous call timeout to %d",
+			     timeout.tv_sec);
+	}
+
+	/* Sane network timeout */
+	rv = ldap_set_option(ldap, LDAP_OPT_NETWORK_TIMEOUT, &net_timeout);
 	if (rv != LDAP_OPT_SUCCESS)
 		info(LOGOPT_ANY,
 		     MODPREFIX "failed to set connection timeout to %d",
-		     timeout);
+		     net_timeout.tv_sec);
 
 #ifdef WITH_SASL
 	if (ctxt->use_tls) {
@@ -159,7 +180,7 @@ LDAP *init_ldap_connection(struct lookup_context *ctxt)
 				return NULL;
 			}
 			ctxt->use_tls = LDAP_TLS_DONT_USE;
-			ldap = init_ldap_connection(ctxt);
+			ldap = init_ldap_connection(uri, ctxt);
 			if (ldap)
 				ctxt->use_tls = LDAP_TLS_INIT;
 			return ldap;
@@ -271,7 +292,7 @@ static int get_query_dn(LDAP *ldap, struct lookup_context *ctxt, const char *cla
 	e = ldap_first_entry(ldap, result);
 	if (e) {
 		dn = ldap_get_dn(ldap, e);
-		debug(LOGOPT_NONE, MODPREFIX "query dn %s", dn);
+		debug(LOGOPT_NONE, MODPREFIX "found query dn %s", dn);
 	} else {
 		debug(LOGOPT_NONE,
 		      MODPREFIX "query succeeded, no matches for %s",
@@ -378,15 +399,10 @@ static int find_query_dn(LDAP *ldap, struct lookup_context *ctxt)
 	return 0;
 }
 
-static LDAP *do_connect(struct lookup_context *ctxt)
+static int do_bind(LDAP *ldap, struct lookup_context *ctxt)
 {
-	LDAP *ldap;
 	char *host = NULL, *nhost;
 	int rv, need_base = 1;
-
-	ldap = init_ldap_connection(ctxt);
-	if (!ldap)
-		return NULL;
 
 #ifdef WITH_SASL
 	debug(LOGOPT_NONE, "auth_required: %d, sasl_mech %s",
@@ -407,23 +423,19 @@ static LDAP *do_connect(struct lookup_context *ctxt)
 	debug(LOGOPT_NONE, MODPREFIX "ldap anonymous bind returned %d", rv);
 #endif
 
-	if (rv != 0) {
-		unbind_ldap_connection(ldap, ctxt);
-		return NULL;
-	}
+	if (rv != 0)
+		return 0;
 
 	rv = ldap_get_option(ldap, LDAP_OPT_HOST_NAME, &host);
         if (rv != LDAP_SUCCESS || !host) {
-		unbind_ldap_connection(ldap, ctxt);
 		debug(LOGOPT_ANY, "failed to get hostname for connection");
-		return NULL;
+		return 0;
 	}
 
 	nhost = strdup(host);
 	if (!nhost) {
-		unbind_ldap_connection(ldap, ctxt);
 		debug(LOGOPT_ANY, "failed to alloc context for hostname");
-		return NULL;
+		return 0;
 	}
 	ldap_memfree(host);
 
@@ -443,7 +455,7 @@ static LDAP *do_connect(struct lookup_context *ctxt)
 	}
 
 	if (!need_base)
-		return ldap;
+		return 1;
 
 	/*
 	 * If the schema isn't defined in the configuration then check for
@@ -452,20 +464,134 @@ static LDAP *do_connect(struct lookup_context *ctxt)
 	 */
 	if (!ctxt->schema) {
 		if (!find_query_dn(ldap, ctxt)) {
-			unbind_ldap_connection(ldap, ctxt);
 			error(LOGOPT_ANY,
 		      	      MODPREFIX "failed to find valid query dn");
-			return NULL;
+			return 0;
 		}
 	} else {
 		const char *class = ctxt->schema->map_class;
 		const char *key = ctxt->schema->map_attr;
 		if (!get_query_dn(ldap, ctxt, class, key)) {
-			unbind_ldap_connection(ldap, ctxt);
 			error(LOGOPT_ANY, MODPREFIX "failed to get query dn");
-			return NULL;
+			return 0;
 		}
 	}
+
+	return 1;
+}
+
+static LDAP *do_connect(const char *uri, struct lookup_context *ctxt)
+{
+	LDAP *ldap;
+
+	ldap = init_ldap_connection(uri, ctxt);
+	if (!ldap)
+		return NULL;
+
+	if (!do_bind(ldap, ctxt)) {
+		unbind_ldap_connection(ldap, ctxt);
+		return NULL;
+	}
+
+	return ldap;
+}
+
+static LDAP *connect_to_server(const char *uri, struct lookup_context *ctxt)
+{
+	LDAP *ldap;
+
+#ifdef WITH_SASL
+	/*
+	 * Determine which authentication mechanism to use if we require
+	 * authentication.
+	 */
+	if (ctxt->auth_required & LDAP_AUTH_REQUIRED) {
+		ldap = auth_init(uri, ctxt);
+		if (!ldap && ctxt->auth_required & LDAP_AUTH_AUTODETECT)
+			warn(LOGOPT_NONE,
+			     "no authentication mechanisms auto detected.");
+		if (!ldap) {
+			error(LOGOPT_ANY, MODPREFIX
+			      "cannot initialize authentication setup");
+			return NULL;
+		}
+
+		if (!do_bind(ldap, ctxt)) {
+			unbind_ldap_connection(ldap, ctxt);
+			error(LOGOPT_ANY, MODPREFIX "cannot bind to server");
+			return NULL;
+		}
+
+		return ldap;
+	}
+#endif
+
+	ldap = do_connect(uri, ctxt);
+	if (!ldap) {
+		error(LOGOPT_ANY, MODPREFIX "cannot connect to server");
+		return NULL;
+	}
+
+	return ldap;
+}
+
+static LDAP *find_server(struct lookup_context *ctxt)
+{
+	LDAP *ldap = NULL;
+	struct ldap_uri *this;
+	struct list_head *p;
+	LIST_HEAD(tmp);
+
+	/* Try each uri in list, add connect fails to tmp list */
+	p = ctxt->uri->next;
+	while(p != ctxt->uri) {
+		this = list_entry(p, struct ldap_uri, list);
+		p = p->next;
+		debug(LOGOPT_ANY, "check uri %s", this->uri);
+		ldap = connect_to_server(this->uri, ctxt);
+		if (ldap) {
+			debug(LOGOPT_ANY, "connexted to uri %s", this->uri);
+			break;
+		}
+		list_del_init(&this->list);
+		list_add_tail(&this->list, &tmp);
+	}
+	/*
+	 * Successfuly connected uri (head of list) and untried uris are
+	 * in ctxt->uri list. Make list of remainder and failed uris with
+	 * failed uris at end and assign back to ctxt-uri.
+	 */
+	list_splice(ctxt->uri, &tmp);
+	INIT_LIST_HEAD(ctxt->uri);
+	list_splice(&tmp, ctxt->uri);
+
+	return ldap;
+}
+
+static LDAP *do_reconnect(struct lookup_context *ctxt)
+{
+	LDAP *ldap;
+
+	if (ctxt->server || !ctxt->uri) {
+		ldap = do_connect(ctxt->server, ctxt);
+		return ldap;
+	} else {
+		struct ldap_uri *this;
+		this = list_entry(ctxt->uri->next, struct ldap_uri, list);
+		ldap = do_connect(this->uri, ctxt);
+		if (ldap)
+			return ldap;
+		/* Failed to connect, put at end of list */
+		list_del_init(&this->list);
+		list_add_tail(&this->list, ctxt->uri);
+	}
+
+	autofs_sasl_done(ctxt);
+
+	/* Current server failed connect, try the rest */
+	ldap = find_server(ctxt);
+	if (!ldap)
+		error(LOGOPT_ANY, MODPREFIX "failed to find available server");
 
 	return ldap;
 }
@@ -760,10 +886,10 @@ out:
  *  information.  If there is no configuration file, then we fall back to
  *  trying all supported authentication mechanisms until one works.
  *
- *  Returns 0 on success, with authtype, user and secret filled in as
- *  appropriate.  Returns -1 on failre.
+ *  Returns ldap connection on success, with authtype, user and secret
+ *  filled in as appropriate.  Returns NULL on failre.
  */
-int auth_init(struct lookup_context *ctxt)
+static LDAP *auth_init(const char *uri, struct lookup_context *ctxt)
 {
 	int ret;
 	LDAP *ldap;
@@ -776,14 +902,11 @@ int auth_init(struct lookup_context *ctxt)
 	 */
 	ret = parse_ldap_config(ctxt);
 	if (ret)
-		return -1;
+		return NULL;
 
-	if (ctxt->auth_required & LDAP_AUTH_NOTREQUIRED)
-		return 0;
-
-	ldap = init_ldap_connection(ctxt);
+	ldap = init_ldap_connection(uri, ctxt);
 	if (!ldap)
-		return -1;
+		return NULL;
 
 	/*
 	 *  Initialize the sasl library.  It is okay if user and secret
@@ -794,18 +917,12 @@ int auth_init(struct lookup_context *ctxt)
 	 *  the credential cache and the client and service principals.
 	 */
 	ret = autofs_sasl_init(ldap, ctxt);
-	unbind_ldap_connection(ldap, ctxt);
 	if (ret) {
 		ctxt->sasl_mech = NULL;
-		if (ctxt->auth_required & LDAP_AUTH_AUTODETECT) {
-			warn(LOGOPT_NONE,
-			     "no authentication mechanisms auto detected.");
-			return 0;
-		}
-		return -1;
+		return NULL;
 	}
 
-	return 0;
+	return ldap;
 }
 #endif
 
@@ -1036,11 +1153,37 @@ static void free_context(struct lookup_context *ctxt)
 		free(ctxt->cur_host);
 	if (ctxt->base)
 		free(ctxt->base);
+	if (ctxt->uri)
+		defaults_free_uris(ctxt->uri);
 	if (ctxt->sdns)
 		defaults_free_searchdns(ctxt->sdns);
 	free(ctxt);
 
 	return;
+}
+
+static void validate_uris(struct list_head *list)
+{
+	struct list_head *next;
+
+	next = list->next;
+	while (next != list) {
+		struct ldap_uri *this;
+
+		this = list_entry(next, struct ldap_uri, list);
+		next = next->next;
+
+		/* At least we get some basic validation */
+		if (!ldap_is_ldap_url(this->uri)) {
+			warn(LOGOPT_ANY,
+			     "removed invalid uri from list, %s", this->uri);
+			list_del(&this->list);
+			free(this->uri);
+			free(this);
+		}
+	}
+
+	return;			
 }
 
 /*
@@ -1051,7 +1194,6 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 {
 	struct lookup_context *ctxt;
 	char buf[MAX_ERR_BUF];
-	int ret;
 	LDAP *ldap = NULL;
 
 	*context = NULL;
@@ -1079,33 +1221,42 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 		return 1;
 	}
 
-#ifdef WITH_SASL
-	/*
-	 * Determine which authentication mechanism to use.  We sanity-
-	 * check by binding to the server temporarily.
-	 */
-	ret = auth_init(ctxt);
-	if (ret && (ctxt->auth_required & LDAP_AUTH_REQUIRED)) {
-		error(LOGOPT_ANY, MODPREFIX
-		      "cannot initialize authentication setup");
-		free_context(ctxt);
-		return 1;
-	}
-#endif
+	ctxt->timeout = defaults_get_ldap_timeout();
+	ctxt->network_timeout = defaults_get_ldap_network_timeout();
 
-	ldap = do_connect(ctxt);
-	if (!ldap) {
-		error(LOGOPT_ANY, MODPREFIX "cannot connect to server");
-		free_context(ctxt);
-		return 1;
+	if (!ctxt->server) {
+		struct list_head *uris = defaults_get_uris();
+		if (uris) {
+			validate_uris(uris);
+			if (!list_empty(uris))
+				ctxt->uri = uris;
+			else 
+				free(uris);
+		}
+	}
+
+	if (ctxt->server || !ctxt->uri) {
+		ldap = connect_to_server(ctxt->server, ctxt);
+		if (!ldap) {
+			free_context(ctxt);
+			return 1;
+		}
+	} else {
+		ldap = find_server(ctxt);
+		if (!ldap) {
+			free_context(ctxt);
+			error(LOGOPT_ANY, MODPREFIX
+			     "failed to find available server");
+			return 1;
+		}
 	}
 	unbind_ldap_connection(ldap, ctxt);
 
 	/* Open the parser, if we can. */
 	ctxt->parse = open_parse(mapfmt, MODPREFIX, argc - 1, argv + 1);
 	if (!ctxt->parse) {
-		crit(LOGOPT_ANY, MODPREFIX "failed to open parse context");
 		free_context(ctxt);
+		crit(LOGOPT_ANY, MODPREFIX "failed to open parse context");
 		return 1;
 	}
 	*context = ctxt;
@@ -1153,7 +1304,7 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 	query[l] = '\0';
 
 	/* Initialize the LDAP context. */
-	ldap = do_connect(ctxt);
+	ldap = do_reconnect(ctxt);
 	if (!ldap)
 		return NSS_STATUS_UNAVAIL;
 
@@ -1305,7 +1456,7 @@ static int read_one_map(struct autofs_point *ap,
 	query[l] = '\0';
 
 	/* Initialize the LDAP context. */
-	ldap = do_connect(ctxt);
+	ldap = do_reconnect(ctxt);
 	if (!ldap)
 		return NSS_STATUS_UNAVAIL;
 
@@ -1536,6 +1687,9 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 	if (ret != NSS_STATUS_SUCCESS) {
 		switch (rv) {
 		case LDAP_SIZELIMIT_EXCEEDED:
+			crit(ap->logopt, MODPREFIX
+			     "Unable to download entire LDAP map for: %s",
+			     ap->path);
 		case LDAP_UNWILLING_TO_PERFORM:
 			pthread_setcancelstate(cur_state, NULL);
 			return NSS_STATUS_UNAVAIL;
@@ -1612,7 +1766,7 @@ static int lookup_one(struct autofs_point *ap,
 	query[ql] = '\0';
 
 	/* Initialize the LDAP context. */
-	ldap = do_connect(ctxt);
+	ldap = do_reconnect(ctxt);
 	if (!ldap)
 		return CHE_FAIL;
 

@@ -17,6 +17,7 @@
 #include <ctype.h>
 #include <string.h>
 
+#include "list.h"
 #include "defaults.h"
 #include "lookup_ldap.h"
 #include "log.h"
@@ -30,7 +31,9 @@
 #define ENV_NAME_BROWSE_MODE		"BROWSE_MODE"
 #define ENV_NAME_LOGGING		"LOGGING"
 
-#define ENV_LDAP_SERVER			"LDAP_SERVER"
+#define LDAP_URI			"LDAP_URI"
+#define ENV_LDAP_TIMEOUT		"LDAP_TIMEOUT"
+#define ENV_LDAP_NETWORK_TIMEOUT	"LDAP_NETWORK_TIMEOUT"
 
 #define SEARCH_BASE			"SEARCH_BASE"
 
@@ -44,7 +47,6 @@
 #define ENV_AUTH_CONF_FILE		"AUTH_CONF_FILE"
 
 static const char *default_master_map_name = DEFAULT_MASTER_MAP_NAME;
-static const char *default_ldap_server	   = DEFAULT_LDAP_SERVER;
 static const char *default_auth_conf_file  = DEFAULT_AUTH_CONF_FILE;
 
 static char *get_env_string(const char *name)
@@ -178,6 +180,99 @@ static int parse_line(char *line, char **res, char **value)
 	return 1;
 }
 
+void defaults_free_uris(struct list_head *list)
+{
+	struct list_head *next;
+	struct ldap_uri *uri;
+
+	if (list_empty(list)) {
+		free(list);
+		return;
+	}
+
+	next = list->next;
+	while (next != list) {
+		uri = list_entry(next, struct ldap_uri, list);
+		next = next->next;
+		list_del(&uri->list);
+		free(uri->uri);
+		free(uri);
+	}
+	free(list);
+
+	return;
+}
+
+static unsigned int add_uris(char *value, struct list_head *list)
+{
+	char *str, *tok, *ptr = NULL;
+	size_t len = strlen(value);
+
+	str = alloca(len);
+	if (!str)
+		return 0;
+	strcpy(str, value);
+
+	tok = strtok_r(str, " ", &ptr);
+	while (tok) {
+		struct ldap_uri *new;
+		char *uri;
+
+		new = malloc(sizeof(struct ldap_uri));
+		if (!new)
+			continue;
+
+		uri = strdup(tok);
+		if (!uri)
+			free(new);
+		else {
+			new->uri = uri;
+			list_add_tail(&new->list, list);
+		}
+
+		tok = strtok_r(NULL, " ", &ptr);
+	}
+
+	return 1;
+}
+
+struct list_head *defaults_get_uris(void)
+{
+	FILE *f;
+	char buf[MAX_LINE_LEN];
+	char *res;
+	struct list_head *list;
+
+	f = fopen(DEFAULTS_CONFIG_FILE, "r");
+	if (!f)
+		return NULL;
+
+	list = malloc(sizeof(struct list_head));
+	if (!list) {
+		fclose(f);
+		return NULL;
+	}
+	INIT_LIST_HEAD(list);
+
+	while ((res = fgets(buf, MAX_LINE_LEN, f))) {
+		char *key, *value;
+
+		if (!parse_line(res, &key, &value))
+			continue;
+
+		if (!strcasecmp(res, LDAP_URI))
+			add_uris(value, list);
+	}
+
+	if (list_empty(list)) {
+		free(list);
+		list = NULL;
+	}
+
+	fclose(f);
+	return list;
+}
+
 /*
  * Read config env variables and check they have been set.
  *
@@ -205,7 +300,8 @@ unsigned int defaults_read_config(void)
 		    check_set_config_value(key, ENV_NAME_TIMEOUT, value) ||
 		    check_set_config_value(key, ENV_NAME_BROWSE_MODE, value) ||
 		    check_set_config_value(key, ENV_NAME_LOGGING, value) ||
-		    check_set_config_value(key, ENV_LDAP_SERVER, value) ||
+		    check_set_config_value(key, ENV_LDAP_TIMEOUT, value) ||
+		    check_set_config_value(key, ENV_LDAP_NETWORK_TIMEOUT, value) ||
 		    check_set_config_value(key, ENV_NAME_MAP_OBJ_CLASS, value) ||
 		    check_set_config_value(key, ENV_NAME_ENTRY_OBJ_CLASS, value) ||
 		    check_set_config_value(key, ENV_NAME_MAP_ATTR, value) ||
@@ -284,15 +380,26 @@ unsigned int defaults_get_logging(void)
 	return logging;
 }
 
-const char *defaults_get_ldap_server(void)
+unsigned int defaults_get_ldap_timeout(void)
 {
-	char *server;
+	int res;
 
-	server = get_env_string(ENV_LDAP_SERVER);
-	if (!server)
-		return default_ldap_server;
+	res = get_env_number(ENV_LDAP_TIMEOUT);
+	if (res < 0)
+		res = DEFAULT_LDAP_TIMEOUT;
 
-	return (const char *) server;
+	return res;
+}
+
+unsigned int defaults_get_ldap_network_timeout(void)
+{
+	int res;
+
+	res = get_env_number(ENV_LDAP_NETWORK_TIMEOUT);
+	if (res < 0)
+		res = DEFAULT_LDAP_NETWORK_TIMEOUT;
+
+	return res;
 }
 
 struct ldap_schema *defaults_get_default_schema(void)

@@ -18,6 +18,11 @@ struct ldap_schema {
 	char *value_attr;
 };
 
+struct ldap_uri {
+	char *uri;
+	struct list_head list;
+};
+
 struct ldap_searchdn {
 	char *basedn;
 	struct ldap_searchdn *next;
@@ -30,6 +35,8 @@ struct lookup_context {
 	int port;
 	char *base;
 	char *qdn;
+	unsigned int timeout;
+	unsigned int network_timeout;
 
 	/* LDAP version 2 or 3 */
 	int version;
@@ -37,7 +44,17 @@ struct lookup_context {
 	/* LDAP lookup configuration */
 	struct ldap_schema *schema;
 
-	/* List of base dns for searching */
+	/*
+ 	 * List of servers and base dns for searching.
+ 	 * uri is the list of servers to attempt connection to and is
+ 	 * used only if server, above, is NULL. The head of the list
+ 	 * is the server which we are currently connected to.
+ 	 * cur_host tracks chnages to connected server, triggering
+ 	 * a scan of basedns when it changes.
+ 	 * sdns is the list of basdns to check, done in the order
+ 	 * given in configuration.
+ 	 */
+	struct list_head *uri;
 	char *cur_host;
 	struct ldap_searchdn *sdns;
 
@@ -77,7 +94,7 @@ struct lookup_context {
 #define LDAP_AUTH_AUTODETECT	0x0004
 
 /* lookup_ldap.c */
-LDAP *init_ldap_connection(struct lookup_context *ctxt);
+LDAP *init_ldap_connection(const char *uri, struct lookup_context *ctxt);
 int unbind_ldap_connection(LDAP *ldap, struct lookup_context *ctxt);
 int authtype_requires_creds(const char *authtype);
 
