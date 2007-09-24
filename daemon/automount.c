@@ -1263,22 +1263,6 @@ void *handle_mounts(void *arg)
 	}
 
 	pthread_cleanup_pop(1);
-
-	/*
-	 * A cowboy .. me!
-	 * That noise yu ear aint spuurs sonny!!
-	 *
-	 * The libkrb5support destructor called indirectly through
-	 * libgssapi_krb5 which is used bt libkrb5 (somehow) must run
-	 * to completion before the last thread using it exits so
-	 * that it's per thread data keys are deleted or we get a
-	 * little segfault at exit. So much for dlclose being
-	 * syncronous.
-	 *
-	 * So, the solution is a recipe for disaster.
-	 * Hope we don't get a really busy system!
-	 */
-	/*sleep(1);*/
 	sched_yield();
 
 	return NULL;
