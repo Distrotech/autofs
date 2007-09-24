@@ -857,17 +857,17 @@ int parse_ldap_config(struct lookup_context *ctxt)
 	ctxt->client_princ = client_princ;
 
 	debug(LOGOPT_NONE,
-	      "ldap authentication configured with the following options:\n");
+	      "ldap authentication configured with the following options:");
 	debug(LOGOPT_NONE,
 	      "use_tls: %u, "
 	      "tls_required: %u, "
 	      "auth_required: %u, "
-	      "sasl_mech: %s\n",
+	      "sasl_mech: %s",
 	      use_tls, tls_required, auth_required, authtype);
 	debug(LOGOPT_NONE,
 	      "user: %s, "
 	      "secret: %s, "
-	      "client principal: %s\n",
+	      "client principal: %s",
 	      user, secret ? "specified" : "unspecified",
 	      client_princ);
 

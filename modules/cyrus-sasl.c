@@ -197,7 +197,7 @@ get_server_SASL_mechanisms(LDAP *ld)
 	if (mechanisms == NULL) {
 		/* Well, that was a waste of time. */
 		msg("No SASL authentication mechanisms are supported"
-		    " by the LDAP server.\n");
+		    " by the LDAP server.");
 		return NULL;
 	}
 

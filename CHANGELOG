@@ -28,6 +28,7 @@
 - work around segv at exit due to libxml2 tsd usage.
 - re-read config on HUP signal.
 - add LDAP_URI, LDAP_TIMEOUT and LDAP_NETWORK_TIMEOUT configuration options.
+- fix forground logging and add option to man page.
 
 18/06/2007 autofs-5.0.2
 -----------------------

@@ -58,14 +58,13 @@ unsigned int global_random_selection;	/* use random policy when selecting
 static int start_pipefd[2];
 static int st_stat = 0;
 static int *pst_stat = &st_stat;
+static pthread_t state_mach_thid;
 
 /* Pre-calculated kernel packet length */
 static size_t kpkt_len;
 
 /* Attribute to create detached thread */
 pthread_attr_t thread_attr;
-/* Attribute to create normal thread */
-pthread_attr_t thread_attr_nodetach;
 
 struct master_readmap_cond mrc = {
 	PTHREAD_MUTEX_INITIALIZER, PTHREAD_COND_INITIALIZER, 0, NULL, 0, 0, 0, 0};
@@ -74,9 +73,6 @@ struct startup_cond suc = {
 	PTHREAD_MUTEX_INITIALIZER, PTHREAD_COND_INITIALIZER, 0, 0};
 
 pthread_key_t key_thread_stdenv_vars;
-
-/* re-entrant syslog default context data */
-#define AUTOFS_SYSLOG_CONTEXT {-1, 0, 0, LOG_PID, (const char *)0, LOG_DAEMON, 0xff};
 
 #define MAX_OPEN_FILES		10240
 
@@ -792,7 +788,6 @@ static void become_daemon(unsigned foreground)
 {
 	FILE *pidfp;
 	char buf[MAX_ERR_BUF];
-	unsigned to_stderr = 0;
 	pid_t pid;
 
 	/* Don't BUSY any directories unnecessarily */
@@ -809,7 +804,9 @@ static void become_daemon(unsigned foreground)
 	}
 
 	/* Detach from foreground process */
-	if (!foreground) {
+	if (foreground)
+		log_to_stderr();
+	else {
 		pid = fork();
 		if (pid > 0) {
 			int r;
@@ -834,13 +831,8 @@ static void become_daemon(unsigned foreground)
 			fprintf(stderr, "setsid: %s", estr);
 			exit(1);
 		}
-	}
-
-	/* Setup logging */
-	if (to_stderr)
-		log_to_stderr();
-	else
 		log_to_syslog();
+	}
 
 	/* Write pid file if requested */
 	if (pid_file) {
@@ -929,7 +921,7 @@ static pthread_t do_signals(struct master *master, int sig)
 	if (status)
 		fatal(status);
 
-	status = pthread_create(&thid, &thread_attr_nodetach, do_notify_state, &r_sig);
+	status = pthread_create(&thid, &thread_attr, do_notify_state, &r_sig);
 	if (status) {
 		error(master->default_logging,
 		      "mount state notify thread create failed");
@@ -1045,7 +1037,6 @@ static int do_hup_signal(struct master *master, time_t age)
 /* Deal with all the signal-driven events in the state machine */
 static void *statemachine(void *arg)
 {
-	pthread_t thid = 0;
 	sigset_t signalset;
 	int sig;
 
@@ -1058,15 +1049,12 @@ static void *statemachine(void *arg)
 
 		switch (sig) {
 		case SIGTERM:
+		case SIGINT:
 		case SIGUSR2:
+			if (master_list_empty(master_list))
+				return NULL;
 		case SIGUSR1:
-			thid = do_signals(master_list, sig);
-			if (thid) {
-				pthread_join(thid, NULL);
-				if (master_list_empty(master_list))
-					return NULL;
-				thid = 0;
-			}
+			do_signals(master_list, sig);
 			break;
 
 		case SIGHUP:
@@ -1181,6 +1169,10 @@ static void handle_mounts_cleanup(void *arg)
 
 	msg("shut down path %s", path);
 
+	/* If we are the last tell the state machine to shutdown */
+	if (!submount && master_list_empty(master_list))
+		pthread_kill(state_mach_thid, SIGTERM);
+	
 	return;
 }
 
@@ -1375,7 +1367,7 @@ static void usage(void)
 		"	-v --verbose	be verbose\n"
 		"	-d --debug	log debuging info\n"
 		"	-D --define	define global macro variable\n"
-		/*"	-f --foreground do not fork into background\n" */
+		"	-f --foreground do not fork into background\n"
 		"	-r --random-multimount-selection\n"
 		"			use ramdom replicated server selection\n"
 		"	-O --global-options\n"
@@ -1650,14 +1642,6 @@ int main(int argc, char *argv[])
 	}
 #endif
 
-	if (pthread_attr_init(&thread_attr_nodetach)) {
-		crit(LOGOPT_ANY,
-		     "%s: failed to init thread attribute struct!",
-		     program);
-		close(start_pipefd[1]);
-		exit(1);
-	}
-
 	msg("Starting automounter version %s, master map %s",
 		version, master_list->name);
 	msg("using kernel protocol version %d.%02d",
@@ -1702,6 +1686,7 @@ int main(int argc, char *argv[])
 	res = write(start_pipefd[1], pst_stat, sizeof(pst_stat));
 	close(start_pipefd[1]);
 
+	state_mach_thid = pthread_self();
 	statemachine(NULL);
 
 	master_kill(master_list);

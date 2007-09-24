@@ -954,6 +954,7 @@ void master_notify_state_change(struct master *master, int sig)
 
 		switch (sig) {
 		case SIGTERM:
+		case SIGINT:
 			if (ap->state != ST_SHUTDOWN_PENDING &&
 			    ap->state != ST_SHUTDOWN_FORCE) {
 				next = ST_SHUTDOWN_PENDING;

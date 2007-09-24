@@ -27,9 +27,6 @@
 
 #include "automount.h"
 
-/* re-entrant syslog default context data */
-#define AUTOFS_SYSLOG_CONTEXT {-1, 0, 0, LOG_PID, (const char *) 0, LOG_DAEMON, 0xff};
-
 /*
 struct syslog_data syslog_context = AUTOFS_SYSLOG_CONTEXT;
 struct syslog_data *slc = &syslog_context;
@@ -134,21 +131,6 @@ static void syslog_debug(unsigned int logopt, const char *msg, ...)
 	va_end(ap);
 }
 
-void set_mnt_logging(struct autofs_point *ap)
-{
-	unsigned int opt_verbose = ap->logopt & LOGOPT_VERBOSE;
-	unsigned int opt_debug = ap->logopt & LOGOPT_DEBUG;
-
-	if (opt_debug)
-		log_debug = syslog_debug;
-
-	if (opt_verbose || opt_debug) {
-		log_info = syslog_info;
-		log_notice = syslog_notice;
-		log_warn = syslog_warn;
-	}
-}
-
 static void to_stderr(unsigned int logopt, const char *msg, ...)
 {
 	va_list ap;
@@ -156,6 +138,31 @@ static void to_stderr(unsigned int logopt, const char *msg, ...)
 	vfprintf(stderr, msg, ap);
 	fputc('\n',stderr);
 	va_end(ap);
+}
+
+void set_mnt_logging(struct autofs_point *ap)
+{
+	unsigned int opt_verbose = ap->logopt & LOGOPT_VERBOSE;
+	unsigned int opt_debug = ap->logopt & LOGOPT_DEBUG;
+
+	if (opt_debug) {
+		if (logging_to_syslog)
+			log_debug = syslog_debug;
+		else
+			log_debug = to_stderr;
+	}
+
+	if (opt_verbose || opt_debug) {
+		if (logging_to_syslog) {
+			log_info = syslog_info;
+			log_notice = syslog_notice;
+			log_warn = syslog_warn;
+		} else {
+			log_info = to_stderr;
+			log_notice = to_stderr;
+			log_warn = to_stderr;
+		}
+	}
 }
 
 void log_to_syslog(void)
