@@ -442,6 +442,11 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 		if (!entry) {
 			if (feof(f))
 				break;
+			if (ferror(f)) {
+				warn(LOGOPT_ANY, MODPREFIX
+				     "error reading map %s", ctxt->mapname);
+				break;
+			}
 			continue;
 		}
 
@@ -683,6 +688,11 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 		if (!entry) {
 			if (feof(f))
 				break;
+			if (ferror(f)) {
+				warn(LOGOPT_ANY, MODPREFIX
+				      "error reading map %s", ctxt->mapname);
+				break;
+			}
 			continue;
 		}
 			
@@ -848,6 +858,12 @@ static int lookup_one(struct autofs_point *ap,
 
 		if (feof(f))
 			break;
+
+		if (ferror(f)) {
+			warn(LOGOPT_ANY, MODPREFIX
+			      "error reading map %s", ctxt->mapname);
+			break;
+		}		
 	}
 
 	fclose(f);
@@ -907,6 +923,12 @@ static int lookup_wild(struct autofs_point *ap, struct lookup_context *ctxt)
 
 		if (feof(f))
 			break;
+
+		if (ferror(f)) {
+			warn(LOGOPT_ANY, MODPREFIX
+			      "error reading map %s", ctxt->mapname);
+			break;
+		}		
 	}
 
 	fclose(f);

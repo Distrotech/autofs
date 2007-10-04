@@ -978,7 +978,7 @@ static void *do_read_master(void *arg)
 	if (status)
 		fatal(status);
 
-	defaults_read_config();
+	defaults_read_config(1);
 
 	status = master_read_master(master, age, readall);
 
@@ -1465,7 +1465,7 @@ int main(int argc, char *argv[])
 
 	program = argv[0];
 
-	defaults_read_config();
+	defaults_read_config(0);
 
 	kpkt_len = get_kpkt_len();
 	timeout = defaults_get_timeout();

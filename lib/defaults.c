@@ -280,7 +280,7 @@ struct list_head *defaults_get_uris(void)
  * is valid bourne shell script without spaces around "="
  * and that it has valid values.
  */
-unsigned int defaults_read_config(void)
+unsigned int defaults_read_config(unsigned int to_syslog)
 {
 	FILE *f;
 	char buf[MAX_LINE_LEN];
@@ -312,9 +312,16 @@ unsigned int defaults_read_config(void)
 			;
 	}
 
-	if (!feof(f)) {
-		fprintf(stderr, "fgets returned error %d while reading %s\n",
-			ferror(f), DEFAULTS_CONFIG_FILE);
+	if (!feof(f) || ferror(f)) {
+		if (!to_syslog) {
+			fprintf(stderr,
+				"fgets returned error %d while reading %s\n",
+				ferror(f), DEFAULTS_CONFIG_FILE);
+		} else {
+			error(LOGOPT_ANY,
+			      "fgets returned error %d while reading %s",
+			      ferror(f), DEFAULTS_CONFIG_FILE);
+		}
 		fclose(f);
 		return 0;
 	}
