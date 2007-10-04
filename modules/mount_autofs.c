@@ -215,6 +215,8 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 		return 1;
 	}
 
+	mounts_mutex_lock(ap);
+
 	status = pthread_mutex_lock(&suc.mutex);
 	if (status) {
 		crit(ap->logopt,
@@ -226,8 +228,6 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 
 	suc.done = 0;
 	suc.status = 0;
-
-	mounts_mutex_lock(ap);
 
 	if (pthread_create(&thid, NULL, handle_mounts, nap)) {
 		crit(ap->logopt,
