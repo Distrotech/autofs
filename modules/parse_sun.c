@@ -186,8 +186,7 @@ int expandsunent(const char *src, char *dst, const char *key,
 						dst += l;
 					}
 					len += l;
-				} else
-					return 0;
+				}
 				src = p + 1;
 			} else {
 				p = src;
@@ -201,8 +200,7 @@ int expandsunent(const char *src, char *dst, const char *key,
 						dst += l;
 					}
 					len += l;
-				} else
-					return 0;
+				}
 				src = p;
 			}
 			break;
