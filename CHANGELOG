@@ -34,6 +34,7 @@
 - fix lack of ferror() checking when reading files.
 - fix typo in autofs(5) man page.
 - fix map entry expansion when undefined macro is present.
+- remove unused export validation code.
 
 18/06/2007 autofs-5.0.2
 -----------------------
