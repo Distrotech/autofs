@@ -94,13 +94,13 @@ struct lookup_context {
 #define LDAP_AUTH_AUTODETECT	0x0004
 
 /* lookup_ldap.c */
-LDAP *init_ldap_connection(const char *uri, struct lookup_context *ctxt);
-int unbind_ldap_connection(LDAP *ldap, struct lookup_context *ctxt);
+LDAP *init_ldap_connection(unsigned logopt, const char *uri, struct lookup_context *ctxt);
+int unbind_ldap_connection(unsigned logopt, LDAP *ldap, struct lookup_context *ctxt);
 int authtype_requires_creds(const char *authtype);
 
 /* cyrus-sasl.c */
-int autofs_sasl_init(LDAP *ldap, struct lookup_context *ctxt);
-int autofs_sasl_bind(LDAP *ldap, struct lookup_context *ctxt);
+int autofs_sasl_init(unsigned logopt, LDAP *ldap, struct lookup_context *ctxt);
+int autofs_sasl_bind(unsigned logopt, LDAP *ldap, struct lookup_context *ctxt);
 void autofs_sasl_unbind(struct lookup_context *ctxt);
 void autofs_sasl_done(struct lookup_context *ctxt);
 #endif

@@ -52,16 +52,14 @@ int mount_init(void **context)
 	if (lstat(t1_dir, &st1) == -1)
 		goto out;
 
-	err = spawn_mount(log_debug, "-n", "--bind", t1_dir, t2_dir, NULL);
+	err = spawn_mount(LOGOPT_NONE, "-n", "--bind", t1_dir, t2_dir, NULL);
 	if (err == 0 &&
 	    lstat(t2_dir, &st2) == 0 &&
 	    st1.st_dev == st2.st_dev && st1.st_ino == st2.st_ino) {
 		bind_works = 1;
 	}
 
-	debug(LOGOPT_NONE, MODPREFIX "bind_works = %d", bind_works);
-
-	spawn_umount(log_debug, "-n", t2_dir, NULL);
+	spawn_umount(LOGOPT_NONE, "-n", t2_dir, NULL);
 
 out:
 	rmdir(t1_dir);
@@ -91,7 +89,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 	fullpath = alloca(rlen + name_len + 2);
 	if (!fullpath) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		error(ap->logopt, MODPREFIX "alloca: %s", estr);
+		logerr(MODPREFIX "alloca: %s", estr);
 		return 1;
 	}
 
@@ -139,7 +137,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 		      "calling mount --bind " SLOPPY " -o %s %s %s",
 		      options, what, fullpath);
 
-		err = spawn_bind_mount(log_debug,
+		err = spawn_bind_mount(ap->logopt,
 			     SLOPPYOPT "-o", options, what, fullpath, NULL);
 
 		if (err) {

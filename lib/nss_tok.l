@@ -135,6 +135,6 @@ int nss_wrap(void)
 
 static void nss_echo(void)
 {
-	msg("%s", nss_text);
+	logmsg("%s", nss_text);
 	return;
 }

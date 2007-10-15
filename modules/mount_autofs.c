@@ -64,7 +64,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 	fullpath = alloca(strlen(root) + name_len + 2);
 	if (!fullpath) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		error(ap->logopt, MODPREFIX "alloca: %s", estr);
+		logerr(MODPREFIX "alloca: %s", estr);
 		return 1;
 	}
 
@@ -156,7 +156,6 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 	}
 	nap = entry->ap;
 	nap->parent = ap;
-	set_mnt_logging(nap);
 
 	argc = 1;
 
@@ -208,7 +207,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 		return 1;
 	}
 
-	source->mc = cache_init(source);
+	source->mc = cache_init(entry->ap, source);
 	if (!source->mc) {
 		error(ap->logopt, MODPREFIX "failed to init source cache");
 		master_free_mapent(entry);

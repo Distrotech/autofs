@@ -585,13 +585,13 @@ static char *master_strdup(char *str)
 
 static int master_error(const char *s)
 {
-	error(LOGOPT_ANY, "%s while parsing map.", s);
+	logmsg("%s while parsing map.", s);
 	return 0;
 }
 
 static int master_notify(const char *s)
 {
-	warn(LOGOPT_ANY, "syntax error in map near [ %s ]", s);
+	logmsg("syntax error in map near [ %s ]", s);
 	return(0);
 }
 
@@ -704,6 +704,7 @@ int master_parse_entry(const char *buffer, unsigned int default_timeout, unsigne
 	struct master_mapent *entry, *new;
 	struct map_source *source;
 	unsigned int logopt = logging;
+	unsigned int m_logopt = master->logopt;
 	int ret;
 
 	local_init_vars();
@@ -758,8 +759,8 @@ int master_parse_entry(const char *buffer, unsigned int default_timeout, unsigne
 	} else {
 		if (entry->age && entry->age == age) {
 			if (strcmp(path, "/-")) {
-				warn(LOGOPT_VERBOSE,
-				     "ignoring duplicate indirect mount %s",
+				info(m_logopt,
+				    "ignoring duplicate indirect mount %s",
 				     path);
 				local_free_vars();
 				return 0;
@@ -770,13 +771,12 @@ int master_parse_entry(const char *buffer, unsigned int default_timeout, unsigne
 	if (!entry->ap) {
 		ret = master_add_autofs_point(entry, timeout, logopt, ghost, 0);
 		if (!ret) {
-			error(LOGOPT_ANY, "failed to add autofs_point");
+			error(m_logopt, "failed to add autofs_point");
 			if (new)
 				master_free_mapent(new);
 			local_free_vars();
 			return 0;
 		}
-		set_mnt_logging(entry->ap);
 	} else {
 		struct autofs_point *ap = entry->ap;
 		time_t tout = timeout;
@@ -786,14 +786,11 @@ int master_parse_entry(const char *buffer, unsigned int default_timeout, unsigne
 		 * use the ghost, log and timeout of the first
 		 */
 		if (entry->age < age) {
-			ap->ghost = ghost;
-			ap->logopt = logopt;
 			ap->exp_timeout = timeout;
 			ap->exp_runfreq = (ap->exp_timeout + CHECK_RATIO - 1) / CHECK_RATIO;
 			if (ap->ioctlfd != -1 && ap->type == LKP_INDIRECT)
 				ioctl(ap->ioctlfd, AUTOFS_IOC_SETTIMEOUT, &tout);
 		}
-		set_mnt_logging(ap);
 	}
 	entry->ap->random_selection = random_selection;
 
@@ -809,7 +806,7 @@ int master_parse_entry(const char *buffer, unsigned int default_timeout, unsigne
 	source = master_add_map_source(entry, type, format, age, 
 					local_argc, (const char **) local_argv);
 	if (!source) {
-		error(LOGOPT_ANY, "failed to add source");
+		error(m_logopt, "failed to add source");
 		if (new)
 			master_free_mapent(new);
 		local_free_vars();
@@ -817,9 +814,9 @@ int master_parse_entry(const char *buffer, unsigned int default_timeout, unsigne
 	}
 
 	if (!source->mc) {
-		source->mc = cache_init(source);
+		source->mc = cache_init(entry->ap, source);
 		if (!source->mc) {
-			error(LOGOPT_ANY, "failed to init source cache");
+			error(m_logopt, "failed to init source cache");
 			if (new)
 				master_free_mapent(new);
 			local_free_vars();

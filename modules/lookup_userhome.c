@@ -73,7 +73,7 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 	/* Create the appropriate symlink */
 	if (chdir(ap->path)) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		error(ap->logopt, MODPREFIX "chdir failed: %s", estr);
+		logerr(MODPREFIX "chdir failed: %s", estr);
 		return NSS_STATUS_UNAVAIL;
 	}
 
@@ -88,7 +88,7 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 
 	if (symlink(pw->pw_dir, name) && errno != EEXIST) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		error(ap->logopt, MODPREFIX "symlink failed: %s", estr);
+		logerr(MODPREFIX "symlink failed: %s", estr);
 		return NSS_STATUS_UNAVAIL;
 	}
 

@@ -37,7 +37,7 @@ char **add_argv(int argc, char **argv, char *str)
 		if (argv[i]) {
 			vector[i] = strdup(argv[i]);
 			if (!vector[i]) {
-				error(LOGOPT_ANY, "failed to strdup arg");
+				logerr("failed to strdup arg");
 				break;
 			}
 		} else
@@ -81,7 +81,7 @@ char **append_argv(int argc1, char **argv1, int argc2, char **argv2)
 		if (argv2[j]) {
 			vector[i] = strdup(argv2[j]);
 			if (!vector[i]) {
-				error(LOGOPT_ANY, "failed to strdup arg");
+				logerr("failed to strdup arg");
 				break;
 			}
 		} else
@@ -116,7 +116,7 @@ const char **copy_argv(int argc, const char **argv)
 		if (argv[i]) {
 			vector[i] = strdup(argv[i]);
 			if (!vector[i]) {
-				error(LOGOPT_ANY, "failed to strdup arg");
+				logerr("failed to strdup arg");
 				break;
 			}
 		} else

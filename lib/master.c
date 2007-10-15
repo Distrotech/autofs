@@ -524,8 +524,7 @@ void master_source_writelock(struct master_mapent *entry)
 
 	status = pthread_rwlock_wrlock(&entry->source_lock);
 	if (status) {
-		error(LOGOPT_ANY,
-		      "master_mapent source write lock failed");
+		logmsg("master_mapent source write lock failed");
 		fatal(status);
 	}
 	return;
@@ -537,8 +536,7 @@ void master_source_readlock(struct master_mapent *entry)
 
 	status = pthread_rwlock_rdlock(&entry->source_lock);
 	if (status) {
-		error(LOGOPT_ANY,
-		      "master_mapent source read lock failed");
+		logmsg("master_mapent source read lock failed");
 		fatal(status);
 	}
 	return;
@@ -550,8 +548,7 @@ void master_source_unlock(struct master_mapent *entry)
 
 	status = pthread_rwlock_unlock(&entry->source_lock);
 	if (status) {
-		error(LOGOPT_ANY,
-		      "master_mapent source unlock failed");
+		logmsg("master_mapent source unlock failed");
 		fatal(status);
 	}
 	return;
@@ -572,7 +569,7 @@ void master_source_current_wait(struct master_mapent *entry)
 
 	status = pthread_mutex_lock(&entry->current_mutex);
 	if (status) {
-		error(LOGOPT_ANY, "entry current source lock failed");
+		logmsg("entry current source lock failed");
 		fatal(status);
 	}
 
@@ -580,8 +577,7 @@ void master_source_current_wait(struct master_mapent *entry)
 		status = pthread_cond_wait(
 				&entry->current_cond, &entry->current_mutex);
 		if (status) {
-			error(LOGOPT_ANY,
-			      "entry current source condition wait failed");
+			logmsg("entry current source condition wait failed");
 			fatal(status);
 		}
 	}
@@ -595,14 +591,13 @@ void master_source_current_signal(struct master_mapent *entry)
 
 	status = pthread_cond_signal(&entry->current_cond);
 	if (status) {
-		error(LOGOPT_ANY,
-		      "entry current source condition signal failed");
+		logmsg("entry current source condition signal failed");
 		fatal(status);
 	}
 
 	status = pthread_mutex_unlock(&entry->current_mutex);
 	if (status) {
-		error(LOGOPT_ANY, "entry current source unlock failed");
+		logmsg("entry current source unlock failed");
 		fatal(status);
 	}
 
@@ -770,6 +765,7 @@ struct master *master_new(const char *name, unsigned int timeout, unsigned int g
 	master->default_ghost = ghost;
 	master->default_timeout = timeout;
 	master->default_logging = defaults_get_logging();
+	master->logopt = master->default_logging;
 
 	INIT_LIST_HEAD(&master->mounts);
 
@@ -778,11 +774,12 @@ struct master *master_new(const char *name, unsigned int timeout, unsigned int g
 
 int master_read_master(struct master *master, time_t age, int readall)
 {
+	unsigned int logopt = master->logopt;
 	struct mapent_cache *nc;
 
 	nc = cache_init_null_cache(master);
 	if (!nc) {
-		error(LOGOPT_ANY,
+		error(logopt,
 		      "failed to init null map cache for %s", master->name);
 		return 0;
 	}
@@ -791,7 +788,7 @@ int master_read_master(struct master *master, time_t age, int readall)
 	master_init_scan();
 
 	if (!lookup_nss_read_master(master, age)) {
-		error(LOGOPT_ANY,
+		error(logopt,
 		      "can't read master map %s", master->name);
 		return 0;
 	}
@@ -802,7 +799,7 @@ int master_read_master(struct master *master, time_t age, int readall)
 
 	if (list_empty(&master->mounts)) {
 		master_mutex_unlock();
-		warn(LOGOPT_ANY, "no mounts in table");
+		warn(logopt, "no mounts in table");
 		return 1;
 	}
 
@@ -934,6 +931,7 @@ void master_notify_state_change(struct master *master, int sig)
 	struct autofs_point *ap;
 	struct list_head *p;
 	int state_pipe, cur_state;
+	unsigned int logopt;
 
 	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cur_state);
 	master_mutex_lock();
@@ -944,6 +942,7 @@ void master_notify_state_change(struct master *master, int sig)
 		entry = list_entry(p, struct master_mapent, list);
 
 		ap = entry->ap;
+		logopt = ap->logopt;
 
 		state_mutex_lock(ap);
 
@@ -978,7 +977,7 @@ void master_notify_state_change(struct master *master, int sig)
 		}
 next:
 		if (next != ST_INVAL)
-			debug(ap->logopt,
+			debug(logopt,
 			      "sig %d switching %s from %d to %d",
 			      sig, ap->path, ap->state, next);
 
@@ -1230,6 +1229,11 @@ int master_list_empty(struct master *master)
 	return res;
 }
 
+inline unsigned int master_get_logopt(void)
+{
+	return master_list ? master_list->logopt : LOGOPT_NONE;
+}
+
 int master_kill(struct master *master)
 {
 	if (!list_empty(&master->mounts))
@@ -1251,6 +1255,6 @@ void dump_master(struct master *master)
 	head = &master->mounts;
 	list_for_each(p, head) {
 		struct master_mapent *this = list_entry(p, struct master_mapent, list);
-		debug(LOGOPT_ANY, "path %s", this->path);
+		logmsg("path %s", this->path);
 	}
 }

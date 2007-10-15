@@ -96,7 +96,7 @@ static CLIENT *create_udp_client(struct conn_info *info)
 	if (ret || !result) {
 		int err = ghn_errno == -1 ? errno : ghn_errno;
 		char *estr = strerror_r(err, buf, HOST_ENT_BUF_SIZE);
-		error(LOGOPT_ANY, "hostname lookup failed: %s", estr);
+		logerr("hostname lookup failed: %s", estr);
 		goto out_close;
 	}
 	memcpy(&raddr.sin_addr.s_addr, php->h_addr, php->h_length);
@@ -305,7 +305,7 @@ static CLIENT *create_tcp_client(struct conn_info *info)
 	if (ret || !result) {
 		int err = ghn_errno == -1 ? errno : ghn_errno;
 		char *estr =  strerror_r(err, buf, HOST_ENT_BUF_SIZE);
-		error(LOGOPT_ANY, "hostname lookup failed: %s", estr);
+		logerr("hostname lookup failed: %s", estr);
 		goto out_close;
 	}
 	memcpy(&addr.sin_addr.s_addr, php->h_addr, php->h_length);

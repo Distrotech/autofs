@@ -62,6 +62,7 @@ struct master {
 	unsigned int default_ghost;
 	unsigned int default_logging;
 	unsigned int default_timeout;
+	unsigned int logopt;
 	struct mapent_cache *nc;
 	struct list_head mounts;
 };
@@ -106,6 +107,7 @@ int master_notify_submount(struct autofs_point *, const char *path, enum states)
 void master_signal_submount(struct autofs_point *, unsigned int);
 void master_notify_state_change(struct master *, int);
 int master_mount_mounts(struct master *, time_t, int);
+extern inline unsigned int master_get_logopt(void);
 int master_list_empty(struct master *);
 int master_kill(struct master *);
 

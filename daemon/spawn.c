@@ -88,7 +88,7 @@ void reset_signals(void)
 
 #define ERRBUFSIZ 2047		/* Max length of error string excl \0 */
 
-static int do_spawn(logger *log, unsigned int options, const char *prog, const char *const *argv)
+static int do_spawn(unsigned logopt, unsigned int options, const char *prog, const char *const *argv)
 {
 	pid_t f;
 	int ret, status, pipefd[2];
@@ -195,7 +195,7 @@ static int do_spawn(logger *log, unsigned int options, const char *prog, const c
 				while (errp && (p = memchr(sp, '\n', errp))) {
 					*p++ = '\0';
 					if (sp[0])	/* Don't output empty lines */
-						log(LOGOPT_ANY, ">> %s", sp);
+						warn(logopt, ">> %s", sp);
 					errp -= (p - sp);
 					sp = p;
 				}
@@ -206,7 +206,7 @@ static int do_spawn(logger *log, unsigned int options, const char *prog, const c
 				if (errp >= ERRBUFSIZ) {
 					/* Line too long, split */
 					errbuf[errp] = '\0';
-					log(LOGOPT_ANY, ">> %s", errbuf);
+					warn(logopt, ">> %s", errbuf);
 					errp = 0;
 				}
 			}
@@ -217,7 +217,7 @@ static int do_spawn(logger *log, unsigned int options, const char *prog, const c
 		if (errp > 0) {
 			/* End of file without \n */
 			errbuf[errp] = '\0';
-			log(LOGOPT_ANY, ">> %s", errbuf);
+			warn(logopt, ">> %s", errbuf);
 		}
 
 		if (waitpid(f, &ret, 0) != f)
@@ -235,12 +235,12 @@ static int do_spawn(logger *log, unsigned int options, const char *prog, const c
 	}
 }
 
-int spawnv(logger *log, const char *prog, const char *const *argv)
+int spawnv(unsigned logopt, const char *prog, const char *const *argv)
 {
-	return do_spawn(log, SPAWN_OPT_NONE, prog, argv);
+	return do_spawn(logopt, SPAWN_OPT_NONE, prog, argv);
 }
 
-int spawnl(logger *log, const char *prog, ...)
+int spawnl(unsigned logopt, const char *prog, ...)
 {
 	va_list arg;
 	int argc;
@@ -258,10 +258,10 @@ int spawnl(logger *log, const char *prog, ...)
 	while ((*p++ = va_arg(arg, char *)));
 	va_end(arg);
 
-	return do_spawn(log, SPAWN_OPT_NONE, prog, (const char **) argv);
+	return do_spawn(logopt, SPAWN_OPT_NONE, prog, (const char **) argv);
 }
 
-int spawn_mount(logger *log, ...)
+int spawn_mount(unsigned logopt, ...)
 {
 	va_list arg;
 	int argc;
@@ -279,7 +279,7 @@ int spawn_mount(logger *log, ...)
 	options = SPAWN_OPT_NONE;
 #endif
 
-	va_start(arg, log);
+	va_start(arg, logopt);
 	for (argc = 1; va_arg(arg, char *); argc++);
 	va_end(arg);
 
@@ -288,13 +288,13 @@ int spawn_mount(logger *log, ...)
 
 	argv[0] = arg0;
 
-	va_start(arg, log);
+	va_start(arg, logopt);
 	p = argv + 1;
 	while ((*p++ = va_arg(arg, char *)));
 	va_end(arg);
 
 	while (retries--) {
-		ret = do_spawn(log, options, prog, (const char **) argv);
+		ret = do_spawn(logopt, options, prog, (const char **) argv);
 		if (ret & MTAB_NOTUPDATED)
 			continue;
 		break;
@@ -311,7 +311,7 @@ int spawn_mount(logger *log, ...)
  * NOTE: If mount locking is enabled this type of recursive mount cannot
  *	 work.
  */
-int spawn_bind_mount(logger *log, ...)
+int spawn_bind_mount(unsigned logopt, ...)
 {
 	va_list arg;
 	int argc;
@@ -330,7 +330,7 @@ int spawn_bind_mount(logger *log, ...)
 	options = SPAWN_OPT_ACCESS;
 #endif
 
-	va_start(arg, log);
+	va_start(arg, logopt);
 	for (argc = 1; va_arg(arg, char *); argc++);
 	va_end(arg);
 
@@ -340,13 +340,13 @@ int spawn_bind_mount(logger *log, ...)
 	argv[0] = arg0;
 	argv[1] = bind;
 
-	va_start(arg, log);
+	va_start(arg, logopt);
 	p = argv + 2;
 	while ((*p++ = va_arg(arg, char *)));
 	va_end(arg);
 
 	while (retries--) {
-		ret = do_spawn(log, options, prog, (const char **) argv);
+		ret = do_spawn(logopt, options, prog, (const char **) argv);
 		if (ret & MTAB_NOTUPDATED)
 			continue;
 		break;
@@ -355,7 +355,7 @@ int spawn_bind_mount(logger *log, ...)
 	return ret;
 }
 
-int spawn_umount(logger *log, ...)
+int spawn_umount(unsigned logopt, ...)
 {
 	va_list arg;
 	int argc;
@@ -372,7 +372,7 @@ int spawn_umount(logger *log, ...)
 	options = SPAWN_OPT_NONE;
 #endif
 
-	va_start(arg, log);
+	va_start(arg, logopt);
 	for (argc = 1; va_arg(arg, char *); argc++);
 	va_end(arg);
 
@@ -381,13 +381,13 @@ int spawn_umount(logger *log, ...)
 
 	argv[0] = arg0;
 
-	va_start(arg, log);
+	va_start(arg, logopt);
 	p = argv + 1;
 	while ((*p++ = va_arg(arg, char *)));
 	va_end(arg);
 
 	while (retries--) {
-		ret = do_spawn(log, options, prog, (const char **) argv);
+		ret = do_spawn(logopt, options, prog, (const char **) argv);
 		if (ret & MTAB_NOTUPDATED)
 			continue;
 		break;

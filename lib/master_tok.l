@@ -368,7 +368,7 @@ int master_wrap(void)
 
 static void master_echo(void)
 {
-	debug(LOGOPT_NONE, "%s", master_text);
+	logmsg("%s", master_text);
 	return;
 }
 

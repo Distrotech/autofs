@@ -337,9 +337,9 @@ int umount_ent(struct autofs_point *ap, const char *path)
 	 * and EBADSLT relates to CD changer not responding.
 	 */
 	if (!status && (S_ISDIR(st.st_mode) && st.st_dev != ap->dev)) {
-		rv = spawn_umount(log_debug, path, NULL);
+		rv = spawn_umount(ap->logopt, path, NULL);
 	} else if (is_smbfs && (sav_errno == EIO || sav_errno == EBADSLT)) {
-		rv = spawn_umount(log_debug, path, NULL);
+		rv = spawn_umount(ap->logopt, path, NULL);
 	}
 
 	/* We are doing a forced shutcwdown down so unlink busy mounts */
@@ -356,8 +356,8 @@ int umount_ent(struct autofs_point *ap, const char *path)
 		}
 
 		if (ap->state == ST_SHUTDOWN_FORCE) {
-			msg("forcing umount of %s", path);
-			rv = spawn_umount(log_debug, "-l", path, NULL);
+			info(ap->logopt, "forcing umount of %s", path);
+			rv = spawn_umount(ap->logopt, "-l", path, NULL);
 		}
 
 		/*
@@ -503,7 +503,7 @@ int umount_multi_triggers(struct autofs_point *ap, char *root, struct mapent *me
 		 * the offset triggers back.
 		 */
 		if (is_mounted(_PATH_MOUNTED, root, MNTS_REAL)) {
-			msg("unmounting dir = %s", root);
+			info(ap->logopt, "unmounting dir = %s", root);
 			if (umount_ent(ap, root)) {
 				if (!mount_multi_triggers(ap, root, me, "/"))
 					warn(ap->logopt,

@@ -45,12 +45,14 @@ struct lookup_context {
 struct callback_master_data {
 	unsigned timeout;
 	unsigned logging;
+	unsigned logopt;
 	time_t age;
 };
 
 struct callback_data {
 	struct autofs_point *ap;
 	struct map_source *source;
+	unsigned logopt;
 	time_t age;
 };
 
@@ -111,19 +113,17 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 	ctxt = malloc(sizeof(struct lookup_context));
 	if (!ctxt) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		crit(LOGOPT_ANY, MODPREFIX "%s", estr);
+		logerr(MODPREFIX "%s", estr);
 		return 1;
 	}
 	memset(ctxt, 0, sizeof(struct lookup_context));
 
 	if (argc < 1) {
 		free(ctxt);
-		crit(LOGOPT_ANY, MODPREFIX "no map name");
+		logerr(MODPREFIX "no map name");
 		return 1;
 	}
 	ctxt->mapname = argv[0];
-
-	debug(LOGOPT_NONE, MODPREFIX "ctxt->mapname=%s", ctxt->mapname);
 
 	/* This should, but doesn't, take a const char ** */
 	err = yp_get_default_domain((char **) &ctxt->domainname);
@@ -133,8 +133,7 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 		memcpy(name, ctxt->mapname, len);
 		name[len] = '\0';
 		free(ctxt);
-		debug(LOGOPT_NONE, MODPREFIX "map %s: %s", name,
-		       yperr_string(err));
+		logerr(MODPREFIX "map %s: %s", name, yperr_string(err));
 		return 1;
 	}
 
@@ -146,7 +145,7 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 	ctxt->parse = open_parse(mapfmt, MODPREFIX, argc - 1, argv + 1);
 	if (!ctxt->parse) {
 		free(ctxt);
-		crit(LOGOPT_ANY, MODPREFIX "failed to open parse context");
+		logmsg(MODPREFIX "failed to open parse context");
 		return 1;
 	}
 	*context = ctxt;
@@ -161,6 +160,7 @@ int yp_all_master_callback(int status, char *ypkey, int ypkeylen,
 			(struct callback_master_data *) ypcb_data;
 	unsigned int timeout = cbdata->timeout;
 	unsigned int logging = cbdata->logging;
+	unsigned int logopt = cbdata->logopt;
 	time_t age = cbdata->age;
 	char *buffer;
 	unsigned int len;
@@ -182,7 +182,7 @@ int yp_all_master_callback(int status, char *ypkey, int ypkeylen,
 
 	buffer = alloca(len);
 	if (!buffer) {
-		error(LOGOPT_ANY, MODPREFIX "could not malloc parse buffer");
+		error(logopt, MODPREFIX "could not malloc parse buffer");
 		return 0;
 	}
 	memset(buffer, 0, len);
@@ -201,6 +201,8 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 	struct lookup_context *ctxt = (struct lookup_context *) context;
 	struct ypall_callback ypcb;
 	struct callback_master_data ypcb_data;
+	unsigned int logging = master->default_logging;
+	unsigned int logopt = master->logopt;
 	char *mapname;
 	int err;
 
@@ -211,7 +213,8 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 	strcpy(mapname, ctxt->mapname);
 
 	ypcb_data.timeout = master->default_timeout;
-	ypcb_data.logging = master->default_logging;
+	ypcb_data.logging = logging;
+	ypcb_data.logopt = logopt;
 	ypcb_data.age = age;
 
 	ypcb.foreach = yp_all_master_callback;
@@ -232,7 +235,7 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 		if (err == YPERR_SUCCESS)
 			return NSS_STATUS_SUCCESS;
 
-		warn(LOGOPT_ANY,
+		info(logopt,
 		     MODPREFIX "read of master map %s failed: %s",
 		     mapname, yperr_string(err));
 
@@ -249,6 +252,7 @@ int yp_all_callback(int status, char *ypkey, int ypkeylen,
 	struct autofs_point *ap = cbdata->ap;
 	struct map_source *source = cbdata->source;
 	struct mapent_cache *mc = source->mc;
+	unsigned int logopt = cbdata->logopt;
 	time_t age = cbdata->age;
 	char *key, *mapent;
 	int ret;
@@ -264,8 +268,10 @@ int yp_all_callback(int status, char *ypkey, int ypkeylen,
 		return 0;
 
 	key = sanitize_path(ypkey, ypkeylen, ap->type, ap->logopt);
-	if (!key)
+	if (!key) {
+		error(logopt, MODPREFIX "invalid path %s", ypkey);
 		return 0;
+	}
 
 	mapent = alloca(vallen + 1);
 	strncpy(mapent, val, vallen);
@@ -288,6 +294,7 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 	struct lookup_context *ctxt = (struct lookup_context *) context;
 	struct ypall_callback ypcb;
 	struct callback_data ypcb_data;
+	unsigned int logopt = ap->logopt;
 	struct map_source *source;
 	char *mapname;
 	int err;
@@ -298,6 +305,7 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 
 	ypcb_data.ap = ap;
 	ypcb_data.source = source;
+	ypcb_data.logopt = logopt;
 	ypcb_data.age = age;
 
 	ypcb.foreach = yp_all_callback;

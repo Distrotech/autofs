@@ -51,7 +51,7 @@ void dump_alarms(void)
 		struct alarm *this;
 
 		this = list_entry(p, struct alarm, list);
-		msg("alarm time = %d", this->time);
+		logmsg("alarm time = %d", this->time);
 	}
 	pthread_mutex_unlock(&mutex);
 }

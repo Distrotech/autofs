@@ -105,17 +105,22 @@ static int get_env_yesno(const char *name)
  * We've changed the key names so we need to check for the
  * config key and it's old name for backward conpatibility.
 */
-static int check_set_config_value(const char *res, const char *name, const char *value)
+static int check_set_config_value(const char *res, const char *name, const char *value, unsigned to_syslog)
 {
 	char *old_name;
 	int ret;
 
 	if (!strcasecmp(res, name)) {
 		ret = setenv(name, value, 0);
-		if (ret)
-			fprintf(stderr,
-			        "can't set config value for %s, "
-				"error %d", name, ret);
+		if (ret) {
+			if (!to_syslog)
+				fprintf(stderr,
+				        "can't set config value for %s, "
+					"error %d\n", name, ret);
+			else
+				logmsg("can't set config value for %s, "
+				      "error %d", name, ret);
+		}
 		return 1;
 	}
 
@@ -125,10 +130,15 @@ static int check_set_config_value(const char *res, const char *name, const char 
 
 	if (!strcasecmp(res, old_name)) {
 		ret = setenv(name, value, 0);
-		if (ret)
-			fprintf(stderr,
-			        "can't set config value for %s, "
-				"error %d", name, ret);
+		if (ret) {
+			if (!to_syslog)
+				fprintf(stderr,
+				        "can't set config value for %s, "
+					"error %d\n", name, ret);
+			else
+				logmsg("can't set config value for %s, "
+				      "error %d\n", name, ret);
+		}
 		return 1;
 	}
 	return 0;
@@ -296,19 +306,19 @@ unsigned int defaults_read_config(unsigned int to_syslog)
 		if (!parse_line(res, &key, &value))
 			continue;
 
-		if (check_set_config_value(key, ENV_NAME_MASTER_MAP, value) ||
-		    check_set_config_value(key, ENV_NAME_TIMEOUT, value) ||
-		    check_set_config_value(key, ENV_NAME_BROWSE_MODE, value) ||
-		    check_set_config_value(key, ENV_NAME_LOGGING, value) ||
-		    check_set_config_value(key, ENV_LDAP_TIMEOUT, value) ||
-		    check_set_config_value(key, ENV_LDAP_NETWORK_TIMEOUT, value) ||
-		    check_set_config_value(key, ENV_NAME_MAP_OBJ_CLASS, value) ||
-		    check_set_config_value(key, ENV_NAME_ENTRY_OBJ_CLASS, value) ||
-		    check_set_config_value(key, ENV_NAME_MAP_ATTR, value) ||
-		    check_set_config_value(key, ENV_NAME_ENTRY_ATTR, value) ||
-		    check_set_config_value(key, ENV_NAME_VALUE_ATTR, value) ||
-		    check_set_config_value(key, ENV_APPEND_OPTIONS, value) ||
-		    check_set_config_value(key, ENV_AUTH_CONF_FILE, value))
+		if (check_set_config_value(key, ENV_NAME_MASTER_MAP, value, to_syslog) ||
+		    check_set_config_value(key, ENV_NAME_TIMEOUT, value, to_syslog) ||
+		    check_set_config_value(key, ENV_NAME_BROWSE_MODE, value, to_syslog) ||
+		    check_set_config_value(key, ENV_NAME_LOGGING, value, to_syslog) ||
+		    check_set_config_value(key, ENV_LDAP_TIMEOUT, value, to_syslog) ||
+		    check_set_config_value(key, ENV_LDAP_NETWORK_TIMEOUT, value, to_syslog) ||
+		    check_set_config_value(key, ENV_NAME_MAP_OBJ_CLASS, value, to_syslog) ||
+		    check_set_config_value(key, ENV_NAME_ENTRY_OBJ_CLASS, value, to_syslog) ||
+		    check_set_config_value(key, ENV_NAME_MAP_ATTR, value, to_syslog) ||
+		    check_set_config_value(key, ENV_NAME_ENTRY_ATTR, value, to_syslog) ||
+		    check_set_config_value(key, ENV_NAME_VALUE_ATTR, value, to_syslog) ||
+		    check_set_config_value(key, ENV_APPEND_OPTIONS, value, to_syslog) ||
+		    check_set_config_value(key, ENV_AUTH_CONF_FILE, value, to_syslog))
 			;
 	}
 
@@ -318,8 +328,7 @@ unsigned int defaults_read_config(unsigned int to_syslog)
 				"fgets returned error %d while reading %s\n",
 				ferror(f), DEFAULTS_CONFIG_FILE);
 		} else {
-			error(LOGOPT_ANY,
-			      "fgets returned error %d while reading %s",
+			logmsg("fgets returned error %d while reading %s",
 			      ferror(f), DEFAULTS_CONFIG_FILE);
 		}
 		fclose(f);

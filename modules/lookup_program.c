@@ -51,28 +51,26 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 	ctxt = malloc(sizeof(struct lookup_context));
 	if (!ctxt) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		crit(LOGOPT_ANY, MODPREFIX "malloc: %s", estr);
+		logerr(MODPREFIX "malloc: %s", estr);
 		return 1;
 	}
 
 	if (argc < 1) {
-		crit(LOGOPT_ANY, MODPREFIX "No map name");
+		logmsg(MODPREFIX "No map name");
 		free(ctxt);
 		return 1;
 	}
 	ctxt->mapname = argv[0];
 
 	if (ctxt->mapname[0] != '/') {
-		crit(LOGOPT_ANY,
-		     MODPREFIX "program map %s is not an absolute pathname",
+		logmsg(MODPREFIX "program map %s is not an absolute pathname",
 		     ctxt->mapname);
 		free(ctxt);
 		return 1;
 	}
 
 	if (access(ctxt->mapname, X_OK)) {
-		crit(LOGOPT_ANY,
-		     MODPREFIX "program map %s missing or not executable",
+		logmsg(MODPREFIX "program map %s missing or not executable",
 		     ctxt->mapname);
 		free(ctxt);
 		return 1;
@@ -83,7 +81,7 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 
 	ctxt->parse = open_parse(mapfmt, MODPREFIX, argc - 1, argv + 1);
 	if (!ctxt->parse) {
-		crit(LOGOPT_ANY, MODPREFIX "failed to open parse context");
+		logmsg(MODPREFIX "failed to open parse context");
 		free(ctxt);
 		return 1;
 	}
@@ -163,7 +161,7 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 	mapent = (char *) malloc(MAPENT_MAX_LEN + 1);
 	if (!mapent) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		error(ap->logopt, MODPREFIX "malloc: %s", estr);
+		logerr(MODPREFIX "malloc: %s", estr);
 		return NSS_STATUS_UNAVAIL;
 	}
 
@@ -176,7 +174,7 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 	 */
 	if (pipe(pipefd)) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		error(ap->logopt, MODPREFIX "pipe: %s", estr);
+		logerr(MODPREFIX "pipe: %s", estr);
 		goto out_free;
 	}
 	if (pipe(epipefd)) {
@@ -188,7 +186,7 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 	f = fork();
 	if (f < 0) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		error(ap->logopt, MODPREFIX "fork: %s", estr);
+		logerr(MODPREFIX "fork: %s", estr);
 		close(pipefd[0]);
 		close(pipefd[1]);
 		close(epipefd[0]);
@@ -271,8 +269,7 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 						       ++alloci));
 					if (!tmp) {
 						alloci--;
-						error(ap->logopt,
-						      MODPREFIX "realloc: %s",
+						logerr(MODPREFIX "realloc: %s",
 						      strerror(errno));
 						break;
 					}
@@ -308,12 +305,12 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 			} else if (ch == '\n') {
 				*errp = '\0';
 				if (errbuf[0])
-					error(ap->logopt, ">> %s", errbuf);
+					logmsg(">> %s", errbuf);
 				errp = errbuf;
 			} else {
 				if (errp >= &errbuf[1023]) {
 					*errp = '\0';
-					error(ap->logopt, ">> %s", errbuf);
+					logmsg(">> %s", errbuf);
 					errp = errbuf;
 				}
 				*(errp++) = ch;
@@ -325,7 +322,7 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 		*mapp = '\0';
 	if (errp > errbuf) {
 		*errp = '\0';
-		error(ap->logopt, ">> %s", errbuf);
+		logmsg(">> %s", errbuf);
 	}
 
 	close(pipefd[0]);
@@ -333,12 +330,12 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 
 	if (waitpid(f, &status, 0) != f) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		error(ap->logopt, MODPREFIX "waitpid: %s", estr);
+		logerr(MODPREFIX "waitpid: %s", estr);
 		goto out_free;
 	}
 
 	if (mapp == mapent || !WIFEXITED(status) || WEXITSTATUS(status) != 0) {
-		msg(MODPREFIX "lookup for %s failed", name);
+		info(ap->logopt, MODPREFIX "lookup for %s failed", name);
 		goto out_free;
 	}
 

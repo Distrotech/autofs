@@ -113,7 +113,7 @@ static unsigned int get_proximity(const char *host_addr, int addr_len)
 	sock = socket(AF_INET, SOCK_DGRAM, 0);
 	if (sock < 0) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		error(LOGOPT_ANY, "socket creation failed: %s", estr);
+		logerr("socket creation failed: %s", estr);
 		return PROXIMITY_ERROR;
 	}
 
@@ -127,7 +127,7 @@ static unsigned int get_proximity(const char *host_addr, int addr_len)
 	ret = ioctl(sock, SIOCGIFCONF, &ifc);
 	if (ret == -1) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		error(LOGOPT_ANY, "ioctl: %s", estr);
+		logerr("ioctl: %s", estr);
 		close(sock);
 		return PROXIMITY_ERROR;
 	}
@@ -176,7 +176,7 @@ static unsigned int get_proximity(const char *host_addr, int addr_len)
 			ret = ioctl(sock, SIOCGIFNETMASK, &nmptr);
 			if (ret == -1) {
 				char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-				error(LOGOPT_ANY, "ioctl: %s", estr);
+				logerr("ioctl: %s", estr);
 				close(sock);
 				return PROXIMITY_ERROR;
 			}
@@ -387,7 +387,7 @@ static unsigned short get_port_option(const char *options)
 	return (unsigned short) port;
 }
 
-static unsigned int get_nfs_info(struct host *host,
+static unsigned int get_nfs_info(unsigned logopt, struct host *host,
 			 struct conn_info *pm_info, struct conn_info *rpc_info,
 			 const char *proto, unsigned int version,
 			 const char *options, unsigned int random_selection)
@@ -533,7 +533,7 @@ done_ver:
 	return supported;
 }
 
-static int get_vers_and_cost(struct host *host,
+static int get_vers_and_cost(unsigned logopt, struct host *host,
 			     unsigned int version, const char *options,
 			     unsigned int random_selection)
 {
@@ -559,7 +559,7 @@ static int get_vers_and_cost(struct host *host,
 	vers &= version;
 
 	if (version & UDP_REQUESTED) {
-		supported = get_nfs_info(host,
+		supported = get_nfs_info(logopt, host,
 					&pm_info, &rpc_info, "udp", vers,
 					options, random_selection);
 		if (supported) {
@@ -569,7 +569,7 @@ static int get_vers_and_cost(struct host *host,
 	}
 
 	if (version & TCP_REQUESTED) {
-		supported = get_nfs_info(host,
+		supported = get_nfs_info(logopt, host,
 					 &pm_info, &rpc_info, "tcp", vers,
 					 options, random_selection);
 		if (supported) {
@@ -581,7 +581,7 @@ static int get_vers_and_cost(struct host *host,
 	return ret;
 }
 
-static int get_supported_ver_and_cost(struct host *host,
+static int get_supported_ver_and_cost(unsigned logopt, struct host *host,
 				      unsigned int version, const char *options,
 				      unsigned int random_selection)
 {
@@ -636,7 +636,7 @@ static int get_supported_ver_and_cost(struct host *host,
 		vers = NFS4_VERSION;
 		break;
 	default:
-		crit(LOGOPT_ANY, "called with invalid version: 0x%x\n", version);
+		crit(logopt, "called with invalid version: 0x%x\n", version);
 		return 0;
 	}
 
@@ -701,7 +701,7 @@ done:
 	return 0;
 }
 
-int prune_host_list(struct host **list,
+int prune_host_list(unsigned logopt, struct host **list,
 		    unsigned int vers, const char *options,
 		    unsigned int random_selection)
 {
@@ -742,7 +742,7 @@ int prune_host_list(struct host **list,
 			break;
 
 		if (this->name) {
-			status = get_vers_and_cost(this, vers,
+			status = get_vers_and_cost(logopt, this, vers,
 						   options, random_selection);
 			if (!status) {
 				if (this == first) {
@@ -833,7 +833,7 @@ int prune_host_list(struct host **list,
 			remove_host(list, this);
 			add_host(&new, this);
 		} else {
-			status = get_supported_ver_and_cost(this,
+			status = get_supported_ver_and_cost(logopt, this,
 						selected_version, options,
 						random_selection);
 			if (status) {
@@ -886,11 +886,9 @@ static int add_host_addrs(struct host **list, const char *host, unsigned int wei
 			buf, MAX_IFC_BUF, &result, &ghn_errno);
 	if (ret || !result) {
 		if (ghn_errno == -1)
-			error(LOGOPT_ANY,
-			      "host %s: lookup failure %d", host, errno);
+			logmsg("host %s: lookup failure %d", host, errno);
 		else
-			error(LOGOPT_ANY,
-			      "host %s: lookup failure %d", host, ghn_errno);
+			logmsg("host %s: lookup failure %d", host, ghn_errno);
 		return 0;
 	}
 
@@ -965,7 +963,7 @@ static int add_local_path(struct host **hosts, const char *path)
 	return 1;
 }
 
-int parse_location(struct host **hosts, const char *list)
+int parse_location(unsigned logopt, struct host **hosts, const char *list)
 {
 	char *str, *p, *delim;
 	unsigned int empty = 1;
@@ -1072,8 +1070,7 @@ void dump_host_list(struct host *hosts)
 
 	this = hosts;
 	while (this) {
-		debug(LOGOPT_ANY,
-		      "name %s path %s version %x proximity %u weight %u cost %u",
+		logmsg("name %s path %s version %x proximity %u weight %u cost %u",
 		      this->name, this->path, this->version,
 		      this->proximity, this->weight, this->cost);
 		this = this->next;

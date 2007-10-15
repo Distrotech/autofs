@@ -66,7 +66,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 	fullpath = alloca(rlen + name_len + 2);
 	if (!fullpath) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		error(ap->logopt, MODPREFIX "alloca: %s", estr);
+		logerr(MODPREFIX "alloca: %s", estr);
 		return 1;
 	}
 
@@ -80,7 +80,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 
 	debug(ap->logopt, MODPREFIX "calling umount %s", what);
 
-	err = spawn_umount(log_debug, what, NULL);
+	err = spawn_umount(ap->logopt, what, NULL);
 	if (err) {
 		error(ap->logopt,
 		      MODPREFIX
@@ -115,18 +115,18 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 		      MODPREFIX "calling mount -t %s " SLOPPY "-o %s %s %s",
 		      fstype, options, what, fullpath);
 
-		err = spawn_mount(log_debug, "-t", fstype,
+		err = spawn_mount(ap->logopt, "-t", fstype,
 			     SLOPPYOPT "-o", options, what, fullpath, NULL);
 	} else {
 		debug(ap->logopt,
 		      MODPREFIX "calling mount -t %s %s %s",
 		      fstype, what, fullpath);
 
-		err = spawn_mount(log_debug, "-t", fstype, what, fullpath, NULL);
+		err = spawn_mount(ap->logopt, "-t", fstype, what, fullpath, NULL);
 	}
 
 	if (err) {
-		msg(MODPREFIX "failed to mount %s (type %s) on %s",
+		info(ap->logopt, MODPREFIX "failed to mount %s (type %s) on %s",
 		    what, fstype, fullpath);
 
 		if (ap->type != LKP_INDIRECT)
@@ -137,7 +137,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 
 		return 1;
 	} else {
-		msg(MODPREFIX "mounted %s type %s on %s",
+		info(ap->logopt, MODPREFIX "mounted %s type %s on %s",
 		    what, fstype, fullpath);
 		return 0;
 	}
@@ -161,7 +161,7 @@ int swapCD(const char *device, const char *slotName)
 	/* open device */
 	fd = open(device, O_RDONLY | O_NONBLOCK);
 	if (fd < 0) {
-		error(LOGOPT_ANY, MODPREFIX "Opening device %s failed : %s",
+		logerr(MODPREFIX "Opening device %s failed : %s",
 		      device, strerror(errno));
 		return 1;
 	}
@@ -174,7 +174,7 @@ int swapCD(const char *device, const char *slotName)
 	/* Check CD player status */
 	total_slots_available = ioctl(fd, CDROM_CHANGER_NSLOTS);
 	if (total_slots_available <= 1) {
-		error(LOGOPT_ANY, MODPREFIX
+		logerr(MODPREFIX
 		      "Device %s is not an ATAPI compliant CD changer.",
 		      device);
 		return 1;
@@ -183,14 +183,14 @@ int swapCD(const char *device, const char *slotName)
 	/* load */
 	slot = ioctl(fd, CDROM_SELECT_DISC, slot);
 	if (slot < 0) {
-		error(LOGOPT_ANY, MODPREFIX "CDROM_SELECT_DISC failed");
+		logerr(MODPREFIX "CDROM_SELECT_DISC failed");
 		return 1;
 	}
 
 	/* close device */
 	status = close(fd);
 	if (status != 0) {
-		error(LOGOPT_ANY, MODPREFIX "close failed for `%s': %s",
+		logerr(MODPREFIX "close failed for `%s': %s",
 		      device, strerror(errno));
 		return 1;
 	}

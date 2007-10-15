@@ -62,6 +62,22 @@ setting.
 .TP
 .I "\-V, \-\-version"
 Display the version number, then exit.
+.TP
+.I "\-l, \-\-set-log-priority priority path [path,...]"
+Set the daemon log priority to the specified value.  Valid values include
+the numbers 0-7, or the strings emerg, alert, crit, err, warning, notice,
+info, or debug. Log level debug will log everything, log levels info, warn
+(or warning), or notice with enable the daemon verbose logging. Any other
+level will set basic logging. Note that enabling debug or verbose
+logging in the autofs global configuration will override dynamic log level
+changes. For example, if verbose logging is set in the configuration then
+attempting to set logging to basic logging, by using alert, crit, err
+or emerg won't stop the verbose logging. However, setting logging to debug
+will lead to everything (debug logging) being logged witch can then also
+be disabled, returning the daemon to verbose logging.
+.P
+The \fIpath\fP argument corresponds to the automounted
+path name as specified in the master map.
 .SH ARGUMENTS
 \fBautomount\fP takes one optional argument, the name of the master map to
 use.

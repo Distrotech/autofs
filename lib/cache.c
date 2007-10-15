@@ -34,7 +34,7 @@ void cache_dump_multi(struct list_head *list)
 
 	list_for_each(p, list) {
 		me = list_entry(p, struct mapent, multi_list);
-		msg("key=%s", me->key);
+		logmsg("key=%s", me->key);
 	}
 }
 
@@ -48,7 +48,7 @@ void cache_dump_cache(struct mapent_cache *mc)
 		if (me == NULL)
 			continue;
 		while (me) {
-			msg("me->key=%s me->multi=%p dev=%ld ino=%ld",
+			logmsg("me->key=%s me->multi=%p dev=%ld ino=%ld",
 				me->key, me->multi, me->dev, me->ino);
 			me = me->next;
 		}
@@ -61,7 +61,7 @@ void cache_readlock(struct mapent_cache *mc)
 
 	status = pthread_rwlock_rdlock(&mc->rwlock);
 	if (status) {
-		error(LOGOPT_ANY, "mapent cache rwlock lock failed");
+		logmsg("mapent cache rwlock lock failed");
 		fatal(status);
 	}
 	return;
@@ -73,7 +73,7 @@ void cache_writelock(struct mapent_cache *mc)
 
 	status = pthread_rwlock_wrlock(&mc->rwlock);
 	if (status) {
-		error(LOGOPT_ANY, "mapent cache rwlock lock failed");
+		logmsg("mapent cache rwlock lock failed");
 		fatal(status);
 	}
 	return;
@@ -85,7 +85,7 @@ int cache_try_writelock(struct mapent_cache *mc)
 
 	status = pthread_rwlock_trywrlock(&mc->rwlock);
 	if (status) {
-		debug(LOGOPT_ANY, "mapent cache rwlock busy");
+		logmsg("mapent cache rwlock busy");
 		return 0;
 	}
 	return 1;
@@ -97,7 +97,7 @@ void cache_unlock(struct mapent_cache *mc)
 
 	status = pthread_rwlock_unlock(&mc->rwlock);
 	if (status) {
-		error(LOGOPT_ANY, "mapent cache rwlock unlock failed");
+		logmsg("mapent cache rwlock unlock failed");
 		fatal(status);
 	}
 	return;
@@ -120,7 +120,7 @@ void cache_multi_lock(struct mapent *me)
 
 	status = pthread_mutex_lock(&me->multi_mutex);
 	if (status) {
-		error(LOGOPT_ANY, "mapent cache multi mutex lock failed");
+		logmsg("mapent cache multi mutex lock failed");
 		fatal(status);
 	}
 	return;
@@ -135,7 +135,7 @@ void cache_multi_unlock(struct mapent *me)
 
 	status = pthread_mutex_unlock(&me->multi_mutex);
 	if (status) {
-		error(LOGOPT_ANY, "mapent cache multi mutex unlock failed");
+		logmsg("mapent cache multi mutex unlock failed");
 		fatal(status);
 	}
 	return;
@@ -164,7 +164,7 @@ static inline void ino_index_unlock(struct mapent_cache *mc)
 	return;
 }
 
-struct mapent_cache *cache_init(struct map_source *map)
+struct mapent_cache *cache_init(struct autofs_point *ap, struct map_source *map)
 {
 	struct mapent_cache *mc;
 	unsigned int i;
@@ -207,6 +207,7 @@ struct mapent_cache *cache_init(struct map_source *map)
 		INIT_LIST_HEAD(&mc->ino_index[i]);
 	}
 
+	mc->ap = ap;
 	mc->map = map;
 
 	cache_unlock(mc);
@@ -256,6 +257,9 @@ struct mapent_cache *cache_init_null_cache(struct master *master)
 		mc->hash[i] = NULL;
 		INIT_LIST_HEAD(&mc->ino_index[i]);
 	}
+
+	mc->ap = NULL;
+	mc->map = NULL;
 
 	cache_unlock(mc);
 
@@ -608,6 +612,7 @@ static void cache_add_ordered_offset(struct mapent *me, struct list_head *head)
 /* cache must be write locked by caller */
 int cache_add_offset(struct mapent_cache *mc, const char *mkey, const char *key, const char *mapent, time_t age)
 {
+	unsigned logopt = mc->ap ? mc->ap->logopt : master_get_logopt();
 	struct mapent *me, *owner;
 	int ret = CHE_OK;
 
@@ -621,7 +626,7 @@ int cache_add_offset(struct mapent_cache *mc, const char *mkey, const char *key,
 
 	ret = cache_add(mc, owner->source, key, mapent, age);
 	if (ret == CHE_FAIL) {
-		warn(LOGOPT_ANY, "failed to add key %s to cache", key);
+		warn(logopt, "failed to add key %s to cache", key);
 		return CHE_FAIL;
 	}
 
@@ -689,6 +694,7 @@ int cache_set_parents(struct mapent *mm)
 /* cache must be write locked by caller */
 int cache_update(struct mapent_cache *mc, struct map_source *ms, const char *key, const char *mapent, time_t age)
 {
+	unsigned logopt = mc->ap ? mc->ap->logopt : master_get_logopt();
 	struct mapent *me = NULL;
 	char *pent;
 	int ret = CHE_OK;
@@ -697,7 +703,7 @@ int cache_update(struct mapent_cache *mc, struct map_source *ms, const char *key
 	if (!me || (*me->key == '*' && *key != '*')) {
 		ret = cache_add(mc, ms, key, mapent, age);
 		if (!ret) {
-			debug(LOGOPT_NONE, "failed for %s", key);
+			debug(logopt, "failed for %s", key);
 			return CHE_FAIL;
 		}
 		ret = CHE_UPDATED;
@@ -796,6 +802,7 @@ done:
 /* cache must be write locked by caller */
 int cache_delete_offset_list(struct mapent_cache *mc, const char *key)
 {
+	unsigned logopt = mc->ap ? mc->ap->logopt : master_get_logopt();
 	struct mapent *me;
 	struct mapent *this;
 	struct list_head *head, *next;
@@ -816,7 +823,7 @@ int cache_delete_offset_list(struct mapent_cache *mc, const char *key)
 		this = list_entry(next, struct mapent, multi_list);
 		next = next->next;
 		if (this->ioctlfd != -1) {
-			error(LOGOPT_ANY,
+			error(logopt,
 			      "active offset mount key %s", this->key);
 			return CHE_FAIL;
 		}
@@ -829,10 +836,10 @@ int cache_delete_offset_list(struct mapent_cache *mc, const char *key)
 		next = next->next;
 		list_del_init(&this->multi_list);
 		this->multi = NULL;
-		debug(LOGOPT_NONE, "deleting offset key %s", this->key);
+		debug(logopt, "deleting offset key %s", this->key);
 		status = cache_delete(mc, this->key);
 		if (status == CHE_FAIL) {
-			warn(LOGOPT_ANY,
+			warn(logopt,
 			     "failed to delete offset %s", this->key);
 			this->multi = me;
 			/* TODO: add list back in */

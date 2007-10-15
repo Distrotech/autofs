@@ -173,7 +173,7 @@ int rmdir_path(struct autofs_point *ap, const char *path, dev_t dev)
 		 */
 		memset(&st, 0, sizeof(st));
 		if (lstat(buf, &st) != 0) {
-			crit(ap->logopt, "lstat of %s failed.", buf);
+			crit(ap->logopt, "lstat of %s failed", buf);
 			return -1;
 		}
 
@@ -234,14 +234,15 @@ int rmdir_path(struct autofs_point *ap, const char *path, dev_t dev)
 /* Like ftw, except fn gets called twice: before a directory is
    entered, and after.  If the before call returns 0, the directory
    isn't entered. */
-static int walk_tree(const char *base, int (*fn) (const char *file,
+static int walk_tree(const char *base, int (*fn) (unsigned logopt,
+						  const char *file,
 						  const struct stat * st,
-						  int, void *), int incl, void *arg)
+						  int, void *), int incl, unsigned logopt, void *arg)
 {
 	char buf[PATH_MAX + 1];
 	struct stat st;
 
-	if (lstat(base, &st) != -1 && (fn) (base, &st, 0, arg)) {
+	if (lstat(base, &st) != -1 && (fn) (logopt, base, &st, 0, arg)) {
 		if (S_ISDIR(st.st_mode)) {
 			struct dirent **de;
 			int n;
@@ -269,18 +270,18 @@ static int walk_tree(const char *base, int (*fn) (const char *file,
 					return -1;
 				}
 
-				walk_tree(buf, fn, 1, arg);
+				walk_tree(buf, fn, 1, logopt, arg);
 				free(de[n]);
 			}
 			free(de);
 		}
 		if (incl)
-			(fn) (base, &st, 1, arg);
+			(fn) (logopt, base, &st, 1, arg);
 	}
 	return 0;
 }
 
-static int rm_unwanted_fn(const char *file, const struct stat *st, int when, void *arg)
+static int rm_unwanted_fn(unsigned logopt, const char *file, const struct stat *st, int when, void *arg)
 {
 	dev_t dev = *(dev_t *) arg;
 	char buf[MAX_ERR_BUF];
@@ -293,41 +294,38 @@ static int rm_unwanted_fn(const char *file, const struct stat *st, int when, voi
 	}
 
 	if (lstat(file, &newst)) {
-		crit(LOGOPT_ANY,
-		     "unable to stat file, possible race condition");
+		crit(logopt, "unable to stat file, possible race condition");
 		return 0;
 	}
 
 	if (newst.st_dev != dev) {
-		crit(LOGOPT_ANY,
-		     "file %s has the wrong device, possible race condition",
+		crit(logopt, "file %s has the wrong device, possible race condition",
 		     file);
 		return 0;
 	}
 
 	if (S_ISDIR(newst.st_mode)) {
-		debug(LOGOPT_ANY, "removing directory %s", file);
+		debug(logopt, "removing directory %s", file);
 		if (rmdir(file)) {
 			char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-			warn(LOGOPT_ANY,
+			warn(logopt,
 			      "unable to remove directory %s: %s", file, estr);
 			return 0;
 		}
 	} else if (S_ISREG(newst.st_mode)) {
-		crit(LOGOPT_ANY,
-		     "attempting to remove files from a mounted "
+		crit(logopt, "attempting to remove files from a mounted "
 		     "directory. file %s", file);
 		return 0;
 	} else if (S_ISLNK(newst.st_mode)) {
-		debug(LOGOPT_ANY, "removing symlink %s", file);
+		debug(logopt, "removing symlink %s", file);
 		unlink(file);
 	}
 	return 1;
 }
 
-void rm_unwanted(const char *path, int incl, dev_t dev)
+void rm_unwanted(unsigned logopt, const char *path, int incl, dev_t dev)
 {
-	walk_tree(path, rm_unwanted_fn, incl, &dev);
+	walk_tree(path, rm_unwanted_fn, incl, logopt, &dev);
 }
 
 struct counter_args {
@@ -335,7 +333,7 @@ struct counter_args {
 	dev_t dev;
 };
 
-static int counter_fn(const char *file, const struct stat *st, int when, void *arg)
+static int counter_fn(unsigned logopt, const char *file, const struct stat *st, int when, void *arg)
 {
 	struct counter_args *counter = (struct counter_args *) arg;
 
@@ -349,14 +347,14 @@ static int counter_fn(const char *file, const struct stat *st, int when, void *a
 }
 
 /* Count mounted filesystems and symlinks */
-int count_mounts(const char *path, dev_t dev)
+int count_mounts(unsigned logopt, const char *path, dev_t dev)
 {
 	struct counter_args counter;
 
 	counter.count = 0;
 	counter.dev = dev;
 	
-	if (walk_tree(path, counter_fn, 0, &counter) == -1)
+	if (walk_tree(path, counter_fn, 0, logopt, &counter) == -1)
 		return -1;
 
 	return counter.count;
@@ -368,9 +366,9 @@ static void check_rm_dirs(struct autofs_point *ap, const char *path, int incl)
 	    (ap->state == ST_SHUTDOWN_PENDING ||
 	     ap->state == ST_SHUTDOWN_FORCE ||
 	     ap->state == ST_SHUTDOWN))
-		rm_unwanted(path, incl, ap->dev);
+		rm_unwanted(ap->logopt, path, incl, ap->dev);
 	else if (ap->ghost && (ap->type == LKP_INDIRECT))
-		rm_unwanted(path, 0, ap->dev);
+		rm_unwanted(ap->logopt, path, 0, ap->dev);
 }
 
 /* Try to purge cache entries kept around due to existing mounts */
@@ -466,7 +464,7 @@ static int umount_subtree_mounts(struct autofs_point *ap, const char *path, unsi
 		cache_multi_lock(me->parent);
 		if (umount_multi_triggers(ap, root, me, base)) {
 			warn(ap->logopt,
-			     "could not umount some offsets under %s", path);
+			     "some offset mounts still present under %s", path);
 			left++;
 		}
 		cache_multi_unlock(me->parent);
@@ -483,7 +481,7 @@ static int umount_subtree_mounts(struct autofs_point *ap, const char *path, unsi
 	 * it already to ensure it's ok to remove any offset triggers.
 	 */
 	if (!is_mm_root && is_mounted(_PATH_MOUNTED, path, MNTS_REAL)) {
-		msg("unmounting dir = %s", path);
+		info(ap->logopt, "unmounting dir = %s", path);
 		if (umount_ent(ap, path)) {
 			warn(ap->logopt, "could not umount dir %s", path);
 			left++;
@@ -576,35 +574,35 @@ int umount_autofs(struct autofs_point *ap, int force)
 	return ret;
 }
 
-int send_ready(int ioctlfd, unsigned int wait_queue_token)
+int send_ready(unsigned logopt, int ioctlfd, unsigned int wait_queue_token)
 {
 	char buf[MAX_ERR_BUF];
 
 	if (wait_queue_token == 0)
 		return 0;
 
-	debug(LOGOPT_NONE, "token = %d", wait_queue_token);
+	debug(logopt, "token = %d", wait_queue_token);
 
 	if (ioctl(ioctlfd, AUTOFS_IOC_READY, wait_queue_token) < 0) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		error(LOGOPT_ANY, "AUTOFS_IOC_READY: error %s", estr);
+		logerr("AUTOFS_IOC_READY: error %s", estr);
 		return 1;
 	}
 	return 0;
 }
 
-int send_fail(int ioctlfd, unsigned int wait_queue_token)
+int send_fail(unsigned logopt, int ioctlfd, unsigned int wait_queue_token)
 {
 	char buf[MAX_ERR_BUF];
 
 	if (wait_queue_token == 0)
 		return 0;
 
-	debug(LOGOPT_NONE, "token = %d", wait_queue_token);
+	debug(logopt, "token = %d", wait_queue_token);
 
 	if (ioctl(ioctlfd, AUTOFS_IOC_FAIL, wait_queue_token) < 0) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		error(LOGOPT_ANY, "AUTOFS_IOC_FAIL: error %s", estr);
+		logerr("AUTOFS_IOC_FAIL: error %s", estr);
 		return 1;
 	}
 	return 0;
@@ -649,23 +647,245 @@ static int fullread(int fd, void *ptr, size_t len)
 	return len;
 }
 
+static char *automount_path_to_fifo(unsigned logopt, const char *path)
+{
+	char *fifo_name, *p;
+	int  name_len = strlen(path) + strlen(AUTOFS_LOGPRI_FIFO) + 1;
+	int ret;
+
+	fifo_name = malloc(name_len);
+	if (!fifo_name)
+		return NULL;
+	ret = snprintf(fifo_name, name_len, "%s%s",
+		       AUTOFS_LOGPRI_FIFO, path);
+	if (ret >= name_len) {
+		info(logopt,
+		     "fifo path for \"%s\" truncated to \"%s\".  This may "
+		     "lead to --set-log-priority commands being sent to the "
+		     "wrong automount daemon.", path, fifo_name);
+	}
+
+	/*
+	 *  An automount path can be made up of subdirectories.  So, to
+	 *  create the fifo name, we will just replace instances of '/' with
+	 *  '-'. 
+	 */
+	p = fifo_name + strlen(AUTOFS_LOGPRI_FIFO);
+	while (*p != '\0') {
+		if (*p == '/')
+			*p = '-';
+		p++;
+	}
+
+	debug(logopt, "fifo name %s",fifo_name);
+
+	return fifo_name;
+}
+
+static int create_logpri_fifo(struct autofs_point *ap)
+{
+	int ret = -1;
+	int fd;
+	char *fifo_name;
+
+	fifo_name = automount_path_to_fifo(ap->logopt, ap->path);
+	if (!fifo_name) {
+		crit(ap->logopt, "Failed to allocate memory!");
+		goto out_free; /* free(NULL) is okay */
+	}
+
+	ret = unlink(fifo_name);
+	if (ret != 0 && errno != ENOENT) {
+		crit(ap->logopt,
+		     "Failed to unlink FIFO. Is the automount daemon "
+		     "already running?");
+		goto out_free;
+	}
+
+	ret = mkfifo(fifo_name, S_IRUSR|S_IWUSR);
+	if (ret != 0) {
+		crit(ap->logopt,
+		     "mkfifo for %s returned %d", fifo_name, errno);
+		goto out_free;
+	}
+
+	fd = open(fifo_name, O_RDWR|O_NONBLOCK);
+	if (fd < 0) {
+		crit(ap->logopt,
+		     "Failed to open %s, errno %d", fifo_name, errno);
+		goto out_free;
+	}
+
+	ap->logpri_fifo = fd;
+
+out_free:
+	free(fifo_name);
+	return ret;
+}
+
+static int destroy_logpri_fifo(struct autofs_point *ap)
+{
+	int ret = -1;
+	int fd = ap->logpri_fifo;
+	char *fifo_name;
+
+	fifo_name = automount_path_to_fifo(ap->logopt, ap->path);
+	if (!fifo_name) {
+		crit(ap->logopt, "Failed to allocate memory!");
+		goto out_free; /* free(NULL) is okay */
+	}
+
+	ap->logpri_fifo = -1;
+
+	ret = close(fd);
+	if (ret != 0) {
+		warn(ap->logopt,
+		     "close for fifo %s returned %d", fifo_name, errno);
+	}
+
+	ret = unlink(fifo_name);
+	if (ret != 0) {
+		warn(ap->logopt,
+		     "Failed to unlink FIFO. Was the fifo created OK?");
+	}
+
+out_free:
+	free(fifo_name);
+	return ret;
+}
+
+static void handle_fifo_message(struct autofs_point *ap, int fd)
+{
+	int ret;
+	char buffer[PIPE_BUF];
+	char *end;
+	long pri;
+
+	memset(buffer, 0, sizeof(buffer));
+	ret = read(fd, &buffer, sizeof(buffer));
+	if (ret < 0) {
+		warn(ap->logopt, "read on fifo returned error %d", errno);
+		return;
+	}
+
+	if (ret != 2) {
+		debug(ap->logopt, "expected 2 bytes, received %d.", ret);
+		return;
+	}
+
+	errno = 0;
+	pri = strtol(buffer, &end, 10);
+	if ((pri == LONG_MIN || pri == LONG_MAX) && errno == ERANGE) {
+		debug(ap->logopt, "strtol reported an %s.  Failed to set "
+		      "log priority.", pri == LONG_MIN ? "underflow" : "overflow");
+		return;
+	}
+	if ((pri == 0 && errno == EINVAL) || end == buffer) {
+		debug(ap->logopt, "priority is expected to be an integer "
+		      "in the range 0-7 inclusive.");
+		return;
+	}
+
+	if (pri > LOG_DEBUG || pri < LOG_EMERG) {
+		debug(ap->logopt, "invalid log priority (%ld) received "
+		      "on fifo", pri);
+		return;
+	}
+
+	/*
+	 * OK, the message passed all of the sanity checks.  The
+	 * automounter actually only supports three log priorities.
+	 * Everything is logged at log level debug, deamon messages
+	 * and everything except debug messages are logged with the
+	 * verbose setting and only error and critical messages are
+	 * logged when debugging isn't enabled.
+	 */
+	if (pri >= LOG_WARNING) {
+		if (pri == LOG_DEBUG) {
+			set_log_debug_ap(ap);
+			info(ap->logopt, "Debug logging set for %s", ap->path);
+		} else {
+			set_log_verbose_ap(ap);
+			info(ap->logopt, "Verbose logging set for %s", ap->path);
+		}
+	} else {
+		if (ap->logopt & LOGOPT_ANY)
+			info(ap->logopt, "Basic logging set for %s", ap->path);
+		set_log_norm_ap(ap);
+	}
+}
+
+static int set_log_priority(const char *path, int priority)
+{
+	int fd;
+	char *fifo_name;
+	char buf[2];
+
+	if (priority > LOG_DEBUG || priority < LOG_EMERG) {
+		fprintf(stderr, "Log priority %d is invalid.\n", priority);
+		fprintf(stderr, "Please spcify a number in the range 0-7.\n");
+		return -1;
+	}
+
+	/*
+	 * This is an ascii based protocol, so we want the string
+	 * representation of the integer log priority.
+	 */
+	snprintf(buf, sizeof(buf), "%d", priority);
+
+	fifo_name = automount_path_to_fifo(LOGOPT_NONE, path);
+	if (!fifo_name) {
+		fprintf(stderr, "%s: Failed to allocate memory!\n",
+			__FUNCTION__);
+		return -1;
+	}
+
+	/*
+	 * Specify O_NONBLOCK so that the open will fail if there is no
+	 * daemon reading from the other side of the FIFO.
+	 */
+	fd = open(fifo_name, O_WRONLY|O_NONBLOCK);
+	if (fd < 0) {
+		fprintf(stderr, "%s: open of %s failed with %d\n",
+			__FUNCTION__, fifo_name, errno);
+		free(fifo_name);
+		return -1;
+	}
+
+	if (write(fd, buf, sizeof(buf)) != sizeof(buf)) {
+		fprintf(stderr, "Failed to change logging priority.  ");
+		fprintf(stderr, "write to fifo failed with errno %d.\n",
+			errno);
+		close(fd);
+		free(fifo_name);
+		return -1;
+	}
+	close(fd);
+	free(fifo_name);
+	fprintf(stdout, "Successfully set log priority for %s.\n", path);
+
+	return 0;
+}
+
 static int get_pkt(struct autofs_point *ap, union autofs_packet_union *pkt)
 {
-	struct pollfd fds[2];
+	struct pollfd fds[3];
 	char buf[MAX_ERR_BUF];
 
 	fds[0].fd = ap->pipefd;
 	fds[0].events = POLLIN;
 	fds[1].fd = ap->state_pipe[0];
 	fds[1].events = POLLIN;
+	fds[2].fd = ap->logpri_fifo;
+	fds[2].events = POLLIN;
 
 	for (;;) {
-		if (poll(fds, 2, -1) == -1) {
+		if (poll(fds, 3, -1) == -1) {
 			char *estr;
 			if (errno == EINTR)
 				continue;
 			estr = strerror_r(errno, buf, MAX_ERR_BUF);
-			error(ap->logopt, "poll failed: %s", estr);
+			logerr("poll failed: %s", estr);
 			return -1;
 		}
 
@@ -709,6 +929,11 @@ static int get_pkt(struct autofs_point *ap, union autofs_packet_union *pkt)
 
 		if (fds[0].revents & POLLIN)
 			return fullread(ap->pipefd, pkt, kpkt_len);
+
+		if (fds[2].revents & POLLIN) {
+			debug(ap->logopt, "message pending on control fifo.");
+			handle_fifo_message(ap, fds[2].fd);
+		}
 	}
 }
 
@@ -730,20 +955,92 @@ int do_expire(struct autofs_point *ap, const char *name, int namelen)
 		return 1;
 	}
 
-	msg("expiring path %s", buf);
+	info(ap->logopt, "expiring path %s", buf);
 
 	ret = umount_multi(ap, buf, 1);
 	if (ret == 0)
-		msg("expired %s", buf);
+		info(ap->logopt, "expired %s", buf);
 	else
 		warn(ap->logopt, "couldn't complete expire of %s", buf);
 
 	return ret;
 }
 
+static int autofs_init_ap(struct autofs_point *ap)
+{
+	int pipefd[2], cl_flags;
+
+	if ((ap->state != ST_INIT)) {
+		/* This can happen if an autofs process is already running*/
+		error(ap->logopt, "bad state %d", ap->state);
+		return -1;
+	}
+
+	ap->pipefd = ap->kpipefd = ap->ioctlfd = -1;
+
+	/* Pipe for kernel communications */
+	if (pipe(pipefd) < 0) {
+		crit(ap->logopt,
+		     "failed to create commumication pipe for autofs path %s",
+		     ap->path);
+		free(ap->path);
+		return -1;
+	}
+
+	ap->pipefd = pipefd[0];
+	ap->kpipefd = pipefd[1];
+
+	if ((cl_flags = fcntl(ap->pipefd, F_GETFD, 0)) != -1) {
+		cl_flags |= FD_CLOEXEC;
+		fcntl(ap->pipefd, F_SETFD, cl_flags);
+	}
+
+	if ((cl_flags = fcntl(ap->kpipefd, F_GETFD, 0)) != -1) {
+		cl_flags |= FD_CLOEXEC;
+		fcntl(ap->kpipefd, F_SETFD, cl_flags);
+	}
+
+	/* Pipe state changes from signal handler to main loop */
+	if (pipe(ap->state_pipe) < 0) {
+		crit(ap->logopt,
+		     "failed create state pipe for autofs path %s", ap->path);
+		close(ap->pipefd);
+		close(ap->kpipefd);	/* Close kernel pipe end */
+		free(ap->path);
+		return -1;
+	}
+
+	if ((cl_flags = fcntl(ap->state_pipe[0], F_GETFD, 0)) != -1) {
+		cl_flags |= FD_CLOEXEC;
+		fcntl(ap->state_pipe[0], F_SETFD, cl_flags);
+	}
+
+	if ((cl_flags = fcntl(ap->state_pipe[1], F_GETFD, 0)) != -1) {
+		cl_flags |= FD_CLOEXEC;
+		fcntl(ap->state_pipe[1], F_SETFD, cl_flags);
+	}
+
+	if (create_logpri_fifo(ap) < 0) {
+		crit(ap->logopt,
+		     "failed to create FIFO for path %s\n", ap->path);
+		destroy_logpri_fifo(ap);
+		close(ap->pipefd);
+		close(ap->kpipefd);
+		free(ap->path);
+		close(ap->state_pipe[0]);
+		close(ap->state_pipe[1]);
+		return -1;
+	}
+
+	return 0;
+}
+
 static int mount_autofs(struct autofs_point *ap)
 {
 	int status = 0;
+
+	if (autofs_init_ap(ap) != 0)
+		return -1;
 
 	if (ap->type == LKP_DIRECT)
 		status = mount_autofs_direct(ap);
@@ -841,9 +1138,8 @@ static void become_daemon(unsigned foreground)
 			fclose(pidfp);
 		} else {
 			char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-			warn(LOGOPT_ANY,
-			     "failed to write pid file %s: %s",
-			     pid_file, estr);
+			logerr("failed to write pid file %s: %s",
+			       pid_file, estr);
 			pid_file = NULL;
 		}
 	}
@@ -889,12 +1185,12 @@ static void *do_notify_state(void *arg)
 
 	master = mrc.master;
 
-	debug(master->default_logging, "signal %d", sig);
+	debug(master->logopt, "signal %d", sig);
 
 	mrc.signaled = 1;
 	status = pthread_cond_signal(&mrc.cond);
 	if (status) {
-		error(master->default_logging,
+		error(master->logopt,
 		      "failed to signal state notify condition");
 		status = pthread_mutex_unlock(&mrc.mutex);
 		if (status)
@@ -923,7 +1219,7 @@ static pthread_t do_signals(struct master *master, int sig)
 
 	status = pthread_create(&thid, &thread_attr, do_notify_state, &r_sig);
 	if (status) {
-		error(master->default_logging,
+		error(master->logopt,
 		      "mount state notify thread create failed");
 		status = pthread_mutex_unlock(&mrc.mutex);
 		if (status)
@@ -951,6 +1247,7 @@ static pthread_t do_signals(struct master *master, int sig)
 static void *do_read_master(void *arg)
 {
 	struct master *master;
+	unsigned int logopt;
 	time_t age;
 	int readall = 1;
 	int status;
@@ -961,11 +1258,12 @@ static void *do_read_master(void *arg)
 
 	master = mrc.master;
 	age = mrc.age;
+	logopt = master->logopt;
 
 	mrc.signaled = 1;
 	status = pthread_cond_signal(&mrc.cond);
 	if (status) {
-		error(master->default_logging,
+		error(logopt,
 		      "failed to signal master read map condition");
 		master->reading = 0;
 		status = pthread_mutex_unlock(&mrc.mutex);
@@ -989,6 +1287,7 @@ static void *do_read_master(void *arg)
 
 static int do_hup_signal(struct master *master, time_t age)
 {
+	unsigned int logopt = master->logopt;
 	pthread_t thid;
 	int status;
 
@@ -1007,7 +1306,7 @@ static int do_hup_signal(struct master *master, time_t age)
 
 	status = pthread_create(&thid, &thread_attr, do_read_master, NULL);
 	if (status) {
-		error(master->default_logging,
+		error(logopt,
 		      "master read map thread create failed");
 		master->reading = 0;
 		status = pthread_mutex_unlock(&mrc.mutex);
@@ -1062,8 +1361,7 @@ static void *statemachine(void *arg)
 			break;
 
 		default:
-			error(master_list->default_logging,
-			      "got unexpected signal %d!", sig);
+			logerr("got unexpected signal %d!", sig);
 			continue;
 		}
 	}
@@ -1134,10 +1432,11 @@ static void handle_mounts_cleanup(void *arg)
 	struct autofs_point *ap;
 	char path[PATH_MAX + 1];
 	char buf[MAX_ERR_BUF];
-	unsigned int clean = 0, submount;
+	unsigned int clean = 0, submount, logopt;
 
 	ap = (struct autofs_point *) arg;
 
+	logopt = ap->logopt;
 	submount = ap->submount;
 
 	strcpy(path, ap->path);
@@ -1152,6 +1451,7 @@ static void handle_mounts_cleanup(void *arg)
 
 	umount_autofs(ap, 1);
 
+	destroy_logpri_fifo(ap);
 	master_signal_submount(ap, MASTER_SUBMNT_JOIN);
 	master_remove_mapent(ap->entry);
 	master_free_mapent_sources(ap->entry, 1);
@@ -1162,12 +1462,12 @@ static void handle_mounts_cleanup(void *arg)
 	if (clean) {
 		if (rmdir(path) == -1) {
 			char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-			warn(LOGOPT_NONE, "failed to remove dir %s: %s",
+			warn(logopt, "failed to remove dir %s: %s",
 			     path, estr);
 		}
 	}
 
-	msg("shut down path %s", path);
+	info(logopt, "shut down path %s", path);
 
 	/* If we are the last tell the state machine to shutdown */
 	if (!submount && master_list_empty(master_list))
@@ -1190,7 +1490,7 @@ void *handle_mounts(void *arg)
 
 	status = pthread_mutex_lock(&suc.mutex);
 	if (status) {
-		crit(ap->logopt, "failed to lock startup condition mutex!");
+		logerr("failed to lock startup condition mutex!");
 		fatal(status);
 	}
 
@@ -1204,7 +1504,7 @@ void *handle_mounts(void *arg)
 	}
 
 	if (ap->ghost && ap->type != LKP_DIRECT)
-		msg("ghosting enabled");
+		info(ap->logopt, "ghosting enabled");
 
 	suc.status = 0;
 	pthread_cleanup_pop(1);
@@ -1356,6 +1656,8 @@ static void usage(void)
 		"			use ramdom replicated server selection\n"
 		"	-O --global-options\n"
 		"			specify global mount options\n"
+		"	-l --set-log-priority priority path [path,...]\n"
+		"			set daemon log verbosity\n"
 		"	-V --version	print version, build config and exit\n"
 		, program);
 }
@@ -1437,9 +1739,45 @@ static void show_build_info(void)
 	return;
 }
 
+typedef struct _code {
+	char	*c_name;
+	int	c_val;
+} CODE;
+
+CODE prioritynames[] = {
+	{ "alert",	LOG_ALERT },
+	{ "crit",	LOG_CRIT },
+	{ "debug",	LOG_DEBUG },
+	{ "emerg",	LOG_EMERG },
+	{ "err",	LOG_ERR },
+	{ "error",	LOG_ERR },		/* DEPRECATED */
+	{ "info",	LOG_INFO },
+	{ "notice",	LOG_NOTICE },
+	{ "panic", 	LOG_EMERG },		/* DEPRECATED */
+	{ "warn",	LOG_WARNING },		/* DEPRECATED */
+	{ "warning",	LOG_WARNING },
+	{ NULL,		-1 },
+};
+
+static int convert_log_priority(char *priority_name)
+{
+	CODE *priority_mapping;
+
+	for (priority_mapping = prioritynames;
+	     priority_mapping->c_name != NULL;
+	     priority_mapping++) {
+
+		if (!strcasecmp(priority_name, priority_mapping->c_name))
+			return priority_mapping->c_val;
+	}
+
+	return -1;
+}
+
 int main(int argc, char *argv[])
 {
 	int res, opt, status;
+	int logpri = -1;
 	unsigned ghost, logging;
 	unsigned foreground, have_global_options;
 	time_t timeout;
@@ -1457,6 +1795,7 @@ int main(int argc, char *argv[])
 		{"random-multimount-selection", 0, 0, 'r'},
 		{"global-options", 1, 0, 'O'},
 		{"version", 0, 0, 'V'},
+		{"set-log-priority", 1, 0, 'l'},
 		{0, 0, 0, 0}
 	};
 
@@ -1477,7 +1816,7 @@ int main(int argc, char *argv[])
 	foreground = 0;
 
 	opterr = 0;
-	while ((opt = getopt_long(argc, argv, "+hp:t:vdD:fVrO:", long_options, NULL)) != EOF) {
+	while ((opt = getopt_long(argc, argv, "+hp:t:vdD:fVrO:l:", long_options, NULL)) != EOF) {
 		switch (opt) {
 		case 'h':
 			usage();
@@ -1525,6 +1864,23 @@ int main(int argc, char *argv[])
 				program);
 			break;
 
+		case 'l':
+			if (isalpha(*optarg)) {
+				logpri = convert_log_priority(optarg);
+				if (logpri < 0) {
+					fprintf(stderr, "Invalid log priority:"
+						" %s\n", optarg);
+					exit(1);
+				}
+			} else if (isdigit(*optarg)) {
+				logpri = getnumopt(optarg, opt);
+			} else {
+				fprintf(stderr, "non-alphanumeric character "
+					"found in log priority.  Aborting.\n");
+				exit(1);
+			}
+			break;
+
 		case '?':
 		case ':':
 			printf("%s: Ambiguous or unknown options\n", program);
@@ -1547,6 +1903,26 @@ int main(int argc, char *argv[])
 	/* Remove the options */
 	argv += optind;
 	argc -= optind;
+
+	if (logpri >= 0) {
+		int exit_code = 0;
+		int i;
+
+		/*
+		 * The remaining argv elements are the paths for which
+		 * log priorities must be changed.
+		 */
+		for (i = 0; i < argc; i++) {
+			if (set_log_priority(argv[i], logpri) < 0)
+				exit_code = 1;
+		}
+		if (argc < 1) {
+			fprintf(stderr,
+				"--set-log-priority requires a path.\n");
+			exit_code = 1;
+		}
+		exit(exit_code);
+	}
 
 	if (is_automount_running() > 0) {
 		fprintf(stderr, "%s: program is already running.\n",
@@ -1572,7 +1948,7 @@ int main(int argc, char *argv[])
 	rlim.rlim_max = MAX_OPEN_FILES;
 	res = setrlimit(RLIMIT_NOFILE, &rlim);
 	if (res)
-		warn(LOGOPT_NONE,
+		warn(logging,
 		     "can't increase open file limit - continuing");
 
 #if ENABLE_CORES
@@ -1580,7 +1956,7 @@ int main(int argc, char *argv[])
 	rlim.rlim_max = RLIM_INFINITY;
 	res = setrlimit(RLIMIT_CORE, &rlim);
 	if (res)
-		warn(LOGOPT_NONE,
+		warn(logging,
 		     "can't increase core file limit - continuing");
 #endif
 
@@ -1592,15 +1968,14 @@ int main(int argc, char *argv[])
 		master_list = master_new(argv[0], timeout, ghost);
 
 	if (!master_list) {
-		crit(LOGOPT_ANY, "%s: can't create master map %s",
+		logerr("%s: can't create master map %s",
 			program, argv[0]);
 		close(start_pipefd[1]);
 		exit(1);
 	}
 
 	if (pthread_attr_init(&thread_attr)) {
-		crit(LOGOPT_ANY,
-		     "%s: failed to init thread attribute struct!",
+		logerr("%s: failed to init thread attribute struct!",
 		     program);
 		close(start_pipefd[1]);
 		exit(1);
@@ -1608,8 +1983,7 @@ int main(int argc, char *argv[])
 
 	if (pthread_attr_setdetachstate(
 			&thread_attr, PTHREAD_CREATE_DETACHED)) {
-		crit(LOGOPT_ANY,
-		     "%s: failed to set detached thread attribute!",
+		logerr("%s: failed to set detached thread attribute!",
 		     program);
 		close(start_pipefd[1]);
 		exit(1);
@@ -1618,38 +1992,37 @@ int main(int argc, char *argv[])
 #ifdef _POSIX_THREAD_ATTR_STACKSIZE
 	if (pthread_attr_setstacksize(
 			&thread_attr, PTHREAD_STACK_MIN*64)) {
-		crit(LOGOPT_ANY,
-		     "%s: failed to set stack size thread attribute!",
-		     program);
+		logerr("%s: failed to set stack size thread attribute!",
+		       program);
 		close(start_pipefd[1]);
 		exit(1);
 	}
 #endif
 
-	msg("Starting automounter version %s, master map %s",
+	info(logging, "Starting automounter version %s, master map %s",
 		version, master_list->name);
-	msg("using kernel protocol version %d.%02d",
+	info(logging, "using kernel protocol version %d.%02d",
 		get_kver_major(), get_kver_minor());
 
 	status = pthread_key_create(&key_thread_stdenv_vars,
 				key_thread_stdenv_vars_destroy);
 	if (status) {
-		crit(LOGOPT_ANY,
-		     "failed to create thread data key for std env vars!");
+		logerr("%s: failed to create thread data key for std env vars!",
+		       program);
 		master_kill(master_list);
 		close(start_pipefd[1]);
 		exit(1);
 	}
 
 	if (!alarm_start_handler()) {
-		crit(LOGOPT_ANY, "failed to create alarm handler thread!");
+		logerr("%s: failed to create alarm handler thread!", program);
 		master_kill(master_list);
 		close(start_pipefd[1]);
 		exit(1);
 	}
 
 	if (!st_start_handler()) {
-		crit(LOGOPT_ANY, "failed to create FSM handler thread!");
+		logerr("%s: failed to create FSM handler thread!", program);
 		master_kill(master_list);
 		close(start_pipefd[1]);
 		exit(1);
@@ -1685,5 +2058,7 @@ int main(int argc, char *argv[])
 	if (dh)
 		dlclose(dh);
 #endif
+	info(logging, "autofs stopped");
+
 	exit(0);
 }

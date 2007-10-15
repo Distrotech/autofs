@@ -57,7 +57,7 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 	ctxt = malloc(sizeof(struct lookup_context));
 	if (!ctxt) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		crit(LOGOPT_ANY, MODPREFIX "malloc: %s", estr);
+		logerr(MODPREFIX "malloc: %s", estr);
 		return 1;
 	}
 
@@ -65,7 +65,7 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 
 	ctxt->parse = open_parse(mapfmt, MODPREFIX, argc, argv);
 	if (!ctxt->parse) {
-		crit(LOGOPT_ANY, MODPREFIX "failed to open parse context");
+		logerr(MODPREFIX "failed to open parse context");
 		free(ctxt);
 		return 1;
 	}
@@ -94,7 +94,7 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 
 	status = pthread_mutex_lock(&hostent_mutex);
 	if (status) {
-		error(LOGOPT_ANY, MODPREFIX "failed to lock hostent mutex");
+		error(ap->logopt, MODPREFIX "failed to lock hostent mutex");
 		return NSS_STATUS_UNAVAIL;
 	}
 
@@ -110,7 +110,7 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 
 	status = pthread_mutex_unlock(&hostent_mutex);
 	if (status)
-		error(LOGOPT_ANY, MODPREFIX "failed to unlock hostent mutex");
+		error(ap->logopt, MODPREFIX "failed to unlock hostent mutex");
 
 	source->age = age;
 
@@ -157,10 +157,10 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 		}
 
 		if (*name == '/')
-			msg(MODPREFIX
+			info(ap->logopt, MODPREFIX
 			      "can't find path in hosts map %s", name);
 		else
-			msg(MODPREFIX
+			info(ap->logopt, MODPREFIX
 			      "can't find path in hosts map %s/%s",
 			      ap->path, name);
 
@@ -216,7 +216,7 @@ done:
 			if (!mapent) {
 				char *estr;
 				estr = strerror_r(errno, buf, MAX_ERR_BUF);
-				crit(ap->logopt, MODPREFIX "malloc: %s", estr);
+				logerr(MODPREFIX "malloc: %s", estr);
 				rpc_exports_free(exp);
 				return NSS_STATUS_UNAVAIL;
 			}
@@ -230,7 +230,7 @@ done:
 			if (!mapent) {
 				char *estr;
 				estr = strerror_r(errno, buf, MAX_ERR_BUF);
-				crit(ap->logopt, MODPREFIX "malloc: %s", estr);
+				logerr(MODPREFIX "malloc: %s", estr);
 				rpc_exports_free(exp);
 				return NSS_STATUS_UNAVAIL;
 			}

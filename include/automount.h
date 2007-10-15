@@ -131,6 +131,7 @@ struct mapent_cache {
 	unsigned int size;
 	pthread_mutex_t ino_index_mutex;
 	struct list_head *ino_index;
+	struct autofs_point *ap;
 	struct map_source *map;
 	struct mapent **hash;
 };
@@ -164,7 +165,7 @@ void cache_readlock(struct mapent_cache *mc);
 void cache_writelock(struct mapent_cache *mc);
 int cache_try_writelock(struct mapent_cache *mc);
 void cache_unlock(struct mapent_cache *mc);
-struct mapent_cache *cache_init(struct map_source *map);
+struct mapent_cache *cache_init(struct autofs_point *ap, struct map_source *map);
 struct mapent_cache *cache_init_null_cache(struct master *master);
 int cache_set_ino_index(struct mapent_cache *mc, const char *key, dev_t dev, ino_t ino);
 /* void cache_set_ino(struct mapent *me, dev_t dev, ino_t ino); */
@@ -200,11 +201,11 @@ int free_argv(int argc, const char **argv);
 inline void dump_core(void);
 int aquire_lock(void);
 void release_lock(void);
-int spawnl(logger *log, const char *prog, ...);
-int spawnv(logger *log, const char *prog, const char *const *argv);
-int spawn_mount(logger *log, ...);
-int spawn_bind_mount(logger *log, ...);
-int spawn_umount(logger *log, ...);
+int spawnl(unsigned logopt, const char *prog, ...);
+int spawnv(unsigned logopt, const char *prog, const char *const *argv);
+int spawn_mount(unsigned logopt, ...);
+int spawn_bind_mount(unsigned logopt, ...);
+int spawn_umount(unsigned logopt, ...);
 void reset_signals(void);
 int do_mount(struct autofs_point *ap, const char *root, const char *name,
 	     int name_len, const char *what, const char *fstype,
@@ -221,6 +222,8 @@ int rmdir_path(struct autofs_point *ap, const char *path, dev_t dev);
 #define KEY_MAX_LEN    NAME_MAX
 #define MAPENT_MAX_LEN 4095
 #define PARSE_MAX_BUF	KEY_MAX_LEN + MAPENT_MAX_LEN + 2
+
+#define AUTOFS_LOGPRI_FIFO "/tmp/autofs.fifo"
 
 int lookup_nss_read_master(struct master *master, time_t age);
 int lookup_nss_read_map(struct autofs_point *ap, struct map_source *source, time_t age);
@@ -435,6 +438,7 @@ struct autofs_point {
 	int pipefd;			/* File descriptor for pipe */
 	int kpipefd;			/* Kernel end descriptor for pipe */
 	int ioctlfd;			/* File descriptor for ioctls */
+	int logpri_fifo;		/* FIFO used for changing log levels */
 	dev_t dev;			/* "Device" number assigned by kernel */
 	struct master_mapent *entry;	/* Master map entry for this mount */
 	unsigned int type;		/* Type of map direct or indirect */
@@ -464,8 +468,8 @@ struct autofs_point {
 
 void *handle_mounts(void *arg);
 int umount_multi(struct autofs_point *ap, const char *path, int incl);
-int send_ready(int ioctlfd, unsigned int wait_queue_token);
-int send_fail(int ioctlfd, unsigned int wait_queue_token);
+int send_ready(unsigned logopt, int ioctlfd, unsigned int wait_queue_token);
+int send_fail(unsigned logopt, int ioctlfd, unsigned int wait_queue_token);
 int do_expire(struct autofs_point *ap, const char *name, int namelen);
 void *expire_proc_indirect(void *);
 void *expire_proc_direct(void *);
@@ -483,8 +487,8 @@ int handle_packet_expire_indirect(struct autofs_point *ap, autofs_packet_expire_
 int handle_packet_expire_direct(struct autofs_point *ap, autofs_packet_expire_direct_t *pkt);
 int handle_packet_missing_indirect(struct autofs_point *ap, autofs_packet_missing_indirect_t *pkt);
 int handle_packet_missing_direct(struct autofs_point *ap, autofs_packet_missing_direct_t *pkt);
-void rm_unwanted(const char *path, int incl, dev_t dev);
-int count_mounts(const char *path, dev_t dev);
+void rm_unwanted(unsigned logopt, const char *path, int incl, dev_t dev);
+int count_mounts(unsigned logopt, const char *path, dev_t dev);
 
 #define state_mutex_lock(ap) \
 do { \

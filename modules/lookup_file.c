@@ -63,13 +63,13 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 	ctxt = malloc(sizeof(struct lookup_context));
 	if (!ctxt) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		crit(LOGOPT_ANY, MODPREFIX "malloc: %s", estr);
+		logerr(MODPREFIX "malloc: %s", estr);
 		return 1;
 	}
 
 	if (argc < 1) {
 		free(ctxt);
-		crit(LOGOPT_ANY, MODPREFIX "No map name");
+		logerr(MODPREFIX "No map name");
 		return 1;
 	}
 
@@ -77,21 +77,21 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 
 	if (ctxt->mapname[0] != '/') {
 		free(ctxt);
-		msg(MODPREFIX "file map %s is not an absolute pathname",
-		    argv[0]);
+		logmsg(MODPREFIX
+		     "file map %s is not an absolute pathname", argv[0]);
 		return 1;
 	}
 
 	if (access(ctxt->mapname, R_OK)) {
 		free(ctxt);
-		msg(MODPREFIX "file map %s missing or not readable",
-		    argv[0]);
+		warn(LOGOPT_NONE, MODPREFIX
+		    "file map %s missing or not readable", argv[0]);
 		return 1;
 	}
 
 	if (stat(ctxt->mapname, &st)) {
 		free(ctxt);
-		crit(LOGOPT_ANY, MODPREFIX "file map %s, could not stat",
+		logmsg(MODPREFIX "file map %s, could not stat",
 		     argv[0]);
 		return 1;
 	}
@@ -104,7 +104,7 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 	ctxt->parse = open_parse(mapfmt, MODPREFIX, argc - 1, argv + 1);
 	if (!ctxt->parse) {
 		free(ctxt);
-		crit(LOGOPT_ANY, MODPREFIX "failed to open parse context");
+		logmsg(MODPREFIX "failed to open parse context");
 		return 1;
 	}
 	*context = ctxt;
@@ -112,7 +112,7 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 	return 0;
 }
 
-static int read_one(FILE *f, char *key, unsigned int *k_len, char *mapent, unsigned int *m_len)
+static int read_one(unsigned logopt, FILE *f, char *key, unsigned int *k_len, char *mapent, unsigned int *m_len)
 {
 	char *kptr, *p;
 	int mapent_len, key_len;
@@ -193,7 +193,7 @@ static int read_one(FILE *f, char *key, unsigned int *k_len, char *mapent, unsig
 				if (gotten == got_plus)
 					goto got_it;
 				else if (escape == esc_all) {
-					warn(LOGOPT_ANY, MODPREFIX
+					warn(logopt, MODPREFIX
 					    "unmatched \" in map key %s", key);
 					goto next;
 				} else if (escape != esc_val)
@@ -208,7 +208,7 @@ static int read_one(FILE *f, char *key, unsigned int *k_len, char *mapent, unsig
 				if (key_len == KEY_MAX_LEN) {
 					state = st_badent;
 					gotten = got_nothing;
-					warn(LOGOPT_ANY,
+					warn(logopt,
 					      MODPREFIX "map key \"%s...\" "
 					      "is too long.  The maximum key "
 					      "length is %d", key,
@@ -245,7 +245,7 @@ static int read_one(FILE *f, char *key, unsigned int *k_len, char *mapent, unsig
 				state = st_begin;
 				if (gotten == got_real || gotten == getting)
 					goto got_it;
-				warn(LOGOPT_ANY, MODPREFIX 
+				warn(logopt, MODPREFIX 
 				      "bad map entry \"%s...\" for key "
 				      "\"%s\"", mapent, key);
 				goto next;
@@ -286,7 +286,7 @@ static int read_one(FILE *f, char *key, unsigned int *k_len, char *mapent, unsig
 			if (ch == '\n') {
 				if (escape == esc_all) {
 					state = st_begin;
-					warn(LOGOPT_ANY, MODPREFIX
+					warn(logopt, MODPREFIX
 					     "unmatched \" in %s for key %s",
 					     mapent, key);
 					goto next;
@@ -310,7 +310,7 @@ static int read_one(FILE *f, char *key, unsigned int *k_len, char *mapent, unsig
 				   	goto got_it;
 				ungetc(nch, f);
 			} else {
-				warn(LOGOPT_ANY,
+				warn(logopt,
 				      MODPREFIX "map entry \"%s...\" for key "
 				      "\"%s\" is too long.  The maximum entry"
 				      " size is %d", mapent, key,
@@ -388,6 +388,7 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 	struct lookup_context *ctxt = (struct lookup_context *) context;
 	unsigned int timeout = master->default_timeout;
 	unsigned int logging = master->default_logging;
+	unsigned int logopt = master->logopt;
 	char *buffer;
 	int blen;
 	char *path;
@@ -402,29 +403,28 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 		return NSS_STATUS_UNAVAIL;
 
 	if (master->depth > MAX_INCLUDE_DEPTH) {
-		error(LOGOPT_ANY,
-		      MODPREFIX
+		error(logopt, MODPREFIX
 		      "maximum include depth exceeded %s", master->name);
 		return NSS_STATUS_UNAVAIL;
 	}
 
 	path = alloca(KEY_MAX_LEN + 1);
 	if (!path) {
-		error(LOGOPT_ANY,
+		error(logopt,
 		      MODPREFIX "could not malloc storage for path");
 		return NSS_STATUS_UNAVAIL;
 	}
 
 	ent = alloca(MAPENT_MAX_LEN + 1);
 	if (!ent) {
-		error(LOGOPT_ANY,
+		error(logopt,
 		      MODPREFIX "could not malloc storage for mapent");
 		return NSS_STATUS_UNAVAIL;
 	}
 
 	f = fopen(ctxt->mapname, "r");
 	if (!f) {
-		error(LOGOPT_ANY,
+		error(logopt,
 		      MODPREFIX "could not open master map file %s",
 		      ctxt->mapname);
 		return NSS_STATUS_UNAVAIL;
@@ -438,19 +438,19 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 	}
 
 	while(1) {
-		entry = read_one(f, path, &path_len, ent, &ent_len);
+		entry = read_one(logopt, f, path, &path_len, ent, &ent_len);
 		if (!entry) {
 			if (feof(f))
 				break;
 			if (ferror(f)) {
-				warn(LOGOPT_ANY, MODPREFIX
+				warn(logopt, MODPREFIX
 				     "error reading map %s", ctxt->mapname);
 				break;
 			}
 			continue;
 		}
 
-		debug(LOGOPT_NONE, MODPREFIX "read entry %s", path);
+		debug(logopt, MODPREFIX "read entry %s", path);
 
 		/*
 		 * If key starts with '+' it has to be an
@@ -470,7 +470,7 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 			master->depth++;
 			status = lookup_nss_read_master(master, age);
 			if (!status)
-				warn(LOGOPT_ANY,
+				warn(logopt,
 				     MODPREFIX
 				     "failed to read included master map %s",
 				     master->name);
@@ -482,7 +482,7 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 			blen = path_len + 1 + ent_len + 1;
 			buffer = malloc(blen);
 			if (!buffer) {
-				error(LOGOPT_ANY,
+				error(logopt,
 				      MODPREFIX "could not malloc parse buffer");
 				return NSS_STATUS_UNAVAIL;
 			}
@@ -503,7 +503,7 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 	}
 
 	if (fstat(fd, &st)) {
-		crit(LOGOPT_ANY, MODPREFIX "file map %s, could not stat",
+		crit(logopt, MODPREFIX "file map %s, could not stat",
 		       ctxt->mapname);
 		return NSS_STATUS_UNAVAIL;
 	}
@@ -684,12 +684,12 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 	}
 
 	while(1) {
-		entry = read_one(f, key, &k_len, mapent, &m_len);
+		entry = read_one(ap->logopt, f, key, &k_len, mapent, &m_len);
 		if (!entry) {
 			if (feof(f))
 				break;
 			if (ferror(f)) {
-				warn(LOGOPT_ANY, MODPREFIX
+				warn(ap->logopt, MODPREFIX
 				      "error reading map %s", ctxt->mapname);
 				break;
 			}
@@ -791,7 +791,7 @@ static int lookup_one(struct autofs_point *ap,
 	}
 
 	while(1) {
-		entry = read_one(f, mkey, &k_len, mapent, &m_len);
+		entry = read_one(ap->logopt, f, mkey, &k_len, mapent, &m_len);
 		if (entry) {
 			/*
 			 * If key starts with '+' it has to be an
@@ -860,7 +860,7 @@ static int lookup_one(struct autofs_point *ap,
 			break;
 
 		if (ferror(f)) {
-			warn(LOGOPT_ANY, MODPREFIX
+			warn(ap->logopt, MODPREFIX
 			      "error reading map %s", ctxt->mapname);
 			break;
 		}		
@@ -904,7 +904,7 @@ static int lookup_wild(struct autofs_point *ap, struct lookup_context *ctxt)
 	}
 
 	while(1) {
-		entry = read_one(f, mkey, &k_len, mapent, &m_len);
+		entry = read_one(ap->logopt, f, mkey, &k_len, mapent, &m_len);
 		if (entry) {
 			int eq;
 
@@ -925,7 +925,7 @@ static int lookup_wild(struct autofs_point *ap, struct lookup_context *ctxt)
 			break;
 
 		if (ferror(f)) {
-			warn(LOGOPT_ANY, MODPREFIX
+			warn(ap->logopt, MODPREFIX
 			      "error reading map %s", ctxt->mapname);
 			break;
 		}		

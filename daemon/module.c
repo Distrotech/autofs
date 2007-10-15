@@ -33,7 +33,7 @@ int load_autofs4_module(void)
 	 */
 	fp = fopen("/proc/filesystems", "r");
 	if (!fp) {
-		error(LOGOPT_ANY, "cannot open /proc/filesystems\n");
+		logerr("cannot open /proc/filesystems\n");
 		return 0;
 	}
 
@@ -45,7 +45,7 @@ int load_autofs4_module(void)
 	}
 	fclose(fp);
 
-	ret = spawnl(log_debug, PATH_MODPROBE, PATH_MODPROBE,
+	ret = spawnl(LOGOPT_NONE, PATH_MODPROBE, PATH_MODPROBE,
 				"-q", FS_MODULE_NAME, NULL);
 	if (ret)
 		return 0;
@@ -72,7 +72,7 @@ struct lookup_mod *open_lookup(const char *name, const char *err_prefix,
 	if (!mod) {
 		if (err_prefix) {
 			char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-			crit(LOGOPT_ANY, "%s%s", err_prefix, estr);
+			logerr("%s%s", err_prefix, estr);
 		}
 		return NULL;
 	}
@@ -83,7 +83,7 @@ struct lookup_mod *open_lookup(const char *name, const char *err_prefix,
 		free(mod);
 		if (err_prefix) {
 			char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-			crit(LOGOPT_ANY, "%s%s", err_prefix, estr);
+			logerr("%s%s", err_prefix, estr);
 		}
 		return NULL;
 	}
@@ -91,7 +91,7 @@ struct lookup_mod *open_lookup(const char *name, const char *err_prefix,
 
 	if (!(dh = dlopen(fnbuf, RTLD_NOW))) {
 		if (err_prefix)
-			crit(LOGOPT_ANY, "%scannot open lookup module %s (%s)",
+			logerr("%scannot open lookup module %s (%s)",
 			       err_prefix, name, dlerror());
 		free(mod);
 		return NULL;
@@ -100,8 +100,7 @@ struct lookup_mod *open_lookup(const char *name, const char *err_prefix,
 	if (!(ver = (int *) dlsym(dh, "lookup_version"))
 	    || *ver != AUTOFS_LOOKUP_VERSION) {
 		if (err_prefix)
-			crit(LOGOPT_ANY,
-			     "%slookup module %s version mismatch",
+			logerr("%slookup module %s version mismatch",
 			     err_prefix, name);
 		dlclose(dh);
 		free(mod);
@@ -114,7 +113,7 @@ struct lookup_mod *open_lookup(const char *name, const char *err_prefix,
 	    !(mod->lookup_mount = (lookup_mount_t) dlsym(dh, "lookup_mount")) ||
 	    !(mod->lookup_done = (lookup_done_t) dlsym(dh, "lookup_done"))) {
 		if (err_prefix)
-			crit(LOGOPT_ANY, "%slookup module %s corrupt", err_prefix, name);
+			logerr("%slookup module %s corrupt", err_prefix, name);
 		dlclose(dh);
 		free(mod);
 		return NULL;
@@ -156,7 +155,7 @@ struct parse_mod *open_parse(const char *name, const char *err_prefix,
 	if (!mod) {
 		if (err_prefix) {
 			char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-			crit(LOGOPT_ANY, "%s%s", err_prefix, estr);
+			logerr("%s%s", err_prefix, estr);
 		}
 		return NULL;
 	}
@@ -167,7 +166,7 @@ struct parse_mod *open_parse(const char *name, const char *err_prefix,
 		free(mod);
 		if (err_prefix) {
 			char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-			crit(LOGOPT_ANY, "%s%s", err_prefix, estr);
+			logerr("%s%s", err_prefix, estr);
 		}
 		return NULL;
 	}
@@ -175,8 +174,7 @@ struct parse_mod *open_parse(const char *name, const char *err_prefix,
 
 	if (!(dh = dlopen(fnbuf, RTLD_NOW))) {
 		if (err_prefix)
-			crit(LOGOPT_ANY,
-			     "%scannot open parse module %s (%s)",
+			logerr("%scannot open parse module %s (%s)",
 			     err_prefix, name, dlerror());
 		free(mod);
 		return NULL;
@@ -185,8 +183,7 @@ struct parse_mod *open_parse(const char *name, const char *err_prefix,
 	if (!(ver = (int *) dlsym(dh, "parse_version"))
 	    || *ver != AUTOFS_PARSE_VERSION) {
 		if (err_prefix)
-			crit(LOGOPT_ANY,
-			     "%sparse module %s version mismatch",
+			logerr("%sparse module %s version mismatch",
 			     err_prefix, name);
 		dlclose(dh);
 		free(mod);
@@ -197,8 +194,7 @@ struct parse_mod *open_parse(const char *name, const char *err_prefix,
 	    !(mod->parse_mount = (parse_mount_t) dlsym(dh, "parse_mount")) ||
 	    !(mod->parse_done = (parse_done_t) dlsym(dh, "parse_done"))) {
 		if (err_prefix)
-			crit(LOGOPT_ANY,
-			     "%sparse module %s corrupt",
+			logerr("%sparse module %s corrupt",
 			     err_prefix, name);
 		dlclose(dh);
 		free(mod);
@@ -240,7 +236,7 @@ struct mount_mod *open_mount(const char *name, const char *err_prefix)
 	if (!mod) {
 		if (err_prefix) {
 			char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-			crit(LOGOPT_ANY, "%s%s", err_prefix, estr);
+			logerr("%s%s", err_prefix, estr);
 		}
 		return NULL;
 	}
@@ -251,7 +247,7 @@ struct mount_mod *open_mount(const char *name, const char *err_prefix)
 		free(mod);
 		if (err_prefix) {
 			char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-			crit(LOGOPT_ANY, "%s%s", err_prefix, estr);
+			logerr("%s%s", err_prefix, estr);
 		}
 		return NULL;
 	}
@@ -259,8 +255,7 @@ struct mount_mod *open_mount(const char *name, const char *err_prefix)
 
 	if (!(dh = dlopen(fnbuf, RTLD_NOW))) {
 		if (err_prefix)
-			crit(LOGOPT_ANY,
-			     "%scannot open mount module %s (%s)",
+			logerr("%scannot open mount module %s (%s)",
 			     err_prefix, name, dlerror());
 		free(mod);
 		return NULL;
@@ -269,8 +264,7 @@ struct mount_mod *open_mount(const char *name, const char *err_prefix)
 	if (!(ver = (int *) dlsym(dh, "mount_version"))
 	    || *ver != AUTOFS_MOUNT_VERSION) {
 		if (err_prefix)
-			crit(LOGOPT_ANY,
-			     "%smount module %s version mismatch",
+			logerr("%smount module %s version mismatch",
 			     err_prefix, name);
 		dlclose(dh);
 		free(mod);
@@ -281,8 +275,7 @@ struct mount_mod *open_mount(const char *name, const char *err_prefix)
 	    !(mod->mount_mount = (mount_mount_t) dlsym(dh, "mount_mount")) ||
 	    !(mod->mount_done = (mount_done_t) dlsym(dh, "mount_done"))) {
 		if (err_prefix)
-			crit(LOGOPT_ANY,
-			     "%smount module %s corrupt",
+			logerr("%smount module %s corrupt",
 			     err_prefix, name);
 		dlclose(dh);
 		free(mod);

@@ -133,14 +133,14 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 	else
 		vers = NFS_VERS_MASK | NFS_PROTO_MASK;
 
-	if (!parse_location(&hosts, what)) {
-		warn(ap->logopt, MODPREFIX "no hosts available");
+	if (!parse_location(ap->logopt, &hosts, what)) {
+		info(ap->logopt, MODPREFIX "no hosts available");
 		return 1;
 	}
-	prune_host_list(&hosts, vers, nfsoptions, ap->random_selection);
+	prune_host_list(ap->logopt, &hosts, vers, nfsoptions, ap->random_selection);
 
 	if (!hosts) {
-		warn(ap->logopt, MODPREFIX "no hosts available");
+		info(ap->logopt, MODPREFIX "no hosts available");
 		return 1;
 	}
 
@@ -159,7 +159,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 	fullpath = alloca(rlen + name_len + 2);
 	if (!fullpath) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		error(ap->logopt, MODPREFIX "alloca: %s", estr);
+		logerr(MODPREFIX "alloca: %s", estr);
 		free_host_list(&hosts);
 		return 1;
 	}
@@ -252,19 +252,19 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 			      MODPREFIX "calling mount -t %s " SLOPPY 
 			      "-o %s %s %s", fstype, nfsoptions, loc, fullpath);
 
-			err = spawn_mount(log_debug,
+			err = spawn_mount(ap->logopt,
 					  "-t", fstype, SLOPPYOPT "-o",
 					  nfsoptions, loc, fullpath, NULL);
 		} else {
 			debug(ap->logopt,
 			      MODPREFIX "calling mount -t %s %s %s",
 			      fstype, loc, fullpath);
-			err = spawn_mount(log_debug,
+			err = spawn_mount(ap->logopt,
 					  "-t", fstype, loc, fullpath, NULL);
 		}
 
 		if (!err) {
-			msg(MODPREFIX "mounted %s on %s", loc, fullpath);
+			info(ap->logopt, MODPREFIX "mounted %s on %s", loc, fullpath);
 			free(loc);
 			free_host_list(&hosts);
 			ap->ghost = save_ghost;
@@ -280,7 +280,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 
 	/* If we get here we've failed to complete the mount */
 
-	msg(MODPREFIX "nfs: mount failure %s on %s", what, fullpath);
+	info(ap->logopt, MODPREFIX "nfs: mount failure %s on %s", what, fullpath);
 
 	if (ap->type != LKP_INDIRECT)
 		return 1;

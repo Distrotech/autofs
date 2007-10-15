@@ -96,18 +96,18 @@ sasl_log_func(void *context, int level, const char *message)
 	switch (level) {
 	case SASL_LOG_ERR:
 	case SASL_LOG_FAIL:
-		error(LOGOPT_ANY, "%s", message);
+		logerr("%s", message);
 		break;
 	case SASL_LOG_WARN:
-		warn(LOGOPT_ANY, "%s", message);
+		logmsg("%s", message);
 		break;
 	case SASL_LOG_NOTE:
-		info(LOGOPT_ANY, "%s", message);
+		logmsg("%s", message);
 		break;
 	case SASL_LOG_DEBUG:
 	case SASL_LOG_TRACE:
 	case SASL_LOG_PASS:
-		debug(LOGOPT_NONE, "%s", message);
+		debug(LOGOPT_DEBUG, "%s", message);
 		break;
 	default:
 		break;
@@ -129,7 +129,7 @@ getuser_func(void *context, int id, const char **result, unsigned *len)
 			*len = strlen(sasl_auth_id);
 		break;
 	default:
-		error(LOGOPT_ANY, "unknown id in request: %d", id);
+		error(LOGOPT_VERBOSE, "unknown id in request: %d", id);
 		return SASL_FAIL;
 	}
 
@@ -166,7 +166,7 @@ getpass_func(sasl_conn_t *conn, void *context, int id, sasl_secret_t **psecret)
  *                the returned data.
  */
 char **
-get_server_SASL_mechanisms(LDAP *ld)
+get_server_SASL_mechanisms(unsigned logopt, LDAP *ld)
 {
 	int ret;
 	const char *saslattrlist[] = {"supportedSASLmechanisms", NULL};
@@ -178,7 +178,7 @@ get_server_SASL_mechanisms(LDAP *ld)
 				NULL, NULL,
 				NULL, LDAP_NO_LIMIT, &results);
 	if (ret != LDAP_SUCCESS) {
-		error(LOGOPT_ANY, "%s", ldap_err2string(ret));
+		error(logopt, "%s", ldap_err2string(ret));
 		return NULL;
 	}
 
@@ -186,7 +186,7 @@ get_server_SASL_mechanisms(LDAP *ld)
 	if (entry == NULL) {
 		/* No root DSE. (!) */
 		ldap_msgfree(results);
-		debug(LOGOPT_NONE,
+		debug(logopt,
 		      "a lookup of \"supportedSASLmechanisms\" returned "
 		      "no results.");
 		return NULL;
@@ -196,7 +196,7 @@ get_server_SASL_mechanisms(LDAP *ld)
 	ldap_msgfree(results);
 	if (mechanisms == NULL) {
 		/* Well, that was a waste of time. */
-		msg("No SASL authentication mechanisms are supported"
+		info(logopt, "No SASL authentication mechanisms are supported"
 		    " by the LDAP server.");
 		return NULL;
 	}
@@ -208,7 +208,7 @@ get_server_SASL_mechanisms(LDAP *ld)
  *  Returns 0 upon successful connect, -1 on failure.
  */
 int
-do_sasl_bind(LDAP *ld, sasl_conn_t *conn, const char **clientout,
+do_sasl_bind(unsigned logopt, LDAP *ld, sasl_conn_t *conn, const char **clientout,
 	     unsigned int *clientoutlen, const char *auth_mech, int sasl_result)
 {
 	int ret, msgid, bind_result;
@@ -226,7 +226,7 @@ do_sasl_bind(LDAP *ld, sasl_conn_t *conn, const char **clientout,
 				     &client_cred : NULL,
 				     NULL, NULL, &msgid);
 		if (ret != LDAP_SUCCESS) {
-			crit(LOGOPT_ANY,
+			crit(logopt,
 			     "Error sending sasl_bind request to "
 			     "the server: %s", ldap_err2string(ret));
 			return -1;
@@ -236,7 +236,7 @@ do_sasl_bind(LDAP *ld, sasl_conn_t *conn, const char **clientout,
 		results = NULL;
 		ret = ldap_result(ld, msgid, LDAP_MSG_ALL, NULL, &results);
 		if (ret != LDAP_RES_BIND) {
-			crit(LOGOPT_ANY,
+			crit(logopt,
 			     "Error while waiting for response to "
 			     "sasl_bind request: %s", ldap_err2string(ret));
 			return -1;
@@ -264,7 +264,7 @@ do_sasl_bind(LDAP *ld, sasl_conn_t *conn, const char **clientout,
 			ret = ldap_get_option(ld, LDAP_OPT_RESULT_CODE,
 					      &bind_result);
 			if (ret != LDAP_SUCCESS) {
-				crit(LOGOPT_ANY,
+				crit(logopt,
 				     "Error retrieving response to sasl_bind "
 				     "request: %s", ldap_err2string(ret));
 				ret = -1;
@@ -277,7 +277,7 @@ do_sasl_bind(LDAP *ld, sasl_conn_t *conn, const char **clientout,
 				bind_result = ret;
 				break;
 			default:
-				warn(LOGOPT_ANY,
+				warn(logopt,
 				     "Error parsing response to sasl_bind "
 				     "request: %s.", ldap_err2string(ret));
 				break;
@@ -299,7 +299,7 @@ do_sasl_bind(LDAP *ld, sasl_conn_t *conn, const char **clientout,
 		expected_data = sasl_result == SASL_CONTINUE;
 
 		if (have_data && !expected_data) {
-			warn(LOGOPT_ANY,
+			warn(logopt,
 			     "The LDAP server sent data in response to our "
 			     "bind request, but indicated that the bind was "
 			     "complete. LDAP SASL bind with mechansim %s "
@@ -308,7 +308,7 @@ do_sasl_bind(LDAP *ld, sasl_conn_t *conn, const char **clientout,
 			break;
 		}
 		if (expected_data && !have_data) {
-			warn(LOGOPT_ANY,
+			warn(logopt,
 			     "The LDAP server indicated that the LDAP SASL "
 			     "bind was incomplete, but did not provide the "
 			     "required data to proceed. LDAP SASL bind with "
@@ -340,7 +340,7 @@ do_sasl_bind(LDAP *ld, sasl_conn_t *conn, const char **clientout,
 			 */
 			if ((*clientoutlen > 0) &&
 			    (bind_result != LDAP_SASL_BIND_IN_PROGRESS)) {
-				warn(LOGOPT_ANY,
+				warn(logopt,
 				     "We have data for the server, "
 				     "but it thinks we are done!");
 				/* XXX should print out debug data here */
@@ -372,7 +372,7 @@ do_sasl_bind(LDAP *ld, sasl_conn_t *conn, const char **clientout,
  *  Upon failure, -1 is returned.
  */
 int
-sasl_do_kinit(struct lookup_context *ctxt)
+sasl_do_kinit(unsigned logopt, struct lookup_context *ctxt)
 {
 	krb5_error_code ret;
 	krb5_principal tgs_princ, krb5_client_princ = ctxt->krb5_client_princ;
@@ -384,33 +384,33 @@ sasl_do_kinit(struct lookup_context *ctxt)
 		return 0;
 	ctxt->kinit_done = 1;
 
-	debug(LOGOPT_NONE,
+	debug(logopt,
 	      "initializing kerberos ticket: client principal %s ",
 	      ctxt->client_princ ? "" : "autofsclient");
 
 	ret = krb5_init_context(&ctxt->krb5ctxt);
 	if (ret) {
-		error(LOGOPT_ANY, "krb5_init_context failed with %d", ret);
+		error(logopt, "krb5_init_context failed with %d", ret);
 		return -1;
 	}
 
 	ret = krb5_cc_resolve(ctxt->krb5ctxt, krb5ccval, &ctxt->krb5_ccache);
 	if (ret) {
-		error(LOGOPT_ANY, "krb5_cc_resolve failed with error %d",
+		error(logopt, "krb5_cc_resolve failed with error %d",
 		      ret);
 		krb5_free_context(ctxt->krb5ctxt);
 		return -1;
 	}
 
 	if (ctxt->client_princ) {
-		debug(LOGOPT_NONE,
+		debug(logopt,
 		      "calling krb5_parse_name on client principal %s",
 		      ctxt->client_princ);
 
 		ret = krb5_parse_name(ctxt->krb5ctxt, ctxt->client_princ,
 				      &krb5_client_princ);
 		if (ret) {
-			error(LOGOPT_ANY,
+			error(logopt,
 			      "krb5_parse_name failed for "
 			      "specified client principal %s",
 			      ctxt->client_princ);
@@ -419,14 +419,14 @@ sasl_do_kinit(struct lookup_context *ctxt)
 	} else {
 		char *tmp_name = NULL;
 
-		debug(LOGOPT_NONE,
+		debug(logopt,
 		      "calling krb5_sname_to_principal using defaults");
 
 		ret = krb5_sname_to_principal(ctxt->krb5ctxt, NULL,
 					"autofsclient", KRB5_NT_SRV_HST, 
 					&krb5_client_princ);
 		if (ret) {
-			error(LOGOPT_ANY,
+			error(logopt,
 			      "krb5_sname_to_principal failed for "
 			      "%s with error %d",
 			      ctxt->client_princ ? "" : "autofsclient", ret);
@@ -437,13 +437,13 @@ sasl_do_kinit(struct lookup_context *ctxt)
 		ret = krb5_unparse_name(ctxt->krb5ctxt,
 					krb5_client_princ, &tmp_name);
 		if (ret) {
-			debug(LOGOPT_NONE,
+			debug(logopt,
 			      "krb5_unparse_name failed with error %d",
 			      ret);
 			goto out_cleanup_cc;
 		}
 
-		debug(LOGOPT_NONE,
+		debug(logopt,
 		      "principal used for authentication: \"%s\"", tmp_name);
 
 		krb5_free_unparsed_name(ctxt->krb5ctxt, tmp_name);
@@ -458,19 +458,19 @@ sasl_do_kinit(struct lookup_context *ctxt)
 		krb5_princ_realm(ctxt->krb5ctxt, krb5_client_princ)->data,
 		0);
 	if (ret) {
-		error(LOGOPT_ANY,
+		error(logopt,
 		      "krb5_build_principal failed with error %d", ret);
 		goto out_cleanup_cc;
 	}
 
 	ret = krb5_unparse_name(ctxt->krb5ctxt, tgs_princ, &tgs_name);
 	if (ret) {
-		error(LOGOPT_ANY, "krb5_unparse_name failed with error %d",
+		error(logopt, "krb5_unparse_name failed with error %d",
 		      ret);
 		goto out_cleanup_cc;
 	}
 
-	debug(LOGOPT_NONE, "Using tgs name %s", tgs_name);
+	debug(logopt, "Using tgs name %s", tgs_name);
 
 	memset(&my_creds, 0, sizeof(my_creds));
 	ret = krb5_get_init_creds_keytab(ctxt->krb5ctxt, &my_creds,
@@ -479,7 +479,7 @@ sasl_do_kinit(struct lookup_context *ctxt)
 					 0 /* relative start time */,
 					 tgs_name, NULL);
 	if (ret) {
-		error(LOGOPT_ANY,
+		error(logopt,
 		      "krb5_get_init_creds_keytab failed with error %d",
 		      ret);
 		goto out_cleanup_unparse;
@@ -500,7 +500,7 @@ sasl_do_kinit(struct lookup_context *ctxt)
 		fatal(status);
 
 	if (ret) {
-		error(LOGOPT_ANY,
+		error(logopt,
 		      "krb5_cc_initialize failed with error %d", ret);
 		goto out_cleanup_unparse;
 	}
@@ -508,7 +508,7 @@ sasl_do_kinit(struct lookup_context *ctxt)
 	/* and store credentials for that principal */
 	ret = krb5_cc_store_cred(ctxt->krb5ctxt, ctxt->krb5_ccache, &my_creds);
 	if (ret) {
-		error(LOGOPT_ANY,
+		error(logopt,
 		      "krb5_cc_store_cred failed with error %d", ret);
 		goto out_cleanup_unparse;
 	}
@@ -516,12 +516,12 @@ sasl_do_kinit(struct lookup_context *ctxt)
 	/* finally, set the environment variable to point to our
 	 * credentials cache */
 	if (setenv(krb5ccenv, krb5ccval, 1) != 0) {
-		error(LOGOPT_ANY, "setenv failed with %d", errno);
+		error(logopt, "setenv failed with %d", errno);
 		goto out_cleanup_unparse;
 	}
 	ctxt->kinit_successful = 1;
 
-	debug(LOGOPT_NONE, "Kerberos authentication was successful!");
+	debug(logopt, "Kerberos authentication was successful!");
 
 	krb5_free_unparsed_name(ctxt->krb5ctxt, tgs_name);
 
@@ -540,7 +540,7 @@ out_cleanup_cc:
 	else
 		ret = krb5_cc_destroy(ctxt->krb5ctxt, ctxt->krb5_ccache);
 	if (ret)
-		warn(LOGOPT_ANY,
+		warn(logopt,
 		     "krb5_cc_destroy failed with non-fatal error %d", ret);
 
 	status = pthread_mutex_unlock(&krb5cc_mutex);
@@ -559,7 +559,7 @@ out_cleanup_cc:
  *  Returns a valid sasl_conn_t pointer upon success, NULL on failure.
  */
 sasl_conn_t *
-sasl_bind_mech(LDAP *ldap, struct lookup_context *ctxt, const char *mech)
+sasl_bind_mech(unsigned logopt, LDAP *ldap, struct lookup_context *ctxt, const char *mech)
 {
 	sasl_conn_t *conn;
 	char *tmp, *host = NULL;
@@ -569,15 +569,15 @@ sasl_bind_mech(LDAP *ldap, struct lookup_context *ctxt, const char *mech)
 	int result;
 
 	if (!strncmp(mech, "GSSAPI", 6)) {
-		if (sasl_do_kinit(ctxt) != 0)
+		if (sasl_do_kinit(logopt, ctxt) != 0)
 			return NULL;
 	}
 
-	debug(LOGOPT_NONE, "Attempting sasl bind with mechanism %s", mech);
+	debug(logopt, "Attempting sasl bind with mechanism %s", mech);
 
 	result = ldap_get_option(ldap, LDAP_OPT_HOST_NAME, &host);
 	if (result != LDAP_SUCCESS || !host) {
-		debug(LOGOPT_NONE, "failed to get hostname for connection");
+		debug(logopt, "failed to get hostname for connection");
 		return NULL;
 	}
 
@@ -587,7 +587,7 @@ sasl_bind_mech(LDAP *ldap, struct lookup_context *ctxt, const char *mech)
 	/* Create a new authentication context for the service. */
 	result = sasl_client_new("ldap", host, NULL, NULL, NULL, 0, &conn);
 	if (result != SASL_OK) {
-		error(LOGOPT_ANY, "sasl_client_new failed with error %d",
+		error(logopt, "sasl_client_new failed with error %d",
 		      result);
 		ldap_memfree(host);
 		return NULL;
@@ -599,23 +599,23 @@ sasl_bind_mech(LDAP *ldap, struct lookup_context *ctxt, const char *mech)
 
 	/* OK and CONTINUE are the only non-fatal return codes here. */
 	if ((result != SASL_OK) && (result != SASL_CONTINUE)) {
-		error(LOGOPT_ANY, "sasl_client start failed with error: %s",
+		error(logopt, "sasl_client start failed with error: %s",
 		      sasl_errdetail(conn));
 		ldap_memfree(host);
 		sasl_dispose(&conn);
 		return NULL;
 	}
 
-	result = do_sasl_bind(ldap, conn,
+	result = do_sasl_bind(logopt, ldap, conn,
 			 &clientout, &clientoutlen, chosen_mech, result);
 	if (result == 0) {
 		ldap_memfree(host);
-		debug(LOGOPT_NONE, "sasl bind with mechanism %s succeeded",
+		debug(logopt, "sasl bind with mechanism %s succeeded",
 		      chosen_mech);
 		return conn;
 	}
 
-	info(LOGOPT_ANY, "sasl bind with mechanism %s failed", mech);
+	info(logopt, "sasl bind with mechanism %s failed", mech);
 
 	/* sasl bind failed */
 	ldap_memfree(host);
@@ -629,14 +629,14 @@ sasl_bind_mech(LDAP *ldap, struct lookup_context *ctxt, const char *mech)
  *  -1 on error or if no mechanism is supported by both client and server.
  */
 sasl_conn_t *
-sasl_choose_mech(LDAP *ldap, struct lookup_context *ctxt)
+sasl_choose_mech(unsigned logopt, LDAP *ldap, struct lookup_context *ctxt)
 {
 	sasl_conn_t *conn;
 	int authenticated;
 	int i;
 	char **mechanisms;
 
-	mechanisms = get_server_SASL_mechanisms(ldap);
+	mechanisms = get_server_SASL_mechanisms(logopt, ldap);
 	if (!mechanisms)
 		return NULL;
 
@@ -652,12 +652,11 @@ sasl_choose_mech(LDAP *ldap, struct lookup_context *ctxt)
 		if (authtype_requires_creds(mechanisms[i]))
 			continue;
 
-		conn = sasl_bind_mech(ldap, ctxt, mechanisms[i]);
+		conn = sasl_bind_mech(logopt, ldap, ctxt, mechanisms[i]);
 		if (conn) {
 			ctxt->sasl_mech = strdup(mechanisms[i]);
 			if (!ctxt->sasl_mech) {
-				crit(LOGOPT_ANY,
-				     "Successfully authenticated with "
+				crit(logopt, "Successfully authenticated with "
 				     "mechanism %s, but failed to allocate "
 				     "memory to hold the mechanism type.",
 				     mechanisms[i]);
@@ -668,11 +667,11 @@ sasl_choose_mech(LDAP *ldap, struct lookup_context *ctxt)
 			authenticated = 1;
 			break;
 		}
-		debug(LOGOPT_NONE, "Failed to authenticate with mech %s",
+		debug(logopt, "Failed to authenticate with mech %s",
 		      mechanisms[i]);
 	}
 
-	debug(LOGOPT_NONE, "authenticated: %d, sasl_mech: %s",
+	debug(logopt, "authenticated: %d, sasl_mech: %s",
 	      authenticated, ctxt->sasl_mech);
 
 	ldap_value_free(mechanisms);
@@ -680,14 +679,14 @@ sasl_choose_mech(LDAP *ldap, struct lookup_context *ctxt)
 }
 
 int
-autofs_sasl_bind(LDAP *ldap, struct lookup_context *ctxt)
+autofs_sasl_bind(unsigned logopt, LDAP *ldap, struct lookup_context *ctxt)
 {
 	sasl_conn_t *conn;
 
 	if (!ctxt->sasl_mech)
 		return -1;
 
-	conn = sasl_bind_mech(ldap, ctxt, ctxt->sasl_mech);
+	conn = sasl_bind_mech(logopt, ldap, ctxt, ctxt->sasl_mech);
 	if (!conn)
 		return -1;
 
@@ -717,13 +716,13 @@ autofs_sasl_unbind(struct lookup_context *ctxt)
  * -1  -  Failure
  */
 int
-autofs_sasl_init(LDAP *ldap, struct lookup_context *ctxt)
+autofs_sasl_init(unsigned logopt, LDAP *ldap, struct lookup_context *ctxt)
 {
 	sasl_conn_t *conn;
 
 	/* Start up Cyrus SASL--only needs to be done once. */
 	if (sasl_client_init(callbacks) != SASL_OK) {
-		error(LOGOPT_ANY, "sasl_client_init failed");
+		error(logopt, "sasl_client_init failed");
 		return -1;
 	}
 
@@ -736,9 +735,9 @@ autofs_sasl_init(LDAP *ldap, struct lookup_context *ctxt)
 	 *  select one.
 	 */
 	if (ctxt->sasl_mech)
-		conn = sasl_bind_mech(ldap, ctxt, ctxt->sasl_mech);
+		conn = sasl_bind_mech(logopt, ldap, ctxt, ctxt->sasl_mech);
 	else
-		conn = sasl_choose_mech(ldap, ctxt);
+		conn = sasl_choose_mech(logopt, ldap, ctxt);
 
 	if (conn) {
 		sasl_dispose(&conn);
@@ -772,8 +771,7 @@ autofs_sasl_done(struct lookup_context *ctxt)
 		else 
 			ret = krb5_cc_destroy(ctxt->krb5ctxt, ctxt->krb5_ccache);
 		if (ret)
-			warn(LOGOPT_ANY,
-			     "krb5_cc_destroy failed with non-fatal error %d",
+			logmsg("krb5_cc_destroy failed with non-fatal error %d",
 			     ret);
 
 		status = pthread_mutex_unlock(&krb5cc_mutex);
@@ -782,8 +780,7 @@ autofs_sasl_done(struct lookup_context *ctxt)
 
 		krb5_free_context(ctxt->krb5ctxt);
 		if (unsetenv(krb5ccenv) != 0)
-			warn(LOGOPT_ANY,
-			     "unsetenv failed with error %d", errno);
+			logerr("unsetenv failed with error %d", errno);
 
 		ctxt->krb5ctxt = NULL;
 		ctxt->krb5_ccache = NULL;

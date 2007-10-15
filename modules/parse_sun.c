@@ -277,7 +277,7 @@ int parse_init(int argc, const char *const *argv, void **context)
 
 	if (!(ctxt = (struct parse_context *) malloc(sizeof(struct parse_context)))) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		crit(LOGOPT_ANY, MODPREFIX "malloc: %s", estr);
+		logerr(MODPREFIX "malloc: %s", estr);
 		*context = NULL;
 		return 1;
 	}
@@ -302,7 +302,7 @@ int parse_init(int argc, const char *const *argv, void **context)
 
 				if (!def) {
 					char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-					error(LOGOPT_ANY, MODPREFIX "strdup: %s", estr);
+					logerr(MODPREFIX "strdup: %s", estr);
 					break;
 				}
 
@@ -387,7 +387,7 @@ int parse_init(int argc, const char *const *argv, void **context)
 			if (!noptstr) {
 				char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
 				kill_context(ctxt);
-				crit(LOGOPT_ANY, MODPREFIX "%s", estr);
+				logerr(MODPREFIX "%s", estr);
 				*context = NULL;
 				return 1;
 			}
@@ -408,7 +408,7 @@ int parse_init(int argc, const char *const *argv, void **context)
 			char *tmp = concat_options(gbl_options, ctxt->optstr);
 			if (!tmp) {
 				char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-				error(LOGOPT_ANY, MODPREFIX "concat_options: %s", estr);
+				logerr(MODPREFIX "concat_options: %s", estr);
 				free(gbl_options);
 			} else
 				ctxt->optstr = tmp;
@@ -472,7 +472,7 @@ static char *concat_options(char *left, char *right)
 
 	if (ret == NULL) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		error(LOGOPT_ANY, MODPREFIX "malloc: %s", estr);
+		logerr(MODPREFIX "malloc: %s", estr);
 		return NULL;
 	}
 
@@ -637,8 +637,7 @@ static int check_is_multi(const char *mapent)
 	int not_first_chunk = 0;
 
 	if (!p) {
-		crit(LOGOPT_ANY,
-		     MODPREFIX "unexpected NULL map entry pointer");
+		logerr(MODPREFIX "unexpected NULL map entry pointer");
 		return 0;
 	}
 
@@ -1021,7 +1020,7 @@ int parse_mount(struct autofs_point *ap, const char *name,
 	pmapent = alloca(mapent_len + 1);
 	if (!pmapent) {	
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		error(ap->logopt, MODPREFIX "alloca: %s", estr);
+		logerr(MODPREFIX "alloca: %s", estr);
 		ctxt->subst = removestdenv(ctxt->subst);
 		macro_unlock();
 		pthread_setcancelstate(cur_state, NULL);
@@ -1041,7 +1040,7 @@ int parse_mount(struct autofs_point *ap, const char *name,
 	options = strdup(ctxt->optstr ? ctxt->optstr : "");
 	if (!options) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		error(ap->logopt, MODPREFIX "strdup: %s", estr);
+		logerr(MODPREFIX "strdup: %s", estr);
 		return 1;
 	}
 	optlen = strlen(options);
@@ -1119,7 +1118,7 @@ int parse_mount(struct autofs_point *ap, const char *name,
 			if (!m_root) {
 				char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
 				free(options);
-				error(ap->logopt, MODPREFIX "alloca: %s", estr);
+				logerr(MODPREFIX "alloca: %s", estr);
 				return 1;
 			}
 			strcpy(m_root, name);
@@ -1129,7 +1128,7 @@ int parse_mount(struct autofs_point *ap, const char *name,
 			if (!m_root) {
 				char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
 				free(options);
-				error(ap->logopt, MODPREFIX "alloca: %s", estr);
+				logerr(MODPREFIX "alloca: %s", estr);
 				return 1;
 			}
 			strcpy(m_root, ap->path);

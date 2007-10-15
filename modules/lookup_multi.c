@@ -73,7 +73,7 @@ static struct lookup_mod *nss_open_lookup(const char *format, int argc, const ch
 	if (nsswitch_parse(&nsslist)) {
 		if (!list_empty(&nsslist))
 			free_sources(&nsslist);
-		error(LOGOPT_ANY, "can't to read name service switch config.");
+		logerr("can't to read name service switch config.");
 		return NULL;
 	}
 
@@ -92,7 +92,7 @@ static struct lookup_mod *nss_open_lookup(const char *format, int argc, const ch
 			path = malloc(strlen(AUTOFS_MAP_DIR) + strlen(argv[0]) + 2);
 			if (!path) {
 				estr = strerror_r(errno, buf, MAX_ERR_BUF);
-				crit(LOGOPT_ANY, MODPREFIX "error: %s", estr);
+				logerr(MODPREFIX "error: %s", estr);
 				free_sources(&nsslist);
 				return NULL;
 			}
@@ -150,7 +150,7 @@ int lookup_init(const char *my_mapfmt, int argc, const char *const *argv, void *
 	memset(ctxt, 0, sizeof(struct lookup_context));
 
 	if (argc < 1) {
-		crit(LOGOPT_ANY, MODPREFIX "No map list");
+		logerr(MODPREFIX "No map list");
 		goto error_out;
 	}
 
@@ -176,8 +176,7 @@ int lookup_init(const char *my_mapfmt, int argc, const char *const *argv, void *
 		if (!strcmp(ctxt->argl[an], "--")) {
 			ctxt->argl[an] = NULL;
 			if (!args) {
-				crit(LOGOPT_ANY,
-				     MODPREFIX "error assigning map args");
+				logerr(MODPREFIX "error assigning map args");
 				goto error_out;
 			}
 			ctxt->m[i].argv = copy_argv(ctxt->m[i].argc, (const char **) args);
@@ -201,7 +200,7 @@ int lookup_init(const char *my_mapfmt, int argc, const char *const *argv, void *
 		ctxt->m[i].mod = nss_open_lookup(my_mapfmt,
 				 ctxt->m[i].argc, ctxt->m[i].argv);
 		if (!ctxt->m[i].mod) {
-			error(LOGOPT_ANY, MODPREFIX "error opening module");
+			logerr(MODPREFIX "error opening module");
 			goto error_out;
 		}
 	}
@@ -211,7 +210,7 @@ int lookup_init(const char *my_mapfmt, int argc, const char *const *argv, void *
 
 nomem:
 	estr = strerror_r(errno, buf, MAX_ERR_BUF);
-	crit(LOGOPT_ANY, MODPREFIX "error: %s", estr);
+	logerr(MODPREFIX "error: %s", estr);
 error_out:
 	if (ctxt) {
 		for (i = 0; i < ctxt->n; i++) {

@@ -41,13 +41,13 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 	ctxt = malloc(sizeof(struct lookup_context));
 	if (!ctxt) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		crit(LOGOPT_ANY, MODPREFIX "%s", estr);
+		logerr(MODPREFIX "%s", estr);
 		return 1;
 	}
 
 	if (argc < 1) {
 		free(ctxt);
-		crit(LOGOPT_ANY, MODPREFIX "No map name");
+		logmsg(MODPREFIX "No map name");
 		return 1;
 	}
 	ctxt->mapname = argv[0];
@@ -59,7 +59,7 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 	ctxt->domainname = nis_local_directory();
 	if (!ctxt->domainname) {
 		free(ctxt);
-		crit(LOGOPT_ANY, MODPREFIX "NIS+ domain not set");
+		logmsg(MODPREFIX "NIS+ domain not set");
 		return 1;
 	}
 
@@ -69,7 +69,7 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 	ctxt->parse = open_parse(mapfmt, MODPREFIX, argc - 1, argv + 1);
 	if (!ctxt->parse) {
 		free(ctxt);
-		crit(LOGOPT_ANY, MODPREFIX "failed to open parse context");
+		logerr(MODPREFIX "failed to open parse context");
 		return 1;
 	}
 	*context = ctxt;
@@ -81,7 +81,8 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 {
 	struct lookup_context *ctxt = (struct lookup_context *) context;
 	unsigned int timeout = master->default_timeout;
-	unsigned int logging =  master->default_logging;
+	unsigned int logging = master->default_logging;
+	unsigned int logopt =  master->logopt;
 	char *tablename;
 	nis_result *result;
 	nis_object *this;
@@ -95,7 +96,7 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 	tablename = alloca(strlen(ctxt->mapname) + strlen(ctxt->domainname) + 20);
 	if (!tablename) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		crit(LOGOPT_ANY, MODPREFIX "alloca: %s", estr);
+		logerr(MODPREFIX "alloca: %s", estr);
 		pthread_setcancelstate(cur_state, NULL);
 		return NSS_STATUS_UNAVAIL;
 	}
@@ -105,8 +106,8 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 	result = nis_lookup(tablename, FOLLOW_PATH | FOLLOW_LINKS);
 	if (result->status != NIS_SUCCESS && result->status != NIS_S_SUCCESS) {
 		nis_freeresult(result);
-		crit(LOGOPT_ANY,
-		     MODPREFIX "couldn't locat nis+ table %s", ctxt->mapname);
+		crit(logopt,
+		     MODPREFIX "couldn't locate nis+ table %s", ctxt->mapname);
 		pthread_setcancelstate(cur_state, NULL);
 		return NSS_STATUS_NOTFOUND;
 	}
@@ -116,7 +117,7 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 	result = nis_list(tablename, FOLLOW_PATH | FOLLOW_LINKS, NULL, NULL);
 	if (result->status != NIS_SUCCESS && result->status != NIS_S_SUCCESS) {
 		nis_freeresult(result);
-		crit(LOGOPT_ANY,
+		crit(logopt,
 		     MODPREFIX "couldn't enumrate nis+ map %s", ctxt->mapname);
 		pthread_setcancelstate(cur_state, NULL);
 		return NSS_STATUS_UNAVAIL;
@@ -139,8 +140,7 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 
 		buffer = malloc(ENTRY_LEN(this, 0) + 1 + ENTRY_LEN(this, 1) + 1);
 		if (!buffer) {
-			error(LOGOPT_ANY,
-			      MODPREFIX "could not malloc parse buffer");
+			logerr(MODPREFIX "could not malloc parse buffer");
 			continue;
 		}
 
@@ -182,7 +182,7 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 	tablename = alloca(strlen(ctxt->mapname) + strlen(ctxt->domainname) + 20);
 	if (!tablename) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		crit(LOGOPT_ANY, MODPREFIX "alloca: %s", estr);
+		logerr(MODPREFIX "alloca: %s", estr);
 		pthread_setcancelstate(cur_state, NULL);
 		return NSS_STATUS_UNAVAIL;
 	}
@@ -193,7 +193,7 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 	if (result->status != NIS_SUCCESS && result->status != NIS_S_SUCCESS) {
 		nis_freeresult(result);
 		crit(ap->logopt,
-		     MODPREFIX "couldn't locat nis+ table %s", ctxt->mapname);
+		     MODPREFIX "couldn't locate nis+ table %s", ctxt->mapname);
 		pthread_setcancelstate(cur_state, NULL);
 		return NSS_STATUS_NOTFOUND;
 	}
@@ -274,7 +274,7 @@ static int lookup_one(struct autofs_point *ap,
 			strlen(ctxt->mapname) + strlen(ctxt->domainname) + 20);
 	if (!tablename) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		crit(LOGOPT_ANY, MODPREFIX "alloca: %s", estr);
+		logerr(MODPREFIX "alloca: %s", estr);
 		pthread_setcancelstate(cur_state, NULL);
 		return -1;
 	}
@@ -327,7 +327,7 @@ static int lookup_wild(struct autofs_point *ap, struct lookup_context *ctxt)
 	tablename = alloca(strlen(ctxt->mapname) + strlen(ctxt->domainname) + 20);
 	if (!tablename) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		crit(LOGOPT_ANY, MODPREFIX "alloca: %s", estr);
+		logerr(MODPREFIX "alloca: %s", estr);
 		pthread_setcancelstate(cur_state, NULL);
 		return -1;
 	}

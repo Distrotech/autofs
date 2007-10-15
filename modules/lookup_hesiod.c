@@ -48,7 +48,7 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 	ctxt = malloc(sizeof(struct lookup_context));
 	if (!ctxt) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		crit(LOGOPT_ANY, MODPREFIX "malloc: %s", estr);
+		logerr(MODPREFIX "malloc: %s", estr);
 		return 1;
 	}
 
@@ -58,7 +58,7 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 	/* Initialize the hesiod context. */
 	if (hesiod_init(&(ctxt->hesiod_context)) != 0) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		crit(LOGOPT_ANY, MODPREFIX "hesiod_init(): %s", estr);
+		logerr(MODPREFIX "hesiod_init(): %s", estr);
 		free(ctxt);
 		return 1;
 	}
@@ -70,7 +70,7 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 	/* Open the parser, if we can. */
 	ctxt->parser = open_parse(mapfmt, MODPREFIX, argc - 1, argv + 1);
 	if (!ctxt->parser) {
-		crit(LOGOPT_ANY, MODPREFIX "failed to open parse context");
+		logerr(MODPREFIX "failed to open parse context");
 		free(ctxt);
 		return 1;
 	}

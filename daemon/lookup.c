@@ -103,6 +103,7 @@ static int do_read_master(struct master *master, char *type, time_t age)
 
 static int read_master_map(struct master *master, char *type, time_t age)
 {
+	unsigned int logopt = master->logopt;
 	char *path, *save_name;
 	int result;
 
@@ -117,7 +118,7 @@ static int read_master_map(struct master *master, char *type, time_t age)
 	 */
 
 	if (strchr(master->name, '/')) {
-		error(LOGOPT_ANY, "relative path invalid in files map name");
+		error(logopt, "relative path invalid in files map name");
 		return NSS_STATUS_NOTFOUND;
 	}
 
@@ -142,6 +143,7 @@ static int read_master_map(struct master *master, char *type, time_t age)
 
 int lookup_nss_read_master(struct master *master, time_t age)
 {
+	unsigned int logopt = master->logopt;
 	struct list_head nsslist;
 	struct list_head *head, *p;
 	int result = NSS_STATUS_UNKNOWN;
@@ -149,12 +151,10 @@ int lookup_nss_read_master(struct master *master, time_t age)
 	/* If it starts with a '/' it has to be a file or LDAP map */
 	if (*master->name == '/') {
 		if (*(master->name + 1) == '/') {
-			debug(LOGOPT_NONE,
-			      "reading master ldap %s", master->name);
+			debug(logopt, "reading master ldap %s", master->name);
 			result = do_read_master(master, "ldap", age);
 		} else {
-			debug(LOGOPT_NONE,
-			      "reading master file %s", master->name);
+			debug(logopt, "reading master file %s", master->name);
 			result = do_read_master(master, "file", age);
 		}
 
@@ -184,13 +184,11 @@ int lookup_nss_read_master(struct master *master, time_t age)
 				 */
 				if (strncmp(name, "ldap", 4)) {
 					master->name = tmp + 1;
-					debug(LOGOPT_NONE,
-					      "reading master %s %s",
+					debug(logopt, "reading master %s %s",
 					      source, master->name);
 				} else {
 					master->name = name;
-					debug(LOGOPT_NONE,
-					      "reading master %s %s",
+					debug(logopt, "reading master %s %s",
 					      source, tmp + 1);
 				}
 
@@ -208,7 +206,7 @@ int lookup_nss_read_master(struct master *master, time_t age)
 	if (result) {
 		if (!list_empty(&nsslist))
 			free_sources(&nsslist);
-		error(LOGOPT_ANY, "can't to read name service switch config.");
+		error(logopt, "can't to read name service switch config.");
 		return 0;
 	}
 
@@ -220,13 +218,12 @@ int lookup_nss_read_master(struct master *master, time_t age)
 
 		this = list_entry(p, struct nss_source, list);
 
-		debug(LOGOPT_NONE,
+		debug(logopt,
 		      "reading master %s %s", this->source, master->name);
 
 		result = read_master_map(master, this->source, age);
 		if (result == NSS_STATUS_UNKNOWN) {
-			debug(LOGOPT_NONE,
-			      "no map - continuing to next source");
+			debug(logopt, "no map - continuing to next source");
 			continue;
 		}
 
@@ -1008,9 +1005,10 @@ int lookup_prune_cache(struct autofs_point *ap, time_t age)
 				if (this->ioctlfd == -1)
 					status = cache_delete(mc, key);
 				if (status != CHE_FAIL) {
-					if (ap->type == LKP_INDIRECT)
-						rmdir_path(ap, path, ap->dev);
-					else
+					if (ap->type == LKP_INDIRECT) {
+						if (ap->ghost)
+							rmdir_path(ap, path, ap->dev);
+					} else
 						rmdir_path(ap, path, this->dev);
 				}
 			}

@@ -57,7 +57,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 	fullpath = alloca(rlen + name_len + 2);
 	if (!fullpath) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		error(ap->logopt, MODPREFIX "alloca: %s", estr);
+		logerr(MODPREFIX "alloca: %s", estr);
 		return 1;
 	}
 
@@ -93,16 +93,16 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 		      MODPREFIX "calling mount -t %s " SLOPPY "-o %s %s %s",
 		      fstype, options, what, fullpath);
 
-		err = spawn_mount(log_debug, "-t", fstype,
+		err = spawn_mount(ap->logopt, "-t", fstype,
 			     SLOPPYOPT "-o", options, what, fullpath, NULL);
 	} else {
 		debug(ap->logopt, MODPREFIX "calling mount -t %s %s %s",
 		      fstype, what, fullpath);
-		err = spawn_mount(log_debug, "-t", fstype, what, fullpath, NULL);
+		err = spawn_mount(ap->logopt, "-t", fstype, what, fullpath, NULL);
 	}
 
 	if (err) {
-		msg(MODPREFIX "failed to mount %s (type %s) on %s",
+		info(ap->logopt, MODPREFIX "failed to mount %s (type %s) on %s",
 		     what, fstype, fullpath);
 
 		if (ap->type != LKP_INDIRECT)
@@ -113,7 +113,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 
 		return 1;
 	} else {
-		msg(MODPREFIX "mounted %s type %s on %s",
+		info(ap->logopt, MODPREFIX "mounted %s type %s on %s",
 		    what, fstype, fullpath);
 		return 0;
 	}

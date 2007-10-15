@@ -127,13 +127,13 @@ status_exp: STATUS EQUAL ACTION
 
 static int nss_ignore(const char *s)
 {
-	msg("ignored invalid nsswitch config near [ %s ]", s);
+	logmsg("ignored invalid nsswitch config near [ %s ]", s);
 	return(0);
 }
 
 static int nss_error(const char *s)
 {
-	msg("syntax error in nsswitch config near [ %s ]\n", s);
+	logmsg("syntax error in nsswitch config near [ %s ]\n", s);
 	return(0);
 }
 
@@ -167,7 +167,7 @@ int nsswitch_parse(struct list_head *list)
 
 	nsswitch = fopen(NSSWITCH_FILE, "r");
 	if (!nsswitch) {
-		error(LOGOPT_ANY, "couldn't open %s\n", NSSWITCH_FILE);
+		logerr("couldn't open %s\n", NSSWITCH_FILE);
 		return 1;
 	}
 
