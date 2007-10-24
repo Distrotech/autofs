@@ -36,6 +36,7 @@
 - fix map entry expansion when undefined macro is present.
 - remove unused export validation code.
 - add dynamic logging (adapted from v4 patch from Jeff Moyer).
+- fix recursive loopback mounts (Matthias Koenig).
 
 18/06/2007 autofs-5.0.2
 -----------------------

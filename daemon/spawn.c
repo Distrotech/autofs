@@ -290,7 +290,16 @@ int spawn_mount(unsigned logopt, ...)
 
 	va_start(arg, logopt);
 	p = argv + 1;
-	while ((*p++ = va_arg(arg, char *)));
+	while ((*p = va_arg(arg, char *))) {
+		if (options == SPAWN_OPT_NONE && !strcmp(*p, "-o")) {
+			*(++p) = va_arg(arg, char *);
+			if (!*p)
+				break;
+			if (strstr(*p, "loop"))
+				options = SPAWN_OPT_ACCESS;
+		}
+		p++;
+	}
 	va_end(arg);
 
 	while (retries--) {
