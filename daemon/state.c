@@ -376,6 +376,8 @@ static void *do_readmap(void *arg)
 
 	pthread_cleanup_push(do_readmap_cleanup, ra);
 
+	info(ap->logopt, "re-reading map for %s", ap->path);
+
 	status = lookup_nss_read_map(ap, NULL, now);
 	if (!status)
 		pthread_exit(NULL);

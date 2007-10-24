@@ -1278,6 +1278,8 @@ static void *do_read_master(void *arg)
 
 	defaults_read_config(1);
 
+	info(logopt, "re-reading master map %s", master->name);
+
 	status = master_read_master(master, age, readall);
 
 	master->reading = 0;
