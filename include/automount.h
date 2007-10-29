@@ -223,8 +223,6 @@ int rmdir_path(struct autofs_point *ap, const char *path, dev_t dev);
 #define MAPENT_MAX_LEN 4095
 #define PARSE_MAX_BUF	KEY_MAX_LEN + MAPENT_MAX_LEN + 2
 
-#define AUTOFS_LOGPRI_FIFO "/tmp/autofs.fifo"
-
 int lookup_nss_read_master(struct master *master, time_t age);
 int lookup_nss_read_map(struct autofs_point *ap, struct map_source *source, time_t age);
 int lookup_enumerate(struct autofs_point *ap,

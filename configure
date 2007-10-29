@@ -654,6 +654,7 @@ target_alias
 initdir
 confdir
 mapdir
+fifodir
 DMALLOCLIB
 MOUNT
 HAVE_MOUNT
@@ -1293,6 +1294,7 @@ Optional Packages:
   --with-path=PATH	  look in PATH for binaries needed by the automounter
   --with-confdir=DIR	  use DIR for autofs configuration files
   --with-mapdir=PATH	  look in PATH for mount maps used by the automounter
+  --with-fifodir=PATH	   use PATH as the directory for fifos used by the automounter
   --with-dmalloc          use dmalloc, as in
 			  http://www.dmalloc.com/dmalloc.tar.gz
   --with-hesiod=DIR	  enable Hesiod support (libs and includes in DIR)
@@ -1841,6 +1843,36 @@ fi
 echo $ECHO_N "checking for autofs maps directory... $ECHO_C" >&6; }
 { echo "$as_me:$LINENO: result: $mapdir" >&5
 echo "${ECHO_T}$mapdir" >&6; }
+
+
+#
+# The user can specify --with-fifodir=PATH to specify where autofs fifos go
+#
+if test -z "$fifodir"; then
+  for fifo_d in /var/run /tmp; do
+    if test -z "$fifodir"; then
+      if test -d "$fifo_d"; then
+        fifodir="$fifo_d"
+      fi
+    fi
+  done
+fi
+
+# Check whether --with-fifodir was given.
+if test "${with_fifodir+set}" = set; then
+  withval=$with_fifodir; if test -z "$withval" -o "$withval" = "yes" -o "$withval" = "no"
+	then
+		:
+	else
+		fifodir="${withval}"
+	fi
+
+fi
+
+{ echo "$as_me:$LINENO: checking for autofs fifos directory" >&5
+echo $ECHO_N "checking for autofs fifos directory... $ECHO_C" >&6; }
+{ echo "$as_me:$LINENO: result: $fifodir" >&5
+echo "${ECHO_T}$fifodir" >&6; }
 
 
 #
@@ -6074,6 +6106,7 @@ target_alias!$target_alias$ac_delim
 initdir!$initdir$ac_delim
 confdir!$confdir$ac_delim
 mapdir!$mapdir$ac_delim
+fifodir!$fifodir$ac_delim
 DMALLOCLIB!$DMALLOCLIB$ac_delim
 MOUNT!$MOUNT$ac_delim
 HAVE_MOUNT!$HAVE_MOUNT$ac_delim
@@ -6124,7 +6157,7 @@ LIBOBJS!$LIBOBJS$ac_delim
 LTLIBOBJS!$LTLIBOBJS$ac_delim
 _ACEOF
 
-  if test `sed -n "s/.*$ac_delim\$/X/p" conf$$subs.sed | grep -c X` = 88; then
+  if test `sed -n "s/.*$ac_delim\$/X/p" conf$$subs.sed | grep -c X` = 89; then
     break
   elif $ac_last_try; then
     { { echo "$as_me:$LINENO: error: could not make $CONFIG_STATUS" >&5

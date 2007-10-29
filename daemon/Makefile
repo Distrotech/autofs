@@ -16,6 +16,7 @@ CFLAGS += -rdynamic $(DAEMON_CFLAGS) -D_GNU_SOURCE -I../include
 CFLAGS += -DAUTOFS_LIB_DIR=\"$(autofslibdir)\" 
 CFLAGS += -DAUTOFS_MAP_DIR=\"$(autofsmapdir)\"
 CFLAGS += -DAUTOFS_CONF_DIR=\"$(autofsconfdir)\"
+CFLAGS += -DAUTOFS_FIFO_DIR=\"$(autofsfifodir)\"
 CFLAGS += -DVERSION_STRING=\"$(version)\"
 LDFLAGS += -rdynamic
 LIBS = -ldl

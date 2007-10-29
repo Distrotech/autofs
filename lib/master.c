@@ -56,6 +56,7 @@ int master_add_autofs_point(struct master_mapent *entry,
 
 	ap->state_pipe[0] = -1;
 	ap->state_pipe[1] = -1;
+	ap->logpri_fifo = -1;
 
 	ap->path = strdup(entry->path);
 	if (!ap->path) {

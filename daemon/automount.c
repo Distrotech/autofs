@@ -50,6 +50,9 @@ const char *libdir = AUTOFS_LIB_DIR;	/* Location of library modules */
 const char *mapdir = AUTOFS_MAP_DIR;	/* Location of mount maps */
 const char *confdir = AUTOFS_CONF_DIR;	/* Location of autofs config file */
 
+/* autofs fifo name prefix */
+const char *fifodir = AUTOFS_FIFO_DIR "/autofs.fifo";
+
 const char *global_options;		/* Global option, from command line */
 
 static char *pid_file = NULL;		/* File in which to keep pid */
@@ -650,14 +653,13 @@ static int fullread(int fd, void *ptr, size_t len)
 static char *automount_path_to_fifo(unsigned logopt, const char *path)
 {
 	char *fifo_name, *p;
-	int  name_len = strlen(path) + strlen(AUTOFS_LOGPRI_FIFO) + 1;
+	int  name_len = strlen(path) + strlen(fifodir) + 1;
 	int ret;
 
 	fifo_name = malloc(name_len);
 	if (!fifo_name)
 		return NULL;
-	ret = snprintf(fifo_name, name_len, "%s%s",
-		       AUTOFS_LOGPRI_FIFO, path);
+	ret = snprintf(fifo_name, name_len, "%s%s", fifodir, path);
 	if (ret >= name_len) {
 		info(logopt,
 		     "fifo path for \"%s\" truncated to \"%s\".  This may "
@@ -670,7 +672,7 @@ static char *automount_path_to_fifo(unsigned logopt, const char *path)
 	 *  create the fifo name, we will just replace instances of '/' with
 	 *  '-'. 
 	 */
-	p = fifo_name + strlen(AUTOFS_LOGPRI_FIFO);
+	p = fifo_name + strlen(fifodir);
 	while (*p != '\0') {
 		if (*p == '/')
 			*p = '-';
@@ -685,8 +687,9 @@ static char *automount_path_to_fifo(unsigned logopt, const char *path)
 static int create_logpri_fifo(struct autofs_point *ap)
 {
 	int ret = -1;
-	int fd;
+	int fd, cl_flags;
 	char *fifo_name;
+	char buf[MAX_ERR_BUF];
 
 	fifo_name = automount_path_to_fifo(ap->logopt, ap->path);
 	if (!fifo_name) {
@@ -704,16 +707,25 @@ static int create_logpri_fifo(struct autofs_point *ap)
 
 	ret = mkfifo(fifo_name, S_IRUSR|S_IWUSR);
 	if (ret != 0) {
+		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
 		crit(ap->logopt,
-		     "mkfifo for %s returned %d", fifo_name, errno);
+		     "mkfifo for %s failed: %s", fifo_name, estr);
 		goto out_free;
 	}
 
 	fd = open(fifo_name, O_RDWR|O_NONBLOCK);
 	if (fd < 0) {
+		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
 		crit(ap->logopt,
-		     "Failed to open %s, errno %d", fifo_name, errno);
+		     "Failed to open %s: %s", fifo_name, estr);
+		unlink(fifo_name);
+		ret = -1;
 		goto out_free;
+	}
+
+	if ((cl_flags = fcntl(fd, F_GETFD, 0)) != -1) {
+		cl_flags |= FD_CLOEXEC;
+		fcntl(fd, F_SETFD, cl_flags);
 	}
 
 	ap->logpri_fifo = fd;
@@ -728,6 +740,10 @@ static int destroy_logpri_fifo(struct autofs_point *ap)
 	int ret = -1;
 	int fd = ap->logpri_fifo;
 	char *fifo_name;
+	char buf[MAX_ERR_BUF];
+
+	if (fd == -1)
+		return 0;
 
 	fifo_name = automount_path_to_fifo(ap->logopt, ap->path);
 	if (!fifo_name) {
@@ -739,8 +755,9 @@ static int destroy_logpri_fifo(struct autofs_point *ap)
 
 	ret = close(fd);
 	if (ret != 0) {
+		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
 		warn(ap->logopt,
-		     "close for fifo %s returned %d", fifo_name, errno);
+		     "close for fifo %s: %s", fifo_name, estr);
 	}
 
 	ret = unlink(fifo_name);
@@ -760,11 +777,13 @@ static void handle_fifo_message(struct autofs_point *ap, int fd)
 	char buffer[PIPE_BUF];
 	char *end;
 	long pri;
+	char buf[MAX_ERR_BUF];
 
 	memset(buffer, 0, sizeof(buffer));
 	ret = read(fd, &buffer, sizeof(buffer));
 	if (ret < 0) {
-		warn(ap->logopt, "read on fifo returned error %d", errno);
+		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+		warn(ap->logopt, "read on fifo returned error: %s", estr);
 		return;
 	}
 
@@ -846,16 +865,18 @@ static int set_log_priority(const char *path, int priority)
 	 */
 	fd = open(fifo_name, O_WRONLY|O_NONBLOCK);
 	if (fd < 0) {
-		fprintf(stderr, "%s: open of %s failed with %d\n",
-			__FUNCTION__, fifo_name, errno);
+		fprintf(stderr, "%s: open of %s failed with %s\n",
+			__FUNCTION__, fifo_name, strerror(errno));
+		fprintf(stderr, "%s: perhaps the fifo wasn't setup,"
+			" please check your log for more information\n", __FUNCTION__);
 		free(fifo_name);
 		return -1;
 	}
 
 	if (write(fd, buf, sizeof(buf)) != sizeof(buf)) {
 		fprintf(stderr, "Failed to change logging priority.  ");
-		fprintf(stderr, "write to fifo failed with errno %d.\n",
-			errno);
+		fprintf(stderr, "write to fifo failed: %s.\n",
+			strerror(errno));
 		close(fd);
 		free(fifo_name);
 		return -1;
@@ -870,6 +891,7 @@ static int set_log_priority(const char *path, int priority)
 static int get_pkt(struct autofs_point *ap, union autofs_packet_union *pkt)
 {
 	struct pollfd fds[3];
+	int pollfds = 3;
 	char buf[MAX_ERR_BUF];
 
 	fds[0].fd = ap->pipefd;
@@ -878,9 +900,11 @@ static int get_pkt(struct autofs_point *ap, union autofs_packet_union *pkt)
 	fds[1].events = POLLIN;
 	fds[2].fd = ap->logpri_fifo;
 	fds[2].events = POLLIN;
+	if (fds[2].fd  == -1)
+		pollfds--;
 
 	for (;;) {
-		if (poll(fds, 3, -1) == -1) {
+		if (poll(fds, pollfds, -1) == -1) {
 			char *estr;
 			if (errno == EINTR)
 				continue;
@@ -930,7 +954,7 @@ static int get_pkt(struct autofs_point *ap, union autofs_packet_union *pkt)
 		if (fds[0].revents & POLLIN)
 			return fullread(ap->pipefd, pkt, kpkt_len);
 
-		if (fds[2].revents & POLLIN) {
+		if (fds[2].fd != -1 && fds[2].revents & POLLIN) {
 			debug(ap->logopt, "message pending on control fifo.");
 			handle_fifo_message(ap, fds[2].fd);
 		}
@@ -983,7 +1007,6 @@ static int autofs_init_ap(struct autofs_point *ap)
 		crit(ap->logopt,
 		     "failed to create commumication pipe for autofs path %s",
 		     ap->path);
-		free(ap->path);
 		return -1;
 	}
 
@@ -1006,7 +1029,6 @@ static int autofs_init_ap(struct autofs_point *ap)
 		     "failed create state pipe for autofs path %s", ap->path);
 		close(ap->pipefd);
 		close(ap->kpipefd);	/* Close kernel pipe end */
-		free(ap->path);
 		return -1;
 	}
 
@@ -1021,15 +1043,8 @@ static int autofs_init_ap(struct autofs_point *ap)
 	}
 
 	if (create_logpri_fifo(ap) < 0) {
-		crit(ap->logopt,
-		     "failed to create FIFO for path %s\n", ap->path);
-		destroy_logpri_fifo(ap);
-		close(ap->pipefd);
-		close(ap->kpipefd);
-		free(ap->path);
-		close(ap->state_pipe[0]);
-		close(ap->state_pipe[1]);
-		return -1;
+		logmsg("could not create FIFO for path %s\n", ap->path);
+		logmsg("dynamic log level changes not available for %s", ap->path);
 	}
 
 	return 0;

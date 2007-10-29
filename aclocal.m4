@@ -120,6 +120,22 @@ AC_DEFUN(AF_MAP_D,
   done
 fi])
 
+dnl --------------------------------------------------------------------------
+dnl AF_FIFO_D
+dnl
+dnl Check the location of the autofs fifos directory
+dnl --------------------------------------------------------------------------
+AC_DEFUN(AF_FIFO_D,
+[if test -z "$fifodir"; then
+  for fifo_d in /var/run /tmp; do
+    if test -z "$fifodir"; then
+      if test -d "$fifo_d"; then
+        fifodir="$fifo_d"
+      fi
+    fi
+  done
+fi])
+
 dnl ----------------------------------- ##                   -*- Autoconf -*-
 dnl Check if --with-dmalloc was given.  ##
 dnl From Franc,ois Pinard               ##

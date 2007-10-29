@@ -79,6 +79,23 @@ AC_MSG_RESULT([$mapdir])
 AC_SUBST(mapdir)
 
 #
+# The user can specify --with-fifodir=PATH to specify where autofs fifos go
+#
+AF_FIFO_D()
+AC_ARG_WITH(fifodir,
+[  --with-fifodir=PATH	   use PATH as the directory for fifos used by the automounter],
+	if test -z "$withval" -o "$withval" = "yes" -o "$withval" = "no"
+	then
+		:
+	else
+		fifodir="${withval}"
+	fi
+)
+AC_MSG_CHECKING([for autofs fifos directory])
+AC_MSG_RESULT([$fifodir])
+AC_SUBST(fifodir)
+
+#
 # Optional include dmalloc
 #
 AM_WITH_DMALLOC()
