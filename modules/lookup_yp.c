@@ -178,7 +178,7 @@ int yp_all_master_callback(int status, char *ypkey, int ypkeylen,
 	*(ypkey + ypkeylen) = '\0';
 	*(val + vallen) = '\0';
 
-	len = ypkeylen + 1 + vallen + 1;
+	len = ypkeylen + 1 + vallen + 2;
 
 	buffer = alloca(len);
 	if (!buffer) {

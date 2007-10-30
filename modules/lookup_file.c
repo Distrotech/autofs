@@ -479,7 +479,7 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 
 			master->name = save_name;
 		} else {
-			blen = path_len + 1 + ent_len + 1;
+			blen = path_len + 1 + ent_len + 2;
 			buffer = malloc(blen);
 			if (!buffer) {
 				error(logopt,

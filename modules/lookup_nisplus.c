@@ -90,7 +90,7 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 	char *path, *ent;
 	char *buffer;
 	char buf[MAX_ERR_BUF];
-	int cur_state;
+	int cur_state, len;
 
 	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cur_state);
 	tablename = alloca(strlen(ctxt->mapname) + strlen(ctxt->domainname) + 20);
@@ -138,11 +138,13 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 
 		ent = ENTRY_VAL(this, 1);
 
-		buffer = malloc(ENTRY_LEN(this, 0) + 1 + ENTRY_LEN(this, 1) + 1);
+		len = ENTRY_LEN(this, 0) + 1 + ENTRY_LEN(this, 1) + 2;
+		buffer = malloc(len);
 		if (!buffer) {
 			logerr(MODPREFIX "could not malloc parse buffer");
 			continue;
 		}
+		memset(buffer, 0, len);
 
 		strcat(buffer, path);
 		strcat(buffer, " ");

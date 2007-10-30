@@ -108,8 +108,8 @@ AT_DC		([dD][[cC])
 AT_O		([oO])
 AT_C		([cC])
 DNATTRSTR	{AT_CN}|{AT_NMN}|{AT_AMN}|{AT_OU}|{AT_DC}|{AT_O}|{AT_C}
-DNNAMESTR	([[:alnum:]_.\-]+)
-DNNAMETRM	(,|{WS}{NL}|{WS}#.*|\x00)
+DNNAMESTR	([[:alnum:]_.\- ]+)
+DNNAMETRM	(,|{OPTWS}{NL}|{OPTWS}#.*|{OPTWS}\x00)
 
 INTMAP		(-hosts|-null)
 MULTI		((multi)(,(sun|hesiod))?(:{OPTWS}|{WS}))
@@ -379,7 +379,13 @@ void master_set_scan_buffer(const char *buffer)
 {
 	line = buffer;
 	line_pos = &line[0];
-	line_lim = line + strlen(buffer);
+	/*
+	 * Ensure buffer is 1 greater than string and is zeroed before
+	 * the parse so we can fit the extra NULL which allows us to
+	 * explicitly match an end of line within the buffer (ie. the
+	 * need for 2 NULLS when parsing in memeory buffers).
+	 */
+	line_lim = line + strlen(buffer) + 1;
 }
 
 #define min(a,b) (((a) < (b)) ? (a) : (b))

@@ -1368,7 +1368,7 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 			goto next;
 		}
 
-		blen = strlen(*keyValue) + 1 + strlen(*values) + 1;
+		blen = strlen(*keyValue) + 1 + strlen(*values) + 2;
 		if (blen > PARSE_MAX_BUF) {
 			error(logopt, MODPREFIX "map entry too long");
 			ldap_value_free(values);
