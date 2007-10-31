@@ -39,6 +39,7 @@
 - fix recursive loopback mounts (Matthias Koenig).
 - add map re-load to verbose logging.
 - fix handling of LDAP base dns with spaces.
+- handle MTAB_NOTUPDATED status return from mount.
 
 18/06/2007 autofs-5.0.2
 -----------------------

@@ -268,9 +268,11 @@ int spawn_mount(unsigned logopt, ...)
 	char **argv, **p;
 	char prog[] = PATH_MOUNT;
 	char arg0[] = PATH_MOUNT;
+	/* In case we need to use the fake option to mount */
+	char arg_fake[] = "-f";
 	unsigned int options;
 	unsigned int retries = MTAB_LOCK_RETRIES;
-	int ret;
+	int ret, printed = 0;
 
 	/* If we use mount locking we can't validate the location */
 #ifdef ENABLE_MOUNT_LOCKING
@@ -283,7 +285,8 @@ int spawn_mount(unsigned logopt, ...)
 	for (argc = 1; va_arg(arg, char *); argc++);
 	va_end(arg);
 
-	if (!(argv = alloca(sizeof(char *) * argc + 1)))
+	/* Alloc 1 extra slot in case we need to use the "-f" option */
+	if (!(argv = alloca(sizeof(char *) * argc + 2)))
 		return -1;
 
 	argv[0] = arg0;
@@ -304,9 +307,38 @@ int spawn_mount(unsigned logopt, ...)
 
 	while (retries--) {
 		ret = do_spawn(logopt, options, prog, (const char **) argv);
-		if (ret & MTAB_NOTUPDATED)
+		if (ret & MTAB_NOTUPDATED) {
+			/*
+			 * If the mount succeeded but the mtab was not
+			 * updated, then retry the mount with the -f (fake)
+			 * option to just update the mtab.
+			 */
+			if (!printed) {
+				debug(logopt, "mount failed with error code 16"
+				      ", retrying with the -f option");
+				printed = 1;
+			}
+
+			/*
+			 * Move the last two args so do_spawn() can find the
+			 * mount target.
+			 */
+			if (!argv[argc]) {
+				argv[argc + 1] = NULL;
+				argv[argc] = argv[argc - 1];
+				argv[argc - 1] = argv[argc - 2];
+				argv[argc - 2] = arg_fake;
+			}
 			continue;
+		}
 		break;
+	}
+
+	/* This is not a fatal error */
+	if (ret == MTAB_NOTUPDATED) {
+		warn(logopt, "Unable to update the mtab file, /proc/mounts "
+		     "and /etc/mtab will differ");
+		ret = 0;
 	}
 
 	return ret;
@@ -328,9 +360,11 @@ int spawn_bind_mount(unsigned logopt, ...)
 	char prog[] = PATH_MOUNT;
 	char arg0[] = PATH_MOUNT;
 	char bind[] = "--bind";
+	/* In case we need to use the fake option to mount */
+	char arg_fake[] = "-f";
 	unsigned int options;
 	unsigned int retries = MTAB_LOCK_RETRIES;
-	int ret;
+	int ret, printed = 0;
 
 	/* If we use mount locking we can't validate the location */
 #ifdef ENABLE_MOUNT_LOCKING
@@ -339,8 +373,12 @@ int spawn_bind_mount(unsigned logopt, ...)
 	options = SPAWN_OPT_ACCESS;
 #endif
 
+	/*
+	 * Alloc 2 extra slots, one for the bind option and one in case
+	 * we need to use the "-f" option
+	 */
 	va_start(arg, logopt);
-	for (argc = 1; va_arg(arg, char *); argc++);
+	for (argc = 2; va_arg(arg, char *); argc++);
 	va_end(arg);
 
 	if (!(argv = alloca(sizeof(char *) * argc + 2)))
@@ -356,9 +394,38 @@ int spawn_bind_mount(unsigned logopt, ...)
 
 	while (retries--) {
 		ret = do_spawn(logopt, options, prog, (const char **) argv);
-		if (ret & MTAB_NOTUPDATED)
+		if (ret & MTAB_NOTUPDATED) {
+			/*
+			 * If the mount succeeded but the mtab was not
+			 * updated, then retry the mount with the -f (fake)
+			 * option to just update the mtab.
+			 */
+			if (!printed) {
+				debug(logopt, "mount failed with error code 16"
+				      ", retrying with the -f option");
+				printed = 1;
+			}
+
+			/*
+			 * Move the last two args so do_spawn() can find the
+			 * mount target.
+			 */
+			if (!argv[argc]) {
+				argv[argc + 1] = NULL;
+				argv[argc] = argv[argc - 1];
+				argv[argc - 1] = argv[argc - 2];
+				argv[argc - 2] = arg_fake;
+			}
 			continue;
+		}
 		break;
+	}
+
+	/* This is not a fatal error */
+	if (ret == MTAB_NOTUPDATED) {
+		warn(logopt, "Unable to update the mtab file, /proc/mounts "
+		     "and /etc/mtab will differ");
+		ret = 0;
 	}
 
 	return ret;
@@ -373,7 +440,7 @@ int spawn_umount(unsigned logopt, ...)
 	char arg0[] = PATH_UMOUNT;
 	unsigned int options;
 	unsigned int retries = MTAB_LOCK_RETRIES;
-	int ret;
+	int ret, printed = 0;
 
 #ifdef ENABLE_MOUNT_LOCKING
 	options = SPAWN_OPT_LOCK;
@@ -397,9 +464,37 @@ int spawn_umount(unsigned logopt, ...)
 
 	while (retries--) {
 		ret = do_spawn(logopt, options, prog, (const char **) argv);
-		if (ret & MTAB_NOTUPDATED)
-			continue;
-		break;
+		if (ret & MTAB_NOTUPDATED) {
+			/*
+			 * If the mount succeeded but the mtab was not
+			 * updated, then retry the umount just to update
+			 * the mtab.
+			 */
+			if (!printed) {
+				debug(logopt, "mount failed with error code 16"
+				      ", retrying with the -f option");
+				printed = 1;
+			}
+		} else {
+			/*
+			 * umount does not support the "fake" option.  Thus,
+			 * if we got a return value of MTAB_NOTUPDATED the
+			 * first time, that means the umount actually
+			 * succeeded.  Then, a following umount will fail
+			 * due to the fact that nothing was mounted on the
+			 * mount point. So, report this as success.
+			 */
+			if (retries < MTAB_LOCK_RETRIES - 1)
+				ret = 0;
+			break;
+		}
+	}
+
+	/* This is not a fatal error */
+	if (ret == MTAB_NOTUPDATED) {
+		warn(logopt, "Unable to update the mtab file, /proc/mounts "
+		     "and /etc/mtab will differ");
+		ret = 0;
 	}
 
 	return ret;
