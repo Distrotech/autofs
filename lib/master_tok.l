@@ -108,8 +108,8 @@ AT_DC		([dD][[cC])
 AT_O		([oO])
 AT_C		([cC])
 DNATTRSTR	{AT_CN}|{AT_NMN}|{AT_AMN}|{AT_OU}|{AT_DC}|{AT_O}|{AT_C}
-DNNAMESTR	([[:alnum:]_.\- ]+)
-DNNAMETRM	(,|{OPTWS}{NL}|{OPTWS}#.*|{OPTWS}\x00)
+DNNAMESTR1	([[:alnum:]_.\- ]+)
+DNNAMESTR2	([[:alnum:]_.\-]+)
 
 INTMAP		(-hosts|-null)
 MULTI		((multi)(,(sun|hesiod))?(:{OPTWS}|{WS}))
@@ -282,7 +282,12 @@ OPTTOUT		(-t{OPTWS}|-t{OPTWS}={OPTWS}|--timeout{OPTWS}|--timeout{OPTWS}={OPTWS})
 		return EQUAL;
 	}
 
-	{DNNAMESTR}/{DNNAMETRM} {
+	{DNNAMESTR1}/"," {
+		strcpy(master_lval.strtype, master_text);
+		return DNNAME;
+	}
+
+	{DNNAMESTR2} {
 		strcpy(master_lval.strtype, master_text);
 		return DNNAME;
 	}
