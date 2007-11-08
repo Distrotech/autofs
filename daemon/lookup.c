@@ -222,6 +222,28 @@ int lookup_nss_read_master(struct master *master, time_t age)
 		      "reading master %s %s", this->source, master->name);
 
 		result = read_master_map(master, this->source, age);
+
+		/*
+		 * If the name of the master map hasn't been explicitly
+		 * configured and we're not reading an included master map
+		 * then we're using auto.master as the default. Many setups
+		 * also use auto_master as the default master map so we
+		 * check for this map when auto.master isn't found.
+		 */
+		if (result != NSS_STATUS_SUCCESS &&
+		    !master->depth && !defaults_master_set()) {
+			char *tmp = strchr(master->name, '.');
+			if (tmp) {
+				debug(logopt,
+				      "%s not found, replacing '.' with '_'",
+				       master->name);
+				*tmp = '_';
+				result = read_master_map(master, this->source, age);
+				if (result != NSS_STATUS_SUCCESS)
+					*tmp = '.';
+			}
+		}
+
 		if (result == NSS_STATUS_UNKNOWN) {
 			debug(logopt, "no map - continuing to next source");
 			continue;

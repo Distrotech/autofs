@@ -350,6 +350,15 @@ const char *defaults_get_master_map(void)
 	return (const char *) master;
 }
 
+int defaults_master_set(void)
+{
+	char *val = getenv(ENV_NAME_MASTER_MAP);
+	if (!val)
+		return 0;
+
+	return 1;
+}
+
 unsigned int defaults_get_timeout(void)
 {
 	long timeout;

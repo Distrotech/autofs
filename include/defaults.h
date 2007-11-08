@@ -43,6 +43,7 @@ struct ldap_searchdn;
 
 unsigned int defaults_read_config(unsigned int);
 const char *defaults_get_master_map(void);
+int defaults_master_set(void);
 unsigned int defaults_get_timeout(void);
 unsigned int defaults_get_browse_mode(void);
 unsigned int defaults_get_logging(void);
