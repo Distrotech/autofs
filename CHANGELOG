@@ -41,6 +41,7 @@
 - fix handling of LDAP base dns with spaces.
 - handle MTAB_NOTUPDATED status return from mount.
 - when default master map, auto.master, is used also check for auto_master.
+- fix schema selection in LDAP schema discovery.
 
 18/06/2007 autofs-5.0.2
 -----------------------

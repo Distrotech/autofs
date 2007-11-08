@@ -193,10 +193,11 @@ static int get_query_dn(unsigned logopt, LDAP *ldap, struct lookup_context *ctxt
 	LDAPMessage *result = NULL, *e;
 	struct ldap_searchdn *sdns = NULL;
 	char *attrs[2];
+	struct berval **value;
 	int scope;
 	int rv, l;
 
-	attrs[0] = LDAP_NO_ATTRS;
+	attrs[0] = (char *) key;
 	attrs[1] = NULL;
 
 	if (!ctxt->mapname && !ctxt->base) {
@@ -283,7 +284,8 @@ static int get_query_dn(unsigned logopt, LDAP *ldap, struct lookup_context *ctxt
 	}
 
 	e = ldap_first_entry(ldap, result);
-	if (e) {
+	if (e && (value = ldap_get_values_len(ldap, e, key))) {
+		ldap_value_free_len(value);
 		dn = ldap_get_dn(ldap, e);
 		debug(logopt, MODPREFIX "found query dn %s", dn);
 	} else {
