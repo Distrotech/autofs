@@ -55,6 +55,7 @@ static char *path;
 static char *type;
 static char *format;
 static long timeout;
+static long negative_timeout;
 static unsigned ghost;
 extern unsigned global_random_selection;
 static unsigned random_selection;
@@ -95,7 +96,8 @@ static int master_fprintf(FILE *, char *, ...);
 
 %token COMMENT
 %token MAP
-%token OPT_TIMEOUT OPT_NOGHOST OPT_GHOST OPT_VERBOSE OPT_DEBUG OPT_RANDOM
+%token OPT_TIMEOUT OPT_NTIMEOUT OPT_NOGHOST OPT_GHOST OPT_VERBOSE
+%token OPT_DEBUG OPT_RANDOM
 %token COLON COMMA NL DDASH
 %type <strtype> map
 %type <strtype> options
@@ -542,6 +544,7 @@ option: daemon_option
 	;
 
 daemon_option: OPT_TIMEOUT NUMBER { timeout = $2; }
+	| OPT_NTIMEOUT NUMBER { negative_timeout = $2; }
 	| OPT_NOGHOST	{ ghost = 0; }
 	| OPT_GHOST	{ ghost = 1; }
 	| OPT_VERBOSE	{ verbose = 1; }
@@ -603,6 +606,7 @@ static void local_init_vars(void)
 	verbose = 0;
 	debug = 0;
 	timeout = -1;
+	negative_timeout = 0;
 	ghost = defaults_get_browse_mode();
 	random_selection = global_random_selection;
 	tmp_argv = NULL;
@@ -793,6 +797,8 @@ int master_parse_entry(const char *buffer, unsigned int default_timeout, unsigne
 		}
 	}
 	entry->ap->random_selection = random_selection;
+	if (negative_timeout)
+		entry->ap->negative_timeout = negative_timeout;
 
 /*
 	source = master_find_map_source(entry, type, format,

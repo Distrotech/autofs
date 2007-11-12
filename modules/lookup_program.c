@@ -134,7 +134,10 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 	/* Catch installed direct offset triggers */
 	cache_readlock(mc);
 	me = cache_lookup_distinct(mc, name);
-	if (!me) {
+	if (me && me->status >= time(NULL)) {
+		cache_unlock(mc);
+		return NSS_STATUS_NOTFOUND;
+	} else if (!me) {
 		cache_unlock(mc);
 		/*
 		 * If there's a '/' in the name and the offset is not in
@@ -147,15 +150,33 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 		}
 	} else {
 		cache_unlock(mc);
+
 		/* Otherwise we found a valid offset so try mount it */
 		debug(ap->logopt, MODPREFIX "%s -> %s", name, me->mapent);
 
-		master_source_current_wait(ap->entry);
-		ap->entry->current = source;
-
-		ret = ctxt->parse->parse_mount(ap, name, name_len,
-				      me->mapent, ctxt->parse->context);
-		goto out_free;
+		/*
+		 * If this is a request for an offset mount (whose entry
+		 * must be present in the cache to be valid) or the entry
+		 * is newer than the negative timeout value then just
+		 * try and mount it. Otherwise try and remove it and
+		 * proceed with the program map lookup.
+		 */
+		if (strchr(name, '/') ||
+		    me->age + ap->negative_timeout > time(NULL)) {
+			master_source_current_wait(ap->entry);
+			ap->entry->current = source;
+			ret = ctxt->parse->parse_mount(ap, name,
+				 name_len, me->mapent, ctxt->parse->context);
+			goto out_free;
+		} else {
+			if (me->multi) {
+				warn(ap->logopt, MODPREFIX
+				     "unexpected lookup for active multi-mount"
+				     " key %s, returning fail", name);
+				return NSS_STATUS_UNAVAIL;
+			}
+			cache_delete(mc, name);
+		}
 	}
 
 	mapent = (char *) malloc(MAPENT_MAX_LEN + 1);
@@ -356,8 +377,21 @@ out_free:
 	if (mapent)
 		free(mapent);
 
-	if (ret)
+	if (ret) {
+		time_t now = time(NULL);
+		int rv = CHE_OK;
+
+		cache_writelock(mc);
+		me = cache_lookup_distinct(mc, name);
+		if (!me)
+			rv = cache_update(mc, source, name, NULL, now);
+		if (rv != CHE_FAIL) {
+			me = cache_lookup_distinct(mc, name);
+			me->status = now + ap->negative_timeout;
+		}
+		cache_unlock(mc);
 		return NSS_STATUS_UNAVAIL;
+	}
 
 	return NSS_STATUS_SUCCESS;
 }

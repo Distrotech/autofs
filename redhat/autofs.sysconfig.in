@@ -9,6 +9,11 @@
 #
 TIMEOUT=300
 #
+# NEGATIVE_TIMEOUT - set the default negative timeout for
+# 		     failed mount attempts (default 60).
+#
+#NEGATIVE_TIMEOUT=60
+#
 # BROWSE_MODE - maps are browsable by default.
 #
 BROWSE_MODE="no"

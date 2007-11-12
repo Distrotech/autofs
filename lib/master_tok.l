@@ -118,6 +118,7 @@ MTYPE		((file|program|yp|nis|nisplus|ldap|ldaps|hesiod|userdir)(,(sun|hesiod))?(
 
 
 OPTTOUT		(-t{OPTWS}|-t{OPTWS}={OPTWS}|--timeout{OPTWS}|--timeout{OPTWS}={OPTWS})
+OPTNTOUT	(-n{OPTWS}|-n{OPTWS}={OPTWS}|--negative-timeout{OPTWS}|--negative-timeout{OPTWS}={OPTWS})
 
 %%
 
@@ -320,6 +321,8 @@ OPTTOUT		(-t{OPTWS}|-t{OPTWS}={OPTWS}|--timeout{OPTWS}|--timeout{OPTWS}={OPTWS})
 	}
 
 	{OPTTOUT}/{NUMBER} { return(OPT_TIMEOUT); }
+
+	{OPTNTOUT}/{NUMBER} { return(OPT_NTIMEOUT); }
 
 	{NUMBER} {
 		master_lval.longtype = atol(master_text);

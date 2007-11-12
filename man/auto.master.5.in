@@ -152,6 +152,11 @@ Enables the use of ramdom selection when choosing a host from a
 list of replicated servers. This option is applied to this mount
 only, overriding the global setting that may be specified on the
 command line.
+.TP
+.I "\-n, \-\-negative\-timeout <seconds>"
+Set the timeout for caching failed key lookups. This option can be
+used to override the global default given either on the command line
+or in the configuration.
 .SH GENERAL SYSTEM DEFAULTS CONFIGURATION
 .P
 The default value of several general settings may be changed in the
@@ -163,6 +168,11 @@ They are:
 .TP
 .B TIMEOUT
 sets the default mount timeout (program default 600).
+.TP
+.B NEGATIVE_TIMEOUT
+Set the default timeout for caching failed key lookups (program default
+60). If the equivalent command line option is given it will override this
+setting.
 .TP
 .B BROWSE_MODE
 Maps are browsable by default (program default "yes").

@@ -30,6 +30,8 @@
 /* The root of the map entry tree */
 struct master *master_list = NULL;
 
+extern long global_negative_timeout;
+
 /* Attribute to create detached thread */
 extern pthread_attr_t thread_attr;
 
@@ -68,6 +70,14 @@ int master_add_autofs_point(struct master_mapent *entry,
 	ap->exp_thread = 0;
 	ap->readmap_thread = 0;
 	ap->exp_timeout = timeout;
+	/*
+	 * Program command line option overrides config.
+	 * We can't use 0 negative timeout so use default.
+	 */
+	if (global_negative_timeout <= 0)
+		ap->negative_timeout = defaults_get_negative_timeout();
+	else
+		ap->negative_timeout = global_negative_timeout;
 	ap->exp_runfreq = (timeout + CHECK_RATIO - 1) / CHECK_RATIO;
 	ap->ghost = ghost;
 

@@ -58,6 +58,8 @@ const char *global_options;		/* Global option, from command line */
 static char *pid_file = NULL;		/* File in which to keep pid */
 unsigned int global_random_selection;	/* use random policy when selecting
 					 * which multi-mount host to mount */
+long global_negative_timeout = -1;
+
 static int start_pipefd[2];
 static int st_stat = 0;
 static int *pst_stat = &st_stat;
@@ -1671,6 +1673,8 @@ static void usage(void)
 		"	-f --foreground do not fork into background\n"
 		"	-r --random-multimount-selection\n"
 		"			use ramdom replicated server selection\n"
+		"	-n --negative-timeout n\n"
+		"			set the timeout for failed key lookups.\n"
 		"	-O --global-options\n"
 		"			specify global mount options\n"
 		"	-l --set-log-priority priority path [path,...]\n"
@@ -1810,6 +1814,7 @@ int main(int argc, char *argv[])
 		{"define", 1, 0, 'D'},
 		{"foreground", 0, 0, 'f'},
 		{"random-multimount-selection", 0, 0, 'r'},
+		{"negative-timeout", 1, 0, 'n'},
 		{"global-options", 1, 0, 'O'},
 		{"version", 0, 0, 'V'},
 		{"set-log-priority", 1, 0, 'l'},
@@ -1833,7 +1838,7 @@ int main(int argc, char *argv[])
 	foreground = 0;
 
 	opterr = 0;
-	while ((opt = getopt_long(argc, argv, "+hp:t:vdD:fVrO:l:", long_options, NULL)) != EOF) {
+	while ((opt = getopt_long(argc, argv, "+hp:t:vdD:fVrO:l:n:", long_options, NULL)) != EOF) {
 		switch (opt) {
 		case 'h':
 			usage();
@@ -1869,6 +1874,10 @@ int main(int argc, char *argv[])
 
 		case 'r':
 			global_random_selection = 1;
+			break;
+
+		case 'n':
+			global_negative_timeout = getnumopt(optarg, opt);
 			break;
 
 		case 'O':

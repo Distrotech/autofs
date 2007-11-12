@@ -138,7 +138,10 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 
 	cache_readlock(mc);
 	me = cache_lookup_distinct(mc, name);
-	if (!me) {
+	if (me && me->status >= time(NULL)) {
+		cache_unlock(mc);
+		return NSS_STATUS_NOTFOUND;
+	} else if (!me) {
 		cache_unlock(mc);
 		/*
 		 * We haven't read the list of hosts into the
@@ -192,10 +195,22 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 		ret = ctxt->parse->parse_mount(ap, name, name_len,
 				 mapent, ctxt->parse->context);
 
-		if (!ret)
-			return NSS_STATUS_SUCCESS;
+		if (ret) {
+			time_t now = time(NULL);
+			int rv = CHE_OK;
 
-		return NSS_STATUS_TRYAGAIN;
+			cache_writelock(mc);
+			me = cache_lookup_distinct(mc, name);
+			if (!me)
+				rv = cache_update(mc, source, name, NULL, now);
+			if (rv != CHE_FAIL) {
+				me = cache_lookup_distinct(mc, name);
+				me->status = now + ap->negative_timeout;
+			}
+			cache_unlock(mc);
+			return NSS_STATUS_TRYAGAIN;
+		}
+		return NSS_STATUS_SUCCESS;
 	}
 done:
 	/*
@@ -267,8 +282,21 @@ done:
 				 mapent, ctxt->parse->context);
 	free(mapent);
 
-	if (ret)
+	if (ret) {
+		time_t now = time(NULL);
+		int rv = CHE_OK;
+
+		cache_writelock(mc);
+		me = cache_lookup_distinct(mc, name);
+		if (!me)
+			rv = cache_update(mc, source, name, NULL, now);
+		if (rv != CHE_FAIL) {
+			me = cache_lookup_distinct(mc, name);
+			me->status = now + ap->negative_timeout;
+		}
+		cache_unlock(mc);
 		return NSS_STATUS_TRYAGAIN;
+	}
 
 	return NSS_STATUS_SUCCESS;
 }

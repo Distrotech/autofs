@@ -22,9 +22,10 @@
 
 #define DEFAULT_MASTER_MAP_NAME	"auto.master"
 
-#define DEFAULT_TIMEOUT		600
-#define DEFAULT_BROWSE_MODE	1
-#define DEFAULT_LOGGING		0
+#define DEFAULT_TIMEOUT			600
+#define DEFAULT_NEGATIVE_TIMEOUT	60
+#define DEFAULT_BROWSE_MODE		1
+#define DEFAULT_LOGGING			0
 
 #define DEFAULT_LDAP_TIMEOUT		-1
 #define DEFAULT_LDAP_NETWORK_TIMEOUT	8
@@ -45,6 +46,7 @@ unsigned int defaults_read_config(unsigned int);
 const char *defaults_get_master_map(void);
 int defaults_master_set(void);
 unsigned int defaults_get_timeout(void);
+unsigned int defaults_get_negative_timeout(void);
 unsigned int defaults_get_browse_mode(void);
 unsigned int defaults_get_logging(void);
 const char *defaults_get_ldap_server(void);
