@@ -43,6 +43,7 @@
 - when default master map, auto.master, is used also check for auto_master.
 - fix schema selection in LDAP schema discovery.
 - update negative mount timeout handling.
+- fix large group handling (Ryan Thomas).
 
 18/06/2007 autofs-5.0.2
 -----------------------

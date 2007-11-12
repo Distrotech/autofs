@@ -1218,11 +1218,11 @@ static void *do_mount_direct(void *arg)
 	struct passwd *ppw = &pw;
 	struct passwd **pppw = &ppw;
 	struct group gr;
-	struct group *pgr = &gr;
-	struct group **ppgr = &pgr;
+	struct group *pgr;
+	struct group **ppgr;
 	char *pw_tmp, *gr_tmp;
 	struct thread_stdenv_vars *tsv;
-	int tmplen;
+	int tmplen, grplen;
 	struct stat st;
 	int status, state;
 
@@ -1326,7 +1326,7 @@ static void *do_mount_direct(void *arg)
 
 	/* Try to get group info */
 
-	tmplen = sysconf(_SC_GETGR_R_SIZE_MAX);
+	grplen = sysconf(_SC_GETGR_R_SIZE_MAX);
 	if (tmplen < 0) {
 		error(ap->logopt, "failed to get buffer size for getgrgid_r");
 		free(tsv->user);
@@ -1335,16 +1335,28 @@ static void *do_mount_direct(void *arg)
 		goto cont;
 	}
 
-	gr_tmp = malloc(tmplen + 1);
-	if (!gr_tmp) {
-		error(ap->logopt, "failed to malloc buffer for getgrgid_r");
-		free(tsv->user);
-		free(tsv->home);
-		free(tsv);
-		goto cont;
+	gr_tmp = NULL;
+	tmplen = grplen;
+	while (1) {
+		char tmp = realloc(gr_tmp, tmplen + 1);
+		if (!tmp) {
+			error(ap->logopt, "failed to malloc buffer for getgrgid_r");
+			if (gr_tmp)
+				free(gr_tmp);
+			free(tsv->user);
+			free(tsv->home);
+			free(tsv);
+			goto cont;
+		}
+		gr_tmp = tmp;
+		pgr = &gr;
+		ppgr = &pgr;
+		status = getgrgid_r(mt->gid, pgr, gr_tmp, tmplen, ppgr);
+		if (status != ERANGE)
+			break;
+		tmplen += grplen;
 	}
 
-	status = getgrgid_r(mt->gid, pgr, gr_tmp, tmplen, ppgr);
 	if (status || !pgr) {
 		error(ap->logopt, "failed to get group info from getgrgid_r");
 		free(tsv->user);
