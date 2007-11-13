@@ -1338,7 +1338,7 @@ static void *do_mount_direct(void *arg)
 	gr_tmp = NULL;
 	tmplen = grplen;
 	while (1) {
-		char tmp = realloc(gr_tmp, tmplen + 1);
+		char *tmp = realloc(gr_tmp, tmplen + 1);
 		if (!tmp) {
 			error(ap->logopt, "failed to malloc buffer for getgrgid_r");
 			if (gr_tmp)
