@@ -129,8 +129,8 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 	if (!hes_result || !hes_result[0]) {
 		/* Note: it is not clear to me how to distinguish between
 		 * the "no search results" case and other failures.  --JM */
-		warn(ap->logopt,
-		     MODPREFIX "entry \"%s\" not found in map", name);
+		error(ap->logopt,
+		      MODPREFIX "key \"%s\" not found in map", name);
 		status = pthread_mutex_unlock(&hesiod_mutex);
 		if (status)
 			fatal(status);
