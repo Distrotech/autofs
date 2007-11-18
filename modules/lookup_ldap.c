@@ -579,7 +579,9 @@ static LDAP *do_reconnect(unsigned logopt, struct lookup_context *ctxt)
 		list_add_tail(&this->list, ctxt->uri);
 	}
 
+#ifdef WITH_SASL
 	autofs_sasl_done(ctxt);
+#endif
 
 	/* Current server failed connect, try the rest */
 	ldap = find_server(logopt, ctxt);
