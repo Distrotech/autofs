@@ -147,7 +147,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 			if ((!ap->ghost && name_len) || !existed)
 				rmdir_path(ap, fullpath, ap->dev);
 
-			return 1;
+			return err;
 		} else {
 			debug(ap->logopt,
 			      MODPREFIX "mounted %s type %s on %s",

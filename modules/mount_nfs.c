@@ -233,6 +233,10 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 				return 0;
 			}
 
+			/* Failed to update mtab, don't try any more */
+			if (err == MNT_FORCE_FAIL)
+				goto forced_fail;
+
 			/* No hostname, can't be NFS */
 			if (!this->name) {
 				this = this->next;
@@ -275,6 +279,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 		this = this->next;
 	}
 
+forced_fail:
 	free_host_list(&hosts);
 	ap->ghost = save_ghost;
 

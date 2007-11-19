@@ -25,6 +25,7 @@
 #include <time.h>
 #include <sys/wait.h>
 #include <sys/stat.h>
+#include <sys/mount.h>
 
 #include "automount.h"
 
@@ -308,6 +309,8 @@ int spawn_mount(unsigned logopt, ...)
 	while (retries--) {
 		ret = do_spawn(logopt, options, prog, (const char **) argv);
 		if (ret & MTAB_NOTUPDATED) {
+			struct timespec tm = {3, 0};
+
 			/*
 			 * If the mount succeeded but the mtab was not
 			 * updated, then retry the mount with the -f (fake)
@@ -329,6 +332,9 @@ int spawn_mount(unsigned logopt, ...)
 				argv[argc - 1] = argv[argc - 2];
 				argv[argc - 2] = arg_fake;
 			}
+
+			nanosleep(&tm, NULL);
+
 			continue;
 		}
 		break;
@@ -336,9 +342,16 @@ int spawn_mount(unsigned logopt, ...)
 
 	/* This is not a fatal error */
 	if (ret == MTAB_NOTUPDATED) {
-		warn(logopt, "Unable to update the mtab file, /proc/mounts "
-		     "and /etc/mtab will differ");
-		ret = 0;
+		/*
+		 * Version 5 requires that /etc/mtab be in sync with
+		 * /proc/mounts. If we're unable to update matb after
+		 * retrying then we have no choice but umount the mount
+		 * and return a fail.
+		 */
+		warn(logopt,
+		     "Unable to update the mtab file, forcing mount fail!");
+		umount(argv[argc]);
+		ret = MNT_FORCE_FAIL;
 	}
 
 	return ret;
@@ -395,6 +408,8 @@ int spawn_bind_mount(unsigned logopt, ...)
 	while (retries--) {
 		ret = do_spawn(logopt, options, prog, (const char **) argv);
 		if (ret & MTAB_NOTUPDATED) {
+			struct timespec tm = {3, 0};
+
 			/*
 			 * If the mount succeeded but the mtab was not
 			 * updated, then retry the mount with the -f (fake)
@@ -416,6 +431,9 @@ int spawn_bind_mount(unsigned logopt, ...)
 				argv[argc - 1] = argv[argc - 2];
 				argv[argc - 2] = arg_fake;
 			}
+
+			nanosleep(&tm, NULL);
+
 			continue;
 		}
 		break;
@@ -423,9 +441,16 @@ int spawn_bind_mount(unsigned logopt, ...)
 
 	/* This is not a fatal error */
 	if (ret == MTAB_NOTUPDATED) {
-		warn(logopt, "Unable to update the mtab file, /proc/mounts "
-		     "and /etc/mtab will differ");
-		ret = 0;
+		/*
+		 * Version 5 requires that /etc/mtab be in sync with
+		 * /proc/mounts. If we're unable to update matb after
+		 * retrying then we have no choice but umount the mount
+		 * and return a fail.
+		 */
+		warn(logopt,
+		     "Unable to update the mtab file, forcing mount fail!");
+		umount(argv[argc]);
+		ret = MNT_FORCE_FAIL;
 	}
 
 	return ret;
