@@ -45,6 +45,7 @@
 - update negative mount timeout handling.
 - fix large group handling (Ryan Thomas).
 - fix for dynamic logging breaking non-sasl build (Guillaume Rousse)
+- eliminate NULL proc ping for singleton host or local mounts.
 
 18/06/2007 autofs-5.0.2
 -----------------------

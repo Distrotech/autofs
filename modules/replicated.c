@@ -725,18 +725,20 @@ int prune_host_list(unsigned logopt, struct host **list,
 	while (this && this->proximity == PROXIMITY_LOCAL)
 		this = this->next;
 
-	proximity = PROXIMITY_LOCAL;
-	if (this)
-		proximity = this->proximity;
+	/*
+	 * Check for either a list containing only proximity local hosts
+	 * or a single host entry whose proximity isn't local. If so
+	 * return immediately as we don't want to add probe latency for
+	 * the common case of a single filesystem mount request.
+	 */
+	if (!this || !this->next)
+		return 1;
 
+	proximity = this->proximity;
+	first = this;
 	this = first;
 	while (this) {
 		struct host *next = this->next;
-
-		if (this->proximity == PROXIMITY_LOCAL) {
-			this = next;
-			continue;
-		}
 
 		if (this->proximity != proximity)
 			break;
@@ -757,10 +759,6 @@ int prune_host_list(unsigned logopt, struct host **list,
 	}
 
 	last = this;
-
-	/* If there are only local entries on the list, just return it. */
-	if (!first)
-		return 0;
 
 	/* Select NFS version of highest number of closest servers */
 
