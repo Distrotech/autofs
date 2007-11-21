@@ -1125,7 +1125,7 @@ static void become_daemon(unsigned foreground)
 		if (pid > 0) {
 			int r;
 			close(start_pipefd[1]);
-			r = read(start_pipefd[0], pst_stat, sizeof(pst_stat));
+			r = read(start_pipefd[0], pst_stat, sizeof(*pst_stat));
 			if (r < 0)
 				exit(1);
 			exit(*pst_stat);
@@ -2061,12 +2061,12 @@ int main(int argc, char *argv[])
 	if (!master_read_master(master_list, age, 0)) {
 		master_kill(master_list);
 		*pst_stat = 3;
-		res = write(start_pipefd[1], pst_stat, sizeof(pst_stat));
+		res = write(start_pipefd[1], pst_stat, sizeof(*pst_stat));
 		close(start_pipefd[1]);
 		exit(3);
 	}
 
-	res = write(start_pipefd[1], pst_stat, sizeof(pst_stat));
+	res = write(start_pipefd[1], pst_stat, sizeof(*pst_stat));
 	close(start_pipefd[1]);
 
 	state_mach_thid = pthread_self();
