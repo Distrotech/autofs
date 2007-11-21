@@ -46,7 +46,7 @@
 - fix large group handling (Ryan Thomas).
 - fix for dynamic logging breaking non-sasl build (Guillaume Rousse)
 - eliminate NULL proc ping for singleton host or local mounts.
-- fix incorrect read/write size of startup status token.
+- fix incorrect read/write size of startup status token (Matthias Koenig).
 
 18/06/2007 autofs-5.0.2
 -----------------------
