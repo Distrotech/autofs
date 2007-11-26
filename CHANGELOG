@@ -47,6 +47,7 @@
 - fix for dynamic logging breaking non-sasl build (Guillaume Rousse)
 - eliminate NULL proc ping for singleton host or local mounts.
 - fix incorrect read/write size of startup status token (Matthias Koenig).
+- fix off-by-one error for lookup of map keys exactly 255 characters long.
 
 18/06/2007 autofs-5.0.2
 -----------------------

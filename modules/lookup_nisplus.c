@@ -476,7 +476,7 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 
 	debug(ap->logopt, MODPREFIX "looking up %s", name);
 
-	key_len = snprintf(key, KEY_MAX_LEN, "%s", name);
+	key_len = snprintf(key, KEY_MAX_LEN + 1, "%s", name);
 	if (key_len > KEY_MAX_LEN)
 		return NSS_STATUS_NOTFOUND;
 
