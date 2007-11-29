@@ -385,9 +385,18 @@ static int check_map_indirect(struct autofs_point *ap,
 		return NSS_STATUS_NOTFOUND;
 
 	if (ret < 0) {
+		/*
+		 * If the server is down and the entry exists in the cache
+		 * and belongs to this map return success and use the entry.
+		 */
+		exists = cache_lookup_distinct(mc, key);
+		if (exists && exists->source == source)
+			return NSS_STATUS_SUCCESS;
+
 		warn(ap->logopt,
 		     MODPREFIX "lookup for %s failed: %s",
 		     key, nis_sperrno(-ret));
+
 		return NSS_STATUS_UNAVAIL;
 	}
 

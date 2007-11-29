@@ -232,12 +232,17 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 			err = yp_all((char *) ctxt->domainname, mapname, &ypcb);
 		}
 
+		debug(logopt, "err %d", err);
+
 		if (err == YPERR_SUCCESS)
 			return NSS_STATUS_SUCCESS;
 
 		info(logopt,
 		     MODPREFIX "read of master map %s failed: %s",
 		     mapname, yperr_string(err));
+
+		if (err == YPERR_PMAP || err == YPERR_YPSERV)
+			return NSS_STATUS_UNAVAIL;
 
 		return NSS_STATUS_NOTFOUND;
 	}
@@ -335,6 +340,9 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 		warn(ap->logopt,
 		     MODPREFIX "read of map %s failed: %s",
 		     ap->path, yperr_string(err));
+
+		if (err == YPERR_PMAP || err == YPERR_YPSERV)
+			return NSS_STATUS_UNAVAIL;
 
 		return NSS_STATUS_NOTFOUND;
 	}
@@ -481,9 +489,18 @@ static int check_map_indirect(struct autofs_point *ap,
 		return NSS_STATUS_NOTFOUND;
 
 	if (ret < 0) {
+		/*
+		 * If the server is down and the entry exists in the cache
+		 * and belongs to this map return success and use the entry.
+		 */
+		exists = cache_lookup_distinct(mc, key);
+		if (exists && exists->source == source)
+			return NSS_STATUS_SUCCESS;
+
 		warn(ap->logopt,
 		     MODPREFIX "lookup for %s failed: %s",
 		     key, yperr_string(-ret));
+
 		return NSS_STATUS_UNAVAIL;
 	}
 

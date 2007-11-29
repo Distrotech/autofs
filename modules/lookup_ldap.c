@@ -1755,7 +1755,7 @@ static int lookup_one(struct autofs_point *ap,
 	/* Initialize the LDAP context. */
 	ldap = do_reconnect(ap->logopt, ctxt);
 	if (!ldap)
-		return CHE_FAIL;
+		return CHE_UNAVAIL;
 
 	debug(ap->logopt,
 	      MODPREFIX "searching for \"%s\" under \"%s\"", query, ctxt->qdn);
@@ -1999,6 +1999,21 @@ static int check_map_indirect(struct autofs_point *ap,
 	if (ret == CHE_FAIL) {
 		pthread_setcancelstate(cur_state, NULL);
 		return NSS_STATUS_NOTFOUND;
+	} else if (ret == CHE_UNAVAIL) {
+		/*
+		 * If the server is down and the entry exists in the cache
+		 * and belongs to this map return success and use the entry.
+		 */
+		struct mapent *exists = cache_lookup_distinct(mc, key);
+		if (exists && exists->source == source) {
+			pthread_setcancelstate(cur_state, NULL);
+			return NSS_STATUS_SUCCESS;
+		}
+
+		warn(ap->logopt,
+		     MODPREFIX "lookup for %s failed: connection failed", key);
+
+		return NSS_STATUS_UNAVAIL;
 	}
 	pthread_setcancelstate(cur_state, NULL);
 

@@ -121,6 +121,7 @@ struct autofs_point;
 #define CHE_MISSING	0x0008
 #define CHE_COMPLETED	0x0010
 #define CHE_DUPLICATE	0x0020
+#define CHE_UNAVAIL	0x0040
 
 #define HASHSIZE		77
 #define NEGATIVE_TIMEOUT	10

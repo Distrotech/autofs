@@ -432,6 +432,7 @@ static void *do_readmap(void *arg)
 				me = cache_enumerate(mc, me);
 			}
 			pthread_cleanup_pop(1);
+			map->stale = 0;
 			map = map->next;
 		}
 		pthread_cleanup_pop(1);

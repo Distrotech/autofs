@@ -469,11 +469,14 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 				master->recurse = 1;;
 			master->depth++;
 			status = lookup_nss_read_master(master, age);
-			if (!status)
+			if (!status) {
 				warn(logopt,
 				     MODPREFIX
 				     "failed to read included master map %s",
 				     master->name);
+				fclose(f);
+				return NSS_STATUS_UNAVAIL;
+			}
 			master->depth--;
 			master->recurse = 0;
 
@@ -484,6 +487,7 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 			if (!buffer) {
 				error(logopt,
 				      MODPREFIX "could not malloc parse buffer");
+				fclose(f);
 				return NSS_STATUS_UNAVAIL;
 			}
 			memset(buffer, 0, blen);
@@ -721,9 +725,12 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 
 			/* Gim'ee some o' that 16k stack baby !! */
 			status = lookup_nss_read_map(ap, inc_source, age);
-			if (!status)
+			if (!status) {
 				warn(ap->logopt,
 				     "failed to read included map %s", key);
+				fclose(f);
+				return NSS_STATUS_UNAVAIL;
+			}
 		} else {
 			char *s_key; 
 

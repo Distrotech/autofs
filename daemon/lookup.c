@@ -298,8 +298,6 @@ static int do_read_map(struct autofs_point *ap, struct map_source *map, time_t a
 
 	status = lookup->lookup_read_map(ap, age, lookup->context);
 
-	map->stale = 0;
-
 	/*
 	 * For maps that don't support enumeration return success
 	 * and do whatever we must to have autofs function with an
@@ -533,6 +531,10 @@ int lookup_nss_read_map(struct autofs_point *ap, struct map_source *source, time
 			if (result == NSS_STATUS_UNKNOWN)
 				continue;
 
+			/* Don't try to update the map cache if it's unavailable */
+			if (result == NSS_STATUS_UNAVAIL)
+				map->stale = 0;
+
 			if (result == NSS_STATUS_SUCCESS) {
 				at_least_one = 1;
 				result = NSS_STATUS_TRYAGAIN;
@@ -553,7 +555,7 @@ int lookup_nss_read_map(struct autofs_point *ap, struct map_source *source, time
 	}
 	pthread_cleanup_pop(1);
 
-	if (!result ||  at_least_one)
+	if (!result || at_least_one)
 		return 1;
 
 	return 0;
