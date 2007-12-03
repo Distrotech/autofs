@@ -2004,7 +2004,7 @@ static int check_map_indirect(struct autofs_point *ap,
 		 * If the server is down and the entry exists in the cache
 		 * and belongs to this map return success and use the entry.
 		 */
-		struct mapent *exists = cache_lookup_distinct(mc, key);
+		struct mapent *exists = cache_lookup(mc, key);
 		if (exists && exists->source == source) {
 			pthread_setcancelstate(cur_state, NULL);
 			return NSS_STATUS_SUCCESS;
