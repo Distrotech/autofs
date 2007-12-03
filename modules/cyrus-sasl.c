@@ -75,6 +75,7 @@ static const char *krb5ccval = "MEMORY:_autofstkt";
 static pthread_mutex_t krb5cc_mutex = PTHREAD_MUTEX_INITIALIZER;
 static unsigned int krb5cc_in_use = 0;
 
+static unsigned int init_callbacks = 1;
 static int sasl_log_func(void *, int, const char *);
 static int getpass_func(sasl_conn_t *, void *, int, sasl_secret_t **);
 static int getuser_func(void *, int, const char **, unsigned *);
@@ -386,7 +387,7 @@ sasl_do_kinit(unsigned logopt, struct lookup_context *ctxt)
 
 	debug(logopt,
 	      "initializing kerberos ticket: client principal %s ",
-	      ctxt->client_princ ? "" : "autofsclient");
+	      ctxt->client_princ ? ctxt->client_princ : "autofsclient");
 
 	ret = krb5_init_context(&ctxt->krb5ctxt);
 	if (ret) {
@@ -599,8 +600,8 @@ sasl_bind_mech(unsigned logopt, LDAP *ldap, struct lookup_context *ctxt, const c
 
 	/* OK and CONTINUE are the only non-fatal return codes here. */
 	if ((result != SASL_OK) && (result != SASL_CONTINUE)) {
-		error(logopt, "sasl_client start failed with error: %s",
-		      sasl_errdetail(conn));
+		warn(logopt, "sasl_client_start failed for %s", host);
+		debug(logopt, "sasl_client_start: %s", sasl_errdetail(conn));
 		ldap_memfree(host);
 		sasl_dispose(&conn);
 		return NULL;
@@ -721,23 +722,30 @@ autofs_sasl_init(unsigned logopt, LDAP *ldap, struct lookup_context *ctxt)
 	sasl_conn_t *conn;
 
 	/* Start up Cyrus SASL--only needs to be done once. */
-	if (sasl_client_init(callbacks) != SASL_OK) {
+	if (init_callbacks && sasl_client_init(callbacks) != SASL_OK) {
 		error(logopt, "sasl_client_init failed");
 		return -1;
 	}
+	init_callbacks = 0;
 
 	sasl_auth_id = ctxt->user;
 	sasl_auth_secret = ctxt->secret;
 
 	/*
-	 *  If sasl_mech was not filled in, it means that there was no
-	 *  mechanism specified in the configuration file.  Try to auto-
-	 *  select one.
+	 *  If LDAP_AUTH_AUTODETECT is set, it means that there was no
+	 *  mechanism specified in the configuration file or auto
+	 *  selection has been requested, so try to auto-select an
+	 *  auth mechanism.
 	 */
-	if (ctxt->sasl_mech)
+	if (!(ctxt->auth_required & LDAP_AUTH_AUTODETECT))
 		conn = sasl_bind_mech(logopt, ldap, ctxt, ctxt->sasl_mech);
-	else
+	else {
+		if (ctxt->sasl_mech) {
+			free(ctxt->sasl_mech);
+			ctxt->sasl_mech = NULL;
+		}
 		conn = sasl_choose_mech(logopt, ldap, ctxt);
+	}
 
 	if (conn) {
 		sasl_dispose(&conn);

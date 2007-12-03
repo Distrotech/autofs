@@ -49,6 +49,7 @@
 - fix incorrect read/write size of startup status token (Matthias Koenig).
 - fix off-by-one error for lookup of map keys exactly 255 characters long.
 - improve handling of server not available.
+- fix LDAP_URI server selection.
 
 18/06/2007 autofs-5.0.2
 -----------------------

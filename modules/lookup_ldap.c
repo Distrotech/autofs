@@ -402,8 +402,7 @@ static int do_bind(unsigned logopt, LDAP *ldap, struct lookup_context *ctxt)
 	debug(logopt, MODPREFIX "auth_required: %d, sasl_mech %s",
 	      ctxt->auth_required, ctxt->sasl_mech);
 
-	if (ctxt->sasl_mech ||
-	   (ctxt->auth_required & (LDAP_AUTH_REQUIRED|LDAP_AUTH_AUTODETECT))) {
+	if (ctxt->auth_required & (LDAP_AUTH_REQUIRED|LDAP_AUTH_AUTODETECT)) {
 		rv = autofs_sasl_bind(logopt, ldap, ctxt);
 		debug(logopt, MODPREFIX "autofs_sasl_bind returned %d", rv);
 	} else {
@@ -497,7 +496,7 @@ static LDAP *connect_to_server(unsigned logopt, const char *uri, struct lookup_c
 	 * Determine which authentication mechanism to use if we require
 	 * authentication.
 	 */
-	if (ctxt->auth_required & LDAP_AUTH_REQUIRED) {
+	if (ctxt->auth_required & (LDAP_AUTH_REQUIRED|LDAP_AUTH_AUTODETECT)) {
 		ldap = auth_init(logopt, uri, ctxt);
 		if (!ldap && ctxt->auth_required & LDAP_AUTH_AUTODETECT)
 			info(logopt,
@@ -510,6 +509,7 @@ static LDAP *connect_to_server(unsigned logopt, const char *uri, struct lookup_c
 
 		if (!do_bind(logopt, ldap, ctxt)) {
 			unbind_ldap_connection(logopt, ldap, ctxt);
+			autofs_sasl_done(ctxt);
 			error(logopt, MODPREFIX "cannot bind to server");
 			return NULL;
 		}
@@ -541,6 +541,7 @@ static LDAP *find_server(unsigned logopt, struct lookup_context *ctxt)
 	while(p != ctxt->uri) {
 		this = list_entry(p, struct ldap_uri, list);
 		p = p->next;
+		debug(logopt, "trying server %s", this->uri);
 		ldap = connect_to_server(logopt, this->uri, ctxt);
 		if (ldap) {
 			info(logopt, "connected to uri %s", this->uri);
@@ -563,21 +564,22 @@ static LDAP *find_server(unsigned logopt, struct lookup_context *ctxt)
 
 static LDAP *do_reconnect(unsigned logopt, struct lookup_context *ctxt)
 {
+	struct ldap_uri *this;
 	LDAP *ldap;
 
 	if (ctxt->server || !ctxt->uri) {
 		ldap = do_connect(logopt, ctxt->server, ctxt);
 		return ldap;
-	} else {
-		struct ldap_uri *this;
-		this = list_entry(ctxt->uri->next, struct ldap_uri, list);
-		ldap = do_connect(logopt, this->uri, ctxt);
-		if (ldap)
-			return ldap;
-		/* Failed to connect, put at end of list */
-		list_del_init(&this->list);
-		list_add_tail(&this->list, ctxt->uri);
 	}
+
+	this = list_entry(ctxt->uri->next, struct ldap_uri, list);
+	ldap = do_connect(logopt, this->uri, ctxt);
+	if (ldap)
+		return ldap;
+
+	/* Failed to connect, put at end of list */
+	list_del_init(&this->list);
+	list_add_tail(&this->list, ctxt->uri);
 
 #ifdef WITH_SASL
 	autofs_sasl_done(ctxt);
@@ -844,6 +846,8 @@ int parse_ldap_config(unsigned logopt, struct lookup_context *ctxt)
 	ctxt->tls_required = tls_required;
 	ctxt->auth_required = auth_required;
 	ctxt->sasl_mech = authtype;
+	if (!authtype && (auth_required & LDAP_AUTH_REQUIRED))
+		ctxt->auth_required |= LDAP_AUTH_AUTODETECT;
 	ctxt->user = user;
 	ctxt->secret = secret;
 	ctxt->client_princ = client_princ;
@@ -886,16 +890,6 @@ static LDAP *auth_init(unsigned logopt, const char *uri, struct lookup_context *
 	int ret;
 	LDAP *ldap;
 
-	/*
-	 *  First, check to see if a preferred authentication method was
-	 *  specified by the user.  parse_ldap_config will return error
-	 *  if the permissions on the file were incorrect, or if the
-	 *  specified authentication type is not valid.
-	 */
-	ret = parse_ldap_config(logopt, ctxt);
-	if (ret)
-		return NULL;
-
 	ldap = init_ldap_connection(logopt, uri, ctxt);
 	if (!ldap)
 		return NULL;
@@ -909,10 +903,8 @@ static LDAP *auth_init(unsigned logopt, const char *uri, struct lookup_context *
 	 *  the credential cache and the client and service principals.
 	 */
 	ret = autofs_sasl_init(logopt, ldap, ctxt);
-	if (ret) {
-		ctxt->sasl_mech = NULL;
+	if (ret)
 		return NULL;
-	}
 
 	return ldap;
 }
@@ -1134,6 +1126,8 @@ static void free_context(struct lookup_context *ctxt)
 		free(ctxt->user);
 	if (ctxt->secret)
 		free(ctxt->secret);
+	if (ctxt->client_princ)
+		free(ctxt->client_princ);
 	if (ctxt->mapname)
 		free(ctxt->mapname);
 	if (ctxt->qdn)
@@ -1184,6 +1178,7 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 	struct lookup_context *ctxt;
 	char buf[MAX_ERR_BUF];
 	LDAP *ldap = NULL;
+	int ret;
 
 	*context = NULL;
 
@@ -1223,6 +1218,20 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 				free(uris);
 		}
 	}
+
+#ifdef WITH_SASL
+	/*
+	 *  First, check to see if a preferred authentication method was
+	 *  specified by the user.  parse_ldap_config will return error
+	 *  if the permissions on the file were incorrect, or if the
+	 *  specified authentication type is not valid.
+	 */
+	ret = parse_ldap_config(LOGOPT_NONE, ctxt);
+	if (ret) {
+		free_context(ctxt);
+		return 1;
+	}
+#endif
 
 	if (ctxt->server || !ctxt->uri) {
 		ldap = connect_to_server(LOGOPT_NONE, ctxt->server, ctxt);
