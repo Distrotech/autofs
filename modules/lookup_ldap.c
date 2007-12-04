@@ -651,7 +651,7 @@ int parse_ldap_config(unsigned logopt, struct lookup_context *ctxt)
 	xmlNodePtr   root = NULL;
 	char         *authrequired, *auth_conf, *authtype;
 	char         *user = NULL, *secret = NULL;
-	char         *client_princ = NULL;
+	char         *client_princ = NULL, *client_cc = NULL;
 	char	     *usetls, *tlsrequired;
 
 	authtype = user = secret = NULL;
@@ -840,6 +840,7 @@ int parse_ldap_config(unsigned logopt, struct lookup_context *ctxt)
 	 * client.  The default is "autofsclient/hostname@REALM".
 	 */
 	(void)get_property(logopt, root, "clientprinc", &client_princ);
+	(void)get_property(logopt, root, "credentialcache", &client_cc);
 
 	ctxt->auth_conf = auth_conf;
 	ctxt->use_tls = use_tls;
@@ -851,6 +852,7 @@ int parse_ldap_config(unsigned logopt, struct lookup_context *ctxt)
 	ctxt->user = user;
 	ctxt->secret = secret;
 	ctxt->client_princ = client_princ;
+	ctxt->client_cc = client_cc;
 
 	debug(logopt, MODPREFIX
 	      "ldap authentication configured with the following options:");
@@ -863,9 +865,10 @@ int parse_ldap_config(unsigned logopt, struct lookup_context *ctxt)
 	debug(logopt, MODPREFIX
 	      "user: %s, "
 	      "secret: %s, "
-	      "client principal: %s",
+	      "client principal: %s "
+	      "credential cache: %s",
 	      user, secret ? "specified" : "unspecified",
-	      client_princ);
+	      client_princ, client_cc);
 
 out:
 	xmlFreeDoc(doc);
@@ -1128,6 +1131,8 @@ static void free_context(struct lookup_context *ctxt)
 		free(ctxt->secret);
 	if (ctxt->client_princ)
 		free(ctxt->client_princ);
+	if (ctxt->client_cc)
+		free(ctxt->client_cc);
 	if (ctxt->mapname)
 		free(ctxt->mapname);
 	if (ctxt->qdn)

@@ -67,10 +67,10 @@ struct lookup_context {
 	char        *user;
 	char        *secret;
 	char        *client_princ;
+	char        *client_cc;
 	int          kinit_done;
 	int          kinit_successful;
 #ifdef WITH_SASL
-	krb5_principal  krb5_client_princ;
 	krb5_context krb5ctxt;
 	krb5_ccache  krb5_ccache;
 	sasl_conn_t  *sasl_conn;
