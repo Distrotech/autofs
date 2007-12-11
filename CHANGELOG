@@ -51,6 +51,7 @@
 - improve handling of server not available.
 - fix LDAP_URI server selection.
 - add authentication option for using an external credential cache.
+- expand support for the "%" hack.
 
 18/06/2007 autofs-5.0.2
 -----------------------

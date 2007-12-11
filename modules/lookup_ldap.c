@@ -1411,6 +1411,140 @@ next:
 	return NSS_STATUS_SUCCESS;
 }
 
+/*
+ * Deal with encode and decode of % hack.
+ * Return
+ * 0 => % hack not present.
+ * -1 => syntax error or alloc fail.
+ * 1 transofrmed value returned.
+ */
+static int decode_percent_hack(const char *name, char **key)
+{
+	const char *tmp;
+	char *ptr, *new;
+
+	if (!key)
+		return -1;
+
+	*key = NULL;
+
+	tmp = name;
+	while (*tmp && *tmp != '%' && *tmp != '[' && *tmp != ']')
+		tmp++;
+	if (!*tmp)
+		return 0;
+
+	tmp = name;
+	while (*tmp) {
+		if (*tmp == '%') {
+			tmp++;
+			if (!*tmp)
+				return -1;
+			if (*tmp != '[')
+				continue;
+			tmp++;
+			while (*tmp && *tmp != ']') {
+				if (*tmp == '%')
+					tmp++;
+				tmp++;
+			}
+			if (!tmp)
+				return -1;
+		}
+		tmp++;
+	}
+
+	new = malloc(strlen(name) + 1);
+	if (!new)
+		return -1;
+
+	ptr = new;
+	tmp = name;
+	while (*tmp) {
+		if (*tmp == '%' || *tmp == '[' || *tmp == ']') {
+			tmp++;
+			if (*tmp && *tmp != '%')
+				continue;
+		}
+		*ptr++ = *tmp++;
+	}
+	*ptr = '\0';
+
+	*key = new;
+
+	return strlen(new);
+}
+
+static int encode_percent_hack(const char *name, char **key, unsigned int use_class)
+{
+	const char *tmp;
+	unsigned int len = 0;
+	char *ptr, *new;
+
+	if (!key)
+		return -1;
+
+	*key = NULL;
+
+	tmp = name;
+	while (*tmp) {
+		if (*tmp == '%')
+			len++;
+		else if (isupper(*tmp)) {
+			tmp++;
+			len++;
+			if (!use_class)
+				len++;
+			else {
+				if (*tmp && isupper(*tmp))
+					len += 2;
+				else
+					return 0;
+				while (*tmp && isupper(*tmp)) {
+					len++;
+					tmp++;
+				}
+			}
+			continue;
+		}
+		len++;
+		tmp++;
+	}
+	if (len == strlen(name))
+		return 0;
+
+	new = malloc(len + 1);
+	if (!new)
+		return -1;
+
+	ptr = new;
+	tmp = name;
+	while (*tmp) {
+		if (*tmp == '%')
+			*ptr++ = '%';
+		else if (isupper(*tmp)) {
+			char next = *tmp++;
+			*ptr++ = '%';
+			if (*tmp && (!isupper(*tmp) || !use_class))
+				*ptr++ = next;
+			else {
+				*ptr++ = '[';
+				*ptr++ = next;
+				while (*tmp && isupper(*tmp))
+					*ptr++ = *tmp++;
+				*ptr++ = ']';
+			}
+			continue;
+		}
+		*ptr++ = *tmp++;
+	}
+	*ptr = '\0';
+
+	*key = new;
+
+	return strlen(new);
+}
+
 static int read_one_map(struct autofs_point *ap,
 			struct lookup_context *ctxt,
 			time_t age, int *result_ldap)
@@ -1518,7 +1652,7 @@ static int read_one_map(struct autofs_point *ap,
 		 * people using older schemas that allow '*' as a key
 		 * value. Another case where there can be multiple key
 		 * values is when people have used the "%" hack to specify
-		 * case matching ctriteria in a caase insensitive attribute.
+		 * case matching ctriteria in a case insensitive attribute.
 		 */
 		count = ldap_count_values_len(bvKey);
 		if (count > 1) {
@@ -1647,9 +1781,30 @@ static int read_one_map(struct autofs_point *ap,
 			*k_val = '*';
 		}
 
-		s_key = sanitize_path(k_val, k_len, ap->type, ap->logopt);
-		if (!s_key)
-			goto next;
+		if (strcasecmp(class, "nisObject")) {
+			s_key = sanitize_path(k_val, k_len, ap->type, ap->logopt);
+			if (!s_key)
+				goto next;
+		} else {
+			char *dec_key;
+			int dec_len = decode_percent_hack(k_val, &dec_key);
+
+			if (dec_len < 0) {
+				crit(ap->logopt,
+				     "could not use percent hack to decode key %s",
+				     k_val);
+				goto next;
+			}
+
+			if (dec_len == 0)
+				s_key = sanitize_path(k_val, k_len, ap->type, ap->logopt);
+			else {
+				s_key = sanitize_path(dec_key, dec_len, ap->type, ap->logopt);
+				free(dec_key);
+			}
+			if (!s_key)
+				goto next;
+		}
 
 		cache_writelock(mc);
 		cache_update(mc, source, s_key, mapent, age);
@@ -1712,6 +1867,8 @@ static int lookup_one(struct autofs_point *ap,
 	char *query;
 	LDAPMessage *result, *e;
 	char *class, *info, *entry;
+	char *enc_key1, *enc_key2;
+	int enc_len1 = 0, enc_len2 = 0;
 	struct berval **bvKey;
 	struct berval **bvValues;
 	char *attrs[3];
@@ -1742,14 +1899,38 @@ static int lookup_one(struct autofs_point *ap,
 
 	if (*qKey == '*' && qKey_len == 1)
 		*qKey = '/';
+	else if (!strcasecmp(class, "nisObject")) {
+		enc_len1 = encode_percent_hack(qKey, &enc_key1, 0);
+		if (enc_len1 < 0) {
+			crit(ap->logopt,
+			     "could not use percent hack encode key %s",
+			     qKey);
+			return CHE_FAIL;
+		}
+		if (enc_len1 != 0) {
+			enc_len2 = encode_percent_hack(qKey, &enc_key2, 1);
+			if (enc_len2 < 0) {
+				crit(ap->logopt,
+				     "could not use percent hack encode key %s",
+				     qKey);
+				return CHE_FAIL;
+			}
+		}
+	}
 
 	/* Build a query string. */
 	l = strlen(class) + 3*strlen(entry) + strlen(qKey) + 35;
+	if (enc_len1)
+		l += 2*strlen(entry) + enc_len1 + enc_len2 + 6;
 
 	query = alloca(l);
 	if (query == NULL) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
 		crit(ap->logopt, MODPREFIX "malloc: %s", estr);
+		if (enc_len1) {
+			free(enc_key1);
+			free(enc_key2);
+		}
 		return CHE_FAIL;
 	}
 
@@ -1757,8 +1938,27 @@ static int lookup_one(struct autofs_point *ap,
 	 * Look for an entry in class under ctxt-base
 	 * whose entry is equal to qKey.
 	 */
-	ql = sprintf(query,
-	      "(&(objectclass=%s)(|(%s=%s)(%s=/)(%s=\\2A)))", class, entry, qKey, entry, entry);
+	if (!enc_len1) {
+		ql = sprintf(query,
+			"(&(objectclass=%s)(|(%s=%s)(%s=/)(%s=\\2A)))",
+			class, entry, qKey, entry, entry);
+	} else {
+		if (enc_len2) {
+			ql = sprintf(query,
+				"(&(objectclass=%s)"
+				"(|(%s=%s)(%s=%s)(%s=%s)(%s=/)(%s=\\2A)))",
+				class, entry, qKey,
+				entry, enc_key1, entry, enc_key2, entry, entry);
+			free(enc_key1);
+			free(enc_key2);
+		} else {
+			ql = sprintf(query,
+				"(&(objectclass=%s)"
+				"(|(%s=%s)(%s=%s)(%s=/)(%s=\\2A)))",
+				class, entry, qKey, entry, enc_key1, entry, entry);
+			free(enc_key1);
+		}
+	}
 	if (ql >= l) {
 		error(ap->logopt,
 		      MODPREFIX "error forming query string");
@@ -1934,9 +2134,30 @@ static int lookup_one(struct autofs_point *ap,
 			goto next;
 		}
 
-		s_key = sanitize_path(k_val, k_len, ap->type, ap->logopt);
-		if (!s_key)
-			goto next;
+		if (strcasecmp(class, "nisObject")) {
+			s_key = sanitize_path(k_val, k_len, ap->type, ap->logopt);
+			if (!s_key)
+				goto next;
+		} else {
+			char *dec_key;
+			int dec_len = decode_percent_hack(k_val, &dec_key);
+
+			if (dec_len < 0) {
+				crit(ap->logopt,
+				     "could not use percent hack to decode key %s",
+				     k_val);
+				goto next;
+			}
+
+			if (dec_len == 0)
+				s_key = sanitize_path(k_val, k_len, ap->type, ap->logopt);
+			else {
+				s_key = sanitize_path(dec_key, dec_len, ap->type, ap->logopt);
+				free(dec_key);
+			}
+			if (!s_key)
+				goto next;
+		}
 
 		cache_writelock(mc);
 		ret = cache_update(mc, source, s_key, mapent, age);
