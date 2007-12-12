@@ -52,6 +52,7 @@
 - fix LDAP_URI server selection.
 - add authentication option for using an external credential cache.
 - expand support for the "%" hack.
+- fix to quoting for exports gathered by hosts map.
 
 18/06/2007 autofs-5.0.2
 -----------------------
