@@ -496,6 +496,7 @@ static int sun_mount(struct autofs_point *ap, const char *root,
 	int rv, cur_state;
 	char *mountpoint;
 	char *what;
+	char *type;
 
 	if (*options == '\0')
 		options = NULL;
@@ -584,6 +585,36 @@ static int sun_mount(struct autofs_point *ap, const char *root,
 
 	mountpoint = alloca(namelen + 1);
 	sprintf(mountpoint, "%.*s", namelen, name);
+
+	type = ap->entry->maps->type;
+	if (type && !strcmp(type, "hosts")) {
+		if (options) {
+			if (!strstr(options, "suid")) {
+				char *tmp = alloca(strlen(options) + 8);
+				if (!tmp) {
+					error(ap->logopt, MODPREFIX
+					      "alloca failed for options");
+					if (nonstrict)
+						return -1;
+					return 1;
+				}
+				strcpy(tmp, options);
+				strcat(tmp, ",nosuid");
+				options = tmp;
+			}
+		} else {
+			char *tmp = alloca(7);
+			if (!tmp) {
+				error(ap->logopt,
+				      MODPREFIX "alloca failed for options");
+				if (nonstrict)
+					return -1;
+				return 1;
+			}
+			strcpy(tmp, "nosuid");
+			options = tmp;
+		}
+	}
 
 	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cur_state);
 	if (!strcmp(fstype, "nfs")) {

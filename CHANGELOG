@@ -53,6 +53,7 @@
 - add authentication option for using an external credential cache.
 - expand support for the "%" hack.
 - fix to quoting for exports gathered by hosts map.
+- use mount option "nosuid" for "-hosts" map unless "suid" is explicily specified.
 
 18/06/2007 autofs-5.0.2
 -----------------------

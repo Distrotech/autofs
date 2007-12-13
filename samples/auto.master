@@ -5,6 +5,11 @@
 # For details of the format look at autofs(5).
 #
 /misc	/etc/auto.misc
+#
+# NOTE: mounts done from a hosts map will be mounted with the
+#	"nosuid" option unless the "suid" option is explicitly
+#	given.
+#
 /net	-hosts
 #
 # Include central master map if it can be found using
