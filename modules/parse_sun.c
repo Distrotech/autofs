@@ -878,7 +878,7 @@ static int parse_mapent(const char *ent, char *g_options, char **options, char *
 	}
 
 	if (!validate_location(loc)) {
-		warn(logopt, MODPREFIX "invalid location");
+		warn(logopt, MODPREFIX "invalid location %s", loc);
 		free(myoptions);
 		free(loc);
 		return 0;
@@ -913,7 +913,7 @@ static int parse_mapent(const char *ent, char *g_options, char **options, char *
 
 		if (!validate_location(ent_chunk)) {
 			warn(logopt,
-			      MODPREFIX "invalid location %s", ent);
+			      MODPREFIX "invalid location %s", ent_chunk);
 			free(ent_chunk);
 			free(myoptions);
 			free(loc);
@@ -1344,6 +1344,23 @@ int parse_mount(struct autofs_point *ap, const char *name,
 		int loclen;
 		int l;
 
+		/*
+		 * If this is an offset belonging to a multi-mount entry
+		 * it's already been parsed (above) and any option string
+		 * has already been stripped so just use the remainder.
+		 */
+		if (*name == '/' &&
+		   (me = cache_lookup_distinct(mc, name)) && me->multi) {
+			loc = strdup(p);
+			if (!loc) {
+				free(options);
+				warn(ap->logopt, MODPREFIX "out of memory");
+				return 1;
+			}
+			loclen = strlen(p);
+			goto mount_it;
+		}
+
 		l = chunklen(p, check_colon(p));
 		loc = dequote(p, l, ap->logopt);
 		if (!loc) {
@@ -1361,9 +1378,9 @@ int parse_mount(struct autofs_point *ap, const char *name,
 		}
 
 		if (!validate_location(loc)) {
+			warn(ap->logopt, MODPREFIX "invalid location %s", loc);
 			free(loc);
 			free(options);
-			warn(ap->logopt, MODPREFIX "invalid location");
 			return 1;
 		}
 
@@ -1387,10 +1404,11 @@ int parse_mount(struct autofs_point *ap, const char *name,
 			}
 
 			if (!validate_location(ent)) {
+				warn(ap->logopt,
+				     MODPREFIX "invalid location %s", loc);
 				free(ent);
 				free(loc);
 				free(options);
-				warn(ap->logopt, MODPREFIX "invalid location");
 				return 1;
 			}
 
@@ -1424,7 +1442,7 @@ int parse_mount(struct autofs_point *ap, const char *name,
 			      MODPREFIX "entry %s is empty!", name);
 			return 1;
 		}
-
+mount_it:
 		debug(ap->logopt,
 		      MODPREFIX "core of entry: options=%s, loc=%.*s",
 		      options, loclen, loc);

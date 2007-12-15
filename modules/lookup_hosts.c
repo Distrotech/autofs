@@ -179,14 +179,9 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 	if (*name == '/') {
 		pthread_cleanup_push(cache_lock_cleanup, mc);
 		mapent_len = strlen(me->mapent);
-		mapent = alloca(mapent_len + 3);
-		if (mapent) {
-			/* Add quotes to keep the parser happy */
-			mapent[0] = '"';
-			strcpy(mapent + 1, me->mapent);
-			mapent[mapent_len + 1] = '"';
-			mapent[mapent_len + 2] = '\0';
-		}
+		mapent = alloca(mapent_len + 1);
+		if (mapent)
+			strcpy(mapent, me->mapent);
 		pthread_cleanup_pop(0);
 	}
 	cache_unlock(mc);

@@ -54,6 +54,7 @@
 - expand support for the "%" hack.
 - fix to quoting for exports gathered by hosts map.
 - use mount option "nosuid" for "-hosts" map unless "suid" is explicily specified.
+- second attempt fixing quoting for exports gathered by hosts map.
 
 18/06/2007 autofs-5.0.2
 -----------------------
