@@ -474,8 +474,12 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 				     MODPREFIX
 				     "failed to read included master map %s",
 				     master->name);
-				fclose(f);
-				return NSS_STATUS_UNAVAIL;
+				if (!master->recurse) {
+					master->depth--;
+					master->recurse = 0;
+					fclose(f);
+					return NSS_STATUS_UNAVAIL;
+				}
 			}
 			master->depth--;
 			master->recurse = 0;
