@@ -55,6 +55,7 @@
 - fix to quoting for exports gathered by hosts map.
 - use mount option "nosuid" for "-hosts" map unless "suid" is explicily specified.
 - second attempt fixing quoting for exports gathered by hosts map.
+- quell annoying "cannot open mount module" message.
 
 18/06/2007 autofs-5.0.2
 -----------------------

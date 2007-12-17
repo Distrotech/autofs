@@ -38,14 +38,21 @@ int do_mount(struct autofs_point *ap, const char *root, const char *name, int na
 	char **ngp;
 	int rv;
 
-	mod = open_mount(modstr = fstype, ERR_PREFIX);
+	/* Initially look for a mount module but don't issue an error on fail */
+	mod = open_mount(modstr = fstype, NULL);
 	if (!mod) {
 		for (ngp = not_generic; *ngp; ngp++) {
 			if (!strcmp(fstype, *ngp))
 				break;
 		}
+		/*
+		 * If there's not a known mount module use the generic module,
+		 * otherwise redo the fs mount module with error reporting
+		 */
 		if (!*ngp)
 			mod = open_mount(modstr = "generic", ERR_PREFIX);
+		else
+			mod = open_mount(modstr = fstype, ERR_PREFIX);
 		if (!mod) {
 			error(ap->logopt,
 			      "cannot find mount method for filesystem %s",
