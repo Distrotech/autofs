@@ -57,6 +57,7 @@
 - second attempt fixing quoting for exports gathered by hosts map.
 - quell annoying "cannot open mount module" message.
 - fix for improve handling of server not available.
+- use mount option "nodev" for "-hosts" map unless "dev" is explicily specified.
 
 18/06/2007 autofs-5.0.2
 -----------------------

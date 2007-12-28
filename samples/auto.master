@@ -7,8 +7,8 @@
 /misc	/etc/auto.misc
 #
 # NOTE: mounts done from a hosts map will be mounted with the
-#	"nosuid" option unless the "suid" option is explicitly
-#	given.
+#	"nosuid" and "nodev" options unless the "suid" and "dev"
+#	options are explicitly given.
 #
 /net	-hosts
 #

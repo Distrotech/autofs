@@ -196,8 +196,8 @@ For example, with an entry in the master map of
 accessing /net/myserver will mount exports from myserver on directories below
 /net/myserver.
 .P
-NOTE: mounts done from a hosts map will be mounted with the "nosuid" option
-unless the "suid" option is explicitly given in the master map entry.
+NOTE: mounts done from a hosts map will be mounted with the "nosuid" and "nodev" options
+unless the options "suid" and "dev" are explicitly given in the master map entry.
 .SH LDAP MAPS
 If the map type \fBldap\fP is specified the mapname is of the form
 \fB[//servername/]dn\fP, where the optional \fBservername\fP is
