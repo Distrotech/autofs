@@ -1,6 +1,0 @@
-# This is an automounter map and it has the following format
-# key [ -mount-options-separated-by-comma ] location
-# Details may be found in the autofs(5) manpage
-#boot		-fstype=ext2		:/dev/hda1
-#cd		-fstype=iso9660,ro	:/dev/cdrom
-#floppy		-fstype=auto		:/dev/fd0
