@@ -21,6 +21,12 @@
 /* Define to 1 if you have the <inttypes.h> header file. */
 #undef HAVE_INTTYPES_H
 
+/* Define to 1 if you have the `ldap_create_page_control' function. */
+#undef HAVE_LDAP_CREATE_PAGE_CONTROL
+
+/* Define to 1 if you have the `ldap_parse_page_control' function. */
+#undef HAVE_LDAP_PARSE_PAGE_CONTROL
+
 /* Define if you have the Linux /proc filesystem. */
 #undef HAVE_LINUX_PROCFS
 

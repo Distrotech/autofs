@@ -210,6 +210,8 @@ AC_SUBST(HAVE_LDAP)
 AC_SUBST(LIBLDAP)
 LDFLAGS="${AF_tmp_ldflags}"
 
+AC_CHECK_FUNCS(ldap_create_page_control ldap_parse_page_control)
+
 #
 # SASL support
 #   configure magic taken from:

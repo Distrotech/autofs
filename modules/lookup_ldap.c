@@ -49,7 +49,78 @@ static struct ldap_schema common_schema[] = {
 };
 static unsigned int common_schema_count = sizeof(common_schema)/sizeof(struct ldap_schema);
 
+struct ldap_search_params {
+	struct autofs_point *ap;
+	LDAP *ldap;
+	char *query, **attrs;
+	struct berval *cookie;
+	int morePages;
+	unsigned int totalCount;
+	LDAPMessage *result;
+	time_t age;
+};
+
 static LDAP *auth_init(unsigned logopt, const char *, struct lookup_context *);
+
+#ifndef HAVE_LDAP_CREATE_PAGE_CONTROL
+int ldap_create_page_control(LDAP *ldap, unsigned int pagesize,
+			     struct berval *cookie, char isCritical,
+			     LDAPControl **output)
+{
+	BerElement *ber;
+	int rc;
+
+	if (!ldap || !output)
+		return LDAP_PARAM_ERROR;
+
+	ber = ber_alloc_t(LBER_USE_DER);
+	if (!ber)
+		return LDAP_NO_MEMORY;
+
+	if (ber_printf(ber, "{io}", pagesize,
+			(cookie && cookie->bv_val) ? cookie->bv_val : "",
+			(cookie && cookie->bv_val) ? cookie->bv_len : 0)
+				== LBER_ERROR) {
+		ber_free(ber, 1);
+		return LDAP_ENCODING_ERROR;
+	}
+
+	rc = ldap_create_control(LDAP_CONTROL_PAGEDRESULTS, ber, isCritical, output);
+
+	return rc;
+}
+#endif /* HAVE_LDAP_CREATE_PAGE_CONTROL */
+
+#ifndef HAVE_LDAP_PARSE_PAGE_CONTROL
+int ldap_parse_page_control(LDAP *ldap, LDAPControl **controls,
+			    unsigned int *totalcount, struct berval **cookie)
+{
+	int i, rc;
+	BerElement *theBer;
+	LDAPControl *listCtrlp;
+
+	for (i = 0; controls[i] != NULL; i++) {
+		if (strcmp(controls[i]->ldctl_oid, LDAP_CONTROL_PAGEDRESULTS) == 0) {
+			listCtrlp = controls[i];
+
+			theBer = ber_init(&listCtrlp->ldctl_value);
+			if (!theBer)
+				return LDAP_NO_MEMORY;
+
+			rc = ber_scanf(theBer, "{iO}", totalcount, cookie);
+			if (rc == LBER_ERROR) {
+				ber_free(theBer, 1);
+				return LDAP_DECODING_ERROR;
+			}
+
+			ber_free(theBer, 1);
+			return LDAP_SUCCESS;
+		}
+	}
+
+	return LDAP_CONTROL_NOT_FOUND;
+}
+#endif /* HAVE_LDAP_PARSE_PAGE_CONTROL */
 
 int bind_ldap_anonymous(unsigned logopt, LDAP *ldap, struct lookup_context *ctxt)
 {
@@ -1545,80 +1616,118 @@ static int encode_percent_hack(const char *name, char **key, unsigned int use_cl
 	return strlen(new);
 }
 
-static int read_one_map(struct autofs_point *ap,
-			struct lookup_context *ctxt,
-			time_t age, int *result_ldap)
+static int do_paged_query(struct ldap_search_params *sp, struct lookup_context *ctxt)
 {
-	struct map_source *source;
-	struct mapent_cache *mc;
-	int rv, i, l, count;
+	struct autofs_point *ap = sp->ap;
+	LDAPControl *pageControl=NULL, *controls[2] = { NULL, NULL };
+	LDAPControl **returnedControls = NULL;
+	static unsigned long pageSize = 1000;
+	static char pagingCriticality = 'T';
+	int rv, scope = LDAP_SCOPE_SUBTREE;
+
+	if (sp->morePages == TRUE)
+		goto do_paged;
+
+	rv = ldap_search_s(sp->ldap, ctxt->qdn, scope, sp->query, sp->attrs, 0, &sp->result);
+	if ((rv != LDAP_SUCCESS) || !sp->result) {
+		/*
+ 		 * Check for Size Limit exceeded and force run through loop
+		 * and requery using page control.
+ 		 */
+		if (rv == LDAP_SIZELIMIT_EXCEEDED)
+			sp->morePages = TRUE;
+		else {
+			debug(ap->logopt,
+			      MODPREFIX "query failed for %s: %s",
+			      sp->query, ldap_err2string(rv));
+			return rv;
+		}
+	}
+	return rv;
+
+do_paged:
+	/* we need to use page controls so requery LDAP */
+	debug(ap->logopt, MODPREFIX "geting page of results");
+
+	rv = ldap_create_page_control(sp->ldap, pageSize, sp->cookie,
+				      pagingCriticality, &pageControl);
+	if (rv != LDAP_SUCCESS) {
+		warn(ap->logopt, MODPREFIX "failed to create page control");
+		return rv;
+	}
+
+	/* Insert the control into a list to be passed to the search. */
+	controls[0] = pageControl;
+
+	/* Search for entries in the directory using the parmeters. */
+	rv = ldap_search_ext_s(sp->ldap,
+			       ctxt->qdn, scope, sp->query, sp->attrs,
+			       0, controls, NULL, NULL, 0, &sp->result);
+	if ((rv != LDAP_SUCCESS) && (rv != LDAP_PARTIAL_RESULTS)) {
+		debug(ap->logopt,
+		      MODPREFIX "query failed for %s: %s",
+		      sp->query, ldap_err2string(rv));
+		ldap_control_free(pageControl);
+		return rv;
+	}
+
+	/* Parse the results to retrieve the contols being returned. */
+	rv = ldap_parse_result(sp->ldap, sp->result,
+			       NULL, NULL, NULL, NULL,
+			       &returnedControls, FALSE);
+	if (sp->cookie != NULL) {
+		ber_bvfree(sp->cookie);
+		sp->cookie = NULL;
+	}
+
+	/*
+	 * Parse the page control returned to get the cookie and
+	 * determine whether there are more pages.
+	 */
+	rv = ldap_parse_page_control(sp->ldap,
+				     returnedControls, &sp->totalCount,
+				     &sp->cookie);
+	if (sp->cookie && sp->cookie->bv_val && strlen(sp->cookie->bv_val))
+		sp->morePages = TRUE;
+	else
+		sp->morePages = FALSE;
+
+	/* Cleanup the controls used. */
+	if (returnedControls)
+		ldap_controls_free(returnedControls);
+
+	ldap_control_free(pageControl);
+
+	return rv;
+}
+
+static int do_get_entries(struct ldap_search_params *sp, struct map_source *source, struct lookup_context *ctxt)
+{
+	struct autofs_point *ap = sp->ap;
+	struct mapent_cache *mc = source->mc;
 	char buf[MAX_ERR_BUF];
-	char *query;
-	LDAPMessage *result, *e;
-	char *class, *info, *entry;
 	struct berval **bvKey;
 	struct berval **bvValues;
-	char *attrs[3];
-	int scope = LDAP_SCOPE_SUBTREE;
-	LDAP *ldap;
-
-	source = ap->entry->current;
-	ap->entry->current = NULL;
-	master_source_current_signal(ap->entry);
-
-	mc = source->mc;
+	LDAPMessage *e;
+	char *class, *info, *entry;
+	int rv, ret;
+	int i, count;
 
 	class = ctxt->schema->entry_class;
 	entry = ctxt->schema->entry_attr;
 	info = ctxt->schema->value_attr;
 
-	attrs[0] = entry;
-	attrs[1] = info;
-	attrs[2] = NULL;
-
-	/* Build a query string. */
-	l = strlen("(objectclass=)") + strlen(class) + 1;
-
-	query = alloca(l);
-	if (query == NULL) {
-		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		logerr(MODPREFIX "malloc: %s", estr);
-		return NSS_STATUS_UNAVAIL;
-	}
-
-	if (sprintf(query, "(objectclass=%s)", class) >= l) {
-		error(ap->logopt, MODPREFIX "error forming query string");
-		return NSS_STATUS_UNAVAIL;
-	}
-	query[l] = '\0';
-
-	/* Initialize the LDAP context. */
-	ldap = do_reconnect(ap->logopt, ctxt);
-	if (!ldap)
-		return NSS_STATUS_UNAVAIL;
-
-	/* Look around. */
-	debug(ap->logopt,
-	      MODPREFIX "searching for \"%s\" under \"%s\"", query, ctxt->qdn);
-
-	rv = ldap_search_s(ldap, ctxt->qdn, scope, query, attrs, 0, &result);
-
-	if ((rv != LDAP_SUCCESS) || !result) {
-		debug(ap->logopt,
-		      MODPREFIX "query failed for %s: %s",
-		      query, ldap_err2string(rv));
-		unbind_ldap_connection(ap->logopt, ldap, ctxt);
-		*result_ldap = rv;
-		return NSS_STATUS_NOTFOUND;
-	}
-
-	e = ldap_first_entry(ldap, result);
+	e = ldap_first_entry(sp->ldap, sp->result);
 	if (!e) {
 		debug(ap->logopt,
-		      MODPREFIX "query succeeded, no matches for %s", query);
-		ldap_msgfree(result);
-		unbind_ldap_connection(ap->logopt, ldap, ctxt);
-		return NSS_STATUS_NOTFOUND;
+		      MODPREFIX "query succeeded, no matches for %s",
+		      sp->query);
+		ret = ldap_parse_result(sp->ldap, sp->result,
+					&rv, NULL, NULL, NULL, NULL, 0);
+		if (ret == LDAP_SUCCESS)
+			return rv;
+		else
+			return LDAP_OPERATIONS_ERROR;
 	} else
 		debug(ap->logopt, MODPREFIX "examining entries");
 
@@ -1629,10 +1738,21 @@ static int read_one_map(struct autofs_point *ap,
 		ber_len_t k_len;
 		char *s_key;
 
-		bvKey = ldap_get_values_len(ldap, e, entry);
-
+		bvKey = ldap_get_values_len(sp->ldap, e, entry);
 		if (!bvKey || !*bvKey) {
-			e = ldap_next_entry(ldap, e);
+			e = ldap_next_entry(sp->ldap, e);
+			if (!e) {
+				debug(ap->logopt, MODPREFIX
+				      "failed to get next entry for query %s",
+				      sp->query);
+				ret = ldap_parse_result(sp->ldap,
+							sp->result, &rv,
+							NULL, NULL, NULL, NULL, 0);
+				if (ret == LDAP_SUCCESS)
+					return rv;
+				else
+					return LDAP_OPERATIONS_ERROR;
+			}
 			continue;
 		}
 
@@ -1697,8 +1817,7 @@ static int read_one_map(struct autofs_point *ap,
 
 			if (!k_val) {
 				error(ap->logopt,
-				      MODPREFIX
-				      "invalid entry %.*s - ignoring",
+				      MODPREFIX "invalid entry %.*s - ignoring",
 				      bvKey[0]->bv_len, bvKey[0]->bv_val);
 				goto next;
 			}
@@ -1721,10 +1840,10 @@ static int read_one_map(struct autofs_point *ap,
 			goto next;
 		}
 
-		bvValues = ldap_get_values_len(ldap, e, info);
+		bvValues = ldap_get_values_len(sp->ldap, e, info);
 		if (!bvValues || !*bvValues) {
 			debug(ap->logopt,
-			      MODPREFIX "no %s defined for %s", info, query);
+			      MODPREFIX "no %s defined for %s", info, sp->query);
 			goto next;
 		}
 
@@ -1737,7 +1856,6 @@ static int read_one_map(struct autofs_point *ap,
 		 * options or the actual order of entries causes problems
 		 * it won't be supported. Perhaps someone can instruct us
 		 * how to force an ordering.
-		 * 
 		 */
 		count = ldap_count_values_len(bvValues);
 		for (i = 0; i < count; i++) {
@@ -1807,7 +1925,7 @@ static int read_one_map(struct autofs_point *ap,
 		}
 
 		cache_writelock(mc);
-		cache_update(mc, source, s_key, mapent, age);
+		cache_update(mc, source, s_key, mapent, sp->age);
 		cache_unlock(mc);
 
 		free(s_key);
@@ -1818,14 +1936,112 @@ next:
 		}
 
 		ldap_value_free_len(bvKey);
-		e = ldap_next_entry(ldap, e);
+		e = ldap_next_entry(sp->ldap, e);
+		if (!e) {
+			debug(ap->logopt, MODPREFIX
+			      "failed to get next entry for query %s",
+			      sp->query);
+			ret = ldap_parse_result(sp->ldap,
+						sp->result, &rv,
+						NULL, NULL, NULL, NULL, 0);
+			if (ret == LDAP_SUCCESS)
+				return rv;
+			else
+				return LDAP_OPERATIONS_ERROR;
+		}
 	}
+
+	return LDAP_SUCCESS;
+}
+
+
+static int read_one_map(struct autofs_point *ap,
+			struct lookup_context *ctxt,
+			time_t age, int *result_ldap)
+{
+	struct map_source *source;
+	struct ldap_search_params sp;
+	char buf[MAX_ERR_BUF];
+	char *class, *info, *entry;
+	char *attrs[3];
+	int rv, l;
+
+	source = ap->entry->current;
+	ap->entry->current = NULL;
+	master_source_current_signal(ap->entry);
+
+	sp.ap = ap;
+	sp.age = age;
+
+	class = ctxt->schema->entry_class;
+	entry = ctxt->schema->entry_attr;
+	info = ctxt->schema->value_attr;
+
+	attrs[0] = entry;
+	attrs[1] = info;
+	attrs[2] = NULL;
+	sp.attrs = attrs;
+
+	/* Build a query string. */
+	l = strlen("(objectclass=)") + strlen(class) + 1;
+
+	sp.query = alloca(l);
+	if (sp.query == NULL) {
+		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+		logerr(MODPREFIX "malloc: %s", estr);
+		return NSS_STATUS_UNAVAIL;
+	}
+
+	if (sprintf(sp.query, "(objectclass=%s)", class) >= l) {
+		error(ap->logopt, MODPREFIX "error forming query string");
+		return NSS_STATUS_UNAVAIL;
+	}
+	sp.query[l] = '\0';
+
+	/* Initialize the LDAP context. */
+	sp.ldap = do_reconnect(ap->logopt, ctxt);
+	if (!sp.ldap)
+		return NSS_STATUS_UNAVAIL;
+
+	/* Look around. */
+	debug(ap->logopt,
+	      MODPREFIX "searching for \"%s\" under \"%s\"", sp.query, ctxt->qdn);
+
+	sp.cookie = NULL;
+	sp.morePages = FALSE;
+	sp.totalCount = 0;
+	sp.result = NULL;
+
+	do {
+		rv = do_paged_query(&sp, ctxt);
+		if (rv == LDAP_SIZELIMIT_EXCEEDED)
+		{
+			debug(ap->logopt, MODPREFIX "result size exceed");
+			if (sp.result)
+				ldap_msgfree(sp.result);
+
+			continue;
+		}
+
+		if (rv != LDAP_SUCCESS || !sp.result) {
+			unbind_ldap_connection(ap->logopt, sp.ldap, ctxt);
+			*result_ldap = rv;
+			return NSS_STATUS_UNAVAIL;
+		}
+
+		rv = do_get_entries(&sp, source, ctxt);
+		if (rv != LDAP_SUCCESS) {
+			ldap_msgfree(sp.result);
+			unbind_ldap_connection(ap->logopt, sp.ldap, ctxt);
+			*result_ldap = rv;
+			return NSS_STATUS_NOTFOUND;
+		}
+		ldap_msgfree(sp.result);
+	} while (sp.morePages == TRUE);
 
 	debug(ap->logopt, MODPREFIX "done updating map");
 
-	/* Clean up. */
-	ldap_msgfree(result);
-	unbind_ldap_connection(ap->logopt, ldap, ctxt);
+	unbind_ldap_connection(ap->logopt, sp.ldap, ctxt);
 
 	source->age = age;
 
