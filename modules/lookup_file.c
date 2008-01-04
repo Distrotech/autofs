@@ -617,7 +617,13 @@ prepare_plus_include(struct autofs_point *ap, time_t age, char *key, unsigned in
 	argv[1] = NULL;
 
 	source = master_find_source_instance(current, type, fmt, argc, argv);
-	if (!source) {
+	if (source)
+		/*
+		 * Make sure included map age is in sync with its owner
+		 * or we could incorrectly wipe out its entries.
+		 */
+		source->age = ap->entry->current->age;
+	else {
 		source = master_add_source_instance(current, type, fmt, age, argc, argv);
 		if (!source) {
 			free(buf);
