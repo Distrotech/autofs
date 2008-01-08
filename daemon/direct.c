@@ -1494,7 +1494,7 @@ int handle_packet_missing_direct(struct autofs_point *ap, autofs_packet_missing_
 		  (unsigned long) pkt->wait_queue_token, me->key, pkt->pid);
 
 	/* Ignore packet if we're trying to shut down */
-	if (ap->state == ST_SHUTDOWN_PENDING ||
+	if (ap->shutdown ||
 	    ap->state == ST_SHUTDOWN_FORCE ||
 	    ap->state == ST_SHUTDOWN) {
 		send_fail(ap->logopt, ioctlfd, pkt->wait_queue_token);

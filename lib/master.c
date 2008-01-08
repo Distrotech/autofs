@@ -94,6 +94,7 @@ int master_add_autofs_point(struct master_mapent *entry,
 	ap->submount = submount;
 	INIT_LIST_HEAD(&ap->mounts);
 	INIT_LIST_HEAD(&ap->submounts);
+	ap->shutdown = 0;
 
 	status = pthread_mutex_init(&ap->state_mutex, NULL);
 	if (status) {
@@ -968,6 +969,7 @@ void master_notify_state_change(struct master *master, int sig)
 			if (ap->state != ST_SHUTDOWN_PENDING &&
 			    ap->state != ST_SHUTDOWN_FORCE) {
 				next = ST_SHUTDOWN_PENDING;
+				ap->shutdown = 1;
 				nextstate(state_pipe, next);
 			}
 			break;

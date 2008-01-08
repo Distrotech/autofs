@@ -461,6 +461,7 @@ struct autofs_point {
 	unsigned int mounts_signaled;	/* Submount signals task complete */
 	struct list_head mounts;	/* List of autofs mounts at current level */
 	unsigned int submount;		/* Is this a submount */
+	unsigned int shutdown;		/* Shutdown notification */
 	unsigned int submnt_count;	/* Number of submounts */
 	struct list_head submounts;	/* List of child submounts */
 };

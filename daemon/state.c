@@ -113,6 +113,8 @@ void expire_cleanup(void *arg)
 
 	/* Check to see if expire process finished */
 	if (thid == ap->exp_thread) {
+		int rv, idle;
+
 		ap->exp_thread = 0;
 
 		switch (ap->state) {
@@ -133,8 +135,6 @@ void expire_cleanup(void *arg)
 			 * allowing it to shutdown.
 			 */
 			if (ap->submount && !success) {
-				int rv, idle;
-
 				rv = ioctl(ap->ioctlfd, AUTOFS_IOC_ASKUMOUNT, &idle);
 				if (!rv && idle && ap->submount > 1) {
 					next = ST_SHUTDOWN_PENDING;
@@ -155,6 +155,19 @@ void expire_cleanup(void *arg)
 			break;
 
 		case ST_SHUTDOWN_PENDING:
+			/*
+			 * If we reveive a mount request while trying to
+			 * shutdown return to ready state unless we have
+			 * been signaled to shutdown.
+			 */
+			rv = ioctl(ap->ioctlfd, AUTOFS_IOC_ASKUMOUNT, &idle);
+			if (!idle && !ap->shutdown) {
+				next = ST_READY;
+				if (!ap->submount)
+					alarm_add(ap, ap->exp_runfreq);
+				break;
+			}
+
 			next = ST_SHUTDOWN;
 #ifdef ENABLE_IGNORE_BUSY_MOUNTS
 			break;
@@ -200,6 +213,7 @@ static unsigned int st_ready(struct autofs_point *ap)
 	debug(ap->logopt,
 	      "st_ready(): state = %d path %s", ap->state, ap->path);
 
+	ap->shutdown = 0;
 	ap->state = ST_READY;
 
 	if (ap->submount)

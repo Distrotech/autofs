@@ -60,6 +60,7 @@
 - use mount option "nodev" for "-hosts" map unless "dev" is explicily specified.
 - add LDAP paged query handling to deal with query size restrictions (Edward Newman).
 - add additional case for "mark map instances stale so they aren't "cleaned" during updates".
+- fix race during sub-mount shutdown.
 
 18/06/2007 autofs-5.0.2
 -----------------------

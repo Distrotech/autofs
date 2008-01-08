@@ -928,10 +928,17 @@ void lookup_close_lookup(struct autofs_point *ap)
 	if (!map)
 		return;
 
+	/*
+	 * Make sure we don't kill the context if a mount
+	 * request has come in while were shutting down.
+	 */
+	master_source_writelock(ap->entry);
 	while (map) {
 		lookup_close_lookup_instances(map);
 		map = map->next;
 	}
+	master_source_unlock(ap->entry);
+
 	return;
 }
 

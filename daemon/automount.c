@@ -1564,9 +1564,24 @@ void *handle_mounts(void *arg)
 			}
 
 			/* OK to exit */
-			if (ap->state == ST_SHUTDOWN || result) {
-				state_mutex_unlock(ap);
-				break;
+			if (ap->state == ST_SHUTDOWN) {
+				if (result) {
+					state_mutex_unlock(ap);
+					break;
+				}
+#ifdef ENABLE_IGNORE_BUSY_MOUNTS
+				/*
+				 * There weren't any active mounts but if the
+				 * filesystem is busy there may be a mount
+				 * request in progress so return to the ready
+				 * state unless a shutdown has been explicitly
+				 * requested.
+				 */
+				if (ap->shutdown) {
+					state_mutex_unlock(ap);
+					break;
+				}
+#endif
 			}
 
 			/* Failed shutdown returns to ready */
