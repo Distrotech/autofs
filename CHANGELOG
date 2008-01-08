@@ -61,6 +61,7 @@
 - add LDAP paged query handling to deal with query size restrictions (Edward Newman).
 - add additional case for "mark map instances stale so they aren't "cleaned" during updates".
 - fix race during sub-mount shutdown.
+- fix add SEARCH_BASE configuration option.
 
 18/06/2007 autofs-5.0.2
 -----------------------

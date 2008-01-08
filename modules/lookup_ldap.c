@@ -261,7 +261,7 @@ static int get_query_dn(unsigned logopt, LDAP *ldap, struct lookup_context *ctxt
 {
 	char buf[PARSE_MAX_BUF];
 	char *query, *dn, *qdn;
-	LDAPMessage *result = NULL, *e;
+	LDAPMessage *result, *e;
 	struct ldap_searchdn *sdns = NULL;
 	char *attrs[2];
 	struct berval **value;
@@ -319,52 +319,71 @@ static int get_query_dn(unsigned logopt, LDAP *ldap, struct lookup_context *ctxt
 		}
 	}
 
-	if (!ctxt->sdns)
+	dn = NULL;
+	if (!ctxt->sdns) {
 		rv = ldap_search_s(ldap, ctxt->base,
 				   scope, query, attrs, 0, &result);
-	else {
+		if ((rv != LDAP_SUCCESS) || !result) {
+			error(logopt,
+			      MODPREFIX "query failed for %s: %s",
+			      query, ldap_err2string(rv));
+			return 0;
+		}
+
+		e = ldap_first_entry(ldap, result);
+		if (e && (value = ldap_get_values_len(ldap, e, key))) {
+			ldap_value_free_len(value);
+			dn = ldap_get_dn(ldap, e);
+			debug(logopt, MODPREFIX "found query dn %s", dn);
+		} else {
+			debug(logopt,
+			      MODPREFIX "query succeeded, no matches for %s",
+			      query);
+			ldap_msgfree(result);
+			return 0;
+		}
+	} else {
 		struct ldap_searchdn *this = ctxt->sdns;
 
 		debug(logopt, MODPREFIX "check search base list");
 
+		result = NULL;
 		while (this) {
 			rv = ldap_search_s(ldap, this->basedn,
 					   scope, query, attrs, 0, &result);
-
 			if ((rv == LDAP_SUCCESS) && result) {
 				debug(logopt, MODPREFIX
 				      "found search base under %s",
 				      this->basedn);
-				break;
+
+				e = ldap_first_entry(ldap, result);
+				if (e && (value = ldap_get_values_len(ldap, e, key))) {
+					ldap_value_free_len(value);
+					dn = ldap_get_dn(ldap, e);
+					debug(logopt, MODPREFIX "found query dn %s", dn);
+					break;
+				} else {
+					debug(logopt,
+					      MODPREFIX "query succeeded, no matches for %s",
+					      query);
+					ldap_msgfree(result);
+					result = NULL;
+				}
+			} else {
+				error(logopt,
+				      MODPREFIX "query failed for search dn %s: %s",
+				      this->basedn, ldap_err2string(rv));
 			}
 
 			this = this->next;
-
-			if (result) {
-				ldap_msgfree(result);
-				result = NULL;
-			}
 		}
-	}
 
-	if ((rv != LDAP_SUCCESS) || !result) {
-		error(logopt,
-		      MODPREFIX "query failed for %s: %s",
-		      query, ldap_err2string(rv));
-		return 0;
-	}
-
-	e = ldap_first_entry(ldap, result);
-	if (e && (value = ldap_get_values_len(ldap, e, key))) {
-		ldap_value_free_len(value);
-		dn = ldap_get_dn(ldap, e);
-		debug(logopt, MODPREFIX "found query dn %s", dn);
-	} else {
-		debug(logopt,
-		      MODPREFIX "query succeeded, no matches for %s",
-		      query);
-		ldap_msgfree(result);
-		return 0;
+		if (!result) {
+			ldap_msgfree(result);
+			error(logopt,
+			      MODPREFIX "failed to find query dn under search base dns");
+			return 0;
+		}
 	}
 
 	qdn = strdup(dn);
