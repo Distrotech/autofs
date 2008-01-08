@@ -1309,8 +1309,12 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 			validate_uris(uris);
 			if (!list_empty(uris))
 				ctxt->uri = uris;
-			else 
+			else {
+				error(LOGOPT_ANY,
+				      "no valid uris found in config list"
+				      ", using default system config");
 				free(uris);
+			}
 		}
 	}
 
