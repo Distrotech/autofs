@@ -55,7 +55,7 @@ struct ldap_search_params {
 	char *query, **attrs;
 	struct berval *cookie;
 	int morePages;
-	unsigned int totalCount;
+	ber_int_t totalCount;
 	LDAPMessage *result;
 	time_t age;
 };
@@ -63,7 +63,7 @@ struct ldap_search_params {
 static LDAP *auth_init(unsigned logopt, const char *, struct lookup_context *);
 
 #ifndef HAVE_LDAP_CREATE_PAGE_CONTROL
-int ldap_create_page_control(LDAP *ldap, unsigned int pagesize,
+int ldap_create_page_control(LDAP *ldap, ber_int_t pagesize,
 			     struct berval *cookie, char isCritical,
 			     LDAPControl **output)
 {
@@ -93,7 +93,7 @@ int ldap_create_page_control(LDAP *ldap, unsigned int pagesize,
 
 #ifndef HAVE_LDAP_PARSE_PAGE_CONTROL
 int ldap_parse_page_control(LDAP *ldap, LDAPControl **controls,
-			    unsigned int *totalcount, struct berval **cookie)
+			    ber_int_t *totalcount, struct berval **cookie)
 {
 	int i, rc;
 	BerElement *theBer;
@@ -1644,7 +1644,7 @@ static int do_paged_query(struct ldap_search_params *sp, struct lookup_context *
 	struct autofs_point *ap = sp->ap;
 	LDAPControl *pageControl=NULL, *controls[2] = { NULL, NULL };
 	LDAPControl **returnedControls = NULL;
-	static unsigned long pageSize = 1000;
+	static ber_int_t pageSize = 1000;
 	static char pagingCriticality = 'T';
 	int rv, scope = LDAP_SCOPE_SUBTREE;
 

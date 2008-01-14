@@ -155,7 +155,7 @@ AC_ARG_WITH(hesiod,
 	fi
 )	
 
-if test -z "$HAVE_HESIOD"
+if test -z "$HAVE_HESIOD" -o "$HAVE_HESIOD" != "0"
 then
 	HAVE_HESIOD=0
 	AF_CHECK_LIBHESIOD()
@@ -194,23 +194,23 @@ AC_ARG_WITH(openldap,
 		LDAP_FLAGS="-I${withval}/include"
 	fi
 )
-if test -z "$HAVE_LDAP"; then
+if test -z "$HAVE_LDAP" -o "$HAVE_LDAP" != "0"; then
 	HAVE_LDAP=0
 	LDAP_FLAGS="$LDAP_FLAGS -DLDAP_DEPRECATED=1"
 	AC_CHECK_LIB(ldap, ldap_initialize, HAVE_LDAP=1 LIBLDAP="$LIBLDAP -lldap_r -llber -lresolv", ,
 		     -llber -lresolv $LIBS)
-	if test "$HAVE_LDAP" == "1"; then
+	if test "$HAVE_LDAP" = "1"; then
 		AC_DEFINE(WITH_LDAP,1,
 			[Define if using LDAP as a source of automount maps])
 	fi
+	AF_CHECK_FUNC_LDAP_CREATE_PAGE_CONTROL()
+	AF_CHECK_FUNC_LDAP_PARSE_PAGE_CONTROL()
 fi
 
 AC_SUBST(LDAP_FLAGS)
 AC_SUBST(HAVE_LDAP)
 AC_SUBST(LIBLDAP)
 LDFLAGS="${AF_tmp_ldflags}"
-
-AC_CHECK_FUNCS(ldap_create_page_control ldap_parse_page_control)
 
 #
 # SASL support
@@ -236,7 +236,7 @@ AC_ARG_WITH(sasl,
 		SASL_FLAGS="-I${withval}/include"
 	fi
 )
-if test -z "$HAVE_SASL" -a "$HAVE_LIBXML" == "1"
+if test -z "$HAVE_SASL" -o "$HAVE_SASL" != "0" -a "$HAVE_LIBXML" == "1"
 then
 	HAVE_SASL=0
 	AC_CHECK_LIB(sasl2, sasl_client_start, HAVE_SASL=1 LIBSASL="$LIBSASL -lsasl2", , -lsasl2 $LIBS)

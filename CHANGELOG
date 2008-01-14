@@ -1,3 +1,7 @@
+??/??/2008 autofs-5.0.4
+-----------------------
+- correct configure test for ldapr page control functions.
+ 
 14/01/2008 autofs-5.0.3
 -----------------------
 - include krb5.h in lookup_ldap.h (some openssl doesn't implicitly include it).

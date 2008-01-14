@@ -222,3 +222,69 @@ AC_TRY_LINK(
 LDFLAGS="$af_check_hesiod_save_ldflags"
 ])
 
+dnl --------------------------------------------------------------------------
+dnl AF_CHECK_FUNC_LDAP_CREATE_PAGE_CONTROL
+dnl
+dnl Check for function ldap_create_page_control
+dnl --------------------------------------------------------------------------
+AC_DEFUN([AF_CHECK_FUNC_LDAP_CREATE_PAGE_CONTROL],
+[AC_MSG_CHECKING(for ldap_create_page_control in -lldap)
+
+# save current ldflags
+af_check_ldap_create_page_control_save_ldflags="$LDFLAGS"
+LDFLAGS="$LDFLAGS -lldap_r"
+
+AC_TRY_LINK(
+  [ #include <ldap.h> ],
+  [ LDAP *ld;
+    ber_int_t ps;
+    struct berval *c;
+    int ic, ret;
+    LDAPControl **clp;
+    ret = ldap_create_page_control(ld,ps,c,ic,clp); ],
+  [ af_have_ldap_create_page_control=yes
+    AC_MSG_RESULT(yes) ],
+  [ AC_MSG_RESULT(no) ])
+
+if test "$af_have_ldap_create_page_control" = "yes"; then
+  AC_DEFINE(HAVE_LDAP_CREATE_PAGE_CONTROL, 1,
+        [Define to 1 if you have the `ldap_create_page_control' function.])
+fi
+
+# restore ldflags
+LDFLAGS="$af_check_ldap_create_page_control_save_ldflags"
+])
+
+dnl --------------------------------------------------------------------------
+dnl AF_CHECK_FUNC_LDAP_PARSE_PAGE_CONTROL
+dnl
+dnl Check for function ldap_parse_page_control
+dnl --------------------------------------------------------------------------
+AC_DEFUN([AF_CHECK_FUNC_LDAP_PARSE_PAGE_CONTROL],
+[AC_MSG_CHECKING(for ldap_parse_page_control in -lldap)
+
+# save current ldflags
+af_check_ldap_parse_page_control_save_ldflags="$LDFLAGS"
+LDFLAGS="$LDFLAGS -lldap_r"
+
+AC_TRY_LINK(
+  [ #include <ldap.h> ],
+  [ LDAP *ld;
+    ber_int_t ct;
+    struct berval *c;
+    int ret;
+    LDAPControl **clp;
+    ret = ldap_parse_page_control(ld,clp,ct,c); ],
+  [ af_have_ldap_parse_page_control=yes
+    AC_MSG_RESULT(yes) ],
+  [ AC_MSG_RESULT(no) ])
+
+if test "$af_have_ldap_create_page_control" = "yes"; then
+  AC_DEFINE(HAVE_LDAP_PARSE_PAGE_CONTROL, 1,
+        [Define to 1 if you have the `ldap_parse_page_control' function.])
+fi
+
+# restore ldflags
+LDFLAGS="$af_check_ldap_parse_page_control_save_ldflags"
+])
+
