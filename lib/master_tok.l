@@ -215,6 +215,12 @@ OPTNTOUT	(-n{OPTWS}|-n{OPTWS}={OPTWS}|--negative-timeout{OPTWS}|--negative-timeo
 		return MAPNULL;
 	}
 
+	"-xfn" {
+		BEGIN(OPTSTR);
+		strcpy(master_lval.strtype, master_text);
+		return MAPXFN;
+	}
+
 	"//" {
 		BEGIN(DNSTR);
 		yyless(0);

@@ -50,6 +50,7 @@ static int add_multi_mapstr(void);
 
 static int master_error(const char *s);
 static int master_notify(const char *s);
+static int master_msg(const char *s);
  
 static char *path;
 static char *type;
@@ -119,6 +120,7 @@ static int master_fprintf(FILE *, char *, ...);
 %token <strtype> DNNAME
 %token <strtype> MAPHOSTS
 %token <strtype> MAPNULL
+%token <strtype> MAPXFN
 %token <strtype> MAPNAME
 %token <inttype> NUMBER
 %token <strtype> OPTION
@@ -282,6 +284,12 @@ map:	PATH
 			local_free_vars();
 			YYABORT;
 		}
+	}
+	| MAPXFN
+	{
+		master_notify($1);
+		master_msg("X/Open Federated Naming service not supported");
+		YYABORT;
 	}
 	| MAPNULL
 	{
@@ -596,6 +604,12 @@ static int master_notify(const char *s)
 {
 	logmsg("syntax error in map near [ %s ]", s);
 	return(0);
+}
+
+static int master_msg(const char *s)
+{
+	logmsg("%s", s);
+	return 0;
 }
 
 static void local_init_vars(void)
