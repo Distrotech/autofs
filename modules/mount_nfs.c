@@ -129,7 +129,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 	}
 
 	if (strcmp(fstype, "nfs4") == 0)
-		vers = NFS4_VERS_MASK | NFS_PROTO_MASK;
+		vers = NFS4_VERS_MASK | NFS_TCP_SUPPORTED;
 	else
 		vers = NFS_VERS_MASK | NFS_PROTO_MASK;
 

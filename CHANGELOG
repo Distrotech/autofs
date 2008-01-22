@@ -3,6 +3,7 @@
 - correct configure test for ldapr page control functions.
 - catch "-xfn" map type and issue "no supported" message.
 - correction for handling of LDAP base dns with spaces.
+- avoid using UDP for probing NFSv4 mount requests.
  
 14/01/2008 autofs-5.0.3
 -----------------------
