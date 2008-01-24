@@ -232,7 +232,7 @@ AC_DEFUN([AF_CHECK_FUNC_LDAP_CREATE_PAGE_CONTROL],
 
 # save current ldflags
 af_check_ldap_create_page_control_save_ldflags="$LDFLAGS"
-LDFLAGS="$LDFLAGS -lldap_r"
+LDFLAGS="$LDFLAGS -lldap"
 
 AC_TRY_LINK(
   [ #include <ldap.h> ],
@@ -265,7 +265,7 @@ AC_DEFUN([AF_CHECK_FUNC_LDAP_PARSE_PAGE_CONTROL],
 
 # save current ldflags
 af_check_ldap_parse_page_control_save_ldflags="$LDFLAGS"
-LDFLAGS="$LDFLAGS -lldap_r"
+LDFLAGS="$LDFLAGS -lldap"
 
 AC_TRY_LINK(
   [ #include <ldap.h> ],

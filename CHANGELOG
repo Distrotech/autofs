@@ -4,6 +4,7 @@
 - catch "-xfn" map type and issue "no supported" message.
 - correction for handling of LDAP base dns with spaces.
 - avoid using UDP for probing NFSv4 mount requests.
+- use libldap instead of libldap_r.
  
 14/01/2008 autofs-5.0.3
 -----------------------
