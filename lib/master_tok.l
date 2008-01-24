@@ -289,7 +289,7 @@ OPTNTOUT	(-n{OPTWS}|-n{OPTWS}={OPTWS}|--negative-timeout{OPTWS}|--negative-timeo
 		return EQUAL;
 	}
 
-	{DNNAMESTR1}/","{DNATTRSTR} {
+	{DNNAMESTR1}/","{DNATTRSTR}"=" {
 		strcpy(master_lval.strtype, master_text);
 		return DNNAME;
 	}
