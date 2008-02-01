@@ -799,21 +799,13 @@ int master_read_master(struct master *master, time_t age, int readall)
 
 	master_init_scan();
 
-	if (!lookup_nss_read_master(master, age)) {
-		error(logopt,
-		      "can't read master map %s", master->name);
-		return 0;
-	}
-
+	lookup_nss_read_master(master, age);
 	master_mount_mounts(master, age, readall);
 
 	master_mutex_lock();
 
-	if (list_empty(&master->mounts)) {
-		master_mutex_unlock();
+	if (list_empty(&master->mounts))
 		warn(logopt, "no mounts in table");
-		return 1;
-	}
 
 	master_mutex_unlock();
 

@@ -475,6 +475,7 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 				     "failed to read included master map %s",
 				     master->name);
 				if (!master->recurse) {
+					master->name = save_name;
 					master->depth--;
 					master->recurse = 0;
 					fclose(f);
