@@ -344,11 +344,13 @@ static int expire_indirect(struct autofs_point *ap, int ioctlfd, const char *pat
 			if (errno == EBADF || errno == EINVAL)
 				return 1;
 
-			/* Other than need to wait for the kernel ? */
-			if (errno != EAGAIN)
-				return 0;
+			/*
+			 * Other than EAGAIN is an expire error so continue.
+			 * Kernel will try the next mount.
+			 */
+			if (errno == EAGAIN)
+				break;
 		}
-
 		nanosleep(&tm, NULL);
 	}
 

@@ -6,6 +6,7 @@
 - avoid using UDP for probing NFSv4 mount requests.
 - use libldap instead of libldap_r (Guillaume Rousse).
 - another fix for don't fail on empty master map.
+- fix expire working harder than needed.
  
 14/01/2008 autofs-5.0.3
 -----------------------

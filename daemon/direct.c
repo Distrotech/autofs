@@ -824,11 +824,16 @@ static int expire_direct(int ioctlfd, const char *path, unsigned int when, unsig
 			if (errno == EBADF || errno == EINVAL)
 				return 1;
 
-			/* Other than need to wait for the kernel ? */
-			if (errno != EAGAIN)
-				return 0;
+			/*
+			 * Other than EAGAIN is an expire error so continue.
+			 * Kernel try the same mount again, limited by
+			 * retries (ie. number of mounts directly under
+			 * mount point, should always be one for direct
+			 * mounts).
+			 */
+			if (errno == EAGAIN)
+				break;
 		}
-
 		nanosleep(&tm, NULL);
 	}
 
