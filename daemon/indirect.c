@@ -65,7 +65,6 @@ static int unlink_mount_tree(struct autofs_point *ap, struct mnt_list *mnts)
 		else
 			rv = umount2(this->path, MNT_DETACH);
 		if (rv == -1) {
-			ret = 0;
 			debug(ap->logopt,
 			      "can't unlink %s from mount tree", this->path);
 
@@ -77,6 +76,7 @@ static int unlink_mount_tree(struct autofs_point *ap, struct mnt_list *mnts)
 
 			case ENOENT:
 			case EFAULT:
+				ret = 0;
 				warn(ap->logopt, "bad path for mount");
 				break;
 			}
