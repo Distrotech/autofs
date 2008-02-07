@@ -890,7 +890,7 @@ static int set_log_priority(const char *path, int priority)
 	return 0;
 }
 
-static int get_pkt(struct autofs_point *ap, union autofs_packet_union *pkt)
+static int get_pkt(struct autofs_point *ap, union autofs_v5_packet_union *pkt)
 {
 	struct pollfd fds[3];
 	int pollfds = 3;
@@ -1074,7 +1074,7 @@ static int mount_autofs(struct autofs_point *ap)
 
 static int handle_packet(struct autofs_point *ap)
 {
-	union autofs_packet_union pkt;
+	union autofs_v5_packet_union pkt;
 
 	if (get_pkt(ap, &pkt))
 		return -1;

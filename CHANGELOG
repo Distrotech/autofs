@@ -8,6 +8,7 @@
 - another fix for don't fail on empty master map.
 - fix expire working harder than needed.
 - fix unlink of mount tree incorrectly causing autofs mount fail.
+- update kernel header file linux/auto_fs4.h.
  
 14/01/2008 autofs-5.0.3
 -----------------------
