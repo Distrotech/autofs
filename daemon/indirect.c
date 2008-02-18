@@ -328,7 +328,7 @@ static int expire_indirect(struct autofs_point *ap, int ioctlfd, const char *pat
 
 	if (fstat(ioctlfd, &st) == -1) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		error(ap->logopt, "fstat failed: %s", estr);
+		debug(ap->logopt, "fstat failed: %s", estr);
 		return 0;
 	}
 
@@ -420,8 +420,6 @@ void *expire_proc_indirect(void *arg)
 			if (strstr(next->opts, "indirect"))
 				master_notify_submount(ap, next->path, ap->state);
 			pthread_setcancelstate(cur_state, NULL);
-
-			continue;
 		}
 
 		if (ap->state == ST_EXPIRE || ap->state == ST_PRUNE)

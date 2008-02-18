@@ -9,6 +9,7 @@
 - fix expire working harder than needed.
 - fix unlink of mount tree incorrectly causing autofs mount fail.
 - update kernel header file linux/auto_fs4.h.
+- update fix expire working harder than needed.
  
 14/01/2008 autofs-5.0.3
 -----------------------

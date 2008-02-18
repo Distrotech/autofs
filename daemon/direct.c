@@ -808,7 +808,7 @@ static int expire_direct(int ioctlfd, const char *path, unsigned int when, unsig
 
 	if (fstat(ioctlfd, &st) == -1) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		error(logopt, "fstat failed: %s", estr);
+		debug(logopt, "fstat failed: %s", estr);
 		return 0;
 	}
 
