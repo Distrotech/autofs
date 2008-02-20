@@ -20,6 +20,7 @@
  * ----------------------------------------------------------------------- */
 
 #include <dirent.h>
+#include <libgen.h>
 #include <fcntl.h>
 #include <signal.h>
 #include <stdio.h>
@@ -32,9 +33,8 @@
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/mount.h>
+#include <sys/vfs.h>
 #include <sched.h>
-#include <pwd.h>
-#include <grp.h>
 
 #include "automount.h"
 
@@ -42,8 +42,6 @@ extern pthread_attr_t thread_attr;
 
 static pthread_mutex_t ma_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t ea_mutex = PTHREAD_MUTEX_INITIALIZER;
-
-static const unsigned int indirect = AUTOFS_TYPE_INDIRECT;
 
 static int unlink_mount_tree(struct autofs_point *ap, struct mnt_list *mnts)
 {
@@ -90,6 +88,7 @@ static int unlink_mount_tree(struct autofs_point *ap, struct mnt_list *mnts)
 
 static int do_mount_autofs_indirect(struct autofs_point *ap)
 {
+	const char *str_indirect = mount_type_str(indirect);
 	struct ioctl_ops *ops = get_ioctl_ops();
 	time_t timeout = ap->exp_timeout;
 	char *options = NULL;
@@ -98,8 +97,58 @@ static int do_mount_autofs_indirect(struct autofs_point *ap)
 	struct mnt_list *mnts;
 	int ret;
 
-	mnts = get_mnt_list(_PROC_MOUNTS, ap->path, 1);
-	if (mnts) {
+	ap->exp_runfreq = (timeout + CHECK_RATIO - 1) / CHECK_RATIO;
+
+	if (ops->version) {
+		char device[AUTOFS_DEVID_LEN];
+		struct statfs fst;
+		int ioctlfd;
+		dev_t devid;
+		char *tmp;
+
+		if (!find_mnt_devid(_PROC_MOUNTS, ap->path, device, indirect))
+			goto cont;
+
+		devid = strtoul(device, NULL, 0);
+
+		ret = remount_active_mount(ap, NULL, ap->path, devid, indirect, &ioctlfd);
+
+		/*
+		 * The directory must exist since we found a device
+		 * number for the mount above but we can't know if we
+		 * created it or not. However, if we're mounted on an
+		 * autofs fs then we need to cleanup the path anyway.
+		 */
+		ap->dir_created = 0;
+		tmp = strdup(ap->path);
+		if (tmp) {
+			if (statfs(dirname(tmp), &fst) != -1)
+				if (fst.f_type == AUTOFS_SUPER_MAGIC)
+					ap->dir_created = 1;
+			free(tmp);
+		}
+
+		/*
+		 * Either we opened the mount or we're re-reading the map.
+		 * If we opened the mount and ioctlfd is not -1 we have
+		 * a descriptor for the indirect mount so we need to
+		 * record that in the mount point struct. Otherwise we're
+		 * re-reading the map.
+		*/
+		if (ret == REMOUNT_SUCCESS || ret == REMOUNT_READ_MAP) {
+			if (ioctlfd != -1)
+				ap->ioctlfd = ioctlfd;
+			return 0;
+		}
+		/*
+		 * Since we got the device number above a mount exists so
+		 * any other failure warrants a failure return here.
+		 */
+		return -1;
+	} else {
+		mnts = get_mnt_list(_PROC_MOUNTS, ap->path, 1);
+		if (!mnts)
+			goto cont;
 		ret = unlink_mount_tree(ap, mnts);
 		free_mnt_list(mnts);
 		if (!ret) {
@@ -109,7 +158,7 @@ static int do_mount_autofs_indirect(struct autofs_point *ap)
 			goto out_err;
 		}
 	}
-
+cont:
 	options = make_options_string(ap->path, ap->kpipefd, NULL);
 	if (!options) {
 		error(ap->logopt, "options string error");
@@ -152,29 +201,21 @@ static int do_mount_autofs_indirect(struct autofs_point *ap)
 
 	options = NULL;
 
-	if (ops->open(ap->logopt, &ap->ioctlfd, -1, ap->path, indirect)) {
+	if (stat(ap->path, &st) == -1) {
+		error(ap->logopt,
+		      "failed to stat mount %s", ap->path);
+		goto out_umount;
+	}
+	ap->dev = st.st_dev;
+
+	if (ops->open(ap->logopt, &ap->ioctlfd, ap->dev, ap->path, indirect)) {
 		crit(ap->logopt,
 		     "failed to create ioctl fd for autofs path %s", ap->path);
 		goto out_umount;
 	}
 
-	ap->exp_runfreq = (timeout + CHECK_RATIO - 1) / CHECK_RATIO;
-
 	ops->timeout(ap->logopt, ap->ioctlfd, &timeout);
-
-	if (ap->exp_timeout)
-		info(ap->logopt,
-		    "mounted indirect mount on %s "
-		    "with timeout %u, freq %u seconds", ap->path,
-	 	    (unsigned int) ap->exp_timeout,
-		    (unsigned int) ap->exp_runfreq);
-	else
-		info(ap->logopt,
-		    "mounted indirect mount on %s with timeouts disabled",
-		    ap->path);
-
-	fstat(ap->ioctlfd, &st);
-	ap->dev = st.st_dev;	/* Device number for mount point checks */
+	notify_mount_result(ap, ap->path, str_indirect);
 
 	return 0;
 
@@ -634,15 +675,7 @@ static void *do_mount_indirect(void *arg)
 	struct autofs_point *ap;
 	char buf[PATH_MAX + 1];
 	struct stat st;
-	struct passwd pw;
-	struct passwd *ppw = &pw;
-	struct passwd **pppw = &ppw;
-	struct group gr;
-	struct group *pgr;
-	struct group **ppgr;
-	char *pw_tmp, *gr_tmp;
-	struct thread_stdenv_vars *tsv;
-	int len, tmplen, grplen, status, state;
+	int len, status, state;
 
 	mt = (struct pending_args *) arg;
 
@@ -685,125 +718,8 @@ static void *do_mount_indirect(void *arg)
 
 	info(ap->logopt, "attempting to mount entry %s", buf);
 
-	/*
-	 * Setup thread specific data values for macro
-	 * substution in map entries during the mount.
-	 * Best effort only as it must go ahead.
-	 */
+	set_tsd_user_vars(ap->logopt, mt->uid, mt->gid);
 
-	tsv = malloc(sizeof(struct thread_stdenv_vars));
-	if (!tsv) 
-		goto cont;
-
-	tsv->uid = mt->uid;
-	tsv->gid = mt->gid;
-
-	/* Try to get passwd info */
-
-	tmplen = sysconf(_SC_GETPW_R_SIZE_MAX);
-	if (tmplen < 0) {
-		error(ap->logopt, "failed to get buffer size for getpwuid_r");
-		free(tsv);
-		goto cont;
-	}
-
-	pw_tmp = malloc(tmplen + 1);
-	if (!pw_tmp) {
-		error(ap->logopt, "failed to malloc buffer for getpwuid_r");
-		free(tsv);
-		goto cont;
-	}
-
-	status = getpwuid_r(mt->uid, ppw, pw_tmp, tmplen, pppw);
-	if (status || !ppw) {
-		error(ap->logopt, "failed to get passwd info from getpwuid_r");
-		free(tsv);
-		free(pw_tmp);
-		goto cont;
-	}
-
-	tsv->user = strdup(pw.pw_name);
-	if (!tsv->user) {
-		error(ap->logopt, "failed to malloc buffer for user");
-		free(tsv);
-		free(pw_tmp);
-		goto cont;
-	}
-
-	tsv->home = strdup(pw.pw_dir);
-	if (!tsv->user) {
-		error(ap->logopt, "failed to malloc buffer for home");
-		free(pw_tmp);
-		free(tsv->user);
-		free(tsv);
-		goto cont;
-	}
-
-	free(pw_tmp);
-
-	/* Try to get group info */
-
-	grplen = sysconf(_SC_GETGR_R_SIZE_MAX);
-	if (tmplen < 0) {
-		error(ap->logopt, "failed to get buffer size for getgrgid_r");
-		free(tsv->user);
-		free(tsv->home);
-		free(tsv);
-		goto cont;
-	}
-
-	gr_tmp = NULL;
-	tmplen = grplen;
-	while (1) {
-		char *tmp = realloc(gr_tmp, tmplen + 1);
-		if (!tmp) {
-			error(ap->logopt, "failed to malloc buffer for getgrgid_r");
-			if (gr_tmp)
-				free(gr_tmp);
-			free(tsv->user);
-			free(tsv->home);
-			free(tsv);
-			goto cont;
-		}
-		gr_tmp = tmp;
-		pgr = &gr;
-		ppgr = &pgr;
-		status = getgrgid_r(mt->gid, pgr, gr_tmp, tmplen, ppgr);
-		if (status != ERANGE)
-			break;
-		tmplen += grplen;
-	}
-
-	if (status || !pgr) {
-		error(ap->logopt, "failed to get group info from getgrgid_r");
-		free(tsv->user);
-		free(tsv->home);
-		free(tsv);
-		free(gr_tmp);
-		goto cont;
-	}
-
-	tsv->group = strdup(gr.gr_name);
-	if (!tsv->group) {
-		error(ap->logopt, "failed to malloc buffer for group");
-		free(tsv->user);
-		free(tsv->home);
-		free(tsv);
-		free(gr_tmp);
-		goto cont;
-	}
-
-	free(gr_tmp);
-
-	status = pthread_setspecific(key_thread_stdenv_vars, tsv);
-	if (status) {
-		error(ap->logopt, "failed to set stdenv thread var");
-		free(tsv->group);
-		free(tsv->user);
-		free(tsv->home);
-		free(tsv);
-	}
-cont:
 	status = lookup_nss_mount(ap, NULL, mt->name, mt->len);
 	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &state);
 	if (status) {

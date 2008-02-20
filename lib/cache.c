@@ -111,14 +111,29 @@ void cache_lock_cleanup(void *arg)
 	return;
 }
 
-void cache_multi_lock(struct mapent *me)
+void cache_multi_readlock(struct mapent *me)
 {
 	int status;
 
 	if (!me)
 		return;
 
-	status = pthread_mutex_lock(&me->multi_mutex);
+	status = pthread_rwlock_rdlock(&me->multi_rwlock);
+	if (status) {
+		logmsg("mapent cache multi mutex lock failed");
+		fatal(status);
+	}
+	return;
+}
+
+void cache_multi_writelock(struct mapent *me)
+{
+	int status;
+
+	if (!me)
+		return;
+
+	status = pthread_rwlock_wrlock(&me->multi_rwlock);
 	if (status) {
 		logmsg("mapent cache multi mutex lock failed");
 		fatal(status);
@@ -133,7 +148,7 @@ void cache_multi_unlock(struct mapent *me)
 	if (!me)
 		return;
 
-	status = pthread_mutex_unlock(&me->multi_mutex);
+	status = pthread_rwlock_unlock(&me->multi_rwlock);
 	if (status) {
 		logmsg("mapent cache multi mutex unlock failed");
 		fatal(status);
@@ -553,8 +568,9 @@ int cache_add(struct mapent_cache *mc, struct map_source *ms, const char *key, c
 	me->ioctlfd = -1;
 	me->dev = (dev_t) -1;
 	me->ino = (ino_t) -1;
+	me->dir_created = 0;
 
-	status = pthread_mutex_init(&me->multi_mutex, NULL);
+	status = pthread_rwlock_init(&me->multi_rwlock, NULL);
 	if (status)
 		fatal(status);
 
@@ -760,7 +776,7 @@ int cache_delete(struct mapent_cache *mc, const char *key)
 				goto done;
 			}
 			pred->next = me->next;
-			status = pthread_mutex_destroy(&me->multi_mutex);
+			status = pthread_rwlock_destroy(&me->multi_rwlock);
 			if (status)
 				fatal(status);
 			ino_index_lock(mc);
@@ -784,7 +800,7 @@ int cache_delete(struct mapent_cache *mc, const char *key)
 			goto done;
 		}
 		mc->hash[hashval] = me->next;
-		status = pthread_mutex_destroy(&me->multi_mutex);
+		status = pthread_rwlock_destroy(&me->multi_rwlock);
 		if (status)
 			fatal(status);
 		ino_index_lock(mc);

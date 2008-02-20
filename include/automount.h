@@ -29,6 +29,7 @@
 #include "log.h"
 #include "rpc_subs.h"
 #include "parse_subs.h"
+#include "mounts.h"
 #include "dev-ioctl-lib.h"
 
 #ifdef WITH_DMALLOC
@@ -70,10 +71,6 @@ int load_autofs4_module(void);
 #define AUTOFS_SUPER_MAGIC 0x00000187L
 #define SMB_SUPER_MAGIC    0x0000517BL
 #define CIFS_MAGIC_NUMBER  0xFF534D42L
-
-#define AUTOFS_TYPE_INDIRECT     0x0001
-#define AUTOFS_TYPE_DIRECT       0x0002
-#define AUTOFS_TYPE_OFFSET       0x0004
 
 /* This sould be enough for at least 20 host aliases */
 #define HOST_ENT_BUF_SIZE	2048
@@ -146,7 +143,7 @@ struct mapent_cache {
 struct mapent {
 	struct mapent *next;
 	struct list_head ino_index;
-	pthread_mutex_t multi_mutex;
+	pthread_rwlock_t multi_rwlock;
 	struct list_head multi_list;
 	struct mapent_cache *mc;
 	struct map_source *source;
@@ -189,7 +186,8 @@ int cache_add_offset(struct mapent_cache *mc, const char *mkey, const char *key,
 int cache_set_parents(struct mapent *mm);
 int cache_update(struct mapent_cache *mc, struct map_source *ms, const char *key, const char *mapent, time_t age);
 int cache_delete(struct mapent_cache *mc, const char *key);
-void cache_multi_lock(struct mapent *me);
+void cache_multi_readlock(struct mapent *me);
+void cache_multi_writelock(struct mapent *me);
 void cache_multi_unlock(struct mapent *me);
 int cache_delete_offset_list(struct mapent_cache *mc, const char *key);
 void cache_release(struct map_source *map);
@@ -328,62 +326,6 @@ int cat_path(char *buf, size_t len, const char *dir, const char *base);
 int ncat_path(char *buf, size_t len,
               const char *dir, const char *base, size_t blen);
 
-/* mount table utilities */
-
-#define MNTS_ALL	0x0001
-#define MNTS_REAL	0x0002
-#define MNTS_AUTOFS	0x0004
-
-struct mnt_list {
-	char *path;
-	char *fs_name;
-	char *fs_type;
-	char *opts;
-	pid_t owner;
-	/*
-	 * List operations ie. get_mnt_list.
-	 */
-	struct mnt_list *next;
-	/*
-	 * Tree operations ie. tree_make_tree,
-	 * tree_get_mnt_list etc.
-	 */
-	struct mnt_list *left;
-	struct mnt_list *right;
-	struct list_head self;
-	struct list_head list;
-	struct list_head entries;
-	struct list_head sublist;
-	/*
-	 * Offset mount handling ie. add_ordered_list
-	 * and get_offset.
-	 */
-	struct list_head ordered;
-};
-
-unsigned int query_kproto_ver(void);
-unsigned int get_kver_major(void);
-unsigned int get_kver_minor(void);
-char *make_options_string(char *path, int kernel_pipefd, char *extra);
-char *make_mnt_name_string(char *path);
-struct mnt_list *get_mnt_list(const char *table, const char *path, int include);
-struct mnt_list *reverse_mnt_list(struct mnt_list *list);
-void free_mnt_list(struct mnt_list *list);
-int contained_in_local_fs(const char *path);
-int is_mounted(const char *table, const char *path, unsigned int type);
-int has_fstab_option(const char *opt);
-int find_mnt_devid(const char *table, const char *path, char *devid, unsigned int type);
-char *get_offset(const char *prefix, char *offset,
-                 struct list_head *head, struct list_head **pos);
-void add_ordered_list(struct mnt_list *ent, struct list_head *head);
-void tree_free_mnt_tree(struct mnt_list *tree);
-struct mnt_list *tree_make_mnt_tree(const char *table, const char *path);
-int tree_get_mnt_list(struct mnt_list *mnts, struct list_head *list, const char *path, int include);
-int tree_get_mnt_sublist(struct mnt_list *mnts, struct list_head *list, const char *path, int include);
-int tree_find_mnt_ents(struct mnt_list *mnts, struct list_head *list, const char *path);
-int tree_is_mounted(struct mnt_list *mnts, const char *path, unsigned int type);
-int tree_find_mnt_devid(struct mnt_list *mnts, const char *path, char *devid, unsigned int type);
-
 /* Core automount definitions */
 
 #define MNT_DETACH	0x00000002	/* Just detach from the tree */
@@ -391,9 +333,13 @@ int tree_find_mnt_devid(struct mnt_list *mnts, const char *path, char *devid, un
 struct startup_cond {
 	pthread_mutex_t mutex;
 	pthread_cond_t  cond;
+	struct autofs_point *ap;
 	unsigned int done;
 	unsigned int status;
 };
+
+int handle_mounts_startup_cond_init(struct startup_cond *suc);
+void handle_mounts_startup_cond_destroy(void *arg);
 
 struct master_readmap_cond {
 	pthread_mutex_t mutex;

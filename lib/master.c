@@ -997,28 +997,31 @@ next:
 
 static int master_do_mount(struct master_mapent *entry)
 {
+	struct startup_cond suc;
 	struct autofs_point *ap;
 	pthread_t thid;
 	int status;
 
-	status = pthread_mutex_lock(&suc.mutex);
-	if (status)
-		fatal(status);
+	ap = entry->ap;
 
+	if (handle_mounts_startup_cond_init(&suc)) {
+		crit(ap->logopt,
+		     "failed to init startup cond for mount %s", entry->path);
+		return 0;
+	}
+
+	suc.ap = ap;
 	suc.done = 0;
 	suc.status = 0;
 
-	ap = entry->ap;
-
 	debug(ap->logopt, "mounting %s", entry->path);
 
-	if (pthread_create(&thid, &thread_attr, handle_mounts, ap)) {
+	status = pthread_create(&thid, &thread_attr, handle_mounts, &suc);
+	if (status) {
 		crit(ap->logopt,
 		     "failed to create mount handler thread for %s",
 		     entry->path);
-		status = pthread_mutex_unlock(&suc.mutex);
-		if (status)
-			fatal(status);
+		handle_mounts_startup_cond_destroy(&suc);
 		return 0;
 	}
 	entry->thid = thid;
@@ -1031,15 +1034,11 @@ static int master_do_mount(struct master_mapent *entry)
 
 	if (suc.status) {
 		error(ap->logopt, "failed to startup mount");
-		status = pthread_mutex_unlock(&suc.mutex);
-		if (status)
-			fatal(status);
+		handle_mounts_startup_cond_destroy(&suc);
 		return 0;
 	}
 
-	status = pthread_mutex_unlock(&suc.mutex);
-	if (status)
-		fatal(status);
+	handle_mounts_startup_cond_destroy(&suc);
 
 	return 1;
 }

@@ -198,10 +198,10 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 		char *loc, *port_opt = NULL;
 
 		if (is_mounted(_PATH_MOUNTED, fullpath, MNTS_REAL)) {
-			error(ap->logopt,
-			      MODPREFIX
-			      "warning: %s is already mounted", fullpath);
-			break;
+			info(ap->logopt, MODPREFIX
+			     "%s is already mounted or is being re-mounted", fullpath);
+			free_host_list(&hosts);
+			return 0;
 		}
 
 		/*

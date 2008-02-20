@@ -898,7 +898,8 @@ int lookup_nss_mount(struct autofs_point *ap, struct map_source *source, const c
 
 		map = map->next;
 	}
-	send_map_update_request(ap);
+	if (ap->state != ST_INIT)
+		send_map_update_request(ap);
 	pthread_cleanup_pop(1);
 
 	return !result;

@@ -46,6 +46,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 		int name_len, const char *what, const char *fstype,
 		const char *c_options, void *context)
 {
+	struct startup_cond suc;
 	pthread_t thid;
 	char *fullpath;
 	const char **argv;
@@ -216,27 +217,26 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 
 	mounts_mutex_lock(ap);
 
-	status = pthread_mutex_lock(&suc.mutex);
-	if (status) {
-		crit(ap->logopt,
-		     MODPREFIX "failed to lock startup condition mutex!");
+	if (handle_mounts_startup_cond_init(&suc)) {
+		crit(ap->logopt, MODPREFIX
+		     "failed to init startup cond for mount %s", entry->path);
+		mounts_mutex_unlock(ap);
 		cache_release(source);
 		master_free_mapent(entry);
 		return 1;
 	}
 
+	suc.ap = nap;
 	suc.done = 0;
 	suc.status = 0;
 
-	if (pthread_create(&thid, NULL, handle_mounts, nap)) {
+	if (pthread_create(&thid, NULL, handle_mounts, &suc)) {
 		crit(ap->logopt,
 		     MODPREFIX
 		     "failed to create mount handler thread for %s",
 		     fullpath);
 		mounts_mutex_unlock(ap);
-		status = pthread_mutex_unlock(&suc.mutex);
-		if (status)
-			fatal(status);
+		handle_mounts_startup_cond_destroy(&suc);
 		cache_release(source);
 		master_free_mapent(entry);
 		return 1;
@@ -247,7 +247,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 		status = pthread_cond_wait(&suc.cond, &suc.mutex);
 		if (status) {
 			mounts_mutex_unlock(ap);
-			pthread_mutex_unlock(&suc.mutex);
+			handle_mounts_startup_cond_destroy(&suc);
 			fatal(status);
 		}
 	}
@@ -256,9 +256,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 		crit(ap->logopt,
 		     MODPREFIX "failed to create submount for %s", fullpath);
 		mounts_mutex_unlock(ap);
-		status = pthread_mutex_unlock(&suc.mutex);
-		if (status)
-			fatal(status);
+		handle_mounts_startup_cond_destroy(&suc);
 		master_free_mapent(entry);
 		return 1;
 	}
@@ -266,11 +264,8 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 	ap->submnt_count++;
 	list_add(&nap->mounts, &ap->submounts);
 
+	handle_mounts_startup_cond_destroy(&suc);
 	mounts_mutex_unlock(ap);
-
-	status = pthread_mutex_unlock(&suc.mutex);
-	if (status)
-		fatal(status);
 
 	return 0;
 }
