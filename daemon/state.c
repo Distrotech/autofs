@@ -93,6 +93,7 @@ void nextstate(int statefd, enum states next)
  */
 void expire_cleanup(void *arg)
 {
+	struct ioctl_ops *ops = get_ioctl_ops();
 	pthread_t thid = pthread_self();
 	struct expire_args *ec;
 	struct autofs_point *ap;
@@ -113,7 +114,8 @@ void expire_cleanup(void *arg)
 
 	/* Check to see if expire process finished */
 	if (thid == ap->exp_thread) {
-		int rv, idle;
+		unsigned int idle;
+		int rv;
 
 		ap->exp_thread = 0;
 
@@ -135,7 +137,7 @@ void expire_cleanup(void *arg)
 			 * allowing it to shutdown.
 			 */
 			if (ap->submount && !success) {
-				rv = ioctl(ap->ioctlfd, AUTOFS_IOC_ASKUMOUNT, &idle);
+				rv = ops->askumount(ap->logopt, ap->ioctlfd, &idle);
 				if (!rv && idle && ap->submount > 1) {
 					next = ST_SHUTDOWN_PENDING;
 					break;
@@ -160,7 +162,7 @@ void expire_cleanup(void *arg)
 			 * shutdown return to ready state unless we have
 			 * been signaled to shutdown.
 			 */
-			rv = ioctl(ap->ioctlfd, AUTOFS_IOC_ASKUMOUNT, &idle);
+			rv = ops->askumount(ap->logopt, ap->ioctlfd, &idle);
 			if (!idle && !ap->shutdown) {
 				next = ST_READY;
 				if (!ap->submount)

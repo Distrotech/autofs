@@ -38,6 +38,7 @@ static const char kver_options_template[]  = "fd=%d,pgrp=%u,minproto=3,maxproto=
 
 unsigned int query_kproto_ver(void)
 {
+	struct ioctl_ops *ops = get_ioctl_ops();
 	char dir[] = "/tmp/autoXXXXXX", *t_dir;
 	char options[MAX_OPTIONS_LEN + 1];
 	pid_t pgrp = getpgrp();
@@ -70,7 +71,7 @@ unsigned int query_kproto_ver(void)
 
 	close(pipefd[1]);
 
-	ioctlfd = open(t_dir, O_RDONLY);
+	ops->open(LOGOPT_NONE, &ioctlfd, -1, t_dir, AUTOFS_TYPE_INDIRECT);
 	if (ioctlfd == -1) {
 		umount(t_dir);
 		close(pipefd[0]);
@@ -78,11 +79,11 @@ unsigned int query_kproto_ver(void)
 		return 0;
 	}
 
-	ioctl(ioctlfd, AUTOFS_IOC_CATATONIC, 0);
+	ops->catatonic(LOGOPT_NONE, ioctlfd);
 
 	/* If this ioctl() doesn't work, it is kernel version 2 */
-	if (ioctl(ioctlfd, AUTOFS_IOC_PROTOVER, &kver.major) == -1) {
-		close(ioctlfd);
+	if (ops->protover(LOGOPT_NONE, ioctlfd, &kver.major)) {
+		ops->close(LOGOPT_NONE, ioctlfd);
 		umount(t_dir);
 		close(pipefd[0]);
 		rmdir(t_dir);
@@ -90,15 +91,15 @@ unsigned int query_kproto_ver(void)
 	}
 
 	/* If this ioctl() doesn't work, version is 4 or less */
-	if (ioctl(ioctlfd, AUTOFS_IOC_PROTOSUBVER, &kver.minor) == -1) {
-		close(ioctlfd);
+	if (ops->protosubver(LOGOPT_NONE, ioctlfd, &kver.minor)) {
+		ops->close(LOGOPT_NONE, ioctlfd);
 		umount(t_dir);
 		close(pipefd[0]);
 		rmdir(t_dir);
 		return 0;
 	}
 
-	close(ioctlfd);
+	ops->close(LOGOPT_NONE, ioctlfd);
 	umount(t_dir);
 	close(pipefd[0]);
 	rmdir(t_dir);
@@ -456,49 +457,75 @@ int has_fstab_option(const char *opt)
 	return ret;
 }
 
-char *find_mnt_ino(const char *table, dev_t dev, ino_t ino)
+/*
+ * Find the device number of an autofs mount with given path and
+ * type (eg..AUTOFS_TYPE_DIRECT). An autofs display mount option
+ * "dev=<device number>" is provided by the kernel module for this.
+ *
+ * The device number is used by the kernel to identify the autofs
+ * super block when searching for the mount.
+ */
+int find_mnt_devid(const char *table,
+		   const char *path, char *devid, unsigned int type)
 {
-	struct mntent mnt_wrk;
 	struct mntent *mnt;
+	struct mntent mnt_wrk;
 	char buf[PATH_MAX * 3];
-	char *path = NULL;
-	unsigned long l_dev = (unsigned long) dev;
-	unsigned long l_ino = (unsigned long) ino;
 	FILE *tab;
+	char *dev;
 
 	tab = setmntent(table, "r");
 	if (!tab) {
-		char *estr = strerror_r(errno, buf, (size_t) PATH_MAX - 1);
-		logerr("setmntent: %s", estr);
+		printf("failed to open mount table\n");
 		return 0;
 	}
 
+	dev = NULL;
 	while ((mnt = getmntent_r(tab, &mnt_wrk, buf, PATH_MAX * 3))) {
-		char *p_dev, *p_ino;
-		unsigned long m_dev, m_ino;
-
 		if (strcmp(mnt->mnt_type, "autofs"))
 			continue;
 
-		p_dev = strstr(mnt->mnt_opts, "dev=");
-		if (!p_dev)
-			continue;
-		sscanf(p_dev, "dev=%lu", &m_dev);
-		if (m_dev != l_dev)
+		if (strcmp(mnt->mnt_dir, path))
 			continue;
 
-		p_ino = strstr(mnt->mnt_opts, "ino=");
-		if (!p_ino)
-			continue;
-		sscanf(p_ino, "ino=%lu", &m_ino);
-		if (m_ino == l_ino) {
-			path = strdup(mnt->mnt_dir);
+		switch (type) {
+		case AUTOFS_TYPE_INDIRECT:
+			if (!hasmntopt(mnt, "indirect"))
+				continue;
+			break;
+
+		case AUTOFS_TYPE_DIRECT:
+			if (!hasmntopt(mnt, "direct"))
+				continue;
+			break;
+
+		case AUTOFS_TYPE_OFFSET:
+			if (!hasmntopt(mnt, "offset"))
+				continue;
+			break;
+		}
+
+		dev = hasmntopt(mnt, "dev");
+		if (dev) {
+			char *start = strchr(dev, '=') + 1;
+			char *end = strchr(start, ',');
+			if (end)
+				*end = '\0';
+			if (start) {
+				int len = strlen(start);
+				memcpy(devid, start, len);
+				devid[len] = '\0';
+			}
 			break;
 		}
 	}
+
 	endmntent(tab);
 
-	return path;
+	if (!dev)
+		return 0;
+
+	return 1;
 }
 
 char *get_offset(const char *prefix, char *offset,
@@ -974,5 +1001,72 @@ int tree_is_mounted(struct mnt_list *mnts, const char *path, unsigned int type)
 		}
 	}
 	return mounted;
+}
+
+int tree_find_mnt_devid(struct mnt_list *mnts,
+			const char *path, char *devid, unsigned int type)
+{
+	struct list_head *p;
+	struct list_head list;
+	size_t len = strlen(path);
+	char *dev;
+
+	INIT_LIST_HEAD(&list);
+
+	if (!tree_find_mnt_ents(mnts, &list, path))
+		return 0;
+
+	dev = NULL;
+	list_for_each(p, &list) {
+		struct mnt_list *mptr;
+
+		mptr = list_entry(p, struct mnt_list, entries);
+
+		if (strcmp(mptr->fs_type, "autofs"))
+			continue;
+
+		if (strlen(mptr->path) < len)
+			return 0;
+
+		if (strcmp(mptr->path, path))
+			continue;
+
+		switch (type) {
+		case AUTOFS_TYPE_INDIRECT:
+			if (!strstr(mptr->opts, "indirect"))
+				continue;
+			break;
+
+		case AUTOFS_TYPE_DIRECT:
+			if (!strstr(mptr->opts, "direct"))
+				continue;
+			break;
+
+		case AUTOFS_TYPE_OFFSET:
+			if (!strstr(mptr->opts, "offset"))
+				continue;
+			break;
+		}
+
+		dev = strstr(mptr->opts, "dev");
+		if (dev) {
+			char *start = strchr(dev, '=') + 1;
+			char *end = strchr(start, ',');
+			if (end)
+				*end = '\0';
+			if (start) {
+				int len = strlen(start);
+				memcpy(devid, start, len);
+				devid[len] = '\0';
+			}
+			*end = ',';
+			break;
+		}
+	}
+
+	if (!dev)
+		return 0;
+
+	return 1;
 }
 

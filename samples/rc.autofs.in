@@ -12,6 +12,7 @@
 DAEMON=@@sbindir@@/automount
 prog=`basename $DAEMON`
 MODULE="autofs4"
+DEVICE="autofs"
 confdir=@@autofsconfdir@@
 
 test -e $DAEMON || exit 0
@@ -45,6 +46,14 @@ function start() {
 		echo
 		echo "Error: autofs kernel module is loaded, autofs4 required"
 		return 1
+	fi
+
+	# Check misc device
+	if [ -e "/proc/misc" ]; then
+		MINOR=`awk "/$DEVICE/ {print \\$1}" /proc/misc`
+		if [ -n "$MINOR" -a ! -c "/dev/$DEVICE" ]; then
+			mknod -m 0600 /dev/$DEVICE c 10 $MINOR
+		fi
 	fi
 
 	$prog $OPTIONS 

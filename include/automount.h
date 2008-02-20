@@ -29,6 +29,7 @@
 #include "log.h"
 #include "rpc_subs.h"
 #include "parse_subs.h"
+#include "dev-ioctl-lib.h"
 
 #ifdef WITH_DMALLOC
 #include <dmalloc.h>
@@ -69,6 +70,10 @@ int load_autofs4_module(void);
 #define AUTOFS_SUPER_MAGIC 0x00000187L
 #define SMB_SUPER_MAGIC    0x0000517BL
 #define CIFS_MAGIC_NUMBER  0xFF534D42L
+
+#define AUTOFS_TYPE_INDIRECT     0x0001
+#define AUTOFS_TYPE_DIRECT       0x0002
+#define AUTOFS_TYPE_OFFSET       0x0004
 
 /* This sould be enough for at least 20 host aliases */
 #define HOST_ENT_BUF_SIZE	2048
@@ -367,7 +372,7 @@ void free_mnt_list(struct mnt_list *list);
 int contained_in_local_fs(const char *path);
 int is_mounted(const char *table, const char *path, unsigned int type);
 int has_fstab_option(const char *opt);
-char *find_mnt_ino(const char *table, dev_t dev, ino_t ino);
+int find_mnt_devid(const char *table, const char *path, char *devid, unsigned int type);
 char *get_offset(const char *prefix, char *offset,
                  struct list_head *head, struct list_head **pos);
 void add_ordered_list(struct mnt_list *ent, struct list_head *head);
@@ -377,6 +382,7 @@ int tree_get_mnt_list(struct mnt_list *mnts, struct list_head *list, const char 
 int tree_get_mnt_sublist(struct mnt_list *mnts, struct list_head *list, const char *path, int include);
 int tree_find_mnt_ents(struct mnt_list *mnts, struct list_head *list, const char *path);
 int tree_is_mounted(struct mnt_list *mnts, const char *path, unsigned int type);
+int tree_find_mnt_devid(struct mnt_list *mnts, const char *path, char *devid, unsigned int type);
 
 /* Core automount definitions */
 
@@ -470,8 +476,6 @@ struct autofs_point {
 
 void *handle_mounts(void *arg);
 int umount_multi(struct autofs_point *ap, const char *path, int incl);
-int send_ready(unsigned logopt, int ioctlfd, unsigned int wait_queue_token);
-int send_fail(unsigned logopt, int ioctlfd, unsigned int wait_queue_token);
 int do_expire(struct autofs_point *ap, const char *name, int namelen);
 void *expire_proc_indirect(void *);
 void *expire_proc_direct(void *);
