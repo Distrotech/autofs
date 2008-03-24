@@ -168,6 +168,10 @@ int yp_all_master_callback(int status, char *ypkey, int ypkeylen,
 	if (status != YP_TRUE)
 		return status;
 
+	/* Ignore zero length keys */
+	if (ypkeylen == 0)
+		return 0;
+
 	/*
 	 * Ignore keys beginning with '+' as plus map
 	 * inclusion is only valid in file maps.
@@ -262,6 +266,10 @@ int yp_all_callback(int status, char *ypkey, int ypkeylen,
 
 	if (status != YP_TRUE)
 		return status;
+
+	/* Ignore zero length keys */
+	if (ypkeylen == 0)
+		return 0;
 
 	/*
 	 * Ignore keys beginning with '+' as plus map
