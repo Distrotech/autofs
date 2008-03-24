@@ -77,6 +77,7 @@ int my_yyinput(char *, int);
 char buff[1024];
 char *bptr;
 char *optr = buff;
+char *tptr;
 
 %}
 
@@ -189,17 +190,25 @@ OPTNTOUT	(-n{OPTWS}|-n{OPTWS}={OPTWS}|--negative-timeout{OPTWS}|--negative-timeo
 <MAPSTR>{
 	{OPTWS}\\\n{OPTWS} {}
 
-	{MULTI} {
-		strcpy(master_lval.strtype, master_text);
+	{WS}{MULTI} {
+		tptr = master_text;
+		while (*tptr && isblank(*tptr)) {
+			tptr++;
+		}
+		strcpy(master_lval.strtype, tptr);
 		return(MULTITYPE);
 	}
 
-	{MTYPE} {
-		strcpy(master_lval.strtype, master_text);
+	{WS}{MTYPE} {
+		tptr = master_text;
+		while (*tptr && isblank(*tptr)) {
+			tptr++;
+		}
+		strcpy(master_lval.strtype, tptr);
 		return(MAPTYPE);
 	}
 
-	{MULTISEP} { return(DDASH); }
+	{WS}{MULTISEP} { return(DDASH); }
 
 	":"	{ return(COLON); }
 

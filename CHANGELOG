@@ -12,6 +12,7 @@
 - update fix expire working harder than needed.
 - add missing check for zero length NIS key (Wengang Wang).
 - init SASL callbacks on every ldap lookup library load.
+- fix incorrect match of map type name when included in map name.
  
 14/01/2008 autofs-5.0.3
 -----------------------
