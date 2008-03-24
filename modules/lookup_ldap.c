@@ -599,7 +599,7 @@ static LDAP *connect_to_server(unsigned logopt, const char *uri, struct lookup_c
 
 		if (!do_bind(logopt, ldap, ctxt)) {
 			unbind_ldap_connection(logopt, ldap, ctxt);
-			autofs_sasl_done(ctxt);
+			autofs_sasl_dispose(ctxt);
 			error(logopt, MODPREFIX "cannot bind to server");
 			return NULL;
 		}
@@ -672,7 +672,7 @@ static LDAP *do_reconnect(unsigned logopt, struct lookup_context *ctxt)
 	list_add_tail(&this->list, ctxt->uri);
 
 #ifdef WITH_SASL
-	autofs_sasl_done(ctxt);
+	autofs_sasl_dispose(ctxt);
 #endif
 
 	/* Current server failed connect, try the rest */
@@ -1327,6 +1327,13 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 	 */
 	ret = parse_ldap_config(LOGOPT_NONE, ctxt);
 	if (ret) {
+		free_context(ctxt);
+		return 1;
+	}
+
+	/* Init the sasl callbacks */
+	if (!autofs_sasl_client_init(LOGOPT_NONE)) {
+		error(LOGOPT_ANY, "failed to init sasl client");
 		free_context(ctxt);
 		return 1;
 	}
@@ -2640,7 +2647,8 @@ int lookup_done(void *context)
 	struct lookup_context *ctxt = (struct lookup_context *) context;
 	int rv = close_parse(ctxt->parse);
 #ifdef WITH_SASL
-	autofs_sasl_done(ctxt);
+	autofs_sasl_dispose(ctxt);
+	autofs_sasl_done();
 #endif
 	free_context(ctxt);
 	return rv;

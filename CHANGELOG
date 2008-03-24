@@ -11,6 +11,7 @@
 - update kernel header file linux/auto_fs4.h.
 - update fix expire working harder than needed.
 - add missing check for zero length NIS key (Wengang Wang).
+- init SASL callbacks on every ldap lookup library load.
  
 14/01/2008 autofs-5.0.3
 -----------------------

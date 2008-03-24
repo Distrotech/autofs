@@ -76,7 +76,6 @@ static const char *default_client = "autofsclient";
 static pthread_mutex_t krb5cc_mutex = PTHREAD_MUTEX_INITIALIZER;
 static unsigned int krb5cc_in_use = 0;
 
-static unsigned int init_callbacks = 1;
 static int sasl_log_func(void *, int, const char *);
 static int getpass_func(sasl_conn_t *, void *, int, sasl_secret_t **);
 static int getuser_func(void *, int, const char **, unsigned *);
@@ -878,13 +877,6 @@ autofs_sasl_init(unsigned logopt, LDAP *ldap, struct lookup_context *ctxt)
 {
 	sasl_conn_t *conn;
 
-	/* Start up Cyrus SASL--only needs to be done once. */
-	if (init_callbacks && sasl_client_init(callbacks) != SASL_OK) {
-		error(logopt, "sasl_client_init failed");
-		return -1;
-	}
-	init_callbacks = 0;
-
 	sasl_auth_id = ctxt->user;
 	sasl_auth_secret = ctxt->secret;
 
@@ -916,8 +908,7 @@ autofs_sasl_init(unsigned logopt, LDAP *ldap, struct lookup_context *ctxt)
  *  Destructor routine.  This should be called when finished with an ldap
  *  session.
  */
-void
-autofs_sasl_done(struct lookup_context *ctxt)
+void autofs_sasl_dispose(struct lookup_context *ctxt)
 {
 	int status, ret;
 
@@ -953,3 +944,28 @@ autofs_sasl_done(struct lookup_context *ctxt)
 		ctxt->kinit_successful = 0;
 	}
 }
+
+/*
+ * Initialize the sasl callbacks, which increments the global
+ * use counter.
+ */
+int autofs_sasl_client_init(unsigned logopt)
+{
+	/* Start up Cyrus SASL--only needs to be done at library load. */
+	if (sasl_client_init(callbacks) != SASL_OK) {
+		error(logopt, "sasl_client_init failed");
+		return 0;
+	}
+	return 1;
+}
+
+/*
+ * Decrement the library reference count and free resources if
+ * we are the last to close the library.
+ */
+void autofs_sasl_done(void)
+{
+	sasl_done();
+	return;
+}
+
