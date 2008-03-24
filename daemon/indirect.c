@@ -420,6 +420,8 @@ void *expire_proc_indirect(void *arg)
 			if (strstr(next->opts, "indirect"))
 				master_notify_submount(ap, next->path, ap->state);
 			pthread_setcancelstate(cur_state, NULL);
+
+			continue;
 		}
 
 		if (ap->state == ST_EXPIRE || ap->state == ST_PRUNE)
