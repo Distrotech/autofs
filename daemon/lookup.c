@@ -898,8 +898,7 @@ int lookup_nss_mount(struct autofs_point *ap, struct map_source *source, const c
 
 		map = map->next;
 	}
-	if (ap->state != ST_INIT)
-		send_map_update_request(ap);
+	send_map_update_request(ap);
 	pthread_cleanup_pop(1);
 
 	return !result;
@@ -1149,8 +1148,7 @@ int lookup_source_close_ioctlfd(struct autofs_point *ap, const char *key)
 		me = cache_lookup_distinct(mc, key);
 		if (me) {
 			if (me->ioctlfd != -1) {
-				struct ioctl_ops *ops = get_ioctl_ops();
-				ops->close(ap->logopt, me->ioctlfd);
+				close(me->ioctlfd);
 				me->ioctlfd = -1;
 			}
 			cache_unlock(mc);

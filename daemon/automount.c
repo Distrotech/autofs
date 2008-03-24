@@ -466,7 +466,7 @@ static int umount_subtree_mounts(struct autofs_point *ap, const char *path, unsi
 
 		pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cur_state);
 		/* Lock the closest parent nesting point for umount */
-		cache_multi_writelock(me->parent);
+		cache_multi_lock(me->parent);
 		if (umount_multi_triggers(ap, root, me, base)) {
 			warn(ap->logopt,
 			     "some offset mounts still present under %s", path);
@@ -577,6 +577,40 @@ int umount_autofs(struct autofs_point *ap, int force)
 		ret = umount_autofs_direct(ap);
 
 	return ret;
+}
+
+int send_ready(unsigned logopt, int ioctlfd, unsigned int wait_queue_token)
+{
+	char buf[MAX_ERR_BUF];
+
+	if (wait_queue_token == 0)
+		return 0;
+
+	debug(logopt, "token = %d", wait_queue_token);
+
+	if (ioctl(ioctlfd, AUTOFS_IOC_READY, wait_queue_token) < 0) {
+		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+		logerr("AUTOFS_IOC_READY: error %s", estr);
+		return 1;
+	}
+	return 0;
+}
+
+int send_fail(unsigned logopt, int ioctlfd, unsigned int wait_queue_token)
+{
+	char buf[MAX_ERR_BUF];
+
+	if (wait_queue_token == 0)
+		return 0;
+
+	debug(logopt, "token = %d", wait_queue_token);
+
+	if (ioctl(ioctlfd, AUTOFS_IOC_FAIL, wait_queue_token) < 0) {
+		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+		logerr("AUTOFS_IOC_FAIL: error %s", estr);
+		return 1;
+	}
+	return 0;
 }
 
 static size_t get_kpkt_len(void)
@@ -1412,55 +1446,6 @@ static void mutex_operation_wait(pthread_mutex_t *mutex)
 	return;
 }
 
-int handle_mounts_startup_cond_init(struct startup_cond *suc)
-{
-	int status;
-
-	status = pthread_mutex_init(&suc->mutex, NULL);
-	if (status)
-		return status;
-
-	status = pthread_cond_init(&suc->cond, NULL);
-	if (status) {
-		status = pthread_mutex_destroy(&suc->mutex);
-		if (status)
-			fatal(status);
-		return status;
-	}
-
-	status = pthread_mutex_lock(&suc->mutex);
-	if (status) {
-		status = pthread_mutex_destroy(&suc->mutex);
-		if (status)
-			fatal(status);
-		status = pthread_cond_destroy(&suc->cond);
-		if (status)
-			fatal(status);
-	}
-
-	return 0;
-}
-
-void handle_mounts_startup_cond_destroy(void *arg)
-{
-	struct startup_cond *suc = (struct startup_cond *) arg;
-	int status;
-
-	status = pthread_mutex_unlock(&suc->mutex);
-	if (status)
-		fatal(status);
-
-	status = pthread_mutex_destroy(&suc->mutex);
-	if (status)
-		fatal(status);
-
-	status = pthread_cond_destroy(&suc->cond);
-	if (status)
-		fatal(status);
-
-	return;
-}
-
 static void handle_mounts_cleanup(void *arg)
 {
 	struct autofs_point *ap;
@@ -1512,20 +1497,17 @@ static void handle_mounts_cleanup(void *arg)
 
 void *handle_mounts(void *arg)
 {
-	struct startup_cond *suc;
 	struct autofs_point *ap;
 	int cancel_state, status = 0;
 
-	suc = (struct startup_cond *) arg;
+	ap = (struct autofs_point *) arg;
 
-	ap = suc->ap;
-
-	pthread_cleanup_push(return_start_status, suc);
+	pthread_cleanup_push(return_start_status, &suc);
 	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cancel_state);
 
 	state_mutex_lock(ap);
 
-	status = pthread_mutex_lock(&suc->mutex);
+	status = pthread_mutex_lock(&suc.mutex);
 	if (status) {
 		logerr("failed to lock startup condition mutex!");
 		fatal(status);
@@ -1533,7 +1515,7 @@ void *handle_mounts(void *arg)
 
 	if (mount_autofs(ap) < 0) {
 		crit(ap->logopt, "mount of %s failed!", ap->path);
-		suc->status = 1;
+		suc.status = 1;
 		state_mutex_unlock(ap);
 		umount_autofs(ap, 1);
 		pthread_setcancelstate(cancel_state, NULL);
@@ -1543,7 +1525,7 @@ void *handle_mounts(void *arg)
 	if (ap->ghost && ap->type != LKP_DIRECT)
 		info(ap->logopt, "ghosting enabled");
 
-	suc->status = 0;
+	suc.status = 0;
 	pthread_cleanup_pop(1);
 
 	/* We often start several automounters at the same time.  Add some
@@ -1558,9 +1540,7 @@ void *handle_mounts(void *arg)
 
 	while (ap->state != ST_SHUTDOWN) {
 		if (handle_packet(ap)) {
-			struct ioctl_ops *ops = get_ioctl_ops();
-			unsigned int result;
-			int ret;
+			int ret, result;
 
 			state_mutex_lock(ap);
 			/*
@@ -1577,7 +1557,7 @@ void *handle_mounts(void *arg)
 			 * If the ioctl fails assume the kernel doesn't have
 			 * AUTOFS_IOC_ASKUMOUNT and just continue.
 			 */
-			ret = ops->askumount(ap->logopt, ap->ioctlfd, &result);
+			ret = ioctl(ap->ioctlfd, AUTOFS_IOC_ASKUMOUNT, &result);
 			if (ret == -1) {
 				state_mutex_unlock(ap);
 				break;
@@ -2000,9 +1980,7 @@ int main(int argc, char *argv[])
 
 	if (!query_kproto_ver() || get_kver_major() < 5) {
 		fprintf(stderr,
-			"%s: test mount forbidden or "
-			"incorrect kernel protocol version, "
-			"kernel protocol version 5.00 or above required.\n",
+			"%s: kernel protocol version 5.00 or above required.\n",
 			program);
 		exit(1);
 	}
@@ -2077,8 +2055,6 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
-	init_ioctl_ctl();
-
 	if (!alarm_start_handler()) {
 		logerr("%s: failed to create alarm handler thread!", program);
 		master_kill(master_list);
@@ -2123,8 +2099,6 @@ int main(int argc, char *argv[])
 	if (dh)
 		dlclose(dh);
 #endif
-	close_ioctl_ctl();
-
 	info(logging, "autofs stopped");
 
 	exit(0);

@@ -84,9 +84,8 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 		existed = 0;
 
 	if (is_mounted(_PATH_MOUNTED, fullpath, MNTS_REAL)) {
-		info(ap->logopt, MODPREFIX
-		     "%s is already mounted or is bieng re-mounted",
-		     fullpath);
+		error(ap->logopt,
+		      MODPREFIX "warning: %s is already mounted", fullpath);
 		return 0;
 	}
 

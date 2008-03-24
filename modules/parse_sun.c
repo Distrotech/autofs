@@ -968,6 +968,8 @@ static int mount_subtree_offsets(struct autofs_point *ap, struct mapent_cache *m
 	if (!mm)
 		return 0;
 
+	cache_multi_lock(me->parent);
+
 	m_key = mm->key;
 
 	if (*m_key == '/') {
@@ -996,6 +998,8 @@ static int mount_subtree_offsets(struct autofs_point *ap, struct mapent_cache *m
 		error(ap->logopt, MODPREFIX "failed to mount offset triggers");
 		return -1;
 	}
+
+	cache_multi_unlock(me->parent);
 
 	return ret;
 }
@@ -1193,7 +1197,7 @@ int parse_mount(struct autofs_point *ap, const char *name,
 			 * us to fail on the check for duplicate offsets in
 			 * we don't know when submounts go away.
 			 */
-			cache_multi_writelock(me);
+			cache_multi_lock(me);
 			cache_delete_offset_list(mc, name);
 			cache_multi_unlock(me);
 		}
@@ -1216,7 +1220,7 @@ int parse_mount(struct autofs_point *ap, const char *name,
 		}
 
 		pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cur_state);
-		cache_multi_writelock(me);
+		cache_multi_lock(me);
 		/* It's a multi-mount; deal with it */
 		do {
 			char *path, *myoptions, *loc;
@@ -1291,10 +1295,6 @@ int parse_mount(struct autofs_point *ap, const char *name,
 		 * through and set the parent entry of each
 		 */
 		cache_set_parents(me);
-
-		/* Added multi-mount cache entries, down grade lock */ 
-		cache_multi_unlock(me);
-		cache_multi_readlock(me);
 
 		/* Mount root offset if it exists */
 		ro = cache_lookup_offset("/", "/", strlen(m_root), &me->multi_list);
@@ -1468,14 +1468,10 @@ mount_it:
 		cache_readlock(mc);
 		me = cache_lookup_distinct(mc, name);
 		if (me) {
-			int ret;
-
-			cache_multi_readlock(me->parent);
-			ret = mount_subtree_offsets(ap, mc, me);
+			int ret = mount_subtree_offsets(ap, mc, me);
 			/* Convert fail on nonstrict, non-empty multi-mount to success */
 			if (rv < 0 && ret > 0)
 				rv = 0;
-			cache_multi_unlock(me->parent);
 		}
 		cache_unlock(mc);
 		pthread_setcancelstate(cur_state, NULL);

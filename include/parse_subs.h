@@ -27,5 +27,8 @@ int strmcmp(const char *, const char *, int);
 char *dequote(const char *, int, unsigned int);
 int span_space(const char *, unsigned int);
 char *sanitize_path(const char *, int, unsigned int, unsigned int);
+int umount_ent(struct autofs_point *, const char *);
+int mount_multi_triggers(struct autofs_point *, char *, struct mapent *, const char *);
+int umount_multi_triggers(struct autofs_point *, char *, struct mapent *, const char *);
 
 #endif

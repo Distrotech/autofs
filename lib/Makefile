@@ -7,13 +7,12 @@ include ../Makefile.rules
 
 SRCS = cache.c cat_path.c rpc_subs.c mounts.c log.c nsswitch.c \
 	master_tok.l master_parse.y nss_tok.c nss_parse.tab.c \
-	args.c alarm.c macros.c master.c defaults.c parse_subs.c \
-	dev-ioctl-lib.c
+	args.c alarm.c macros.c master.c defaults.c parse_subs.c
 RPCS = mount.h mount_clnt.c mount_xdr.c
 OBJS = cache.o mount_clnt.o mount_xdr.o cat_path.o rpc_subs.o \
 	mounts.o log.o nsswitch.o master_tok.o master_parse.tab.o \
 	nss_tok.o nss_parse.tab.o args.o alarm.o macros.o master.o \
-	defaults.o parse_subs.o dev-ioctl-lib.o
+	defaults.o parse_subs.o
 
 YACCSRC = nss_tok.c nss_parse.tab.c nss_parse.tab.h \
 	  master_tok.c master_parse.tab.c master_parse.tab.h

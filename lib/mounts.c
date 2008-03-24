@@ -1,6 +1,6 @@
 /* ----------------------------------------------------------------------- *
  *   
- *  mounts.c - module for mount utilities.
+ *  mounts.c - module for Linux automount mount table lookup functions
  *
  *   Copyright 2002-2005 Ian Kent <raven@themaw.net> - All Rights Reserved
  *
@@ -23,20 +23,11 @@
 #include <fcntl.h>
 #include <sys/mount.h>
 #include <stdio.h>
-#include <dirent.h>
-#include <sys/vfs.h>
-#include <pwd.h>
-#include <grp.h>
 
 #include "automount.h"
 
 #define MAX_OPTIONS_LEN		80
 #define MAX_MNT_NAME_LEN	30
-
-const unsigned int indirect = AUTOFS_TYPE_INDIRECT;
-const unsigned int direct = AUTOFS_TYPE_DIRECT;
-const unsigned int offset = AUTOFS_TYPE_OFFSET;
-const unsigned int type_count = 3;
 
 static const char options_template[]       = "fd=%d,pgrp=%u,minproto=5,maxproto=%d";
 static const char options_template_extra[] = "fd=%d,pgrp=%u,minproto=5,maxproto=%d,%s";
@@ -47,7 +38,6 @@ static const char kver_options_template[]  = "fd=%d,pgrp=%u,minproto=3,maxproto=
 
 unsigned int query_kproto_ver(void)
 {
-	struct ioctl_ops *ops = get_ioctl_ops();
 	char dir[] = "/tmp/autoXXXXXX", *t_dir;
 	char options[MAX_OPTIONS_LEN + 1];
 	pid_t pgrp = getpgrp();
@@ -80,7 +70,7 @@ unsigned int query_kproto_ver(void)
 
 	close(pipefd[1]);
 
-	ops->open(LOGOPT_NONE, &ioctlfd, -1, t_dir, AUTOFS_TYPE_INDIRECT);
+	ioctlfd = open(t_dir, O_RDONLY);
 	if (ioctlfd == -1) {
 		umount(t_dir);
 		close(pipefd[0]);
@@ -88,11 +78,11 @@ unsigned int query_kproto_ver(void)
 		return 0;
 	}
 
-	ops->catatonic(LOGOPT_NONE, ioctlfd);
+	ioctl(ioctlfd, AUTOFS_IOC_CATATONIC, 0);
 
 	/* If this ioctl() doesn't work, it is kernel version 2 */
-	if (ops->protover(LOGOPT_NONE, ioctlfd, &kver.major)) {
-		ops->close(LOGOPT_NONE, ioctlfd);
+	if (ioctl(ioctlfd, AUTOFS_IOC_PROTOVER, &kver.major) == -1) {
+		close(ioctlfd);
 		umount(t_dir);
 		close(pipefd[0]);
 		rmdir(t_dir);
@@ -100,15 +90,15 @@ unsigned int query_kproto_ver(void)
 	}
 
 	/* If this ioctl() doesn't work, version is 4 or less */
-	if (ops->protosubver(LOGOPT_NONE, ioctlfd, &kver.minor)) {
-		ops->close(LOGOPT_NONE, ioctlfd);
+	if (ioctl(ioctlfd, AUTOFS_IOC_PROTOSUBVER, &kver.minor) == -1) {
+		close(ioctlfd);
 		umount(t_dir);
 		close(pipefd[0]);
 		rmdir(t_dir);
 		return 0;
 	}
 
-	ops->close(LOGOPT_NONE, ioctlfd);
+	close(ioctlfd);
 	umount(t_dir);
 	close(pipefd[0]);
 	rmdir(t_dir);
@@ -466,75 +456,49 @@ int has_fstab_option(const char *opt)
 	return ret;
 }
 
-/*
- * Find the device number of an autofs mount with given path and
- * type (eg..AUTOFS_TYPE_DIRECT). An autofs display mount option
- * "dev=<device number>" is provided by the kernel module for this.
- *
- * The device number is used by the kernel to identify the autofs
- * super block when searching for the mount.
- */
-int find_mnt_devid(const char *table,
-		   const char *path, char *devid, const unsigned int type)
+char *find_mnt_ino(const char *table, dev_t dev, ino_t ino)
 {
-	struct mntent *mnt;
 	struct mntent mnt_wrk;
+	struct mntent *mnt;
 	char buf[PATH_MAX * 3];
+	char *path = NULL;
+	unsigned long l_dev = (unsigned long) dev;
+	unsigned long l_ino = (unsigned long) ino;
 	FILE *tab;
-	char *dev;
 
 	tab = setmntent(table, "r");
 	if (!tab) {
-		printf("failed to open mount table\n");
+		char *estr = strerror_r(errno, buf, (size_t) PATH_MAX - 1);
+		logerr("setmntent: %s", estr);
 		return 0;
 	}
 
-	dev = NULL;
 	while ((mnt = getmntent_r(tab, &mnt_wrk, buf, PATH_MAX * 3))) {
+		char *p_dev, *p_ino;
+		unsigned long m_dev, m_ino;
+
 		if (strcmp(mnt->mnt_type, "autofs"))
 			continue;
 
-		if (strcmp(mnt->mnt_dir, path))
+		p_dev = strstr(mnt->mnt_opts, "dev=");
+		if (!p_dev)
+			continue;
+		sscanf(p_dev, "dev=%lu", &m_dev);
+		if (m_dev != l_dev)
 			continue;
 
-		switch (type) {
-		case AUTOFS_TYPE_INDIRECT:
-			if (!hasmntopt(mnt, "indirect"))
-				continue;
-			break;
-
-		case AUTOFS_TYPE_DIRECT:
-			if (!hasmntopt(mnt, "direct"))
-				continue;
-			break;
-
-		case AUTOFS_TYPE_OFFSET:
-			if (!hasmntopt(mnt, "offset"))
-				continue;
-			break;
-		}
-
-		dev = hasmntopt(mnt, "dev");
-		if (dev) {
-			char *start = strchr(dev, '=') + 1;
-			char *end = strchr(start, ',');
-			if (end)
-				*end = '\0';
-			if (start) {
-				int len = strlen(start);
-				memcpy(devid, start, len);
-				devid[len] = '\0';
-			}
+		p_ino = strstr(mnt->mnt_opts, "ino=");
+		if (!p_ino)
+			continue;
+		sscanf(p_ino, "ino=%lu", &m_ino);
+		if (m_ino == l_ino) {
+			path = strdup(mnt->mnt_dir);
 			break;
 		}
 	}
-
 	endmntent(tab);
 
-	if (!dev)
-		return 0;
-
-	return 1;
+	return path;
 }
 
 char *get_offset(const char *prefix, char *offset,
@@ -1010,597 +974,5 @@ int tree_is_mounted(struct mnt_list *mnts, const char *path, unsigned int type)
 		}
 	}
 	return mounted;
-}
-
-int tree_find_mnt_devid(struct mnt_list *mnts,
-			const char *path, char *devid, unsigned int type)
-{
-	struct list_head *p;
-	struct list_head list;
-	size_t len = strlen(path);
-	char *dev;
-
-	INIT_LIST_HEAD(&list);
-
-	if (!tree_find_mnt_ents(mnts, &list, path))
-		return 0;
-
-	dev = NULL;
-	list_for_each(p, &list) {
-		struct mnt_list *mptr;
-
-		mptr = list_entry(p, struct mnt_list, entries);
-
-		if (strcmp(mptr->fs_type, "autofs"))
-			continue;
-
-		if (strlen(mptr->path) < len)
-			return 0;
-
-		if (strcmp(mptr->path, path))
-			continue;
-
-		switch (type) {
-		case AUTOFS_TYPE_INDIRECT:
-			if (!strstr(mptr->opts, "indirect"))
-				continue;
-			break;
-
-		case AUTOFS_TYPE_DIRECT:
-			if (!strstr(mptr->opts, "direct"))
-				continue;
-			break;
-
-		case AUTOFS_TYPE_OFFSET:
-			if (!strstr(mptr->opts, "offset"))
-				continue;
-			break;
-		}
-
-		dev = strstr(mptr->opts, "dev");
-		if (dev) {
-			char *start = strchr(dev, '=') + 1;
-			char *end = strchr(start, ',');
-			if (end)
-				*end = '\0';
-			if (start) {
-				int len = strlen(start);
-				memcpy(devid, start, len);
-				devid[len] = '\0';
-			}
-			*end = ',';
-			break;
-		}
-	}
-
-	if (!dev)
-		return 0;
-
-	return 1;
-}
-
-void set_tsd_user_vars(unsigned int logopt, uid_t uid, gid_t gid)
-{
-	struct thread_stdenv_vars *tsv;
-	struct passwd pw;
-	struct passwd *ppw = &pw;
-	struct passwd **pppw = &ppw;
-	struct group gr;
-	struct group *pgr;
-	struct group **ppgr;
-	char *pw_tmp, *gr_tmp;
-	int status, tmplen, grplen;
-
-	/*
-	 * Setup thread specific data values for macro
-	 * substution in map entries during the mount.
-	 * Best effort only as it must go ahead.
-	 */
-
-	tsv = malloc(sizeof(struct thread_stdenv_vars));
-	if (!tsv) {
-		error(logopt, "failed alloc tsv storage");
-		return;
-	}
-
-	tsv->uid = uid;
-	tsv->gid = gid;
-
-	/* Try to get passwd info */
-
-	tmplen = sysconf(_SC_GETPW_R_SIZE_MAX);
-	if (tmplen < 0) {
-		error(logopt, "failed to get buffer size for getpwuid_r");
-		goto free_tsv;
-	}
-
-	pw_tmp = malloc(tmplen + 1);
-	if (!pw_tmp) {
-		error(logopt, "failed to malloc buffer for getpwuid_r");
-		goto free_tsv;
-	}
-
-	status = getpwuid_r(uid, ppw, pw_tmp, tmplen, pppw);
-	if (status || !ppw) {
-		error(logopt, "failed to get passwd info from getpwuid_r");
-		free(pw_tmp);
-		goto free_tsv;
-	}
-
-	tsv->user = strdup(pw.pw_name);
-	if (!tsv->user) {
-		error(logopt, "failed to malloc buffer for user");
-		free(pw_tmp);
-		goto free_tsv;
-	}
-
-	tsv->home = strdup(pw.pw_dir);
-	if (!tsv->user) {
-		error(logopt, "failed to malloc buffer for home");
-		free(pw_tmp);
-		goto free_tsv_user;
-	}
-
-	free(pw_tmp);
-
-	/* Try to get group info */
-
-	grplen = sysconf(_SC_GETGR_R_SIZE_MAX);
-	if (tmplen < 0) {
-		error(logopt, "failed to get buffer size for getgrgid_r");
-		goto free_tsv_home;
-	}
-
-	gr_tmp = NULL;
-	tmplen = grplen;
-	while (1) {
-		char *tmp = realloc(gr_tmp, tmplen + 1);
-		if (!tmp) {
-			error(logopt, "failed to malloc buffer for getgrgid_r");
-			if (gr_tmp)
-				free(gr_tmp);
-			goto free_tsv_home;
-		}
-		gr_tmp = tmp;
-		pgr = &gr;
-		ppgr = &pgr;
-		status = getgrgid_r(gid, pgr, gr_tmp, tmplen, ppgr);
-		if (status != ERANGE)
-			break;
-		tmplen += grplen;
-	}
-
-	if (status || !pgr) {
-		error(logopt, "failed to get group info from getgrgid_r");
-		free(gr_tmp);
-		goto free_tsv_home;
-	}
-
-	tsv->group = strdup(gr.gr_name);
-	if (!tsv->group) {
-		error(logopt, "failed to malloc buffer for group");
-		free(gr_tmp);
-		goto free_tsv_home;
-	}
-
-	free(gr_tmp);
-
-	status = pthread_setspecific(key_thread_stdenv_vars, tsv);
-	if (status) {
-		error(logopt, "failed to set stdenv thread var");
-		goto free_tsv_group;
-	}
-
-	return;
-
-free_tsv_group:
-	free(tsv->group);
-free_tsv_home:
-	free(tsv->home);
-free_tsv_user:
-	free(tsv->user);
-free_tsv:
-	free(tsv);
-	return;
-}
-
-const char *mount_type_str(const unsigned int type)
-{
-	static const char *str_type[] = {
-		"direct",
-		"indirect",
-		"offset"
-	};
-	unsigned int pos, i;
-
-	for (pos = 0, i = type; pos < type_count; i >>= 1, pos++)
-		if (i & 0x1)
-			break;
-
-	return (pos == type_count ? NULL : str_type[pos]);
-}
-
-void notify_mount_result(struct autofs_point *ap,
-			 const char *path, const char *type)
-{
-	if (ap->exp_timeout)
-		info(ap->logopt,
-		    "mounted %s on %s with timeout %u, freq %u seconds",
-		    type, path,
-		    (unsigned int) ap->exp_timeout,
-		    (unsigned int) ap->exp_runfreq);
-	else
-		info(ap->logopt,
-		     "mounted %s on %s with timeouts disabled",
-		     type, path);
-
-	return;
-}
-
-static int do_remount_direct(struct autofs_point *ap, int fd, const char *path)
-{
-	struct ioctl_ops *ops = get_ioctl_ops();
-	uid_t uid;
-	gid_t gid;
-	int ret;
-
-	ops->requestor(ap->logopt, fd, path, &uid, &gid);
-	if (uid != -1 && gid != -1)
-		set_tsd_user_vars(ap->logopt, uid, gid);
-
-	ret = lookup_nss_mount(ap, NULL, path, strlen(path));
-	if (ret)
-		info(ap->logopt, "re-mounted %s", path);
-	else
-		info(ap->logopt, "failed to re-mount %s", path);
-
-	return ret;
-}
-
-static int do_remount_indirect(struct autofs_point *ap, int fd, const char *path)
-{
-	struct ioctl_ops *ops = get_ioctl_ops();
-	struct dirent **de;
-	char buf[PATH_MAX + 1];
-	uid_t uid;
-	gid_t gid;
-	unsigned int mounted;
-	int n, size;
-
-	n = scandir(path, &de, 0, alphasort);
-	if (n < 0)
-		return -1;
-
-	size = sizeof(buf);
-
-	while (n--) {
-		int ret, len;
-
-		if (strcmp(de[n]->d_name, ".") == 0 ||
-		    strcmp(de[n]->d_name, "..") == 0) {
-			free(de[n]);
-			continue;
-		}
-
-		ret = cat_path(buf, size, path, de[n]->d_name);
-		if (!ret) {
-			do {
-				free(de[n]);
-			} while (n--);
-			free(de);
-			return -1;
-		}
-
-		ops->ismountpoint(ap->logopt, fd, buf, &mounted);
-		if (!mounted) {
-			free(de[n]);
-			continue;
-		}
-
-		ops->requestor(ap->logopt, fd, buf, &uid, &gid);
-		if (uid != -1 && gid != -1)
-			set_tsd_user_vars(ap->logopt, uid, gid);
-
-		len = strlen(de[n]->d_name);
-
-		ret = lookup_nss_mount(ap, NULL, de[n]->d_name, len);
-		if (ret)
-			info(ap->logopt, "re-mounted %s", buf);
-		else
-			info(ap->logopt, "failed to re-mount %s", buf);
-
-		free(de[n]);
-	}
-	free(de);
-
-	return 0;
-}
-
-int remount_active_mount(struct autofs_point *ap, struct mapent_cache *mc,
-			 const char *path, dev_t devid, const unsigned int type,
-			 int *ioctlfd)
-{
-	struct ioctl_ops *ops = get_ioctl_ops();
-	time_t timeout = ap->exp_timeout;
-	const char *str_type = mount_type_str(type);
-	unsigned int mounted;
-	struct stat st;
-	int fd;
-
-	*ioctlfd = -1;
-
-	/* Open failed, no mount present */
-	ops->open(ap->logopt, &fd, devid, path, type);
-	if (fd == -1)
-		return REMOUNT_OPEN_FAIL;
-
-	/* Re-reading the map, set timeout and return */
-	if (ap->state == ST_READMAP) {
-		ops->timeout(ap->logopt, fd, &timeout);
-		ops->close(ap->logopt, fd);
-		return REMOUNT_READ_MAP;
-	}
-
-	/* Mounted so set pipefd and timeout etc. */
-	ops->catatonic(ap->logopt, fd);
-	ops->setpipefd(ap->logopt, fd, ap->kpipefd);
-	ops->timeout(ap->logopt, fd, &timeout);
-	if (fstat(fd, &st) == -1) {
-		error(ap->logopt,
-		      "failed to stat %s mount %s", str_type, path);
-		ops->close(ap->logopt, fd);
-		return REMOUNT_STAT_FAIL;
-	}
-	ap->dev = st.st_dev;
-	if (mc)
-		cache_set_ino_index(mc, path, st.st_dev, st.st_ino);
-	notify_mount_result(ap, path, str_type);
-
-	debug(ap->logopt, "re-connected to mount %s", path);
-
-	*ioctlfd = fd;
-
-	/* Any mounts on or below? */
-	ops->ismountpoint(ap->logopt, fd, path, &mounted);
-	if (!mounted) {
-		/*
-		 * If we're an indirect mount we pass back the fd.
-		 * But if were a direct or offset mount with no active
-		 * mount we don't retain an open file descriptor.
-		 */
-		if (type == direct) {
-			ops->close(ap->logopt, fd);
-			*ioctlfd = -1;
-		}
-	} else {
-		/*
-		 * What can I do if we can't remount the existing
-		 * mount(s) (possibly a partial failure), everything
-		 * following will be broken?
-		 */
-		if (type == indirect)
-			do_remount_indirect(ap, fd, path);
-		else
-			do_remount_direct(ap, fd, path);
-	}
-
-	return REMOUNT_SUCCESS;
-}
-
-int umount_ent(struct autofs_point *ap, const char *path)
-{
-	struct stat st;
-	struct statfs fs;
-	int sav_errno;
-	int status, is_smbfs = 0;
-	int ret, rv = 1;
-
-	ret = statfs(path, &fs);
-	if (ret == -1) {
-		warn(ap->logopt, "could not stat fs of %s", path);
-		is_smbfs = 0;
-	} else {
-		int cifsfs = fs.f_type == (__SWORD_TYPE) CIFS_MAGIC_NUMBER;
-		int smbfs = fs.f_type == (__SWORD_TYPE) SMB_SUPER_MAGIC;
-		is_smbfs = (cifsfs | smbfs) ? 1 : 0;
-	}
-
-	status = lstat(path, &st);
-	sav_errno = errno;
-
-	if (status < 0)
-		warn(ap->logopt, "lstat of %s failed with %d", path, status);
-
-	/*
-	 * lstat failed and we're an smbfs fs returning an error that is not
-	 * EIO or EBADSLT or the lstat failed so it's a bad path. Return
-	 * a fail.
-	 *
-	 * EIO appears to correspond to an smb mount that has gone away
-	 * and EBADSLT relates to CD changer not responding.
-	 */
-	if (!status && (S_ISDIR(st.st_mode) && st.st_dev != ap->dev)) {
-		rv = spawn_umount(ap->logopt, path, NULL);
-	} else if (is_smbfs && (sav_errno == EIO || sav_errno == EBADSLT)) {
-		rv = spawn_umount(ap->logopt, path, NULL);
-	}
-
-	/* We are doing a forced shutcwdown down so unlink busy mounts */
-	if (rv && (ap->state == ST_SHUTDOWN_FORCE || ap->state == ST_SHUTDOWN)) {
-		ret = stat(path, &st);
-		if (ret == -1 && errno == ENOENT) {
-			warn(ap->logopt, "mount point does not exist");
-			return 0;
-		}
-
-		if (ret == 0 && !S_ISDIR(st.st_mode)) {
-			warn(ap->logopt, "mount point is not a directory");
-			return 0;
-		}
-
-		if (ap->state == ST_SHUTDOWN_FORCE) {
-			info(ap->logopt, "forcing umount of %s", path);
-			rv = spawn_umount(ap->logopt, "-l", path, NULL);
-		}
-
-		/*
-		 * Verify that we actually unmounted the thing.  This is a
-		 * belt and suspenders approach to not eating user data.
-		 * We have seen cases where umount succeeds, but there is
-		 * still a file system mounted on the mount point.  How
-		 * this happens has not yet been determined, but we want to
-		 * make sure to return failure here, if that is the case,
-		 * so that we do not try to call rmdir_path on the
-		 * directory.
-		 */
-		if (!rv && is_mounted(_PATH_MOUNTED, path, MNTS_REAL)) {
-			crit(ap->logopt,
-			     "the umount binary reported that %s was "
-			     "unmounted, but there is still something "
-			     "mounted on this path.", path);
-			rv = -1;
-		}
-	}
-
-	return rv;
-}
-
-int mount_multi_triggers(struct autofs_point *ap, char *root, struct mapent *me, const char *base)
-{
-	char path[PATH_MAX + 1];
-	char *offset = path;
-	struct mapent *oe;
-	struct list_head *pos = NULL;
-	unsigned int fs_path_len;
-	unsigned int mounted;
-	int start;
-
-	fs_path_len = strlen(root) + strlen(base);
-	if (fs_path_len > PATH_MAX)
-		return -1;
-
-	strcpy(path, root);
-	strcat(path, base);
-
-	mounted = 0;
-	start = strlen(root);
-	offset = cache_get_offset(base, offset, start, &me->multi_list, &pos);
-	while (offset) {
-		int plen = fs_path_len + strlen(offset);
-
-		if (plen > PATH_MAX) {
-			warn(ap->logopt, "path loo long");
-			goto cont;
-		}
-
-		oe = cache_lookup_offset(base, offset, start, &me->multi_list);
-		if (!oe)
-			goto cont;
-
-		debug(ap->logopt, "mount offset %s", oe->key);
-
-		if (mount_autofs_offset(ap, oe) < 0)
-			warn(ap->logopt, "failed to mount offset");
-		else
-			mounted++;
-cont:
-		offset = cache_get_offset(base,
-				offset, start, &me->multi_list, &pos);
-	}
-
-	return mounted;
-}
-
-int umount_multi_triggers(struct autofs_point *ap, char *root, struct mapent *me, const char *base)
-{
-	char path[PATH_MAX + 1];
-	char *offset;
-	struct mapent *oe;
-	struct list_head *mm_root, *pos;
-	const char o_root[] = "/";
-	const char *mm_base;
-	int left, start;
-
-	left = 0;
-	start = strlen(root);
-
-	mm_root = &me->multi->multi_list;
-
-	if (!base)
-		mm_base = o_root;
-	else
-		mm_base = base;
-
-	pos = NULL;
-	offset = path;
-
-	/* Make sure "none" of the offsets have an active mount. */
-	while ((offset = cache_get_offset(mm_base, offset, start, mm_root, &pos))) {
-		char *oe_base;
-
-		oe = cache_lookup_offset(mm_base, offset, start, &me->multi_list);
-		/* root offset is a special case */
-		if (!oe || (strlen(oe->key) - start) == 1)
-			continue;
-
-		/*
-		 * Check for and umount subtree offsets resulting from
-		 * nonstrict mount fail.
-		 */
-		oe_base = oe->key + strlen(root);
-		left += umount_multi_triggers(ap, root, oe, oe_base);
-
-		if (oe->ioctlfd != -1)
-			left++;
-	}
-
-	if (left)
-		return left;
-
-	pos = NULL;
-	offset = path;
-
-	/* Make sure "none" of the offsets have an active mount. */
-	while ((offset = cache_get_offset(mm_base, offset, start, mm_root, &pos))) {
-		oe = cache_lookup_offset(mm_base, offset, start, &me->multi_list);
-		/* root offset is a special case */
-		if (!oe || (strlen(oe->key) - start) == 1)
-			continue;
-
-		debug(ap->logopt, "umount offset %s", oe->key);
-
-		if (umount_autofs_offset(ap, oe)) {
-			warn(ap->logopt, "failed to umount offset");
-			left++;
-		}
-	}
-
-	if (!left && me->multi == me) {
-		struct mapent_cache *mc = me->mc;
-		int status;
-
-		/*
-		 * Special case.
-		 * If we can't umount the root container then we can't
-		 * delete the offsets from the cache and we need to put
-		 * the offset triggers back.
-		 */
-		if (is_mounted(_PATH_MOUNTED, root, MNTS_REAL)) {
-			info(ap->logopt, "unmounting dir = %s", root);
-			if (umount_ent(ap, root)) {
-				if (!mount_multi_triggers(ap, root, me, "/"))
-					warn(ap->logopt,
-					     "failed to remount offset triggers");
-				return left++;
-			}
-		}
-
-		/* We're done - clean out the offsets */
-		status = cache_delete_offset_list(mc, me->key);
-		if (status != CHE_OK)
-			warn(ap->logopt, "couldn't delete offset list");
-	}
-
-	return left;
 }
 
