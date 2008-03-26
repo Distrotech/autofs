@@ -162,6 +162,15 @@ OPTNTOUT	(-n{OPTWS}|-n{OPTWS}={OPTWS}|--negative-timeout{OPTWS}|--negative-timeo
 		return QUOTE;
 	}
 
+	{WS}/({MULTI}|{MTYPE}) {
+		BEGIN(MAPSTR);
+		*bptr = '\0';
+		strcpy(master_lval.strtype, buff);
+		bptr = buff;
+		yyless(0);
+		return(PATH);
+	}
+
 	{WS} {
 		BEGIN(MAPSTR);
 		*bptr = '\0';
@@ -235,7 +244,7 @@ OPTNTOUT	(-n{OPTWS}|-n{OPTWS}={OPTWS}|--negative-timeout{OPTWS}|--negative-timeo
 		yyless(0);
 	}
 
-	{DNSERVERSTR} {
+	{DNSERVERSTR}{DNATTRSTR} {
 		BEGIN(DNSTR);
 		yyless(0);
 	}
