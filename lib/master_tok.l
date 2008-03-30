@@ -77,7 +77,7 @@ int my_yyinput(char *, int);
 char buff[1024];
 char *bptr;
 char *optr = buff;
-char *tptr;
+unsigned int tlen;
 
 %}
 
@@ -162,15 +162,6 @@ OPTNTOUT	(-n{OPTWS}|-n{OPTWS}={OPTWS}|--negative-timeout{OPTWS}|--negative-timeo
 		return QUOTE;
 	}
 
-	{WS}/({MULTI}|{MTYPE}) {
-		BEGIN(MAPSTR);
-		*bptr = '\0';
-		strcpy(master_lval.strtype, buff);
-		bptr = buff;
-		yyless(0);
-		return(PATH);
-	}
-
 	{WS} {
 		BEGIN(MAPSTR);
 		*bptr = '\0';
@@ -199,25 +190,31 @@ OPTNTOUT	(-n{OPTWS}|-n{OPTWS}={OPTWS}|--negative-timeout{OPTWS}|--negative-timeo
 <MAPSTR>{
 	{OPTWS}\\\n{OPTWS} {}
 
-	{WS}{MULTI} {
-		tptr = master_text;
-		while (*tptr && isblank(*tptr)) {
-			tptr++;
+	{MULTI} {
+		tlen = master_leng - 1;
+		if (bptr != buff && isblank(master_text[tlen])) {
+			strncat(buff, master_text, tlen);
+			bptr += tlen;
+			yyless(tlen);
+		} else {
+			strcpy(master_lval.strtype, master_text);
+			return(MULTITYPE);
 		}
-		strcpy(master_lval.strtype, tptr);
-		return(MULTITYPE);
 	}
 
-	{WS}{MTYPE} {
-		tptr = master_text;
-		while (*tptr && isblank(*tptr)) {
-			tptr++;
+	{MTYPE} {
+		tlen = master_leng - 1;
+		if (bptr != buff && isblank(master_text[tlen])) {
+			strncat(buff, master_text, tlen);
+			bptr += tlen;
+			yyless(tlen);
+		} else {
+			strcpy(master_lval.strtype, master_text);
+			return(MAPTYPE);
 		}
-		strcpy(master_lval.strtype, tptr);
-		return(MAPTYPE);
 	}
 
-	{WS}{MULTISEP} { return(DDASH); }
+	{MULTISEP} { return(DDASH); }
 
 	":"	{ return(COLON); }
 
