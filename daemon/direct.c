@@ -1217,7 +1217,7 @@ static void mount_mutex_unlock(void *arg)
 
 static void *do_mount_direct(void *arg)
 {
-	struct pending_args *mt;
+	struct pending_args *args, mt;
 	struct autofs_point *ap;
 	struct passwd pw;
 	struct passwd *ppw = &pw;
@@ -1231,47 +1231,47 @@ static void *do_mount_direct(void *arg)
 	struct stat st;
 	int status, state;
 
-	mt = (struct pending_args *) arg;
+	args = (struct pending_args *) arg;
 
 	status = pthread_mutex_lock(&ma_mutex);
 	if (status)
 		fatal(status);
 
-	ap = mt->ap;
+	memcpy(&mt, args, sizeof(struct pending_args));
 
-	mt->signaled = 1;
-	status = pthread_cond_signal(&mt->cond);
+	ap = mt.ap;
+
+	args->signaled = 1;
+	status = pthread_cond_signal(&args->cond);
 	if (status)
 		fatal(status);
 
 	mount_mutex_unlock(NULL);
 
-	pthread_cleanup_push(free_pending_args, mt);
-	pthread_cleanup_push(pending_cond_destroy, mt);
-	pthread_cleanup_push(mount_send_fail, mt);
+	pthread_cleanup_push(mount_send_fail, &mt);
 
 	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &state);
 
-	status = fstat(mt->ioctlfd, &st);
+	status = fstat(mt.ioctlfd, &st);
 	if (status == -1) {
 		error(ap->logopt,
-		      "can't stat direct mount trigger %s", mt->name);
+		      "can't stat direct mount trigger %s", mt.name);
 		pthread_setcancelstate(state, NULL);
 		pthread_exit(NULL);
 	}
 
-	status = stat(mt->name, &st);
-	if (!S_ISDIR(st.st_mode) || st.st_dev != mt->dev) {
+	status = stat(mt.name, &st);
+	if (!S_ISDIR(st.st_mode) || st.st_dev != mt.dev) {
 		error(ap->logopt,
 		     "direct trigger not valid or already mounted %s",
-		     mt->name);
+		     mt.name);
 		pthread_setcancelstate(state, NULL);
 		pthread_exit(NULL);
 	}
 
 	pthread_setcancelstate(state, NULL);
 
-	info(ap->logopt, "attempting to mount entry %s", mt->name);
+	info(ap->logopt, "attempting to mount entry %s", mt.name);
 
 	/*
 	 * Setup thread specific data values for macro
@@ -1283,8 +1283,8 @@ static void *do_mount_direct(void *arg)
 	if (!tsv) 
 		goto cont;
 
-	tsv->uid = mt->uid;
-	tsv->gid = mt->gid;
+	tsv->uid = mt.uid;
+	tsv->gid = mt.gid;
 
 	/* Try to get passwd info */
 
@@ -1302,7 +1302,7 @@ static void *do_mount_direct(void *arg)
 		goto cont;
 	}
 
-	status = getpwuid_r(mt->uid, ppw, pw_tmp, tmplen, pppw);
+	status = getpwuid_r(tsv->uid, ppw, pw_tmp, tmplen, pppw);
 	if (status || !ppw) {
 		error(ap->logopt, "failed to get passwd info from getpwuid_r");
 		free(tsv);
@@ -1356,7 +1356,7 @@ static void *do_mount_direct(void *arg)
 		gr_tmp = tmp;
 		pgr = &gr;
 		ppgr = &pgr;
-		status = getgrgid_r(mt->gid, pgr, gr_tmp, tmplen, ppgr);
+		status = getgrgid_r(tsv->gid, pgr, gr_tmp, tmplen, ppgr);
 		if (status != ERANGE)
 			break;
 		tmplen += grplen;
@@ -1393,7 +1393,7 @@ static void *do_mount_direct(void *arg)
 	}
 
 cont:
-	status = lookup_nss_mount(ap, NULL, mt->name, strlen(mt->name));
+	status = lookup_nss_mount(ap, NULL, mt.name, strlen(mt.name));
 	/*
 	 * Direct mounts are always a single mount. If it fails there's
 	 * nothing to undo so just complain
@@ -1402,29 +1402,27 @@ cont:
 	if (status) {
 		struct mapent *me;
 		int real_mount, set_fd;
-		cache_readlock(mt->mc);
-		me = cache_lookup_distinct(mt->mc, mt->name);
+		cache_readlock(mt.mc);
+		me = cache_lookup_distinct(mt.mc, mt.name);
 		real_mount = is_mounted(_PATH_MOUNTED, me->key, MNTS_REAL);
 		set_fd = (real_mount || me->multi == me);
-		cache_unlock(mt->mc);
+		cache_unlock(mt.mc);
 		if (set_fd) {
-			me->ioctlfd = mt->ioctlfd;
-			send_ready(ap->logopt, mt->ioctlfd, mt->wait_queue_token);
+			me->ioctlfd = mt.ioctlfd;
+			send_ready(ap->logopt, mt.ioctlfd, mt.wait_queue_token);
 		} else {
-			send_ready(ap->logopt, mt->ioctlfd, mt->wait_queue_token);
-			close(mt->ioctlfd);
+			send_ready(ap->logopt, mt.ioctlfd, mt.wait_queue_token);
+			close(mt.ioctlfd);
 		}
-		info(ap->logopt, "mounted %s", mt->name);
+		info(ap->logopt, "mounted %s", mt.name);
 	} else {
-		send_fail(mt->ap->logopt, mt->ioctlfd, mt->wait_queue_token);
-		close(mt->ioctlfd);
-		info(ap->logopt, "failed to mount %s", mt->name);
+		send_fail(ap->logopt, mt.ioctlfd, mt.wait_queue_token);
+		close(mt.ioctlfd);
+		info(ap->logopt, "failed to mount %s", mt.name);
 	}
 	pthread_setcancelstate(state, NULL);
 
 	pthread_cleanup_pop(0);
-	pthread_cleanup_pop(1);
-	pthread_cleanup_pop(1);
 
 	return NULL;
 }
@@ -1553,6 +1551,8 @@ int handle_packet_missing_direct(struct autofs_point *ap, autofs_packet_missing_
 	}
 
 	cache_unlock(mc);
+	pthread_cleanup_push(free_pending_args, mt);
+	pthread_cleanup_push(pending_cond_destroy, mt);
 	pthread_cleanup_push(mount_mutex_unlock, NULL);
 	pthread_setcancelstate(state, NULL);
 
@@ -1563,6 +1563,8 @@ int handle_packet_missing_direct(struct autofs_point *ap, autofs_packet_missing_
 			fatal(status);
 	}
 
+	pthread_cleanup_pop(1);
+	pthread_cleanup_pop(1);
 	pthread_cleanup_pop(1);
 
 	return 0;

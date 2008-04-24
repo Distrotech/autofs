@@ -660,7 +660,7 @@ static void mount_mutex_unlock(void *arg)
 
 static void *do_mount_indirect(void *arg)
 {
-	struct pending_args *mt;
+	struct pending_args *args, mt;
 	struct autofs_point *ap;
 	char buf[PATH_MAX + 1];
 	struct stat st;
@@ -674,29 +674,28 @@ static void *do_mount_indirect(void *arg)
 	struct thread_stdenv_vars *tsv;
 	int len, tmplen, grplen, status, state;
 
-	mt = (struct pending_args *) arg;
+	args = (struct pending_args *) arg;
 
 	status = pthread_mutex_lock(&ma_mutex);
 	if (status)
 		fatal(status);
 
-	ap = mt->ap;
-	mt->status = 0;
+	memcpy(&mt, args, sizeof(struct pending_args));
 
-	mt->signaled = 1;
-	status = pthread_cond_signal(&mt->cond);
+	ap = mt.ap;
+
+	args->signaled = 1;
+	status = pthread_cond_signal(&args->cond);
 	if (status)
 		fatal(status);
 
 	mount_mutex_unlock(NULL);
 
-	pthread_cleanup_push(free_pending_args, mt);
-	pthread_cleanup_push(pending_cond_destroy, mt);
-	pthread_cleanup_push(mount_send_fail, mt);
+	pthread_cleanup_push(mount_send_fail, &mt);
 
 	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &state);
 
-	len = ncat_path(buf, sizeof(buf), ap->path, mt->name, mt->len);
+	len = ncat_path(buf, sizeof(buf), ap->path, mt.name, mt.len);
 	if (!len) {
 		crit(ap->logopt, "path to be mounted is to long");
 		pthread_setcancelstate(state, NULL);
@@ -704,7 +703,7 @@ static void *do_mount_indirect(void *arg)
 	}
 
 	status = lstat(buf, &st);
-	if (status != -1 && !(S_ISDIR(st.st_mode) && st.st_dev == mt->dev)) {
+	if (status != -1 && !(S_ISDIR(st.st_mode) && st.st_dev == mt.dev)) {
 		error(ap->logopt,
 		      "indirect trigger not valid or already mounted %s", buf);
 		pthread_setcancelstate(state, NULL);
@@ -725,8 +724,8 @@ static void *do_mount_indirect(void *arg)
 	if (!tsv) 
 		goto cont;
 
-	tsv->uid = mt->uid;
-	tsv->gid = mt->gid;
+	tsv->uid = mt.uid;
+	tsv->gid = mt.gid;
 
 	/* Try to get passwd info */
 
@@ -744,7 +743,7 @@ static void *do_mount_indirect(void *arg)
 		goto cont;
 	}
 
-	status = getpwuid_r(mt->uid, ppw, pw_tmp, tmplen, pppw);
+	status = getpwuid_r(tsv->uid, ppw, pw_tmp, tmplen, pppw);
 	if (status || !ppw) {
 		error(ap->logopt, "failed to get passwd info from getpwuid_r");
 		free(tsv);
@@ -798,7 +797,7 @@ static void *do_mount_indirect(void *arg)
 		gr_tmp = tmp;
 		pgr = &gr;
 		ppgr = &pgr;
-		status = getgrgid_r(mt->gid, pgr, gr_tmp, tmplen, ppgr);
+		status = getgrgid_r(tsv->gid, pgr, gr_tmp, tmplen, ppgr);
 		if (status != ERANGE)
 			break;
 		tmplen += grplen;
@@ -834,20 +833,18 @@ static void *do_mount_indirect(void *arg)
 		free(tsv);
 	}
 cont:
-	status = lookup_nss_mount(ap, NULL, mt->name, mt->len);
+	status = lookup_nss_mount(ap, NULL, mt.name, mt.len);
 	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &state);
 	if (status) {
-		send_ready(ap->logopt, ap->ioctlfd, mt->wait_queue_token);
+		send_ready(ap->logopt, ap->ioctlfd, mt.wait_queue_token);
 		info(ap->logopt, "mounted %s", buf);
 	} else {
-		send_fail(ap->logopt, ap->ioctlfd, mt->wait_queue_token);
+		send_fail(ap->logopt, ap->ioctlfd, mt.wait_queue_token);
 		info(ap->logopt, "failed to mount %s", buf);
 	}
 	pthread_setcancelstate(state, NULL);
 
 	pthread_cleanup_pop(0);
-	pthread_cleanup_pop(1);
-	pthread_cleanup_pop(1);
 
 	return NULL;
 }
@@ -911,6 +908,8 @@ int handle_packet_missing_indirect(struct autofs_point *ap, autofs_packet_missin
 		return 1;
 	}
 
+	pthread_cleanup_push(free_pending_args, mt);
+	pthread_cleanup_push(pending_cond_destroy, mt);
 	pthread_cleanup_push(mount_mutex_unlock, NULL);
 	pthread_setcancelstate(state, NULL);
 
@@ -921,6 +920,8 @@ int handle_packet_missing_indirect(struct autofs_point *ap, autofs_packet_missin
 			fatal(status);
 	}
 
+	pthread_cleanup_pop(1);
+	pthread_cleanup_pop(1);
 	pthread_cleanup_pop(1);
 
 	return 0;
