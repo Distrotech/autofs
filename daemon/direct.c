@@ -664,12 +664,12 @@ int mount_autofs_offset(struct autofs_point *ap, struct mapent *me)
 		if (ap->state != ST_READMAP)
 			warn(ap->logopt,
 			      "trigger %s already mounted", me->key);
-		return 0;
+		return MOUNT_OFFSET_OK;
 	}
 
 	if (me->ioctlfd != -1) {
 		error(ap->logopt, "active offset mount %s", me->key);
-		return -1;
+		return MOUNT_OFFSET_FAIL;
 	}
 
 	status = pthread_once(&key_mnt_params_once, key_mnt_params_init);
@@ -683,7 +683,7 @@ int mount_autofs_offset(struct autofs_point *ap, struct mapent *me)
 			crit(ap->logopt,
 			  "mnt_params value create failed for offset mount %s",
 			  me->key);
-			return 0;
+			return MOUNT_OFFSET_OK;
 		}
 		mp->options = NULL;
 
@@ -697,12 +697,22 @@ int mount_autofs_offset(struct autofs_point *ap, struct mapent *me)
 	if (!mp->options) {
 		mp->options = make_options_string(ap->path, ap->kpipefd, "offset");
 		if (!mp->options)
-			return 0;
+			return MOUNT_OFFSET_OK;
 	}
 
 	/* In case the directory doesn't exist, try to mkdir it */
 	if (mkdir_path(me->key, 0555) < 0) {
 		if (errno == EEXIST) {
+			/*
+			 * If the mount point directory is a real mount
+			 * and it isn't the root offset then it must be
+			 * a mount that has been automatically mounted by
+			 * the kernel NFS client.
+			 */
+			if (me->multi != me &&
+			    is_mounted(_PROC_MOUNTS, me->key, MNTS_REAL))
+				return MOUNT_OFFSET_IGNORE;
+
 			/* 
 			 * If we recieve an error, and it's EEXIST
 			 * we know the directory was not created.
@@ -721,13 +731,13 @@ int mount_autofs_offset(struct autofs_point *ap, struct mapent *me)
 			debug(ap->logopt,
 			     "can't create mount directory: %s, %s",
 			     me->key, estr);
-			return -1;
+			return MOUNT_OFFSET_FAIL;
 		} else {
 			char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
 			crit(ap->logopt,
 			     "failed to create mount directory: %s, %s",
 			     me->key, estr);
-			return -1;
+			return MOUNT_OFFSET_FAIL;
 		}
 	} else {
 		/* No errors so the directory was successfully created */
@@ -787,7 +797,7 @@ int mount_autofs_offset(struct autofs_point *ap, struct mapent *me)
 
 	debug(ap->logopt, "mounted trigger %s", me->key);
 
-	return 0;
+	return MOUNT_OFFSET_OK;
 
 out_close:
 	close(ioctlfd);
@@ -797,7 +807,7 @@ out_err:
 	if (stat(me->key, &st) == 0 && me->dir_created)
 		 rmdir_path(ap, me->key, st.st_dev);
 
-	return -1;
+	return MOUNT_OFFSET_FAIL;
 }
 
 static int expire_direct(int ioctlfd, const char *path, unsigned int when, unsigned int logopt)

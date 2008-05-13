@@ -390,7 +390,7 @@ int mount_multi_triggers(struct autofs_point *ap, char *root, struct mapent *me,
 	struct list_head *pos = NULL;
 	unsigned int fs_path_len;
 	unsigned int mounted;
-	int start;
+	int ret, start;
 
 	fs_path_len = strlen(root) + strlen(base);
 	if (fs_path_len > PATH_MAX)
@@ -411,15 +411,25 @@ int mount_multi_triggers(struct autofs_point *ap, char *root, struct mapent *me,
 		}
 
 		oe = cache_lookup_offset(base, offset, start, &me->multi_list);
-		if (!oe)
+		if (!oe || !oe->mapent)
 			goto cont;
 
 		debug(ap->logopt, "mount offset %s", oe->key);
 
-		if (mount_autofs_offset(ap, oe) < 0)
-			warn(ap->logopt, "failed to mount offset");
-		else
+		ret = mount_autofs_offset(ap, oe);
+		if (ret >= MOUNT_OFFSET_OK)
 			mounted++;
+		else {
+			if (ret != MOUNT_OFFSET_IGNORE)
+				warn(ap->logopt, "failed to mount offset");
+			else {
+				debug(ap->logopt,
+				      "ignoring \"nohide\" trigger %s",
+				      oe->key);
+				free(oe->mapent);
+				oe->mapent = NULL;
+			}
+		}
 cont:
 		offset = cache_get_offset(base,
 				offset, start, &me->multi_list, &pos);
@@ -457,7 +467,7 @@ int umount_multi_triggers(struct autofs_point *ap, char *root, struct mapent *me
 
 		oe = cache_lookup_offset(mm_base, offset, start, &me->multi_list);
 		/* root offset is a special case */
-		if (!oe || (strlen(oe->key) - start) == 1)
+		if (!oe || !oe->mapent || (strlen(oe->key) - start) == 1)
 			continue;
 
 		/*
@@ -481,7 +491,7 @@ int umount_multi_triggers(struct autofs_point *ap, char *root, struct mapent *me
 	while ((offset = cache_get_offset(mm_base, offset, start, mm_root, &pos))) {
 		oe = cache_lookup_offset(mm_base, offset, start, &me->multi_list);
 		/* root offset is a special case */
-		if (!oe || (strlen(oe->key) - start) == 1)
+		if (!oe || !oe->mapent || (strlen(oe->key) - start) == 1)
 			continue;
 
 		debug(ap->logopt, "umount offset %s", oe->key);
@@ -505,7 +515,7 @@ int umount_multi_triggers(struct autofs_point *ap, char *root, struct mapent *me
 		if (is_mounted(_PATH_MOUNTED, root, MNTS_REAL)) {
 			info(ap->logopt, "unmounting dir = %s", root);
 			if (umount_ent(ap, root)) {
-				if (!mount_multi_triggers(ap, root, me, "/"))
+				if (mount_multi_triggers(ap, root, me, "/") < 0)
 					warn(ap->logopt,
 					     "failed to remount offset triggers");
 				return left++;

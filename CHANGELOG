@@ -14,6 +14,7 @@
 - init SASL callbacks on every ldap lookup library load.
 - fix incorrect match of map type name when included in map name.
 - fix incorrect pthreads condition handling for mount requests.
+- add check for exports automatically mounted by NFS kernel client.
  
 14/01/2008 autofs-5.0.3
 -----------------------

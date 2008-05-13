@@ -468,6 +468,10 @@ struct autofs_point {
 
 /* Standard functions used by daemon or modules */
 
+#define	MOUNT_OFFSET_OK		0
+#define	MOUNT_OFFSET_FAIL	-1
+#define MOUNT_OFFSET_IGNORE	-2
+
 void *handle_mounts(void *arg);
 int umount_multi(struct autofs_point *ap, const char *path, int incl);
 int send_ready(unsigned logopt, int ioctlfd, unsigned int wait_queue_token);
