@@ -15,6 +15,7 @@
 - fix incorrect match of map type name when included in map name.
 - fix incorrect pthreads condition handling for mount requests.
 - add check for exports automatically mounted by NFS kernel client.
+- update nsswitch parser to ignore nsswitch sources that aren't supported.
  
 14/01/2008 autofs-5.0.3
 -----------------------

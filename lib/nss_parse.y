@@ -64,7 +64,6 @@ char strval[128];
 %token <strval> SOURCE
 %token <strval> STATUS
 %token <strval> ACTION
-%token <strval> OTHER
 
 %start file
 
@@ -83,7 +82,9 @@ sources: nss_source
 
 nss_source: SOURCE
 {
-	if (strcmp($1, "winbind"))
+	if (!strcmp($1, "files") || !strcmp($1, "yp") ||
+	    !strcmp($1, "nis") || !strcmp($1, "ldap") ||
+	    !strcmp($1, "nisplus") || !strcmp($1, "hesiod"))
 		src = add_source(nss_list, $1);
 	else
 		nss_ignore($1);
@@ -91,7 +92,9 @@ nss_source: SOURCE
 {
 	enum nsswitch_status a;
 
-	if (strcmp($1, "winbind")) {
+	if (!strcmp($1, "files") || !strcmp($1, "yp") ||
+	    !strcmp($1, "nis") || !strcmp($1, "ldap") ||
+	    !strcmp($1, "nisplus") || !strcmp($1, "hesiod")) {
 		src = add_source(nss_list, $1);
 		for (a = 0; a < NSS_STATUS_MAX; a++) {
 			if (act[a].action != NSS_ACTION_UNKNOWN) {
@@ -101,12 +104,10 @@ nss_source: SOURCE
 		}
 	} else
 		nss_ignore($1);
-} | SOURCE LBRACKET status_exp_list SOURCE { nss_error($4); YYABORT; }
-  | SOURCE LBRACKET status_exp_list OTHER { nss_error($4); YYABORT; }
-  | SOURCE LBRACKET status_exp_list NL { nss_error("no closing bracket"); YYABORT; }
-  | SOURCE LBRACKET OTHER { nss_error($3); YYABORT; }
-  | SOURCE OTHER { nss_error("no opening bracket"); YYABORT; }
-  | error OTHER { nss_error($2); YYABORT; };
+} | SOURCE LBRACKET status_exp_list SOURCE { nss_error("missing close bracket"); YYABORT; }
+  | SOURCE LBRACKET status_exp_list NL { nss_error("missing close bracket"); YYABORT; }
+  | SOURCE LBRACKET SOURCE { nss_error($3); YYABORT; }
+  | error SOURCE { nss_error($2); YYABORT; };
 
 status_exp_list: status_exp
 		| status_exp status_exp_list
@@ -117,17 +118,17 @@ status_exp: STATUS EQUAL ACTION
 } | BANG STATUS EQUAL ACTION
 {
 	set_action(act, $2, $4, 1);
-} | STATUS EQUAL OTHER {nss_error($3); YYABORT; }
-  | STATUS OTHER {nss_error($2); YYABORT; }
-  | BANG STATUS EQUAL OTHER {nss_error($4); YYABORT; }
-  | BANG STATUS OTHER {nss_error($3); YYABORT; }
-  | BANG OTHER {nss_error($2); YYABORT; };
+} | STATUS EQUAL SOURCE {nss_error($3); YYABORT; }
+  | STATUS SOURCE {nss_error($2); YYABORT; }
+  | BANG STATUS EQUAL SOURCE {nss_error($4); YYABORT; }
+  | BANG STATUS SOURCE {nss_error($3); YYABORT; }
+  | BANG SOURCE {nss_error($2); YYABORT; };
 
 %%
 
 static int nss_ignore(const char *s)
 {
-	logmsg("ignored invalid nsswitch config near [ %s ]", s);
+	logmsg("ignored unsupported autofs nsswitch source \"%s\"", s);
 	return(0);
 }
 

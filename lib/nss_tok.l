@@ -62,13 +62,13 @@ extern unsigned int nss_automount_found;
 
 %option nounput
 
-%x AUTOMOUNT
+%x AUTOMOUNT ACTIONSTR
 
 WS		[[:blank:]]+
 
 automount	([Aa][Uu][Tt][Oo][Mm][Oo][Uu][Nn][Tt])
 
-source		files|yp|nis|nisplus|ldap|hesiod|winbind
+source		[[:alnum:]@$%^&*()-+_":;?,<>./'{}~`]+
 
 success		([Ss][Uu][Cc][Cc][Ee][Ss][Ss])
 notfound	([Nn][Oo][Tt][Ff][Oo][Uu][Nn][Dd])
@@ -81,8 +81,6 @@ continue	([Cc][Oo][Nn][Tt][Ii][Nn][Uu][Ee])
 return		([Rr][Ee][Tt][Uu][Rr][Nn])
 
 action		({continue}|{return})
-
-other		[[:alnum:]@$%^&*()-+_":;?,<>./'{}~`]+
 
 %%
 
@@ -101,6 +99,14 @@ other		[[:alnum:]@$%^&*()-+_":;?,<>./'{}~`]+
 		return SOURCE;
 	}
 
+	"["	{ BEGIN(ACTIONSTR); yyless(0); }
+
+	\n	{ BEGIN(INITIAL); return NL; }
+}
+
+<ACTIONSTR>{
+	{WS}	{ }
+
 	{status} {
 		strcpy(nss_lval.strval, nss_text);
 		return STATUS;
@@ -112,15 +118,11 @@ other		[[:alnum:]@$%^&*()-+_":;?,<>./'{}~`]+
 	}
 
 	"["	{ return LBRACKET; }
-	"]"	{ return RBRACKET; }
+	"]"	{ BEGIN(AUTOMOUNT); return RBRACKET; }
 	"="	{ return EQUAL; }
 	"!"	{ return BANG; }
 
-	{other} {
-		strcpy(nss_lval.strval, nss_text);
-		return OTHER;
-	}
-
+	.	{ BEGIN(AUTOMOUNT); yyless(0); }
 	\n	{ BEGIN(INITIAL); return NL; }
 }
 
