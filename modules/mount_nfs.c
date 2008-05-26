@@ -62,7 +62,6 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 {
 	char *fullpath, buf[MAX_ERR_BUF];
 	struct host *this, *hosts = NULL;
-	unsigned int save_ghost = ap->ghost;
 	unsigned int vers;
 	char *nfsoptions = NULL;
 	int len, rlen, status, err, existed = 1;
@@ -186,13 +185,6 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 	if (!status)
 		existed = 0;
 
-	/*
-	 * We need to stop the bind mount module from removing the
-	 * mount point directory if a bind attempt fails so abuse
-	 * the ap->ghost field for this.
-	 */
-	ap->ghost = 1;
-
 	this = hosts;
 	while (this) {
 		char *loc, *port_opt = NULL;
@@ -229,7 +221,6 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 			/* Success - we're done */
 			if (!err) {
 				free_host_list(&hosts);
-				ap->ghost = save_ghost;
 				return 0;
 			}
 
@@ -271,7 +262,6 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 			info(ap->logopt, MODPREFIX "mounted %s on %s", loc, fullpath);
 			free(loc);
 			free_host_list(&hosts);
-			ap->ghost = save_ghost;
 			return 0;
 		}
 
@@ -281,7 +271,6 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 
 forced_fail:
 	free_host_list(&hosts);
-	ap->ghost = save_ghost;
 
 	/* If we get here we've failed to complete the mount */
 
