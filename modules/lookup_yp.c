@@ -636,9 +636,14 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 
 	cache_readlock(mc);
 	me = cache_lookup(mc, key);
-	/* Stale mapent => check for wildcard */
-	if (me && !me->mapent)
-		me = cache_lookup_distinct(mc, "*");
+	/* Stale mapent => check for entry in alternate source or wildcard */
+	if (me && !me->mapent) {
+		while ((me = cache_lookup_key_next(me)))
+			if (me->source == source)
+				break;
+		if (!me)
+			me = cache_lookup_distinct(mc, "*");
+	}
 	if (me && (me->source == source || *me->key == '/')) {
 		mapent_len = strlen(me->mapent);
 		mapent = alloca(mapent_len + 1);
