@@ -86,6 +86,11 @@ static CLIENT *create_udp_client(struct conn_info *info)
 	memset(&raddr, 0, sizeof(raddr));
 
 	raddr.sin_family = AF_INET;
+	if (info->addr) {
+		memcpy(&raddr.sin_addr.s_addr, info->addr, info->addr_len);
+		goto got_addr;
+	}
+
 	if (inet_aton(info->host, &raddr.sin_addr))
 		goto got_addr;
 
@@ -295,6 +300,11 @@ static CLIENT *create_tcp_client(struct conn_info *info)
 	memset(&addr, 0, sizeof(addr));
 
 	addr.sin_family = AF_INET;
+	if (info->addr) {
+		memcpy(&addr.sin_addr.s_addr, info->addr, info->addr_len);
+		goto got_addr;
+	}
+
 	if (inet_aton(info->host, &addr.sin_addr))
 		goto got_addr;
 
@@ -407,8 +417,8 @@ void rpc_destroy_tcp_client(struct conn_info *info)
 }
 
 int rpc_portmap_getclient(struct conn_info *info,
-			  const char *host, const char *proto,
-			  unsigned int option)
+			  const char *host, const char *addr, size_t addr_len,
+			  const char *proto, unsigned int option)
 {
 	struct protoent *pe_proto;
 	CLIENT *client;
@@ -418,6 +428,8 @@ int rpc_portmap_getclient(struct conn_info *info,
 		return 0;
 
 	info->host = host;
+	info->addr = addr;
+	info->addr_len = addr_len;
 	info->program = PMAPPROG;
 	info->port = PMAPPORT;
 	info->version = PMAPVERS;
@@ -462,6 +474,8 @@ unsigned short rpc_portmap_getport(struct conn_info *info, struct pmap *parms)
 		client = info->client;
 	else {
 		pmap_info.host = info->host;
+		pmap_info.addr = info->addr;
+		pmap_info.addr_len = info->addr_len;
 		pmap_info.port = PMAPPORT;
 		pmap_info.program = PMAPPROG;
 		pmap_info.version = PMAPVERS;
@@ -589,6 +603,8 @@ static unsigned int __rpc_ping(const char *host,
 	struct pmap parms;
 
 	info.host = host;
+	info.addr = NULL;
+	info.addr_len = 0;
 	info.program = NFS_PROGRAM;
 	info.version = version;
 	info.send_sz = 0;
@@ -769,6 +785,8 @@ exports rpc_get_exports(const char *host, long seconds, long micros, unsigned in
 	int status;
 
 	info.host = host;
+	info.addr = NULL;
+	info.addr_len = 0;
 	info.program = MOUNTPROG;
 	info.version = MOUNTVERS;
 	info.send_sz = 0;

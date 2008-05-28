@@ -17,6 +17,7 @@
 - add check for exports automatically mounted by NFS kernel client.
 - update nsswitch parser to ignore nsswitch sources that aren't supported.
 - check for map key in (possible) alternate map sources when doing lookup.
+- eliminate redundant DNS name lookups.
  
 14/01/2008 autofs-5.0.3
 -----------------------

@@ -52,6 +52,7 @@
 struct host {
 	char *name;
 	char *addr;
+	size_t addr_len;
 	char *path;
 	unsigned int version;
 	unsigned int proximity;

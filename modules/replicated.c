@@ -225,7 +225,9 @@ static unsigned int get_proximity(const char *host_addr, int addr_len)
 	return PROXIMITY_OTHER;
 }
 
-static struct host *new_host(const char *name, const char *addr, unsigned int proximity, unsigned int weight)
+static struct host *new_host(const char *name,
+			     const char *addr, size_t addr_len,
+			     unsigned int proximity, unsigned int weight)
 {
 	struct host *new;
 	char *tmp1, *tmp2;
@@ -237,11 +239,12 @@ static struct host *new_host(const char *name, const char *addr, unsigned int pr
 	if (!tmp1)
 		return NULL;
 
-	tmp2 = strdup(addr);
+	tmp2 = malloc(addr_len);
 	if (!tmp2) {
 		free(tmp1);
 		return NULL;
 	}
+	memcpy(tmp2, addr, addr_len);
 
 	new = malloc(sizeof(struct host));
 	if (!new) {
@@ -253,6 +256,7 @@ static struct host *new_host(const char *name, const char *addr, unsigned int pr
 	memset(new, 0, sizeof(struct host));
 
 	new->name = tmp1;
+	new->addr_len = addr_len;
 	new->addr = tmp2;
 	new->proximity = proximity;
 	new->weight = weight;
@@ -437,7 +441,8 @@ static unsigned int get_nfs_info(unsigned logopt, struct host *host,
 v3_ver:
 	if (!have_port_opt) {
 		status = rpc_portmap_getclient(pm_info,
-				 host->name, proto, RPC_CLOSE_DEFAULT);
+				host->name, host->addr, host->addr_len,
+				proto, RPC_CLOSE_DEFAULT);
 		if (!status)
 			goto done_ver;
 	}
@@ -551,6 +556,8 @@ static int get_vers_and_cost(unsigned logopt, struct host *host,
 		timeout = RPC_TIMEOUT * 8;
 
 	rpc_info.host = host->name;
+	rpc_info.addr = host->addr;
+	rpc_info.addr_len = host->addr_len;
 	rpc_info.program = NFS_PROGRAM;
 	rpc_info.timeout.tv_sec = timeout;
 	rpc_info.close_option = RPC_CLOSE_DEFAULT;
@@ -606,6 +613,8 @@ static int get_supported_ver_and_cost(unsigned logopt, struct host *host,
 		timeout = RPC_TIMEOUT * 8;
 
 	rpc_info.host = host->name;
+	rpc_info.addr = host->addr;
+	rpc_info.addr_len = host->addr_len;
 	rpc_info.program = NFS_PROGRAM;
 	rpc_info.timeout.tv_sec = timeout;
 	rpc_info.close_option = RPC_CLOSE_DEFAULT;
@@ -652,7 +661,8 @@ static int get_supported_ver_and_cost(unsigned logopt, struct host *host,
 			return 0;
 	} else {
 		int ret = rpc_portmap_getclient(&pm_info,
-				 host->name, proto, RPC_CLOSE_DEFAULT);
+				host->name, host->addr, host->addr_len,
+				proto, RPC_CLOSE_DEFAULT);
 		if (!ret)
 			return 0;
 
@@ -868,7 +878,7 @@ static int add_host_addrs(struct host **list, const char *host, unsigned int wei
 		if (prx == PROXIMITY_ERROR)
 			return 0;
 
-		if (!(new = new_host(host, thost, prx, weight)))
+		if (!(new = new_host(host, thost, sizeof(saddr.sin_addr), prx, weight)))
 			return 0;
 
 		if (!add_host(list, new))
@@ -891,11 +901,14 @@ static int add_host_addrs(struct host **list, const char *host, unsigned int wei
 	}
 
 	for (haddr = phe->h_addr_list; *haddr; haddr++) {
+		struct in_addr tt;
+
 		prx = get_proximity(*haddr, phe->h_length);
 		if (prx == PROXIMITY_ERROR)
 			return 0;
 
-		if (!(new = new_host(host, *haddr, prx, weight)))
+		memcpy(&tt, *haddr, sizeof(struct in_addr));
+		if (!(new = new_host(host, *haddr, phe->h_length, prx, weight)))
 			return 0;
 
 		if (!add_host(list, new)) {
