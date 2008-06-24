@@ -363,7 +363,13 @@ int contained_in_local_fs(const char *path)
 		if (!strncmp(path, this->path, len)) {
 			if (len > 1 && pathlen > len && path[len] != '/')
 				continue;
-			else if (this->fs_name[0] == '/') {
+			else if (len == 1 && this->path[0] == '/') {
+				/*
+				 * always return true on rootfs, we don't
+				 * want to break diskless clients.
+				 */
+				ret = 1;
+			} else if (this->fs_name[0] == '/') {
 				if (strlen(this->fs_name) > 1) {
 					if (this->fs_name[1] != '/')
 						ret = 1;
