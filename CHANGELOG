@@ -20,6 +20,7 @@
 - eliminate redundant DNS name lookups.
 - additional fix incorrect pthreads condition handling for mount requests.
 - allow mount point directory creation for clients with an NFS root.
+- fix direct mount path length not being checked.
  
 14/01/2008 autofs-5.0.3
 -----------------------

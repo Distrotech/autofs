@@ -409,7 +409,7 @@ struct pending_args {
 	int type;			/* Type of packet */
 	int ioctlfd;			/* Mount ioctl fd */
 	struct mapent_cache *mc;	/* Cache Containing entry */
-	char name[KEY_MAX_LEN];		/* Name field of the request */
+	char name[PATH_MAX];		/* Name field of the request */
 	dev_t dev;			/* device number of mount */
 	unsigned int len;		/* Name field len */
 	uid_t uid;			/* uid of requestor */

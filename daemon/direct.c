@@ -1411,7 +1411,7 @@ static void *do_mount_direct(void *arg)
 	}
 
 cont:
-	status = lookup_nss_mount(ap, NULL, mt.name, strlen(mt.name));
+	status = lookup_nss_mount(ap, NULL, mt.name, mt.len);
 	/*
 	 * Direct mounts are always a single mount. If it fails there's
 	 * nothing to undo so just complain
@@ -1454,7 +1454,7 @@ int handle_packet_missing_direct(struct autofs_point *ap, autofs_packet_missing_
 	struct pending_args *mt;
 	char buf[MAX_ERR_BUF];
 	int status = 0;
-	int ioctlfd, cl_flags, state;
+	int ioctlfd, len, cl_flags, state;
 
 	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &state);
 
@@ -1525,6 +1525,16 @@ int handle_packet_missing_direct(struct autofs_point *ap, autofs_packet_missing_
 		return 1;
 	}
 
+	len = strlen(me->key);
+	if (len >= PATH_MAX) {
+		error(ap->logopt, "direct mount path too long %s", me->key);
+		send_fail(ap->logopt, ioctlfd, pkt->wait_queue_token);
+		close(ioctlfd);
+		cache_unlock(mc);
+		pthread_setcancelstate(state, NULL);
+		return 1;
+	}
+
 	mt = malloc(sizeof(struct pending_args));
 	if (!mt) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
@@ -1553,6 +1563,7 @@ int handle_packet_missing_direct(struct autofs_point *ap, autofs_packet_missing_
 	mt->ioctlfd = ioctlfd;
 	mt->mc = mc;
 	strcpy(mt->name, me->key);
+	mt->len = len;
 	mt->dev = me->dev;
 	mt->type = NFY_MOUNT;
 	mt->uid = pkt->uid;
