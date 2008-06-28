@@ -1337,7 +1337,7 @@ static void *do_mount_direct(void *arg)
 	}
 
 	tsv->home = strdup(pw.pw_dir);
-	if (!tsv->user) {
+	if (!tsv->home) {
 		error(ap->logopt, "failed to malloc buffer for home");
 		free(pw_tmp);
 		free(tsv->user);
