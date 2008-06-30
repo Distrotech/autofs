@@ -996,8 +996,11 @@ int lookup_prune_cache(struct autofs_point *ap, time_t age)
 
 			key = strdup(me->key);
 			me = cache_enumerate(mc, me);
-			if (!key || *key == '*')
+			if (!key || *key == '*') {
+				if (key)
+					free(key);
 				continue;
+			}
 
 			path = make_fullpath(ap->path, key);
 			if (!path) {

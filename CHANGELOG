@@ -21,6 +21,8 @@
 - additional fix incorrect pthreads condition handling for mount requests.
 - allow mount point directory creation for clients with an NFS root.
 - fix direct mount path length not being checked.
+- fix incorrect if check in get user info.
+- fix couple of memory leaks.
  
 14/01/2008 autofs-5.0.3
 -----------------------
