@@ -23,6 +23,7 @@
 - fix direct mount path length not being checked.
 - fix incorrect if check in get user info.
 - fix couple of memory leaks.
+- add command line option to override check for daemon already running.
  
 14/01/2008 autofs-5.0.3
 -----------------------

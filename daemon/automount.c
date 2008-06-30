@@ -1694,6 +1694,8 @@ static void usage(void)
 		"			specify global mount options\n"
 		"	-l --set-log-priority priority path [path,...]\n"
 		"			set daemon log verbosity\n"
+		"	-C --dont-check-daemon\n"
+		"			don't check if daemon is already running\n"
 		"	-V --version	print version, build config and exit\n"
 		, program);
 }
@@ -1814,7 +1816,7 @@ int main(int argc, char *argv[])
 {
 	int res, opt, status;
 	int logpri = -1;
-	unsigned ghost, logging;
+	unsigned ghost, logging, daemon_check;
 	unsigned foreground, have_global_options;
 	time_t timeout;
 	time_t age = time(NULL);
@@ -1833,6 +1835,7 @@ int main(int argc, char *argv[])
 		{"global-options", 1, 0, 'O'},
 		{"version", 0, 0, 'V'},
 		{"set-log-priority", 1, 0, 'l'},
+		{"dont-check-daemon", 0, 0, 'C'},
 		{0, 0, 0, 0}
 	};
 
@@ -1851,9 +1854,10 @@ int main(int argc, char *argv[])
 	global_options = NULL;
 	have_global_options = 0;
 	foreground = 0;
+	daemon_check = 1;
 
 	opterr = 0;
-	while ((opt = getopt_long(argc, argv, "+hp:t:vdD:fVrO:l:n:", long_options, NULL)) != EOF) {
+	while ((opt = getopt_long(argc, argv, "+hp:t:vdD:fVrO:l:n:C", long_options, NULL)) != EOF) {
 		switch (opt) {
 		case 'h':
 			usage();
@@ -1922,6 +1926,10 @@ int main(int argc, char *argv[])
 			}
 			break;
 
+		case 'C':
+			daemon_check = 0;
+			break;
+
 		case '?':
 		case ':':
 			printf("%s: Ambiguous or unknown options\n", program);
@@ -1965,7 +1973,7 @@ int main(int argc, char *argv[])
 		exit(exit_code);
 	}
 
-	if (is_automount_running() > 0) {
+	if (daemon_check && is_automount_running() > 0) {
 		fprintf(stderr, "%s: program is already running.\n",
 			program);
 		exit(1);

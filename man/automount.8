@@ -81,6 +81,9 @@ be disabled, returning the daemon to verbose logging.
 .P
 The \fIpath\fP argument corresponds to the automounted
 path name as specified in the master map.
+.TP
+.I "\-C, \-\-dont-check-daemon"
+Don't check if the daemon is currently running (see NOTES).
 .SH ARGUMENTS
 \fBautomount\fP takes one optional argument, the name of the master map to
 use.
@@ -122,6 +125,13 @@ until they are no longer in use by the processes that held them busy.
 If automount managed filesystems are found mounted when autofs is
 started they will be recoverd unless they are no longer present in
 the map in which case they need to umounted manually.
+.P
+If the option to disable the check to see if the daemon is already
+running is used be aware that autofs currently may not function correctly
+for certain types of automount maps. The mounts of the seperate daemons
+might interfere with one another. The implications of running multiple
+daemon instances needs to be checked and tested before we can say this
+is supported.
 .SH "SEE ALSO"
 .BR autofs (5),
 .BR autofs (8),
