@@ -6,9 +6,9 @@
 include ../Makefile.rules
 
 SRCS = automount.c indirect.c direct.c spawn.c module.c mount.c \
-	lookup.c state.c
+	lookup.c state.c flag.c
 OBJS = automount.o indirect.o direct.o spawn.o module.o mount.o \
-	lookup.o state.o
+	lookup.o state.o flag.o
 
 version := $(shell cat ../.version)
 
@@ -17,6 +17,7 @@ CFLAGS += -DAUTOFS_LIB_DIR=\"$(autofslibdir)\"
 CFLAGS += -DAUTOFS_MAP_DIR=\"$(autofsmapdir)\"
 CFLAGS += -DAUTOFS_CONF_DIR=\"$(autofsconfdir)\"
 CFLAGS += -DAUTOFS_FIFO_DIR=\"$(autofsfifodir)\"
+CFLAGS += -DAUTOFS_FLAG_DIR=\"$(autofsflagdir)\"
 CFLAGS += -DVERSION_STRING=\"$(version)\"
 LDFLAGS += -rdynamic
 LIBS = -ldl

@@ -24,6 +24,7 @@
 - fix incorrect if check in get user info.
 - fix couple of memory leaks.
 - add command line option to override check for daemon already running.
+- don't use proc file system when checking if the daemon is running.
  
 14/01/2008 autofs-5.0.3
 -----------------------

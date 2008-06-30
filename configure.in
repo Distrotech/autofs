@@ -96,6 +96,23 @@ AC_MSG_RESULT([$fifodir])
 AC_SUBST(fifodir)
 
 #
+# The user can specify --with-flagdir=PATH to specify where autofs flag file goes
+#
+AF_FLAG_D()
+AC_ARG_WITH(flagdir,
+[  --with-flagdir=PATH	   use PATH as the directory for the flag file used by the automounter],
+	if test -z "$withval" -o "$withval" = "yes" -o "$withval" = "no"
+	then
+		:
+	else
+		filagdir="${withval}"
+	fi
+)
+AC_MSG_CHECKING([for autofs flag file directory])
+AC_MSG_RESULT([$flagdir])
+AC_SUBST(flagdir)
+
+#
 # Optional include dmalloc
 #
 AM_WITH_DMALLOC()

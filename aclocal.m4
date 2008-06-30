@@ -136,6 +136,22 @@ AC_DEFUN(AF_FIFO_D,
   done
 fi])
 
+dnl --------------------------------------------------------------------------
+dnl AF_FLAG_D
+dnl
+dnl Check the location of the autofs flag file directory
+dnl --------------------------------------------------------------------------
+AC_DEFUN(AF_FLAG_D,
+[if test -z "$flagdir"; then
+  for flag_d in /var/run /tmp; do
+    if test -z "$flagdir"; then
+      if test -d "$flag_d"; then
+        flagdir="$flag_d"
+      fi
+    fi
+  done
+fi])
+
 dnl ----------------------------------- ##                   -*- Autoconf -*-
 dnl Check if --with-dmalloc was given.  ##
 dnl From Franc,ois Pinard               ##

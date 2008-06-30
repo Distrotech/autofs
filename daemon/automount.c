@@ -81,6 +81,8 @@ pthread_key_t key_thread_stdenv_vars;
 
 #define MAX_OPEN_FILES		10240
 
+int aquire_flag_file(void);
+void release_flag_file(void);
 static int umount_all(struct autofs_point *ap, int force);
 
 extern pthread_mutex_t master_mutex;
@@ -1098,7 +1100,7 @@ static int handle_packet(struct autofs_point *ap)
 	return -1;
 }
 
-static void become_daemon(unsigned foreground)
+static void become_daemon(unsigned foreground, unsigned daemon_check)
 {
 	FILE *pidfp;
 	char buf[MAX_ERR_BUF];
@@ -1118,9 +1120,14 @@ static void become_daemon(unsigned foreground)
 	}
 
 	/* Detach from foreground process */
-	if (foreground)
+	if (foreground) {
+		if (daemon_check && !aquire_flag_file()) {
+			fprintf(stderr, "%s: program is already running.\n",
+				program);
+			exit(1);
+		}
 		log_to_stderr();
-	else {
+	} else {
 		pid = fork();
 		if (pid > 0) {
 			int r;
@@ -1136,6 +1143,13 @@ static void become_daemon(unsigned foreground)
 		}
 		close(start_pipefd[0]);
 
+		if (daemon_check && !aquire_flag_file()) {
+			fprintf(stderr, "%s: program is already running.\n",
+				program);
+			close(start_pipefd[1]);
+			exit(1);
+		}
+
 		/*
 		 * Make our own process group for "magic" reason: processes that share
 		 * our pgrp see the raw filesystem behind the magic.
@@ -1143,6 +1157,7 @@ static void become_daemon(unsigned foreground)
 		if (setsid() == -1) {
 			char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
 			fprintf(stderr, "setsid: %s", estr);
+			close(start_pipefd[1]);
 			exit(1);
 		}
 		log_to_syslog();
@@ -1617,64 +1632,6 @@ static void key_thread_stdenv_vars_destroy(void *arg)
 	return;
 }
 
-static int is_automount_running(void)
-{
-	FILE *fp;
-	DIR *dir;
-	struct dirent entry;
-	struct dirent *result;
-	char path[PATH_MAX + 1], buf[PATH_MAX];
-
-	if ((dir = opendir("/proc")) == NULL) {
-		fprintf(stderr, "cannot opendir(/proc)\n");
-		exit(1);
-	}
-
-	while (readdir_r(dir, &entry, &result) == 0) {
-		int path_len, pid = 0;
-
-		if (!result)
-			break;
-
-		if (*entry.d_name == '.')
-			continue;
-
-		if (!strcmp(entry.d_name, "self"))
-			continue;
-
-		if (!isdigit(*entry.d_name))
-			continue;
-
-		pid = atoi(entry.d_name);
-		if (pid == getpid())
-			continue;
-
-		path_len = sprintf(path, "/proc/%s/cmdline", entry.d_name);
-		if (path_len >= PATH_MAX) {
-			fprintf(stderr,
-				"buffer to small for /proc path\n");
-			return -1;
-		}
-		path[path_len] = '\0';
-
-		fp = fopen(path, "r");
-		if (fp) {
-			int c, len = 0;
-
-			while (len < 127 && (c = fgetc(fp)) != EOF && c)
-				buf[len++] = c;
-			buf[len] = '\0';
-
-			if (strstr(buf, "automount"))
-				return pid;
-			fclose(fp);
-		}
-	}
-	closedir(dir);
-
-	return 0;
-}
-
 static void usage(void)
 {
 	fprintf(stderr,
@@ -1973,11 +1930,6 @@ int main(int argc, char *argv[])
 		exit(exit_code);
 	}
 
-	if (daemon_check && is_automount_running() > 0) {
-		fprintf(stderr, "%s: program is already running.\n",
-			program);
-		exit(1);
-	}
 #if 0
 	if (!load_autofs4_module()) {
 		fprintf(stderr, "%s: can't load %s filesystem module.\n",
@@ -2009,7 +1961,7 @@ int main(int argc, char *argv[])
 		     "can't increase core file limit - continuing");
 #endif
 
-	become_daemon(foreground);
+	become_daemon(foreground, daemon_check);
 
 	if (argc == 0)
 		master_list = master_new(NULL, timeout, ghost);
@@ -2020,6 +1972,7 @@ int main(int argc, char *argv[])
 		logerr("%s: can't create master map %s",
 			program, argv[0]);
 		close(start_pipefd[1]);
+		release_flag_file();
 		exit(1);
 	}
 
@@ -2027,6 +1980,7 @@ int main(int argc, char *argv[])
 		logerr("%s: failed to init thread attribute struct!",
 		     program);
 		close(start_pipefd[1]);
+		release_flag_file();
 		exit(1);
 	}
 
@@ -2035,6 +1989,7 @@ int main(int argc, char *argv[])
 		logerr("%s: failed to set detached thread attribute!",
 		     program);
 		close(start_pipefd[1]);
+		release_flag_file();
 		exit(1);
 	}
 
@@ -2044,6 +1999,7 @@ int main(int argc, char *argv[])
 		logerr("%s: failed to set stack size thread attribute!",
 		       program);
 		close(start_pipefd[1]);
+		release_flag_file();
 		exit(1);
 	}
 #endif
@@ -2060,6 +2016,7 @@ int main(int argc, char *argv[])
 		       program);
 		master_kill(master_list);
 		close(start_pipefd[1]);
+		release_flag_file();
 		exit(1);
 	}
 
@@ -2067,6 +2024,7 @@ int main(int argc, char *argv[])
 		logerr("%s: failed to create alarm handler thread!", program);
 		master_kill(master_list);
 		close(start_pipefd[1]);
+		release_flag_file();
 		exit(1);
 	}
 
@@ -2074,6 +2032,7 @@ int main(int argc, char *argv[])
 		logerr("%s: failed to create FSM handler thread!", program);
 		master_kill(master_list);
 		close(start_pipefd[1]);
+		release_flag_file();
 		exit(1);
 	}
 
@@ -2086,6 +2045,7 @@ int main(int argc, char *argv[])
 		*pst_stat = 3;
 		res = write(start_pipefd[1], pst_stat, sizeof(*pst_stat));
 		close(start_pipefd[1]);
+		release_flag_file();
 		exit(3);
 	}
 
@@ -2102,6 +2062,7 @@ int main(int argc, char *argv[])
 		pid_file = NULL;
 	}
 	closelog();
+	release_flag_file();
 
 #ifdef LIBXML2_WORKAROUND
 	if (dh)

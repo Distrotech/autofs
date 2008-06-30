@@ -74,6 +74,9 @@ autofsmapdir = @mapdir@
 # Location for autofs fifos
 autofsfifodir = @fifodir@
 
+# Location for autofs flag file
+autofsflagdir = @flagdir@
+
 # Where to install the automount program
 sbindir = @sbindir@
 
