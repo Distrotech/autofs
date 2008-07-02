@@ -545,6 +545,8 @@ int lookup_nss_read_map(struct autofs_point *ap, struct map_source *source, time
 				map = NULL;
 				break;
 			}
+
+			result = NSS_STATUS_SUCCESS;
 		}
 		pthread_cleanup_pop(1);
 
