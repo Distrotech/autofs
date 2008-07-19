@@ -390,7 +390,7 @@ out_free:
 			me->status = now + ap->negative_timeout;
 		}
 		cache_unlock(mc);
-		return NSS_STATUS_UNAVAIL;
+		return NSS_STATUS_TRYAGAIN;
 	}
 
 	return NSS_STATUS_SUCCESS;

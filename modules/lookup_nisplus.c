@@ -520,12 +520,8 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 		ap->entry->current = source;
 
 		status = check_map_indirect(ap, lkp_key, strlen(lkp_key), ctxt);
-		if (status) {
-			error(ap->logopt,
-			      MODPREFIX "key \"%s\" not found in map",
-			      name);
+		if (status)
 			return status;
-		}
 	}
 
 	cache_readlock(mc);
@@ -566,12 +562,10 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 			}
 			cache_unlock(mc);
 		}
-	} else
-		error(ap->logopt,
-		      MODPREFIX "key \"%s\" not found in map", name);
+	}
 
 	if (ret)
-		return NSS_STATUS_NOTFOUND;
+		return NSS_STATUS_TRYAGAIN;
 
 	return NSS_STATUS_SUCCESS;
 }

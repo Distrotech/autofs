@@ -903,6 +903,9 @@ int lookup_nss_mount(struct autofs_point *ap, struct map_source *source, const c
 	send_map_update_request(ap);
 	pthread_cleanup_pop(1);
 
+	if (result == NSS_STATUS_NOTFOUND)
+		error(ap->logopt, "key \"%s\" not found in map.", name);
+
 	return !result;
 }
 
