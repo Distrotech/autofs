@@ -552,7 +552,7 @@ static int get_vers_and_cost(unsigned logopt, struct host *host,
 
 	if (host->proximity == PROXIMITY_NET)
 		timeout = RPC_TIMEOUT * 2;
-	else if (host->proximity == PROXIMITY_NET)
+	else if (host->proximity == PROXIMITY_OTHER)
 		timeout = RPC_TIMEOUT * 8;
 
 	rpc_info.host = host->name;
@@ -609,7 +609,7 @@ static int get_supported_ver_and_cost(unsigned logopt, struct host *host,
 
 	if (host->proximity == PROXIMITY_NET)
 		timeout = RPC_TIMEOUT * 2;
-	else if (host->proximity == PROXIMITY_NET)
+	else if (host->proximity == PROXIMITY_OTHER)
 		timeout = RPC_TIMEOUT * 8;
 
 	rpc_info.host = host->name;
