@@ -502,7 +502,7 @@ int spawn_umount(unsigned logopt, ...)
 	unsigned int options;
 	unsigned int retries = MTAB_LOCK_RETRIES;
 	int ret, printed = 0;
-	unsigned int wait = 12;
+	unsigned int wait = defaults_get_umount_wait();
 
 #ifdef ENABLE_MOUNT_LOCKING
 	options = SPAWN_OPT_LOCK;

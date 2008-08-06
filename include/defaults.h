@@ -24,6 +24,7 @@
 
 #define DEFAULT_TIMEOUT			600
 #define DEFAULT_NEGATIVE_TIMEOUT	60
+#define DEFAULT_UMOUNT_WAIT		12
 #define DEFAULT_BROWSE_MODE		1
 #define DEFAULT_LOGGING			0
 
@@ -59,6 +60,7 @@ struct ldap_schema *defaults_get_schema(void);
 struct ldap_searchdn *defaults_get_searchdns(void);
 void defaults_free_searchdns(struct ldap_searchdn *);
 unsigned int defaults_get_append_options(void);
+unsigned int defaults_get_umount_wait(void);
 const char *defaults_get_auth_conf_file(void);
 
 #endif
