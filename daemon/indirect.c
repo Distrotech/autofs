@@ -230,11 +230,8 @@ int mount_autofs_indirect(struct autofs_point *ap)
 	return 0;
 }
 
-int umount_autofs_indirect(struct autofs_point *ap)
+static void close_mount_fds(struct autofs_point *ap)
 {
-	char buf[MAX_ERR_BUF];
-	int ret, rv, retries;
-
 	/*
 	 * Since submounts look after themselves the parent never knows
 	 * it needs to close the ioctlfd for offset mounts so we have
@@ -244,20 +241,6 @@ int umount_autofs_indirect(struct autofs_point *ap)
 	if (ap->submount)
 		lookup_source_close_ioctlfd(ap->parent, ap->path);
 
-	/* If we are trying to shutdown make sure we can umount */
-	rv = ioctl(ap->ioctlfd, AUTOFS_IOC_ASKUMOUNT, &ret);
-	if (rv == -1) {
-		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		logerr("ioctl failed: %s", estr);
-		return 1;
-	} else if (!ret) {
-		error(ap->logopt, "ask umount returned busy %s", ap->path);
-		return 1;
-	}
-
-	ioctl(ap->ioctlfd, AUTOFS_IOC_CATATONIC, 0);
-	close(ap->ioctlfd);
-	ap->ioctlfd = -1;
 	close(ap->state_pipe[0]);
 	close(ap->state_pipe[1]);
 	ap->state_pipe[0] = -1;
@@ -269,6 +252,35 @@ int umount_autofs_indirect(struct autofs_point *ap)
 	if (ap->kpipefd >= 0)
 		close(ap->kpipefd);
 
+	return;
+}
+
+int umount_autofs_indirect(struct autofs_point *ap)
+{
+	char buf[MAX_ERR_BUF];
+	int ret, rv, retries;
+
+	/* If we are trying to shutdown make sure we can umount */
+	rv = ioctl(ap->ioctlfd, AUTOFS_IOC_ASKUMOUNT, &ret);
+	if (rv == -1) {
+		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+		logerr("ioctl failed: %s", estr);
+		return 1;
+	} else if (!ret) {
+#if defined(ENABLE_IGNORE_BUSY_MOUNTS) || defined(ENABLE_FORCED_SHUTDOWN)
+		if (!ap->shutdown)
+			return 1;
+		error(ap->logopt, "ask umount returned busy %s", ap->path);
+#else
+		return 1;
+#endif
+	}
+
+	if (ap->shutdown)
+		ioctl(ap->ioctlfd, AUTOFS_IOC_CATATONIC, 0);
+
+	close(ap->ioctlfd);
+	ap->ioctlfd = -1;
 	sched_yield();
 
 	retries = UMOUNT_RETRIES;
@@ -285,23 +297,60 @@ int umount_autofs_indirect(struct autofs_point *ap)
 		case EINVAL:
 			error(ap->logopt,
 			      "mount point %s does not exist", ap->path);
+			close_mount_fds(ap);
 			return 0;
 			break;
 		case EBUSY:
-			error(ap->logopt,
+			debug(ap->logopt,
 			      "mount point %s is in use", ap->path);
-			if (ap->state == ST_SHUTDOWN_FORCE)
+			if (ap->state == ST_SHUTDOWN_FORCE) {
+				close_mount_fds(ap);
 				goto force_umount;
-			else
-				return 0;
+			} else {
+				int cl_flags;
+				/*
+				 * If the umount returns EBUSY there may be
+				 * a mount request in progress so we need to
+				 * recover unless we have been explicitly
+				 * asked to shutdown and configure option
+				 * ENABLE_IGNORE_BUSY_MOUNTS is enabled.
+				 */
+#ifdef ENABLE_IGNORE_BUSY_MOUNTS
+				if (ap->shutdown) {
+					close_mount_fds(ap);
+					return 0;
+				}
+#endif
+				ap->ioctlfd = open(ap->path, O_RDONLY);
+				if (ap->ioctlfd < 0) {
+					warn(ap->logopt,
+					     "could not recover autofs path %s",
+					     ap->path);
+					close_mount_fds(ap);
+					return 0;
+				}
+
+				if ((cl_flags = fcntl(ap->ioctlfd, F_GETFD, 0)) != -1) {
+					cl_flags |= FD_CLOEXEC;
+					fcntl(ap->ioctlfd, F_SETFD, cl_flags);
+				}
+			}
 			break;
 		case ENOTDIR:
 			error(ap->logopt, "mount point is not a directory");
+			close_mount_fds(ap);
 			return 0;
 			break;
 		}
 		return 1;
 	}
+
+	/*
+	 * We have successfully umounted the mount so we now close
+	 * the descriptors. The kernel end of the kernel pipe will
+	 * have been put during the umount super block cleanup.
+	 */
+	close_mount_fds(ap);
 
 force_umount:
 	if (rv != 0) {
@@ -439,9 +488,12 @@ void *expire_proc_indirect(void *arg)
 		 * Otherwise it's a top level indirect mount (possibly
 		 * with offsets in it) and we use the usual ioctlfd.
 		 */
+		pthread_cleanup_push(master_source_lock_cleanup, ap->entry);
+		master_source_readlock(ap->entry);
 		me = lookup_source_mapent(ap, next->path, LKP_DISTINCT);
 		if (!me && ind_key)
 			me = lookup_source_mapent(ap, ind_key, LKP_NORMAL);
+		pthread_cleanup_pop(1);
 		if (!me)
 			continue;
 
@@ -586,6 +638,8 @@ int handle_packet_expire_indirect(struct autofs_point *ap, autofs_packet_expire_
 	struct pending_args *mt;
 	char buf[MAX_ERR_BUF];
 	pthread_t thid;
+	struct timespec wait;
+	struct timeval now;
 	int status, state;
 
 	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &state);
@@ -632,8 +686,11 @@ int handle_packet_expire_indirect(struct autofs_point *ap, autofs_packet_expire_
 
 	mt->signaled = 0;
 	while (!mt->signaled) {
-		status = pthread_cond_wait(&mt->cond, &ea_mutex);
-		if (status)
+		gettimeofday(&now, NULL);
+		wait.tv_sec = now.tv_sec + 2;
+		wait.tv_nsec = now.tv_usec * 1000;
+		status = pthread_cond_timedwait(&mt->cond, &ea_mutex, &wait);
+		if (status && status != ETIMEDOUT)
 			fatal(status);
 	}
 
@@ -735,6 +792,8 @@ int handle_packet_missing_indirect(struct autofs_point *ap, autofs_packet_missin
 	pthread_t thid;
 	char buf[MAX_ERR_BUF];
 	struct pending_args *mt;
+	struct timespec wait;
+	struct timeval now;
 	int status, state;
 
 	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &state);
@@ -743,9 +802,7 @@ int handle_packet_missing_indirect(struct autofs_point *ap, autofs_packet_missin
 		(unsigned long) pkt->wait_queue_token, pkt->name, pkt->pid);
 
 	/* Ignore packet if we're trying to shut down */
-	if (ap->shutdown ||
-	    ap->state == ST_SHUTDOWN_FORCE ||
-	    ap->state == ST_SHUTDOWN) {
+	if (ap->shutdown || ap->state == ST_SHUTDOWN_FORCE) {
 		send_fail(ap->logopt, ap->ioctlfd, pkt->wait_queue_token);
 		pthread_setcancelstate(state, NULL);
 		return 0;
@@ -802,8 +859,11 @@ int handle_packet_missing_indirect(struct autofs_point *ap, autofs_packet_missin
 
 	mt->signaled = 0;
 	while (!mt->signaled) {
-		status = pthread_cond_wait(&mt->cond, &mt->mutex);
-		if (status)
+		gettimeofday(&now, NULL);
+		wait.tv_sec = now.tv_sec + 2;
+		wait.tv_nsec = now.tv_usec * 1000;
+		status = pthread_cond_timedwait(&mt->cond, &mt->mutex, &wait);
+		if (status && status != ETIMEDOUT)
 			fatal(status);
 	}
 

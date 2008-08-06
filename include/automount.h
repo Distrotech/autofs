@@ -399,7 +399,6 @@ struct autofs_point {
 	unsigned logopt;		/* Per map logging */
 	pthread_t exp_thread;		/* Thread that is expiring */
 	pthread_t readmap_thread;	/* Thread that is reading maps */
-	pthread_mutex_t state_mutex;	/* Protect state changes */
 	enum states state;		/* Current state */
 	int state_pipe[2];		/* State change router pipe */
 	unsigned dir_created;		/* Directory created for this mount? */
@@ -407,8 +406,6 @@ struct autofs_point {
 					 * host from which to mount */
 	struct autofs_point *parent;	/* Owner of mounts list for submount */
 	pthread_mutex_t mounts_mutex;	/* Protect mount lists */
-	pthread_cond_t mounts_cond;	/* Submounts condition variable */
-	unsigned int mounts_signaled;	/* Submount signals task complete */
 	struct list_head mounts;	/* List of autofs mounts at current level */
 	unsigned int submount;		/* Is this a submount */
 	unsigned int shutdown;		/* Shutdown notification */
@@ -445,20 +442,6 @@ int handle_packet_missing_indirect(struct autofs_point *ap, autofs_packet_missin
 int handle_packet_missing_direct(struct autofs_point *ap, autofs_packet_missing_direct_t *pkt);
 void rm_unwanted(unsigned logopt, const char *path, int incl, dev_t dev);
 int count_mounts(unsigned logopt, const char *path, dev_t dev);
-
-#define state_mutex_lock(ap) \
-do { \
-	int _st_lock = pthread_mutex_lock(&ap->state_mutex); \
-	if (_st_lock) \
-		fatal(_st_lock); \
-} while(0)
-
-#define state_mutex_unlock(ap) \
-do{ \
-	int _st_unlock = pthread_mutex_unlock(&ap->state_mutex); \
-	if (_st_unlock) \
-		fatal(_st_unlock); \
-} while (0)
 
 #define mounts_mutex_lock(ap) \
 do { \

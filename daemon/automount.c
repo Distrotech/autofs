@@ -369,6 +369,18 @@ int count_mounts(unsigned logopt, const char *path, dev_t dev)
 
 static void check_rm_dirs(struct autofs_point *ap, const char *path, int incl)
 {
+	/*
+	 * If we're a submount the kernel can't know we're trying to
+	 * shutdown and so cannot block processes walking into the
+	 * mount point directory. If this is the call to umount_multi()
+	 * made during shutdown (incl == 0) we have to leave any mount
+	 * point directories in place so we can recover if needed. The
+	 * umount itself will clean these directories up for us
+	 * automagically.
+	 */
+	if (!incl && ap->submount)
+		return;
+
 	if ((!ap->ghost) ||
 	    (ap->state == ST_SHUTDOWN_PENDING ||
 	     ap->state == ST_SHUTDOWN_FORCE ||
@@ -390,8 +402,6 @@ static void update_map_cache(struct autofs_point *ap, const char *path)
 	else
 		key = path;
 
-	pthread_cleanup_push(master_source_lock_cleanup, ap->entry);
-	master_source_readlock(ap->entry);
 	map = ap->entry->maps;
 	while (map) {
 		struct mapent *me = NULL;
@@ -413,7 +423,6 @@ static void update_map_cache(struct autofs_point *ap, const char *path)
 
 		map = map->next;
 	}
-	pthread_cleanup_pop(1);
 
 	return;
 }
@@ -918,38 +927,22 @@ static int get_pkt(struct autofs_point *ap, union autofs_v5_packet_union *pkt)
 		}
 
 		if (fds[1].revents & POLLIN) {
-			enum states next_state, post_state;
+			enum states next_state;
 			size_t read_size = sizeof(next_state);
 			int state_pipe;
 
-			next_state = post_state = ST_INVAL;
+			next_state = ST_INVAL;
 
-			state_mutex_lock(ap);
+			st_mutex_lock();
 
 			state_pipe = ap->state_pipe[0];
 
 			if (fullread(state_pipe, &next_state, read_size)) {
-				state_mutex_unlock(ap);
+				st_mutex_unlock();
 				continue;
 			}
 
-			if (next_state != ST_INVAL && next_state != ap->state) {
-				if (next_state != ST_SHUTDOWN)
-					post_state = next_state;
-				else
-					ap->state = ST_SHUTDOWN;
-			}
-
-			state_mutex_unlock(ap);
-
-			if (post_state != ST_INVAL) {
-				if (post_state == ST_SHUTDOWN_PENDING ||
-				    post_state == ST_SHUTDOWN_FORCE) {
-					alarm_delete(ap);
-					st_remove_tasks(ap);
-				}
-				st_add_task(ap, post_state);
-			}
+			st_mutex_unlock();
 
 			if (next_state == ST_SHUTDOWN)
 				return -1;
@@ -985,11 +978,14 @@ int do_expire(struct autofs_point *ap, const char *name, int namelen)
 
 	info(ap->logopt, "expiring path %s", buf);
 
+	pthread_cleanup_push(master_source_lock_cleanup, ap->entry);
+	master_source_readlock(ap->entry);
 	ret = umount_multi(ap, buf, 1);
 	if (ret == 0)
 		info(ap->logopt, "expired %s", buf);
 	else
 		warn(ap->logopt, "couldn't complete expire of %s", buf);
+	pthread_cleanup_pop(1);
 
 	return ret;
 }
@@ -1069,7 +1065,7 @@ static int mount_autofs(struct autofs_point *ap)
 	if (status < 0)
 		return -1;
 
-	ap->state = ST_READY;
+	st_add_task(ap, ST_READY);
 
 	return 0;
 }
@@ -1423,44 +1419,6 @@ static void return_start_status(void *arg)
 		fatal(status);
 }
 
-static void mutex_operation_wait(pthread_mutex_t *mutex)
-{
-	int status;
-
-	/*
-	 * Unlock a mutex, but wait for a pending operation
-	 * if one is in progress
-	 */
-	status = pthread_mutex_trylock(mutex);
-	if (status) {
-		if (status == EBUSY) {
-			/* Mutex locked - do we own it */
-			status = pthread_mutex_unlock(mutex);
-			if (status) {
-				if (status != EPERM)
-					fatal(status);
-			} else
-				return;
-
-			status = pthread_mutex_lock(mutex);
-			if (status)
-				fatal(status);
-		} else
-			fatal(status);
-
-		/* Operation complete, release it */
-		status = pthread_mutex_unlock(mutex);
-		if (status)
-			fatal(status);
-	} else {
-		status = pthread_mutex_unlock(mutex);
-		if (status)
-			fatal(status);
-	}
-
-	return;
-}
-
 int handle_mounts_startup_cond_init(struct startup_cond *suc)
 {
 	int status;
@@ -1526,21 +1484,24 @@ static void handle_mounts_cleanup(void *arg)
 	if (!submount && strcmp(ap->path, "/-") && ap->dir_created)
 		clean = 1;
 
-	/* If we have been canceled then we may hold the state mutex. */
-	mutex_operation_wait(&ap->state_mutex);
+	if (submount) {
+		/* We are finishing up */
+		ap->parent->submnt_count--;
+		list_del_init(&ap->mounts);
+	}
 
-	alarm_delete(ap);
-	st_remove_tasks(ap);
+	master_remove_mapent(ap->entry);
+	master_source_unlock(ap->entry);
 
-	umount_autofs(ap, 1);
+	if (submount) {
+		mounts_mutex_unlock(ap->parent);
+		master_source_unlock(ap->parent->entry);
+	}
+	master_mutex_unlock();
 
 	destroy_logpri_fifo(ap);
-	master_signal_submount(ap, MASTER_SUBMNT_JOIN);
-	master_remove_mapent(ap->entry);
 	master_free_mapent_sources(ap->entry, 1);
 	master_free_mapent(ap->entry);
-
-	sched_yield();
 
 	if (clean) {
 		if (rmdir(path) == -1) {
@@ -1572,8 +1533,6 @@ void *handle_mounts(void *arg)
 	pthread_cleanup_push(return_start_status, suc);
 	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cancel_state);
 
-	state_mutex_lock(ap);
-
 	status = pthread_mutex_lock(&suc->mutex);
 	if (status) {
 		logerr("failed to lock startup condition mutex!");
@@ -1583,7 +1542,6 @@ void *handle_mounts(void *arg)
 	if (mount_autofs(ap) < 0) {
 		crit(ap->logopt, "mount of %s failed!", ap->path);
 		suc->status = 1;
-		state_mutex_unlock(ap);
 		umount_autofs(ap, 1);
 		pthread_setcancelstate(cancel_state, NULL);
 		pthread_exit(NULL);
@@ -1600,56 +1558,70 @@ void *handle_mounts(void *arg)
 	if (!ap->submount && ap->exp_timeout)
 		alarm_add(ap, ap->exp_runfreq + rand() % ap->exp_runfreq);
 
-	pthread_cleanup_push(handle_mounts_cleanup, ap);
 	pthread_setcancelstate(cancel_state, NULL);
-
-	state_mutex_unlock(ap);
 
 	while (ap->state != ST_SHUTDOWN) {
 		if (handle_packet(ap)) {
-			int ret, result;
+			int ret, cur_state;
 
-			state_mutex_lock(ap);
+			/*
+			 * If we're a submount we need to ensure our parent
+			 * doesn't try to mount us again until our shutdown
+			 * is complete and that any outstanding mounts are
+			 * completed before we try to shutdown.
+			 */
+			pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cur_state);
+
+			master_mutex_lock();
+
+			if (ap->submount) {
+				master_source_writelock(ap->parent->entry);
+				mounts_mutex_lock(ap->parent);
+			}
+
+			master_source_writelock(ap->entry);
+
+			if (ap->state != ST_SHUTDOWN) {
+				if (!ap->submount)
+					alarm_add(ap, ap->exp_runfreq);
+				/* Return to ST_READY is done immediately */
+				st_add_task(ap, ST_READY);
+				master_source_unlock(ap->entry);
+				if (ap->submount) {
+					mounts_mutex_unlock(ap->parent);
+					master_source_unlock(ap->parent->entry);
+				}
+
+				master_mutex_unlock();
+
+				pthread_setcancelstate(cur_state, NULL);
+				continue;
+			}
+
+			alarm_delete(ap);
+			st_remove_tasks(ap);
+			st_wait_task(ap, ST_ANY, 0);
+
 			/*
 			 * For a direct mount map all mounts have already gone
-			 * by the time we get here.
+			 * by the time we get here and since we only ever
+			 * umount direct mounts at shutdown there is no need
+			 * to check for possible recovery.
 			 */
 			if (ap->type == LKP_DIRECT) {
-				status = 1;
-				state_mutex_unlock(ap);
+				umount_autofs(ap, 1);
 				break;
 			}
 
 			/*
-			 * If the ioctl fails assume the kernel doesn't have
-			 * AUTOFS_IOC_ASKUMOUNT and just continue.
+			 * If umount_autofs returns non-zero it wasn't able
+			 * to complete the umount and has left the mount intact
+			 * so we can continue. This can happen if a lookup
+			 * occurs while we're trying to umount.
 			 */
-			ret = ioctl(ap->ioctlfd, AUTOFS_IOC_ASKUMOUNT, &result);
-			if (ret == -1) {
-				state_mutex_unlock(ap);
+			ret = umount_autofs(ap, 1);
+			if (!ret)
 				break;
-			}
-
-			/* OK to exit */
-			if (ap->state == ST_SHUTDOWN) {
-				if (result) {
-					state_mutex_unlock(ap);
-					break;
-				}
-#ifdef ENABLE_IGNORE_BUSY_MOUNTS
-				/*
-				 * There weren't any active mounts but if the
-				 * filesystem is busy there may be a mount
-				 * request in progress so return to the ready
-				 * state unless a shutdown has been explicitly
-				 * requested.
-				 */
-				if (ap->shutdown) {
-					state_mutex_unlock(ap);
-					break;
-				}
-#endif
-			}
 
 			/* Failed shutdown returns to ready */
 			warn(ap->logopt,
@@ -1657,14 +1629,22 @@ void *handle_mounts(void *arg)
 			     ap->path);
 			if (!ap->submount)
 				alarm_add(ap, ap->exp_runfreq);
-			nextstate(ap->state_pipe[1], ST_READY);
+			/* Return to ST_READY is done immediately */
+			st_add_task(ap, ST_READY);
+			master_source_unlock(ap->entry);
+			if (ap->submount) {
+				mounts_mutex_unlock(ap->parent);
+				master_source_unlock(ap->parent->entry);
+			}
 
-			state_mutex_unlock(ap);
+			master_mutex_unlock();
+
+			pthread_setcancelstate(cur_state, NULL);
+
 		}
 	}
 
-	pthread_cleanup_pop(1);
-	sched_yield();
+	handle_mounts_cleanup(ap);
 
 	return NULL;
 }

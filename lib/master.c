@@ -90,41 +90,20 @@ int master_add_autofs_point(struct master_mapent *entry,
 	ap->logopt = logopt;
 
 	ap->parent = NULL;
+	ap->thid = 0;
 	ap->submnt_count = 0;
 	ap->submount = submount;
 	INIT_LIST_HEAD(&ap->mounts);
 	INIT_LIST_HEAD(&ap->submounts);
 	ap->shutdown = 0;
 
-	status = pthread_mutex_init(&ap->state_mutex, NULL);
-	if (status) {
-		free(ap->path);
-		free(ap);
-		return 0;
-	}
-
 	status = pthread_mutex_init(&ap->mounts_mutex, NULL);
 	if (status) {
-		status = pthread_mutex_destroy(&ap->state_mutex);
-		if (status)
-			fatal(status);
 		free(ap->path);
 		free(ap);
 		return 0;
 	}
 
-	status = pthread_cond_init(&ap->mounts_cond, NULL);
-	if (status) {
-		status = pthread_mutex_destroy(&ap->mounts_mutex);
-		if (status)
-			fatal(status);
-		status = pthread_mutex_destroy(&ap->state_mutex);
-		if (status)
-			fatal(status);
-		free(ap->path);
-		free(ap);
-		return 0;
-	}
 	entry->ap = ap;
 
 	return 1;
@@ -137,15 +116,7 @@ void master_free_autofs_point(struct autofs_point *ap)
 	if (!ap)
 		return;
 
-	status = pthread_mutex_destroy(&ap->state_mutex);
-	if (status)
-		fatal(status);
-
 	status = pthread_mutex_destroy(&ap->mounts_mutex);
-	if (status)
-		fatal(status);
-
-	status = pthread_cond_destroy(&ap->mounts_cond);
 	if (status)
 		fatal(status);
 
@@ -295,11 +266,9 @@ struct map_source *master_find_map_source(struct master_mapent *entry,
 {
 	struct map_source *source = NULL;
 
-	master_mutex_lock();
-
+	master_source_readlock(entry);
 	source = __master_find_map_source(entry, type, format, argc, argv);
-
-	master_mutex_unlock();
+	master_source_unlock(entry);
 
 	return source;
 }
@@ -519,13 +488,7 @@ void send_map_update_request(struct autofs_point *ap)
 	if (!need_update)
 		return;
 
-	status = pthread_mutex_lock(&ap->state_mutex);
-	if (status)
-		fatal(status);
-	nextstate(ap->state_pipe[1], ST_READMAP);
-	status = pthread_mutex_unlock(&ap->state_mutex);
-	if (status)
-		fatal(status);
+	st_add_task(ap, ST_READMAP);
 
 	return;
 }
@@ -695,17 +658,13 @@ void master_remove_mapent(struct master_mapent *entry)
 	if (entry->ap->submount)
 		return;
 
-	master_mutex_lock();
 	if (!list_empty(&entry->list))
 		list_del_init(&entry->list);
-	master_mutex_unlock();
 	return;
 }
 
 void master_free_mapent_sources(struct master_mapent *entry, unsigned int free_cache)
 {
-	master_source_writelock(entry);
-
 	if (entry->maps) {
 		struct map_source *m, *n;
 
@@ -717,8 +676,6 @@ void master_free_mapent_sources(struct master_mapent *entry, unsigned int free_c
 		}
 		entry->maps = NULL;
 	}
-
-	master_source_unlock(entry);
 
 	return;
 }
@@ -827,10 +784,9 @@ int master_submount_list_empty(struct autofs_point *ap)
 int master_notify_submount(struct autofs_point *ap, const char *path, enum states state)
 {
 	struct list_head *head, *p;
-	struct autofs_point *this;
-	pthread_t thid;
+	struct autofs_point *this = NULL;
 	size_t plen = strlen(path);
-	int status, ret = 1;
+	int ret = 1;
 
 	mounts_mutex_lock(ap);
 
@@ -869,33 +825,25 @@ int master_notify_submount(struct autofs_point *ap, const char *path, enum state
 
 		/* Now we have a submount to expire */
 
-		state_mutex_lock(this);
+		st_mutex_lock();
 
 		if (this->state == ST_SHUTDOWN) {
-			state_mutex_unlock(this);
+			this = NULL;
+			st_mutex_unlock();
 			break;
 		}
 
-		nextstate(this->state_pipe[1], state);
+		this->shutdown = ap->shutdown;
 
-		state_mutex_unlock(this);
+		__st_add_task(this, state);
 
-		thid = this->thid;
-		ap->mounts_signaled = MASTER_SUBMNT_WAIT;
-		while (ap->mounts_signaled == MASTER_SUBMNT_WAIT) {
-			status = pthread_cond_wait(&ap->mounts_cond, &ap->mounts_mutex);
-			if (status)
-				fatal(status);
-		}
+		st_mutex_unlock();
+		mounts_mutex_unlock(ap);
 
-		if (ap->mounts_signaled == MASTER_SUBMNT_JOIN) {
-			status = pthread_join(thid, NULL);
-			if (status)
-				fatal(status);
-		} else
-			ret = 0;
+		st_wait_task(this, state, 0);
 
-		break;
+		return ret;
+
 	}
 
 	mounts_mutex_unlock(ap);
@@ -903,38 +851,12 @@ int master_notify_submount(struct autofs_point *ap, const char *path, enum state
 	return ret;
 }
 
-void master_signal_submount(struct autofs_point *ap, unsigned int join)
-{
-	int status;
-
-	if (!ap->parent || !ap->submount)
-		return;
-
-	mounts_mutex_lock(ap->parent);
-
-	ap->parent->mounts_signaled = join;
-
-	if (join == MASTER_SUBMNT_JOIN) {
-		/* We are finishing up */
-		ap->parent->submnt_count--;
-		list_del(&ap->mounts);
-	}
-
-	status = pthread_cond_signal(&ap->parent->mounts_cond);
-	if (status)
-		fatal(status);
-
-	mounts_mutex_unlock(ap->parent);
-
-	return;
-}
-
 void master_notify_state_change(struct master *master, int sig)
 {
 	struct master_mapent *entry;
 	struct autofs_point *ap;
 	struct list_head *p;
-	int state_pipe, cur_state;
+	int cur_state;
 	unsigned int logopt;
 
 	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cur_state);
@@ -948,12 +870,10 @@ void master_notify_state_change(struct master *master, int sig)
 		ap = entry->ap;
 		logopt = ap->logopt;
 
-		state_mutex_lock(ap);
+		st_mutex_lock();
 
 		if (ap->state == ST_SHUTDOWN)
 			goto next;
-
-		state_pipe = ap->state_pipe[1];
 
 		switch (sig) {
 		case SIGTERM:
@@ -962,7 +882,7 @@ void master_notify_state_change(struct master *master, int sig)
 			    ap->state != ST_SHUTDOWN_FORCE) {
 				next = ST_SHUTDOWN_PENDING;
 				ap->shutdown = 1;
-				nextstate(state_pipe, next);
+				__st_add_task(ap, next);
 			}
 			break;
 #ifdef ENABLE_FORCED_SHUTDOWN
@@ -970,14 +890,15 @@ void master_notify_state_change(struct master *master, int sig)
 			if (ap->state != ST_SHUTDOWN_FORCE &&
 			    ap->state != ST_SHUTDOWN_PENDING) {
 				next = ST_SHUTDOWN_FORCE;
-				nextstate(state_pipe, next);
+				ap->shutdown = 1;
+				__st_add_task(ap, next);
 			}
 			break;
 #endif
 		case SIGUSR1:
 			assert(ap->state == ST_READY);
 			next = ST_PRUNE;
-			nextstate(state_pipe, next);
+			__st_add_task(ap, next);
 			break;
 		}
 next:
@@ -986,7 +907,7 @@ next:
 			      "sig %d switching %s from %d to %d",
 			      sig, ap->path, ap->state, next);
 
-		state_mutex_unlock(ap);
+		st_mutex_unlock();
 	}
 
 	master_mutex_unlock();
@@ -1024,7 +945,6 @@ static int master_do_mount(struct master_mapent *entry)
 		handle_mounts_startup_cond_destroy(&suc);
 		return 0;
 	}
-	entry->thid = thid;
 
 	while (!suc.done) {
 		status = pthread_cond_wait(&suc.cond, &suc.mutex);
@@ -1037,45 +957,18 @@ static int master_do_mount(struct master_mapent *entry)
 		handle_mounts_startup_cond_destroy(&suc);
 		return 0;
 	}
+	entry->thid = thid;
 
 	handle_mounts_startup_cond_destroy(&suc);
 
 	return 1;
 }
 
-static void shutdown_entry(struct master_mapent *entry)
-{
-	int state_pipe;
-	struct autofs_point *ap;
-	struct stat st;
-	int ret;
-
-	ap = entry->ap;
-
-	debug(ap->logopt, "%s", entry->path);
-
-	state_mutex_lock(ap);
-
-	state_pipe = ap->state_pipe[1];
-
-	ret = fstat(state_pipe, &st);
-	if (ret == -1)
-		goto next;
-
-	nextstate(state_pipe, ST_SHUTDOWN_PENDING);
-next:
-	state_mutex_unlock(ap);
-
-	return;
-}
-
 static void check_update_map_sources(struct master_mapent *entry, int readall)
 {
 	struct map_source *source, *last;
-	int state_pipe, map_stale = 0;
 	struct autofs_point *ap;
-	struct stat st;
-	int ret;
+	int map_stale = 0;
 
 	if (readall)
 		map_stale = 1;
@@ -1128,17 +1021,8 @@ static void check_update_map_sources(struct master_mapent *entry, int readall)
 	master_source_unlock(entry);
 
 	/* The map sources have changed */
-	if (map_stale) {
-		state_mutex_lock(ap);
-
-		state_pipe = entry->ap->state_pipe[1];
-
-		ret = fstat(state_pipe, &st);
-		if (ret != -1)
-			nextstate(state_pipe, ST_READMAP);
-
-		state_mutex_unlock(ap);
-	}
+	if (map_stale)
+		st_add_task(ap, ST_READMAP);
 
 	return;
 }
@@ -1169,17 +1053,19 @@ int master_mount_mounts(struct master *master, time_t age, int readall)
 
 		/* A master map entry has gone away */
 		if (this->age < age) {
-			shutdown_entry(this);
+			st_add_task(ap, ST_SHUTDOWN_PENDING);
 			continue;
 		}
 
+		master_source_writelock(ap->entry);
 		lookup_close_lookup(ap);
+		master_source_unlock(ap->entry);
 
 		cache_readlock(nc);
 		ne = cache_lookup_distinct(nc, this->path);
 		if (ne && this->age > ne->age) {
 			cache_unlock(nc);
-			shutdown_entry(this);
+			st_add_task(ap, ST_SHUTDOWN_PENDING);
 			continue;
 		}
 		nested = cache_partial_match(nc, this->path);
@@ -1195,7 +1081,7 @@ int master_mount_mounts(struct master *master, time_t age, int readall)
 
 		check_update_map_sources(this, readall);
 
-		state_mutex_lock(ap);
+		st_mutex_lock();
 
 		state_pipe = this->ap->state_pipe[1];
 
@@ -1203,7 +1089,7 @@ int master_mount_mounts(struct master *master, time_t age, int readall)
 		ret = fstat(state_pipe, &st);
 		save_errno = errno;
 
-		state_mutex_unlock(ap);
+		st_mutex_unlock();
 
 		if (ret == -1 && save_errno == EBADF)
 			if (!master_do_mount(this)) {

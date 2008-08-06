@@ -935,16 +935,10 @@ void lookup_close_lookup(struct autofs_point *ap)
 	if (!map)
 		return;
 
-	/*
-	 * Make sure we don't kill the context if a mount
-	 * request has come in while were shutting down.
-	 */
-	master_source_writelock(ap->entry);
 	while (map) {
 		lookup_close_lookup_instances(map);
 		map = map->next;
 	}
-	master_source_unlock(ap->entry);
 
 	return;
 }
@@ -1122,7 +1116,6 @@ struct mapent *lookup_source_mapent(struct autofs_point *ap, const char *key, un
 	struct mapent_cache *mc;
 	struct mapent *me = NULL;
 
-	master_source_readlock(entry);
 	map = entry->maps;
 	while (map) {
 		mc = map->mc;
@@ -1136,7 +1129,6 @@ struct mapent *lookup_source_mapent(struct autofs_point *ap, const char *key, un
 		cache_unlock(mc);
 		map = map->next;
 	}
-	master_source_unlock(entry);
 
 	return me;
 }
@@ -1149,8 +1141,6 @@ int lookup_source_close_ioctlfd(struct autofs_point *ap, const char *key)
 	struct mapent *me;
 	int ret = 0;
 
-	pthread_cleanup_push(master_source_lock_cleanup, entry);
-	master_source_readlock(entry);
 	map = entry->maps;
 	while (map) {
 		mc = map->mc;
@@ -1168,7 +1158,6 @@ int lookup_source_close_ioctlfd(struct autofs_point *ap, const char *key)
 		cache_unlock(mc);
 		map = map->next;
 	}
-	pthread_cleanup_pop(1);
 
 	return ret;
 }

@@ -242,7 +242,6 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 		master_free_mapent(entry);
 		return 1;
 	}
-	nap->thid = thid;
 
 	while (!suc.done) {
 		status = pthread_cond_wait(&suc.cond, &suc.mutex);
@@ -264,6 +263,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 		master_free_mapent(entry);
 		return 1;
 	}
+	nap->thid = thid;
 
 	ap->submnt_count++;
 	list_add(&nap->mounts, &ap->submounts);

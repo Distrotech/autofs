@@ -38,7 +38,8 @@
  *
  */
 enum states {
-	ST_INVAL = -1,
+	ST_ANY = -2,
+	ST_INVAL,
 	ST_INIT,
 	ST_READY,
 	ST_EXPIRE,
@@ -81,12 +82,18 @@ struct readmap_args {
 	time_t now;              /* Time when map is read */
 };
 
+void st_mutex_lock(void);
+void st_mutex_unlock(void);
+
 void expire_cleanup(void *);
 void expire_proc_cleanup(void *);
 void nextstate(int, enum states);
 
 int st_add_task(struct autofs_point *, enum states);
+int __st_add_task(struct autofs_point *, enum states);
 void st_remove_tasks(struct autofs_point *);
+int st_wait_task(struct autofs_point *, enum states, unsigned int);
+int st_wait_state(struct autofs_point *ap, enum states state);
 int st_start_handler(void);
 
 #endif

@@ -216,8 +216,6 @@ int umount_autofs_direct(struct autofs_point *ap)
 
 	mnts = tree_make_mnt_tree(_PROC_MOUNTS, "/");
 	pthread_cleanup_push(mnts_cleanup, mnts);
-	pthread_cleanup_push(master_source_lock_cleanup, ap->entry);
-	master_source_readlock(ap->entry);
 	nc = ap->entry->master->nc;
 	cache_readlock(nc);
 	pthread_cleanup_push(cache_lock_cleanup, nc);
@@ -242,7 +240,6 @@ int umount_autofs_direct(struct autofs_point *ap)
 		pthread_cleanup_pop(1);
 		map = map->next;
 	}
-	pthread_cleanup_pop(1);
 	pthread_cleanup_pop(1);
 	pthread_cleanup_pop(1);
 
@@ -572,9 +569,10 @@ int umount_autofs_offset(struct autofs_point *ap, struct mapent *me)
 			return 1;
 		} else if (!status) {
 			if (ap->state != ST_SHUTDOWN_FORCE) {
-				error(ap->logopt,
-				      "ask umount returned busy for %s",
-				      me->key);
+				if (ap->shutdown)
+					error(ap->logopt,
+					     "ask umount returned busy for %s",
+					     me->key);
 				return 1;
 			} else {
 				me->ioctlfd = -1;
@@ -904,7 +902,10 @@ void *expire_proc_direct(void *arg)
 		 * All direct mounts must be present in the map
 		 * entry cache.
 		 */
+		pthread_cleanup_push(master_source_lock_cleanup, ap->entry);
+		master_source_readlock(ap->entry);
 		me = lookup_source_mapent(ap, next->path, LKP_DISTINCT);
+		pthread_cleanup_pop(1);
 		if (!me)
 			continue;
 
@@ -1110,6 +1111,8 @@ int handle_packet_expire_direct(struct autofs_point *ap, autofs_packet_expire_di
 	struct pending_args *mt;
 	char buf[MAX_ERR_BUF];
 	pthread_t thid;
+	struct timespec wait;
+	struct timeval now;
 	int status, state;
 
 	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &state);
@@ -1124,7 +1127,7 @@ int handle_packet_expire_direct(struct autofs_point *ap, autofs_packet_expire_di
 	 * and since it got mounted we have to trust that
 	 * there is an entry in the cache.
 	 */
-	master_source_readlock(ap->entry);
+	master_source_writelock(ap->entry);
 	map = ap->entry->maps;
 	while (map) {
 		mc = map->mc;
@@ -1135,7 +1138,6 @@ int handle_packet_expire_direct(struct autofs_point *ap, autofs_packet_expire_di
 		cache_unlock(mc);
 		map = map->next;
 	}
-	master_source_unlock(ap->entry);
 
 	if (!me) {
 		/*
@@ -1144,10 +1146,28 @@ int handle_packet_expire_direct(struct autofs_point *ap, autofs_packet_expire_di
 		 */
 		crit(ap->logopt, "can't find map entry for (%lu,%lu)",
 		    (unsigned long) pkt->dev, (unsigned long) pkt->ino);
+		cache_unlock(mc);
+		master_source_unlock(ap->entry);
 		pthread_setcancelstate(state, NULL);
 		return 1;
 	}
 
+	/* Can't expire it if it isn't mounted */
+	if (me->ioctlfd == -1) {
+		int ioctlfd = open(me->key, O_RDONLY);
+		if (ioctlfd == -1) {
+			crit(ap->logopt, "can't open ioctlfd for %s",
+			     me->key);
+			pthread_setcancelstate(state, NULL);
+			return 1;
+		}
+		send_ready(ap->logopt, ioctlfd, pkt->wait_queue_token);
+		close(ioctlfd);
+		cache_unlock(mc);
+		master_source_unlock(ap->entry);
+		pthread_setcancelstate(state, NULL);
+		return 0;
+	}
 
 	mt = malloc(sizeof(struct pending_args));
 	if (!mt) {
@@ -1155,6 +1175,7 @@ int handle_packet_expire_direct(struct autofs_point *ap, autofs_packet_expire_di
 		error(ap->logopt, "malloc: %s", estr);
 		send_fail(ap->logopt, me->ioctlfd, pkt->wait_queue_token);
 		cache_unlock(mc);
+		master_source_unlock(ap->entry);
 		pthread_setcancelstate(state, NULL);
 		return 1;
 	}
@@ -1184,6 +1205,7 @@ int handle_packet_expire_direct(struct autofs_point *ap, autofs_packet_expire_di
 		error(ap->logopt, "expire thread create failed");
 		send_fail(ap->logopt, mt->ioctlfd, pkt->wait_queue_token);
 		cache_unlock(mc);
+		master_source_unlock(ap->entry);
 		expire_mutex_unlock(NULL);
 		pending_cond_destroy(mt);
 		free_pending_args(mt);
@@ -1192,14 +1214,18 @@ int handle_packet_expire_direct(struct autofs_point *ap, autofs_packet_expire_di
 	}
 
 	cache_unlock(mc);
+	master_source_unlock(ap->entry);
 
 	pthread_cleanup_push(expire_mutex_unlock, NULL);
 	pthread_setcancelstate(state, NULL);
 
 	mt->signaled = 0;
 	while (!mt->signaled) {
+		gettimeofday(&now, NULL);
+		wait.tv_sec = now.tv_sec + 2;
+		wait.tv_nsec = now.tv_usec * 1000;
 		status = pthread_cond_wait(&mt->cond, &ea_mutex);
-		if (status)
+		if (status && status != ETIMEDOUT)
 			fatal(status);
 	}
 
@@ -1263,6 +1289,9 @@ static void *do_mount_direct(void *arg)
 	if (status == -1) {
 		error(ap->logopt,
 		      "can't stat direct mount trigger %s", mt.name);
+		send_fail(ap->logopt,
+			  mt.ioctlfd, mt.wait_queue_token);
+		close(mt.ioctlfd);
 		pthread_setcancelstate(state, NULL);
 		pthread_exit(NULL);
 	}
@@ -1272,6 +1301,8 @@ static void *do_mount_direct(void *arg)
 		error(ap->logopt,
 		     "direct trigger not valid or already mounted %s",
 		     mt.name);
+		send_ready(ap->logopt, mt.ioctlfd, mt.wait_queue_token);
+		close(mt.ioctlfd);
 		pthread_setcancelstate(state, NULL);
 		pthread_exit(NULL);
 	}
@@ -1290,19 +1321,12 @@ static void *do_mount_direct(void *arg)
 	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &state);
 	if (status) {
 		struct mapent *me;
-		int real_mount, set_fd;
-		cache_readlock(mt.mc);
+		cache_writelock(mt.mc);
 		me = cache_lookup_distinct(mt.mc, mt.name);
-		real_mount = is_mounted(_PATH_MOUNTED, me->key, MNTS_REAL);
-		set_fd = (real_mount || me->multi == me);
-		cache_unlock(mt.mc);
-		if (set_fd) {
+		if (me)
 			me->ioctlfd = mt.ioctlfd;
-			send_ready(ap->logopt, mt.ioctlfd, mt.wait_queue_token);
-		} else {
-			send_ready(ap->logopt, mt.ioctlfd, mt.wait_queue_token);
-			close(mt.ioctlfd);
-		}
+		send_ready(ap->logopt, mt.ioctlfd, mt.wait_queue_token);
+		cache_unlock(mt.mc);
 		info(ap->logopt, "mounted %s", mt.name);
 	} else {
 		send_fail(ap->logopt, mt.ioctlfd, mt.wait_queue_token);
@@ -1325,11 +1349,21 @@ int handle_packet_missing_direct(struct autofs_point *ap, autofs_packet_missing_
 	struct pending_args *mt;
 	char buf[MAX_ERR_BUF];
 	int status = 0;
+	struct timespec wait;
+	struct timeval now;
 	int ioctlfd, len, cl_flags, state;
 
 	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &state);
 
-	master_source_readlock(ap->entry);
+	/*
+	 * If our parent is a direct or offset mount that has been
+	 * covered by a mount and another lookup occurs after the
+	 * mount but before the device and inode are set in the
+	 * cache entry we will not be able to find the mapent. So
+	 * we must take the source writelock to ensure the parent
+	 * has mount is complete before we look for the entry.
+	 */
+	master_source_writelock(ap->entry);
 	map = ap->entry->maps;
 	while (map) {
 		/*
@@ -1349,7 +1383,6 @@ int handle_packet_missing_direct(struct autofs_point *ap, autofs_packet_missing_
 		cache_unlock(mc);
 		map = map->next;
 	}
-	master_source_unlock(ap->entry);
 
 	if (!me) {
 		/*
@@ -1358,6 +1391,8 @@ int handle_packet_missing_direct(struct autofs_point *ap, autofs_packet_missing_
 		 */
 		logerr("can't find map entry for (%lu,%lu)",
 		    (unsigned long) pkt->dev, (unsigned long) pkt->ino);
+		cache_unlock(mc);
+		master_source_unlock(ap->entry);
 		pthread_setcancelstate(state, NULL);
 		return 1;
 	}
@@ -1371,6 +1406,7 @@ int handle_packet_missing_direct(struct autofs_point *ap, autofs_packet_missing_
 
 	if (ioctlfd == -1) {
 		cache_unlock(mc);
+		master_source_unlock(ap->entry);
 		pthread_setcancelstate(state, NULL);
 		crit(ap->logopt, "failed to create ioctl fd for %s", me->key);
 		/* TODO:  how do we clear wait q in kernel ?? */
@@ -1386,12 +1422,11 @@ int handle_packet_missing_direct(struct autofs_point *ap, autofs_packet_missing_
 		  (unsigned long) pkt->wait_queue_token, me->key, pkt->pid);
 
 	/* Ignore packet if we're trying to shut down */
-	if (ap->shutdown ||
-	    ap->state == ST_SHUTDOWN_FORCE ||
-	    ap->state == ST_SHUTDOWN) {
+	if (ap->shutdown || ap->state == ST_SHUTDOWN_FORCE) {
 		send_fail(ap->logopt, ioctlfd, pkt->wait_queue_token);
 		close(ioctlfd);
 		cache_unlock(mc);
+		master_source_unlock(ap->entry);
 		pthread_setcancelstate(state, NULL);
 		return 1;
 	}
@@ -1402,6 +1437,7 @@ int handle_packet_missing_direct(struct autofs_point *ap, autofs_packet_missing_
 		send_fail(ap->logopt, ioctlfd, pkt->wait_queue_token);
 		close(ioctlfd);
 		cache_unlock(mc);
+		master_source_unlock(ap->entry);
 		pthread_setcancelstate(state, NULL);
 		return 1;
 	}
@@ -1413,6 +1449,7 @@ int handle_packet_missing_direct(struct autofs_point *ap, autofs_packet_missing_
 		send_fail(ap->logopt, ioctlfd, pkt->wait_queue_token);
 		close(ioctlfd);
 		cache_unlock(mc);
+		master_source_unlock(ap->entry);
 		pthread_setcancelstate(state, NULL);
 		return 1;
 	}
@@ -1447,6 +1484,7 @@ int handle_packet_missing_direct(struct autofs_point *ap, autofs_packet_missing_
 		send_fail(ap->logopt, ioctlfd, pkt->wait_queue_token);
 		close(ioctlfd);
 		cache_unlock(mc);
+		master_source_unlock(ap->entry);
 		mount_mutex_unlock(mt);
 		pending_cond_destroy(mt);
 		pending_mutex_destroy(mt);
@@ -1456,6 +1494,8 @@ int handle_packet_missing_direct(struct autofs_point *ap, autofs_packet_missing_
 	}
 
 	cache_unlock(mc);
+	master_source_unlock(ap->entry);
+
 	pthread_cleanup_push(free_pending_args, mt);
 	pthread_cleanup_push(pending_mutex_destroy, mt);
 	pthread_cleanup_push(pending_cond_destroy, mt);
@@ -1464,8 +1504,11 @@ int handle_packet_missing_direct(struct autofs_point *ap, autofs_packet_missing_
 
 	mt->signaled = 0;
 	while (!mt->signaled) {
-		status = pthread_cond_wait(&mt->cond, &mt->mutex);
-		if (status)
+		gettimeofday(&now, NULL);
+		wait.tv_sec = now.tv_sec + 2;
+		wait.tv_nsec = now.tv_usec * 1000;
+		status = pthread_cond_timedwait(&mt->cond, &mt->mutex, &wait);
+		if (status && status != ETIMEDOUT)
 			fatal(status);
 	}
 

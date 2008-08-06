@@ -178,7 +178,6 @@ static void *alarm_handler(void *arg)
 	head = &alarms;
 
 	while (1) {
-
 		if (list_empty(head)) {
 			/* No alarms, wait for one to be added */
 			status = pthread_cond_wait(&cond, &mutex);
@@ -211,19 +210,8 @@ static void *alarm_handler(void *arg)
 
 			if (!first->cancel) {
 				struct autofs_point *ap = first->ap;
-				/* 
-				 * We need to unlock the alarm list in case
-				 * some other thread holds the state_mutex
-				 *_lock(ap), and is currently trying to do
-				 * some alarm_* function (i.e if we don't 
-				 * unlock, we might deadlock).
-				 */
 				alarm_unlock(); 
-
-				state_mutex_lock(ap);
-				nextstate(ap->state_pipe[1], ST_EXPIRE);
-				state_mutex_unlock(ap);
-
+				st_add_task(ap, ST_EXPIRE);
 				alarm_lock();
 			}
 			free(first);
