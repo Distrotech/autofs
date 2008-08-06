@@ -331,9 +331,13 @@ int ncat_path(char *buf, size_t len,
 struct startup_cond {
 	pthread_mutex_t mutex;
 	pthread_cond_t  cond;
+	struct autofs_point *ap;
 	unsigned int done;
 	unsigned int status;
 };
+
+int handle_mounts_startup_cond_init(struct startup_cond *suc);
+void handle_mounts_startup_cond_destroy(void *arg);
 
 struct master_readmap_cond {
 	pthread_mutex_t mutex;

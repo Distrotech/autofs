@@ -1461,6 +1461,55 @@ static void mutex_operation_wait(pthread_mutex_t *mutex)
 	return;
 }
 
+int handle_mounts_startup_cond_init(struct startup_cond *suc)
+{
+	int status;
+
+	status = pthread_mutex_init(&suc->mutex, NULL);
+	if (status)
+		return status;
+
+	status = pthread_cond_init(&suc->cond, NULL);
+	if (status) {
+		status = pthread_mutex_destroy(&suc->mutex);
+		if (status)
+			fatal(status);
+		return status;
+	}
+
+	status = pthread_mutex_lock(&suc->mutex);
+	if (status) {
+		status = pthread_mutex_destroy(&suc->mutex);
+		if (status)
+			fatal(status);
+		status = pthread_cond_destroy(&suc->cond);
+		if (status)
+			fatal(status);
+	}
+
+	return 0;
+}
+
+void handle_mounts_startup_cond_destroy(void *arg)
+{
+	struct startup_cond *suc = (struct startup_cond *) arg;
+	int status;
+
+	status = pthread_mutex_unlock(&suc->mutex);
+	if (status)
+		fatal(status);
+
+	status = pthread_mutex_destroy(&suc->mutex);
+	if (status)
+		fatal(status);
+
+	status = pthread_cond_destroy(&suc->cond);
+	if (status)
+		fatal(status);
+
+	return;
+}
+
 static void handle_mounts_cleanup(void *arg)
 {
 	struct autofs_point *ap;
@@ -1512,17 +1561,20 @@ static void handle_mounts_cleanup(void *arg)
 
 void *handle_mounts(void *arg)
 {
+	struct startup_cond *suc;
 	struct autofs_point *ap;
 	int cancel_state, status = 0;
 
-	ap = (struct autofs_point *) arg;
+	suc = (struct startup_cond *) arg;
 
-	pthread_cleanup_push(return_start_status, &suc);
+	ap = suc->ap;
+
+	pthread_cleanup_push(return_start_status, suc);
 	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cancel_state);
 
 	state_mutex_lock(ap);
 
-	status = pthread_mutex_lock(&suc.mutex);
+	status = pthread_mutex_lock(&suc->mutex);
 	if (status) {
 		logerr("failed to lock startup condition mutex!");
 		fatal(status);
@@ -1530,7 +1582,7 @@ void *handle_mounts(void *arg)
 
 	if (mount_autofs(ap) < 0) {
 		crit(ap->logopt, "mount of %s failed!", ap->path);
-		suc.status = 1;
+		suc->status = 1;
 		state_mutex_unlock(ap);
 		umount_autofs(ap, 1);
 		pthread_setcancelstate(cancel_state, NULL);
@@ -1540,7 +1592,7 @@ void *handle_mounts(void *arg)
 	if (ap->ghost && ap->type != LKP_DIRECT)
 		info(ap->logopt, "ghosting enabled");
 
-	suc.status = 0;
+	suc->status = 0;
 	pthread_cleanup_pop(1);
 
 	/* We often start several automounters at the same time.  Add some
