@@ -646,7 +646,7 @@ force_umount:
 	return rv;
 }
 
-int mount_autofs_offset(struct autofs_point *ap, struct mapent *me)
+int mount_autofs_offset(struct autofs_point *ap, struct mapent *me, const char *root, const char *offset)
 {
 	char buf[MAX_ERR_BUF];
 	struct mnt_params *mp;
@@ -654,6 +654,7 @@ int mount_autofs_offset(struct autofs_point *ap, struct mapent *me)
 	struct stat st;
 	int ioctlfd, cl_flags, status, ret;
 	const char *type, *map_name = NULL;
+	char mountpoint[PATH_MAX];
 
 	if (is_mounted(_PROC_MOUNTS, me->key, MNTS_AUTOFS)) {
 		if (ap->state != ST_READMAP)
@@ -695,8 +696,11 @@ int mount_autofs_offset(struct autofs_point *ap, struct mapent *me)
 			return MOUNT_OFFSET_OK;
 	}
 
+	strcpy(mountpoint, root);
+	strcat(mountpoint, offset);
+
 	/* In case the directory doesn't exist, try to mkdir it */
-	if (mkdir_path(me->key, 0555) < 0) {
+	if (mkdir_path(mountpoint, 0555) < 0) {
 		if (errno == EEXIST) {
 			/*
 			 * If the mount point directory is a real mount
@@ -705,7 +709,7 @@ int mount_autofs_offset(struct autofs_point *ap, struct mapent *me)
 			 * the kernel NFS client.
 			 */
 			if (me->multi != me &&
-			    is_mounted(_PATH_MOUNTED, me->key, MNTS_REAL))
+			    is_mounted(_PATH_MOUNTED, mountpoint, MNTS_REAL))
 				return MOUNT_OFFSET_IGNORE;
 
 			/* 
@@ -725,13 +729,13 @@ int mount_autofs_offset(struct autofs_point *ap, struct mapent *me)
 			char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
 			debug(ap->logopt,
 			     "can't create mount directory: %s, %s",
-			     me->key, estr);
+			     mountpoint, estr);
 			return MOUNT_OFFSET_FAIL;
 		} else {
 			char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
 			crit(ap->logopt,
 			     "failed to create mount directory: %s, %s",
-			     me->key, estr);
+			     mountpoint, estr);
 			return MOUNT_OFFSET_FAIL;
 		}
 	} else {
@@ -741,7 +745,7 @@ int mount_autofs_offset(struct autofs_point *ap, struct mapent *me)
 
 	debug(ap->logopt,
 	      "calling mount -t autofs " SLOPPY " -o %s automount %s",
-	      mp->options, me->key);
+	      mp->options, mountpoint);
 
 	type = ap->entry->maps->type;
 	if (type && !strcmp(ap->entry->maps->type, "hosts")) {
@@ -753,22 +757,18 @@ int mount_autofs_offset(struct autofs_point *ap, struct mapent *me)
 	} else
 		map_name = me->mc->map->argv[0];
 
-	ret = mount(map_name, me->key, "autofs", MS_MGC_VAL, mp->options);
+	ret = mount(map_name, mountpoint, "autofs", MS_MGC_VAL, mp->options);
 	if (ret) {
-		crit(ap->logopt, "failed to mount autofs path %s", me->key);
-		goto out_err;
-	}
-
-	if (ret != 0) {
 		crit(ap->logopt,
-		     "failed to mount autofs offset trigger %s", me->key);
+		     "failed to mount offset trigger %s at %s",
+		     me->key, mountpoint);
 		goto out_err;
 	}
 
 	/* Root directory for ioctl()'s */
-	ioctlfd = open(me->key, O_RDONLY);
+	ioctlfd = open(mountpoint, O_RDONLY);
 	if (ioctlfd < 0) {
-		crit(ap->logopt, "failed to create ioctl fd for %s", me->key);
+		crit(ap->logopt, "failed to create ioctl fd for %s", mountpoint);
 		goto out_umount;
 	}
 
@@ -782,7 +782,7 @@ int mount_autofs_offset(struct autofs_point *ap, struct mapent *me)
 	ret = fstat(ioctlfd, &st);
 	if (ret == -1) {
 		error(ap->logopt,
-		     "failed to stat direct mount trigger %s", me->key);
+		     "failed to stat direct mount trigger %s", mountpoint);
 		goto out_close;
 	}
 
@@ -790,17 +790,17 @@ int mount_autofs_offset(struct autofs_point *ap, struct mapent *me)
 
 	close(ioctlfd);
 
-	debug(ap->logopt, "mounted trigger %s", me->key);
+	debug(ap->logopt, "mounted trigger %s at %s", me->key, mountpoint);
 
 	return MOUNT_OFFSET_OK;
 
 out_close:
 	close(ioctlfd);
 out_umount:
-	umount(me->key);
+	umount(mountpoint);
 out_err:
-	if (stat(me->key, &st) == 0 && me->dir_created)
-		 rmdir_path(ap, me->key, st.st_dev);
+	if (stat(mountpoint, &st) == 0 && me->dir_created)
+		 rmdir_path(ap, mountpoint, st.st_dev);
 
 	return MOUNT_OFFSET_FAIL;
 }

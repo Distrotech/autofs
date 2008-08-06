@@ -74,34 +74,24 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 	char *fullpath;
 	char buf[MAX_ERR_BUF];
 	int err;
-	int i, rlen;
+	int i, len;
 
 	/* Root offset of multi-mount */
-	if (*name == '/' && name_len == 1) {
-		rlen = strlen(root);
-		name_len = 0;
+	len = strlen(root);
+	if (root[len - 1] == '/') {
+		fullpath = alloca(len);
+		len = snprintf(fullpath, len, "%s", root);
 	/* Direct mount name is absolute path so don't use root */
-	} else if (*name == '/')
-		rlen = 0;
-	else
-		rlen = strlen(root);
-
-	fullpath = alloca(rlen + name_len + 2);
-	if (!fullpath) {
-		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		logerr(MODPREFIX "alloca: %s", estr);
-		return 1;
+	} else if (*name == '/') {
+		fullpath = alloca(len + 1);
+		len = sprintf(fullpath, "%s", root);
+	} else {
+		fullpath = alloca(len + name_len + 2);
+		len = sprintf(fullpath, "%s/%s", root, name);
 	}
+	fullpath[len] = '\0';
 
-	if (name_len) {
-		if (rlen)
-			sprintf(fullpath, "%s/%s", root, name);
-		else
-			sprintf(fullpath, "%s", name);
-	} else
-		sprintf(fullpath, "%s", root);
-
-	i = strlen(fullpath);
+	i = len;
 	while (--i > 0 && fullpath[i] == '/')
 		fullpath[i] = '\0';
 
@@ -124,13 +114,6 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 
 		if (!status)
 			existed = 0;
-
-		if (is_mounted(_PATH_MOUNTED, fullpath, MNTS_REAL)) {
-			error(ap->logopt,
-			      MODPREFIX "warning: %s is already mounted",
-			      fullpath);
-			return 0;
-		}
 
 		debug(ap->logopt,
 		      MODPREFIX

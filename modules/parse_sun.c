@@ -31,11 +31,17 @@
 #include <sys/vfs.h>
 #include <sys/utsname.h>
 #include <netinet/in.h>
+#include <sys/mount.h>
+#include <linux/fs.h>
 
 #define MODULE_PARSE
 #include "automount.h"
 
 #define MODPREFIX "parse(sun): "
+
+#define MOUNT_MOVE_NONE		0x00
+#define MOUNT_MOVE_AUTOFS	0x01
+#define MOUNT_MOVE_OTHER	0x02
 
 int parse_version = AUTOFS_PARSE_VERSION;	/* Required by protocol */
 
@@ -67,6 +73,7 @@ static struct parse_context default_context = {
 	1			/* Do slashify_colons */
 };
 
+int destroy_logpri_fifo(struct autofs_point *ap);
 static char *concat_options(char *left, char *right);
 
 /* Free all storage associated with this context */
@@ -756,8 +763,10 @@ add_offset_entry(struct autofs_point *ap, const char *name,
 
 	p_len = strlen(path);
 	/* Trailing '/' causes us pain */
-	if (p_len > 1 && path[p_len - 1] == '/')
-		p_len--;
+	if (p_len > 1) {
+		while (p_len > 1 && path[p_len - 1] == '/')
+			p_len--;
+	}
 	m_key_len = m_root_len + p_len;
 	if (m_key_len > PATH_MAX) {
 		error(ap->logopt, MODPREFIX "multi mount key too long");
@@ -961,53 +970,318 @@ static int parse_mapent(const char *ent, char *g_options, char **options, char *
 	return (p - ent);
 }
 
-static int mount_subtree_offsets(struct autofs_point *ap, struct mapent_cache *mc, struct mapent *me)
+static int move_mount(struct autofs_point *ap,
+		      const char *mm_tmp_root, const char *mm_root,
+		      unsigned int move)
+{
+	char buf[MAX_ERR_BUF];
+	int err;
+
+	if (move == MOUNT_MOVE_NONE)
+		return 1;
+
+	err = mkdir_path(mm_root, 0555);
+	if (err < 0 && errno != EEXIST) {
+		error(ap->logopt,
+		      "failed to create move target mount point %s", mm_root);
+		return 0;
+	}
+
+	if (move == MOUNT_MOVE_AUTOFS)
+		err = mount(mm_tmp_root, mm_root, NULL, MS_MOVE, NULL);
+	else
+		err = spawn_mount(ap->logopt,
+				  "--move", mm_tmp_root, mm_root, NULL);
+	if (err) {
+		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+		error(ap->logopt,
+		      "failed to move mount from %s to %s: %s",
+		      mm_tmp_root, mm_root, estr);
+		return 0;
+	}
+
+	debug(ap->logopt,
+	      "moved mount tree from %s to %s", mm_tmp_root, mm_root);
+
+	return 1;
+}
+
+static void cleanup_multi_root(struct autofs_point *ap, const char *root,
+					 const char *path, unsigned int move)
+{
+	if (move == MOUNT_MOVE_NONE)
+		return;
+
+	if (move == MOUNT_MOVE_OTHER)
+		spawn_umount(ap->logopt, root, NULL);
+	else {
+		struct autofs_point *submount;
+
+		mounts_mutex_lock(ap);
+		submount = __master_find_submount(ap, path);
+		if (!submount) {
+			mounts_mutex_unlock(ap);
+			return;
+		}
+
+		alarm_delete(submount);
+		st_remove_tasks(submount);
+		st_wait_state(submount, ST_READY);
+
+		submount->parent->submnt_count--;
+		list_del_init(&submount->mounts);
+
+		ioctl(submount->ioctlfd, AUTOFS_IOC_CATATONIC, 0);
+
+		mounts_mutex_unlock(ap);
+
+		if (submount->thid) {
+			pthread_cancel(submount->thid);
+			close_mount_fds(submount);
+			umount(root);
+			destroy_logpri_fifo(submount);
+			master_free_mapent_sources(submount->entry, 1);
+			master_free_mapent(ap->entry);
+		}
+	}
+	return;
+}
+
+static void cleanup_multi_triggers(struct autofs_point *ap,
+			    struct mapent *me, const char *root, int start,
+			    const char *base)
+{
+	char path[PATH_MAX + 1];
+	char offset[PATH_MAX + 1];
+	char *poffset = offset;
+	struct mapent *oe;
+	struct list_head *mm_root, *pos;
+	const char o_root[] = "/";
+	const char *mm_base;
+
+	mm_root = &me->multi->multi_list;
+
+	if (!base)
+		mm_base = o_root;
+	else
+		mm_base = base;
+
+	pos = NULL;
+
+	/* Make sure "none" of the offsets have an active mount. */
+	while ((poffset = cache_get_offset(mm_base, poffset, start, mm_root, &pos))) {
+		oe = cache_lookup_offset(mm_base, poffset, start, &me->multi_list);
+		/* root offset is a special case */
+		if (!oe || !oe->mapent || (strlen(oe->key) - start) == 1)
+			continue;
+
+		strcpy(path, root);
+		strcat(path, poffset);
+		if (umount(path)) {
+			error(ap->logopt, "error recovering from mount fail");
+			error(ap->logopt, "cannot umount offset %s", path);
+		}
+	}
+
+	return;
+}
+
+static int check_fstype_autofs_option(const char *options)
+{
+	char *tok, *tokbuf;
+	int found;
+
+	/*
+	 * Look for fstype= in options and return true if
+	 * the last occurrence is fstype=autofs.
+	 */
+	found = 0;
+	tokbuf = alloca(strlen(options) + 2);
+	strcpy(tokbuf, options);
+	tok = strtok_r(tokbuf, ",", &tokbuf);
+	if (tok) {
+		do {
+			if (strstr(tok, "fstype=")) {
+				if (strstr(tok, "autofs"))
+					found = 1;
+				else
+					found = 0;
+			}
+		} while ((tok = strtok_r(NULL, ",", &tokbuf)));
+	}
+
+	return found;
+}
+
+static int mount_subtree(struct autofs_point *ap, struct mapent *me,
+			 const char *name, char *loc, char *options, void *ctxt)
 {
 	struct mapent *mm;
-	char *m_key;
-	int ret, start;
-	char *base, *m_root;
-	char buf[MAX_ERR_BUF];
+	struct mapent *ro;
+	char t_dir[] = "/tmp/autoXXXXXX";
+	char *mm_root, *mm_base, *mm_key;
+	const char *mm_tmp_root, *target;
+	unsigned int mm_tmp_root_len;
+	int start, ret = 0, rv;
+	unsigned int move;
+
+	rv = 0;
+
+	if (!me || !me->multi) {
+		int loclen = strlen(loc);
+		int namelen = strlen(name);
+		const char *root = ap->path;
+
+		if (!strcmp(ap->path, "/-"))
+			root = name;
+
+		rv = sun_mount(ap, root, name, namelen, loc, loclen, options, ctxt);
+
+		goto done;
+	}
 
 	mm = me->multi;
+	mm_key = mm->key;
+	move = MOUNT_MOVE_NONE;
 
-	if (!mm)
-		return 0;
-
-	cache_multi_lock(me->parent);
-
-	m_key = mm->key;
-
-	if (*m_key == '/') {
-		m_root = m_key;
-		start = strlen(m_key);
+	if (*mm_key == '/') {
+		mm_root = mm_key;
+		start = strlen(mm_key);
 	} else {
-		start = strlen(ap->path) + strlen(m_key) + 1;
-		m_root = alloca(start + 1);
-		if (!m_root) {
-			char *estr;
-			cache_multi_unlock(me->parent);
-			estr = strerror_r(errno, buf, MAX_ERR_BUF);
-			error(ap->logopt, MODPREFIX "alloca: %s", estr);
-			return -1;
+		start = strlen(ap->path) + strlen(mm_key) + 1;
+		mm_root = alloca(start + 3);
+		strcpy(mm_root, ap->path);
+		strcat(mm_root, "/");
+		strcat(mm_root, mm_key);
+	}
+
+	mm_tmp_root = mkdtemp(t_dir);
+	if (!mm_tmp_root)
+		return 1;
+	mm_tmp_root_len = strlen(mm_tmp_root);
+
+	if (me == me->multi) {
+		/* name = NULL */
+		/* destination = mm_root */
+		target = mm_root;
+		mm_base = "/";
+
+		/* Mount root offset if it exists */
+		ro = cache_lookup_offset(mm_base, mm_base, strlen(mm_root), &me->multi_list);
+		if (ro) {
+			char *myoptions, *ro_loc, *tmp;
+			int namelen = name ? strlen(name) : 0;
+			const char *root;
+			int ro_len;
+
+			rv = parse_mapent(ro->mapent,
+				options, &myoptions, &ro_loc, ap->logopt);
+			if (!rv) {
+				warn(ap->logopt,
+				      MODPREFIX "failed to parse root offset");
+				cache_delete_offset_list(me->mc, name);
+				rmdir(mm_tmp_root);
+				return 1;
+			}
+			ro_len = strlen(ro_loc);
+
+			move = MOUNT_MOVE_OTHER;
+			if (check_fstype_autofs_option(myoptions))
+				move = MOUNT_MOVE_AUTOFS;
+
+			root = mm_tmp_root;
+			tmp = alloca(mm_tmp_root_len + 1);
+			strcpy(tmp, mm_tmp_root);
+			tmp[mm_tmp_root_len] = '/';
+			tmp[mm_tmp_root_len + 1] = '\0';
+			root = tmp;
+
+			rv = sun_mount(ap, root, name, namelen, ro_loc, ro_len, myoptions, ctxt);
+
+			free(myoptions);
+			free(ro_loc);
 		}
-		strcpy(m_root, ap->path);
-		strcat(m_root, "/");
-		strcat(m_root, m_key);
+
+		if (ro && rv == 0) {
+			ret = mount_multi_triggers(ap, me, mm_tmp_root, start, mm_base);
+			if (ret == -1) {
+				error(ap->logopt, MODPREFIX
+					 "failed to mount offset triggers");
+				cleanup_multi_triggers(ap, me, mm_tmp_root, start, mm_base);
+				cleanup_multi_root(ap, mm_tmp_root, mm_root, move);
+				rmdir(mm_tmp_root);
+				return 1;
+			}
+		} else if (rv <= 0) {
+			move = MOUNT_MOVE_NONE;
+			ret = mount_multi_triggers(ap, me, mm_root, start, mm_base);
+			if (ret == -1) {
+				error(ap->logopt, MODPREFIX
+					 "failed to mount offset triggers");
+				cleanup_multi_triggers(ap, me, mm_tmp_root, start, mm_base);
+				rmdir(mm_tmp_root);
+				return 1;
+			}
+		}
+	} else {
+		int loclen = strlen(loc);
+		int namelen = strlen(name);
+
+		move = MOUNT_MOVE_OTHER;
+		if (check_fstype_autofs_option(options))
+			move = MOUNT_MOVE_AUTOFS;
+
+		/* name = mm_root + mm_base */
+		/* destination = mm_root + mm_base = name */
+		target = name;
+		mm_base = &me->key[start];
+
+		rv = sun_mount(ap, mm_tmp_root, name, namelen, loc, loclen, options, ctxt);
+		if (rv == 0) {
+			ret = mount_multi_triggers(ap, me->multi, mm_tmp_root, start, mm_base);
+			if (ret == -1) {
+				error(ap->logopt, MODPREFIX
+					 "failed to mount offset triggers");
+				cleanup_multi_triggers(ap, me, mm_tmp_root, start, mm_base);
+				cleanup_multi_root(ap, mm_tmp_root, mm_root, move);
+				rmdir(mm_tmp_root);
+				return 1;
+			}
+		} else if (rv < 0) {
+			move = MOUNT_MOVE_NONE;
+			ret = mount_multi_triggers(ap, me->multi, mm_root, start, mm_base);
+			if (ret == -1) {
+				error(ap->logopt, MODPREFIX
+					 "failed to mount offset triggers");
+				cleanup_multi_triggers(ap, me, mm_tmp_root, start, mm_base);
+				rmdir(mm_tmp_root);
+				return 1;
+			}
+		}
 	}
 
-	base = &me->key[start];
-
-	ret = mount_multi_triggers(ap, m_root, me->multi, base);
-	if (ret == -1) {
-		cache_multi_unlock(me->parent);
-		error(ap->logopt, MODPREFIX "failed to mount offset triggers");
-		return -1;
+	if (!move_mount(ap, mm_tmp_root, target, move)) {
+		cleanup_multi_triggers(ap, me, mm_tmp_root, start, mm_base);
+		cleanup_multi_root(ap, mm_tmp_root, mm_root, move);
+		rmdir(mm_tmp_root);
+		return 1;
 	}
 
-	cache_multi_unlock(me->parent);
+	rmdir(mm_tmp_root);
 
-	return ret;
+	/* Mount for base of tree failed */
+	if (rv > 0)
+		return rv;
+
+done:
+	/*
+	 * Convert fail on nonstrict, non-empty multi-mount
+	 * to success
+	 */
+	if (rv < 0 && ret > 0)
+		rv = 0;
+
+	return rv;
 }
 
 /*
@@ -1029,7 +1303,7 @@ int parse_mount(struct autofs_point *ap, const char *name,
 	char buf[MAX_ERR_BUF];
 	struct map_source *source;
 	struct mapent_cache *mc;
-	struct mapent *me, *ro;
+	struct mapent *me = NULL;
 	char *pmapent, *options;
 	const char *p;
 	int mapent_len, rv = 0;
@@ -1154,7 +1428,7 @@ int parse_mount(struct autofs_point *ap, const char *name,
 		char *m_root = NULL;
 		int m_root_len;
 		time_t age = time(NULL);
-		int l, ret;
+		int l;
 
 		/* If name starts with "/" it's a direct mount */
 		if (*name == '/') {
@@ -1302,48 +1576,7 @@ int parse_mount(struct autofs_point *ap, const char *name,
 		 */
 		cache_set_parents(me);
 
-		/* Mount root offset if it exists */
-		ro = cache_lookup_offset("/", "/", strlen(m_root), &me->multi_list);
-		if (ro) {
-			char *myoptions, *loc;
-
-			rv = parse_mapent(ro->mapent,
-				options, &myoptions, &loc, ap->logopt);
-			if (!rv) {
-				warn(ap->logopt,
-				      MODPREFIX "failed to mount root offset");
-				cache_delete_offset_list(mc, name);
-				cache_multi_unlock(me);
-				cache_unlock(mc);
-				free(options);
-				pthread_setcancelstate(cur_state, NULL);
-				return 1;
-			}
-
-			rv = sun_mount(ap, m_root,
-				"/", 1, loc, strlen(loc), myoptions, ctxt);
-
-			free(myoptions);
-			free(loc);
-		}
-
-		ret = mount_multi_triggers(ap, m_root, me, "/");
-		if (ret == -1) {
-			warn(ap->logopt,
-			      MODPREFIX "failed to mount offset triggers");
-			cache_multi_unlock(me);
-			cache_unlock(mc);
-			free(options);
-			pthread_setcancelstate(cur_state, NULL);
-			return 1;
-		}
-
-		/*
-		 * Convert fail on nonstrict, non-empty multi-mount
-		 * to success
-		 */
-		if (rv < 0 && ret > 0)
-			rv = 0;
+		rv = mount_subtree(ap, me, name, NULL, options, ctxt);
 
 		cache_multi_unlock(me);
 		cache_unlock(mc);
@@ -1461,24 +1694,15 @@ mount_it:
 		      MODPREFIX "core of entry: options=%s, loc=%.*s",
 		      options, loclen, loc);
 
-		rv = sun_mount(ap, ap->path, name, name_len, loc, loclen, options, ctxt);
+		cache_readlock(mc);
+		cache_multi_lock(me);
+
+		rv = mount_subtree(ap, me, name, loc, options, ctxt);
 
 		free(loc);
 		free(options);
 
-		/*
-		 * If it's a multi-mount insert the triggers
-		 * These are always direct mount triggers so root = ""
-		 */
-		pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cur_state);
-		cache_readlock(mc);
-		me = cache_lookup_distinct(mc, name);
-		if (me) {
-			int ret = mount_subtree_offsets(ap, mc, me);
-			/* Convert fail on nonstrict, non-empty multi-mount to success */
-			if (rv < 0 && ret > 0)
-				rv = 0;
-		}
+		cache_multi_unlock(me);
 		cache_unlock(mc);
 		pthread_setcancelstate(cur_state, NULL);
 	}

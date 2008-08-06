@@ -489,7 +489,7 @@ static int umount_subtree_mounts(struct autofs_point *ap, const char *path, unsi
 		pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cur_state);
 		/* Lock the closest parent nesting point for umount */
 		cache_multi_lock(me->parent);
-		if (umount_multi_triggers(ap, root, me, base)) {
+		if (umount_multi_triggers(ap, me, root, base)) {
 			warn(ap->logopt,
 			     "some offset mounts still present under %s", path);
 			left++;
@@ -572,7 +572,7 @@ static int umount_all(struct autofs_point *ap, int force)
 	return left;
 }
 
-int umount_autofs(struct autofs_point *ap, int force)
+int umount_autofs(struct autofs_point *ap, const char *root, int force)
 {
 	int ret = 0;
 
@@ -589,7 +589,7 @@ int umount_autofs(struct autofs_point *ap, int force)
 	if (ap->type == LKP_INDIRECT) {
 		if (umount_all(ap, force) && !force)
 			return -1;
-		ret = umount_autofs_indirect(ap);
+		ret = umount_autofs_indirect(ap, root);
 	} else
 		ret = umount_autofs_direct(ap);
 
@@ -754,7 +754,7 @@ out_free:
 	return ret;
 }
 
-static int destroy_logpri_fifo(struct autofs_point *ap)
+int destroy_logpri_fifo(struct autofs_point *ap)
 {
 	int ret = -1;
 	int fd = ap->logpri_fifo;
@@ -1056,7 +1056,7 @@ static int autofs_init_ap(struct autofs_point *ap)
 	return 0;
 }
 
-static int mount_autofs(struct autofs_point *ap)
+static int mount_autofs(struct autofs_point *ap, const char *root)
 {
 	int status = 0;
 
@@ -1066,7 +1066,7 @@ static int mount_autofs(struct autofs_point *ap)
 	if (ap->type == LKP_DIRECT)
 		status = mount_autofs_direct(ap);
 	else
-		status = mount_autofs_indirect(ap);
+		status = mount_autofs_indirect(ap, root);
 
 	if (status < 0)
 		return -1;
@@ -1531,10 +1531,12 @@ void *handle_mounts(void *arg)
 	struct startup_cond *suc;
 	struct autofs_point *ap;
 	int cancel_state, status = 0;
+	char *root;
 
 	suc = (struct startup_cond *) arg;
 
 	ap = suc->ap;
+	root = strdup(suc->root);
 
 	pthread_cleanup_push(return_start_status, suc);
 	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cancel_state);
@@ -1545,13 +1547,23 @@ void *handle_mounts(void *arg)
 		fatal(status);
 	}
 
-	if (mount_autofs(ap) < 0) {
-		crit(ap->logopt, "mount of %s failed!", ap->path);
+	if (!root) {
+		crit(ap->logopt, "failed to alloc string root");
 		suc->status = 1;
-		umount_autofs(ap, 1);
 		pthread_setcancelstate(cancel_state, NULL);
 		pthread_exit(NULL);
 	}
+
+	if (mount_autofs(ap, root) < 0) {
+		crit(ap->logopt, "mount of %s failed!", ap->path);
+		suc->status = 1;
+		umount_autofs(ap, root, 1);
+		free(root);
+		pthread_setcancelstate(cancel_state, NULL);
+		pthread_exit(NULL);
+	}
+
+	free(root);
 
 	if (ap->ghost && ap->type != LKP_DIRECT)
 		info(ap->logopt, "ghosting enabled");
@@ -1615,7 +1627,7 @@ void *handle_mounts(void *arg)
 			 * to check for possible recovery.
 			 */
 			if (ap->type == LKP_DIRECT) {
-				umount_autofs(ap, 1);
+				umount_autofs(ap, NULL, 1);
 				break;
 			}
 
@@ -1625,7 +1637,7 @@ void *handle_mounts(void *arg)
 			 * so we can continue. This can happen if a lookup
 			 * occurs while we're trying to umount.
 			 */
-			ret = umount_autofs(ap, 1);
+			ret = umount_autofs(ap, NULL, 1);
 			if (!ret)
 				break;
 

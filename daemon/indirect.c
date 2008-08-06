@@ -83,7 +83,7 @@ static int unlink_mount_tree(struct autofs_point *ap, struct mnt_list *mnts)
 	return ret;
 }
 
-static int do_mount_autofs_indirect(struct autofs_point *ap)
+static int do_mount_autofs_indirect(struct autofs_point *ap, const char *root)
 {
 	time_t timeout = ap->exp_timeout;
 	char *options = NULL;
@@ -109,11 +109,11 @@ static int do_mount_autofs_indirect(struct autofs_point *ap)
 		goto out_err;
 
 	/* In case the directory doesn't exist, try to mkdir it */
-	if (mkdir_path(ap->path, 0555) < 0) {
+	if (mkdir_path(root, 0555) < 0) {
 		if (errno != EEXIST && errno != EROFS) {
 			crit(ap->logopt,
 			     "failed to create autofs directory %s",
-			     ap->path);
+			     root);
 			goto out_err;
 		}
 		/* If we recieve an error, and it's EEXIST or EROFS we know
@@ -134,9 +134,10 @@ static int do_mount_autofs_indirect(struct autofs_point *ap)
 	} else
 		map_name = ap->entry->maps->argv[0];
 
-	ret = mount(map_name, ap->path, "autofs", MS_MGC_VAL, options);
+	ret = mount(map_name, root, "autofs", MS_MGC_VAL, options);
 	if (ret) {
-		crit(ap->logopt, "failed to mount autofs path %s", ap->path);
+		crit(ap->logopt,
+		     "failed to mount autofs path %s at %s", ap->path, root);
 		goto out_rmdir;
 	}
 
@@ -145,7 +146,7 @@ static int do_mount_autofs_indirect(struct autofs_point *ap)
 	options = NULL;
 
 	/* Root directory for ioctl()'s */
-	ap->ioctlfd = open(ap->path, O_RDONLY);
+	ap->ioctlfd = open(root, O_RDONLY);
 	if (ap->ioctlfd < 0) {
 		crit(ap->logopt,
 		     "failed to create ioctl fd for autofs path %s", ap->path);
@@ -163,13 +164,13 @@ static int do_mount_autofs_indirect(struct autofs_point *ap)
 
 	if (ap->exp_timeout)
 		info(ap->logopt,
-		    "mounted indirect mount on %s "
+		    "mounted indirect mount for %s "
 		    "with timeout %u, freq %u seconds", ap->path,
 	 	    (unsigned int) ap->exp_timeout,
 		    (unsigned int) ap->exp_runfreq);
 	else
 		info(ap->logopt,
-		    "mounted indirect mount on %s with timeouts disabled",
+		    "mounted indirect mount for %s with timeouts disabled",
 		    ap->path);
 
 	fstat(ap->ioctlfd, &st);
@@ -178,10 +179,10 @@ static int do_mount_autofs_indirect(struct autofs_point *ap)
 	return 0;
 
 out_umount:
-	umount(ap->path);
+	umount(root);
 out_rmdir:
 	if (ap->dir_created)
-		rmdir_path(ap, ap->path, ap->dev);
+		rmdir(root);
 out_err:
 	if (options)
 		free(options);
@@ -193,7 +194,7 @@ out_err:
 	return -1;
 }
 
-int mount_autofs_indirect(struct autofs_point *ap)
+int mount_autofs_indirect(struct autofs_point *ap, const char *root)
 {
 	time_t now = time(NULL);
 	int status;
@@ -207,11 +208,11 @@ int mount_autofs_indirect(struct autofs_point *ap)
 		return -1;
 	}
 
-	status = do_mount_autofs_indirect(ap);
+	status = do_mount_autofs_indirect(ap, root);
 	if (status < 0)
 		return -1;
 
-	map = lookup_ghost(ap);
+	map = lookup_ghost(ap, root);
 	if (map & LKP_FAIL) {
 		if (map & LKP_DIRECT) {
 			error(ap->logopt,
@@ -230,7 +231,7 @@ int mount_autofs_indirect(struct autofs_point *ap)
 	return 0;
 }
 
-static void close_mount_fds(struct autofs_point *ap)
+void close_mount_fds(struct autofs_point *ap)
 {
 	/*
 	 * Since submounts look after themselves the parent never knows
@@ -255,10 +256,16 @@ static void close_mount_fds(struct autofs_point *ap)
 	return;
 }
 
-int umount_autofs_indirect(struct autofs_point *ap)
+int umount_autofs_indirect(struct autofs_point *ap, const char *root)
 {
 	char buf[MAX_ERR_BUF];
+	char mountpoint[PATH_MAX + 1];
 	int ret, rv, retries;
+
+	if (root)
+		strcpy(mountpoint, root);
+	else
+		strcpy(mountpoint, ap->path);
 
 	/* If we are trying to shutdown make sure we can umount */
 	rv = ioctl(ap->ioctlfd, AUTOFS_IOC_ASKUMOUNT, &ret);
@@ -284,7 +291,7 @@ int umount_autofs_indirect(struct autofs_point *ap)
 	sched_yield();
 
 	retries = UMOUNT_RETRIES;
-	while ((rv = umount(ap->path)) == -1 && retries--) {
+	while ((rv = umount(mountpoint)) == -1 && retries--) {
 		struct timespec tm = {0, 200000000};
 		if (errno != EBUSY)
 			break;
@@ -296,13 +303,13 @@ int umount_autofs_indirect(struct autofs_point *ap)
 		case ENOENT:
 		case EINVAL:
 			error(ap->logopt,
-			      "mount point %s does not exist", ap->path);
+			      "mount point %s does not exist", mountpoint);
 			close_mount_fds(ap);
 			return 0;
 			break;
 		case EBUSY:
 			debug(ap->logopt,
-			      "mount point %s is in use", ap->path);
+			      "mount point %s is in use", mountpoint);
 			if (ap->state == ST_SHUTDOWN_FORCE) {
 				close_mount_fds(ap);
 				goto force_umount;
@@ -321,11 +328,11 @@ int umount_autofs_indirect(struct autofs_point *ap)
 					return 0;
 				}
 #endif
-				ap->ioctlfd = open(ap->path, O_RDONLY);
+				ap->ioctlfd = open(mountpoint, O_RDONLY);
 				if (ap->ioctlfd < 0) {
 					warn(ap->logopt,
 					     "could not recover autofs path %s",
-					     ap->path);
+					     mountpoint);
 					close_mount_fds(ap);
 					return 0;
 				}
@@ -355,12 +362,12 @@ int umount_autofs_indirect(struct autofs_point *ap)
 force_umount:
 	if (rv != 0) {
 		warn(ap->logopt,
-		     "forcing umount of indirect mount %s", ap->path);
-		rv = umount2(ap->path, MNT_DETACH);
+		     "forcing umount of indirect mount %s", mountpoint);
+		rv = umount2(mountpoint, MNT_DETACH);
 	} else {
-		info(ap->logopt, "umounted indirect mount %s", ap->path);
+		info(ap->logopt, "umounted indirect mount %s", mountpoint);
 		if (ap->submount)
-			rm_unwanted(ap->logopt, ap->path, 1, ap->dev);
+			rm_unwanted(ap->logopt, mountpoint, 1, ap->dev);
 	}
 
 	return rv;

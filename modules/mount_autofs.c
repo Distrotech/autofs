@@ -48,7 +48,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 {
 	struct startup_cond suc;
 	pthread_t thid;
-	char *fullpath;
+	char *realpath, *mountpoint;
 	const char **argv;
 	int argc, status, ghost = ap->ghost;
 	time_t timeout = ap->exp_timeout;
@@ -60,32 +60,32 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 	struct autofs_point *nap;
 	char buf[MAX_ERR_BUF];
 	char *options, *p;
-	int ret;
-
-	fullpath = alloca(strlen(root) + name_len + 2);
-	if (!fullpath) {
-		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		logerr(MODPREFIX "alloca: %s", estr);
-		return 1;
-	}
+	int len, ret;
 
 	/* Root offset of multi-mount */
-	if (*name == '/' && name_len == 1)
-		strcpy(fullpath, root);
-	else if (*name == '/')
-		strcpy(fullpath, name);
-	else {
-		strcpy(fullpath, root);
-		strcat(fullpath, "/");
-		strcat(fullpath, name);
-	}
-
-	if (is_mounted(_PATH_MOUNTED, fullpath, MNTS_REAL)) {
-		error(ap->logopt,
-		      MODPREFIX 
-		      "warning: about to mount over %s, continuing",
-		      fullpath);
-		return 0;
+	len = strlen(root);
+	if (root[len - 1] == '/') {
+		realpath = alloca(strlen(ap->path) + name_len + 2);
+		mountpoint = alloca(len + 1);
+		strcpy(realpath, ap->path);
+		strcat(realpath, "/");
+		strcat(realpath, name);
+		len--;
+		strncpy(mountpoint, root, len);
+		mountpoint[len] = '\0';
+	} else if (*name == '/') {
+		realpath = alloca(name_len + 1);
+		mountpoint = alloca(len + 1);
+		strcpy(mountpoint, root);
+		strcpy(realpath, name);
+	} else {
+		realpath = alloca(len + name_len + 2);
+		mountpoint = alloca(len + name_len + 2);
+		strcpy(mountpoint, root);
+		strcat(mountpoint, "/");
+		strcpy(realpath, mountpoint);
+		strcat(mountpoint, name);
+		strcat(realpath, name);
 	}
 
 	options = NULL;
@@ -136,12 +136,12 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 	}
 
 	debug(ap->logopt,
-	      MODPREFIX "fullpath=%s what=%s options=%s",
-	      fullpath, what, options);
+	      MODPREFIX "mountpoint=%s what=%s options=%s",
+	      mountpoint, what, options);
 
 	master = ap->entry->master;
 
-	entry = master_new_mapent(master, fullpath, ap->entry->age);
+	entry = master_new_mapent(master, realpath, ap->entry->age);
 	if (!entry) {
 		error(ap->logopt,
 		      MODPREFIX "failed to malloc master_mapent struct");
@@ -228,6 +228,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 	}
 
 	suc.ap = nap;
+	suc.root = mountpoint;
 	suc.done = 0;
 	suc.status = 0;
 
@@ -235,7 +236,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 		crit(ap->logopt,
 		     MODPREFIX
 		     "failed to create mount handler thread for %s",
-		     fullpath);
+		     realpath);
 		handle_mounts_startup_cond_destroy(&suc);
 		mounts_mutex_unlock(ap);
 		master_free_map_source(source, 1);
@@ -256,7 +257,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 
 	if (suc.status) {
 		crit(ap->logopt,
-		     MODPREFIX "failed to create submount for %s", fullpath);
+		     MODPREFIX "failed to create submount for %s", realpath);
 		handle_mounts_startup_cond_destroy(&suc);
 		mounts_mutex_unlock(ap);
 		master_free_map_source(source, 1);

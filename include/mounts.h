@@ -85,7 +85,7 @@ int tree_find_mnt_ents(struct mnt_list *mnts, struct list_head *list, const char
 int tree_is_mounted(struct mnt_list *mnts, const char *path, unsigned int type);
 void set_tsd_user_vars(unsigned int, uid_t, gid_t);
 int umount_ent(struct autofs_point *, const char *);
-int mount_multi_triggers(struct autofs_point *, char *, struct mapent *, const char *);
-int umount_multi_triggers(struct autofs_point *, char *, struct mapent *, const char *);
+int mount_multi_triggers(struct autofs_point *, struct mapent *, const char *, unsigned int, const char *);
+int umount_multi_triggers(struct autofs_point *, struct mapent *, char *, const char *);
 
 #endif

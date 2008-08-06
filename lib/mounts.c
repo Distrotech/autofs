@@ -1105,7 +1105,8 @@ int umount_ent(struct autofs_point *ap, const char *path)
 	return rv;
 }
 
-int mount_multi_triggers(struct autofs_point *ap, char *root, struct mapent *me, const char *base)
+int mount_multi_triggers(struct autofs_point *ap, struct mapent *me,
+			 const char *root, unsigned int start, const char *base)
 {
 	char path[PATH_MAX + 1];
 	char *offset = path;
@@ -1113,17 +1114,13 @@ int mount_multi_triggers(struct autofs_point *ap, char *root, struct mapent *me,
 	struct list_head *pos = NULL;
 	unsigned int fs_path_len;
 	unsigned int mounted;
-	int ret, start;
+	int ret;
 
-	fs_path_len = strlen(root) + strlen(base);
+	fs_path_len = start + strlen(base);
 	if (fs_path_len > PATH_MAX)
 		return -1;
 
-	strcpy(path, root);
-	strcat(path, base);
-
 	mounted = 0;
-	start = strlen(root);
 	offset = cache_get_offset(base, offset, start, &me->multi_list, &pos);
 	while (offset) {
 		int plen = fs_path_len + strlen(offset);
@@ -1137,9 +1134,9 @@ int mount_multi_triggers(struct autofs_point *ap, char *root, struct mapent *me,
 		if (!oe || !oe->mapent)
 			goto cont;
 
-		debug(ap->logopt, "mount offset %s", oe->key);
+		debug(ap->logopt, "mount offset %s at %s", oe->key, root);
 
-		ret = mount_autofs_offset(ap, oe);
+		ret = mount_autofs_offset(ap, oe, root, offset);
 		if (ret >= MOUNT_OFFSET_OK)
 			mounted++;
 		else {
@@ -1161,7 +1158,7 @@ cont:
 	return mounted;
 }
 
-int umount_multi_triggers(struct autofs_point *ap, char *root, struct mapent *me, const char *base)
+int umount_multi_triggers(struct autofs_point *ap, struct mapent *me, char *root, const char *base)
 {
 	char path[PATH_MAX + 1];
 	char *offset;
@@ -1198,7 +1195,7 @@ int umount_multi_triggers(struct autofs_point *ap, char *root, struct mapent *me
 		 * nonstrict mount fail.
 		 */
 		oe_base = oe->key + strlen(root);
-		left += umount_multi_triggers(ap, root, oe, oe_base);
+		left += umount_multi_triggers(ap, oe, root, oe_base);
 
 		if (oe->ioctlfd != -1)
 			left++;
@@ -1238,7 +1235,7 @@ int umount_multi_triggers(struct autofs_point *ap, char *root, struct mapent *me
 		if (is_mounted(_PATH_MOUNTED, root, MNTS_REAL)) {
 			info(ap->logopt, "unmounting dir = %s", root);
 			if (umount_ent(ap, root)) {
-				if (mount_multi_triggers(ap, root, me, "/") < 0)
+				if (mount_multi_triggers(ap, me, root, strlen(root), "/") < 0)
 					warn(ap->logopt,
 					     "failed to remount offset triggers");
 				return left++;

@@ -565,7 +565,7 @@ int lookup_nss_read_map(struct autofs_point *ap, struct map_source *source, time
 	return 0;
 }
 
-int lookup_ghost(struct autofs_point *ap)
+int lookup_ghost(struct autofs_point *ap, const char *root)
 {
 	struct master_mapent *entry = ap->entry;
 	struct map_source *map;
@@ -611,12 +611,12 @@ int lookup_ghost(struct autofs_point *ap)
 				goto next;
 			}
 
-			fullpath = alloca(strlen(me->key) + strlen(ap->path) + 3);
+			fullpath = alloca(strlen(me->key) + strlen(root) + 3);
 			if (!fullpath) {
 				warn(ap->logopt, "failed to allocate full path");
 				goto next;
 			}
-			sprintf(fullpath, "%s/%s", ap->path, me->key);
+			sprintf(fullpath, "%s/%s", root, me->key);
 
 			ret = stat(fullpath, &st);
 			if (ret == -1 && errno != ENOENT) {

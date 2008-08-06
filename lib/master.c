@@ -602,11 +602,9 @@ struct master_mapent *master_find_mapent(struct master *master, const char *path
 	return NULL;
 }
 
-struct autofs_point *master_find_submount(struct autofs_point *ap, const char *path)
+struct autofs_point *__master_find_submount(struct autofs_point *ap, const char *path)
 {
 	struct list_head *head, *p;
-
-	mounts_mutex_lock(ap);
 
 	head = &ap->submounts;
 	list_for_each(p, head) {
@@ -614,15 +612,22 @@ struct autofs_point *master_find_submount(struct autofs_point *ap, const char *p
 
 		submount = list_entry(p, struct autofs_point, mounts);
 
-		if (!strcmp(submount->path, path)) {
-			mounts_mutex_unlock(ap);
+		if (!strcmp(submount->path, path))
 			return submount;
-		}
 	}
 
+	return NULL;
+}
+
+struct autofs_point *master_find_submount(struct autofs_point *ap, const char *path)
+{
+	struct autofs_point *submount;
+
+	mounts_mutex_lock(ap);
+	submount = __master_find_submount(ap, path);
 	mounts_mutex_unlock(ap);
 
-	return NULL;
+	return submount;
 }
 
 struct master_mapent *master_new_mapent(struct master *master, const char *path, time_t age)
@@ -955,6 +960,7 @@ static int master_do_mount(struct master_mapent *entry)
 	}
 
 	suc.ap = ap;
+	suc.root = ap->path;
 	suc.done = 0;
 	suc.status = 0;
 

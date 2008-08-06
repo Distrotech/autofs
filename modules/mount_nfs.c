@@ -64,7 +64,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 	struct host *this, *hosts = NULL;
 	unsigned int vers;
 	char *nfsoptions = NULL;
-	int len, rlen, status, err, existed = 1;
+	int len, status, err, existed = 1;
 	int nosymlink = 0;
 	int ro = 0;            /* Set if mount bind should be read-only */
 
@@ -146,30 +146,18 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 	/* Construct and perhaps create mount point directory */
 
 	/* Root offset of multi-mount */
-	if (*name == '/' && name_len == 1) {
-		rlen = strlen(root);
-		name_len = 0;
+	len = strlen(root);
+	if (root[len - 1] == '/') {
+		fullpath = alloca(len);
+		len = snprintf(fullpath, len, "%s", root);
 	/* Direct mount name is absolute path so don't use root */
-	} else if (*name == '/')
-		rlen = 0;
-	else
-		rlen = strlen(root);
-
-	fullpath = alloca(rlen + name_len + 2);
-	if (!fullpath) {
-		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		logerr(MODPREFIX "alloca: %s", estr);
-		free_host_list(&hosts);
-		return 1;
-	}
-
-	if (name_len) {
-		if (rlen)
-			len = sprintf(fullpath, "%s/%s", root, name);
-		else
-			len = sprintf(fullpath, "%s", name);
-	} else
+	} else if (*name == '/') {
+		fullpath = alloca(len + 1);
 		len = sprintf(fullpath, "%s", root);
+	} else {
+		fullpath = alloca(len + name_len + 2);
+		len = sprintf(fullpath, "%s/%s", root, name);
+	}
 	fullpath[len] = '\0';
 
 	debug(ap->logopt, MODPREFIX "calling mkdir_path %s", fullpath);
@@ -188,13 +176,6 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 	this = hosts;
 	while (this) {
 		char *loc, *port_opt = NULL;
-
-		if (is_mounted(_PATH_MOUNTED, fullpath, MNTS_REAL)) {
-			error(ap->logopt,
-			      MODPREFIX
-			      "warning: %s is already mounted", fullpath);
-			break;
-		}
 
 		/*
 		 * If the "port" option is specified, then we don't want

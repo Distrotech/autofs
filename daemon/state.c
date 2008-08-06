@@ -393,7 +393,7 @@ static void *do_readmap(void *arg)
 
 	if (ap->type == LKP_INDIRECT) {
 		lookup_prune_cache(ap, now);
-		status = lookup_ghost(ap);
+		status = lookup_ghost(ap, ap->path);
 	} else {
 		struct mapent *me, *ne, *nested;
 		mnts = tree_make_mnt_tree(_PROC_MOUNTS, "/");
