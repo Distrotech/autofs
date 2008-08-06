@@ -27,6 +27,8 @@
 - don't use proc file system when checking if the daemon is running.
 - make handle_mounts startup condition distinct.
 - fix submount shutdown recovery handling.
+- avoid stat of possibly dead mount points and limit time to wait for
+  umount during expire.
  
 14/01/2008 autofs-5.0.3
 -----------------------

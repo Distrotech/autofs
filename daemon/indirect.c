@@ -285,7 +285,7 @@ int umount_autofs_indirect(struct autofs_point *ap)
 
 	retries = UMOUNT_RETRIES;
 	while ((rv = umount(ap->path)) == -1 && retries--) {
-		struct timespec tm = {0, 100000000};
+		struct timespec tm = {0, 200000000};
 		if (errno != EBUSY)
 			break;
 		nanosleep(&tm, NULL);
@@ -368,17 +368,7 @@ force_umount:
 
 static int expire_indirect(struct autofs_point *ap, int ioctlfd, const char *path, unsigned int when)
 {
-	char buf[MAX_ERR_BUF];
-	int ret, retries;
-	struct stat st;
-
-	if (fstat(ioctlfd, &st) == -1) {
-		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		debug(ap->logopt, "fstat failed: %s", estr);
-		return 0;
-	}
-
-	retries = (count_mounts(ap->logopt, path, st.st_dev) + 1) * EXPIRE_RETRIES;
+	int ret, retries = EXPIRE_RETRIES;
 
 	while (retries--) {
 		struct timespec tm = {0, 100000000};
@@ -512,7 +502,6 @@ void *expire_proc_indirect(void *arg)
 			left++;
 		pthread_setcancelstate(cur_state, NULL);
 	}
-	pthread_cleanup_pop(1);
 
 	/*
 	 * If there are no more real mounts left we could still
@@ -520,12 +509,17 @@ void *expire_proc_indirect(void *arg)
 	 * umount them here.
 	 */
 	if (mnts) {
+		int retries;
 		pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cur_state);
-		ret = expire_indirect(ap, ap->ioctlfd, ap->path, now);
-		if (!ret)
-			left++;
+		retries = (count_mounts(ap->logopt, ap->path, ap->dev) + 1);
+		while (retries--) {
+			ret = expire_indirect(ap, ap->ioctlfd, ap->path, now);
+			if (!ret)
+				left++;
+		}
 		pthread_setcancelstate(cur_state, NULL);
 	}
+	pthread_cleanup_pop(1);
 
 	count = offsets = submnts = 0;
 	mnts = get_mnt_list(_PROC_MOUNTS, ap->path, 0);

@@ -1073,55 +1073,11 @@ free_tsv:
 
 int umount_ent(struct autofs_point *ap, const char *path)
 {
-	struct stat st;
-	struct statfs fs;
-	int sav_errno;
-	int status, is_smbfs = 0;
-	int ret, rv = 1;
+	int rv;
 
-	ret = statfs(path, &fs);
-	if (ret == -1) {
-		warn(ap->logopt, "could not stat fs of %s", path);
-		is_smbfs = 0;
-	} else {
-		int cifsfs = fs.f_type == (__SWORD_TYPE) CIFS_MAGIC_NUMBER;
-		int smbfs = fs.f_type == (__SWORD_TYPE) SMB_SUPER_MAGIC;
-		is_smbfs = (cifsfs | smbfs) ? 1 : 0;
-	}
-
-	status = lstat(path, &st);
-	sav_errno = errno;
-
-	if (status < 0)
-		warn(ap->logopt, "lstat of %s failed with %d", path, status);
-
-	/*
-	 * lstat failed and we're an smbfs fs returning an error that is not
-	 * EIO or EBADSLT or the lstat failed so it's a bad path. Return
-	 * a fail.
-	 *
-	 * EIO appears to correspond to an smb mount that has gone away
-	 * and EBADSLT relates to CD changer not responding.
-	 */
-	if (!status && (S_ISDIR(st.st_mode) && st.st_dev != ap->dev)) {
-		rv = spawn_umount(ap->logopt, path, NULL);
-	} else if (is_smbfs && (sav_errno == EIO || sav_errno == EBADSLT)) {
-		rv = spawn_umount(ap->logopt, path, NULL);
-	}
-
+	rv = spawn_umount(ap->logopt, path, NULL);
 	/* We are doing a forced shutcwdown down so unlink busy mounts */
 	if (rv && (ap->state == ST_SHUTDOWN_FORCE || ap->state == ST_SHUTDOWN)) {
-		ret = stat(path, &st);
-		if (ret == -1 && errno == ENOENT) {
-			warn(ap->logopt, "mount point does not exist");
-			return 0;
-		}
-
-		if (ret == 0 && !S_ISDIR(st.st_mode)) {
-			warn(ap->logopt, "mount point is not a directory");
-			return 0;
-		}
-
 		if (ap->state == ST_SHUTDOWN_FORCE) {
 			info(ap->logopt, "forcing umount of %s", path);
 			rv = spawn_umount(ap->logopt, "-l", path, NULL);

@@ -89,13 +89,43 @@ void reset_signals(void)
 
 #define ERRBUFSIZ 2047		/* Max length of error string excl \0 */
 
-static int do_spawn(unsigned logopt, unsigned int options, const char *prog, const char *const *argv)
+static int timed_read(int pipe, char *buf, size_t len, int time)
+{
+	struct timeval timeout = { 0, 0 };
+	struct timeval *tout = NULL;
+	fd_set wset, rset;
+	int ret;
+
+	FD_ZERO(&rset);
+	FD_SET(pipe, &rset);
+	wset = rset;
+
+	if (time != -1) {
+		timeout.tv_sec = time;
+		tout = &timeout;
+	}
+
+	ret = select(pipe + 1, &rset, &wset, NULL, tout);
+	if (ret <= 0) {
+		if (ret == 0)
+			ret = -ETIMEDOUT;
+		return ret;
+	}
+
+	while ((ret = read(pipe, buf, len)) == -1 && errno == EINTR);
+
+	return ret;
+}
+
+static int do_spawn(unsigned logopt, unsigned int wait,
+		    unsigned int options, const char *prog,
+		    const char *const *argv)
 {
 	pid_t f;
 	int ret, status, pipefd[2];
 	char errbuf[ERRBUFSIZ + 1], *p, *sp;
 	int errp, errn;
-	int cancel_state;
+	int flags, cancel_state;
 	unsigned int use_lock = options & SPAWN_OPT_LOCK;
 	unsigned int use_access = options & SPAWN_OPT_ACCESS;
 	sigset_t allsigs, tmpsig, oldsig;
@@ -183,12 +213,15 @@ static int do_spawn(unsigned logopt, unsigned int options, const char *prog, con
 			return -1;
 		}
 
+		if ((flags = fcntl(pipefd[0], F_GETFD, 0)) != -1) {
+			flags |= FD_CLOEXEC;
+			fcntl(pipefd[0], F_SETFD, flags);
+		}
+
 		errp = 0;
 		do {
-			while ((errn =
-				read(pipefd[0], errbuf + errp, ERRBUFSIZ - errp)) == -1
-			       && errno == EINTR);
-
+			errn = timed_read(pipefd[0],
+					  errbuf + errp, ERRBUFSIZ - errp, wait);
 			if (errn > 0) {
 				errp += errn;
 
@@ -212,6 +245,9 @@ static int do_spawn(unsigned logopt, unsigned int options, const char *prog, con
 				}
 			}
 		} while (errn > 0);
+
+		if (errn == -ETIMEDOUT)
+			kill(f, SIGTERM);
 
 		close(pipefd[0]);
 
@@ -238,7 +274,7 @@ static int do_spawn(unsigned logopt, unsigned int options, const char *prog, con
 
 int spawnv(unsigned logopt, const char *prog, const char *const *argv)
 {
-	return do_spawn(logopt, SPAWN_OPT_NONE, prog, argv);
+	return do_spawn(logopt, -1, SPAWN_OPT_NONE, prog, argv);
 }
 
 int spawnl(unsigned logopt, const char *prog, ...)
@@ -259,7 +295,7 @@ int spawnl(unsigned logopt, const char *prog, ...)
 	while ((*p++ = va_arg(arg, char *)));
 	va_end(arg);
 
-	return do_spawn(logopt, SPAWN_OPT_NONE, prog, (const char **) argv);
+	return do_spawn(logopt, -1, SPAWN_OPT_NONE, prog, (const char **) argv);
 }
 
 int spawn_mount(unsigned logopt, ...)
@@ -307,7 +343,7 @@ int spawn_mount(unsigned logopt, ...)
 	va_end(arg);
 
 	while (retries--) {
-		ret = do_spawn(logopt, options, prog, (const char **) argv);
+		ret = do_spawn(logopt, -1, options, prog, (const char **) argv);
 		if (ret & MTAB_NOTUPDATED) {
 			struct timespec tm = {3, 0};
 
@@ -406,7 +442,7 @@ int spawn_bind_mount(unsigned logopt, ...)
 	va_end(arg);
 
 	while (retries--) {
-		ret = do_spawn(logopt, options, prog, (const char **) argv);
+		ret = do_spawn(logopt, -1, options, prog, (const char **) argv);
 		if (ret & MTAB_NOTUPDATED) {
 			struct timespec tm = {3, 0};
 
@@ -466,6 +502,7 @@ int spawn_umount(unsigned logopt, ...)
 	unsigned int options;
 	unsigned int retries = MTAB_LOCK_RETRIES;
 	int ret, printed = 0;
+	unsigned int wait = 12;
 
 #ifdef ENABLE_MOUNT_LOCKING
 	options = SPAWN_OPT_LOCK;
@@ -488,7 +525,7 @@ int spawn_umount(unsigned logopt, ...)
 	va_end(arg);
 
 	while (retries--) {
-		ret = do_spawn(logopt, options, prog, (const char **) argv);
+		ret = do_spawn(logopt, wait, options, prog, (const char **) argv);
 		if (ret & MTAB_NOTUPDATED) {
 			/*
 			 * If the mount succeeded but the mtab was not

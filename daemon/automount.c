@@ -247,9 +247,17 @@ static int walk_tree(const char *base, int (*fn) (unsigned logopt,
 						  int, void *), int incl, unsigned logopt, void *arg)
 {
 	char buf[PATH_MAX + 1];
-	struct stat st;
+	struct stat st, *pst = &st;
+	int ret;
 
-	if (lstat(base, &st) != -1 && (fn) (logopt, base, &st, 0, arg)) {
+	if (!is_mounted(_PATH_MOUNTED, base, MNTS_REAL))
+		ret = lstat(base, pst);
+	else {
+		pst = NULL;
+		ret = 0;
+	}
+
+	if (ret != -1 && (fn) (logopt, base, pst, 0, arg)) {
 		if (S_ISDIR(st.st_mode)) {
 			struct dirent **de;
 			int n;
@@ -283,7 +291,7 @@ static int walk_tree(const char *base, int (*fn) (unsigned logopt,
 			free(de);
 		}
 		if (incl)
-			(fn) (logopt, base, &st, 1, arg);
+			(fn) (logopt, base, pst, 1, arg);
 	}
 	return 0;
 }
@@ -293,6 +301,9 @@ static int rm_unwanted_fn(unsigned logopt, const char *file, const struct stat *
 	dev_t dev = *(dev_t *) arg;
 	char buf[MAX_ERR_BUF];
 	struct stat newst;
+
+	if (!st)
+		return 0;
 
 	if (when == 0) {
 		if (st->st_dev != dev)
@@ -344,8 +355,8 @@ static int counter_fn(unsigned logopt, const char *file, const struct stat *st, 
 {
 	struct counter_args *counter = (struct counter_args *) arg;
 
-	if (S_ISLNK(st->st_mode) || (S_ISDIR(st->st_mode) 
-		&& st->st_dev != counter->dev)) {
+	if (!st || (S_ISLNK(st->st_mode) || (S_ISDIR(st->st_mode)
+		&& st->st_dev != counter->dev))) {
 		counter->count++;
 		return 0;
 	}
@@ -512,9 +523,8 @@ static int umount_subtree_mounts(struct autofs_point *ap, const char *path, unsi
 int umount_multi(struct autofs_point *ap, const char *path, int incl)
 {
 	struct mapent_cache *nc;
-	struct statfs fs;
 	int is_autofs_fs;
-	int ret, left;
+	int left;
 
 	debug(ap->logopt, "path %s incl %d", path, incl);
 
@@ -526,13 +536,9 @@ int umount_multi(struct autofs_point *ap, const char *path, int incl)
 	}
 	cache_unlock(nc);
 
-	ret = statfs(path, &fs);
-	if (ret == -1) {
-		error(ap->logopt, "could not stat fs of %s", path);
-		return 1;
-	}
-
-	is_autofs_fs = fs.f_type == (__SWORD_TYPE) AUTOFS_SUPER_MAGIC ? 1 : 0;
+	is_autofs_fs = 0;
+	if (master_find_submount(ap, path))
+		is_autofs_fs = 1;
 
 	left = 0;
 

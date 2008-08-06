@@ -152,7 +152,7 @@ int do_umount_autofs_direct(struct autofs_point *ap, struct mnt_list *mnts, stru
 
 	retries = UMOUNT_RETRIES;
 	while ((rv = umount(me->key)) == -1 && retries--) {
-		struct timespec tm = {0, 100000000};
+		struct timespec tm = {0, 200000000};
 		if (errno != EBUSY)
 			break;
 		nanosleep(&tm, NULL);
@@ -604,7 +604,7 @@ int umount_autofs_offset(struct autofs_point *ap, struct mapent *me)
 
 	retries = UMOUNT_RETRIES;
 	while ((rv = umount(me->key)) == -1 && retries--) {
-		struct timespec tm = {0, 100000000};
+		struct timespec tm = {0, 200000000};
 		if (errno != EBUSY)
 			break;
 		nanosleep(&tm, NULL);
@@ -705,7 +705,7 @@ int mount_autofs_offset(struct autofs_point *ap, struct mapent *me)
 			 * the kernel NFS client.
 			 */
 			if (me->multi != me &&
-			    is_mounted(_PROC_MOUNTS, me->key, MNTS_REAL))
+			    is_mounted(_PATH_MOUNTED, me->key, MNTS_REAL))
 				return MOUNT_OFFSET_IGNORE;
 
 			/* 
@@ -807,17 +807,7 @@ out_err:
 
 static int expire_direct(int ioctlfd, const char *path, unsigned int when, unsigned int logopt)
 {
-	char buf[MAX_ERR_BUF];
-	int ret, retries;
-	struct stat st;
-
-	if (fstat(ioctlfd, &st) == -1) {
-		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		debug(logopt, "fstat failed: %s", estr);
-		return 0;
-	}
-
-	retries = (count_mounts(logopt, path, st.st_dev) + 1) * EXPIRE_RETRIES;
+	int ret, retries = EXPIRE_RETRIES;
 
 	while (retries--) {
 		struct timespec tm = {0, 100000000};
@@ -911,7 +901,6 @@ void *expire_proc_direct(void *arg)
 
 		if (!strcmp(next->fs_type, "autofs")) {
 			struct stat st;
-			struct statfs fs;
 			int ioctlfd;
 
 			cache_unlock(me->mc);
@@ -932,14 +921,8 @@ void *expire_proc_direct(void *arg)
 				continue;
 			}
 
-			if (statfs(next->path, &fs) == -1) {
-				pthread_setcancelstate(cur_state, NULL);
-				warn(ap->logopt,
-				    "fstatfs failed for %s", next->path);
-				continue;
-			}
-
-			if (fs.f_type != (__SWORD_TYPE) AUTOFS_SUPER_MAGIC) {
+			/* It's got a mount, deal with in the outer loop */
+			if (tree_is_mounted(mnts, me->key, MNTS_REAL)) {
 				pthread_setcancelstate(cur_state, NULL);
 				continue;
 			}
