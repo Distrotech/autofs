@@ -28,6 +28,7 @@
 #include "macros.h"
 #include "log.h"
 #include "rpc_subs.h"
+#include "mounts.h"
 #include "parse_subs.h"
 
 #ifdef WITH_DMALLOC
@@ -322,61 +323,6 @@ size_t _strlen(const char *str, size_t max);
 int cat_path(char *buf, size_t len, const char *dir, const char *base);
 int ncat_path(char *buf, size_t len,
               const char *dir, const char *base, size_t blen);
-
-/* mount table utilities */
-
-#define MNTS_ALL	0x0001
-#define MNTS_REAL	0x0002
-#define MNTS_AUTOFS	0x0004
-
-struct mnt_list {
-	char *path;
-	char *fs_name;
-	char *fs_type;
-	char *opts;
-	pid_t owner;
-	/*
-	 * List operations ie. get_mnt_list.
-	 */
-	struct mnt_list *next;
-	/*
-	 * Tree operations ie. tree_make_tree,
-	 * tree_get_mnt_list etc.
-	 */
-	struct mnt_list *left;
-	struct mnt_list *right;
-	struct list_head self;
-	struct list_head list;
-	struct list_head entries;
-	struct list_head sublist;
-	/*
-	 * Offset mount handling ie. add_ordered_list
-	 * and get_offset.
-	 */
-	struct list_head ordered;
-};
-
-unsigned int query_kproto_ver(void);
-unsigned int get_kver_major(void);
-unsigned int get_kver_minor(void);
-char *make_options_string(char *path, int kernel_pipefd, char *extra);
-char *make_mnt_name_string(char *path);
-struct mnt_list *get_mnt_list(const char *table, const char *path, int include);
-struct mnt_list *reverse_mnt_list(struct mnt_list *list);
-void free_mnt_list(struct mnt_list *list);
-int contained_in_local_fs(const char *path);
-int is_mounted(const char *table, const char *path, unsigned int type);
-int has_fstab_option(const char *opt);
-char *find_mnt_ino(const char *table, dev_t dev, ino_t ino);
-char *get_offset(const char *prefix, char *offset,
-                 struct list_head *head, struct list_head **pos);
-void add_ordered_list(struct mnt_list *ent, struct list_head *head);
-void tree_free_mnt_tree(struct mnt_list *tree);
-struct mnt_list *tree_make_mnt_tree(const char *table, const char *path);
-int tree_get_mnt_list(struct mnt_list *mnts, struct list_head *list, const char *path, int include);
-int tree_get_mnt_sublist(struct mnt_list *mnts, struct list_head *list, const char *path, int include);
-int tree_find_mnt_ents(struct mnt_list *mnts, struct list_head *list, const char *path);
-int tree_is_mounted(struct mnt_list *mnts, const char *path, unsigned int type);
 
 /* Core automount definitions */
 

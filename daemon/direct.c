@@ -35,8 +35,6 @@
 #include <sys/mount.h>
 #include <sys/vfs.h>
 #include <sched.h>
-#include <pwd.h>
-#include <grp.h>
 
 #include "automount.h"
 
@@ -1237,15 +1235,6 @@ static void *do_mount_direct(void *arg)
 {
 	struct pending_args *args, mt;
 	struct autofs_point *ap;
-	struct passwd pw;
-	struct passwd *ppw = &pw;
-	struct passwd **pppw = &ppw;
-	struct group gr;
-	struct group *pgr;
-	struct group **ppgr;
-	char *pw_tmp, *gr_tmp;
-	struct thread_stdenv_vars *tsv;
-	int tmplen, grplen;
 	struct stat st;
 	int status, state;
 
@@ -1291,126 +1280,8 @@ static void *do_mount_direct(void *arg)
 
 	info(ap->logopt, "attempting to mount entry %s", mt.name);
 
-	/*
-	 * Setup thread specific data values for macro
-	 * substution in map entries during the mount.
-	 * Best effort only as it must go ahead.
-	 */
+	set_tsd_user_vars(ap->logopt, mt.uid, mt.gid);
 
-	tsv = malloc(sizeof(struct thread_stdenv_vars));
-	if (!tsv) 
-		goto cont;
-
-	tsv->uid = mt.uid;
-	tsv->gid = mt.gid;
-
-	/* Try to get passwd info */
-
-	tmplen = sysconf(_SC_GETPW_R_SIZE_MAX);
-	if (tmplen < 0) {
-		error(ap->logopt, "failed to get buffer size for getpwuid_r");
-		free(tsv);
-		goto cont;
-	}
-
-	pw_tmp = malloc(tmplen + 1);
-	if (!pw_tmp) {
-		error(ap->logopt, "failed to malloc buffer for getpwuid_r");
-		free(tsv);
-		goto cont;
-	}
-
-	status = getpwuid_r(tsv->uid, ppw, pw_tmp, tmplen, pppw);
-	if (status || !ppw) {
-		error(ap->logopt, "failed to get passwd info from getpwuid_r");
-		free(tsv);
-		free(pw_tmp);
-		goto cont;
-	}
-
-	tsv->user = strdup(pw.pw_name);
-	if (!tsv->user) {
-		error(ap->logopt, "failed to malloc buffer for user");
-		free(tsv);
-		free(pw_tmp);
-		goto cont;
-	}
-
-	tsv->home = strdup(pw.pw_dir);
-	if (!tsv->home) {
-		error(ap->logopt, "failed to malloc buffer for home");
-		free(pw_tmp);
-		free(tsv->user);
-		free(tsv);
-		goto cont;
-	}
-
-	free(pw_tmp);
-
-	/* Try to get group info */
-
-	grplen = sysconf(_SC_GETGR_R_SIZE_MAX);
-	if (tmplen < 0) {
-		error(ap->logopt, "failed to get buffer size for getgrgid_r");
-		free(tsv->user);
-		free(tsv->home);
-		free(tsv);
-		goto cont;
-	}
-
-	gr_tmp = NULL;
-	tmplen = grplen;
-	while (1) {
-		char *tmp = realloc(gr_tmp, tmplen + 1);
-		if (!tmp) {
-			error(ap->logopt, "failed to malloc buffer for getgrgid_r");
-			if (gr_tmp)
-				free(gr_tmp);
-			free(tsv->user);
-			free(tsv->home);
-			free(tsv);
-			goto cont;
-		}
-		gr_tmp = tmp;
-		pgr = &gr;
-		ppgr = &pgr;
-		status = getgrgid_r(tsv->gid, pgr, gr_tmp, tmplen, ppgr);
-		if (status != ERANGE)
-			break;
-		tmplen += grplen;
-	}
-
-	if (status || !pgr) {
-		error(ap->logopt, "failed to get group info from getgrgid_r");
-		free(tsv->user);
-		free(tsv->home);
-		free(tsv);
-		free(gr_tmp);
-		goto cont;
-	}
-
-	tsv->group = strdup(gr.gr_name);
-	if (!tsv->group) {
-		error(ap->logopt, "failed to malloc buffer for group");
-		free(tsv->user);
-		free(tsv->home);
-		free(tsv);
-		free(gr_tmp);
-		goto cont;
-	}
-
-	free(gr_tmp);
-
-	status = pthread_setspecific(key_thread_stdenv_vars, tsv);
-	if (status) {
-		error(ap->logopt, "failed to set stdenv thread var");
-		free(tsv->group);
-		free(tsv->user);
-		free(tsv->home);
-		free(tsv);
-	}
-
-cont:
 	status = lookup_nss_mount(ap, NULL, mt.name, mt.len);
 	/*
 	 * Direct mounts are always a single mount. If it fails there's
