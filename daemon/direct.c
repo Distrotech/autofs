@@ -1129,7 +1129,6 @@ int handle_packet_expire_direct(struct autofs_point *ap, autofs_packet_expire_di
 		 */
 		crit(ap->logopt, "can't find map entry for (%lu,%lu)",
 		    (unsigned long) pkt->dev, (unsigned long) pkt->ino);
-		cache_unlock(mc);
 		master_source_unlock(ap->entry);
 		pthread_setcancelstate(state, NULL);
 		return 1;
@@ -1374,7 +1373,6 @@ int handle_packet_missing_direct(struct autofs_point *ap, autofs_packet_missing_
 		 */
 		logerr("can't find map entry for (%lu,%lu)",
 		    (unsigned long) pkt->dev, (unsigned long) pkt->ino);
-		cache_unlock(mc);
 		master_source_unlock(ap->entry);
 		pthread_setcancelstate(state, NULL);
 		return 1;
