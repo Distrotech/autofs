@@ -1512,6 +1512,65 @@ next:
 	return NSS_STATUS_SUCCESS;
 }
 
+static int get_percent_decoded_len(const char *name)
+{
+	int escapes = 0;
+	int escaped = 0;
+	char *tmp = name;
+	int look_for_close = 0;
+
+	while (*tmp) {
+		if (*tmp == '%') {
+			/* assume escapes aren't interpreted inside brackets */
+			if (look_for_close) {
+				tmp++;
+				continue;
+			}
+			/* check for escaped % */
+			if (escaped) {
+				tmp++;
+				escaped = 0;
+				continue;
+			}
+			escapes++;
+			tmp++;
+			if (*tmp == '[') {
+				escapes++;
+				tmp++;
+				look_for_close = 1;
+			} else
+				escaped = 1;
+		} else if (*tmp == ']' && look_for_close) {
+			escaped = 0;
+			escapes++;
+			tmp++;
+			look_for_close = 0;
+		} else {
+			tmp++;
+			escaped = 0;
+		}
+	}
+
+	assert(strlen(name) > escapes);
+	return strlen(name) - escapes;
+}
+
+/*
+ * Try to catch heap corruption if our logic happens to be incorrect.
+ */
+static void validate_string_len(const char *orig, char *start,
+				char *end, unsigned int len)
+{
+	debug(LOGOPT_NONE, MODPREFIX "string %s encoded as %s", orig, start);
+	/* make sure we didn't overflow the allocated space */
+	if (end - start > len + 1) {
+		crit(LOGOPT_ANY, MODPREFIX "orig %s, len %d", orig, len);
+		crit(LOGOPT_ANY, MODPREFIX "en/decoded %s, len %d", start,
+		     end - start);
+	}
+	assert(end-start <= len + 1);
+}
+
 /*
  * Deal with encode and decode of % hack.
  * Return
@@ -1519,101 +1578,24 @@ next:
  * -1 => syntax error or alloc fail.
  * 1 transofrmed value returned.
  */
+/*
+ * Assumptions: %'s must be escaped by %'s.  %'s are not used to escape
+ * anything else except capital letters (so you can't escape a closing
+ * bracket, for example).
+ */
 static int decode_percent_hack(const char *name, char **key)
 {
 	const char *tmp;
 	char *ptr, *new;
+	unsigned int len;
+	int escaped = 0, look_for_close = 0;
 
 	if (!key)
 		return -1;
 
 	*key = NULL;
 
-	tmp = name;
-	while (*tmp && *tmp != '%' && *tmp != '[' && *tmp != ']')
-		tmp++;
-	if (!*tmp)
-		return 0;
-
-	tmp = name;
-	while (*tmp) {
-		if (*tmp == '%') {
-			tmp++;
-			if (!*tmp)
-				return -1;
-			if (*tmp != '[')
-				continue;
-			tmp++;
-			while (*tmp && *tmp != ']') {
-				if (*tmp == '%')
-					tmp++;
-				tmp++;
-			}
-			if (!tmp)
-				return -1;
-		}
-		tmp++;
-	}
-
-	new = malloc(strlen(name) + 1);
-	if (!new)
-		return -1;
-
-	ptr = new;
-	tmp = name;
-	while (*tmp) {
-		if (*tmp == '%' || *tmp == '[' || *tmp == ']') {
-			tmp++;
-			if (*tmp && *tmp != '%')
-				continue;
-		}
-		*ptr++ = *tmp++;
-	}
-	*ptr = '\0';
-
-	*key = new;
-
-	return strlen(new);
-}
-
-static int encode_percent_hack(const char *name, char **key, unsigned int use_class)
-{
-	const char *tmp;
-	unsigned int len = 0;
-	char *ptr, *new;
-
-	if (!key)
-		return -1;
-
-	*key = NULL;
-
-	tmp = name;
-	while (*tmp) {
-		if (*tmp == '%')
-			len++;
-		else if (isupper(*tmp)) {
-			tmp++;
-			len++;
-			if (!use_class)
-				len++;
-			else {
-				if (*tmp && isupper(*tmp))
-					len += 2;
-				else
-					return 0;
-				while (*tmp && isupper(*tmp)) {
-					len++;
-					tmp++;
-				}
-			}
-			continue;
-		}
-		len++;
-		tmp++;
-	}
-	if (len == strlen(name))
-		return 0;
-
+	len = get_percent_decoded_len(name);
 	new = malloc(len + 1);
 	if (!new)
 		return -1;
@@ -1621,29 +1603,166 @@ static int encode_percent_hack(const char *name, char **key, unsigned int use_cl
 	ptr = new;
 	tmp = name;
 	while (*tmp) {
-		if (*tmp == '%')
-			*ptr++ = '%';
-		else if (isupper(*tmp)) {
-			char next = *tmp++;
-			*ptr++ = '%';
-			if (*tmp && (!isupper(*tmp) || !use_class))
-				*ptr++ = next;
-			else {
-				*ptr++ = '[';
-				*ptr++ = next;
-				while (*tmp && isupper(*tmp))
-					*ptr++ = *tmp++;
-				*ptr++ = ']';
+		if (*tmp == '%') {
+			if (escaped) {
+				*ptr++ = *tmp++;
+				if (!look_for_close)
+					escaped = 0;
+				continue;
 			}
+			tmp++;
+			if (*tmp == '[') {
+				tmp++;
+				look_for_close = 1;
+				escaped = 1;
+			} else
+				escaped = 1;
+		} else if (*tmp == ']' && look_for_close) {
+			tmp++;
+			look_for_close = 0;
+		} else {
+			escaped = 0;
+			*ptr++ = *tmp++;
+		}
+	}
+	*ptr = '\0';
+	*key = new;
+
+	validate_string_len(name, new, ptr, len);
+	return strlen(new);
+}
+
+/*
+ * Calculate the length of a string replacing all capital letters with %letter.
+ * For example:
+ * Sale -> %Sale
+ * SALE -> %S%A%L%E
+ */
+static int get_encoded_len_escaping_every_cap(const char *name)
+{
+	const char *tmp;
+	unsigned int escapes = 0; /* number of % escape characters */
+
+	tmp = name;
+	while (*tmp) {
+		/* We'll need to escape percents */
+		if (*tmp == '%' || isupper(*tmp))
+			escapes++;
+		tmp++;
+	}
+
+	return strlen(name) + escapes;
+}
+
+/*
+ * Calculate the length of a string replacing sequences (1 or more) of capital
+ * letters with %[letters].  For example:
+ * FOO ->  %[FOO]
+ * Work -> %[W]ork
+ * WorksForMe -> %[W]orks%[F]or%[M]e
+ * aaBBaa -> aa%[BB]aa
+ */
+static int get_encoded_len_escaping_sequences(const char *name)
+{
+	const char *tmp;
+	unsigned int escapes = 0;
+
+	tmp = name;
+	while (*tmp) {
+		/* escape percents */
+		if (*tmp == '%')
+			escapes++;
+		else if (isupper(*tmp)) {
+			/* start an escape block %[...] */
+			escapes += 3;  /* %[] */
+			while (*tmp && isupper(*tmp))
+				tmp++;
 			continue;
 		}
+		tmp++;
+	}
+
+	return strlen(name) + escapes;
+}
+
+static void encode_individual(const char *name, char *new, unsigned int len)
+{
+	const char *tmp;
+	char *ptr;
+
+	ptr = new;
+	tmp = name;
+	while (*tmp) {
+		if (*tmp == '%' || isupper(*tmp))
+			*ptr++ = '%';
 		*ptr++ = *tmp++;
 	}
 	*ptr = '\0';
+	validate_string_len(name, new, ptr, len);
+}
 
-	*key = new;
+static void encode_sequence(const char *name, char *new, unsigned int len)
+{
+	const char *tmp;
+	char *ptr;
 
-	return strlen(new);
+	ptr = new;
+	tmp = name;
+	while (*tmp) {
+		if (*tmp == '%') {
+			*ptr++ = '%';
+			*ptr++ = *tmp++;
+		} else if (isupper(*tmp)) {
+			*ptr++ = '%';
+			*ptr++ = '[';
+			*ptr++ = *tmp++;
+
+			while (*tmp && isupper(*tmp)) {
+				*ptr++ = *tmp;
+				tmp++;
+			}
+			*ptr++ = ']';
+		} else
+			*ptr++ = *tmp++;
+	}
+	*ptr = '\0';
+	validate_string_len(name, new, ptr, len);
+}
+
+/*
+ * use_class:  1 means encode string as %[CAPITALS], 0 means encode as
+ * %C%A%P%I%T%A%L%S
+ */
+static int encode_percent_hack(const char *name, char **key, unsigned int use_class)
+{
+	unsigned int len = 0;
+
+	if (!key)
+		return -1;
+
+	if (use_class)
+		len = get_encoded_len_escaping_sequences(name);
+	else
+		len = get_encoded_len_escaping_every_cap(name);
+
+	/* If there is no escaping to be done, return 0 */
+	if (len == strlen(name))
+		return 0;
+
+	*key = malloc(len + 1);
+	if (!*key)
+		return -1;
+
+	if (use_class)
+		encode_sequence(name, *key, len);
+	else
+		encode_individual(name, *key, len);
+
+	if (strlen(*key) != len)
+		crit(LOGOPT_ANY, MODPREFIX "encoded key length mismatch: key "
+		     "%s len %d strlen %d", *key, len, strlen(*key));
+
+	return strlen(*key);
 }
 
 static int do_paged_query(struct ldap_search_params *sp, struct lookup_context *ctxt)
