@@ -404,6 +404,10 @@ static unsigned int get_nfs_info(unsigned logopt, struct host *host,
 	double taken = 0;
 	int status, count = 0;
 
+	debug(logopt,
+	      "called for host %s proto %s version 0x%x",
+	      host->name, proto, version);
+
 	memset(&parms, 0, sizeof(struct pmap));
 
 	parms.pm_prog = NFS_PROGRAM;
@@ -428,11 +432,17 @@ static unsigned int get_nfs_info(unsigned logopt, struct host *host,
 		status = rpc_ping_proto(rpc_info);
 		gettimeofday(&end, &tz);
 		if (status) {
-			if (random_selection)
+			double reply;
+			if (random_selection) {
 				/* Random value between 0 and 1 */
-				taken += ((float) random())/((float) RAND_MAX+1);
-			else
-				taken += elapsed(start, end);;
+				reply = ((float) random())/((float) RAND_MAX+1);
+				debug(logopt,
+				      "nfs v4 random selection time: %f", reply);
+			} else {
+				reply = elapsed(start, end);
+				debug(logopt, "nfs v4 rpc ping time: %f", reply);
+			}
+			taken += reply;
 			count++;
 			supported = NFS4_SUPPORTED;
 		}
@@ -470,11 +480,17 @@ v3_ver:
 		status = rpc_ping_proto(rpc_info);
 		gettimeofday(&end, &tz);
 		if (status) {
-			if (random_selection)
+			double reply;
+			if (random_selection) {
 				/* Random value between 0 and 1 */
-				taken += ((float) random())/((float) RAND_MAX+1);
-			else
-				taken += elapsed(start, end);;
+				reply = ((float) random())/((float) RAND_MAX+1);
+				debug(logopt,
+				      "nfs v3 random selection time: %f", reply);
+			} else {
+				reply = elapsed(start, end);
+				debug(logopt, "nfs v3 rpc ping time: %f", reply);
+			}
+			taken += reply;
 			count++;
 			supported |= NFS3_SUPPORTED;
 		}
@@ -504,11 +520,17 @@ v2_ver:
 		status = rpc_ping_proto(rpc_info);
 		gettimeofday(&end, &tz);
 		if (status) {
-			if (random_selection)
+			double reply;
+			if (random_selection) {
 				/* Random value between 0 and 1 */
-				taken += ((float) random())/((float) RAND_MAX+1);
-			else
-				taken += elapsed(start, end);;
+				reply = ((float) random())/((float) RAND_MAX+1);
+				debug(logopt,
+				      "nfs v2 random selection time: %f", reply);
+			} else {
+				reply = elapsed(start, end);;
+				debug(logopt, "nfs v2 rpc ping time: %f", reply);
+			}
+			taken += reply;
 			count++;
 			supported |= NFS2_SUPPORTED;
 		}
@@ -533,6 +555,9 @@ done_ver:
 		/* Allow for user bias */
 		if (host->weight)
 			host->cost *= (host->weight + 1);
+
+		debug(logopt, "host %s cost %ld weight %d",
+		      host->name, host->cost, host->weight);
 	}
 
 	return supported;
@@ -602,6 +627,9 @@ static int get_supported_ver_and_cost(unsigned logopt, struct host *host,
 	double taken = 0;
 	time_t timeout = RPC_TIMEOUT;
 	int status;
+
+	debug(logopt,
+	      "called with host %s version 0x%x", host->name, version);
 
 	memset(&pm_info, 0, sizeof(struct conn_info));
 	memset(&rpc_info, 0, sizeof(struct conn_info));
@@ -681,11 +709,14 @@ static int get_supported_ver_and_cost(unsigned logopt, struct host *host,
 		status = rpc_ping_proto(&rpc_info);
 		gettimeofday(&end, &tz);
 		if (status) {
-			if (random_selection)
+			if (random_selection) {
 				/* Random value between 0 and 1 */
 				taken = ((float) random())/((float) RAND_MAX+1);
-			else
+				debug(logopt, "random selection time %f", taken);
+			} else {
 				taken = elapsed(start, end);
+				debug(logopt, "rpc ping time %f", taken);
+			}
 		}
 	}
 done:
@@ -704,6 +735,8 @@ done:
 		/* Allow for user bias */
 		if (host->weight)
 			host->cost *= (host->weight + 1);
+
+		debug(logopt, "cost %ld weight %d", host->cost, host->weight);
 
 		return 1;
 	}
@@ -811,18 +844,31 @@ int prune_host_list(unsigned logopt, struct host **list,
 	max_udp_count = mmax(v4_udp_count, v3_udp_count, v2_udp_count);
 	max_count = max(max_tcp_count, max_udp_count);
 
-	if (max_count == v4_tcp_count)
+	if (max_count == v4_tcp_count) {
 		selected_version = NFS4_TCP_SUPPORTED;
-	else if (max_count == v3_tcp_count)
+		debug(logopt,
+		      "selected subset of hosts that support NFS4 over TCP");
+	} else if (max_count == v3_tcp_count) {
 		selected_version = NFS3_TCP_SUPPORTED;
-	else if (max_count == v2_tcp_count)
+		debug(logopt,
+		      "selected subset of hosts that support NFS3 over TCP");
+	} else if (max_count == v2_tcp_count) {
 		selected_version = NFS2_TCP_SUPPORTED;
-	else if (max_count == v4_udp_count)
+		debug(logopt,
+		      "selected subset of hosts that support NFS2 over TCP");
+	} else if (max_count == v4_udp_count) {
 		selected_version = NFS4_UDP_SUPPORTED;
-	else if (max_count == v3_udp_count)
+		debug(logopt,
+		      "selected subset of hosts that support NFS4 over UDP");
+	} else if (max_count == v3_udp_count) {
 		selected_version = NFS3_UDP_SUPPORTED;
-	else if (max_count == v2_udp_count)
+		debug(logopt,
+		      "selected subset of hosts that support NFS3 over UDP");
+	} else if (max_count == v2_udp_count) {
 		selected_version = NFS2_UDP_SUPPORTED;
+		debug(logopt,
+		      "selected subset of hosts that support NFS2 over UDP");
+	}
 
 	/* Add local and hosts with selected version to new list */
 	this = *list;
