@@ -768,6 +768,15 @@ int prune_host_list(unsigned logopt, struct host **list,
 		this = next;
 	}
 
+	/*
+	 * The list of hosts that aren't proximity local may now
+	 * be empty if we haven't been able probe any so we need
+	 * to check again for a list containing only proximity
+	 * local hosts.
+	 */
+	if (!first)
+		return 1;
+
 	last = this;
 
 	/* Select NFS version of highest number of closest servers */
