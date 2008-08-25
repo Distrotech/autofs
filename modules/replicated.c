@@ -79,7 +79,7 @@ void seed_random(void)
 	int fd;
 	unsigned int seed;
 
-	fd = open("/dev/random", O_RDONLY);
+	fd = open("/dev/urandom", O_RDONLY);
 	if (fd < 0) {
 		srandom(time(NULL));
 		return;
