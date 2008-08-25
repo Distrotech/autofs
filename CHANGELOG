@@ -31,6 +31,7 @@
   umount during expire.
 - make mount of multi-mounts wuth a root offset atomic.
 - add replicated server selection debug logging.
+- update replicated server selection documentation.
  
 14/01/2008 autofs-5.0.3
 -----------------------
