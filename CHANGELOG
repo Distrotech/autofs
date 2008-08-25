@@ -34,6 +34,7 @@
 - update replicated server selection documentation.
 - use /dev/urandom instead of /dev/random.
 - check for mtab pointing to /proc/mounts.
+- dynamically allocate interface config buffer.
  
 14/01/2008 autofs-5.0.3
 -----------------------

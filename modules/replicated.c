@@ -95,6 +95,41 @@ void seed_random(void)
 	return;
 }
 
+static int alloc_ifreq(struct ifconf *ifc, int sock)
+{
+	int ret, lastlen = 0, len = MAX_IFC_BUF;
+	char err_buf[MAX_ERR_BUF], *buf;
+
+	while (1) {
+		buf = malloc(len);
+		if (!buf) {
+			char *estr = strerror_r(errno, err_buf, MAX_ERR_BUF);
+			logerr("malloc: %s", estr);
+			return 0;
+		}
+
+		ifc->ifc_len = sizeof(buf);
+		ifc->ifc_req = (struct ifreq *) buf;
+
+		ret = ioctl(sock, SIOCGIFCONF, ifc);
+		if (ret == -1) {
+			char *estr = strerror_r(errno, err_buf, MAX_ERR_BUF);
+			logerr("ioctl: %s", estr);
+			free(buf);
+			return 0;
+		}
+
+		if (ifc->ifc_len == lastlen)
+			break;
+
+		lastlen = ifc->ifc_len;
+		len += MAX_IFC_BUF;
+		free(buf);
+	}
+
+	return 1;
+}
+
 static unsigned int get_proximity(const char *host_addr, int addr_len)
 {
 	struct sockaddr_in *msk_addr, *if_addr;
@@ -122,12 +157,7 @@ static unsigned int get_proximity(const char *host_addr, int addr_len)
 		fcntl(sock, F_SETFD, cl_flags);
 	}
 
-	ifc.ifc_len = sizeof(buf);
-	ifc.ifc_req = (struct ifreq *) buf;
-	ret = ioctl(sock, SIOCGIFCONF, &ifc);
-	if (ret == -1) {
-		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		logerr("ioctl: %s", estr);
+	if (!alloc_ifreq(&ifc, sock)) {
 		close(sock);
 		return PROXIMITY_ERROR;
 	}
@@ -138,7 +168,7 @@ static unsigned int get_proximity(const char *host_addr, int addr_len)
 	i = 0;
 	ptr = (char *) &ifc.ifc_buf[0];
 
-	while (ptr < buf + ifc.ifc_len) {
+	while (ptr < (char *) ifc.ifc_req + ifc.ifc_len) {
 		ifr = (struct ifreq *) ptr;
 
 		switch (ifr->ifr_addr.sa_family) {
@@ -147,6 +177,7 @@ static unsigned int get_proximity(const char *host_addr, int addr_len)
 			ret = memcmp(&if_addr->sin_addr, hst_addr, addr_len);
 			if (!ret) {
 				close(sock);
+				free(ifc.ifc_req);
 				return PROXIMITY_LOCAL;
 			}
 			break;
@@ -162,7 +193,7 @@ static unsigned int get_proximity(const char *host_addr, int addr_len)
 	i = 0;
 	ptr = (char *) &ifc.ifc_buf[0];
 
-	while (ptr < buf + ifc.ifc_len) {
+	while (ptr < (char *) ifc.ifc_req + ifc.ifc_len) {
 		ifr = (struct ifreq *) ptr;
 
 		switch (ifr->ifr_addr.sa_family) {
@@ -178,6 +209,7 @@ static unsigned int get_proximity(const char *host_addr, int addr_len)
 				char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
 				logerr("ioctl: %s", estr);
 				close(sock);
+				free(ifc.ifc_req);
 				return PROXIMITY_ERROR;
 			}
 
@@ -186,6 +218,7 @@ static unsigned int get_proximity(const char *host_addr, int addr_len)
 
 			if ((ia & mask) == (ha & mask)) {
 				close(sock);
+				free(ifc.ifc_req);
 				return PROXIMITY_SUBNET;
 			}
 
@@ -208,6 +241,7 @@ static unsigned int get_proximity(const char *host_addr, int addr_len)
 
 			if ((ia & mask) == (ha & mask)) {
 				close(sock);
+				free(ifc.ifc_req);
 				return PROXIMITY_NET;
 			}
 			break;
@@ -221,6 +255,7 @@ static unsigned int get_proximity(const char *host_addr, int addr_len)
 	}
 
 	close(sock);
+	free(ifc.ifc_req);
 
 	return PROXIMITY_OTHER;
 }
