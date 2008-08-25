@@ -305,11 +305,13 @@ int spawn_mount(unsigned logopt, ...)
 	char **argv, **p;
 	char prog[] = PATH_MOUNT;
 	char arg0[] = PATH_MOUNT;
+	char argn[] = "-n";
 	/* In case we need to use the fake option to mount */
 	char arg_fake[] = "-f";
 	unsigned int options;
 	unsigned int retries = MTAB_LOCK_RETRIES;
-	int ret, printed = 0;
+	int update_mtab = 1, ret, printed = 0;
+	char buf[PATH_MAX];
 
 	/* If we use mount locking we can't validate the location */
 #ifdef ENABLE_MOUNT_LOCKING
@@ -322,6 +324,17 @@ int spawn_mount(unsigned logopt, ...)
 	for (argc = 1; va_arg(arg, char *); argc++);
 	va_end(arg);
 
+	ret = readlink(_PATH_MOUNTED, buf, PATH_MAX);
+	if (ret != -1) {
+		buf[ret] = '\0';
+		if (!strcmp(buf, _PROC_MOUNTS)) {
+			debug(logopt,
+			      "mtab link detected, passing -n to mount");
+			argc++;
+			update_mtab = 0;
+		}
+	}
+
 	/* Alloc 1 extra slot in case we need to use the "-f" option */
 	if (!(argv = alloca(sizeof(char *) * argc + 2)))
 		return -1;
@@ -329,7 +342,12 @@ int spawn_mount(unsigned logopt, ...)
 	argv[0] = arg0;
 
 	va_start(arg, logopt);
-	p = argv + 1;
+	if (update_mtab)
+		p = argv + 1;
+	else {
+		argv[1] = argn;
+		p = argv + 2;
+	}
 	while ((*p = va_arg(arg, char *))) {
 		if (options == SPAWN_OPT_NONE && !strcmp(*p, "-o")) {
 			*(++p) = va_arg(arg, char *);
@@ -409,11 +427,13 @@ int spawn_bind_mount(unsigned logopt, ...)
 	char prog[] = PATH_MOUNT;
 	char arg0[] = PATH_MOUNT;
 	char bind[] = "--bind";
+	char argn[] = "-n";
 	/* In case we need to use the fake option to mount */
 	char arg_fake[] = "-f";
 	unsigned int options;
 	unsigned int retries = MTAB_LOCK_RETRIES;
-	int ret, printed = 0;
+	int update_mtab = 0, ret, printed = 0;
+	char buf[PATH_MAX];
 
 	/* If we use mount locking we can't validate the location */
 #ifdef ENABLE_MOUNT_LOCKING
@@ -430,6 +450,17 @@ int spawn_bind_mount(unsigned logopt, ...)
 	for (argc = 2; va_arg(arg, char *); argc++);
 	va_end(arg);
 
+	ret = readlink(_PATH_MOUNTED, buf, PATH_MAX);
+	if (ret != -1) {
+		buf[ret] = '\0';
+		if (!strcmp(buf, _PROC_MOUNTS)) {
+			debug(logopt,
+			      "mtab link detected, passing -n to mount");
+			argc++;
+			update_mtab = 0;
+		}
+	}
+
 	if (!(argv = alloca(sizeof(char *) * argc + 2)))
 		return -1;
 
@@ -437,7 +468,12 @@ int spawn_bind_mount(unsigned logopt, ...)
 	argv[1] = bind;
 
 	va_start(arg, logopt);
-	p = argv + 2;
+	if (update_mtab)
+		p = argv + 2;
+	else {
+		argv[2] = argn;
+		p = argv + 3;
+	}
 	while ((*p++ = va_arg(arg, char *)));
 	va_end(arg);
 
@@ -499,10 +535,12 @@ int spawn_umount(unsigned logopt, ...)
 	char **argv, **p;
 	char prog[] = PATH_UMOUNT;
 	char arg0[] = PATH_UMOUNT;
+	char argn[] = "-n";
 	unsigned int options;
 	unsigned int retries = MTAB_LOCK_RETRIES;
-	int ret, printed = 0;
+	int update_mtab = 1, ret, printed = 0;
 	unsigned int wait = defaults_get_umount_wait();
+	char buf[PATH_MAX];
 
 #ifdef ENABLE_MOUNT_LOCKING
 	options = SPAWN_OPT_LOCK;
@@ -514,13 +552,29 @@ int spawn_umount(unsigned logopt, ...)
 	for (argc = 1; va_arg(arg, char *); argc++);
 	va_end(arg);
 
+	ret = readlink(_PATH_MOUNTED, buf, PATH_MAX);
+	if (ret != -1) {
+		buf[ret] = '\0';
+		if (!strcmp(buf, _PROC_MOUNTS)) {
+			debug(logopt,
+			      "mtab link detected, passing -n to mount");
+			argc++;
+			update_mtab = 0;
+		}
+	}
+
 	if (!(argv = alloca(sizeof(char *) * argc + 1)))
 		return -1;
 
 	argv[0] = arg0;
 
 	va_start(arg, logopt);
-	p = argv + 1;
+	if (update_mtab)
+		p = argv + 1;
+	else {
+		argv[1] = argn;
+		p = argv + 2;
+	}
 	while ((*p++ = va_arg(arg, char *)));
 	va_end(arg);
 
