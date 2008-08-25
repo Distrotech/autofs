@@ -638,7 +638,7 @@ static int sun_mount(struct autofs_point *ap, const char *root,
 	}
 
 	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cur_state);
-	if (!strcmp(fstype, "nfs")) {
+	if (!strcmp(fstype, "nfs") || !strcmp(fstype, "nfs4")) {
 		what = alloca(loclen + 1);
 		memcpy(what, loc, loclen);
 		what[loclen] = '\0';
