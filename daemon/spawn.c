@@ -432,7 +432,7 @@ int spawn_bind_mount(unsigned logopt, ...)
 	char arg_fake[] = "-f";
 	unsigned int options;
 	unsigned int retries = MTAB_LOCK_RETRIES;
-	int update_mtab = 0, ret, printed = 0;
+	int update_mtab = 1, ret, printed = 0;
 	char buf[PATH_MAX];
 
 	/* If we use mount locking we can't validate the location */
