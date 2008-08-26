@@ -108,7 +108,7 @@ static int alloc_ifreq(struct ifconf *ifc, int sock)
 			return 0;
 		}
 
-		ifc->ifc_len = sizeof(buf);
+		ifc->ifc_len = len;
 		ifc->ifc_req = (struct ifreq *) buf;
 
 		ret = ioctl(sock, SIOCGIFCONF, ifc);
