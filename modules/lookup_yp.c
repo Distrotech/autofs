@@ -19,6 +19,7 @@
 #include <unistd.h>
 #include <time.h>
 #include <signal.h>
+#include <ctype.h>
 #include <sys/param.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -168,9 +169,13 @@ int yp_all_master_callback(int status, char *ypkey, int ypkeylen,
 	if (status != YP_TRUE)
 		return status;
 
-	/* Ignore zero length keys */
-	if (ypkeylen == 0)
+	/* Ignore zero length and single non-printable char keys */
+	if (ypkeylen == 0 || (ypkeylen == 1 && !isprint(*ypkey))) {
+		warn(logopt, MODPREFIX
+		     "ignoring invalid map entry, zero length or "
+		     "single character non-printable key");
 		return 0;
+	}
 
 	/*
 	 * Ignore keys beginning with '+' as plus map
@@ -267,9 +272,13 @@ int yp_all_callback(int status, char *ypkey, int ypkeylen,
 	if (status != YP_TRUE)
 		return status;
 
-	/* Ignore zero length keys */
-	if (ypkeylen == 0)
+	/* Ignore zero length and single non-printable char keys */
+	if (ypkeylen == 0 || (ypkeylen == 1 && !isprint(*ypkey))) {
+		warn(logopt, MODPREFIX
+		     "ignoring invalid map entry, zero length or "
+		     "single character non-printable key");
 		return 0;
+	}
 
 	/*
 	 * Ignore keys beginning with '+' as plus map
