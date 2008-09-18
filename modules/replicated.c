@@ -62,7 +62,10 @@
 #ifndef MAX_ERR_BUF
 #define MAX_ERR_BUF		512
 #endif
+
 #define MAX_IFC_BUF		2048
+static int volatile ifc_buf_len = MAX_IFC_BUF;
+static int volatile ifc_last_len = 0;
 
 #define MASK_A  0x7F000000
 #define MASK_B  0xBFFF0000
@@ -97,7 +100,7 @@ void seed_random(void)
 
 static int alloc_ifreq(struct ifconf *ifc, int sock)
 {
-	int ret, lastlen = 0, len = MAX_IFC_BUF;
+	int ret, lastlen = ifc_last_len, len = ifc_buf_len;
 	char err_buf[MAX_ERR_BUF], *buf;
 
 	while (1) {
@@ -119,12 +122,17 @@ static int alloc_ifreq(struct ifconf *ifc, int sock)
 			return 0;
 		}
 
-		if (ifc->ifc_len == lastlen)
+		if (ifc->ifc_len <= lastlen)
 			break;
 
 		lastlen = ifc->ifc_len;
 		len += MAX_IFC_BUF;
 		free(buf);
+	}
+
+	if (lastlen != ifc_last_len) {
+		ifc_last_len = lastlen;
+		ifc_buf_len = len;
 	}
 
 	return 1;
