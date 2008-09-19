@@ -709,7 +709,7 @@ int mount_autofs_offset(struct autofs_point *ap, struct mapent *me, const char *
 			 * the kernel NFS client.
 			 */
 			if (me->multi != me &&
-			    is_mounted(_PATH_MOUNTED, mountpoint, MNTS_REAL))
+			    is_mounted(_PROC_MOUNTS, mountpoint, MNTS_REAL))
 				return MOUNT_OFFSET_IGNORE;
 
 			/* 
