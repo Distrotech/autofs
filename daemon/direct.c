@@ -1303,12 +1303,20 @@ static void *do_mount_direct(void *arg)
 	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &state);
 	if (status) {
 		struct mapent *me;
+		struct statfs fs;
+		unsigned int close_fd = 0;
+
+		if (statfs(mt.name, &fs) == -1 ||
+		   (fs.f_type == AUTOFS_SUPER_MAGIC &&
+		    !master_find_submount(ap, mt.name)))
+			close_fd = 1;
 		cache_writelock(mt.mc);
-		me = cache_lookup_distinct(mt.mc, mt.name);
-		if (me)
+		if (!close_fd && (me = cache_lookup_distinct(mt.mc, mt.name)))
 			me->ioctlfd = mt.ioctlfd;
 		send_ready(ap->logopt, mt.ioctlfd, mt.wait_queue_token);
 		cache_unlock(mt.mc);
+		if (close_fd)
+			close(mt.ioctlfd);
 		info(ap->logopt, "mounted %s", mt.name);
 	} else {
 		send_fail(ap->logopt, mt.ioctlfd, mt.wait_queue_token);
