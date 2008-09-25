@@ -37,6 +37,7 @@
 - dynamically allocate interface config buffer.
 - update kernel patches.
 - fix fd leak at multi-mount non-fatal mount fail.
+- fix incorrect multi-mount mountpoint calcualtion.
  
 14/01/2008 autofs-5.0.3
 -----------------------
