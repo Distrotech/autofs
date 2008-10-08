@@ -202,7 +202,9 @@ OPTNTOUT	(-n{OPTWS}|-n{OPTWS}={OPTWS}|--negative-timeout{OPTWS}|--negative-timeo
 		}
 	}
 
-	{MTYPE} {
+	{MTYPE} |
+	{MTYPE}/{DNSERVERSTR}{DNATTRSTR} |
+	{MTYPE}/{DNATTRSTR}= {
 		tlen = master_leng - 1;
 		if (bptr != buff && isblank(master_text[tlen])) {
 			strncat(buff, master_text, tlen);
