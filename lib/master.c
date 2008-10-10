@@ -1108,8 +1108,6 @@ int master_mount_mounts(struct master *master, time_t age, int readall)
 		}
 		cache_unlock(nc);
 
-		check_update_map_sources(this, readall);
-
 		st_mutex_lock();
 
 		state_pipe = this->ap->state_pipe[1];
@@ -1120,11 +1118,14 @@ int master_mount_mounts(struct master *master, time_t age, int readall)
 
 		st_mutex_unlock();
 
-		if (ret == -1 && save_errno == EBADF)
+		if (!ret)
+			check_update_map_sources(this, readall);
+		else if (ret == -1 && save_errno == EBADF) {
 			if (!master_do_mount(this)) {
 				list_del_init(&this->list);
 				master_free_mapent_sources(ap->entry, 1);
 				master_free_mapent(ap->entry);
+			}
 		}
 	}
 
