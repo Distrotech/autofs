@@ -285,13 +285,15 @@ static int lookup_one(struct autofs_point *ap,
 
 	result = nis_list(tablename, FOLLOW_PATH | FOLLOW_LINKS, NULL, NULL);
 	if (result->status != NIS_SUCCESS && result->status != NIS_S_SUCCESS) {
+		nis_error rs = result->status;
 		nis_freeresult(result);
 		pthread_setcancelstate(cur_state, NULL);
-		if (result->status == NIS_NOTFOUND ||
-		    result->status == NIS_S_NOTFOUND)
+		if (rs == NIS_NOTFOUND ||
+		    rs == NIS_S_NOTFOUND ||
+		    rs == NIS_PARTIAL)
 			return CHE_MISSING;
 
-		return -result->status;
+		return -rs;
 	}
 
 	
@@ -338,13 +340,15 @@ static int lookup_wild(struct autofs_point *ap, struct lookup_context *ctxt)
 
 	result = nis_list(tablename, FOLLOW_PATH | FOLLOW_LINKS, NULL, NULL);
 	if (result->status != NIS_SUCCESS && result->status != NIS_S_SUCCESS) {
+		nis_error rs = result->status;
 		nis_freeresult(result);
 		pthread_setcancelstate(cur_state, NULL);
-		if (result->status == NIS_NOTFOUND ||
-		    result->status == NIS_S_NOTFOUND)
+		if (rs == NIS_NOTFOUND ||
+		    rs == NIS_S_NOTFOUND ||
+		    rs == NIS_PARTIAL)
 			return CHE_MISSING;
 
-		return -result->status;
+		return -rs;
 	}
 
 	this = NIS_RES_OBJECT(result);

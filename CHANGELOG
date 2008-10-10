@@ -39,6 +39,7 @@
 - fix fd leak at multi-mount non-fatal mount fail.
 - fix incorrect multi-mount mountpoint calcualtion.
 - fix map out of order map re-read on hup signal.
+- fix nisplus error return check and use after free error.
  
 14/01/2008 autofs-5.0.3
 -----------------------
