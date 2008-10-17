@@ -1311,8 +1311,17 @@ static void *do_mount_direct(void *arg)
 		    !master_find_submount(ap, mt.name)))
 			close_fd = 1;
 		cache_writelock(mt.mc);
-		if (!close_fd && (me = cache_lookup_distinct(mt.mc, mt.name)))
-			me->ioctlfd = mt.ioctlfd;
+		if ((me = cache_lookup_distinct(mt.mc, mt.name))) {
+			/*
+			 * Careful here, we need to leave the file handle open
+			 * for direct mount multi-mounts with no real mount at
+			 * their base so they will be expired.
+			 */
+			if (close_fd && me == me->multi)
+				close_fd = 0;
+			if (!close_fd)
+				me->ioctlfd = mt.ioctlfd;
+		}
 		send_ready(ap->logopt, mt.ioctlfd, mt.wait_queue_token);
 		cache_unlock(mt.mc);
 		if (close_fd)
