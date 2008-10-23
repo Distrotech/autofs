@@ -54,6 +54,7 @@ struct lookup_context {
  	 * sdns is the list of basdns to check, done in the order
  	 * given in configuration.
  	 */
+	pthread_mutex_t uris_mutex;
 	struct list_head *uri;
 	char *cur_host;
 	struct ldap_searchdn *sdns;

@@ -122,6 +122,22 @@ int ldap_parse_page_control(LDAP *ldap, LDAPControl **controls,
 }
 #endif /* HAVE_LDAP_PARSE_PAGE_CONTROL */
 
+static void uris_mutex_lock(struct lookup_context *ctxt)
+{
+	int status = pthread_mutex_lock(&ctxt->uris_mutex);
+	if (status)
+		fatal(status);
+	return;
+}
+
+static void uris_mutex_unlock(struct lookup_context *ctxt)
+{
+	int status = pthread_mutex_unlock(&ctxt->uris_mutex);
+	if (status)
+		fatal(status);
+	return;
+}
+
 int bind_ldap_anonymous(unsigned logopt, LDAP *ldap, struct lookup_context *ctxt)
 {
 	int rv;
@@ -627,16 +643,20 @@ static LDAP *find_server(unsigned logopt, struct lookup_context *ctxt)
 	LIST_HEAD(tmp);
 
 	/* Try each uri in list, add connect fails to tmp list */
+	uris_mutex_lock(ctxt);
 	p = ctxt->uri->next;
 	while(p != ctxt->uri) {
 		this = list_entry(p, struct ldap_uri, list);
-		p = p->next;
+		uris_mutex_unlock(ctxt);
 		debug(logopt, "trying server %s", this->uri);
 		ldap = connect_to_server(logopt, this->uri, ctxt);
 		if (ldap) {
 			info(logopt, "connected to uri %s", this->uri);
+			uris_mutex_lock(ctxt);
 			break;
 		}
+		uris_mutex_lock(ctxt);
+		p = p->next;
 		list_del_init(&this->list);
 		list_add_tail(&this->list, &tmp);
 	}
@@ -648,6 +668,7 @@ static LDAP *find_server(unsigned logopt, struct lookup_context *ctxt)
 	list_splice(ctxt->uri, &tmp);
 	INIT_LIST_HEAD(ctxt->uri);
 	list_splice(&tmp, ctxt->uri);
+	uris_mutex_unlock(ctxt);
 
 	return ldap;
 }
@@ -662,14 +683,18 @@ static LDAP *do_reconnect(unsigned logopt, struct lookup_context *ctxt)
 		return ldap;
 	}
 
+	uris_mutex_lock(ctxt);
 	this = list_entry(ctxt->uri->next, struct ldap_uri, list);
+	uris_mutex_unlock(ctxt);
 	ldap = do_connect(logopt, this->uri, ctxt);
 	if (ldap)
 		return ldap;
 
 	/* Failed to connect, put at end of list */
+	uris_mutex_lock(ctxt);
 	list_del_init(&this->list);
 	list_add_tail(&this->list, ctxt->uri);
+	uris_mutex_unlock(ctxt);
 
 #ifdef WITH_SASL
 	autofs_sasl_dispose(ctxt);
@@ -1203,6 +1228,8 @@ done:
 
 static void free_context(struct lookup_context *ctxt)
 {
+	int ret;
+
 	if (ctxt->schema) {
 		free(ctxt->schema->map_class);
 		free(ctxt->schema->map_attr);
@@ -1235,6 +1262,9 @@ static void free_context(struct lookup_context *ctxt)
 		free(ctxt->base);
 	if (ctxt->uri)
 		defaults_free_uris(ctxt->uri);
+	ret = pthread_mutex_destroy(&ctxt->uris_mutex);
+	if (ret)
+		fatal(ret);
 	if (ctxt->sdns)
 		defaults_free_searchdns(ctxt->sdns);
 	free(ctxt);
@@ -1285,6 +1315,13 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 		return 1;
 	}
 	memset(ctxt, 0, sizeof(struct lookup_context));
+
+	ret = pthread_mutex_init(&ctxt->uris_mutex, NULL);
+	if (ret) {
+		error(LOGOPT_ANY, MODPREFIX "failed to init uris mutex");
+		free(ctxt);
+		return 1;
+	}
 
 	/* If a map type isn't explicitly given, parse it like sun entries. */
 	if (mapfmt == NULL)
