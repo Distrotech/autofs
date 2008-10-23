@@ -870,6 +870,29 @@ int master_notify_submount(struct autofs_point *ap, const char *path, enum state
 
 		st_wait_task(this, state, 0);
 
+		/*
+		 * If our submount gets to state ST_SHUTDOWN we need to
+		 * wait until it goes away or changes to ST_READY.
+		 */
+		mounts_mutex_lock(ap);
+		st_mutex_lock();
+		while ((this = __master_find_submount(ap, path))) {
+			struct timespec t = { 0, 300000000 };
+			struct timespec r;
+
+			if (this->state != ST_SHUTDOWN)
+				break;
+
+			st_mutex_unlock();
+			mounts_mutex_unlock(ap);
+			while (nanosleep(&t, &r) == -1 && errno == EINTR)
+				memcpy(&t, &r, sizeof(struct timespec));
+			mounts_mutex_lock(ap);
+			st_mutex_lock();
+		}
+		st_mutex_unlock();
+		mounts_mutex_unlock(ap);
+
 		return ret;
 
 	}
