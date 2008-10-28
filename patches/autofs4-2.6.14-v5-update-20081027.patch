@@ -1,5 +1,7 @@
---- linux-2.6.15.orig/fs/autofs4/root.c
-+++ linux-2.6.15/fs/autofs4/root.c
+Index: linux-2.6.14/fs/autofs4/root.c
+===================================================================
+--- linux-2.6.14.orig/fs/autofs4/root.c
++++ linux-2.6.14/fs/autofs4/root.c
 @@ -4,7 +4,7 @@
   *
   *  Copyright 1997-1998 Transmeta Corporation -- All Rights Reserved
@@ -1098,8 +1100,10 @@
  	case AUTOFS_IOC_ASKUMOUNT:
  		return autofs4_ask_umount(filp->f_vfsmnt, p);
  
---- linux-2.6.15.orig/fs/autofs4/autofs_i.h
-+++ linux-2.6.15/fs/autofs4/autofs_i.h
+Index: linux-2.6.14/fs/autofs4/autofs_i.h
+===================================================================
+--- linux-2.6.14.orig/fs/autofs4/autofs_i.h
++++ linux-2.6.14/fs/autofs4/autofs_i.h
 @@ -3,6 +3,7 @@
   * linux/fs/autofs/autofs_i.h
   *
@@ -1108,7 +1112,16 @@
   *
   * This file is part of the Linux kernel and is made available under
   * the terms of the GNU General Public License, version 2, or at your
-@@ -40,14 +41,6 @@
+@@ -19,6 +20,8 @@
+ #define AUTOFS_IOC_FIRST     AUTOFS_IOC_READY
+ #define AUTOFS_IOC_COUNT     32
+ 
++#define AUTOFS_TYPE_TRIGGER	(AUTOFS_TYPE_DIRECT|AUTOFS_TYPE_OFFSET)
++
+ #include <linux/kernel.h>
+ #include <linux/slab.h>
+ #include <linux/time.h>
+@@ -40,14 +43,6 @@
  
  #define AUTOFS_SUPER_MAGIC 0x0187
  
@@ -1123,7 +1136,7 @@
  /* Unified info structure.  This is pointed to by both the dentry and
     inode structures.  Each file in the filesystem has an instance of this
     structure.  It holds a reference to the dentry, so dentries are never
-@@ -60,8 +53,14 @@ struct autofs_info {
+@@ -60,8 +55,14 @@ struct autofs_info {
  
  	int		flags;
  
@@ -1138,7 +1151,7 @@
  
  	mode_t	mode;
  	size_t	size;
-@@ -73,38 +72,52 @@ struct autofs_info {
+@@ -73,38 +74,48 @@ struct autofs_info {
  };
  
  #define AUTOFS_INF_EXPIRING	(1<<0) /* dentry is in the process of expiring */
@@ -1168,10 +1181,6 @@
  
  #define AUTOFS_SBI_MAGIC 0x6d4a556d
  
-+#define AUTOFS_TYPE_INDIRECT     0x0001
-+#define AUTOFS_TYPE_DIRECT       0x0002
-+#define AUTOFS_TYPE_OFFSET       0x0004
-+
  struct autofs_sb_info {
  	u32 magic;
 -	struct dentry *root;
@@ -1197,7 +1206,7 @@
  };
  
  static inline struct autofs_sb_info *autofs4_sbi(struct super_block *sb)
-@@ -129,18 +142,14 @@ static inline int autofs4_oz_mode(struct
+@@ -129,18 +140,14 @@ static inline int autofs4_oz_mode(struct
  static inline int autofs4_ispending(struct dentry *dentry)
  {
  	struct autofs_info *inf = autofs4_dentry_ino(dentry);
@@ -1219,7 +1228,7 @@
  }
  
  static inline void autofs4_copy_atime(struct file *src, struct file *dst)
-@@ -154,6 +163,7 @@ void autofs4_free_ino(struct autofs_info
+@@ -154,6 +161,7 @@ void autofs4_free_ino(struct autofs_info
  
  /* Expiration */
  int is_autofs4_dentry(struct dentry *);
@@ -1227,7 +1236,7 @@
  int autofs4_expire_run(struct super_block *, struct vfsmount *,
  			struct autofs_sb_info *,
  			struct autofs_packet_expire __user *);
-@@ -165,6 +175,8 @@ int autofs4_expire_multi(struct super_bl
+@@ -165,6 +173,8 @@ int autofs4_expire_multi(struct super_bl
  extern struct inode_operations autofs4_symlink_inode_operations;
  extern struct inode_operations autofs4_dir_inode_operations;
  extern struct inode_operations autofs4_root_inode_operations;
@@ -1236,7 +1245,7 @@
  extern struct file_operations autofs4_dir_operations;
  extern struct file_operations autofs4_root_operations;
  
-@@ -175,13 +187,6 @@ struct autofs_info *autofs4_init_ino(str
+@@ -175,13 +185,6 @@ struct autofs_info *autofs4_init_ino(str
  
  /* Queue management functions */
  
@@ -1250,7 +1259,7 @@
  int autofs4_wait(struct autofs_sb_info *,struct dentry *, enum autofs_notify);
  int autofs4_wait_release(struct autofs_sb_info *,autofs_wqt_t,int);
  void autofs4_catatonic_mode(struct autofs_sb_info *);
-@@ -199,12 +204,22 @@ static inline int autofs4_follow_mount(s
+@@ -199,12 +202,22 @@ static inline int autofs4_follow_mount(s
  	return res;
  }
  
@@ -1274,15 +1283,17 @@
  {
  	struct dentry *child;
  	int ret = 0;
-@@ -216,3 +231,6 @@ static inline int simple_empty_nolock(st
+@@ -216,3 +229,6 @@ static inline int simple_empty_nolock(st
  out:
  	return ret;
  }
 +
 +void autofs4_dentry_release(struct dentry *);
 +extern void autofs4_kill_sb(struct super_block *);
---- linux-2.6.15.orig/fs/autofs4/expire.c
-+++ linux-2.6.15/fs/autofs4/expire.c
+Index: linux-2.6.14/fs/autofs4/expire.c
+===================================================================
+--- linux-2.6.14.orig/fs/autofs4/expire.c
++++ linux-2.6.14/fs/autofs4/expire.c
 @@ -4,7 +4,7 @@
   *
   *  Copyright 1997-1998 Transmeta Corporation -- All Rights Reserved
@@ -1320,20 +1331,41 @@
  
  	DPRINTK("dentry %p %.*s",
  		dentry, (int)dentry->d_name.len, dentry->d_name.name);
-@@ -63,88 +63,145 @@ static int autofs4_check_mount(struct vf
- 	if (is_autofs4_dentry(dentry))
+@@ -56,95 +56,163 @@ static int autofs4_check_mount(struct vf
+ 	mntget(mnt);
+ 	dget(dentry);
+ 
+-	if (!autofs4_follow_mount(&mnt, &dentry))
++	if (!follow_down(&mnt, &dentry))
  		goto done;
  
--	/* The big question */
--	if (may_umount_tree(mnt) == 0)
--		status = 1;
+-	/* This is an autofs submount, we can't expire it */
+-	if (is_autofs4_dentry(dentry))
++	if (is_autofs4_dentry(dentry)) {
++		struct autofs_sb_info *sbi = autofs4_sbi(dentry->d_sb);
++
++		/* This is an autofs submount, we can't expire it */
++		if (sbi->type == AUTOFS_TYPE_INDIRECT)
++			goto done;
++
++		/*
++		 * Otherwise it's an offset mount and we need to check
++		 * if we can umount its mount, if there is one.
++		 */
++		if (!d_mountpoint(dentry))
++			goto done;
++	}
++
 +	/* Update the expiry counter if fs is busy */
 +	if (!may_umount_tree(mnt)) {
 +		struct autofs_info *ino = autofs4_dentry_ino(top);
 +		ino->last_used = jiffies;
-+		goto done;
+ 		goto done;
 +	}
-+
+ 
+-	/* The big question */
+-	if (may_umount_tree(mnt) == 0)
+-		status = 1;
 +	status = 0;
  done:
  	DPRINTK("returning = %d", status);
@@ -1445,13 +1477,13 @@
  
  		DPRINTK("dentry %p %.*s",
 -			dentry, (int)dentry->d_name.len, dentry->d_name.name);
--
++			p, (int) p->d_name.len, p->d_name.name);
+ 
 -		if (!simple_empty_nolock(dentry)) {
 -			this_parent = dentry;
 -			goto repeat;
 -		}
-+			p, (int) p->d_name.len, p->d_name.name);
- 
+-
 -		dentry = dget(dentry);
 +		p = dget(p);
  		spin_unlock(&dcache_lock);
@@ -1518,7 +1550,7 @@
  }
  
  static struct dentry *autofs4_check_leaves(struct vfsmount *mnt,
-@@ -152,58 +209,70 @@ static struct dentry *autofs4_check_leav
+@@ -152,58 +220,70 @@ static struct dentry *autofs4_check_leav
  					   unsigned long timeout,
  					   int do_now)
  {
@@ -1592,17 +1624,17 @@
 +	unsigned long timeout;
 +	struct dentry *root = dget(sb->s_root);
 +	int do_now = how & AUTOFS_EXP_IMMEDIATE;
- 
--	if (this_parent != parent) {
--		next = this_parent->d_child.next;
--		this_parent = this_parent->d_parent;
--		goto resume;
++
 +	if (!sbi->exp_timeout || !root)
 +		return NULL;
 +
 +	now = jiffies;
 +	timeout = sbi->exp_timeout;
-+
+ 
+-	if (this_parent != parent) {
+-		next = this_parent->d_child.next;
+-		this_parent = this_parent->d_parent;
+-		goto resume;
 +	spin_lock(&sbi->fs_lock);
 +	if (!autofs4_direct_busy(mnt, root, timeout, do_now)) {
 +		struct autofs_info *ino = autofs4_dentry_ino(root);
@@ -1621,7 +1653,7 @@
  
  	return NULL;
  }
-@@ -214,10 +283,10 @@ cont:
+@@ -214,10 +294,10 @@ cont:
   *  - it is unused by any user process
   *  - it has been unused for exp_timeout time
   */
@@ -1636,7 +1668,7 @@
  {
  	unsigned long timeout;
  	struct dentry *root = sb->s_root;
-@@ -225,6 +294,8 @@ static struct dentry *autofs4_expire(str
+@@ -225,6 +305,8 @@ static struct dentry *autofs4_expire(str
  	struct list_head *next;
  	int do_now = how & AUTOFS_EXP_IMMEDIATE;
  	int exp_leaves = how & AUTOFS_EXP_LEAVES;
@@ -1645,7 +1677,7 @@
  
  	if ( !sbi->exp_timeout || !root )
  		return NULL;
-@@ -241,7 +312,7 @@ static struct dentry *autofs4_expire(str
+@@ -241,7 +323,7 @@ static struct dentry *autofs4_expire(str
  		struct dentry *dentry = list_entry(next, struct dentry, d_child);
  
  		/* Negative dentry - give up */
@@ -1654,7 +1686,7 @@
  			next = next->next;
  			continue;
  		}
-@@ -249,66 +320,116 @@ static struct dentry *autofs4_expire(str
+@@ -249,66 +331,116 @@ static struct dentry *autofs4_expire(str
  		dentry = dget(dentry);
  		spin_unlock(&dcache_lock);
  
@@ -1799,7 +1831,7 @@
  }
  
  /* Perform an expiry operation */
-@@ -318,14 +439,16 @@ int autofs4_expire_run(struct super_bloc
+@@ -318,14 +450,16 @@ int autofs4_expire_run(struct super_bloc
  		      struct autofs_packet_expire __user *pkt_p)
  {
  	struct autofs_packet_expire pkt;
@@ -1817,7 +1849,7 @@
  		return -EAGAIN;
  
  	pkt.len = dentry->d_name.len;
-@@ -334,9 +457,15 @@ int autofs4_expire_run(struct super_bloc
+@@ -334,9 +468,15 @@ int autofs4_expire_run(struct super_bloc
  	dput(dentry);
  
  	if ( copy_to_user(pkt_p, &pkt, sizeof(struct autofs_packet_expire)) )
@@ -1835,13 +1867,13 @@
  }
  
  /* Call repeatedly until it returns -EAGAIN, meaning there's nothing
-@@ -351,17 +480,29 @@ int autofs4_expire_multi(struct super_bl
+@@ -351,17 +491,29 @@ int autofs4_expire_multi(struct super_bl
  	if (arg && get_user(do_now, arg))
  		return -EFAULT;
  
 -	if ((dentry = autofs4_expire(sb, mnt, sbi, do_now)) != NULL) {
 -		struct autofs_info *de_info = autofs4_dentry_ino(dentry);
-+	if (sbi->type & AUTOFS_TYPE_DIRECT)
++	if (sbi->type & AUTOFS_TYPE_TRIGGER)
 +		dentry = autofs4_expire_direct(sb, mnt, sbi, do_now);
 +	else
 +		dentry = autofs4_expire_indirect(sb, mnt, sbi, do_now);
@@ -1870,8 +1902,10 @@
  	return ret;
  }
  
---- linux-2.6.15.orig/fs/autofs4/inode.c
-+++ linux-2.6.15/fs/autofs4/inode.c
+Index: linux-2.6.14/fs/autofs4/inode.c
+===================================================================
+--- linux-2.6.14.orig/fs/autofs4/inode.c
++++ linux-2.6.14/fs/autofs4/inode.c
 @@ -3,6 +3,7 @@
   * linux/fs/autofs/inode.c
   *
@@ -1888,20 +1922,7 @@
  #include <linux/pagemap.h>
  #include <linux/parser.h>
  #include <linux/bitops.h>
-@@ -22,8 +24,10 @@
- 
- static void ino_lnkfree(struct autofs_info *ino)
- {
--	kfree(ino->u.symlink);
--	ino->u.symlink = NULL;
-+	if (ino->u.symlink) {
-+		kfree(ino->u.symlink);
-+		ino->u.symlink = NULL;
-+	}
- }
- 
- struct autofs_info *autofs4_init_ino(struct autofs_info *ino,
-@@ -39,12 +43,17 @@ struct autofs_info *autofs4_init_ino(str
+@@ -41,12 +43,17 @@ struct autofs_info *autofs4_init_ino(str
  	if (ino == NULL)
  		return NULL;
  
@@ -1924,7 +1945,7 @@
  	ino->last_used = jiffies;
  
  	ino->sbi = sbi;
-@@ -64,10 +73,19 @@ struct autofs_info *autofs4_init_ino(str
+@@ -66,10 +73,19 @@ struct autofs_info *autofs4_init_ino(str
  
  void autofs4_free_ino(struct autofs_info *ino)
  {
@@ -1945,7 +1966,7 @@
  		ino->dentry = NULL;
  	}
  	if (ino->free)
-@@ -83,9 +101,12 @@ void autofs4_free_ino(struct autofs_info
+@@ -85,9 +101,12 @@ void autofs4_free_ino(struct autofs_info
   */
  static void autofs4_force_release(struct autofs_sb_info *sbi)
  {
@@ -1959,7 +1980,7 @@
  	spin_lock(&dcache_lock);
  repeat:
  	next = this_parent->d_subdirs.next;
-@@ -114,7 +135,7 @@ resume:
+@@ -116,7 +135,7 @@ resume:
  		spin_lock(&dcache_lock);
  	}
  
@@ -1968,7 +1989,7 @@
  		struct dentry *dentry = this_parent;
  
  		next = this_parent->d_child.next;
-@@ -127,38 +148,66 @@ resume:
+@@ -129,38 +148,66 @@ resume:
  		goto resume;
  	}
  	spin_unlock(&dcache_lock);
@@ -2048,7 +2069,7 @@
  
  static match_table_t tokens = {
  	{Opt_fd, "fd=%u"},
-@@ -167,11 +216,15 @@ static match_table_t tokens = {
+@@ -169,11 +216,15 @@ static match_table_t tokens = {
  	{Opt_pgrp, "pgrp=%u"},
  	{Opt_minproto, "minproto=%u"},
  	{Opt_maxproto, "maxproto=%u"},
@@ -2065,7 +2086,7 @@
  {
  	char *p;
  	substring_t args[MAX_OPT_ARGS];
-@@ -225,6 +278,15 @@ static int parse_options(char *options, 
+@@ -227,6 +278,15 @@ static int parse_options(char *options, 
  				return 1;
  			*maxproto = option;
  			break;
@@ -2076,12 +2097,12 @@
 +			*type = AUTOFS_TYPE_DIRECT;
 +			break;
 +		case Opt_offset:
-+			*type = AUTOFS_TYPE_DIRECT | AUTOFS_TYPE_OFFSET;
++			*type = AUTOFS_TYPE_OFFSET;
 +			break;
  		default:
  			return 1;
  		}
-@@ -243,6 +305,10 @@ static struct autofs_info *autofs4_mkroo
+@@ -245,6 +305,10 @@ static struct autofs_info *autofs4_mkroo
  	return ino;
  }
  
@@ -2092,7 +2113,7 @@
  int autofs4_fill_super(struct super_block *s, void *data, int silent)
  {
  	struct inode * root_inode;
-@@ -251,7 +317,6 @@ int autofs4_fill_super(struct super_bloc
+@@ -253,7 +317,6 @@ int autofs4_fill_super(struct super_bloc
  	int pipefd;
  	struct autofs_sb_info *sbi;
  	struct autofs_info *ino;
@@ -2100,7 +2121,7 @@
  
  	sbi = (struct autofs_sb_info *) kmalloc(sizeof(*sbi), GFP_KERNEL);
  	if ( !sbi )
-@@ -262,16 +327,23 @@ int autofs4_fill_super(struct super_bloc
+@@ -264,16 +327,23 @@ int autofs4_fill_super(struct super_bloc
  
  	s->s_fs_info = sbi;
  	sbi->magic = AUTOFS_SBI_MAGIC;
@@ -2114,7 +2135,7 @@
  	sbi->sb = s;
  	sbi->version = 0;
  	sbi->sub_version = 0;
-+	sbi->type = 0;
++	sbi->type = AUTOFS_TYPE_INDIRECT;
 +	sbi->min_proto = 0;
 +	sbi->max_proto = 0;
  	init_MUTEX(&sbi->wq_sem);
@@ -2126,7 +2147,7 @@
  	s->s_blocksize = 1024;
  	s->s_blocksize_bits = 10;
  	s->s_magic = AUTOFS_SUPER_MAGIC;
-@@ -285,38 +357,46 @@ int autofs4_fill_super(struct super_bloc
+@@ -287,38 +357,46 @@ int autofs4_fill_super(struct super_bloc
  	if (!ino)
  		goto fail_free;
  	root_inode = autofs4_get_inode(s, ino);
@@ -2159,7 +2180,7 @@
  	}
  
 +	root_inode->i_fop = &autofs4_root_operations;
-+	root_inode->i_op = sbi->type & AUTOFS_TYPE_DIRECT ?
++	root_inode->i_op = sbi->type & AUTOFS_TYPE_TRIGGER ?
 +			&autofs4_direct_root_inode_operations :
 +			&autofs4_indirect_root_inode_operations;
 +
@@ -2185,7 +2206,7 @@
  	sbi->sub_version = AUTOFS_PROTO_SUBVERSION;
  
  	DPRINTK("pipe fd = %d, pgrp = %u", pipefd, sbi->oz_pgrp);
-@@ -329,13 +409,8 @@ int autofs4_fill_super(struct super_bloc
+@@ -331,13 +409,8 @@ int autofs4_fill_super(struct super_bloc
  	if ( !pipe->f_op || !pipe->f_op->write )
  		goto fail_fput;
  	sbi->pipe = pipe;
@@ -2201,7 +2222,7 @@
  
  	/*
  	 * Success! Install the root dentry now to indicate completion.
-@@ -356,8 +431,11 @@ fail_dput:
+@@ -358,8 +431,11 @@ fail_dput:
  fail_iput:
  	printk("autofs: get root dentry failed\n");
  	iput(root_inode);
@@ -2213,8 +2234,10 @@
  fail_unlock:
  	return -EINVAL;
  }
---- linux-2.6.15.orig/fs/autofs4/waitq.c
-+++ linux-2.6.15/fs/autofs4/waitq.c
+Index: linux-2.6.14/fs/autofs4/waitq.c
+===================================================================
+--- linux-2.6.14.orig/fs/autofs4/waitq.c
++++ linux-2.6.14/fs/autofs4/waitq.c
 @@ -3,7 +3,7 @@
   * linux/fs/autofs/waitq.c
   *
@@ -2509,7 +2532,7 @@
 +		 * is very similar for indirect mounts except only dentrys
 +		 * in the root of the autofs file system may be negative.
 +		 */
-+		if (sbi->type & (AUTOFS_TYPE_DIRECT|AUTOFS_TYPE_OFFSET))
++		if (sbi->type & AUTOFS_TYPE_TRIGGER)
 +			return -ENOENT;
 +		else if (!IS_ROOT(dentry->d_parent))
 +			return -ENOENT;
@@ -2524,7 +2547,7 @@
 -		kfree(name);
 -		return -ENOENT;
 +	/* If this is a direct mount request create a dummy name */
-+	if (IS_ROOT(dentry) && (sbi->type & AUTOFS_TYPE_DIRECT))
++	if (IS_ROOT(dentry) && sbi->type & AUTOFS_TYPE_TRIGGER)
 +		qstr.len = sprintf(name, "%p", dentry);
 +	else {
 +		qstr.len = autofs4_getpath(sbi, dentry, &name);
@@ -2573,7 +2596,7 @@
  			up(&sbi->wq_sem);
  			return -ENOMEM;
  		}
-@@ -212,42 +387,53 @@ int autofs4_wait(struct autofs_sb_info *
+@@ -212,44 +387,53 @@ int autofs4_wait(struct autofs_sb_info *
  		wq->next = sbi->queues;
  		sbi->queues = wq;
  		init_waitqueue_head(&wq->queue);
@@ -2610,11 +2633,11 @@
 +				type = autofs_ptype_expire_multi;
 +		} else {
 +			if (notify == NFY_MOUNT)
-+				type = (sbi->type & AUTOFS_TYPE_DIRECT) ?
++				type = (sbi->type & AUTOFS_TYPE_TRIGGER) ?
 +					autofs_ptype_missing_direct :
 +					 autofs_ptype_missing_indirect;
 +			else
-+				type = (sbi->type & AUTOFS_TYPE_DIRECT) ?
++				type = (sbi->type & AUTOFS_TYPE_TRIGGER) ?
 +					autofs_ptype_expire_direct :
 +					autofs_ptype_expire_indirect;
 +		}
@@ -2640,8 +2663,10 @@
 -	if ( sbi->catatonic ) {
 -		/* We might have slept, so check again for catatonic mode */
 -		wq->status = -ENOENT;
--		kfree(wq->name);
--		wq->name = NULL;
+-		if ( wq->name ) {
+-			kfree(wq->name);
+-			wq->name = NULL;
+-		}
 -	}
 -
 -	if ( wq->name ) {
@@ -2653,7 +2678,7 @@
  		/* Block all but "shutdown" signals while waiting */
  		sigset_t oldset;
  		unsigned long irqflags;
-@@ -258,7 +444,7 @@ int autofs4_wait(struct autofs_sb_info *
+@@ -260,7 +444,7 @@ int autofs4_wait(struct autofs_sb_info *
  		recalc_sigpending();
  		spin_unlock_irqrestore(&current->sighand->siglock, irqflags);
  
@@ -2662,7 +2687,7 @@
  
  		spin_lock_irqsave(&current->sighand->siglock, irqflags);
  		current->blocked = oldset;
-@@ -271,8 +457,10 @@ int autofs4_wait(struct autofs_sb_info *
+@@ -273,8 +457,10 @@ int autofs4_wait(struct autofs_sb_info *
  	status = wq->status;
  
  	/* Are we the last process to need status? */
@@ -2674,7 +2699,7 @@
  
  	return status;
  }
-@@ -283,27 +471,24 @@ int autofs4_wait_release(struct autofs_s
+@@ -285,27 +471,24 @@ int autofs4_wait_release(struct autofs_s
  	struct autofs_wait_queue *wq, **wql;
  
  	down(&sbi->wq_sem);
@@ -2710,8 +2735,10 @@
  
  	return 0;
  }
---- linux-2.6.15.orig/fs/autofs/dirhash.c
-+++ linux-2.6.15/fs/autofs/dirhash.c
+Index: linux-2.6.14/fs/autofs/dirhash.c
+===================================================================
+--- linux-2.6.14.orig/fs/autofs/dirhash.c
++++ linux-2.6.14/fs/autofs/dirhash.c
 @@ -92,7 +92,7 @@ struct autofs_dir_ent *autofs_expire(str
  			;
  		dput(dentry);
@@ -2721,9 +2748,11 @@
  			mntput(mnt);
  			DPRINTK(("autofs: signaling expire on %s\n", ent->name));
  			return ent; /* Expirable! */
---- linux-2.6.15.orig/fs/namespace.c
-+++ linux-2.6.15/fs/namespace.c
-@@ -416,9 +416,9 @@ int may_umount_tree(struct vfsmount *mnt
+Index: linux-2.6.14/fs/namespace.c
+===================================================================
+--- linux-2.6.14.orig/fs/namespace.c
++++ linux-2.6.14/fs/namespace.c
+@@ -308,9 +308,9 @@ resume:
  	spin_unlock(&vfsmount_lock);
  
  	if (actual_refs > minimum_refs)
@@ -2735,22 +2764,24 @@
  }
  
  EXPORT_SYMBOL(may_umount_tree);
-@@ -438,10 +438,10 @@ EXPORT_SYMBOL(may_umount_tree);
+@@ -330,9 +330,10 @@ EXPORT_SYMBOL(may_umount_tree);
   */
  int may_umount(struct vfsmount *mnt)
  {
--	int ret = 0;
 +	int ret = 1;
- 	spin_lock(&vfsmount_lock);
- 	if (propagate_mount_busy(mnt, 2))
--		ret = -EBUSY;
+ 	if (atomic_read(&mnt->mnt_count) > 2)
+-		return -EBUSY;
+-	return 0;
 +		ret = 0;
- 	spin_unlock(&vfsmount_lock);
- 	return ret;
++	return ret;
  }
---- linux-2.6.15.orig/include/linux/auto_fs4.h
-+++ linux-2.6.15/include/linux/auto_fs4.h
-@@ -19,18 +19,37 @@
+ 
+ EXPORT_SYMBOL(may_umount);
+Index: linux-2.6.14/include/linux/auto_fs4.h
+===================================================================
+--- linux-2.6.14.orig/include/linux/auto_fs4.h
++++ linux-2.6.14/include/linux/auto_fs4.h
+@@ -19,18 +19,42 @@
  #undef AUTOFS_MIN_PROTO_VERSION
  #undef AUTOFS_MAX_PROTO_VERSION
  
@@ -2769,6 +2800,11 @@
  
 -/* New message type */
 -#define autofs_ptype_expire_multi	2	/* Expire entry (umount request) */
++#define AUTOFS_TYPE_ANY			0x0000
++#define AUTOFS_TYPE_INDIRECT		0x0001
++#define AUTOFS_TYPE_DIRECT		0x0002
++#define AUTOFS_TYPE_OFFSET		0x0004
++
 +/* Daemon notification packet types */
 +enum autofs_notify {
 +	NFY_NONE,
@@ -2793,7 +2829,7 @@
  
  /* v4 multi expire (via pipe) */
  struct autofs_packet_expire_multi {
-@@ -47,10 +66,38 @@ union autofs_packet_union {
+@@ -47,10 +71,38 @@ union autofs_packet_union {
  	struct autofs_packet_expire_multi expire_multi;
  };
  
@@ -2834,10 +2870,12 @@
  #define AUTOFS_IOC_ASKUMOUNT		_IOR(0x93,0x70,int)
  
  
---- linux-2.6.15.orig/fs/namei.c
-+++ linux-2.6.15/fs/namei.c
-@@ -362,6 +362,29 @@ void release_open_intent(struct nameidat
- 		fput(nd->intent.open.file);
+Index: linux-2.6.14/fs/namei.c
+===================================================================
+--- linux-2.6.14.orig/fs/namei.c
++++ linux-2.6.14/fs/namei.c
+@@ -317,6 +317,29 @@ void path_release_on_umount(struct namei
+ 	mntput_no_expire(nd->mnt);
  }
  
 +static inline struct dentry *do_revalidate(struct dentry *dentry, struct nameidata *nd)
@@ -2866,7 +2904,7 @@
  /*
   * Internal lookup() using the new generic dcache.
   * SMP-safe
-@@ -376,12 +399,9 @@ static struct dentry * cached_lookup(str
+@@ -331,12 +354,9 @@ static struct dentry * cached_lookup(str
  	if (!dentry)
  		dentry = d_lookup(parent, name);
  
@@ -2882,7 +2920,7 @@
  	return dentry;
  }
  
-@@ -474,10 +494,9 @@ static struct dentry * real_lookup(struc
+@@ -429,10 +449,9 @@ static struct dentry * real_lookup(struc
  	 */
  	up(&dir->i_sem);
  	if (result->d_op && result->d_op->d_revalidate) {
@@ -2895,7 +2933,7 @@
  	}
  	return result;
  }
-@@ -543,6 +562,22 @@ struct path {
+@@ -498,6 +517,22 @@ struct path {
  	struct dentry *dentry;
  };
  
@@ -2918,7 +2956,7 @@
  static inline int __do_follow_link(struct path *path, struct nameidata *nd)
  {
  	int error;
-@@ -552,8 +587,11 @@ static inline int __do_follow_link(struc
+@@ -507,8 +542,11 @@ static inline int __do_follow_link(struc
  	touch_atime(path->mnt, dentry);
  	nd_set_link(nd, NULL);
  
@@ -2932,7 +2970,7 @@
  	cookie = dentry->d_inode->i_op->follow_link(dentry, nd);
  	error = PTR_ERR(cookie);
  	if (!IS_ERR(cookie)) {
-@@ -570,22 +608,6 @@ static inline int __do_follow_link(struc
+@@ -525,22 +563,6 @@ static inline int __do_follow_link(struc
  	return error;
  }
  
@@ -2955,7 +2993,7 @@
  /*
   * This limits recursive symlink follows to 8, while
   * limiting consecutive symlinks to 40.
-@@ -754,12 +776,12 @@ need_lookup:
+@@ -709,12 +731,12 @@ need_lookup:
  	goto done;
  
  need_revalidate:
@@ -2974,8 +3012,10 @@
  
  fail:
  	return PTR_ERR(dentry);
---- linux-2.6.15.orig/fs/autofs/init.c
-+++ linux-2.6.15/fs/autofs/init.c
+Index: linux-2.6.14/fs/autofs/init.c
+===================================================================
+--- linux-2.6.14.orig/fs/autofs/init.c
++++ linux-2.6.14/fs/autofs/init.c
 @@ -24,7 +24,7 @@ static struct file_system_type autofs_fs
  	.owner		= THIS_MODULE,
  	.name		= "autofs",
@@ -2985,8 +3025,10 @@
  };
  
  static int __init init_autofs_fs(void)
---- linux-2.6.15.orig/fs/autofs/inode.c
-+++ linux-2.6.15/fs/autofs/inode.c
+Index: linux-2.6.14/fs/autofs/inode.c
+===================================================================
+--- linux-2.6.14.orig/fs/autofs/inode.c
++++ linux-2.6.14/fs/autofs/inode.c
 @@ -19,11 +19,20 @@
  #include "autofs_i.h"
  #include <linux/module.h>
@@ -3052,8 +3094,10 @@
  fail_unlock:
  	return -EINVAL;
  }
---- linux-2.6.15.orig/fs/autofs/autofs_i.h
-+++ linux-2.6.15/fs/autofs/autofs_i.h
+Index: linux-2.6.14/fs/autofs/autofs_i.h
+===================================================================
+--- linux-2.6.14.orig/fs/autofs/autofs_i.h
++++ linux-2.6.14/fs/autofs/autofs_i.h
 @@ -151,6 +151,7 @@ extern struct file_operations autofs_roo
  /* Initializing function */
  
@@ -3062,8 +3106,10 @@
  
  /* Queue management functions */
  
---- linux-2.6.15.orig/fs/autofs4/init.c
-+++ linux-2.6.15/fs/autofs4/init.c
+Index: linux-2.6.14/fs/autofs4/init.c
+===================================================================
+--- linux-2.6.14.orig/fs/autofs4/init.c
++++ linux-2.6.14/fs/autofs4/init.c
 @@ -24,7 +24,7 @@ static struct file_system_type autofs_fs
  	.owner		= THIS_MODULE,
  	.name		= "autofs",
@@ -3073,8 +3119,10 @@
  };
  
  static int __init init_autofs4_fs(void)
---- linux-2.6.15.orig/fs/autofs/waitq.c
-+++ linux-2.6.15/fs/autofs/waitq.c
+Index: linux-2.6.14/fs/autofs/waitq.c
+===================================================================
+--- linux-2.6.14.orig/fs/autofs/waitq.c
++++ linux-2.6.14/fs/autofs/waitq.c
 @@ -41,6 +41,7 @@ void autofs_catatonic_mode(struct autofs
  		wq = nwq;
  	}
@@ -3083,9 +3131,11 @@
  	autofs_hash_dputall(&sbi->dirhash); /* Remove all dentry pointers */
  }
  
---- linux-2.6.15.orig/include/linux/compat_ioctl.h
-+++ linux-2.6.15/include/linux/compat_ioctl.h
-@@ -592,8 +592,6 @@ COMPATIBLE_IOCTL(AUTOFS_IOC_PROTOVER)
+Index: linux-2.6.14/include/linux/compat_ioctl.h
+===================================================================
+--- linux-2.6.14.orig/include/linux/compat_ioctl.h
++++ linux-2.6.14/include/linux/compat_ioctl.h
+@@ -583,8 +583,6 @@ COMPATIBLE_IOCTL(AUTOFS_IOC_PROTOVER)
  COMPATIBLE_IOCTL(AUTOFS_IOC_EXPIRE)
  COMPATIBLE_IOCTL(AUTOFS_IOC_EXPIRE_MULTI)
  COMPATIBLE_IOCTL(AUTOFS_IOC_PROTOSUBVER)
