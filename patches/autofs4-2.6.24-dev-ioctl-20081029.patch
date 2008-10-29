@@ -1,7 +1,7 @@
-Index: linux-2.6.27/fs/autofs4/autofs_i.h
+Index: linux-2.6.24/fs/autofs4/autofs_i.h
 ===================================================================
---- linux-2.6.27.orig/fs/autofs4/autofs_i.h
-+++ linux-2.6.27/fs/autofs4/autofs_i.h
+--- linux-2.6.24.orig/fs/autofs4/autofs_i.h
++++ linux-2.6.24/fs/autofs4/autofs_i.h
 @@ -14,6 +14,7 @@
  /* Internal header file for autofs */
  
@@ -24,11 +24,11 @@ Index: linux-2.6.27/fs/autofs4/autofs_i.h
  /* #define DEBUG */
  
  #ifdef DEBUG
--#define DPRINTK(fmt,args...) do { printk(KERN_DEBUG "pid %d: %s: " fmt "\n" , current->pid , __func__ , ##args); } while(0)
+-#define DPRINTK(fmt,args...) do { printk(KERN_DEBUG "pid %d: %s: " fmt "\n" , current->pid , __FUNCTION__ , ##args); } while(0)
 +#define DPRINTK(fmt, args...)				\
 +do {							\
 +	printk(KERN_DEBUG "pid %d: %s: " fmt "\n",	\
-+		current->pid, __func__, ##args);	\
++		current->pid, __FUNCTION__, ##args);	\
 +} while (0)
  #else
 -#define DPRINTK(fmt,args...) do {} while(0)
@@ -38,13 +38,13 @@ Index: linux-2.6.27/fs/autofs4/autofs_i.h
 +#define AUTOFS_WARN(fmt, args...)			\
 +do {							\
 +	printk(KERN_WARNING "pid %d: %s: " fmt "\n",	\
-+		current->pid, __func__, ##args);	\
++		current->pid, __FUNCTION__, ##args);	\
 +} while (0)
 +
 +#define AUTOFS_ERROR(fmt, args...)			\
 +do {							\
 +	printk(KERN_ERR "pid %d: %s: " fmt "\n",	\
-+		current->pid, __func__, ##args);	\
++		current->pid, __FUNCTION__, ##args);	\
 +} while (0)
 +
  /* Unified info structure.  This is pointed to by both the dentry and
@@ -82,10 +82,10 @@ Index: linux-2.6.27/fs/autofs4/autofs_i.h
  
  /* Operations structures */
  
-Index: linux-2.6.27/fs/autofs4/inode.c
+Index: linux-2.6.24/fs/autofs4/inode.c
 ===================================================================
---- linux-2.6.27.orig/fs/autofs4/inode.c
-+++ linux-2.6.27/fs/autofs4/inode.c
+--- linux-2.6.24.orig/fs/autofs4/inode.c
++++ linux-2.6.24/fs/autofs4/inode.c
 @@ -53,6 +53,8 @@ struct autofs_info *autofs4_init_ino(str
  		atomic_set(&ino->count, 0);
  	}
@@ -95,7 +95,7 @@ Index: linux-2.6.27/fs/autofs4/inode.c
  	ino->mode = mode;
  	ino->last_used = jiffies;
  
-@@ -195,9 +197,9 @@ static int autofs4_show_options(struct s
+@@ -190,9 +192,9 @@ static int autofs4_show_options(struct s
  	seq_printf(m, ",minproto=%d", sbi->min_proto);
  	seq_printf(m, ",maxproto=%d", sbi->max_proto);
  
@@ -107,33 +107,33 @@ Index: linux-2.6.27/fs/autofs4/inode.c
  		seq_printf(m, ",direct");
  	else
  		seq_printf(m, ",indirect");
-@@ -282,13 +284,13 @@ static int parse_options(char *options, 
+@@ -277,13 +279,13 @@ static int parse_options(char *options, 
  			*maxproto = option;
  			break;
  		case Opt_indirect:
 -			*type = AUTOFS_TYPE_INDIRECT;
-+			set_autofs_type_indirect(*type);
++			set_autofs_type_indirect(type);
  			break;
  		case Opt_direct:
 -			*type = AUTOFS_TYPE_DIRECT;
-+			set_autofs_type_direct(*type);
++			set_autofs_type_direct(type);
  			break;
  		case Opt_offset:
 -			*type = AUTOFS_TYPE_OFFSET;
-+			set_autofs_type_offset(*type);
++			set_autofs_type_offset(type);
  			break;
  		default:
  			return 1;
-@@ -336,7 +338,7 @@ int autofs4_fill_super(struct super_bloc
+@@ -331,7 +333,7 @@ int autofs4_fill_super(struct super_bloc
  	sbi->sb = s;
  	sbi->version = 0;
  	sbi->sub_version = 0;
 -	sbi->type = AUTOFS_TYPE_INDIRECT;
-+	set_autofs_type_indirect(sbi->type);
++	set_autofs_type_indirect(&sbi->type);
  	sbi->min_proto = 0;
  	sbi->max_proto = 0;
  	mutex_init(&sbi->wq_mutex);
-@@ -378,7 +380,7 @@ int autofs4_fill_super(struct super_bloc
+@@ -373,7 +375,7 @@ int autofs4_fill_super(struct super_bloc
  	}
  
  	root_inode->i_fop = &autofs4_root_operations;
@@ -142,10 +142,10 @@ Index: linux-2.6.27/fs/autofs4/inode.c
  			&autofs4_direct_root_inode_operations :
  			&autofs4_indirect_root_inode_operations;
  
-Index: linux-2.6.27/fs/autofs4/waitq.c
+Index: linux-2.6.24/fs/autofs4/waitq.c
 ===================================================================
---- linux-2.6.27.orig/fs/autofs4/waitq.c
-+++ linux-2.6.27/fs/autofs4/waitq.c
+--- linux-2.6.24.orig/fs/autofs4/waitq.c
++++ linux-2.6.24/fs/autofs4/waitq.c
 @@ -337,7 +337,7 @@ int autofs4_wait(struct autofs_sb_info *
  		 * is very similar for indirect mounts except only dentrys
  		 * in the root of the autofs file system may be negative.
@@ -219,10 +219,10 @@ Index: linux-2.6.27/fs/autofs4/waitq.c
  	/* Are we the last process to need status? */
  	mutex_lock(&sbi->wq_mutex);
  	if (!--wq->wait_ctr)
-Index: linux-2.6.27/Documentation/filesystems/autofs4-mount-control.txt
+Index: linux-2.6.24/Documentation/filesystems/autofs4-mount-control.txt
 ===================================================================
 --- /dev/null
-+++ linux-2.6.27/Documentation/filesystems/autofs4-mount-control.txt
++++ linux-2.6.24/Documentation/filesystems/autofs4-mount-control.txt
 @@ -0,0 +1,414 @@
 +
 +Miscellaneous Device control operations for the autofs4 kernel module
@@ -615,7 +615,7 @@ Index: linux-2.6.27/Documentation/filesystems/autofs4-mount-control.txt
 +possible variations. Both use the path field set to the path of the mount
 +point to check and the size field must be adjusted appropriately. One uses
 +the ioctlfd field to identify a specific mount point to check while the
-+other variation uses the path and optionaly the ismountpoint.in.type 
++other variation uses the path and optionaly the ismountpoint.in.type
 +field set to an autofs mount type. The call returns 1 if this is a mount
 +point and sets the ismountpoint.out.devid field to the device number of
 +the mount and the ismountpoint.out.magic field to the relevant super
@@ -638,21 +638,21 @@ Index: linux-2.6.27/Documentation/filesystems/autofs4-mount-control.txt
 +root of a mount 1 is returned along with the super magic of the mount
 +or 0 otherwise.
 + 
-Index: linux-2.6.27/fs/autofs4/Makefile
+Index: linux-2.6.24/fs/autofs4/Makefile
 ===================================================================
---- linux-2.6.27.orig/fs/autofs4/Makefile
-+++ linux-2.6.27/fs/autofs4/Makefile
+--- linux-2.6.24.orig/fs/autofs4/Makefile
++++ linux-2.6.24/fs/autofs4/Makefile
 @@ -4,4 +4,4 @@
  
  obj-$(CONFIG_AUTOFS4_FS) += autofs4.o
  
 -autofs4-objs := init.o inode.o root.o symlink.o waitq.o expire.o
 +autofs4-objs := init.o inode.o root.o symlink.o waitq.o expire.o dev-ioctl.o
-Index: linux-2.6.27/fs/autofs4/dev-ioctl.c
+Index: linux-2.6.24/fs/autofs4/dev-ioctl.c
 ===================================================================
 --- /dev/null
-+++ linux-2.6.27/fs/autofs4/dev-ioctl.c
-@@ -0,0 +1,820 @@
++++ linux-2.6.24/fs/autofs4/dev-ioctl.c
+@@ -0,0 +1,840 @@
 +/*
 + * Copyright 2008 Red Hat, Inc. All rights reserved.
 + * Copyright 2008 Ian Kent <raven@themaw.net>
@@ -670,7 +670,6 @@ Index: linux-2.6.27/fs/autofs4/dev-ioctl.c
 +#include <linux/namei.h>
 +#include <linux/fcntl.h>
 +#include <linux/file.h>
-+#include <linux/fdtable.h>
 +#include <linux/sched.h>
 +#include <linux/compat.h>
 +#include <linux/syscalls.h>
@@ -703,6 +702,18 @@ Index: linux-2.6.27/fs/autofs4/dev-ioctl.c
 +	if (!strchr(name, '/'))
 +		return -EINVAL;
 +	return 0;
++}
++
++/*
++ * Check a string doesn't overrun the chunk of
++ * memory we copied from user land.
++ */
++static int invalid_str(char *str, void *end)
++{
++	while ((void *) str <= end)
++		if (!*str++)
++			return 0;
++	return -EINVAL;
 +}
 +
 +/*
@@ -767,7 +778,7 @@ Index: linux-2.6.27/fs/autofs4/dev-ioctl.c
 +
 +/*
 + * Check sanity of parameter control fields and if a path is present
-+ * check that it has a "/" and is terminated.
++ * check that it is terminated and contains at least one "/".
 + */
 +static int validate_dev_ioctl(int cmd, struct autofs_dev_ioctl *param)
 +{
@@ -780,6 +791,15 @@ Index: linux-2.6.27/fs/autofs4/dev-ioctl.c
 +	}
 +
 +	if (param->size > sizeof(*param)) {
++		err = invalid_str(param->path,
++				 (void *) ((size_t) param + param->size));
++		if (err) {
++			AUTOFS_WARN(
++			  "path string terminator missing for cmd(0x%08x)",
++			  cmd);
++			goto out;
++		}
++
 +		err = check_name(param->path);
 +		if (err) {
 +			AUTOFS_WARN("invalid path supplied for cmd(0x%08x)",
@@ -842,16 +862,16 @@ Index: linux-2.6.27/fs/autofs4/dev-ioctl.c
 +	err = -ENOENT;
 +
 +	/* Lookup the dentry name at the base of our mount point */
-+	dentry = d_lookup(nd->path.dentry, &nd->last);
++	dentry = d_lookup(nd->dentry, &nd->last);
 +	if (!dentry)
 +		goto out;
 +
-+	dput(nd->path.dentry);
-+	nd->path.dentry = dentry;
++	dput(nd->dentry);
++	nd->dentry = dentry;
 +
 +	/* And follow the mount stack looking for our autofs mount */
-+	while (follow_down(&nd->path.mnt, &nd->path.dentry)) {
-+		inode = nd->path.dentry->d_inode;
++	while (follow_down(&nd->mnt, &nd->dentry)) {
++		inode = nd->dentry->d_inode;
 +		if (!inode)
 +			break;
 +
@@ -881,16 +901,16 @@ Index: linux-2.6.27/fs/autofs4/dev-ioctl.c
 +	err = -ENOENT;
 +
 +	/* Lookup the dentry name at the base of our mount point */
-+	dentry = d_lookup(nd->path.dentry, &nd->last);
++	dentry = d_lookup(nd->dentry, &nd->last);
 +	if (!dentry)
 +		goto out;
 +
-+	dput(nd->path.dentry);
-+	nd->path.dentry = dentry;
++	dput(nd->dentry);
++	nd->dentry = dentry;
 +
 +	/* And follow the mount stack looking for our autofs mount */
-+	while (follow_down(&nd->path.mnt, &nd->path.dentry)) {
-+		ino = autofs4_dentry_ino(nd->path.dentry);
++	while (follow_down(&nd->mnt, &nd->dentry)) {
++		ino = autofs4_dentry_ino(nd->dentry);
 +		if (ino && ino->sbi->type & type) {
 +			err = 0;
 +			break;
@@ -938,11 +958,11 @@ Index: linux-2.6.27/fs/autofs4/dev-ioctl.c
 +		 */
 +		err = autofs_dev_ioctl_find_super(&nd, devid);
 +		if (err) {
-+			path_put(&nd.path);
++			path_release(&nd);
 +			goto out;
 +		}
 +
-+		filp = dentry_open(nd.path.dentry, nd.path.mnt, O_RDONLY);
++		filp = dentry_open(nd.dentry, nd.mnt, O_RDONLY);
 +		if (IS_ERR(filp)) {
 +			err = PTR_ERR(filp);
 +			goto out;
@@ -1133,10 +1153,10 @@ Index: linux-2.6.27/fs/autofs4/dev-ioctl.c
 +	if (err)
 +		goto out_release;
 +
-+	ino = autofs4_dentry_ino(nd.path.dentry);
++	ino = autofs4_dentry_ino(nd.dentry);
 +	if (ino) {
 +		err = 0;
-+		autofs4_expire_wait(nd.path.dentry);
++		autofs4_expire_wait(nd.dentry);
 +		spin_lock(&sbi->fs_lock);
 +		param->requester.uid = ino->uid;
 +		param->requester.gid = ino->gid;
@@ -1144,7 +1164,7 @@ Index: linux-2.6.27/fs/autofs4/dev-ioctl.c
 +	}
 +
 +out_release:
-+	path_put(&nd.path);
++	path_release(&nd);
 +out:
 +	return err;
 +}
@@ -1228,7 +1248,7 @@ Index: linux-2.6.27/fs/autofs4/dev-ioctl.c
 +			if (err)
 +				goto out;
 +
-+			sb = nd.path.dentry->d_sb;
++			sb = nd.dentry->d_sb;
 +			devid = new_encode_dev(sb->s_dev);
 +		} else {
 +			struct autofs_info *ino;
@@ -1241,15 +1261,15 @@ Index: linux-2.6.27/fs/autofs4/dev-ioctl.c
 +			if (err)
 +				goto out_release;
 +
-+			ino = autofs4_dentry_ino(nd.path.dentry);
++			ino = autofs4_dentry_ino(nd.dentry);
 +			devid = autofs4_get_dev(ino->sbi);
 +		}
 +
 +		err = 0;
-+		if (nd.path.dentry->d_inode &&
-+		    nd.path.mnt->mnt_root == nd.path.dentry) {
++		if (nd.dentry->d_inode &&
++		    nd.mnt->mnt_root == nd.dentry) {
 +			err = 1;
-+			magic = nd.path.dentry->d_inode->i_sb->s_magic;
++			magic = nd.dentry->d_inode->i_sb->s_magic;
 +		}
 +	} else {
 +		dev_t dev = autofs4_get_dev(sbi);
@@ -1264,11 +1284,11 @@ Index: linux-2.6.27/fs/autofs4/dev-ioctl.c
 +
 +		devid = dev;
 +
-+		err = have_submounts(nd.path.dentry);
++		err = have_submounts(nd.dentry);
 +
-+		if (nd.path.mnt->mnt_mountpoint != nd.path.mnt->mnt_root) {
-+			if (follow_down(&nd.path.mnt, &nd.path.dentry)) {
-+				struct inode *inode = nd.path.dentry->d_inode;
++		if (nd.mnt->mnt_mountpoint != nd.mnt->mnt_root) {
++			if (follow_down(&nd.mnt, &nd.dentry)) {
++				struct inode *inode = nd.dentry->d_inode;
 +				magic = inode->i_sb->s_magic;
 +			}
 +		}
@@ -1278,7 +1298,7 @@ Index: linux-2.6.27/fs/autofs4/dev-ioctl.c
 +	param->ismountpoint.out.magic = magic;
 +
 +out_release:
-+	path_put(&nd.path);
++	path_release(&nd);
 +out:
 +	return err;
 +}
@@ -1473,10 +1493,10 @@ Index: linux-2.6.27/fs/autofs4/dev-ioctl.c
 +	return;
 +}
 +
-Index: linux-2.6.27/fs/autofs4/expire.c
+Index: linux-2.6.24/fs/autofs4/expire.c
 ===================================================================
---- linux-2.6.27.orig/fs/autofs4/expire.c
-+++ linux-2.6.27/fs/autofs4/expire.c
+--- linux-2.6.24.orig/fs/autofs4/expire.c
++++ linux-2.6.24/fs/autofs4/expire.c
 @@ -63,7 +63,7 @@ static int autofs4_mount_busy(struct vfs
  		struct autofs_sb_info *sbi = autofs4_sbi(dentry->d_sb);
  
@@ -1561,10 +1581,10 @@ Index: linux-2.6.27/fs/autofs4/expire.c
 +	return autofs4_do_expire_multi(sb, mnt, sbi, do_now);
 +}
 +
-Index: linux-2.6.27/fs/autofs4/init.c
+Index: linux-2.6.24/fs/autofs4/init.c
 ===================================================================
---- linux-2.6.27.orig/fs/autofs4/init.c
-+++ linux-2.6.27/fs/autofs4/init.c
+--- linux-2.6.24.orig/fs/autofs4/init.c
++++ linux-2.6.24/fs/autofs4/init.c
 @@ -29,11 +29,20 @@ static struct file_system_type autofs_fs
  
  static int __init init_autofs4_fs(void)
@@ -1587,10 +1607,10 @@ Index: linux-2.6.27/fs/autofs4/init.c
  	unregister_filesystem(&autofs_fs_type);
  }
  
-Index: linux-2.6.27/include/linux/auto_dev-ioctl.h
+Index: linux-2.6.24/include/linux/auto_dev-ioctl.h
 ===================================================================
 --- /dev/null
-+++ linux-2.6.27/include/linux/auto_dev-ioctl.h
++++ linux-2.6.24/include/linux/auto_dev-ioctl.h
 @@ -0,0 +1,224 @@
 +/*
 + * Copyright 2008 Red Hat, Inc. All rights reserved.
@@ -1816,11 +1836,11 @@ Index: linux-2.6.27/include/linux/auto_dev-ioctl.h
 +	      AUTOFS_DEV_IOCTL_ISMOUNTPOINT_CMD, struct autofs_dev_ioctl)
 +
 +#endif	/* _LINUX_AUTO_DEV_IOCTL_H */
-Index: linux-2.6.27/include/linux/auto_fs4.h
+Index: linux-2.6.24/include/linux/auto_fs4.h
 ===================================================================
---- linux-2.6.27.orig/include/linux/auto_fs4.h
-+++ linux-2.6.27/include/linux/auto_fs4.h
-@@ -23,16 +23,36 @@
+--- linux-2.6.24.orig/include/linux/auto_fs4.h
++++ linux-2.6.24/include/linux/auto_fs4.h
+@@ -23,16 +23,70 @@
  #define AUTOFS_MIN_PROTO_VERSION	3
  #define AUTOFS_MAX_PROTO_VERSION	5
  
@@ -1840,25 +1860,59 @@ Index: linux-2.6.27/include/linux/auto_fs4.h
 +#define AUTOFS_TYPE_DIRECT		2U
 +#define AUTOFS_TYPE_OFFSET		4U
 +
-+#define set_autofs_type_indirect(type)		(type = AUTOFS_TYPE_INDIRECT)
-+#define autofs_type_indirect(type)		(type == AUTOFS_TYPE_INDIRECT)
++static inline void set_autofs_type_indirect(unsigned int *type)
++{
++	*type = AUTOFS_TYPE_INDIRECT;
++	return;
++}
 +
-+#define set_autofs_type_direct(type)		(type = AUTOFS_TYPE_DIRECT)
-+#define autofs_type_direct(type)		(type == AUTOFS_TYPE_DIRECT)
++static inline unsigned int autofs_type_indirect(unsigned int type)
++{
++	return (type == AUTOFS_TYPE_INDIRECT);
++}
 +
-+#define set_autofs_type_offset(type)		(type = AUTOFS_TYPE_OFFSET)
-+#define autofs_type_offset(type)		(type == AUTOFS_TYPE_OFFSET)
++static inline void set_autofs_type_direct(unsigned int *type)
++{
++	*type = AUTOFS_TYPE_DIRECT;
++	return;
++}
 +
-+#define autofs_type_trigger(type) \
-+	(type == AUTOFS_TYPE_DIRECT || type == AUTOFS_TYPE_OFFSET)
++static inline unsigned int autofs_type_direct(unsigned int type)
++{
++	return (type == AUTOFS_TYPE_DIRECT);
++}
++
++static inline void set_autofs_type_offset(unsigned int *type)
++{
++	*type = AUTOFS_TYPE_OFFSET;
++	return;
++}
++
++static inline unsigned int autofs_type_offset(unsigned int type)
++{
++	return (type == AUTOFS_TYPE_OFFSET);
++}
++
++static inline unsigned int autofs_type_trigger(unsigned int type)
++{
++	return (type == AUTOFS_TYPE_DIRECT || type == AUTOFS_TYPE_OFFSET);
++}
 +
 +/*
 + * This isn't really a type as we use it to say "no type set" to
 + * indicate we want to search for "any" mount in the
 + * autofs_dev_ioctl_ismountpoint() device ioctl function.
 + */
-+#define set_autofs_type_any(type)		(type = AUTOFS_TYPE_ANY)
-+#define autofs_type_any(type)			(type == AUTOFS_TYPE_ANY)
++static inline void set_autofs_type_any(unsigned int *type)
++{
++	*type = AUTOFS_TYPE_ANY;
++	return;
++}
++
++static inline unsigned int autofs_type_any(unsigned int type)
++{
++	return (type == AUTOFS_TYPE_ANY);
++}
  
  /* Daemon notification packet types */
  enum autofs_notify {

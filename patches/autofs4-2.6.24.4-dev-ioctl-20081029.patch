@@ -652,7 +652,7 @@ Index: linux-2.6.24.4/fs/autofs4/dev-ioctl.c
 ===================================================================
 --- /dev/null
 +++ linux-2.6.24.4/fs/autofs4/dev-ioctl.c
-@@ -0,0 +1,819 @@
+@@ -0,0 +1,840 @@
 +/*
 + * Copyright 2008 Red Hat, Inc. All rights reserved.
 + * Copyright 2008 Ian Kent <raven@themaw.net>
@@ -702,6 +702,18 @@ Index: linux-2.6.24.4/fs/autofs4/dev-ioctl.c
 +	if (!strchr(name, '/'))
 +		return -EINVAL;
 +	return 0;
++}
++
++/*
++ * Check a string doesn't overrun the chunk of
++ * memory we copied from user land.
++ */
++static int invalid_str(char *str, void *end)
++{
++	while ((void *) str <= end)
++		if (!*str++)
++			return 0;
++	return -EINVAL;
 +}
 +
 +/*
@@ -766,7 +778,7 @@ Index: linux-2.6.24.4/fs/autofs4/dev-ioctl.c
 +
 +/*
 + * Check sanity of parameter control fields and if a path is present
-+ * check that it has a "/" and is terminated.
++ * check that it is terminated and contains at least one "/".
 + */
 +static int validate_dev_ioctl(int cmd, struct autofs_dev_ioctl *param)
 +{
@@ -779,6 +791,15 @@ Index: linux-2.6.24.4/fs/autofs4/dev-ioctl.c
 +	}
 +
 +	if (param->size > sizeof(*param)) {
++		err = invalid_str(param->path,
++				 (void *) ((size_t) param + param->size));
++		if (err) {
++			AUTOFS_WARN(
++			  "path string terminator missing for cmd(0x%08x)",
++			  cmd);
++			goto out;
++		}
++
 +		err = check_name(param->path);
 +		if (err) {
 +			AUTOFS_WARN("invalid path supplied for cmd(0x%08x)",
