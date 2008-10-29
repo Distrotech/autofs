@@ -41,8 +41,28 @@ static struct map_source *
 __master_find_map_source(struct master_mapent *,
 			 const char *, const char *, int, const char **);
 
-pthread_mutex_t master_mutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t instance_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t master_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t instance_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+void master_mutex_lock(void)
+{
+	int status = pthread_mutex_lock(&master_mutex);
+	if (status)
+		fatal(status);
+}
+
+void master_mutex_unlock(void)
+{
+	int status = pthread_mutex_unlock(&master_mutex);
+	if (status)
+		fatal(status);
+}
+
+void master_mutex_lock_cleanup(void *arg)
+{
+	master_mutex_unlock();
+	return;
+}
 
 int master_add_autofs_point(struct master_mapent *entry,
 		time_t timeout, unsigned logopt, unsigned ghost, int submount) 
@@ -1108,10 +1128,6 @@ int master_mount_mounts(struct master *master, time_t age, int readall)
 			st_add_task(ap, ST_SHUTDOWN_PENDING);
 			continue;
 		}
-
-		master_source_writelock(ap->entry);
-		lookup_close_lookup(ap);
-		master_source_unlock(ap->entry);
 
 		cache_readlock(nc);
 		ne = cache_lookup_distinct(nc, this->path);

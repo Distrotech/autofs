@@ -267,17 +267,17 @@ static int do_read_map(struct autofs_point *ap, struct map_source *map, time_t a
 	struct lookup_mod *lookup;
 	int status;
 
-	if (!map->lookup) {
-		lookup = open_lookup(map->type, "",
-				map->format, map->argc, map->argv);
-		if (!lookup) {
-			debug(ap->logopt, "lookup module %s failed", map->type);
-			return NSS_STATUS_UNAVAIL;
-		}
-		map->lookup = lookup;
+	lookup = open_lookup(map->type, "", map->format, map->argc, map->argv);
+	if (!lookup) {
+		debug(ap->logopt, "lookup module %s failed", map->type);
+		return NSS_STATUS_UNAVAIL;
 	}
 
-	lookup = map->lookup;
+	master_source_writelock(ap->entry);
+	if (map->lookup)
+		close_lookup(map->lookup);
+	map->lookup = lookup;
+	master_source_unlock(ap->entry);
 
 	/* If we don't need to create directories then there's no use
 	 * reading the map. We just need to test that the map is valid
@@ -463,8 +463,6 @@ int lookup_nss_read_map(struct autofs_point *ap, struct map_source *source, time
 	 * point in the master map) do the nss lookup to
 	 * locate the map and read it.
 	 */
-	pthread_cleanup_push(master_source_lock_cleanup, entry);
-	master_source_readlock(entry);
 	if (source)
 		map = source;
 	else
@@ -557,7 +555,6 @@ int lookup_nss_read_map(struct autofs_point *ap, struct map_source *source, time
 
 		map = map->next;
 	}
-	pthread_cleanup_pop(1);
 
 	if (!result || at_least_one)
 		return 1;

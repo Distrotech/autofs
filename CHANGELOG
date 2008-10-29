@@ -43,6 +43,7 @@
 - fix rootless direct multi-mount expire.
 - wait submount expire thread completion.
 - add missing uris list locking.
+- fix segv during library re-open.
  
 14/01/2008 autofs-5.0.3
 -----------------------

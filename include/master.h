@@ -70,6 +70,9 @@ int master_parse_entry(const char *, unsigned int, unsigned int, time_t);
 
 /* From master.c master parser utility routines */
 
+void master_mutex_lock(void);
+void master_mutex_unlock(void);
+void master_mutex_lock_cleanup(void *);
 void master_set_default_timeout(void);
 void master_set_default_ghost_mode(void);
 int master_add_autofs_point(struct master_mapent *, time_t, unsigned, unsigned, int);
@@ -107,19 +110,5 @@ int master_mount_mounts(struct master *, time_t, int);
 extern inline unsigned int master_get_logopt(void);
 int master_list_empty(struct master *);
 int master_kill(struct master *);
-
-#define master_mutex_lock() \
-do { \
-	int status = pthread_mutex_lock(&master_mutex); \
-	if (status) \
-		fatal(status); \
-} while (0)
-
-#define master_mutex_unlock() \
-do { \
-	int status = pthread_mutex_unlock(&master_mutex); \
-	if (status) \
-		fatal(status); \
-} while (0)
 
 #endif

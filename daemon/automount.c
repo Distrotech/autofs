@@ -85,7 +85,6 @@ int aquire_flag_file(void);
 void release_flag_file(void);
 static int umount_all(struct autofs_point *ap, int force);
 
-extern pthread_mutex_t master_mutex;
 extern struct master *master_list;
 
 static int do_mkdir(const char *parent, const char *path, mode_t mode)
