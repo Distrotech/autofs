@@ -1033,55 +1033,53 @@ static void expire_mutex_unlock(void *arg)
 
 static void *do_expire_direct(void *arg)
 {
-	struct pending_args *mt;
+	struct pending_args *args, mt;
 	struct autofs_point *ap;
 	size_t len;
 	int status, state;
 
-	mt = (struct pending_args *) arg;
+	args = (struct pending_args *) arg;
 
 	status = pthread_mutex_lock(&ea_mutex);
 	if (status)
 		fatal(status);
 
-	ap = mt->ap;
+	memcpy(&mt, args, sizeof(struct pending_args));
 
-	mt->signaled = 1;
-	status = pthread_cond_signal(&mt->cond);
+	ap = mt.ap;
+
+	args->signaled = 1;
+	status = pthread_cond_signal(&args->cond);
 	if (status)
 		fatal(status);
 
 	expire_mutex_unlock(NULL);
 
-	pthread_cleanup_push(free_pending_args, mt);
-	pthread_cleanup_push(pending_cond_destroy, mt);
-	pthread_cleanup_push(expire_send_fail, mt);
+	pthread_cleanup_push(expire_send_fail, &mt);
 
-	len = _strlen(mt->name, KEY_MAX_LEN);
+	len = _strlen(mt.name, KEY_MAX_LEN);
 	if (!len) {
-		warn(ap->logopt, "direct key path too long %s", mt->name);
+		warn(ap->logopt, "direct key path too long %s", mt.name);
 		/* TODO: force umount ?? */
 		pthread_exit(NULL);
 	}
 
-	status = do_expire(ap, mt->name, len);
+	status = do_expire(ap, mt.name, len);
 	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &state);
 	if (status)
-		send_fail(ap->logopt, mt->ioctlfd, mt->wait_queue_token);
+		send_fail(ap->logopt, mt.ioctlfd, mt.wait_queue_token);
 	else {
 		struct mapent *me;
-		cache_readlock(mt->mc);
-		me = cache_lookup_distinct(mt->mc, mt->name);
+		cache_readlock(mt.mc);
+		me = cache_lookup_distinct(mt.mc, mt.name);
 		me->ioctlfd = -1;
-		cache_unlock(mt->mc);
-		send_ready(ap->logopt, mt->ioctlfd, mt->wait_queue_token);
-		close(mt->ioctlfd);
+		cache_unlock(mt.mc);
+		send_ready(ap->logopt, mt.ioctlfd, mt.wait_queue_token);
+		close(mt.ioctlfd);
 	}
 	pthread_setcancelstate(state, NULL);
 
 	pthread_cleanup_pop(0);
-	pthread_cleanup_pop(1);
-	pthread_cleanup_pop(1);
 
 	return NULL;
 }
@@ -1198,6 +1196,8 @@ int handle_packet_expire_direct(struct autofs_point *ap, autofs_packet_expire_di
 	cache_unlock(mc);
 	master_source_unlock(ap->entry);
 
+	pthread_cleanup_push(free_pending_args, mt);
+	pthread_cleanup_push(pending_cond_destroy, mt);
 	pthread_cleanup_push(expire_mutex_unlock, NULL);
 	pthread_setcancelstate(state, NULL);
 
@@ -1211,6 +1211,8 @@ int handle_packet_expire_direct(struct autofs_point *ap, autofs_packet_expire_di
 			fatal(status);
 	}
 
+	pthread_cleanup_pop(1);
+	pthread_cleanup_pop(1);
 	pthread_cleanup_pop(1);
 
 	return 0;

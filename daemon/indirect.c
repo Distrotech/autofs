@@ -596,40 +596,38 @@ static void expire_mutex_unlock(void *arg)
 
 static void *do_expire_indirect(void *arg)
 {
-	struct pending_args *mt;
+	struct pending_args *args, mt;
 	struct autofs_point *ap;
 	int status, state;
 
-	mt = (struct pending_args *) arg;
+	args = (struct pending_args *) arg;
 
 	status = pthread_mutex_lock(&ea_mutex);
 	if (status)
 		fatal(status);
 
-	ap = mt->ap;
+	memcpy(&mt, args, sizeof(struct pending_args));
 
-	mt->signaled = 1;
-	status = pthread_cond_signal(&mt->cond);
+	ap = mt.ap;
+
+	args->signaled = 1;
+	status = pthread_cond_signal(&args->cond);
 	if (status)
 		fatal(status);
 
 	expire_mutex_unlock(NULL);
 
-	pthread_cleanup_push(free_pending_args, mt);
-	pthread_cleanup_push(pending_cond_destroy, mt);
-	pthread_cleanup_push(expire_send_fail, mt);
+	pthread_cleanup_push(expire_send_fail, &mt);
 
-	status = do_expire(mt->ap, mt->name, mt->len);
+	status = do_expire(mt.ap, mt.name, mt.len);
 	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &state);
 	if (status)
-		send_fail(ap->logopt, ap->ioctlfd, mt->wait_queue_token);
+		send_fail(ap->logopt, ap->ioctlfd, mt.wait_queue_token);
 	else
-		send_ready(ap->logopt, ap->ioctlfd, mt->wait_queue_token);
+		send_ready(ap->logopt, ap->ioctlfd, mt.wait_queue_token);
 	pthread_setcancelstate(state, NULL);
 
 	pthread_cleanup_pop(0);
-	pthread_cleanup_pop(1);
-	pthread_cleanup_pop(1);
 
 	return NULL;
 }
@@ -682,6 +680,8 @@ int handle_packet_expire_indirect(struct autofs_point *ap, autofs_packet_expire_
 		return 1;
 	}
 
+	pthread_cleanup_push(free_pending_args, mt);
+	pthread_cleanup_push(pending_cond_destroy, mt);
 	pthread_cleanup_push(expire_mutex_unlock, NULL);
 	pthread_setcancelstate(state, NULL);
 
@@ -695,6 +695,8 @@ int handle_packet_expire_indirect(struct autofs_point *ap, autofs_packet_expire_
 			fatal(status);
 	}
 
+	pthread_cleanup_pop(1);
+	pthread_cleanup_pop(1);
 	pthread_cleanup_pop(1);
 
 	return 0;
