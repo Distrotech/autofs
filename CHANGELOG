@@ -46,6 +46,7 @@
 - fix segv during library re-open.
 - fix incorrect pthreads condition handling for expire requests.
 - fix $mandir definition in Makefile.conf.in
+- fix init script stop function.
  
 14/01/2008 autofs-5.0.3
 -----------------------
