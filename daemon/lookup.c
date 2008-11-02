@@ -608,7 +608,7 @@ int lookup_ghost(struct autofs_point *ap, const char *root)
 				goto next;
 			}
 
-			fullpath = alloca(strlen(me->key) + strlen(root) + 3);
+			fullpath = malloc(strlen(me->key) + strlen(root) + 3);
 			if (!fullpath) {
 				warn(ap->logopt, "failed to allocate full path");
 				goto next;
@@ -619,6 +619,7 @@ int lookup_ghost(struct autofs_point *ap, const char *root)
 			if (ret == -1 && errno != ENOENT) {
 				char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
 				warn(ap->logopt, "stat error %s", estr);
+				free(fullpath);
 				goto next;
 			}
 
@@ -627,6 +628,7 @@ int lookup_ghost(struct autofs_point *ap, const char *root)
 				char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
 				warn(ap->logopt,
 				     "mkdir_path %s failed: %s", fullpath, estr);
+				free(fullpath);
 				goto next;
 			}
 
@@ -634,6 +636,8 @@ int lookup_ghost(struct autofs_point *ap, const char *root)
 				me->dev = st.st_dev;
 				me->ino = st.st_ino;
 			}
+
+			free(fullpath);
 next:
 			me = cache_enumerate(mc, me);
 		}
