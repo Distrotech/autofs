@@ -95,7 +95,7 @@ dnl Check the location of the configuration defaults directory
 dnl --------------------------------------------------------------------------
 AC_DEFUN(AF_CONF_D,
 [if test -z "$confdir"; then
-  for conf_d in /etc/sysconfig /etc/defaults /etc/conf.d; do
+  for conf_d in /etc/sysconfig /etc/defaults /etc/conf.d /etc/default; do
     if test -z "$confdir"; then
       if test -d "$conf_d"; then
 	confdir="$conf_d"
