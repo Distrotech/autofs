@@ -76,6 +76,9 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 	int err;
 	int i, len;
 
+	if (ap->flags & MOUNT_FLAG_REMOUNT)
+		return 0;
+
 	/* Root offset of multi-mount */
 	len = strlen(root);
 	if (root[len - 1] == '/') {
@@ -127,7 +130,8 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 			if (ap->type != LKP_INDIRECT)
 				return 1;
 
-			if ((!ap->ghost && name_len) && !existed)
+			if (!existed &&
+			   (!(ap->flags & MOUNT_FLAG_GHOST) && name_len))
 				rmdir_path(ap, fullpath, ap->dev);
 
 			return err;
@@ -170,7 +174,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 			      MODPREFIX
 			      "failed to create local mount %s -> %s",
 			      fullpath, what);
-			if (ap->ghost && !status)
+			if (ap->flags & MOUNT_FLAG_GHOST && !status)
 				mkdir_path(fullpath, 0555);
 			else {
 				if (ap->type == LKP_INDIRECT)

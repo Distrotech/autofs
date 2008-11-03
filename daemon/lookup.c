@@ -287,7 +287,7 @@ static int do_read_map(struct autofs_point *ap, struct map_source *map, time_t a
 	 * We always need to whole map for direct mounts in order to
 	 * mount the triggers.
 	 */
-	if (!ap->ghost && ap->type != LKP_DIRECT)
+	if (!(ap->flags & MOUNT_FLAG_GHOST) && ap->type != LKP_DIRECT)
 		return NSS_STATUS_SUCCESS;
 
 	if (!map->stale)
@@ -576,7 +576,7 @@ int lookup_ghost(struct autofs_point *ap, const char *root)
 	if (!strcmp(ap->path, "/-"))
 		return LKP_FAIL | LKP_DIRECT;
 
-	if (!ap->ghost)
+	if (!(ap->flags & MOUNT_FLAG_GHOST))
 		return LKP_INDIRECT;
 
 	pthread_cleanup_push(master_source_lock_cleanup, entry);
@@ -903,7 +903,8 @@ int lookup_nss_mount(struct autofs_point *ap, struct map_source *source, const c
 
 		map = map->next;
 	}
-	send_map_update_request(ap);
+	if (ap->state != ST_INIT)
+		send_map_update_request(ap);
 	pthread_cleanup_pop(1);
 
 	if (result == NSS_STATUS_NOTFOUND)
@@ -1042,7 +1043,7 @@ int lookup_prune_cache(struct autofs_point *ap, time_t age)
 					status = cache_delete(mc, key);
 				if (status != CHE_FAIL) {
 					if (ap->type == LKP_INDIRECT) {
-						if (ap->ghost)
+						if (ap->flags & MOUNT_FLAG_GHOST)
 							rmdir_path(ap, path, ap->dev);
 					} else
 						rmdir_path(ap, path, this->dev);
@@ -1130,6 +1131,9 @@ struct mapent *lookup_source_mapent(struct autofs_point *ap, const char *key, un
 		cache_unlock(mc);
 		map = map->next;
 	}
+
+	if (me && me->mc != mc)
+		error(LOGOPT_ANY, "mismatching mc in cache", me->key);
 
 	return me;
 }

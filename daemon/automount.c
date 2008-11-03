@@ -391,12 +391,12 @@ static void check_rm_dirs(struct autofs_point *ap, const char *path, int incl)
 	if (!incl && ap->submount)
 		return;
 
-	if ((!ap->ghost) ||
+	if ((!(ap->flags & MOUNT_FLAG_GHOST)) ||
 	    (ap->state == ST_SHUTDOWN_PENDING ||
 	     ap->state == ST_SHUTDOWN_FORCE ||
 	     ap->state == ST_SHUTDOWN))
 		rm_unwanted(ap->logopt, path, incl, ap->dev);
-	else if (ap->ghost && (ap->type == LKP_INDIRECT))
+	else if ((ap->flags & MOUNT_FLAG_GHOST) && (ap->type == LKP_INDIRECT))
 		rm_unwanted(ap->logopt, path, 0, ap->dev);
 }
 
@@ -487,7 +487,7 @@ static int umount_subtree_mounts(struct autofs_point *ap, const char *path, unsi
 
 		pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cur_state);
 		/* Lock the closest parent nesting point for umount */
-		cache_multi_lock(me->parent);
+		cache_multi_writelock(me->parent);
 		if (umount_multi_triggers(ap, me, root, base)) {
 			warn(ap->logopt,
 			     "some offset mounts still present under %s", path);
@@ -1452,7 +1452,8 @@ static void handle_mounts_cleanup(void *arg)
 	submount = ap->submount;
 
 	strcpy(path, ap->path);
-	if (!submount && strcmp(ap->path, "/-") && ap->dir_created)
+	if (!submount && strcmp(ap->path, "/-") &&
+	    ap->flags & MOUNT_FLAG_DIR_CREATED)
 		clean = 1;
 
 	if (submount) {
@@ -1530,7 +1531,7 @@ void *handle_mounts(void *arg)
 
 	free(root);
 
-	if (ap->ghost && ap->type != LKP_DIRECT)
+	if (ap->flags & MOUNT_FLAG_GHOST && ap->type != LKP_DIRECT)
 		info(ap->logopt, "ghosting enabled");
 
 	suc->status = 0;
@@ -1955,7 +1956,9 @@ int main(int argc, char *argv[])
 
 	if (!query_kproto_ver() || get_kver_major() < 5) {
 		fprintf(stderr,
-			"%s: kernel protocol version 5.00 or above required.\n",
+			"%s: test mount forbidden or "
+			"incorrect kernel protocol version, "
+			"kernel protocol version 5.00 or above required.\n",
 			program);
 		exit(1);
 	}

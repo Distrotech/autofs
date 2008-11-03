@@ -50,6 +50,7 @@
 - fix master map lexer eval order.
 - fix bad alloca usage.
 - add miscellaneous device node interface library.
+- use miscellaneous device node, if available, for active restart.
  
 14/01/2008 autofs-5.0.3
 -----------------------

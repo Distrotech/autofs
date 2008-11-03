@@ -50,7 +50,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 	pthread_t thid;
 	char *realpath, *mountpoint;
 	const char **argv;
-	int argc, status, ghost = ap->ghost;
+	int argc, status, ghost = ap->flags & MOUNT_FLAG_GHOST;
 	time_t timeout = ap->exp_timeout;
 	unsigned logopt = ap->logopt;
 	char *type, *format, *tmp, *tmp2;
@@ -76,8 +76,13 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 	} else if (*name == '/') {
 		realpath = alloca(name_len + 1);
 		mountpoint = alloca(len + 1);
-		strcpy(mountpoint, root);
-		strcpy(realpath, name);
+		if (ap->flags & MOUNT_FLAG_REMOUNT) {
+			strcpy(mountpoint, name);
+			strcpy(realpath, name);
+		} else {
+			strcpy(mountpoint, root);
+			strcpy(realpath, name);
+		}
 	} else {
 		realpath = alloca(len + name_len + 2);
 		mountpoint = alloca(len + name_len + 2);

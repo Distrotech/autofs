@@ -44,6 +44,9 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 	int err;
 	int len, status, existed = 1;
 
+	if (ap->flags & MOUNT_FLAG_REMOUNT)
+		return 0;
+
 	/* Root offset of multi-mount */
 	len = strlen(root);
 	if (root[len - 1] == '/') {
@@ -92,7 +95,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 		if (ap->type != LKP_INDIRECT)
 			return 1;
 
-		if ((!ap->ghost && name_len) || !existed)
+		if ((!(ap->flags & MOUNT_FLAG_GHOST) && name_len) || !existed)
 			rmdir_path(ap, fullpath, ap->dev);
 
 		return 1;

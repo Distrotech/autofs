@@ -51,8 +51,6 @@ void st_mutex_unlock(void)
 		fatal(status);
 }
 
-int do_mount_autofs_direct(struct autofs_point *, struct mnt_list *, struct mapent *);
-
 void dump_state_queue(void)
 {
 	struct list_head *head = &state_queue;

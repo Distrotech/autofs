@@ -35,6 +35,7 @@ int do_mount(struct autofs_point *ap, const char *root, const char *name, int na
 {
 	struct mount_mod *mod;
 	const char *modstr;
+	size_t root_len = root ? strlen(root) : 0;
 	char **ngp;
 	int rv;
 
@@ -61,10 +62,14 @@ int do_mount(struct autofs_point *ap, const char *root, const char *name, int na
 		}
 	}
 
-	if (ap->type == LKP_DIRECT)
+	if (*name == '/')
 		debug(ap->logopt,
 		      "%s %s type %s options %s using module %s",
 		      what, name, fstype, options, modstr);
+	else if (root_len > 1 && root[root_len - 1] == '/')
+		debug(ap->logopt,
+		      "%s %s type %s options %s using module %s",
+		      what, root, fstype, options, modstr);
 	else
 		debug(ap->logopt,
 		      "%s %s/%s type %s options %s using module %s",

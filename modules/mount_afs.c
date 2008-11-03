@@ -35,6 +35,9 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 	size_t r_len = strlen(root);
 	size_t d_len = r_len + name_len + 2;
 
+	if (ap->flags & MOUNT_FLAG_REMOUNT)
+		return 0;
+
 	if (d_len > PATH_MAX)
 		return 1;
 

@@ -147,7 +147,7 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 		 * We haven't read the list of hosts into the
 		 * cache so go straight to the lookup.
 		 */
-		if (!ap->ghost) {
+		if (!(ap->flags & MOUNT_FLAG_GHOST)) {
 			/*
 			 * If name contains a '/' we're searching for an
 			 * offset that doesn't exist in the export list

@@ -99,14 +99,15 @@ int master_add_autofs_point(struct master_mapent *entry,
 	else
 		ap->negative_timeout = global_negative_timeout;
 	ap->exp_runfreq = (timeout + CHECK_RATIO - 1) / CHECK_RATIO;
-	ap->ghost = ghost;
+	ap->flags = 0;
+	if (ghost)
+		ap->flags = MOUNT_FLAG_GHOST;
 
 	if (ap->path[1] == '-')
 		ap->type = LKP_DIRECT;
 	else
 		ap->type = LKP_INDIRECT;
 
-	ap->dir_created = 0;
 	ap->logopt = logopt;
 
 	ap->parent = NULL;
@@ -479,7 +480,7 @@ void send_map_update_request(struct autofs_point *ap)
 	struct map_source *map;
 	int status, need_update = 0;
 
-	if (!ap->ghost)
+	if (!(ap->flags & MOUNT_FLAG_GHOST))
 		return;
 
 	status = pthread_mutex_lock(&instance_mutex);

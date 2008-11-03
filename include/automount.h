@@ -30,6 +30,7 @@
 #include "rpc_subs.h"
 #include "mounts.h"
 #include "parse_subs.h"
+#include "mounts.h"
 #include "dev-ioctl-lib.h"
 
 #ifdef WITH_DMALLOC
@@ -143,7 +144,7 @@ struct mapent_cache {
 struct mapent {
 	struct mapent *next;
 	struct list_head ino_index;
-	pthread_mutex_t multi_mutex;
+	pthread_rwlock_t multi_rwlock;
 	struct list_head multi_list;
 	struct mapent_cache *mc;
 	struct map_source *source;
@@ -157,7 +158,7 @@ struct mapent {
 	/* Time of last mount fail */
 	time_t status;
 	/* For direct mounts per entry context is kept here */
-	int dir_created;
+	int flags;
 	/* File descriptor for ioctls */
 	int ioctlfd;
 	dev_t dev;
@@ -186,7 +187,8 @@ int cache_add_offset(struct mapent_cache *mc, const char *mkey, const char *key,
 int cache_set_parents(struct mapent *mm);
 int cache_update(struct mapent_cache *mc, struct map_source *ms, const char *key, const char *mapent, time_t age);
 int cache_delete(struct mapent_cache *mc, const char *key);
-void cache_multi_lock(struct mapent *me);
+void cache_multi_readlock(struct mapent *me);
+void cache_multi_writelock(struct mapent *me);
 void cache_multi_unlock(struct mapent *me);
 int cache_delete_offset_list(struct mapent_cache *mc, const char *key);
 void cache_release(struct map_source *map);
@@ -384,6 +386,18 @@ struct kernel_mod_version {
 	unsigned int minor;
 };
 
+/* Enable/disable gohsted directories */
+#define MOUNT_FLAG_GHOST		0x0001
+
+/* Directory created for this mount? */
+#define MOUNT_FLAG_DIR_CREATED		0x0002
+
+/* Use random policy when selecting a host from which to mount */
+#define MOUNT_FLAG_RANDOM_SELECT	0x0004
+
+/* Mount being re-mounted */
+#define MOUNT_FLAG_REMOUNT		0x0008
+
 struct autofs_point {
 	pthread_t thid;
 	char *path;			/* Mount point name */
@@ -397,15 +411,12 @@ struct autofs_point {
 	time_t exp_timeout;		/* Timeout for expiring mounts */
 	time_t exp_runfreq;		/* Frequency for polling for timeouts */
 	time_t negative_timeout;	/* timeout in secs for failed mounts */
-	unsigned ghost;			/* Enable/disable gohsted directories */
-	unsigned logopt;		/* Per map logging */
+	unsigned int flags;		/* autofs mount flags */
+	unsigned int logopt;		/* Per map logging */
 	pthread_t exp_thread;		/* Thread that is expiring */
 	pthread_t readmap_thread;	/* Thread that is reading maps */
 	enum states state;		/* Current state */
 	int state_pipe[2];		/* State change router pipe */
-	unsigned dir_created;		/* Directory created for this mount? */
-	unsigned random_selection;	/* Use random policy when selecting a
-					 * host from which to mount */
 	struct autofs_point *parent;	/* Owner of mounts list for submount */
 	pthread_mutex_t mounts_mutex;	/* Protect mount lists */
 	struct list_head mounts;	/* List of autofs mounts at current level */
@@ -428,6 +439,7 @@ void *expire_proc_indirect(void *);
 void *expire_proc_direct(void *);
 int expire_offsets_direct(struct autofs_point *ap, struct mapent *me, int now);
 int mount_autofs_indirect(struct autofs_point *ap, const char *root);
+int do_mount_autofs_direct(struct autofs_point *ap, struct mnt_list *mnts, struct mapent *me);
 int mount_autofs_direct(struct autofs_point *ap);
 int mount_autofs_offset(struct autofs_point *ap, struct mapent *me, const char *root, const char *offset);
 void submount_signal_parent(struct autofs_point *ap, unsigned int success);

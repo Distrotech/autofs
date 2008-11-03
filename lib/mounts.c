@@ -1080,6 +1080,295 @@ free_tsv:
 	return;
 }
 
+const char *mount_type_str(const unsigned int type)
+{
+	static const char *str_type[] = {
+		"indirect",
+		"direct",
+		"offset"
+	};
+	unsigned int pos, i;
+
+	for (pos = 0, i = type; pos < type_count; i >>= 1, pos++)
+		if (i & 0x1)
+			break;
+
+	return (pos == type_count ? NULL : str_type[pos]);
+}
+
+void notify_mount_result(struct autofs_point *ap,
+			 const char *path, const char *type)
+{
+	if (ap->exp_timeout)
+		info(ap->logopt,
+		    "mounted %s on %s with timeout %u, freq %u seconds",
+		    type, path,
+		    (unsigned int) ap->exp_timeout,
+		    (unsigned int) ap->exp_runfreq);
+	else
+		info(ap->logopt,
+		     "mounted %s on %s with timeouts disabled",
+		     type, path);
+
+	return;
+}
+
+static int do_remount_direct(struct autofs_point *ap, int fd, const char *path)
+{
+	struct ioctl_ops *ops = get_ioctl_ops();
+	int status = REMOUNT_SUCCESS;
+	uid_t uid;
+	gid_t gid;
+	int ret;
+
+	ops->requestor(ap->logopt, fd, path, &uid, &gid);
+	if (uid != -1 && gid != -1)
+		set_tsd_user_vars(ap->logopt, uid, gid);
+
+	ret = lookup_nss_mount(ap, NULL, path, strlen(path));
+	if (ret)
+		info(ap->logopt, "re-connected to %s", path);
+	else {
+		status = REMOUNT_FAIL;
+		info(ap->logopt, "failed to re-connect %s", path);
+	}
+
+	return status;
+}
+
+static int do_remount_indirect(struct autofs_point *ap, int fd, const char *path)
+{
+	struct ioctl_ops *ops = get_ioctl_ops();
+	int status = REMOUNT_SUCCESS;
+	struct dirent **de;
+	char buf[PATH_MAX + 1];
+	uid_t uid;
+	gid_t gid;
+	unsigned int mounted;
+	int n, size;
+
+	n = scandir(path, &de, 0, alphasort);
+	if (n < 0)
+		return -1;
+
+	size = sizeof(buf);
+
+	while (n--) {
+		int ret, len;
+
+		if (strcmp(de[n]->d_name, ".") == 0 ||
+		    strcmp(de[n]->d_name, "..") == 0) {
+			free(de[n]);
+			continue;
+		}
+
+		ret = cat_path(buf, size, path, de[n]->d_name);
+		if (!ret) {
+			do {
+				free(de[n]);
+			} while (n--);
+			free(de);
+			return -1;
+		}
+
+		ops->ismountpoint(ap->logopt, -1, buf, &mounted);
+		if (!mounted) {
+			struct dirent **de2;
+			int i, j;
+
+			i = j = scandir(buf, &de2, 0, alphasort);
+			while (i--)
+				free(de2[i]);
+			free(de2);
+			if (j <= 2) {
+				free(de[n]);
+				continue;
+			}
+		}
+
+		ops->requestor(ap->logopt, fd, buf, &uid, &gid);
+		if (uid != -1 && gid != -1)
+			set_tsd_user_vars(ap->logopt, uid, gid);
+
+		len = strlen(de[n]->d_name);
+
+		ret = lookup_nss_mount(ap, NULL, de[n]->d_name, len);
+		if (ret)
+			info(ap->logopt, "re-connected to %s", buf);
+		else {
+			status = REMOUNT_FAIL;
+			info(ap->logopt, "failed to re-connect %s", buf);
+		}
+		free(de[n]);
+	}
+	free(de);
+
+	return status;
+}
+
+static int remount_active_mount(struct autofs_point *ap,
+				struct mapent_cache *mc,
+				const char *path, dev_t devid,
+				const unsigned int type,
+				int *ioctlfd)
+{
+	struct ioctl_ops *ops = get_ioctl_ops();
+	time_t timeout = ap->exp_timeout;
+	const char *str_type = mount_type_str(type);
+	char buf[MAX_ERR_BUF];
+	unsigned int mounted;
+	struct stat st;
+	int fd;
+
+	*ioctlfd = -1;
+
+	/* Open failed, no mount present */
+	ops->open(ap->logopt, &fd, devid, path);
+	if (fd == -1)
+		return REMOUNT_OPEN_FAIL;
+
+	/* Re-reading the map, set timeout and return */
+	if (ap->state == ST_READMAP) {
+		ops->timeout(ap->logopt, fd, &timeout);
+		ops->close(ap->logopt, fd);
+		return REMOUNT_READ_MAP;
+	}
+
+	debug(ap->logopt, "trying to re-connect to mount %s", path);
+
+	/* Mounted so set pipefd and timeout etc. */
+	if (ops->catatonic(ap->logopt, fd) == -1) {
+		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+		error(ap->logopt, "set catatonic failed: %s", estr);
+		debug(ap->logopt, "couldn't re-connect to mount %s", path);
+		ops->close(ap->logopt, fd);
+		return REMOUNT_OPEN_FAIL;
+	}
+	if (ops->setpipefd(ap->logopt, fd, ap->kpipefd) == -1) {
+		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+		error(ap->logopt, "set pipefd failed: %s", estr);
+		debug(ap->logopt, "couldn't re-connect to mount %s", path);
+		ops->close(ap->logopt, fd);
+		return REMOUNT_OPEN_FAIL;
+	}
+	ops->timeout(ap->logopt, fd, &timeout);
+	if (fstat(fd, &st) == -1) {
+		error(ap->logopt,
+		      "failed to stat %s mount %s", str_type, path);
+		debug(ap->logopt, "couldn't re-connect to mount %s", path);
+		ops->close(ap->logopt, fd);
+		return REMOUNT_STAT_FAIL;
+	}
+	if (mc)
+		cache_set_ino_index(mc, path, st.st_dev, st.st_ino);
+	else
+		ap->dev = st.st_dev;
+	notify_mount_result(ap, path, str_type);
+
+	*ioctlfd = fd;
+
+	/* Any mounts on or below? */
+	if (ops->ismountpoint(ap->logopt, fd, path, &mounted) == -1) {
+		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+		error(ap->logopt, "ismountpoint %s failed: %s", path, estr);
+		debug(ap->logopt, "couldn't re-connect to mount %s", path);
+		ops->close(ap->logopt, fd);
+		return REMOUNT_FAIL;
+	}
+	if (!mounted) {
+		/*
+		 * If we're an indirect mount we pass back the fd.
+		 * But if were a direct or offset mount with no active
+		 * mount we don't retain an open file descriptor.
+		 */
+		if (type != t_indirect) {
+			ops->close(ap->logopt, fd);
+			*ioctlfd = -1;
+		}
+	} else {
+		int ret;
+		/*
+		 * What can I do if we can't remount the existing
+		 * mount(s) (possibly a partial failure), everything
+		 * following will be broken?
+		 */
+		if (type == t_indirect)
+			ret = do_remount_indirect(ap, fd, path);
+		else
+			ret = do_remount_direct(ap, fd, path);
+	}
+
+	debug(ap->logopt, "re-connected to mount %s", path);
+
+	return REMOUNT_SUCCESS;
+}
+
+int try_remount(struct autofs_point *ap, struct mapent *me, unsigned int type)
+{
+	struct ioctl_ops *ops = get_ioctl_ops();
+	struct mapent_cache *mc;
+	const char *path;
+	int ret, fd;
+	dev_t devid;
+
+	if (type == t_indirect) {
+		mc = NULL;
+		path = ap->path;
+	} else {
+		mc = me->mc;
+		path = me->key;
+	}
+
+	ret = ops->mount_device(ap->logopt, path, type, &devid);
+	if (ret == -1 || ret == 0)
+		return -1;
+
+	ret = remount_active_mount(ap, mc, path, devid, type, &fd);
+
+	/*
+	 * The directory must exist since we found a device
+	 * number for the mount but we can't know if we created
+	 * it or not. However, if we're mounted on an autofs fs
+	 * then we need to cleanup the path anyway.
+	 */
+	if (type == t_indirect) {
+		ap->flags &= ~MOUNT_FLAG_DIR_CREATED;
+		if (ret == DEV_IOCTL_IS_AUTOFS)
+			ap->flags |= MOUNT_FLAG_DIR_CREATED;
+	} else {
+		me->flags &= ~MOUNT_FLAG_DIR_CREATED;
+		if (ret == DEV_IOCTL_IS_AUTOFS)
+			me->flags |= MOUNT_FLAG_DIR_CREATED;
+	}
+
+	/*
+	 * Either we opened the mount or we're re-reading the map.
+	 * If we opened the mount and ioctlfd is not -1 we have
+	 * a descriptor for the indirect mount so we need to
+	 * record that in the mount point struct. Otherwise we're
+	 * re-reading the map.
+	*/
+	if (ret == REMOUNT_SUCCESS || ret == REMOUNT_READ_MAP) {
+		if (fd != -1) {
+			if (type == t_indirect)
+				ap->ioctlfd = fd;
+			else
+				me->ioctlfd = fd;
+			return 1;
+		}
+
+		/* Indirect mount requires a valid fd */
+		if (type != t_indirect)
+			return 1;
+	}
+
+	/*
+	 * Since we got the device number above a mount exists so
+	 * any other failure warrants a failure return here.
+	 */
+	return 0;
+}
+
 int umount_ent(struct autofs_point *ap, const char *path)
 {
 	int rv;

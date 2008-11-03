@@ -64,9 +64,13 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 	struct host *this, *hosts = NULL;
 	unsigned int vers;
 	char *nfsoptions = NULL;
+	unsigned int random_selection = ap->flags & MOUNT_FLAG_RANDOM_SELECT;
 	int len, status, err, existed = 1;
 	int nosymlink = 0;
 	int ro = 0;            /* Set if mount bind should be read-only */
+
+	if (ap->flags & MOUNT_FLAG_REMOUNT)
+		return 0;
 
 	debug(ap->logopt,
 	      MODPREFIX "root=%s name=%s what=%s, fstype=%s, options=%s",
@@ -136,7 +140,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 		info(ap->logopt, MODPREFIX "no hosts available");
 		return 1;
 	}
-	prune_host_list(ap->logopt, &hosts, vers, nfsoptions, ap->random_selection);
+	prune_host_list(ap->logopt, &hosts, vers, nfsoptions, random_selection);
 
 	if (!hosts) {
 		info(ap->logopt, MODPREFIX "no hosts available");
@@ -260,7 +264,7 @@ forced_fail:
 	if (ap->type != LKP_INDIRECT)
 		return 1;
 
-	if ((!ap->ghost && name_len) || !existed)
+	if ((!(ap->flags & MOUNT_FLAG_GHOST) && name_len) || !existed)
 		rmdir_path(ap, fullpath, ap->dev);
 
 	return 1;

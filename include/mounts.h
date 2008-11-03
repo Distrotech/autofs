@@ -34,9 +34,10 @@
 #define MNTS_AUTOFS	0x0004
 
 #define REMOUNT_SUCCESS		0x0000
-#define REMOUNT_OPEN_FAIL	0x0001
-#define REMOUNT_STAT_FAIL	0x0002
-#define REMOUNT_READ_MAP	0x0004
+#define REMOUNT_FAIL		0x0001
+#define REMOUNT_OPEN_FAIL	0x0002
+#define REMOUNT_STAT_FAIL	0x0004
+#define REMOUNT_READ_MAP	0x0008
 
 extern const unsigned int t_indirect;
 extern const unsigned int t_direct;
@@ -92,6 +93,9 @@ int tree_get_mnt_sublist(struct mnt_list *mnts, struct list_head *list, const ch
 int tree_find_mnt_ents(struct mnt_list *mnts, struct list_head *list, const char *path);
 int tree_is_mounted(struct mnt_list *mnts, const char *path, unsigned int type);
 void set_tsd_user_vars(unsigned int, uid_t, gid_t);
+const char *mount_type_str(unsigned int);
+void notify_mount_result(struct autofs_point *, const char *, const char *);
+int try_remount(struct autofs_point *, struct mapent *, unsigned int);
 int umount_ent(struct autofs_point *, const char *);
 int mount_multi_triggers(struct autofs_point *, struct mapent *, const char *, unsigned int, const char *);
 int umount_multi_triggers(struct autofs_point *, struct mapent *, char *, const char *);
