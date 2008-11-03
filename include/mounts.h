@@ -16,10 +16,18 @@
 #ifndef MOUNTS_H
 #define MOUNTS_H
 
+#ifndef AUTOFS_TYPE_ANY
 #define AUTOFS_TYPE_ANY		0x0000
+#endif
+#ifndef AUTOFS_TYPE_INDIRECT
 #define AUTOFS_TYPE_INDIRECT	0x0001
+#endif
+#ifndef AUTOFS_TYPE_DIRECT
 #define AUTOFS_TYPE_DIRECT	0x0002
+#endif
+#ifndef AUTOFS_TYPE_OFFSET
 #define AUTOFS_TYPE_OFFSET	0x0004
+#endif
 
 #define MNTS_ALL	0x0001
 #define MNTS_REAL	0x0002
@@ -30,9 +38,9 @@
 #define REMOUNT_STAT_FAIL	0x0002
 #define REMOUNT_READ_MAP	0x0004
 
-extern const unsigned int indirect;
-extern const unsigned int direct;
-extern const unsigned int offset;
+extern const unsigned int t_indirect;
+extern const unsigned int t_direct;
+extern const unsigned int t_offset;
 
 struct mapent;
 

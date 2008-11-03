@@ -1149,7 +1149,8 @@ int lookup_source_close_ioctlfd(struct autofs_point *ap, const char *key)
 		me = cache_lookup_distinct(mc, key);
 		if (me) {
 			if (me->ioctlfd != -1) {
-				close(me->ioctlfd);
+				struct ioctl_ops *ops = get_ioctl_ops();
+				ops->close(ap->logopt, me->ioctlfd);
 				me->ioctlfd = -1;
 			}
 			cache_unlock(mc);

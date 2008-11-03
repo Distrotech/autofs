@@ -595,40 +595,6 @@ int umount_autofs(struct autofs_point *ap, const char *root, int force)
 	return ret;
 }
 
-int send_ready(unsigned logopt, int ioctlfd, unsigned int wait_queue_token)
-{
-	char buf[MAX_ERR_BUF];
-
-	if (wait_queue_token == 0)
-		return 0;
-
-	debug(logopt, "token = %d", wait_queue_token);
-
-	if (ioctl(ioctlfd, AUTOFS_IOC_READY, wait_queue_token) < 0) {
-		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		logerr("AUTOFS_IOC_READY: error %s", estr);
-		return 1;
-	}
-	return 0;
-}
-
-int send_fail(unsigned logopt, int ioctlfd, unsigned int wait_queue_token)
-{
-	char buf[MAX_ERR_BUF];
-
-	if (wait_queue_token == 0)
-		return 0;
-
-	debug(logopt, "token = %d", wait_queue_token);
-
-	if (ioctl(ioctlfd, AUTOFS_IOC_FAIL, wait_queue_token) < 0) {
-		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		logerr("AUTOFS_IOC_FAIL: error %s", estr);
-		return 1;
-	}
-	return 0;
-}
-
 static size_t get_kpkt_len(void)
 {
 	size_t pkt_len = sizeof(struct autofs_v5_packet);
@@ -2069,6 +2035,8 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
+	init_ioctl_ctl();
+
 	if (!alarm_start_handler()) {
 		logerr("%s: failed to create alarm handler thread!", program);
 		master_kill(master_list);
@@ -2117,6 +2085,8 @@ int main(int argc, char *argv[])
 	if (dh)
 		dlclose(dh);
 #endif
+	close_ioctl_ctl();
+
 	info(logging, "autofs stopped");
 
 	exit(0);

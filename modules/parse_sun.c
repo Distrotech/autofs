@@ -1015,6 +1015,7 @@ static void cleanup_multi_root(struct autofs_point *ap, const char *root,
 	if (move == MOUNT_MOVE_OTHER)
 		spawn_umount(ap->logopt, root, NULL);
 	else {
+		struct ioctl_ops *ops = get_ioctl_ops();
 		struct autofs_point *submount;
 
 		mounts_mutex_lock(ap);
@@ -1031,7 +1032,7 @@ static void cleanup_multi_root(struct autofs_point *ap, const char *root,
 		submount->parent->submnt_count--;
 		list_del_init(&submount->mounts);
 
-		ioctl(submount->ioctlfd, AUTOFS_IOC_CATATONIC, 0);
+		ops->catatonic(submount->logopt, submount->ioctlfd);
 
 		mounts_mutex_unlock(ap);
 

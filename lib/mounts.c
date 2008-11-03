@@ -33,9 +33,9 @@
 #define MAX_OPTIONS_LEN		80
 #define MAX_MNT_NAME_LEN	30
 
-const unsigned int indirect = AUTOFS_TYPE_INDIRECT;
-const unsigned int direct = AUTOFS_TYPE_DIRECT;
-const unsigned int offset = AUTOFS_TYPE_OFFSET;
+const unsigned int t_indirect = AUTOFS_TYPE_INDIRECT;
+const unsigned int t_direct = AUTOFS_TYPE_DIRECT;
+const unsigned int t_offset = AUTOFS_TYPE_OFFSET;
 const unsigned int type_count = 3;
 
 static const char options_template[]       = "fd=%d,pgrp=%u,minproto=5,maxproto=%d";
@@ -47,10 +47,12 @@ static const char kver_options_template[]  = "fd=%d,pgrp=%u,minproto=3,maxproto=
 
 unsigned int query_kproto_ver(void)
 {
+	struct ioctl_ops *ops = get_ioctl_ops();
 	char dir[] = "/tmp/autoXXXXXX", *t_dir;
 	char options[MAX_OPTIONS_LEN + 1];
 	pid_t pgrp = getpgrp();
 	int pipefd[2], ioctlfd, len;
+	struct stat st;
 
 	t_dir = mkdtemp(dir);
 	if (!t_dir)
@@ -79,7 +81,14 @@ unsigned int query_kproto_ver(void)
 
 	close(pipefd[1]);
 
-	ioctlfd = open(t_dir, O_RDONLY);
+	if (stat(t_dir, &st) == -1) {
+		umount(t_dir);
+		close(pipefd[0]);
+		rmdir(t_dir);
+		return 0;
+	}
+
+	ops->open(LOGOPT_NONE, &ioctlfd, st.st_dev, t_dir);
 	if (ioctlfd == -1) {
 		umount(t_dir);
 		close(pipefd[0]);
@@ -87,11 +96,11 @@ unsigned int query_kproto_ver(void)
 		return 0;
 	}
 
-	ioctl(ioctlfd, AUTOFS_IOC_CATATONIC, 0);
+	ops->catatonic(LOGOPT_NONE, ioctlfd);
 
 	/* If this ioctl() doesn't work, it is kernel version 2 */
-	if (ioctl(ioctlfd, AUTOFS_IOC_PROTOVER, &kver.major) == -1) {
-		close(ioctlfd);
+	if (ops->protover(LOGOPT_NONE, ioctlfd, &kver.major)) {
+		ops->close(LOGOPT_NONE, ioctlfd);
 		umount(t_dir);
 		close(pipefd[0]);
 		rmdir(t_dir);
@@ -99,15 +108,15 @@ unsigned int query_kproto_ver(void)
 	}
 
 	/* If this ioctl() doesn't work, version is 4 or less */
-	if (ioctl(ioctlfd, AUTOFS_IOC_PROTOSUBVER, &kver.minor) == -1) {
-		close(ioctlfd);
+	if (ops->protosubver(LOGOPT_NONE, ioctlfd, &kver.minor)) {
+		ops->close(LOGOPT_NONE, ioctlfd);
 		umount(t_dir);
 		close(pipefd[0]);
 		rmdir(t_dir);
 		return 0;
 	}
 
-	close(ioctlfd);
+	ops->close(LOGOPT_NONE, ioctlfd);
 	umount(t_dir);
 	close(pipefd[0]);
 	rmdir(t_dir);

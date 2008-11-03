@@ -30,6 +30,7 @@
 #include "rpc_subs.h"
 #include "mounts.h"
 #include "parse_subs.h"
+#include "dev-ioctl-lib.h"
 
 #ifdef WITH_DMALLOC
 #include <dmalloc.h>
@@ -422,8 +423,6 @@ struct autofs_point {
 
 void *handle_mounts(void *arg);
 int umount_multi(struct autofs_point *ap, const char *path, int incl);
-int send_ready(unsigned logopt, int ioctlfd, unsigned int wait_queue_token);
-int send_fail(unsigned logopt, int ioctlfd, unsigned int wait_queue_token);
 int do_expire(struct autofs_point *ap, const char *name, int namelen);
 void *expire_proc_indirect(void *);
 void *expire_proc_direct(void *);
