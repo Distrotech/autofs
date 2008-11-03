@@ -405,7 +405,7 @@ int contained_in_local_fs(const char *path)
 	return ret;
 }
 
-int is_mounted(const char *table, const char *path, unsigned int type)
+static int table_is_mounted(const char *table, const char *path, unsigned int type)
 {
 	struct mntent *mnt;
 	struct mntent mnt_wrk;
@@ -449,6 +449,35 @@ int is_mounted(const char *table, const char *path, unsigned int type)
 	endmntent(tab);
 
 	return ret;
+}
+
+static int ioctl_is_mounted(const char *path, unsigned int type)
+{
+	struct ioctl_ops *ops = get_ioctl_ops();
+	unsigned int mounted;
+
+	ops->ismountpoint(LOGOPT_NONE, -1, path, &mounted);
+	if (mounted) {
+		switch (type) {
+		case MNTS_ALL:
+			return 1;
+		case MNTS_AUTOFS:
+			return (mounted & DEV_IOCTL_IS_AUTOFS);
+		case MNTS_REAL:
+			return (mounted & DEV_IOCTL_IS_OTHER);
+		}
+	}
+	return 0;
+}
+
+int is_mounted(const char *table, const char *path, unsigned int type)
+{
+	struct ioctl_ops *ops = get_ioctl_ops();
+
+	if (ops->ismountpoint)
+		return ioctl_is_mounted(path, type);
+	else
+		return table_is_mounted(table, path, type);
 }
 
 int has_fstab_option(const char *opt)
@@ -917,9 +946,13 @@ int tree_find_mnt_ents(struct mnt_list *mnts, struct list_head *list, const char
 
 int tree_is_mounted(struct mnt_list *mnts, const char *path, unsigned int type)
 {
+	struct ioctl_ops *ops = get_ioctl_ops();
 	struct list_head *p;
 	struct list_head list;
 	int mounted = 0;
+
+	if (ops->ismountpoint)
+		return ioctl_is_mounted(path, type);
 
 	INIT_LIST_HEAD(&list);
 
