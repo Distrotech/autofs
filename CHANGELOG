@@ -1,4 +1,4 @@
-??/??/2008 autofs-5.0.4
+4/11/2008 autofs-5.0.4
 -----------------------
 - correct configure test for ldapr page control functions.
 - catch "-xfn" map type and issue "no supported" message.
