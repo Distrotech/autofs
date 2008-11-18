@@ -201,10 +201,10 @@ else
   XML_FLAGS=`$XML_CONFIG --cflags`
   XML_VER=`$XML_CONFIG --version`
   XML_MAJOR=`echo $XML_VER|cut -d\. -f1`
-  if test $XML_MAJOR -le 2
+  if test $XML_MAJOR -le 99
   then
     XML_MINOR=`echo $XML_VER|cut -d\. -f2`
-    if test $XML_MINOR -le 6
+    if test $XML_MINOR -le 99
     then
       XML_REV=`echo $XML_VER|cut -d\. -f3`
       if test $XML_REV -le 99; then

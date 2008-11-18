@@ -1,3 +1,7 @@
+??/??/2009 autofs-5.0.5
+-----------------------
+- fix dumb libxml2 check
+
 4/11/2008 autofs-5.0.4
 -----------------------
 - correct configure test for ldapr page control functions.

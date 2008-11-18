@@ -1743,6 +1743,16 @@ static void show_build_info(void)
 #ifdef WITH_DMALLOC
 	printf("WITH_DMALLOC ");
 	count = count + 13;
+
+	if (count > 60) {
+		printf("\n  ");
+		count = 0;
+	}
+#endif
+
+#ifdef LIBXML2_WORKAROUND
+	printf("LIBXML2_WORKAROUND ");
+	count = count + 19;
 #endif
 
 	printf("\n\n");
