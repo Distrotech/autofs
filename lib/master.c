@@ -834,7 +834,6 @@ int master_notify_submount(struct autofs_point *ap, const char *path, enum state
 {
 	struct list_head *head, *p;
 	struct autofs_point *this = NULL;
-	size_t plen = strlen(path);
 	int ret = 1;
 
 	mounts_mutex_lock(ap);
@@ -842,37 +841,19 @@ int master_notify_submount(struct autofs_point *ap, const char *path, enum state
 	head = &ap->submounts;
 	p = head->prev;
 	while (p != head) {
-		size_t len;
-
 		this = list_entry(p, struct autofs_point, mounts);
 		p = p->prev;
 
 		if (!master_submount_list_empty(this)) {
-			if (!master_notify_submount(this, path, state)) {
-				ret = 0;
-				break;
-			}
+			mounts_mutex_unlock(ap);
+			return master_notify_submount(this, path, state);
 		}
 
-		len = strlen(this->path);
-
-		/* Initial path not the same */
-		if (strncmp(this->path, path, len))
+		/* path not the same */
+		if (strcmp(this->path, path))
 			continue;
 
-		/*
-		 * Part of submount tree?
-		 * We must wait till we get to submount itself.
-		 * If it is tell caller by returning true.
-		 */
-		if (plen > len) {
-			/* Not part of this directory tree */
-			if (path[len] != '/')
-				continue;
-			break;
-		}
-
-		/* Now we have a submount to expire */
+		/* Now we have found the submount we want to expire */
 
 		st_mutex_lock();
 
@@ -901,8 +882,10 @@ int master_notify_submount(struct autofs_point *ap, const char *path, enum state
 			struct timespec t = { 0, 300000000 };
 			struct timespec r;
 
-			if (this->state != ST_SHUTDOWN)
+			if (this->state != ST_SHUTDOWN) {
+				ret = 0;
 				break;
+			}
 
 			st_mutex_unlock();
 			mounts_mutex_unlock(ap);
