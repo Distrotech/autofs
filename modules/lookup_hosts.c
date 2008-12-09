@@ -136,12 +136,25 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 
 	mc = source->mc;
 
+	/* Check if we recorded a mount fail for this key anywhere */
+	me = lookup_source_mapent(ap, name, LKP_DISTINCT);
+	if (me) {
+		if (me->status >= time(NULL)) {
+			cache_unlock(me->mc);
+			return NSS_STATUS_NOTFOUND;
+		}
+
+		if (!me->mapent) {
+			cache_delete(me->mc, name);
+			me = NULL;
+		}
+
+		cache_unlock(me->mc);
+	}
+
 	cache_readlock(mc);
 	me = cache_lookup_distinct(mc, name);
-	if (me && me->status >= time(NULL)) {
-		cache_unlock(mc);
-		return NSS_STATUS_NOTFOUND;
-	} else if (!me) {
+	if (!me) {
 		cache_unlock(mc);
 		/*
 		 * We haven't read the list of hosts into the

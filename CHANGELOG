@@ -2,6 +2,7 @@
 -----------------------
 - fix dumb libxml2 check
 - fix nested submount expire deadlock.
+- fix negative caching for non-existent map keys.
 
 4/11/2008 autofs-5.0.4
 -----------------------

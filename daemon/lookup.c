@@ -804,6 +804,45 @@ static enum nsswitch_status lookup_map_name(struct nss_source *this,
 	return result;
 }
 
+static void update_negative_cache(struct autofs_point *ap, struct map_source *source, const char *name)
+{
+	struct master_mapent *entry = ap->entry;
+	struct map_source *map;
+	struct mapent *me;
+
+	/* Have we recorded the lookup fail for negative caching? */
+	me = lookup_source_mapent(ap, name, LKP_DISTINCT);
+	if (me)
+		/*
+		 *  Already exists in the cache, the mount fail updates
+		 *  will update negative timeout status.
+		 */
+		cache_unlock(me->mc);
+	else {
+		/* Notify only once after fail */
+		error(ap->logopt, "key \"%s\" not found in map.", name);
+
+		/* Doesn't exist in any source, just add it somewhere */
+		if (source)
+			map = source;
+		else
+			map = entry->maps;
+		if (map) {
+			time_t now = time(NULL);
+			int rv = CHE_FAIL;
+
+			cache_writelock(map->mc);
+			rv = cache_update(map->mc, map, name, NULL, now);
+			if (rv != CHE_FAIL) {
+				me = cache_lookup_distinct(map->mc, name);
+				me->status = now + ap->negative_timeout;
+			}
+			cache_unlock(map->mc);
+		}
+	}
+	return;
+}
+
 int lookup_nss_mount(struct autofs_point *ap, struct map_source *source, const char *name, int name_len)
 {
 	struct master_mapent *entry = ap->entry;
@@ -907,8 +946,13 @@ int lookup_nss_mount(struct autofs_point *ap, struct map_source *source, const c
 		send_map_update_request(ap);
 	pthread_cleanup_pop(1);
 
-	if (result == NSS_STATUS_NOTFOUND)
-		error(ap->logopt, "key \"%s\" not found in map.", name);
+	/*
+	 * The last source lookup will return NSS_STATUS_NOTFOUND if the
+	 * map exits and the key has not been found but the map may also
+	 * not exist in which case the key is also not found.
+	 */
+	if (result == NSS_STATUS_NOTFOUND || result == NSS_STATUS_UNAVAIL)
+		update_negative_cache(ap, source, name);
 
 	return !result;
 }

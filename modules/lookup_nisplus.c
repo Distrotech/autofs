@@ -493,13 +493,20 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 	if (key_len > KEY_MAX_LEN)
 		return NSS_STATUS_NOTFOUND;
 
-	cache_readlock(mc);
-	me = cache_lookup_distinct(mc, key);
-	if (me && me->status >= time(NULL)) {
-		cache_unlock(mc);
-		return NSS_STATUS_NOTFOUND;
+	/* Check if we recorded a mount fail for this key anywhere */
+	me = lookup_source_mapent(ap, key, LKP_DISTINCT);
+	if (me) {
+		if (me->status >= time(NULL)) {
+			cache_unlock(me->mc);
+			return NSS_STATUS_NOTFOUND;
+		}
+
+		/* Negative timeout expired for non-existent entry. */
+		if (!me->mapent)
+			cache_delete(me->mc, key);
+
+		cache_unlock(me->mc);
 	}
-	cache_unlock(mc);
 
 	/*
 	 * We can't check the direct mount map as if it's not in

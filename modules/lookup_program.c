@@ -131,13 +131,25 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 
 	mc = source->mc;
 
+	/* Check if we recorded a mount fail for this key anywhere */
+	me = lookup_source_mapent(ap, name, LKP_DISTINCT);
+	if (me) {
+		if (me->status >= time(NULL)) {
+			cache_unlock(me->mc);
+			return NSS_STATUS_NOTFOUND;
+		}
+
+		/* Negative timeout expired for non-existent entry. */
+		if (!me->mapent)
+			cache_delete(me->mc, name);
+
+		cache_unlock(me->mc);
+	}
+
 	/* Catch installed direct offset triggers */
-	cache_readlock(mc);
+	cache_writelock(mc);
 	me = cache_lookup_distinct(mc, name);
-	if (me && me->status >= time(NULL)) {
-		cache_unlock(mc);
-		return NSS_STATUS_NOTFOUND;
-	} else if (!me) {
+	if (!me) {
 		cache_unlock(mc);
 		/*
 		 * If there's a '/' in the name and the offset is not in
@@ -149,8 +161,6 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 			return NSS_STATUS_NOTFOUND;
 		}
 	} else {
-		cache_unlock(mc);
-
 		/* Otherwise we found a valid offset so try mount it */
 		debug(ap->logopt, MODPREFIX "%s -> %s", name, me->mapent);
 
@@ -163,19 +173,28 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 		 */
 		if (strchr(name, '/') ||
 		    me->age + ap->negative_timeout > time(NULL)) {
+			char *ent = NULL;
+
+			if (me->mapent) {
+				ent = alloca(strlen(me->mapent) + 1);
+				strcpy(ent, me->mapent);
+			}
+			cache_unlock(mc);
 			master_source_current_wait(ap->entry);
 			ap->entry->current = source;
 			ret = ctxt->parse->parse_mount(ap, name,
-				 name_len, me->mapent, ctxt->parse->context);
+				 name_len, ent, ctxt->parse->context);
 			goto out_free;
 		} else {
 			if (me->multi) {
+				cache_unlock(mc);
 				warn(ap->logopt, MODPREFIX
 				     "unexpected lookup for active multi-mount"
 				     " key %s, returning fail", name);
 				return NSS_STATUS_UNAVAIL;
 			}
 			cache_delete(mc, name);
+			cache_unlock(mc);
 		}
 	}
 
