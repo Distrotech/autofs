@@ -246,9 +246,9 @@ dnl --------------------------------------------------------------------------
 AC_DEFUN([AF_CHECK_FUNC_LDAP_CREATE_PAGE_CONTROL],
 [AC_MSG_CHECKING(for ldap_create_page_control in -lldap)
 
-# save current ldflags
-af_check_ldap_create_page_control_save_ldflags="$LDFLAGS"
-LDFLAGS="$LDFLAGS -lldap"
+# save current libs
+af_check_ldap_create_page_control_save_libs="$LIBS"
+LIBS="$LIBS -lldap"
 
 AC_TRY_LINK(
   [ #include <ldap.h> ],
@@ -267,8 +267,8 @@ if test "$af_have_ldap_create_page_control" = "yes"; then
         [Define to 1 if you have the `ldap_create_page_control' function.])
 fi
 
-# restore ldflags
-LDFLAGS="$af_check_ldap_create_page_control_save_ldflags"
+# restore libs
+LIBS="$af_check_ldap_create_page_control_save_libs"
 ])
 
 dnl --------------------------------------------------------------------------
@@ -279,9 +279,9 @@ dnl --------------------------------------------------------------------------
 AC_DEFUN([AF_CHECK_FUNC_LDAP_PARSE_PAGE_CONTROL],
 [AC_MSG_CHECKING(for ldap_parse_page_control in -lldap)
 
-# save current ldflags
-af_check_ldap_parse_page_control_save_ldflags="$LDFLAGS"
-LDFLAGS="$LDFLAGS -lldap"
+# save current libs
+af_check_ldap_parse_page_control_save_libs="$LIBS"
+LIBS="$LIBS -lldap"
 
 AC_TRY_LINK(
   [ #include <ldap.h> ],
@@ -300,7 +300,7 @@ if test "$af_have_ldap_create_page_control" = "yes"; then
         [Define to 1 if you have the `ldap_parse_page_control' function.])
 fi
 
-# restore ldflags
-LDFLAGS="$af_check_ldap_parse_page_control_save_ldflags"
+# restore libs
+LIBS="$af_check_ldap_parse_page_control_save_libs"
 ])
 
