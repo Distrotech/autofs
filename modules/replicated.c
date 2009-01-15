@@ -52,8 +52,6 @@
 #include <net/if.h>
 #include <netinet/in.h>
 #include <netdb.h>
-#include <unistd.h>
-#include <fcntl.h>
 
 #include "rpc_subs.h"
 #include "replicated.h"
@@ -82,7 +80,7 @@ void seed_random(void)
 	int fd;
 	unsigned int seed;
 
-	fd = open("/dev/urandom", O_RDONLY);
+	fd = open_fd("/dev/urandom", O_RDONLY);
 	if (fd < 0) {
 		srandom(time(NULL));
 		return;
@@ -145,7 +143,7 @@ static unsigned int get_proximity(const char *host_addr, int addr_len)
 	char tmp[20], buf[MAX_ERR_BUF], *ptr;
 	struct ifconf ifc;
 	struct ifreq *ifr, nmptr;
-	int sock, cl_flags, ret, i;
+	int sock, ret, i;
 	uint32_t mask, ha, ia;
 
 	memcpy(tmp, host_addr, addr_len);
@@ -153,16 +151,11 @@ static unsigned int get_proximity(const char *host_addr, int addr_len)
 
 	ha = ntohl((uint32_t) hst_addr->s_addr);
 
-	sock = socket(AF_INET, SOCK_DGRAM, 0);
+	sock = open_sock(AF_INET, SOCK_DGRAM, 0);
 	if (sock < 0) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
 		logerr("socket creation failed: %s", estr);
 		return PROXIMITY_ERROR;
-	}
-
-	if ((cl_flags = fcntl(sock, F_GETFD, 0)) != -1) {
-		cl_flags |= FD_CLOEXEC;
-		fcntl(sock, F_SETFD, cl_flags);
 	}
 
 	if (!alloc_ifreq(&ifc, sock)) {

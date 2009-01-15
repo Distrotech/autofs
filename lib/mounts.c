@@ -14,13 +14,11 @@
 
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <mntent.h>
 #include <limits.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/ioctl.h>
-#include <fcntl.h>
 #include <sys/mount.h>
 #include <stdio.h>
 #include <dirent.h>

@@ -18,7 +18,6 @@
 #include <malloc.h>
 #include <stdio.h>
 #include <string.h>
-#include <unistd.h>
 #include <signal.h>
 #include <sys/param.h>
 #include <sys/stat.h>
@@ -212,12 +211,12 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 	 * want to send stderr to the syslog, and we don't use spawnl()
 	 * because we need the pipe hooks
 	 */
-	if (pipe(pipefd)) {
+	if (open_pipe(pipefd)) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
 		logerr(MODPREFIX "pipe: %s", estr);
 		goto out_free;
 	}
-	if (pipe(epipefd)) {
+	if (open_pipe(epipefd)) {
 		close(pipefd[0]);
 		close(pipefd[1]);
 		goto out_free;

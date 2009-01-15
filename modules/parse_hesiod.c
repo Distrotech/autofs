@@ -7,7 +7,6 @@
 #include <sys/types.h>
 #include <ctype.h>
 #include <string.h>
-#include <unistd.h>
 #include <stdlib.h>
 #include <netinet/in.h>
 #include <arpa/nameser.h>

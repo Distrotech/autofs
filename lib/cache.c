@@ -17,10 +17,8 @@
 #include <malloc.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <ctype.h>
 #include <stdio.h>
-#include <fcntl.h>
 #include <sys/param.h>
 #include <sys/types.h>
 #include <sys/stat.h>

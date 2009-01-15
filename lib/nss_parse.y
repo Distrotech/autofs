@@ -22,8 +22,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <memory.h>
-#include <unistd.h>
-#include <fcntl.h>
 #include <limits.h>
 
 #include "automount.h"
@@ -164,22 +162,15 @@ static void parse_close_nsswitch(void *arg)
 int nsswitch_parse(struct list_head *list)
 {
 	FILE *nsswitch;
-	int fd, cl_flags, status;
+	int status;
 
-	nsswitch = fopen(NSSWITCH_FILE, "r");
+	nsswitch = open_fopen_r(NSSWITCH_FILE);
 	if (!nsswitch) {
 		logerr("couldn't open %s\n", NSSWITCH_FILE);
 		return 1;
 	}
 
 	pthread_cleanup_push(parse_close_nsswitch, nsswitch);
-
-	fd = fileno(nsswitch);
-
-	if ((cl_flags = fcntl(fd, F_GETFD, 0)) != -1) {
-		cl_flags |= FD_CLOEXEC;
-		fcntl(fd, F_SETFD, cl_flags);
-	}
 
 	parse_mutex_lock();
 	pthread_cleanup_push(parse_mutex_unlock, NULL);

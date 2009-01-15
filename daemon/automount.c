@@ -20,13 +20,11 @@
  * ----------------------------------------------------------------------- */
 
 #include <dirent.h>
-#include <fcntl.h>
 #include <getopt.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <sys/ioctl.h>
 #include <ctype.h>
 #include <sys/types.h>
@@ -67,6 +65,9 @@ static pthread_t state_mach_thid;
 
 /* Pre-calculated kernel packet length */
 static size_t kpkt_len;
+
+/* Does kernel know about SOCK_CLOEXEC and friends */
+static int cloexec_works = 0;
 
 /* Attribute to create detached thread */
 pthread_attr_t thread_attr;
@@ -671,7 +672,7 @@ static char *automount_path_to_fifo(unsigned logopt, const char *path)
 static int create_logpri_fifo(struct autofs_point *ap)
 {
 	int ret = -1;
-	int fd, cl_flags;
+	int fd;
 	char *fifo_name;
 	char buf[MAX_ERR_BUF];
 
@@ -697,7 +698,7 @@ static int create_logpri_fifo(struct autofs_point *ap)
 		goto out_free;
 	}
 
-	fd = open(fifo_name, O_RDWR|O_NONBLOCK);
+	fd = open_fd(fifo_name, O_RDWR|O_NONBLOCK);
 	if (fd < 0) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
 		crit(ap->logopt,
@@ -705,11 +706,6 @@ static int create_logpri_fifo(struct autofs_point *ap)
 		unlink(fifo_name);
 		ret = -1;
 		goto out_free;
-	}
-
-	if ((cl_flags = fcntl(fd, F_GETFD, 0)) != -1) {
-		cl_flags |= FD_CLOEXEC;
-		fcntl(fd, F_SETFD, cl_flags);
 	}
 
 	ap->logpri_fifo = fd;
@@ -963,7 +959,7 @@ int do_expire(struct autofs_point *ap, const char *name, int namelen)
 
 static int autofs_init_ap(struct autofs_point *ap)
 {
-	int pipefd[2], cl_flags;
+	int pipefd[2];
 
 	if ((ap->state != ST_INIT)) {
 		/* This can happen if an autofs process is already running*/
@@ -974,7 +970,7 @@ static int autofs_init_ap(struct autofs_point *ap)
 	ap->pipefd = ap->kpipefd = ap->ioctlfd = -1;
 
 	/* Pipe for kernel communications */
-	if (pipe(pipefd) < 0) {
+	if (open_pipe(pipefd) < 0) {
 		crit(ap->logopt,
 		     "failed to create commumication pipe for autofs path %s",
 		     ap->path);
@@ -984,33 +980,13 @@ static int autofs_init_ap(struct autofs_point *ap)
 	ap->pipefd = pipefd[0];
 	ap->kpipefd = pipefd[1];
 
-	if ((cl_flags = fcntl(ap->pipefd, F_GETFD, 0)) != -1) {
-		cl_flags |= FD_CLOEXEC;
-		fcntl(ap->pipefd, F_SETFD, cl_flags);
-	}
-
-	if ((cl_flags = fcntl(ap->kpipefd, F_GETFD, 0)) != -1) {
-		cl_flags |= FD_CLOEXEC;
-		fcntl(ap->kpipefd, F_SETFD, cl_flags);
-	}
-
 	/* Pipe state changes from signal handler to main loop */
-	if (pipe(ap->state_pipe) < 0) {
+	if (open_pipe(ap->state_pipe) < 0) {
 		crit(ap->logopt,
 		     "failed create state pipe for autofs path %s", ap->path);
 		close(ap->pipefd);
 		close(ap->kpipefd);	/* Close kernel pipe end */
 		return -1;
-	}
-
-	if ((cl_flags = fcntl(ap->state_pipe[0], F_GETFD, 0)) != -1) {
-		cl_flags |= FD_CLOEXEC;
-		fcntl(ap->state_pipe[0], F_SETFD, cl_flags);
-	}
-
-	if ((cl_flags = fcntl(ap->state_pipe[1], F_GETFD, 0)) != -1) {
-		cl_flags |= FD_CLOEXEC;
-		fcntl(ap->state_pipe[1], F_SETFD, cl_flags);
 	}
 
 	if (create_logpri_fifo(ap) < 0) {
@@ -1080,7 +1056,7 @@ static void become_daemon(unsigned foreground, unsigned daemon_check)
 		exit(0);
 	}
 
-	if (pipe(start_pipefd) < 0) {
+	if (open_pipe(start_pipefd) < 0) {
 		fprintf(stderr, "%s: failed to create start_pipefd.\n",
 			program);
 		exit(0);

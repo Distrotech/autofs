@@ -19,8 +19,6 @@
 
 #include <stdio.h>
 #include <malloc.h>
-#include <fcntl.h>
-#include <unistd.h>
 #include <string.h>
 #include <sys/param.h>
 #include <sys/types.h>
@@ -145,23 +143,17 @@ int swapCD(const char *device, const char *slotName)
 {
 	int fd;			/* file descriptor for CD-ROM device */
 	int status;		/* return status for system calls */
-	int cl_flags;
 	int slot = -1;
 	int total_slots_available;
 
 	slot = atoi(slotName) - 1;
 
 	/* open device */
-	fd = open(device, O_RDONLY | O_NONBLOCK);
+	fd = open_fd(device, O_RDONLY | O_NONBLOCK);
 	if (fd < 0) {
 		logerr(MODPREFIX "Opening device %s failed : %s",
 		      device, strerror(errno));
 		return 1;
-	}
-
-	if ((cl_flags = fcntl(fd, F_GETFD, 0)) != -1) {
-		cl_flags |= FD_CLOEXEC;
-		fcntl(fd, F_SETFD, cl_flags);
 	}
 
 	/* Check CD player status */

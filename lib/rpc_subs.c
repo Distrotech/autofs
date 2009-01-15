@@ -21,13 +21,11 @@
 #include <rpc/rpc.h>
 #include <rpc/pmap_prot.h>
 
-#include <unistd.h>
 #include <sys/socket.h>
 #include <netdb.h>
 #include <net/if.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#include <sys/fcntl.h>
 #include <rpcsvc/ypclnt.h>
 #include <errno.h>
 #include <sys/ioctl.h>
@@ -36,6 +34,7 @@
 
 #include "mount.h"
 #include "rpc_subs.h"
+#include "automount.h"
 
 /* #define STANDALONE */
 #ifdef STANDALONE
@@ -59,7 +58,7 @@ inline void dump_core(void);
  */
 static CLIENT *create_udp_client(struct conn_info *info)
 {
-	int fd, cl_flags, ret, ghn_errno;
+	int fd, ret, ghn_errno;
 	CLIENT *client;
 	struct sockaddr_in laddr, raddr;
 	struct hostent hp;
@@ -115,14 +114,9 @@ got_addr:
 		 * layer, it would bind to a reserved port, which has been shown
 		 * to exhaust the reserved port range in some situations.
 		 */
-		fd = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
+		fd = open_sock(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
 		if (fd < 0)
 			return NULL;
-
-		if ((cl_flags = fcntl(fd, F_GETFD, 0)) != -1) {
-			cl_flags |= FD_CLOEXEC;
-			fcntl(fd, F_SETFD, cl_flags);
-		}
 
 		laddr.sin_family = AF_INET;
 		laddr.sin_port = 0;
@@ -274,7 +268,7 @@ done:
  */
 static CLIENT *create_tcp_client(struct conn_info *info)
 {
-	int fd, cl_flags, ghn_errno;
+	int fd, ghn_errno;
 	CLIENT *client;
 	struct sockaddr_in addr;
 	struct hostent hp;
@@ -324,14 +318,9 @@ got_addr:
 	addr.sin_port = htons(info->port);
 
 	if (!info->client) {
-		fd = socket(PF_INET, SOCK_STREAM, info->proto->p_proto);
+		fd = open_sock(PF_INET, SOCK_STREAM, info->proto->p_proto);
 		if (fd < 0)
 			return NULL;
-
-		if ((cl_flags = fcntl(fd, F_GETFD, 0)) != -1) {
-			cl_flags |= FD_CLOEXEC;
-			fcntl(fd, F_SETFD, cl_flags);
-		}
 
 		ret = connect_nb(fd, &addr, &info->timeout);
 		if (ret < 0)

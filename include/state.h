@@ -20,7 +20,6 @@
 #ifndef STATE_H
 #define STATE_H
 
-#include <unistd.h>
 #include <string.h>
 #include <stdlib.h>
 #include <signal.h>

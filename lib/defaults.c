@@ -21,6 +21,7 @@
 #include "defaults.h"
 #include "lookup_ldap.h"
 #include "log.h"
+#include "automount.h"
 
 #define DEFAULTS_CONFIG_FILE		AUTOFS_CONF_DIR "/autofs"
 #define MAX_LINE_LEN			256
@@ -255,7 +256,7 @@ struct list_head *defaults_get_uris(void)
 	char *res;
 	struct list_head *list;
 
-	f = fopen(DEFAULTS_CONFIG_FILE, "r");
+	f = open_fopen_r(DEFAULTS_CONFIG_FILE);
 	if (!f)
 		return NULL;
 
@@ -298,7 +299,7 @@ unsigned int defaults_read_config(unsigned int to_syslog)
 	char buf[MAX_LINE_LEN];
 	char *res;
 
-	f = fopen(DEFAULTS_CONFIG_FILE, "r");
+	f = open_fopen_r(DEFAULTS_CONFIG_FILE);
 	if (!f)
 		return 0;
 
@@ -544,7 +545,7 @@ struct ldap_searchdn *defaults_get_searchdns(void)
 	char *res;
 	struct ldap_searchdn *sdn, *last;
 
-	f = fopen(DEFAULTS_CONFIG_FILE, "r");
+	f = open_fopen_r(DEFAULTS_CONFIG_FILE);
 	if (!f)
 		return NULL;
 

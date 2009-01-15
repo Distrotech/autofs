@@ -21,14 +21,14 @@
 #include <sys/time.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <fcntl.h>
 #include <time.h>
-#include <unistd.h>
 #include <string.h>
 #include <alloca.h>
 #include <stdio.h>
 #include <signal.h>
 #include <errno.h>
+
+#include "automount.h"
 
 #define MAX_PIDSIZE	20
 #define FLAG_FILE	AUTOFS_FLAG_DIR "/autofs-running"
@@ -129,7 +129,7 @@ int aquire_flag_file(void)
 	while (!we_created_flagfile) {
 		int errsv, i, j;
 
-		i = open(linkf, O_WRONLY|O_CREAT, 0);
+		i = open_fd_mode(linkf, O_WRONLY|O_CREAT, 0);
 		if (i < 0) {
 			release_flag_file();
 			return 0;
@@ -146,7 +146,7 @@ int aquire_flag_file(void)
 			return 0;
 		}
 
-		fd = open(FLAG_FILE, O_RDWR);
+		fd = open_fd(FLAG_FILE, O_RDWR);
 		if (fd < 0) {
 			/* Maybe the file was just deleted? */
 			if (errno == ENOENT)

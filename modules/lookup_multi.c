@@ -18,7 +18,6 @@
 #include <malloc.h>
 #include <stdio.h>
 #include <string.h>
-#include <unistd.h>
 #include <sys/stat.h>
 
 #define MODULE_LOOKUP

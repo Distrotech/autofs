@@ -17,8 +17,6 @@
 #include <malloc.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
-#include <fcntl.h>
 #include <time.h>
 #include <ctype.h>
 #include <signal.h>
@@ -395,7 +393,7 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 	char *ent;
 	struct stat st;
 	FILE *f;
-	int fd, cl_flags;
+	int fd;
 	unsigned int path_len, ent_len;
 	int entry, cur_state;
 
@@ -422,7 +420,7 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 		return NSS_STATUS_UNAVAIL;
 	}
 
-	f = fopen(ctxt->mapname, "r");
+	f = open_fopen_r(ctxt->mapname);
 	if (!f) {
 		error(logopt,
 		      MODPREFIX "could not open master map file %s",
@@ -431,11 +429,6 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 	}
 
 	fd = fileno(f);
-
-	if ((cl_flags = fcntl(fd, F_GETFD, 0)) != -1) {
-		cl_flags |= FD_CLOEXEC;
-		fcntl(fd, F_SETFD, cl_flags);
-	}
 
 	while(1) {
 		entry = read_one(logopt, f, path, &path_len, ent, &ent_len);
@@ -651,7 +644,7 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 	char *mapent;
 	struct stat st;
 	FILE *f;
-	int fd, cl_flags;
+	int fd;
 	unsigned int k_len, m_len;
 	int entry;
 
@@ -684,7 +677,7 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 		return NSS_STATUS_UNAVAIL;
 	}
 
-	f = fopen(ctxt->mapname, "r");
+	f = open_fopen_r(ctxt->mapname);
 	if (!f) {
 		error(ap->logopt,
 		      MODPREFIX "could not open map file %s", ctxt->mapname);
@@ -692,11 +685,6 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 	}
 
 	fd = fileno(f);
-
-	if ((cl_flags = fcntl(fd, F_GETFD, 0)) != -1) {
-		cl_flags |= FD_CLOEXEC;
-		fcntl(fd, F_SETFD, cl_flags);
-	}
 
 	while(1) {
 		entry = read_one(ap->logopt, f, key, &k_len, mapent, &m_len);
@@ -784,7 +772,6 @@ static int lookup_one(struct autofs_point *ap,
 	char mapent[MAPENT_MAX_LEN + 1];
 	time_t age = time(NULL);
 	FILE *f;
-	int fd, cl_flags;
 	unsigned int k_len, m_len;
 	int entry, ret;
 
@@ -794,18 +781,11 @@ static int lookup_one(struct autofs_point *ap,
 
 	mc = source->mc;
 
-	f = fopen(ctxt->mapname, "r");
+	f = open_fopen_r(ctxt->mapname);
 	if (!f) {
 		error(ap->logopt,
 		      MODPREFIX "could not open map file %s", ctxt->mapname);
 		return CHE_FAIL;
-	}
-
-	fd = fileno(f);
-
-	if ((cl_flags = fcntl(fd, F_GETFD, 0)) != -1) {
-		cl_flags |= FD_CLOEXEC;
-		fcntl(fd, F_SETFD, cl_flags);
 	}
 
 	while(1) {
@@ -897,7 +877,6 @@ static int lookup_wild(struct autofs_point *ap, struct lookup_context *ctxt)
 	char mapent[MAPENT_MAX_LEN + 1];
 	time_t age = time(NULL);
 	FILE *f;
-	int fd, cl_flags;
 	unsigned int k_len, m_len;
 	int entry, ret;
 
@@ -907,18 +886,11 @@ static int lookup_wild(struct autofs_point *ap, struct lookup_context *ctxt)
 
 	mc = source->mc;
 
-	f = fopen(ctxt->mapname, "r");
+	f = open_fopen_r(ctxt->mapname);
 	if (!f) {
 		error(ap->logopt,
 		      MODPREFIX "could not open map file %s", ctxt->mapname);
 		return CHE_FAIL;
-	}
-
-	fd = fileno(f);
-
-	if ((cl_flags = fcntl(fd, F_GETFD, 0)) != -1) {
-		cl_flags |= FD_CLOEXEC;
-		fcntl(fd, F_SETFD, cl_flags);
 	}
 
 	while(1) {

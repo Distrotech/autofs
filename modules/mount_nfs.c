@@ -17,8 +17,6 @@
 #include <stdio.h>
 #include <malloc.h>
 #include <netdb.h>
-#include <fcntl.h>
-#include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/param.h>

@@ -121,17 +121,12 @@ void init_ioctl_ctl(void)
 	if (ctl.ops)
 		return;
 
-	devfd = open(CONTROL_DEVICE, O_RDONLY);
+	devfd = open_fd(CONTROL_DEVICE, O_RDONLY);
 	if (devfd == -1)
 		ctl.ops = &ioctl_ops;
 	else {
 		struct autofs_dev_ioctl param;
 
-		int cl_flags = fcntl(devfd, F_GETFD, 0);
-		if (cl_flags != -1) {
-			cl_flags |= FD_CLOEXEC;
-			fcntl(devfd, F_SETFD, cl_flags);
-		}
 		/*
 		 * Check compile version against kernel.
 		 * Selinux may allow us to open the device but not
@@ -378,19 +373,13 @@ static int ioctl_open(unsigned int logopt,
 		      int *ioctlfd, dev_t devid, const char *path)
 {
 	struct statfs sfs;
-	int save_errno, fd, cl_flags;
+	int save_errno, fd;
 
 	*ioctlfd = -1;
 
-	fd = open(path, O_RDONLY);
+	fd = open_fd(path, O_RDONLY);
 	if (fd == -1)
 		return -1;
-
-	cl_flags = fcntl(fd, F_GETFD, 0);
-	if (cl_flags != -1) {
-		cl_flags |= FD_CLOEXEC;
-		fcntl(fd, F_SETFD, cl_flags);
-	}
 
 	if (fstatfs(fd, &sfs) == -1) {
 		save_errno = errno;

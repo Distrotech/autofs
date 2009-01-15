@@ -10,7 +10,6 @@
 #include <ctype.h>
 #include <limits.h>
 #include <string.h>
-#include <unistd.h>
 #include <stdlib.h>
 #include <netinet/in.h>
 #include <arpa/nameser.h>

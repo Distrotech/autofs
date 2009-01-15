@@ -21,7 +21,6 @@
 #include <sys/stat.h>
 #include <ctype.h>
 #include <string.h>
-#include <unistd.h>
 #include <stdlib.h>
 #include <time.h>
 #include <signal.h>

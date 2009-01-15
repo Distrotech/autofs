@@ -16,7 +16,6 @@
 #include <stdio.h>
 #include <malloc.h>
 #include <pwd.h>
-#include <unistd.h>
 #include <string.h>
 #include <sys/param.h>
 #include <sys/types.h>

@@ -16,7 +16,6 @@
 
 #include <stdio.h>
 #include <malloc.h>
-#include <unistd.h>
 #include <time.h>
 #include <signal.h>
 #include <ctype.h>

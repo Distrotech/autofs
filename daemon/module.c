@@ -31,7 +31,7 @@ int load_autofs4_module(void)
 	 * is an older version we will catch it at mount
 	 * time.
 	 */
-	fp = fopen("/proc/filesystems", "r");
+	fp = open_fopen_r("/proc/filesystems");
 	if (!fp) {
 		logerr("cannot open /proc/filesystems\n");
 		return 0;

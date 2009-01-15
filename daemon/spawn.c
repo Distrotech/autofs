@@ -13,7 +13,6 @@
  *
  * ----------------------------------------------------------------------- */
 
-#include <fcntl.h>
 #include <signal.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -21,7 +20,6 @@
 #include <string.h>
 #include <sys/types.h>
 #include <dirent.h>
-#include <unistd.h>
 #include <time.h>
 #include <sys/wait.h>
 #include <sys/stat.h>
@@ -125,7 +123,7 @@ static int do_spawn(unsigned logopt, unsigned int wait,
 	int ret, status, pipefd[2];
 	char errbuf[ERRBUFSIZ + 1], *p, *sp;
 	int errp, errn;
-	int flags, cancel_state;
+	int cancel_state;
 	unsigned int use_lock = options & SPAWN_OPT_LOCK;
 	unsigned int use_access = options & SPAWN_OPT_ACCESS;
 	sigset_t allsigs, tmpsig, oldsig;
@@ -133,7 +131,7 @@ static int do_spawn(unsigned logopt, unsigned int wait,
 	pid_t euid = 0;
 	gid_t egid = 0;
 
-	if (pipe(pipefd))
+	if (open_pipe(pipefd))
 		return -1;
 
 	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cancel_state);
@@ -211,11 +209,6 @@ static int do_spawn(unsigned logopt, unsigned int wait,
 			pthread_sigmask(SIG_SETMASK, &oldsig, NULL);
 			pthread_setcancelstate(cancel_state, NULL);
 			return -1;
-		}
-
-		if ((flags = fcntl(pipefd[0], F_GETFD, 0)) != -1) {
-			flags |= FD_CLOEXEC;
-			fcntl(pipefd[0], F_SETFD, flags);
 		}
 
 		errp = 0;
