@@ -128,7 +128,7 @@ struct autofs_point;
 #define CHE_DUPLICATE	0x0020
 #define CHE_UNAVAIL	0x0040
 
-#define HASHSIZE		77
+#define NULL_MAP_HASHSIZE	64
 #define NEGATIVE_TIMEOUT	10
 #define UMOUNT_RETRIES		8
 #define EXPIRE_RETRIES		3

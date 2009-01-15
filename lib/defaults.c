@@ -49,6 +49,8 @@
 #define ENV_UMOUNT_WAIT			"UMOUNT_WAIT"
 #define ENV_AUTH_CONF_FILE		"AUTH_CONF_FILE"
 
+#define ENV_MAP_HASH_TABLE_SIZE		"MAP_HASH_TABLE_SIZE"
+
 static const char *default_master_map_name = DEFAULT_MASTER_MAP_NAME;
 static const char *default_auth_conf_file  = DEFAULT_AUTH_CONF_FILE;
 
@@ -323,7 +325,8 @@ unsigned int defaults_read_config(unsigned int to_syslog)
 		    check_set_config_value(key, ENV_NAME_VALUE_ATTR, value, to_syslog) ||
 		    check_set_config_value(key, ENV_APPEND_OPTIONS, value, to_syslog) ||
 		    check_set_config_value(key, ENV_UMOUNT_WAIT, value, to_syslog) ||
-		    check_set_config_value(key, ENV_AUTH_CONF_FILE, value, to_syslog))
+		    check_set_config_value(key, ENV_AUTH_CONF_FILE, value, to_syslog) ||
+		    check_set_config_value(key, ENV_MAP_HASH_TABLE_SIZE, value, to_syslog))
 			;
 	}
 
@@ -670,5 +673,16 @@ const char *defaults_get_auth_conf_file(void)
 		return strdup(default_auth_conf_file);
 
 	return (const char *) cf;
+}
+
+unsigned int defaults_get_map_hash_table_size(void)
+{
+	long size;
+
+	size = get_env_number(ENV_MAP_HASH_TABLE_SIZE);
+	if (size < 0)
+		size = DEFAULT_MAP_HASH_TABLE_SIZE;
+
+	return (unsigned int) size;
 }
 

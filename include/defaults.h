@@ -40,6 +40,8 @@
 #define DEFAULT_APPEND_OPTIONS		1
 #define DEFAULT_AUTH_CONF_FILE		AUTOFS_MAP_DIR "/autofs_ldap_auth.conf"
 
+#define DEFAULT_MAP_HASH_TABLE_SIZE	1024
+
 struct ldap_schema;
 struct ldap_searchdn;
 
@@ -62,6 +64,7 @@ void defaults_free_searchdns(struct ldap_searchdn *);
 unsigned int defaults_get_append_options(void);
 unsigned int defaults_get_umount_wait(void);
 const char *defaults_get_auth_conf_file(void);
+unsigned int defaults_get_map_hash_table_size(void);
 
 #endif
 

@@ -190,7 +190,7 @@ struct mapent_cache *cache_init(struct autofs_point *ap, struct map_source *map)
 	if (!mc)
 		return NULL;
 
-	mc->size = HASHSIZE;
+	mc->size = defaults_get_map_hash_table_size();
 
 	mc->hash = malloc(mc->size * sizeof(struct entry *));
 	if (!mc->hash) {
@@ -241,7 +241,7 @@ struct mapent_cache *cache_init_null_cache(struct master *master)
 	if (!mc)
 		return NULL;
 
-	mc->size = HASHSIZE;
+	mc->size = NULL_MAP_HASHSIZE;
 
 	mc->hash = malloc(mc->size * sizeof(struct entry *));
 	if (!mc->hash) {
@@ -279,29 +279,36 @@ struct mapent_cache *cache_init_null_cache(struct master *master)
 	return mc;
 }
 
-static unsigned int hash(const char *key)
+static u_int32_t hash(const char *key, unsigned int size)
 {
-	unsigned long hashval;
+	u_int32_t hashval;
 	char *s = (char *) key;
 
-	for (hashval = 0; *s != '\0';)
-		hashval += *s++;
+	for (hashval = 0; *s != '\0';) {
+		hashval += (unsigned char) *s++;
+		hashval += (hashval << 10);
+		hashval ^= (hashval >> 6);
+	}
 
-	return hashval % HASHSIZE;
+	hashval += (hashval << 3);
+	hashval ^= (hashval >> 11);
+	hashval += (hashval << 15);
+
+	return hashval % size;
 }
 
-static unsigned int ino_hash(dev_t dev, ino_t ino)
+static u_int32_t ino_hash(dev_t dev, ino_t ino, unsigned int size)
 {
-	unsigned long hashval;
+	u_int32_t hashval;
 
 	hashval = dev + ino;
 
-	return hashval % HASHSIZE;
+	return hashval % size;
 }
 
 int cache_set_ino_index(struct mapent_cache *mc, const char *key, dev_t dev, ino_t ino)
 {
-	unsigned int ino_index = ino_hash(dev, ino);
+	u_int32_t ino_index = ino_hash(dev, ino, mc->size);
 	struct mapent *me;
 
 	me = cache_lookup_distinct(mc, key);
@@ -323,10 +330,10 @@ struct mapent *cache_lookup_ino(struct mapent_cache *mc, dev_t dev, ino_t ino)
 {
 	struct mapent *me = NULL;
 	struct list_head *head, *p;
-	unsigned int ino_index;
+	u_int32_t ino_index;
 
 	ino_index_lock(mc);
-	ino_index = ino_hash(dev, ino);
+	ino_index = ino_hash(dev, ino, mc->size);
 	head = &mc->ino_index[ino_index];
 
 	list_for_each(p, head) {
@@ -369,7 +376,7 @@ struct mapent *cache_lookup_first(struct mapent_cache *mc)
 struct mapent *cache_lookup_next(struct mapent_cache *mc, struct mapent *me)
 {
 	struct mapent *this;
-	unsigned long hashval;
+	u_int32_t hashval;
 	unsigned int i;
 
 	if (!me)
@@ -385,7 +392,7 @@ struct mapent *cache_lookup_next(struct mapent_cache *mc, struct mapent *me)
 		return this;
 	}
 
-	hashval = hash(me->key) + 1;
+	hashval = hash(me->key, mc->size) + 1;
 	if (hashval < mc->size) {
 		for (i = (unsigned int) hashval; i < mc->size; i++) {
 			this = mc->hash[i];
@@ -433,7 +440,7 @@ struct mapent *cache_lookup(struct mapent_cache *mc, const char *key)
 	if (!key)
 		return NULL;
 
-	for (me = mc->hash[hash(key)]; me != NULL; me = me->next) {
+	for (me = mc->hash[hash(key, mc->size)]; me != NULL; me = me->next) {
 		if (strcmp(key, me->key) == 0)
 			goto done;
 	}
@@ -446,7 +453,7 @@ struct mapent *cache_lookup(struct mapent_cache *mc, const char *key)
 			goto done;
 		}
 
-		for (me = mc->hash[hash("*")]; me != NULL; me = me->next)
+		for (me = mc->hash[hash("*", mc->size)]; me != NULL; me = me->next)
 			if (strcmp("*", me->key) == 0)
 				goto done;
 	}
@@ -462,7 +469,7 @@ struct mapent *cache_lookup_distinct(struct mapent_cache *mc, const char *key)
 	if (!key)
 		return NULL;
 
-	for (me = mc->hash[hash(key)]; me != NULL; me = me->next) {
+	for (me = mc->hash[hash(key, mc->size)]; me != NULL; me = me->next) {
 		if (strcmp(key, me->key) == 0)
 			return me;
 	}
@@ -530,7 +537,7 @@ int cache_add(struct mapent_cache *mc, struct map_source *ms, const char *key, c
 {
 	struct mapent *me, *existing = NULL;
 	char *pkey, *pent;
-	unsigned int hashval = hash(key);
+	u_int32_t hashval = hash(key, mc->size);
 	int status;
 
 	me = (struct mapent *) malloc(sizeof(struct mapent));
@@ -750,7 +757,7 @@ int cache_update(struct mapent_cache *mc, struct map_source *ms, const char *key
 int cache_delete(struct mapent_cache *mc, const char *key)
 {
 	struct mapent *me = NULL, *pred;
-	unsigned int hashval = hash(key);
+	u_int32_t hashval = hash(key, mc->size);
 	int status, ret = CHE_OK;
 	char *this;
 
