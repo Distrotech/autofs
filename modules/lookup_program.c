@@ -24,6 +24,7 @@
 #include <sys/times.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <poll.h>
 
 #define MODULE_LOOKUP
 #include "automount.h"
@@ -113,14 +114,12 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 	char errbuf[1024], *errp;
 	char ch;
 	int pipefd[2], epipefd[2];
+	struct pollfd pfd[2];
 	pid_t f;
-	int files_left;
 	int status;
-	fd_set readfds, ourfds;
 	enum state { st_space, st_map, st_done } state;
 	int quoted = 0;
 	int ret = 1;
-	int max_fd;
 	int distance;
 	int alloci = 1;
 
@@ -253,30 +252,39 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 	errp = errbuf;
 	state = st_space;
 
-	FD_ZERO(&ourfds);
-	FD_SET(pipefd[0], &ourfds);
-	FD_SET(epipefd[0], &ourfds);
+	pfd[0].fd = pipefd[0];
+	pfd[0].events = POLLIN;
+	pfd[1].fd = epipefd[0];
+	pfd[1].events = POLLIN;
 
-	max_fd = pipefd[0] > epipefd[0] ? pipefd[0] : epipefd[0];
+	while (1) {
+		int bytes;
 
-	files_left = 2;
+		if (poll(pfd, 2, -1) < 0 && errno != EINTR)
+			break;
 
-	while (files_left != 0) {
-		readfds = ourfds;
-		if (select(max_fd + 1, &readfds, NULL, NULL, NULL) < 0 && errno != EINTR)
+		if (pfd[0].fd == -1 && pfd[1].fd == -1)
+			break;
+
+		if ((pfd[0].revents & (POLLIN|POLLHUP)) == POLLHUP &&
+		    (pfd[1].revents & (POLLIN|POLLHUP)) == POLLHUP)
 			break;
 
 		/* Parse maps from stdout */
-		if (FD_ISSET(pipefd[0], &readfds)) {
-			if (read(pipefd[0], &ch, 1) < 1) {
-				FD_CLR(pipefd[0], &ourfds);
-				files_left--;
+		if (pfd[0].revents) {
+cont:
+			bytes = read(pipefd[0], &ch, 1);
+			if (bytes == 0)
+				goto next;
+			else if (bytes < 0) {
+				pfd[0].fd = -1;
 				state = st_done;
+				goto next;
 			}
 
 			if (!quoted && ch == '\\') {
 				quoted = 1;
-				continue;
+				goto cont;
 			}
 
 			switch (state) {
@@ -333,26 +341,32 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 				/* Eat characters till there's no more output */
 				break;
 			}
+			goto cont;
 		}
 		quoted = 0;
-
+next:
 		/* Deal with stderr */
-		if (FD_ISSET(epipefd[0], &readfds)) {
-			if (read(epipefd[0], &ch, 1) < 1) {
-				FD_CLR(epipefd[0], &ourfds);
-				files_left--;
-			} else if (ch == '\n') {
-				*errp = '\0';
-				if (errbuf[0])
-					logmsg(">> %s", errbuf);
-				errp = errbuf;
-			} else {
-				if (errp >= &errbuf[1023]) {
+		if (pfd[1].revents) {
+			while (1) {
+				bytes = read(epipefd[0], &ch, 1);
+				if (bytes == 0)
+					break;
+				else if (bytes < 0) {
+					pfd[1].fd = -1;
+					break;
+				} else if (ch == '\n') {
 					*errp = '\0';
-					logmsg(">> %s", errbuf);
+					if (errbuf[0])
+						logmsg(">> %s", errbuf);
 					errp = errbuf;
+				} else {
+					if (errp >= &errbuf[1023]) {
+						*errp = '\0';
+						logmsg(">> %s", errbuf);
+						errp = errbuf;
+					}
+					*(errp++) = ch;
 				}
-				*(errp++) = ch;
 			}
 		}
 	}

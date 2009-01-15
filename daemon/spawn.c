@@ -21,6 +21,7 @@
 #include <sys/types.h>
 #include <dirent.h>
 #include <time.h>
+#include <poll.h>
 #include <sys/wait.h>
 #include <sys/stat.h>
 #include <sys/mount.h>
@@ -89,21 +90,21 @@ void reset_signals(void)
 
 static int timed_read(int pipe, char *buf, size_t len, int time)
 {
-	struct timeval timeout = { 0, 0 };
-	struct timeval *tout = NULL;
-	fd_set wset, rset;
+	struct pollfd pfd[1];
+	int timeout = time;
 	int ret;
 
-	FD_ZERO(&rset);
-	FD_SET(pipe, &rset);
-	wset = rset;
+	pfd[0].fd = pipe;
+	pfd[0].events = POLLIN;
 
 	if (time != -1) {
-		timeout.tv_sec = time;
-		tout = &timeout;
+		if (time >= (INT_MAX - 1)/1000)
+			timeout = INT_MAX - 1;
+		else
+			timeout = time * 1000;
 	}
 
-	ret = select(pipe + 1, &rset, &wset, NULL, tout);
+	ret = poll(pfd, 1, timeout);
 	if (ret <= 0) {
 		if (ret == 0)
 			ret = -ETIMEDOUT;

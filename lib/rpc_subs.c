@@ -31,6 +31,7 @@
 #include <sys/ioctl.h>
 #include <ctype.h>
 #include <pthread.h>
+#include <poll.h>
 
 #include "mount.h"
 #include "rpc_subs.h"
@@ -197,14 +198,15 @@ void rpc_destroy_udp_client(struct conn_info *info)
 /*
  *  Perform a non-blocking connect on the socket fd.
  *
- *  tout contains the timeout.  It will be modified to contain the time
- *  remaining (i.e. time provided - time elasped).
+ *  The input struct timeval always has tv_nsec set to zero,
+ *  we only ever use tv_sec for timeouts.
  */
 static int connect_nb(int fd, struct sockaddr_in *addr, struct timeval *tout)
 {
+	struct pollfd pfd[1];
+	int timeout = tout->tv_sec;
 	int flags, ret;
 	socklen_t len;
-	fd_set wset, rset;
 
 	flags = fcntl(fd, F_GETFL, 0);
 	if (flags < 0)
@@ -229,12 +231,10 @@ static int connect_nb(int fd, struct sockaddr_in *addr, struct timeval *tout)
 	if (ret == 0)
 		goto done;
 
-	/* now wait */
-	FD_ZERO(&rset);
-	FD_SET(fd, &rset);
-	wset = rset;
+	pfd[0].fd = fd;
+	pfd[0].events = POLLOUT;
 
-	ret = select(fd + 1, &rset, &wset, NULL, tout);
+	ret = poll(pfd, 1, timeout);
 	if (ret <= 0) {
 		if (ret == 0)
 			ret = -ETIMEDOUT;
@@ -243,13 +243,27 @@ static int connect_nb(int fd, struct sockaddr_in *addr, struct timeval *tout)
 		goto done;
 	}
 
-	if (FD_ISSET(fd, &rset) || FD_ISSET(fd, &wset)) {
+	if (pfd[0].revents) {
 		int status;
 
 		len = sizeof(ret);
 		status = getsockopt(fd, SOL_SOCKET, SO_ERROR, &ret, &len);
 		if (status < 0) {
+			char buf[MAX_ERR_BUF + 1];
+			char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+
+			/*
+			 * We assume getsockopt amounts to a read on the
+			 * descriptor and gives us the errno we need for
+			 * the POLLERR revent case.
+			 */
 			ret = -errno;
+
+			/* Unexpected case, log it so we know we got caught */
+			if (pfd[0].revents & POLLNVAL)
+				logerr("unexpected poll(2) error on connect:"
+				       " %s", estr);
+
 			goto done;
 		}
 
