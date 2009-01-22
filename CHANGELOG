@@ -7,6 +7,7 @@
 - fix select(2) fd limit.
 - make hash table scale to thousands of entries (Paul Wankadia,
   Valerie Aurora Henson).
+- clear the quoted flag after each character from program map input.
 
 4/11/2008 autofs-5.0.4
 -----------------------

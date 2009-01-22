@@ -341,6 +341,7 @@ cont:
 				/* Eat characters till there's no more output */
 				break;
 			}
+			quoted = 0;
 			goto cont;
 		}
 		quoted = 0;
