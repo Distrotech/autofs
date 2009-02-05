@@ -581,5 +581,25 @@ static inline FILE *open_fopen_r(const char *path)
 	return f;
 }
 
+static inline FILE *open_setmntent_r(const char *table)
+{
+	FILE *tab;
+
+#if defined(O_CLOEXEC) && defined(SOCK_CLOEXEC)
+	if (cloexec_works != -1) {
+		tab = setmntent(table, "re");
+		if (tab != NULL) {
+			check_cloexec(fileno(tab));
+			return tab;
+		}
+	}
+#endif
+	tab = fopen(table, "r");
+	if (tab == NULL)
+		return NULL;
+	check_cloexec(fileno(tab));
+	return tab;
+}
+
 #endif
 

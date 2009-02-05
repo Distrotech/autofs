@@ -218,7 +218,7 @@ struct mnt_list *get_mnt_list(const char *table, const char *path, int include)
 	if (!path || !pathlen || pathlen > PATH_MAX)
 		return NULL;
 
-	tab = setmntent(table, "r");
+	tab = open_setmntent_r(table);
 	if (!tab) {
 		char *estr = strerror_r(errno, buf, PATH_MAX - 1);
 		logerr("setmntent: %s", estr);
@@ -415,7 +415,7 @@ static int table_is_mounted(const char *table, const char *path, unsigned int ty
 	if (!path || !pathlen || pathlen >= PATH_MAX)
 		return 0;
 
-	tab = setmntent(table, "r");
+	tab = open_setmntent_r(table);
 	if (!tab) {
 		char *estr = strerror_r(errno, buf, PATH_MAX - 1);
 		logerr("setmntent: %s", estr);
@@ -489,7 +489,7 @@ int has_fstab_option(const char *opt)
 	if (!opt)
 		return 0;
 
-	tab = setmntent(_PATH_MNTTAB, "r");
+	tab = open_setmntent_r(_PATH_MNTTAB);
 	if (!tab) {
 		char *estr = strerror_r(errno, buf, PATH_MAX - 1);
 		logerr("setmntent: %s", estr);
@@ -668,7 +668,7 @@ struct mnt_list *tree_make_mnt_tree(const char *table, const char *path)
 	size_t plen;
 	int eq;
 
-	tab = setmntent(table, "r");
+	tab = open_setmntent_r(table);
 	if (!tab) {
 		char *estr = strerror_r(errno, buf, PATH_MAX - 1);
 		logerr("setmntent: %s", estr);

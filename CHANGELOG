@@ -8,6 +8,7 @@
 - make hash table scale to thousands of entries (Paul Wankadia,
   Valerie Aurora Henson).
 - clear the quoted flag after each character from program map input.
+- use CLOEXEC flag for setmntent also.
 
 4/11/2008 autofs-5.0.4
 -----------------------
