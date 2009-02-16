@@ -9,7 +9,7 @@
   Valerie Aurora Henson).
 - clear the quoted flag after each character from program map input.
 - use CLOEXEC flag for setmntent also.
-- fix hosts map use after free (Paul Wankadia).
+- fix hosts map use after free.
 - fix uri list locking (again).
 - check for stale SASL credentials upon connect fail.
 - add "forcestart" and "forcerestart" init script options to allow
