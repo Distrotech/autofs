@@ -283,10 +283,13 @@ static int do_read_map(struct autofs_point *ap, struct map_source *map, time_t a
 	 * for the fail cases to function correctly and to cache the
 	 * lookup handle.
 	 *
-	 * We always need to whole map for direct mounts in order to
-	 * mount the triggers.
+	 * We always need to read the whole map for direct mounts in
+	 * order to mount the triggers. We also want to read the whole
+	 * map if it's a file map to avoid potentially lengthy linear
+	 * file scanning.
 	 */
-	if (!(ap->flags & MOUNT_FLAG_GHOST) && ap->type != LKP_DIRECT)
+	if (strcmp(map->type, "file") &&
+	    !(ap->flags & MOUNT_FLAG_GHOST) && ap->type != LKP_DIRECT)
 		return NSS_STATUS_SUCCESS;
 
 	if (!map->stale)

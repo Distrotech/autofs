@@ -44,7 +44,6 @@ typedef enum { esc_none, esc_char, esc_val, esc_all } ESCAPES;
 
 struct lookup_context {
 	const char *mapname;
-	time_t mtime;
 	struct parse_mod *parse;
 };
 
@@ -54,7 +53,6 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 {
 	struct lookup_context *ctxt;
 	char buf[MAX_ERR_BUF];
-	struct stat st;
 
 	*context = NULL;
 
@@ -86,15 +84,6 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 		    "file map %s missing or not readable", argv[0]);
 		return 1;
 	}
-
-	if (stat(ctxt->mapname, &st)) {
-		free(ctxt);
-		logmsg(MODPREFIX "file map %s, could not stat",
-		     argv[0]);
-		return 1;
-	}
-		
-	ctxt->mtime = st.st_mtime;
 
 	if (!mapfmt)
 		mapfmt = MAPFMT_DEFAULT;
@@ -391,9 +380,7 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 	int blen;
 	char *path;
 	char *ent;
-	struct stat st;
 	FILE *f;
-	int fd;
 	unsigned int path_len, ent_len;
 	int entry, cur_state;
 
@@ -427,8 +414,6 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 		      ctxt->mapname);
 		return NSS_STATUS_UNAVAIL;
 	}
-
-	fd = fileno(f);
 
 	while(1) {
 		entry = read_one(logopt, f, path, &path_len, ent, &ent_len);
@@ -503,13 +488,6 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 		if (feof(f))
 			break;
 	}
-
-	if (fstat(fd, &st)) {
-		crit(logopt, MODPREFIX "file map %s, could not stat",
-		       ctxt->mapname);
-		return NSS_STATUS_UNAVAIL;
-	}
-	ctxt->mtime = st.st_mtime;
 
 	fclose(f);
 
@@ -642,9 +620,7 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 	struct mapent_cache *mc;
 	char *key;
 	char *mapent;
-	struct stat st;
 	FILE *f;
-	int fd;
 	unsigned int k_len, m_len;
 	int entry;
 
@@ -683,8 +659,6 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 		      MODPREFIX "could not open map file %s", ctxt->mapname);
 		return NSS_STATUS_UNAVAIL;
 	}
-
-	fd = fileno(f);
 
 	while(1) {
 		entry = read_one(ap->logopt, f, key, &k_len, mapent, &m_len);
@@ -748,13 +722,6 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 			break;
 	}
 
-	if (fstat(fd, &st)) {
-		crit(ap->logopt,
-		     MODPREFIX "file map %s, could not stat",
-		     ctxt->mapname);
-		return NSS_STATUS_UNAVAIL;
-	}
-	ctxt->mtime = st.st_mtime;
 	source->age = age;
 
 	fclose(f);
@@ -951,9 +918,6 @@ static int check_map_indirect(struct autofs_point *ap,
 	if (ret == CHE_FAIL)
 		return NSS_STATUS_NOTFOUND;
 
-	if (ret & CHE_UPDATED)
-		source->stale = 1;
-
 	pthread_cleanup_push(cache_lock_cleanup, mc);
 	cache_writelock(mc);
 	exists = cache_lookup_distinct(mc, key);
@@ -963,7 +927,6 @@ static int check_map_indirect(struct autofs_point *ap,
 			free(exists->mapent);
 			exists->mapent = NULL;
 			exists->status = 0;
-			source->stale = 1;
 		}
 	}
 	pthread_cleanup_pop(1);
@@ -985,14 +948,8 @@ static int check_map_indirect(struct autofs_point *ap,
 		we = cache_lookup_distinct(mc, "*");
 		if (we) {
 			/* Wildcard entry existed and is now gone */
-			if (we->source == source && (wild & CHE_MISSING)) {
+			if (we->source == source && (wild & CHE_MISSING))
 				cache_delete(mc, "*");
-				source->stale = 1;
-			}
-		} else {
-			/* Wildcard not in map but now is */
-			if (wild & (CHE_OK | CHE_UPDATED))
-				source->stale = 1;
 		}
 		pthread_cleanup_pop(1);
 
@@ -1062,9 +1019,28 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 	 * we never know about it.
 	 */
 	if (ap->type == LKP_INDIRECT && *key != '/') {
+		struct stat st;
 		char *lkp_key;
 
+		/*
+		 * We can skip the map lookup and cache update altogether
+		 * if we know the map hasn't been modified since it was
+		 * last read. If it has then we can mark the map stale
+		 * so a re-read is triggered following the lookup.
+		 */
+		if (stat(ctxt->mapname, &st)) {
+			error(ap->logopt, MODPREFIX
+			      "file map %s, could not stat", ctxt->mapname);
+			return NSS_STATUS_UNAVAIL;
+		}
+
 		cache_readlock(mc);
+		me = cache_lookup_first(mc);
+		if (me && st.st_mtime <= me->age)
+			goto do_cache_lookup;
+		else
+			source->stale = 1;
+
 		me = cache_lookup_distinct(mc, key);
 		if (me && me->multi)
 			lkp_key = strdup(me->multi->key);
@@ -1088,6 +1064,7 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 	}
 
 	cache_readlock(mc);
+do_cache_lookup:
 	me = cache_lookup(mc, key);
 	/* Stale mapent => check for entry in alternate source or wildcard */
 	if (me && !me->mapent) {
