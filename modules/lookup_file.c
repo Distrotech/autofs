@@ -378,8 +378,8 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 	unsigned int logopt = master->logopt;
 	char *buffer;
 	int blen;
-	char *path;
-	char *ent;
+	char path[KEY_MAX_LEN + 1];
+	char ent[MAPENT_MAX_LEN + 1];
 	FILE *f;
 	unsigned int path_len, ent_len;
 	int entry, cur_state;
@@ -390,20 +390,6 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 	if (master->depth > MAX_INCLUDE_DEPTH) {
 		error(logopt, MODPREFIX
 		      "maximum include depth exceeded %s", master->name);
-		return NSS_STATUS_UNAVAIL;
-	}
-
-	path = alloca(KEY_MAX_LEN + 1);
-	if (!path) {
-		error(logopt,
-		      MODPREFIX "could not malloc storage for path");
-		return NSS_STATUS_UNAVAIL;
-	}
-
-	ent = alloca(MAPENT_MAX_LEN + 1);
-	if (!ent) {
-		error(logopt,
-		      MODPREFIX "could not malloc storage for mapent");
 		return NSS_STATUS_UNAVAIL;
 	}
 
@@ -618,8 +604,8 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 	struct lookup_context *ctxt = (struct lookup_context *) context;
 	struct map_source *source;
 	struct mapent_cache *mc;
-	char *key;
-	char *mapent;
+	char key[KEY_MAX_LEN + 1];
+	char mapent[MAPENT_MAX_LEN + 1];
 	FILE *f;
 	unsigned int k_len, m_len;
 	int entry;
@@ -636,20 +622,6 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 	if (source->depth > MAX_INCLUDE_DEPTH) {
 		error(ap->logopt,
 		      "maximum include depth exceeded %s", ctxt->mapname);
-		return NSS_STATUS_UNAVAIL;
-	}
-
-	key = alloca(KEY_MAX_LEN + 1);
-	if (!key) {
-		error(ap->logopt,
-		      MODPREFIX "could not malloc storage for key");
-		return NSS_STATUS_UNAVAIL;
-	}
-
-	mapent = alloca(MAPENT_MAX_LEN + 1);
-	if (!mapent) {
-		error(ap->logopt,
-		      MODPREFIX "could not malloc storage for mapent");
 		return NSS_STATUS_UNAVAIL;
 	}
 
@@ -972,7 +944,7 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 	char key[KEY_MAX_LEN + 1];
 	int key_len;
 	char *mapent = NULL;
-	int mapent_len;
+	char mapent_buf[MAPENT_MAX_LEN + 1];
 	int status = 0;
 	int ret = 1;
 
@@ -1076,38 +1048,36 @@ do_cache_lookup:
 	}
 	if (me && (me->source == source || *me->key == '/')) {
 		pthread_cleanup_push(cache_lock_cleanup, mc);
-		mapent_len = strlen(me->mapent);
-		mapent = alloca(mapent_len + 1);
-		strcpy(mapent, me->mapent);
+		strcpy(mapent_buf, me->mapent);
+		mapent = mapent_buf;
 		pthread_cleanup_pop(0);
 	}
 	cache_unlock(mc);
 
-	if (mapent) {
-		master_source_current_wait(ap->entry);
-		ap->entry->current = source;
-
-		debug(ap->logopt, MODPREFIX "%s -> %s", key, mapent);
-		ret = ctxt->parse->parse_mount(ap, key, key_len,
-					mapent, ctxt->parse->context);
-		if (ret) {
-			time_t now = time(NULL);
-			int rv = CHE_OK;
-
-			cache_writelock(mc);
-			me = cache_lookup_distinct(mc, key);
-			if (!me)
-				rv = cache_update(mc, source, key, NULL, now);
-			if (rv != CHE_FAIL) {
-				me = cache_lookup_distinct(mc, key);
-				me->status = now + ap->negative_timeout;
-			}
-			cache_unlock(mc);
-		}
-	}
-
-	if (ret)
+	if (!mapent)
 		return NSS_STATUS_TRYAGAIN;
+
+	master_source_current_wait(ap->entry);
+	ap->entry->current = source;
+
+	debug(ap->logopt, MODPREFIX "%s -> %s", key, mapent);
+	ret = ctxt->parse->parse_mount(ap, key, key_len,
+				       mapent, ctxt->parse->context);
+	if (ret) {
+		time_t now = time(NULL);
+		int rv = CHE_OK;
+
+		cache_writelock(mc);
+		me = cache_lookup_distinct(mc, key);
+		if (!me)
+			rv = cache_update(mc, source, key, NULL, now);
+		if (rv != CHE_FAIL) {
+			me = cache_lookup_distinct(mc, key);
+			me->status = now + ap->negative_timeout;
+		}
+		cache_unlock(mc);
+		return NSS_STATUS_TRYAGAIN;
+	}
 
 	return NSS_STATUS_SUCCESS;
 }

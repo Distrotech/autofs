@@ -92,10 +92,10 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 	int cur_state, len;
 
 	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cur_state);
-	tablename = alloca(strlen(ctxt->mapname) + strlen(ctxt->domainname) + 20);
+	tablename = malloc(strlen(ctxt->mapname) + strlen(ctxt->domainname) + 20);
 	if (!tablename) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		logerr(MODPREFIX "alloca: %s", estr);
+		logerr(MODPREFIX "malloc: %s", estr);
 		pthread_setcancelstate(cur_state, NULL);
 		return NSS_STATUS_UNAVAIL;
 	}
@@ -107,6 +107,7 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 		nis_freeresult(result);
 		crit(logopt,
 		     MODPREFIX "couldn't locate nis+ table %s", ctxt->mapname);
+		free(tablename);
 		pthread_setcancelstate(cur_state, NULL);
 		return NSS_STATUS_NOTFOUND;
 	}
@@ -118,6 +119,7 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 		nis_freeresult(result);
 		crit(logopt,
 		     MODPREFIX "couldn't enumrate nis+ map %s", ctxt->mapname);
+		free(tablename);
 		pthread_setcancelstate(cur_state, NULL);
 		return NSS_STATUS_UNAVAIL;
 	}
@@ -155,6 +157,7 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 	}
 
 	nis_freeresult(result);
+	free(tablename);
 	pthread_setcancelstate(cur_state, NULL);
 
 	return NSS_STATUS_SUCCESS;
@@ -180,10 +183,10 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 	mc = source->mc;
 
 	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cur_state);
-	tablename = alloca(strlen(ctxt->mapname) + strlen(ctxt->domainname) + 20);
+	tablename = malloc(strlen(ctxt->mapname) + strlen(ctxt->domainname) + 20);
 	if (!tablename) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		logerr(MODPREFIX "alloca: %s", estr);
+		logerr(MODPREFIX "malloc: %s", estr);
 		pthread_setcancelstate(cur_state, NULL);
 		return NSS_STATUS_UNAVAIL;
 	}
@@ -195,6 +198,7 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 		nis_freeresult(result);
 		crit(ap->logopt,
 		     MODPREFIX "couldn't locate nis+ table %s", ctxt->mapname);
+		free(tablename);
 		pthread_setcancelstate(cur_state, NULL);
 		return NSS_STATUS_NOTFOUND;
 	}
@@ -206,6 +210,7 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 		nis_freeresult(result);
 		crit(ap->logopt,
 		     MODPREFIX "couldn't enumrate nis+ map %s", ctxt->mapname);
+		free(tablename);
 		pthread_setcancelstate(cur_state, NULL);
 		return NSS_STATUS_UNAVAIL;
 	}
@@ -245,6 +250,7 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 
 	source->age = age;
 
+	free(tablename);
 	pthread_setcancelstate(cur_state, NULL);
 
 	return NSS_STATUS_SUCCESS;
@@ -271,11 +277,11 @@ static int lookup_one(struct autofs_point *ap,
 	mc = source->mc;
 
 	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cur_state);
-	tablename = alloca(strlen(key) +
-			strlen(ctxt->mapname) + strlen(ctxt->domainname) + 20);
+	tablename = malloc(strlen(key) + strlen(ctxt->mapname) +
+			   strlen(ctxt->domainname) + 20);
 	if (!tablename) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		logerr(MODPREFIX "alloca: %s", estr);
+		logerr(MODPREFIX "malloc: %s", estr);
 		pthread_setcancelstate(cur_state, NULL);
 		return -1;
 	}
@@ -286,6 +292,7 @@ static int lookup_one(struct autofs_point *ap,
 	if (result->status != NIS_SUCCESS && result->status != NIS_S_SUCCESS) {
 		nis_error rs = result->status;
 		nis_freeresult(result);
+		free(tablename);
 		pthread_setcancelstate(cur_state, NULL);
 		if (rs == NIS_NOTFOUND ||
 		    rs == NIS_S_NOTFOUND ||
@@ -303,6 +310,7 @@ static int lookup_one(struct autofs_point *ap,
 	cache_unlock(mc);
 
 	nis_freeresult(result);
+	free(tablename);
 	pthread_setcancelstate(cur_state, NULL);
 
 	return ret;
@@ -327,10 +335,10 @@ static int lookup_wild(struct autofs_point *ap, struct lookup_context *ctxt)
 	mc = source->mc;
 
 	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cur_state);
-	tablename = alloca(strlen(ctxt->mapname) + strlen(ctxt->domainname) + 20);
+	tablename = malloc(strlen(ctxt->mapname) + strlen(ctxt->domainname) + 20);
 	if (!tablename) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		logerr(MODPREFIX "alloca: %s", estr);
+		logerr(MODPREFIX "malloc: %s", estr);
 		pthread_setcancelstate(cur_state, NULL);
 		return -1;
 	}
@@ -341,6 +349,7 @@ static int lookup_wild(struct autofs_point *ap, struct lookup_context *ctxt)
 	if (result->status != NIS_SUCCESS && result->status != NIS_S_SUCCESS) {
 		nis_error rs = result->status;
 		nis_freeresult(result);
+		free(tablename);
 		pthread_setcancelstate(cur_state, NULL);
 		if (rs == NIS_NOTFOUND ||
 		    rs == NIS_S_NOTFOUND ||
@@ -357,6 +366,7 @@ static int lookup_wild(struct autofs_point *ap, struct lookup_context *ctxt)
 	cache_unlock(mc);
 
 	nis_freeresult(result);
+	free(tablename);
 	pthread_setcancelstate(cur_state, NULL);
 
 	return ret;
@@ -546,36 +556,37 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 	}
 	if (me && (me->source == source || *me->key == '/')) {
 		mapent_len = strlen(me->mapent);
-		mapent = alloca(mapent_len + 1);
+		mapent = malloc(mapent_len + 1);
 		strcpy(mapent, me->mapent);
 	}
 	cache_unlock(mc);
 
-	if (mapent) {
-		master_source_current_wait(ap->entry);
-		ap->entry->current = source;
-
-		debug(ap->logopt, MODPREFIX "%s -> %s", key, mapent);
-		ret = ctxt->parse->parse_mount(ap, key, key_len,
-					       mapent, ctxt->parse->context);
-		if (ret) {
-			time_t now = time(NULL);
-			int rv = CHE_OK;
-
-			cache_writelock(mc);
-			me = cache_lookup_distinct(mc, key);
-			if (!me)
-				rv = cache_update(mc, source, key, NULL, now);
-			if (rv != CHE_FAIL) {
-				me = cache_lookup_distinct(mc, key);
-				me->status = time(NULL) + ap->negative_timeout;
-			}
-			cache_unlock(mc);
-		}
-	}
-
-	if (ret)
+	if (!mapent)
 		return NSS_STATUS_TRYAGAIN;
+
+	master_source_current_wait(ap->entry);
+	ap->entry->current = source;
+
+	debug(ap->logopt, MODPREFIX "%s -> %s", key, mapent);
+	ret = ctxt->parse->parse_mount(ap, key, key_len,
+				       mapent, ctxt->parse->context);
+	if (ret) {
+		time_t now = time(NULL);
+		int rv = CHE_OK;
+
+		cache_writelock(mc);
+		me = cache_lookup_distinct(mc, key);
+		if (!me)
+			rv = cache_update(mc, source, key, NULL, now);
+		if (rv != CHE_FAIL) {
+			me = cache_lookup_distinct(mc, key);
+			me->status = time(NULL) + ap->negative_timeout;
+		}
+		cache_unlock(mc);
+		free(mapent);
+		return NSS_STATUS_TRYAGAIN;
+	}
+	free(mapent);
 
 	return NSS_STATUS_SUCCESS;
 }

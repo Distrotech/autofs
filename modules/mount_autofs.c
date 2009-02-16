@@ -18,7 +18,6 @@
 #include <malloc.h>
 #include <string.h>
 #include <signal.h>
-#include <alloca.h>
 #include <sys/param.h>
 #include <sys/types.h>
 #include <sys/stat.h>

@@ -36,7 +36,7 @@ int mount_init(void **context)
 int mount_mount(struct autofs_point *ap, const char *root, const char *name, int name_len,
 		const char *what, const char *fstype, const char *options, void *context)
 {
-	char *fullpath;
+	char fullpath[PATH_MAX];
 	char buf[MAX_ERR_BUF];
 	const char *p, *p1;
 	int err, ro = 0;
@@ -49,14 +49,11 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 	/* Root offset of multi-mount */
 	len = strlen(root);
 	if (root[len - 1] == '/') {
-		fullpath = alloca(len);
 		len = snprintf(fullpath, len, "%s", root);
 	/* Direct mount name is absolute path so don't use root */
 	} else if (*name == '/') {
-		fullpath = alloca(len + 1);
 		len = sprintf(fullpath, "%s", root);
 	} else {
-		fullpath = alloca(len + name_len + 2);
 		len = sprintf(fullpath, "%s/%s", root, name);
 	}
 	fullpath[len] = '\0';

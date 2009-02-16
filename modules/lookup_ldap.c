@@ -294,10 +294,10 @@ static int get_query_dn(unsigned logopt, LDAP *ldap, struct lookup_context *ctxt
 	if (ctxt->mapname)
 		l += strlen(key) + strlen(ctxt->mapname) + strlen("(&(=))");
 
-	query = alloca(l);
+	query = malloc(l);
 	if (query == NULL) {
 		char *estr = strerror_r(errno, buf, sizeof(buf));
-		crit(logopt, MODPREFIX "alloca: %s", estr);
+		crit(logopt, MODPREFIX "malloc: %s", estr);
 		return NSS_STATUS_UNAVAIL;
 	}
 
@@ -310,6 +310,7 @@ static int get_query_dn(unsigned logopt, LDAP *ldap, struct lookup_context *ctxt
 		     key, (int) strlen(ctxt->mapname), ctxt->mapname) >= l) {
 			debug(logopt,
 			      MODPREFIX "error forming query string");
+			free(query);
 			return 0;
 		}
 		scope = LDAP_SCOPE_SUBTREE;
@@ -317,6 +318,7 @@ static int get_query_dn(unsigned logopt, LDAP *ldap, struct lookup_context *ctxt
 		if (sprintf(query, "(objectclass=%s)", class) >= l) {
 			debug(logopt,
 			      MODPREFIX "error forming query string");
+			free(query);
 			return 0;
 		}
 		scope = LDAP_SCOPE_SUBTREE;
@@ -340,6 +342,7 @@ static int get_query_dn(unsigned logopt, LDAP *ldap, struct lookup_context *ctxt
 			error(logopt,
 			      MODPREFIX "query failed for %s: %s",
 			      query, ldap_err2string(rv));
+			free(query);
 			return 0;
 		}
 
@@ -353,6 +356,7 @@ static int get_query_dn(unsigned logopt, LDAP *ldap, struct lookup_context *ctxt
 			      MODPREFIX "query succeeded, no matches for %s",
 			      query);
 			ldap_msgfree(result);
+			free(query);
 			return 0;
 		}
 	} else {
@@ -395,10 +399,12 @@ static int get_query_dn(unsigned logopt, LDAP *ldap, struct lookup_context *ctxt
 			ldap_msgfree(result);
 			error(logopt,
 			      MODPREFIX "failed to find query dn under search base dns");
+			free(query);
 			return 0;
 		}
 	}
 
+	free(query);
 	qdn = strdup(dn);
 	ldap_memfree(dn);
 	ldap_msgfree(result);
@@ -1181,7 +1187,7 @@ static int parse_server_string(unsigned logopt, const char *url, struct lookup_c
 			else {
 				char *estr;
 				estr = strerror_r(errno, buf, sizeof(buf));
-				logerr(MODPREFIX "malloc: %s", estr);
+				logerr(MODPREFIX "strdup: %s", estr);
 				if (ctxt->server)
 					free(ctxt->server);
 				return 0;
@@ -1441,23 +1447,26 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 
 	l = strlen("(objectclass=)") + strlen(class) + 1;
 
-	query = alloca(l);
+	query = malloc(l);
 	if (query == NULL) {
 		char *estr = strerror_r(errno, buf, sizeof(buf));
-		logerr(MODPREFIX "alloca: %s", estr);
+		logerr(MODPREFIX "malloc: %s", estr);
 		return NSS_STATUS_UNAVAIL;
 	}
 
 	if (sprintf(query, "(objectclass=%s)", class) >= l) {
 		error(logopt, MODPREFIX "error forming query string");
+		free(query);
 		return NSS_STATUS_UNAVAIL;
 	}
 	query[l] = '\0';
 
 	/* Initialize the LDAP context. */
 	ldap = do_reconnect(logopt, ctxt);
-	if (!ldap)
+	if (!ldap) {
+		free(query);
 		return NSS_STATUS_UNAVAIL;
+	}
 
 	/* Look around. */
 	debug(logopt,
@@ -1469,6 +1478,7 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 		error(logopt, MODPREFIX "query failed for %s: %s",
 		      query, ldap_err2string(rv));
 		unbind_ldap_connection(logging, ldap, ctxt);
+		free(query);
 		return NSS_STATUS_NOTFOUND;
 	}
 
@@ -1479,6 +1489,7 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 		      query);
 		ldap_msgfree(result);
 		unbind_ldap_connection(logging, ldap, ctxt);
+		free(query);
 		return NSS_STATUS_NOTFOUND;
 	} else
 		debug(logopt, MODPREFIX "examining entries");
@@ -1548,6 +1559,7 @@ next:
 	/* Clean up. */
 	ldap_msgfree(result);
 	unbind_ldap_connection(logopt, ldap, ctxt);
+	free(query);
 
 	return NSS_STATUS_SUCCESS;
 }
@@ -2174,7 +2186,7 @@ static int read_one_map(struct autofs_point *ap,
 	/* Build a query string. */
 	l = strlen("(objectclass=)") + strlen(class) + 1;
 
-	sp.query = alloca(l);
+	sp.query = malloc(l);
 	if (sp.query == NULL) {
 		char *estr = strerror_r(errno, buf, sizeof(buf));
 		logerr(MODPREFIX "malloc: %s", estr);
@@ -2183,14 +2195,17 @@ static int read_one_map(struct autofs_point *ap,
 
 	if (sprintf(sp.query, "(objectclass=%s)", class) >= l) {
 		error(ap->logopt, MODPREFIX "error forming query string");
+		free(sp.query);
 		return NSS_STATUS_UNAVAIL;
 	}
 	sp.query[l] = '\0';
 
 	/* Initialize the LDAP context. */
 	sp.ldap = do_reconnect(ap->logopt, ctxt);
-	if (!sp.ldap)
+	if (!sp.ldap) {
+		free(sp.query);
 		return NSS_STATUS_UNAVAIL;
+	}
 
 	/* Look around. */
 	debug(ap->logopt,
@@ -2215,6 +2230,7 @@ static int read_one_map(struct autofs_point *ap,
 		if (rv != LDAP_SUCCESS || !sp.result) {
 			unbind_ldap_connection(ap->logopt, sp.ldap, ctxt);
 			*result_ldap = rv;
+			free(sp.query);
 			return NSS_STATUS_UNAVAIL;
 		}
 
@@ -2223,6 +2239,7 @@ static int read_one_map(struct autofs_point *ap,
 			ldap_msgfree(sp.result);
 			unbind_ldap_connection(ap->logopt, sp.ldap, ctxt);
 			*result_ldap = rv;
+			free(sp.query);
 			return NSS_STATUS_NOTFOUND;
 		}
 		ldap_msgfree(sp.result);
@@ -2233,6 +2250,7 @@ static int read_one_map(struct autofs_point *ap,
 	unbind_ldap_connection(ap->logopt, sp.ldap, ctxt);
 
 	source->age = age;
+	free(sp.query);
 
 	return NSS_STATUS_SUCCESS;
 }
@@ -2328,7 +2346,7 @@ static int lookup_one(struct autofs_point *ap,
 	if (enc_len1)
 		l += 2*strlen(entry) + enc_len1 + enc_len2 + 6;
 
-	query = alloca(l);
+	query = malloc(l);
 	if (query == NULL) {
 		char *estr = strerror_r(errno, buf, sizeof(buf));
 		crit(ap->logopt, MODPREFIX "malloc: %s", estr);
@@ -2336,6 +2354,7 @@ static int lookup_one(struct autofs_point *ap,
 			free(enc_key1);
 			free(enc_key2);
 		}
+		free(query);
 		return CHE_FAIL;
 	}
 
@@ -2367,14 +2386,17 @@ static int lookup_one(struct autofs_point *ap,
 	if (ql >= l) {
 		error(ap->logopt,
 		      MODPREFIX "error forming query string");
+		free(query);
 		return CHE_FAIL;
 	}
 	query[ql] = '\0';
 
 	/* Initialize the LDAP context. */
 	ldap = do_reconnect(ap->logopt, ctxt);
-	if (!ldap)
+	if (!ldap) {
+		free(query);
 		return CHE_UNAVAIL;
+	}
 
 	debug(ap->logopt,
 	      MODPREFIX "searching for \"%s\" under \"%s\"", query, ctxt->qdn);
@@ -2384,6 +2406,7 @@ static int lookup_one(struct autofs_point *ap,
 	if ((rv != LDAP_SUCCESS) || !result) {
 		crit(ap->logopt, MODPREFIX "query failed for %s", query);
 		unbind_ldap_connection(ap->logopt, ldap, ctxt);
+		free(query);
 		return CHE_FAIL;
 	}
 
@@ -2396,6 +2419,7 @@ static int lookup_one(struct autofs_point *ap,
 		     MODPREFIX "got answer, but no entry for %s", query);
 		ldap_msgfree(result);
 		unbind_ldap_connection(ap->logopt, ldap, ctxt);
+		free(query);
 		return CHE_MISSING;
 	}
 
@@ -2610,6 +2634,7 @@ next:
 		}
 	}
 	pthread_cleanup_pop(1);
+	free(query);
 
 	return ret;
 }
@@ -2696,7 +2721,7 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 	char key[KEY_MAX_LEN + 1];
 	int key_len;
 	char *mapent = NULL;
-	int mapent_len;
+	char mapent_buf[MAPENT_MAX_LEN + 1];
 	int status = 0;
 	int ret = 1;
 
@@ -2766,38 +2791,36 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 			me = cache_lookup_distinct(mc, "*");
 	}
 	if (me && (me->source == source || *me->key == '/')) {
-		mapent_len = strlen(me->mapent);
-		mapent = alloca(mapent_len + 1);
-		strcpy(mapent, me->mapent);
+		strcpy(mapent_buf, me->mapent);
+		mapent = mapent_buf;
 	}
 	cache_unlock(mc);
 
-	if (mapent) {
-		master_source_current_wait(ap->entry);
-		ap->entry->current = source;
-
-		debug(ap->logopt, MODPREFIX "%s -> %s", key, mapent);
-		ret = ctxt->parse->parse_mount(ap, key, key_len,
-					 mapent, ctxt->parse->context);
-		if (ret) {
-			time_t now = time(NULL);
-			int rv = CHE_OK;
-
-			/* Record the the mount fail in the cache */
-			cache_writelock(mc);
-			me = cache_lookup_distinct(mc, key);
-			if (!me)
-				rv = cache_update(mc, source, key, NULL, now);
-			if (rv != CHE_FAIL) {
-				me = cache_lookup_distinct(mc, key);
-				me->status = now + ap->negative_timeout;
-			}
-			cache_unlock(mc);
-		}
-	}
-
-	if (ret)
+	if (!mapent)
 		return NSS_STATUS_TRYAGAIN;
+
+	master_source_current_wait(ap->entry);
+	ap->entry->current = source;
+
+	debug(ap->logopt, MODPREFIX "%s -> %s", key, mapent);
+	ret = ctxt->parse->parse_mount(ap, key, key_len,
+				       mapent, ctxt->parse->context);
+	if (ret) {
+		time_t now = time(NULL);
+		int rv = CHE_OK;
+
+		/* Record the the mount fail in the cache */
+		cache_writelock(mc);
+		me = cache_lookup_distinct(mc, key);
+		if (!me)
+			rv = cache_update(mc, source, key, NULL, now);
+		if (rv != CHE_FAIL) {
+			me = cache_lookup_distinct(mc, key);
+			me->status = now + ap->negative_timeout;
+		}
+		cache_unlock(mc);
+		return NSS_STATUS_TRYAGAIN;
+	}
 
 	return NSS_STATUS_SUCCESS;
 }

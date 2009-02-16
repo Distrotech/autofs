@@ -127,8 +127,8 @@ static int do_mkdir(const char *parent, const char *path, mode_t mode)
 
 int mkdir_path(const char *path, mode_t mode)
 {
-	char *buf = alloca(strlen(path) + 1);
-	char *parent = alloca(strlen(path) + 1);
+	char buf[PATH_MAX];
+	char parent[PATH_MAX];
 	const char *cp = path, *lcp = path;
 	char *bp = buf, *pp = parent;
 
@@ -163,7 +163,7 @@ int mkdir_path(const char *path, mode_t mode)
 int rmdir_path(struct autofs_point *ap, const char *path, dev_t dev)
 {
 	int len = strlen(path);
-	char *buf = alloca(len + 1);
+	char buf[PATH_MAX];
 	char *cp;
 	int first = 1;
 	struct stat st;
@@ -468,20 +468,17 @@ static int umount_subtree_mounts(struct autofs_point *ap, const char *path, unsi
 	pthread_cleanup_push(cache_lock_cleanup, mc);
 
 	if (me->multi) {
-		char *root, *base;
-		size_t ap_len;
+		char root[PATH_MAX];
+		char *base;
 		int cur_state;
 
-		ap_len = strlen(ap->path);
-
-		if (!strchr(me->multi->key, '/')) {
+		if (!strchr(me->multi->key, '/'))
 			/* Indirect multi-mount root */
-			root = alloca(ap_len + strlen(me->multi->key) + 2);
-			strcpy(root, ap->path);
-			strcat(root, "/");
-			strcat(root, me->multi->key);
-		} else
-			root = me->multi->key;
+			/* sprintf okay - if it's mounted, it's
+			 * PATH_MAX or less bytes */
+			sprintf(root, "%s/%s", ap->path, me->multi->key);
+		else
+			strcpy(root, me->multi->key);
 
 		if (is_mm_root)
 			base = NULL;
@@ -929,14 +926,14 @@ static int get_pkt(struct autofs_point *ap, union autofs_v5_packet_union *pkt)
 
 int do_expire(struct autofs_point *ap, const char *name, int namelen)
 {
-	char buf[PATH_MAX + 1];
+	char buf[PATH_MAX];
 	int len, ret;
 
 	if (*name != '/') {
 		len = ncat_path(buf, sizeof(buf), ap->path, name, namelen);
 	} else {
 		len = snprintf(buf, PATH_MAX, "%s", name);
-		if (len > PATH_MAX)
+		if (len >= PATH_MAX)
 			len = 0;
 	}
 

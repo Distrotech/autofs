@@ -90,7 +90,9 @@ static int do_mount_autofs_indirect(struct autofs_point *ap, const char *root)
 	struct ioctl_ops *ops = get_ioctl_ops();
 	time_t timeout = ap->exp_timeout;
 	char *options = NULL;
-	const char *type, *map_name = NULL;
+	const char *hosts_map_name = "-hosts";
+	const char *map_name = hosts_map_name;
+	const char *type;
 	struct stat st;
 	struct mnt_list *mnts;
 	int ret;
@@ -142,13 +144,7 @@ static int do_mount_autofs_indirect(struct autofs_point *ap, const char *root)
 	}
 
 	type = ap->entry->maps->type;
-	if (type && !strcmp(ap->entry->maps->type, "hosts")) {
-		char *tmp = alloca(7);
-		if (tmp) {
-			strcpy(tmp, "-hosts");
-			map_name = (const char *) tmp;
-		}
-	} else
+	if (!type || strcmp(ap->entry->maps->type, "hosts"))
 		map_name = ap->entry->maps->argv[0];
 
 	ret = mount(map_name, root, "autofs", MS_MGC_VAL, options);

@@ -12,7 +12,6 @@
  *
  * ----------------------------------------------------------------------- */
 
-#include <alloca.h>
 #include <string.h>
 #include <limits.h>
 #include <ctype.h>

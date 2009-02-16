@@ -23,10 +23,10 @@
 #include <sys/stat.h>
 #include <time.h>
 #include <string.h>
-#include <alloca.h>
 #include <stdio.h>
 #include <signal.h>
 #include <errno.h>
+#include <limits.h>
 
 #include "automount.h"
 
@@ -113,12 +113,13 @@ void release_flag_file(void)
 /* * Try to create flag file */
 int aquire_flag_file(void)
 {
-	char *linkf;
-	int len;
+	char linkf[PATH_MAX];
+	size_t len;
 
-	len = strlen(FLAG_FILE) + MAX_PIDSIZE;
-	linkf = alloca(len + 1);
-	snprintf(linkf, len, "%s.%d", FLAG_FILE, getpid());
+	len = snprintf(linkf, sizeof(linkf), "%s.%d", FLAG_FILE, getpid());
+	if (len >= sizeof(linkf))
+		/* Didn't acquire it */
+		return 0;
 
 	/*
 	 * Repeat until it was us who made the link or we find the

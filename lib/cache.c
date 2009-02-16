@@ -482,27 +482,23 @@ struct mapent *cache_lookup_offset(const char *prefix, const char *offset, int s
 {
 	struct list_head *p;
 	struct mapent *this;
-	int plen = strlen(prefix);
-	char *o_key;
+	/* Keys for direct maps may be as long as a path name */
+	char o_key[PATH_MAX];
+	/* Avoid "//" at the beginning of paths */
+	const char *path_prefix = strlen(prefix) > 1 ? prefix : "";
+	size_t size;
 
 	/* root offset duplicates "/" */
-	if (plen > 1) {
-		o_key = alloca(plen + strlen(offset) + 1);
-		strcpy(o_key, prefix);
-		strcat(o_key, offset);
-	} else {
-		o_key = alloca(strlen(offset) + 1);
-		strcpy(o_key, offset);
-	}
+	size = snprintf(o_key, sizeof(o_key), "%s%s", path_prefix, offset);
+	if (size >= sizeof(o_key))
+		return NULL;
 
 	list_for_each(p, head) {
 		this = list_entry(p, struct mapent, multi_list);
 		if (!strcmp(&this->key[start], o_key))
-			goto done;
+			return this;
 	}
-	this = NULL;
-done:
-	return this;
+	return NULL;
 }
 
 /* cache must be read locked by caller */
@@ -759,13 +755,8 @@ int cache_delete(struct mapent_cache *mc, const char *key)
 	struct mapent *me = NULL, *pred;
 	u_int32_t hashval = hash(key, mc->size);
 	int status, ret = CHE_OK;
-	char *this;
+	char this[PATH_MAX];
 
-	this = alloca(strlen(key) + 1);
-	if (!this) {
-		ret = CHE_FAIL;
-		goto done;
-	}
 	strcpy(this, key);
 
 	me = mc->hash[hashval];

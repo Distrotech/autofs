@@ -637,7 +637,9 @@ int mount_autofs_offset(struct autofs_point *ap, struct mapent *me, const char *
 	time_t timeout = ap->exp_timeout;
 	struct stat st;
 	int ioctlfd, status, ret;
-	const char *type, *map_name = NULL;
+	const char *hosts_map_name = "-hosts";
+	const char *map_name = hosts_map_name;
+	const char *type;
 	char mountpoint[PATH_MAX];
 
 	if (ops->version && ap->flags & MOUNT_FLAG_REMOUNT) {
@@ -740,13 +742,7 @@ int mount_autofs_offset(struct autofs_point *ap, struct mapent *me, const char *
 	      mp->options, mountpoint);
 
 	type = ap->entry->maps->type;
-	if (type && !strcmp(ap->entry->maps->type, "hosts")) {
-		char *tmp = alloca(7);
-		if (tmp) {
-			strcpy(tmp, "-hosts");
-			map_name = (const char *) tmp;
-		}
-	} else
+	if (!type || strcmp(ap->entry->maps->type, "hosts"))
 		map_name = me->mc->map->argv[0];
 
 	ret = mount(map_name, mountpoint, "autofs", MS_MGC_VAL, mp->options);

@@ -58,15 +58,11 @@ struct lookup_mod *open_lookup(const char *name, const char *err_prefix,
 {
 	struct lookup_mod *mod;
 	char buf[MAX_ERR_BUF];
-	char *fnbuf;
-	size_t size_name;
-	size_t size_fnbuf;
+	char fnbuf[PATH_MAX];
+	size_t size;
 	void *dh;
 	int *ver;
 
-	size_name = _strlen(name, PATH_MAX + 1);
-	if (!size_name)
-		return NULL;
 
 	mod = malloc(sizeof(struct lookup_mod));
 	if (!mod) {
@@ -77,9 +73,9 @@ struct lookup_mod *open_lookup(const char *name, const char *err_prefix,
 		return NULL;
 	}
 
-	size_fnbuf = size_name + strlen(AUTOFS_LIB_DIR) + 13;
-	fnbuf = alloca(size_fnbuf);
-	if (!fnbuf) {
+	size = snprintf(fnbuf, sizeof(fnbuf),
+			"%s/lookup_%s.so", AUTOFS_LIB_DIR, name);
+	if (size >= sizeof(fnbuf)) {
 		free(mod);
 		if (err_prefix) {
 			char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
@@ -87,7 +83,6 @@ struct lookup_mod *open_lookup(const char *name, const char *err_prefix,
 		}
 		return NULL;
 	}
-	snprintf(fnbuf, size_fnbuf, "%s/lookup_%s.so", AUTOFS_LIB_DIR, name);
 
 	if (!(dh = dlopen(fnbuf, RTLD_NOW))) {
 		if (err_prefix)
@@ -141,15 +136,11 @@ struct parse_mod *open_parse(const char *name, const char *err_prefix,
 {
 	struct parse_mod *mod;
 	char buf[MAX_ERR_BUF];
-	char *fnbuf;
-	size_t size_name;
-	size_t size_fnbuf;
+	char fnbuf[PATH_MAX];
+	size_t size;
 	void *dh;
 	int *ver;
 
-	size_name = _strlen(name, PATH_MAX + 1);
-	if (!size_name)
-		return NULL;
 
 	mod = malloc(sizeof(struct parse_mod));
 	if (!mod) {
@@ -160,9 +151,9 @@ struct parse_mod *open_parse(const char *name, const char *err_prefix,
 		return NULL;
 	}
 
-	size_fnbuf = size_name + strlen(AUTOFS_LIB_DIR) + 13;
-	fnbuf = alloca(size_fnbuf);
-	if (!fnbuf) {
+	size = snprintf(fnbuf, sizeof(fnbuf),
+			"%s/parse_%s.so", AUTOFS_LIB_DIR, name);
+	if (size >= sizeof(fnbuf)) {
 		free(mod);
 		if (err_prefix) {
 			char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
@@ -170,7 +161,6 @@ struct parse_mod *open_parse(const char *name, const char *err_prefix,
 		}
 		return NULL;
 	}
-	snprintf(fnbuf, size_fnbuf, "%s/parse_%s.so", AUTOFS_LIB_DIR, name);
 
 	if (!(dh = dlopen(fnbuf, RTLD_NOW))) {
 		if (err_prefix)
@@ -222,15 +212,11 @@ struct mount_mod *open_mount(const char *name, const char *err_prefix)
 {
 	struct mount_mod *mod;
 	char buf[MAX_ERR_BUF];
-	char *fnbuf;
-	size_t size_name;
-	size_t size_fnbuf;
+	char fnbuf[PATH_MAX];
+	size_t size;
 	void *dh;
 	int *ver;
 
-	size_name = _strlen(name, PATH_MAX + 1);
-	if (!size_name)
-		return NULL;
 
 	mod = malloc(sizeof(struct mount_mod));
 	if (!mod) {
@@ -241,9 +227,9 @@ struct mount_mod *open_mount(const char *name, const char *err_prefix)
 		return NULL;
 	}
 
-	size_fnbuf = size_name + strlen(AUTOFS_LIB_DIR) + 13;
-	fnbuf = alloca(size_fnbuf);
-	if (!fnbuf) {
+	size = snprintf(fnbuf, sizeof(fnbuf),
+			"%s/mount_%s.so", AUTOFS_LIB_DIR, name);
+	if (size >= sizeof(fnbuf)) {
 		free(mod);
 		if (err_prefix) {
 			char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
@@ -251,7 +237,6 @@ struct mount_mod *open_mount(const char *name, const char *err_prefix)
 		}
 		return NULL;
 	}
-	snprintf(fnbuf, size_fnbuf, "%s/mount_%s.so", AUTOFS_LIB_DIR, name);
 
 	if (!(dh = dlopen(fnbuf, RTLD_NOW))) {
 		if (err_prefix)
