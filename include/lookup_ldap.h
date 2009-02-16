@@ -55,7 +55,8 @@ struct lookup_context {
  	 * given in configuration.
  	 */
 	pthread_mutex_t uris_mutex;
-	struct list_head *uri;
+	struct list_head *uris;
+	struct ldap_uri *uri;
 	char *cur_host;
 	struct ldap_searchdn *sdns;
 

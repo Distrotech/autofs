@@ -10,6 +10,7 @@
 - clear the quoted flag after each character from program map input.
 - use CLOEXEC flag for setmntent also.
 - fix hosts map use after free (Paul Wankadia).
+- fix uri list locking (again).
 
 4/11/2008 autofs-5.0.4
 -----------------------

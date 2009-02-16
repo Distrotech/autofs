@@ -137,7 +137,7 @@ static void uris_mutex_unlock(struct lookup_context *ctxt)
 	return;
 }
 
-int bind_ldap_anonymous(unsigned logopt, LDAP *ldap, struct lookup_context *ctxt)
+int bind_ldap_anonymous(unsigned logopt, LDAP *ldap, const char *uri, struct lookup_context *ctxt)
 {
 	int rv;
 
@@ -147,16 +147,14 @@ int bind_ldap_anonymous(unsigned logopt, LDAP *ldap, struct lookup_context *ctxt
 		rv = ldap_simple_bind_s(ldap, NULL, NULL);
 
 	if (rv != LDAP_SUCCESS) {
-		if (!ctxt->uri) {
+		if (!ctxt->uris) {
 			crit(logopt, MODPREFIX
 			     "Unable to bind to the LDAP server: "
 			     "%s, error %s", ctxt->server ? "" : "(default)",
 			     ldap_err2string(rv));
 		} else {
-			struct ldap_uri *uri;
-			uri = list_entry(ctxt->uri->next, struct ldap_uri, list);
 			info(logopt, MODPREFIX "Unable to bind to the LDAP server: "
-			     "%s, error %s", uri->uri, ldap_err2string(rv));
+			     "%s, error %s", uri, ldap_err2string(rv));
 		}
 		return -1;
 	}
@@ -498,7 +496,7 @@ static int find_query_dn(unsigned logopt, LDAP *ldap, struct lookup_context *ctx
 	return 0;
 }
 
-static int do_bind(unsigned logopt, LDAP *ldap, struct lookup_context *ctxt)
+static int do_bind(unsigned logopt, LDAP *ldap, const char *uri, struct lookup_context *ctxt)
 {
 	char *host = NULL, *nhost;
 	int rv, need_base = 1;
@@ -511,11 +509,11 @@ static int do_bind(unsigned logopt, LDAP *ldap, struct lookup_context *ctxt)
 		rv = autofs_sasl_bind(logopt, ldap, ctxt);
 		debug(logopt, MODPREFIX "autofs_sasl_bind returned %d", rv);
 	} else {
-		rv = bind_ldap_anonymous(logopt, ldap, ctxt);
+		rv = bind_ldap_anonymous(logopt, ldap, uri, ctxt);
 		debug(logopt, MODPREFIX "ldap anonymous bind returned %d", rv);
 	}
 #else
-	rv = bind_ldap_anonymous(logopt, ldap, ctxt);
+	rv = bind_ldap_anonymous(logopt, ldap, uri, ctxt);
 	debug(logopt, MODPREFIX "ldap anonymous bind returned %d", rv);
 #endif
 
@@ -584,7 +582,7 @@ static LDAP *do_connect(unsigned logopt, const char *uri, struct lookup_context 
 	if (!ldap)
 		return NULL;
 
-	if (!do_bind(logopt, ldap, ctxt)) {
+	if (!do_bind(logopt, ldap, uri, ctxt)) {
 		unbind_ldap_connection(logopt, ldap, ctxt);
 		return NULL;
 	}
@@ -612,7 +610,7 @@ static LDAP *connect_to_server(unsigned logopt, const char *uri, struct lookup_c
 			return NULL;
 		}
 
-		if (!do_bind(logopt, ldap, ctxt)) {
+		if (!do_bind(logopt, ldap, uri, ctxt)) {
 			unbind_ldap_connection(logopt, ldap, ctxt);
 			autofs_sasl_dispose(ctxt);
 			error(logopt, MODPREFIX "cannot bind to server");
@@ -638,36 +636,34 @@ static LDAP *find_server(unsigned logopt, struct lookup_context *ctxt)
 {
 	LDAP *ldap = NULL;
 	struct ldap_uri *this;
-	struct list_head *p;
-	LIST_HEAD(tmp);
+	struct list_head *p, *first;
 
 	/* Try each uri in list, add connect fails to tmp list */
 	uris_mutex_lock(ctxt);
-	p = ctxt->uri->next;
-	while(p != ctxt->uri) {
+	if (!ctxt->uri)
+		first = ctxt->uris;
+	else
+		first = &ctxt->uri->list;
+	uris_mutex_unlock(ctxt);
+	p = first->next;
+	while(p != first) {
+		/* Skip list head */
+		if (p == ctxt->uris) {
+			p = p->next;
+			continue;
+		}
 		this = list_entry(p, struct ldap_uri, list);
-		uris_mutex_unlock(ctxt);
 		debug(logopt, "trying server %s", this->uri);
 		ldap = connect_to_server(logopt, this->uri, ctxt);
 		if (ldap) {
 			info(logopt, "connected to uri %s", this->uri);
 			uris_mutex_lock(ctxt);
+			ctxt->uri = this;
+			uris_mutex_unlock(ctxt);
 			break;
 		}
-		uris_mutex_lock(ctxt);
 		p = p->next;
-		list_del_init(&this->list);
-		list_add_tail(&this->list, &tmp);
 	}
-	/*
-	 * Successfuly connected uri (head of list) and untried uris are
-	 * in ctxt->uri list. Make list of remainder and failed uris with
-	 * failed uris at end and assign back to ctxt-uri.
-	 */
-	list_splice(ctxt->uri, &tmp);
-	INIT_LIST_HEAD(ctxt->uri);
-	list_splice(&tmp, ctxt->uri);
-	uris_mutex_unlock(ctxt);
 
 	return ldap;
 }
@@ -677,23 +673,19 @@ static LDAP *do_reconnect(unsigned logopt, struct lookup_context *ctxt)
 	struct ldap_uri *this;
 	LDAP *ldap;
 
-	if (ctxt->server || !ctxt->uri) {
+	if (ctxt->server || !ctxt->uris) {
 		ldap = do_connect(logopt, ctxt->server, ctxt);
 		return ldap;
 	}
 
 	uris_mutex_lock(ctxt);
-	this = list_entry(ctxt->uri->next, struct ldap_uri, list);
+	this = ctxt->uri;
 	uris_mutex_unlock(ctxt);
 	ldap = do_connect(logopt, this->uri, ctxt);
 	if (ldap)
 		return ldap;
 
-	/* Failed to connect, put at end of list */
-	uris_mutex_lock(ctxt);
-	list_del_init(&this->list);
-	list_add_tail(&this->list, ctxt->uri);
-	uris_mutex_unlock(ctxt);
+	/* Failed to connect, try to find a new server */
 
 #ifdef WITH_SASL
 	autofs_sasl_dispose(ctxt);
@@ -1259,8 +1251,8 @@ static void free_context(struct lookup_context *ctxt)
 		free(ctxt->cur_host);
 	if (ctxt->base)
 		free(ctxt->base);
-	if (ctxt->uri)
-		defaults_free_uris(ctxt->uri);
+	if (ctxt->uris)
+		defaults_free_uris(ctxt->uris);
 	ret = pthread_mutex_destroy(&ctxt->uris_mutex);
 	if (ret)
 		fatal(ret);
@@ -1344,7 +1336,7 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 		if (uris) {
 			validate_uris(uris);
 			if (!list_empty(uris))
-				ctxt->uri = uris;
+				ctxt->uris = uris;
 			else {
 				error(LOGOPT_ANY,
 				      "no valid uris found in config list"
@@ -1375,7 +1367,7 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 	}
 #endif
 
-	if (ctxt->server || !ctxt->uri) {
+	if (ctxt->server || !ctxt->uris) {
 		ldap = connect_to_server(LOGOPT_NONE, ctxt->server, ctxt);
 		if (!ldap) {
 			free_context(ctxt);
