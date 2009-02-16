@@ -113,6 +113,12 @@ AC_MSG_RESULT([$flagdir])
 AC_SUBST(flagdir)
 
 #
+# Use libtirpc
+#
+AM_WITH_LIBTIRPC()
+AC_SUBST(TIRPCLIB)
+
+#
 # Optional include dmalloc
 #
 AM_WITH_DMALLOC()

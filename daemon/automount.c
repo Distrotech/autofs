@@ -2057,7 +2057,10 @@ int main(int argc, char *argv[])
 	}
 
 #ifdef LIBXML2_WORKAROUND
-	void *dh = dlopen("libxml2.so", RTLD_NOW);
+	void *dh_xml2 = dlopen("libxml2.so", RTLD_NOW);
+#endif
+#ifdef TIRPC_WORKAROUND
+	void *dh_tirpc = dlopen("libitirpc.so", RTLD_NOW);
 #endif
 
 	if (!master_read_master(master_list, age, 0)) {
@@ -2090,9 +2093,13 @@ int main(int argc, char *argv[])
 	closelog();
 	release_flag_file();
 
+#ifdef TIRPC_WORKAROUND
+	if (dh_tirpc)
+		dlclose(dh_tirpc);
+#endif
 #ifdef LIBXML2_WORKAROUND
-	if (dh)
-		dlclose(dh);
+	if (dh_xml2)
+		dlclose(dh_xml2);
 #endif
 	close_ioctl_ctl();
 

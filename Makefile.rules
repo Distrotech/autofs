@@ -47,6 +47,11 @@ SOLDFLAGS = -shared
 CFLAGS += -D_REENTRANT -D_FILE_OFFSET_BITS=64
 LDFLAGS += -lpthread
 
+ifdef TIRPCLIB
+CFLAGS += -I/usr/include/tirpc
+LDFLAGS += $(TIRPCLIB)
+endif
+
 ifdef DMALLOCLIB
 LDFLAGS += $(DMALLOCLIB)
 endif

@@ -304,3 +304,84 @@ fi
 LIBS="$af_check_ldap_parse_page_control_save_libs"
 ])
 
+dnl --------------------------------------------------------------------------
+dnl AF_CHECK_LIBTIRPC_IPV6
+dnl
+dnl Use libtirpc for rpc transport
+dnl --------------------------------------------------------------------------
+AC_DEFUN([AF_CHECK_LIBTIRPC_IPV6],
+[AC_MSG_CHECKING(if libtirpc has IPv6 support)
+
+# save current flags
+af_check_libtirpc_ipv6_save_cflags="$CFLAGS"
+af_check_libtirpc_ipv6_save_ldflags="$LDFLAGS"
+CFLAGS="$CFLAGS -I/usr/include/tirpc"
+LDFLAGS="$LDFLAGS -ltirpc"
+
+AC_TRY_LINK(
+    [ #define INET6
+      #include <rpc/rpc.h> ],
+    [ CLIENT *cl;
+      struct sockaddr_in addr;
+      int fd;
+      unsigned long ul; struct timeval t; unsigned int ui;
+      cl = clntudp6_bufcreate(&addr,ul,ul,t,&fd,ui,ui); ],
+    [ af_have_libtirpc_ipv6=yes
+      AC_MSG_RESULT(yes) ],
+    [ AC_MSG_RESULT(no) ])
+
+if test "$af_have_libtirpc_ipv6" = "yes"; then
+    AC_DEFINE(INET6,1, [Use IPv6 with libtirpc])
+fi
+
+# restore flags
+CFLAGS="$af_check_libtirpc_ipv6_save_cflags"
+LDFLAGS="$af_check_libtirpc_ipv6_save_ldflags"
+])
+
+dnl --------------------------------------------------------------------------
+dnl AF_CHECK_LIBTIRPC
+dnl
+dnl Use libtirpc for rpc transport
+dnl --------------------------------------------------------------------------
+AC_DEFUN([AF_CHECK_LIBTIRPC],
+[
+# save current flags
+af_check_libtirpc_save_cflags="$CFLAGS"
+af_check_libtirpc_save_ldflags="$LDFLAGS"
+CFLAGS="$CFLAGS -I/usr/include/tirpc"
+LDFLAGS="$LDFLAGS -ltirpc"
+
+AC_TRY_LINK(
+    [ #include <rpc/rpc.h> ],
+    [ CLIENT *cl;
+      struct sockaddr_in addr;
+      int fd;
+      unsigned long ul; struct timeval t; unsigned int ui;
+      cl = clntudp_bufcreate(&addr,ul,ul,t,&fd,ui,ui); ],
+    [ af_have_libtirpc=yes
+      AC_MSG_RESULT(yes) ],
+    [ AC_MSG_RESULT(no) ])
+
+if test "$af_have_libtirpc" = "yes"; then
+    AC_DEFINE(TIRPC_WORKAROUND,1, [Use libtirpc tsd usage workaround])
+    TIRPCLIB="-ltirpc"
+fi
+
+# restore flags
+CFLAGS="$af_check_libtirpc_save_cflags"
+LDFLAGS="$af_check_libtirpc_save_ldflags"
+])
+
+AC_DEFUN([AM_WITH_LIBTIRPC],
+[AC_MSG_CHECKING([if libtirpc is requested and available])
+AC_ARG_WITH(libtirpc,
+[  --with-libtirpc         use libtirpc if available],
+[if test "$withval" = yes; then
+  AF_CHECK_LIBTIRPC()
+  AF_CHECK_LIBTIRPC_IPV6()
+else
+  AC_MSG_RESULT(no)
+fi], [AC_MSG_RESULT(no)])
+])
+

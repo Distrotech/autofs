@@ -66,6 +66,9 @@
 /* Define to 1 if you have the <unistd.h> header file. */
 #undef HAVE_UNISTD_H
 
+/* Use IPv6 with libtirpc */
+#undef INET6
+
 /* Use libxml2 tsd usage workaround */
 #undef LIBXML2_WORKAROUND
 
@@ -113,6 +116,9 @@
 
 /* Define to 1 if you have the ANSI C header files. */
 #undef STDC_HEADERS
+
+/* Use libtirpc tsd usage workaround */
+#undef TIRPC_WORKAROUND
 
 /* Define if using the dmalloc debugging malloc package */
 #undef WITH_DMALLOC

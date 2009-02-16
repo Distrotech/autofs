@@ -49,6 +49,9 @@ YACC = @PATH_YACC@
 RPCGEN = @PATH_RPCGEN@
 RANLIB = @PATH_RANLIB@
 
+# Use libtirpc if requested and available
+TIRPCLIB = @TIRPCLIB@
+
 # Use dmalloc for memory debuging
 DMALLOCLIB = @DMALLOCLIB@
 
