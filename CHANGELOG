@@ -16,6 +16,11 @@
   use of 5.0.3 strartup behavior if required.
 - always read entire file map into cache to speed lookups.
 - make MAX_ERR_BUF and PARSE_MAX_BUF use easier to audit.
+- make some easy alloca replacements (Valerie Aurora Henson).
+- update to configure libtirpc if present.
+- update to provide ipv6 name and address support.
+- update to provide ipv6 address parsing.
+
 
 4/11/2008 autofs-5.0.4
 -----------------------
