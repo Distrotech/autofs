@@ -117,17 +117,25 @@ case "$1" in
 	start)
 		start
 		;;
+	forcestart)
+		OPTIONS="$OPTIONS --force"
+		start
+		;;
 	stop)
 		stop
 		;;
 	restart)
 		restart
 		;;
+	forcerestart)
+		OPTIONS="$OPTIONS --force"
+		restart
+		;;
 	reload)
 		reload
 		;;
 	*)
-		echo $"Usage: $0 {start|stop|restart|reload}"
+		echo $"Usage: $0 {start|forcestart|stop|restart|forcerestart|reload}"
 		exit 1;
 		;;
 esac

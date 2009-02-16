@@ -57,6 +57,7 @@ static char *pid_file = NULL;		/* File in which to keep pid */
 unsigned int global_random_selection;	/* use random policy when selecting
 					 * which multi-mount host to mount */
 long global_negative_timeout = -1;
+int do_force_unlink = 0;		/* Forceably unlink mount tree at startup */
 
 static int start_pipefd[2];
 static int st_stat = 0;
@@ -1798,6 +1799,7 @@ int main(int argc, char *argv[])
 		{"version", 0, 0, 'V'},
 		{"set-log-priority", 1, 0, 'l'},
 		{"dont-check-daemon", 0, 0, 'C'},
+		{"force", 0, 0, 'F'},
 		{0, 0, 0, 0}
 	};
 
@@ -1819,7 +1821,7 @@ int main(int argc, char *argv[])
 	daemon_check = 1;
 
 	opterr = 0;
-	while ((opt = getopt_long(argc, argv, "+hp:t:vdD:fVrO:l:n:C", long_options, NULL)) != EOF) {
+	while ((opt = getopt_long(argc, argv, "+hp:t:vdD:fVrO:l:n:CF", long_options, NULL)) != EOF) {
 		switch (opt) {
 		case 'h':
 			usage();
@@ -1890,6 +1892,10 @@ int main(int argc, char *argv[])
 
 		case 'C':
 			daemon_check = 0;
+			break;
+
+		case 'F':
+			do_force_unlink = 1;
 			break;
 
 		case '?':
@@ -2065,6 +2071,12 @@ int main(int argc, char *argv[])
 		release_flag_file();
 		exit(3);
 	}
+
+	/*
+	 * Mmm ... reset force unlink umount so we don't also do this
+	 * in future when we receive a HUP signal.
+	 */
+	do_force_unlink = 0;
 
 	res = write(start_pipefd[1], pst_stat, sizeof(*pst_stat));
 	close(start_pipefd[1]);

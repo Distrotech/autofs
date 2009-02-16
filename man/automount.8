@@ -84,6 +84,11 @@ path name as specified in the master map.
 .TP
 .I "\-C, \-\-dont-check-daemon"
 Don't check if the daemon is currently running (see NOTES).
+.TP
+.I "\-F, \-\-force"
+Force an unlink umount of existing mounts under autofs managed mount points
+during startup. This can cause problems for processes with working directories
+within these mounts (see NOTES).
 .SH ARGUMENTS
 \fBautomount\fP takes one optional argument, the name of the master map to
 use.
@@ -132,6 +137,14 @@ for certain types of automount maps. The mounts of the seperate daemons
 might interfere with one another. The implications of running multiple
 daemon instances needs to be checked and tested before we can say this
 is supported.
+.P
+If the option to force an unlink of mounts at startup is used then processes
+whose working directory is within unlinked automounted directories will not
+get the correct pwd from the system. This is because, after the mount is
+unlinked from the mount tree, anything that needs to walk back up the mount
+tree to construct a path, such as getcwd(2) and the proc filesystem
+/proc/<pid>/cwd, cannot work because the point from which the path is
+constructed has been detached from the mount tree.
 .SH "SEE ALSO"
 .BR autofs (5),
 .BR autofs (8),

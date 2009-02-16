@@ -12,6 +12,8 @@
 - fix hosts map use after free (Paul Wankadia).
 - fix uri list locking (again).
 - check for stale SASL credentials upon connect fail.
+- add "forcestart" and "forcerestart" init script options to allow
+  use of 5.0.3 strartup behavior if required.
 
 4/11/2008 autofs-5.0.4
 -----------------------

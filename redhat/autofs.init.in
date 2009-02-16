@@ -137,6 +137,10 @@ case "$1" in
 	start)
 		start
 		;;
+	forcestart)
+		OPTIONS="$OPTIONS --force"
+		start
+		;;
 	stop)
 		stop
 		;;
@@ -144,6 +148,10 @@ case "$1" in
 		status $prog
 		;;
 	restart)
+		restart
+		;;
+	forcerestart)
+		OPTIONS="$OPTIONS --force"
 		restart
 		;;
 	reload)
@@ -155,7 +163,7 @@ case "$1" in
 		fi
 		;;
 	*)
-		echo $"Usage: $0 {start|stop|status|restart|reload|condrestart}"
+		echo $"Usage: $0 {start|forcestart|stop|status|restart|orcerestart|reload|condrestart}"
 		exit 1;
 		;;
 esac

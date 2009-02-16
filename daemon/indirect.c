@@ -97,7 +97,7 @@ static int do_mount_autofs_indirect(struct autofs_point *ap, const char *root)
 
 	ap->exp_runfreq = (timeout + CHECK_RATIO - 1) / CHECK_RATIO;
 
-	if (ops->version) {
+	if (ops->version && !do_force_unlink) {
 		ap->flags |= MOUNT_FLAG_REMOUNT;
 		ret = try_remount(ap, NULL, t_indirect);
 		ap->flags &= ~MOUNT_FLAG_REMOUNT;
