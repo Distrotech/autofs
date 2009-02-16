@@ -245,7 +245,9 @@ int expandsunent(const char *src, char *dst, const char *key,
 				*(dst++) = 
 				  (seen_colons && slashify_colons) ? '/' : ':';
 			len++;
-			seen_colons = 1;
+			/* Were looking for the colon preceeding a path */
+			if (*src == '/')
+				seen_colons = 1;
 			break;
 
 		default:
@@ -814,21 +816,23 @@ static int validate_location(char *loc)
 		return 1;
 
 	/*
-	 * If a ':' is present now it must be a host name, except
+	 * If a ':/' is present now it must be a host name, except
 	 * for those special file systems like sshfs which use "#"
-	 * and "@" in the host name part.
+	 * and "@" in the host name part and ipv6 addresses that
+	 * have ":", "[" and "]".
 	 */
 	if (check_colon(ptr)) {
-		while (*ptr && *ptr != ':') {
+		while (*ptr && strncmp(ptr, ":/", 2)) {
 			if (!(isalnum(*ptr) ||
 			    *ptr == '-' || *ptr == '.' || *ptr == '_' ||
 			    *ptr == ',' || *ptr == '(' || *ptr == ')' ||
-			    *ptr == '#' || *ptr == '@'))
+			    *ptr == '#' || *ptr == '@' || *ptr == ':' ||
+			    *ptr == '[' || *ptr == ']'))
 				return 0;
 			ptr++;
 		}
 
-		if (*ptr && *ptr == ':')
+		if (*ptr && !strncmp(ptr, ":/", 2))
 			ptr++;
 	}
 

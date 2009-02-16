@@ -523,10 +523,10 @@ prepare_plus_include(struct autofs_point *ap, time_t age, char *key, unsigned in
 {
 	struct map_source *current;
 	struct map_source *source;
-	char *type, *map, *fmt;
+	struct map_type_info *info;
 	const char *argv[2];
 	int argc;
-	char *buf, *tmp;
+	char *buf;
 
 	current = ap->entry->current;
 	ap->entry->current = NULL;
@@ -548,33 +548,19 @@ prepare_plus_include(struct autofs_point *ap, time_t age, char *key, unsigned in
 		return NULL;
 	}
 
-	type = fmt = NULL;
-
-	/* Look for space terminator - ignore local options */
-	map = buf;
-	for (tmp = buf; *tmp; tmp++) {
-		if (*tmp == ' ') {
-			*tmp = '\0';
-			break;
-		} else if (*tmp == ',') {
-			type = buf;
-			*tmp++ = '\0';
-			fmt = tmp;
-		} else if (*tmp == ':') {
-			if (!fmt)
-				type = buf;
-			*tmp++ = '\0';
-			map = tmp;
-		}
-		if (*tmp == '\\')
-			tmp++;
+	if (!(info = parse_map_type_info(buf))) {
+		error(ap->logopt, MODPREFIX "failed to parse map info");
+		free(buf);
+		return NULL;
 	}
 
 	argc = 1;
-	argv[0] = map;
+	argv[0] = info->map;
 	argv[1] = NULL;
 
-	source = master_find_source_instance(current, type, fmt, argc, argv);
+	source = master_find_source_instance(current,
+					     info->type, info->format,
+					     argc, argv);
 	if (source)
 		/*
 		 * Make sure included map age is in sync with its owner
@@ -582,8 +568,11 @@ prepare_plus_include(struct autofs_point *ap, time_t age, char *key, unsigned in
 		 */
 		source->age = age;
 	else {
-		source = master_add_source_instance(current, type, fmt, age, argc, argv);
+		source = master_add_source_instance(current,
+						    info->type, info->format,
+						    age, argc, argv);
 		if (!source) {
+			free_map_type_info(info);
 			free(buf);
 			error(ap->logopt, "failed to add included map instance");
 			return NULL;
@@ -594,6 +583,7 @@ prepare_plus_include(struct autofs_point *ap, time_t age, char *key, unsigned in
 	if (inc)
 		source->recurse = 1;
 
+	free_map_type_info(info);
 	free(buf);
 
 	return source;

@@ -96,10 +96,12 @@ SLASHIFYSTR	(--(no-)?slashify-colons)
 NUMBER		[0-9]+
 
 DNSERVSTR1	([[:alpha:]][[:alnum:]\-.]*(:[0-9]+)?:)
-DNSERVSTR2	(\/\/[[:alpha:]][[:alnum:]\-.]*(:[0-9]+)?\/)
-DNSERVSTR3	(([[:digit:]]{1,3}\.){3}[[:digit:]]{1,3}(:[0-9]+)?:)
-DNSERVSTR4	(\/\/([[:digit:]]{1,3}\.){3}[[:digit:]]{1,3}(:[0-9]+)?\/)
-DNSERVERSTR	({DNSERVSTR1}|{DNSERVSTR2}|{DNSERVSTR3}|{DNSERVSTR4})
+DNSERVSTR2	(\[([[:xdigit:]]:.)+\](:[0-9]+)?:)
+DNSERVSTR3	(\/\/[[:alpha:]][[:alnum:]\-.]*(:[0-9]+)?\/)
+DNSERVSTR4	(\/\/\[([[:xdigit:]]:.)+\](:[0-9]+)?\/)
+DNSERVSTR5	(([[:digit:]]{1,3}\.){3}[[:digit:]]{1,3}(:[0-9]+)?:)
+DNSERVSTR6	(\/\/([[:digit:]]{1,3}\.){3}[[:digit:]]{1,3}(:[0-9]+)?\/)
+DNSERVERSTR	({DNSERVSTR1}|{DNSERVSTR2}|{DNSERVSTR3}|{DNSERVSTR4}|{DNSERVSTR5}|{DNSERVSTR6})
 
 AT_CN		([cC][[nN])
 AT_NMN		([nN][iI][sS][Mm][aA][pP][Nn][aA][mM][eE])

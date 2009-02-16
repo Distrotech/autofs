@@ -50,7 +50,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 	int argc, status, ghost = ap->flags & MOUNT_FLAG_GHOST;
 	time_t timeout = ap->exp_timeout;
 	unsigned logopt = ap->logopt;
-	char *type, *format, *tmp, *tmp2;
+	struct map_type_info *info;
 	struct master *master;
 	struct master_mapent *entry;
 	struct map_source *source;
@@ -174,21 +174,12 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 
 	argc = 1;
 
-	type = NULL;
-	format = NULL;
-
-	tmp = strchr(what, ':');
-	if (tmp) {
-		*tmp++ = '\0';
-		tmp2 = strchr(what, ',');
-		if (tmp2) {
-			*tmp2++ = '\0';
-			format = tmp2;
-		}
-		type = (char *) what;
-		argv[0] = tmp;
-	} else
-		argv[0] = (char *) what;
+	if (!(info = parse_map_type_info(what))) {
+		error(ap->logopt, MODPREFIX "failed to parse map info");
+		master_free_mapent(entry);
+		return 1;
+	}
+	argv[0] = info->map;
 
 	if (options) {
 		p = options;
@@ -202,13 +193,17 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 	}
 	argv[argc] = NULL;
 
-	source = master_add_map_source(entry, type, format, time(NULL), argc, argv);
+	source = master_add_map_source(entry,
+				       info->type, info->format,
+				       time(NULL), argc, argv);
 	if (!source) {
 		error(ap->logopt,
 		      MODPREFIX "failed to add map source to entry");
 		master_free_mapent(entry);
+		free_map_type_info(info);
 		return 1;
 	}
+	free_map_type_info(info);
 
 	source->mc = cache_init(entry->ap, source);
 	if (!source->mc) {

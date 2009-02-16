@@ -1168,6 +1168,28 @@ static int add_local_path(struct host **hosts, const char *path)
 	return 1;
 }
 
+static char *seek_delim(const char *s)
+{
+	const char *p = s;
+	char *delim;
+
+	delim = strpbrk(p, "(, \t:");
+	if (delim && *delim != ':')
+		return delim;
+
+	while (*p) {
+		if (*p != ':') {
+			p++;
+			continue;
+		}
+		if (!strncmp(p, ":/", 2))
+			return (char *) p;
+		p++;
+	}
+
+	return NULL;
+}
+
 int parse_location(unsigned logopt, struct host **hosts, const char *list)
 {
 	char *str, *p, *delim;
@@ -1187,7 +1209,7 @@ int parse_location(unsigned logopt, struct host **hosts, const char *list)
 		int weight = 0;
 
 		p += strspn(p, " \t,");
-		delim = strpbrk(p, "(, \t:");
+		delim = seek_delim(p);
 
 		if (delim) {
 			if (*delim == '(') {
@@ -1211,7 +1233,7 @@ int parse_location(unsigned logopt, struct host **hosts, const char *list)
 
 				/* Oh boy - might have spaces in the path */
 				next = path;
-				while (*next && *next != ':')
+				while (*next && strncmp(next, ":/", 2))
 					next++;
 
 				/* No spaces in host names at least */

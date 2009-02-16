@@ -1119,11 +1119,26 @@ static int parse_server_string(unsigned logopt, const char *url, struct lookup_c
 			memcpy(ctxt->server, s, l);
 */
 		}
-	} else if (strchr(ptr, ':') != NULL) {
-		char *q = NULL;
+	} else if (strchr(ptr, ':') != NULL || *ptr == '[') {
+		const char *q = NULL;
 
 		/* Isolate the server. Include the port spec */
-		q = strchr(ptr, ':');
+		if (*ptr != '[')
+			q = strchr(ptr, ':');
+		else {
+			q = ++ptr;
+			while (*q == ':' || isxdigit(*q))
+				q++;
+			if (*q != ']') {
+				crit(logopt, MODPREFIX
+				     "invalid LDAP map syntax %s", ptr);
+				return 0;
+			}
+			q++;
+			if (*q == ':')
+				q++;
+		}
+
 		if (isdigit(*q))
 			while (isdigit(*q))
 				q++;

@@ -56,14 +56,13 @@ int check_colon(const char *str)
 	char *ptr = (char *) str;
 
 	/* Colon escape */
-	if (*ptr == ':')
+	if (!strncmp(ptr, ":/", 2))
 		return 1;
 
-	while (*ptr && *ptr != ':' && *ptr != '/') {
+	while (*ptr && strncmp(ptr, ":/", 2))
 		ptr++;
-	}
 
-	if (!*ptr || *ptr == '/')
+	if (!*ptr)
 		return 0;
 
 	return 1;
@@ -93,12 +92,12 @@ int chunklen(const char *whence, int expect_colon)
 				n++;
 				if (*str == '"')
 					break;
-				if (*str == ':')
+				if (!strncmp(str, ":/", 2))
 					expect_colon = 0;
 			}
 			break;
 		case ':':
-			if (expect_colon)
+			if (expect_colon && !strncmp(str, ":/", 2))
 				expect_colon = 0;
 			continue;
 		case ' ':
@@ -298,5 +297,93 @@ char *sanitize_path(const char *path, int origlen, unsigned int type, unsigned i
 		*(cp - 1) = '\0';
 
 	return s_path;
+}
+
+void free_map_type_info(struct map_type_info *info)
+{
+	if (info->type)
+		free(info->type);
+	if (info->format)
+		free(info->format);
+	if (info->map)
+		free(info->map);
+	free(info);
+	return;
+}
+
+struct map_type_info *parse_map_type_info(const char *str)
+{
+	struct map_type_info *info;
+	char *buf, *type, *fmt, *map, *tmp;
+
+	buf = strdup(str);
+	if (!buf)
+		return NULL;
+
+	info = malloc(sizeof(struct map_type_info));
+	if (!info) {
+		free(buf);
+		return NULL;
+	}
+	memset(info, 0, sizeof(struct map_type_info));
+
+	type = fmt = NULL;
+
+	/* Look for space terminator - ignore local options */
+	map = buf;
+	for (tmp = buf; *tmp; tmp++) {
+		if (*tmp == ' ') {
+			*tmp = '\0';
+			break;
+		} else if (*tmp == ',') {
+			type = buf;
+			*tmp++ = '\0';
+			fmt = tmp;
+		} else if (*tmp == ':') {
+			if (!fmt)
+				type = buf;
+			*tmp++ = '\0';
+			map = tmp;
+		} else if (*tmp == '[') {
+			/*
+			 * Unescaped '[' is a syntax error here as only
+			 * an ldap map with a type specified should contain
+			 * them. 
+			 */
+			free(buf);
+			return 0;
+		}
+		if (*tmp == '\\')
+			tmp++;
+	}
+
+	if (type) {
+		info->type = strdup(type);
+		if (!info->type) {
+			free(buf);
+			free_map_type_info(info);
+			return NULL;
+		}
+	}
+
+	if (fmt) {
+		info->format = strdup(fmt);
+		if (!info->format) {
+			free(buf);
+			free_map_type_info(info);
+			return NULL;
+		}
+	}
+
+	info->map = strdup(map);
+	if (!info->map) {
+		free(buf);
+		free_map_type_info(info);
+		return NULL;
+	}
+
+	free(buf);
+
+	return info;
 }
 
