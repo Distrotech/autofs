@@ -11,6 +11,7 @@
 - use CLOEXEC flag for setmntent also.
 - fix hosts map use after free (Paul Wankadia).
 - fix uri list locking (again).
+- check for stale SASL credentials upon connect fail.
 
 4/11/2008 autofs-5.0.4
 -----------------------
