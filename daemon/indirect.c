@@ -36,7 +36,8 @@
 
 #include "automount.h"
 
-extern pthread_attr_t thread_attr;
+/* Attribute to create detached thread */
+extern pthread_attr_t th_attr_detached;
 
 static pthread_mutex_t ea_mutex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -647,7 +648,7 @@ int handle_packet_expire_indirect(struct autofs_point *ap, autofs_packet_expire_
 	mt->len = pkt->len;
 	mt->wait_queue_token = pkt->wait_queue_token;
 
-	status = pthread_create(&thid, &thread_attr, do_expire_indirect, mt);
+	status = pthread_create(&thid, &th_attr_detached, do_expire_indirect, mt);
 	if (status) {
 		error(ap->logopt, "expire thread create failed");
 		ops->send_fail(ap->logopt,
@@ -835,7 +836,7 @@ int handle_packet_missing_indirect(struct autofs_point *ap, autofs_packet_missin
 	mt->gid = pkt->gid;
 	mt->wait_queue_token = pkt->wait_queue_token;
 
-	status = pthread_create(&thid, &thread_attr, do_mount_indirect, mt);
+	status = pthread_create(&thid, &th_attr_detached, do_mount_indirect, mt);
 	if (status) {
 		error(ap->logopt, "expire thread create failed");
 		ops->send_fail(ap->logopt,

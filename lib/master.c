@@ -32,8 +32,8 @@ struct master *master_list = NULL;
 
 extern long global_negative_timeout;
 
-/* Attribute to create detached thread */
-extern pthread_attr_t thread_attr;
+/* Attribute to create a joinable thread */
+extern pthread_attr_t th_attr;
 
 extern struct startup_cond suc;
 
@@ -704,11 +704,16 @@ void master_add_mapent(struct master *master, struct master_mapent *entry)
 
 void master_remove_mapent(struct master_mapent *entry)
 {
+	struct master *master = entry->master;
+
 	if (entry->ap->submount)
 		return;
 
-	if (!list_empty(&entry->list))
+	if (!list_empty(&entry->list)) {
 		list_del_init(&entry->list);
+		list_add(&entry->join, &master->completed);
+	}
+
 	return;
 }
 
@@ -786,6 +791,7 @@ struct master *master_new(const char *name, unsigned int timeout, unsigned int g
 	master->logopt = master->default_logging;
 
 	INIT_LIST_HEAD(&master->mounts);
+	INIT_LIST_HEAD(&master->completed);
 
 	return master;
 }
@@ -993,7 +999,7 @@ static int master_do_mount(struct master_mapent *entry)
 
 	debug(ap->logopt, "mounting %s", entry->path);
 
-	status = pthread_create(&thid, &thread_attr, handle_mounts, &suc);
+	status = pthread_create(&thid, &th_attr, handle_mounts, &suc);
 	if (status) {
 		crit(ap->logopt,
 		     "failed to create mount handler thread for %s",
@@ -1163,6 +1169,30 @@ int master_list_empty(struct master *master)
 	int res = 0;
 
 	master_mutex_lock();
+	if (list_empty(&master->mounts))
+		res = 1;
+	master_mutex_unlock();
+
+	return res;
+}
+
+int master_done(struct master *master)
+{
+	struct list_head *head, *p;
+	struct master_mapent *entry;
+	int res = 0;
+
+	master_mutex_lock();
+	head = &master->completed;
+	p = head->next;
+	while (p != head) {
+		entry = list_entry(p, struct master_mapent, join);
+		p = p->next;
+		list_del(&entry->join);
+		pthread_join(entry->thid, NULL);
+		master_free_mapent_sources(entry, 1);
+		master_free_mapent(entry);
+	}
 	if (list_empty(&master->mounts))
 		res = 1;
 	master_mutex_unlock();

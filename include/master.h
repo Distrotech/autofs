@@ -48,6 +48,7 @@ struct master_mapent {
 	struct map_source *maps;
 	struct autofs_point *ap;
 	struct list_head list;
+	struct list_head join;
 };
 
 struct master {
@@ -61,6 +62,7 @@ struct master {
 	unsigned int logopt;
 	struct mapent_cache *nc;
 	struct list_head mounts;
+	struct list_head completed;
 };
 
 /* From the yacc master map parser */
@@ -109,6 +111,7 @@ void master_notify_state_change(struct master *, int);
 int master_mount_mounts(struct master *, time_t, int);
 extern inline unsigned int master_get_logopt(void);
 int master_list_empty(struct master *);
+int master_done(struct master *);
 int master_kill(struct master *);
 
 #endif

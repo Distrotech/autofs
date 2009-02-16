@@ -69,8 +69,9 @@ static size_t kpkt_len;
 /* Does kernel know about SOCK_CLOEXEC and friends */
 static int cloexec_works = 0;
 
-/* Attribute to create detached thread */
-pthread_attr_t thread_attr;
+/* Attributes for creating detached and joinable threads */
+pthread_attr_t th_attr;
+pthread_attr_t th_attr_detached;
 
 struct master_readmap_cond mrc = {
 	PTHREAD_MUTEX_INITIALIZER, PTHREAD_COND_INITIALIZER, 0, NULL, 0, 0, 0, 0};
@@ -1192,7 +1193,7 @@ static pthread_t do_signals(struct master *master, int sig)
 	if (status)
 		fatal(status);
 
-	status = pthread_create(&thid, &thread_attr, do_notify_state, &r_sig);
+	status = pthread_create(&thid, &th_attr_detached, do_notify_state, &r_sig);
 	if (status) {
 		error(master->logopt,
 		      "mount state notify thread create failed");
@@ -1281,7 +1282,7 @@ static int do_hup_signal(struct master *master, time_t age)
 
 	master->reading = 1;
 
-	status = pthread_create(&thid, &thread_attr, do_read_master, NULL);
+	status = pthread_create(&thid, &th_attr_detached, do_read_master, NULL);
 	if (status) {
 		error(logopt,
 		      "master read map thread create failed");
@@ -1327,7 +1328,7 @@ static void *statemachine(void *arg)
 		case SIGTERM:
 		case SIGINT:
 		case SIGUSR2:
-			if (master_list_empty(master_list))
+			if (master_done(master_list))
 				return NULL;
 		case SIGUSR1:
 			do_signals(master_list, sig);
@@ -1448,8 +1449,6 @@ static void handle_mounts_cleanup(void *arg)
 	master_mutex_unlock();
 
 	destroy_logpri_fifo(ap);
-	master_free_mapent_sources(ap->entry, 1);
-	master_free_mapent(ap->entry);
 
 	if (clean) {
 		if (rmdir(path) == -1) {
@@ -1461,8 +1460,12 @@ static void handle_mounts_cleanup(void *arg)
 
 	info(logopt, "shut down path %s", path);
 
-	/* If we are the last tell the state machine to shutdown */
-	if (!submount && master_list_empty(master_list))
+	/*
+	 * If we are not a submount send a signal to the signal handler
+	 * so it can join with any completed handle_mounts() threads and
+	 * perform final cleanup.
+	 */
+	if (!submount)
 		pthread_kill(state_mach_thid, SIGTERM);
 	
 	return;
@@ -1980,7 +1983,15 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
-	if (pthread_attr_init(&thread_attr)) {
+	if (pthread_attr_init(&th_attr)) {
+		logerr("%s: failed to init thread attribute struct!",
+		     program);
+		close(start_pipefd[1]);
+		release_flag_file();
+		exit(1);
+	}
+
+	if (pthread_attr_init(&th_attr_detached)) {
 		logerr("%s: failed to init thread attribute struct!",
 		     program);
 		close(start_pipefd[1]);
@@ -1989,7 +2000,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (pthread_attr_setdetachstate(
-			&thread_attr, PTHREAD_CREATE_DETACHED)) {
+			&th_attr_detached, PTHREAD_CREATE_DETACHED)) {
 		logerr("%s: failed to set detached thread attribute!",
 		     program);
 		close(start_pipefd[1]);
@@ -1999,7 +2010,7 @@ int main(int argc, char *argv[])
 
 #ifdef _POSIX_THREAD_ATTR_STACKSIZE
 	if (pthread_attr_setstacksize(
-			&thread_attr, PTHREAD_STACK_MIN*64)) {
+			&th_attr_detached, PTHREAD_STACK_MIN*64)) {
 		logerr("%s: failed to set stack size thread attribute!",
 		       program);
 		close(start_pipefd[1]);

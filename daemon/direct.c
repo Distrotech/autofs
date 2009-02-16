@@ -37,7 +37,8 @@
 
 #include "automount.h"
 
-extern pthread_attr_t thread_attr;
+/* Attribute to create detached thread */
+extern pthread_attr_t th_attr_detached;
 
 struct mnt_params {
 	char *options;
@@ -1142,7 +1143,7 @@ int handle_packet_expire_direct(struct autofs_point *ap, autofs_packet_expire_di
 	debug(ap->logopt, "token %ld, name %s",
 		  (unsigned long) pkt->wait_queue_token, mt->name);
 
-	status = pthread_create(&thid, &thread_attr, do_expire_direct, mt);
+	status = pthread_create(&thid, &th_attr_detached, do_expire_direct, mt);
 	if (status) {
 		error(ap->logopt, "expire thread create failed");
 		ops->send_fail(ap->logopt,
@@ -1451,7 +1452,7 @@ int handle_packet_missing_direct(struct autofs_point *ap, autofs_packet_missing_
 	mt->gid = pkt->gid;
 	mt->wait_queue_token = pkt->wait_queue_token;
 
-	status = pthread_create(&thid, &thread_attr, do_mount_direct, mt);
+	status = pthread_create(&thid, &th_attr_detached, do_mount_direct, mt);
 	if (status) {
 		error(ap->logopt, "missing mount thread create failed");
 		ops->send_fail(ap->logopt,

@@ -16,7 +16,8 @@
 
 #include "automount.h"
 
-extern pthread_attr_t thread_attr;
+/* Attribute to create detached thread */
+extern pthread_attr_t th_attr_detached;
 
 struct state_queue {
 	pthread_t thid;
@@ -292,7 +293,7 @@ static enum expire expire_proc(struct autofs_point *ap, int now)
 	else
 		expire = expire_proc_direct;
 
-	status = pthread_create(&thid, &thread_attr, expire, ea);
+	status = pthread_create(&thid, &th_attr_detached, expire, ea);
 	if (status) {
 		error(ap->logopt,
 		      "expire thread create for %s failed", ap->path);
@@ -519,7 +520,7 @@ static unsigned int st_readmap(struct autofs_point *ap)
 	ra->ap = ap;
 	ra->now = now;
 
-	status = pthread_create(&thid, &thread_attr, do_readmap, ra);
+	status = pthread_create(&thid, &th_attr_detached, do_readmap, ra);
 	if (status) {
 		error(ap->logopt, "read map thread create failed");
 		st_readmap_cleanup(ra);
