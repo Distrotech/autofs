@@ -257,10 +257,10 @@ struct mnt_list *get_mnt_list(const char *table, const char *path, int include)
 
 		if (mptr == list)
 			list = ent;
+		else
+			last->next = ent;
 
 		ent->next = mptr;
-		if (last)
-			last->next = ent;
 
 		ent->path = malloc(len + 1);
 		if (!ent->path) {
@@ -705,6 +705,7 @@ struct mnt_list *tree_make_mnt_tree(const char *table, const char *path)
 		ent->path = malloc(len + 1);
 		if (!ent->path) {
 			endmntent(tab);
+			free(ent);
 			tree_free_mnt_tree(tree);
 			return NULL;
 		}

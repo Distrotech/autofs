@@ -304,7 +304,7 @@ static int add_host(struct host **list, struct host *host)
 {
 	struct host *this, *last;
 
-	if (!list) {
+	if (!*list) {
 		*list = host;
 		return 1;
 	}

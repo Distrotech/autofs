@@ -396,8 +396,10 @@ next:
 	cache_writelock(mc);
 	ret = cache_update(mc, source, name, mapent, time(NULL));
 	cache_unlock(mc);
-	if (ret == CHE_FAIL)
+	if (ret == CHE_FAIL) {
+		free(mapent);
 		return NSS_STATUS_UNAVAIL;
+	}
 
 	debug(ap->logopt, MODPREFIX "%s -> %s", name, mapent);
 

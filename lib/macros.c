@@ -165,7 +165,7 @@ int macro_parse_globalvar(const char *define)
 	char buf[MAX_MACRO_STRING];
 	char *pbuf, *value;
 
-	if (strlen(define) > MAX_MACRO_STRING)
+	if (strlen(define) >= MAX_MACRO_STRING)
 		return 0;
 
 	strcpy(buf, define);

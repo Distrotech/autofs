@@ -1088,7 +1088,6 @@ int handle_packet_expire_direct(struct autofs_point *ap, autofs_packet_expire_di
 		crit(ap->logopt, "can't find map entry for (%lu,%lu)",
 		    (unsigned long) pkt->dev, (unsigned long) pkt->ino);
 		master_source_unlock(ap->entry);
-		master_mutex_unlock();
 		pthread_setcancelstate(state, NULL);
 		return 1;
 	}
@@ -1098,8 +1097,9 @@ int handle_packet_expire_direct(struct autofs_point *ap, autofs_packet_expire_di
 		int ioctlfd;
 		ops->open(ap->logopt, &ioctlfd, me->dev, me->key);
 		if (ioctlfd == -1) {
-			crit(ap->logopt, "can't open ioctlfd for %s",
-			     me->key);
+			crit(ap->logopt, "can't open ioctlfd for %s", me->key);
+			cache_unlock(mc);
+			master_source_unlock(ap->entry);
 			pthread_setcancelstate(state, NULL);
 			return 1;
 		}

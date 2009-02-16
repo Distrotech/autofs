@@ -221,6 +221,11 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 		/* Not a local host - do an NFS mount */
 
 		loc = malloc(strlen(this->name) + 1 + strlen(this->path) + 1);
+		if (!loc) {
+			char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+			error(ap->logopt, "malloc: %s", estr);
+			return 1;
+		}
 		strcpy(loc, this->name);
 		strcat(loc, ":");
 		strcat(loc, this->path);

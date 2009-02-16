@@ -192,7 +192,7 @@ struct mapent_cache *cache_init(struct autofs_point *ap, struct map_source *map)
 
 	mc->size = defaults_get_map_hash_table_size();
 
-	mc->hash = malloc(mc->size * sizeof(struct entry *));
+	mc->hash = malloc(mc->size * sizeof(struct mapent *));
 	if (!mc->hash) {
 		free(mc);
 		return NULL;
@@ -243,7 +243,7 @@ struct mapent_cache *cache_init_null_cache(struct master *master)
 
 	mc->size = NULL_MAP_HASHSIZE;
 
-	mc->hash = malloc(mc->size * sizeof(struct entry *));
+	mc->hash = malloc(mc->size * sizeof(struct mapent *));
 	if (!mc->hash) {
 		free(mc);
 		return NULL;

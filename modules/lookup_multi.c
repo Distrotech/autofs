@@ -212,14 +212,15 @@ nomem:
 	logerr(MODPREFIX "error: %s", estr);
 error_out:
 	if (ctxt) {
-		for (i = 0; i < ctxt->n; i++) {
-			if (ctxt->m[i].mod)
-				close_lookup(ctxt->m[i].mod);
-			if (ctxt->m[i].argv)
-				free_argv(ctxt->m[i].argc, ctxt->m[i].argv);
-		}
-		if (ctxt->m)
+		if (ctxt->m) {
+			for (i = 0; i < ctxt->n; i++) {
+				if (ctxt->m[i].mod)
+					close_lookup(ctxt->m[i].mod);
+				if (ctxt->m[i].argv)
+					free_argv(ctxt->m[i].argc, ctxt->m[i].argv);
+			}
 			free(ctxt->m);
+		}
 		if (ctxt->argl)
 			free(ctxt->argl);
 		free(ctxt);

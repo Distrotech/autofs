@@ -238,9 +238,9 @@ int alarm_start_handler(void)
 	}
 
 	status = pthread_create(&thid, pattrs, alarm_handler, NULL);
-	if (status)
-	 	return 0;
 
-	return 1;
+	pthread_attr_destroy(pattrs);
+
+	return !status;
 }
 

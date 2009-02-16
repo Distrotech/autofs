@@ -159,6 +159,7 @@ static int do_mount_autofs_indirect(struct autofs_point *ap, const char *root)
 	}
 
 	free(options);
+	options = NULL;
 
 	ret = stat(root, &st);
 	if (ret == -1) {
@@ -166,8 +167,6 @@ static int do_mount_autofs_indirect(struct autofs_point *ap, const char *root)
 		     "failed to stat mount for autofs path %s", ap->path);
 		goto out_umount;
 	}
-
-	options = NULL;
 
 	if (ops->open(ap->logopt, &ap->ioctlfd, st.st_dev, root)) {
 		crit(ap->logopt,

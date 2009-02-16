@@ -46,6 +46,12 @@ static int parse_afs(struct autofs_point *ap,
 
 	/* Isolate the source for this AFS fs. */
 	for (i = 0; (!isspace(p[i]) && i < source_len); i++) {
+		if (!p[i]) {
+			error(ap->logopt, MODPREFIX
+			      "unexpeced end of input looking for AFS "
+			      "source: %s", p);
+			return 1;
+		}
 		source[i] = p[i];
 	}
 
@@ -56,8 +62,14 @@ static int parse_afs(struct autofs_point *ap,
 	while ((*p) && (isspace(*p)))
 		p++;
 
-	/* Isolate the source for this AFS fs. */
+	/* Isolate the options for this AFS fs. */
 	for (i = 0; (!isspace(p[i]) && i < options_len); i++) {
+		if (!p[i]) {
+			error(ap->logopt, MODPREFIX
+			      "unexpeced end of input looking for AFS "
+			      "options: %s", p);
+			return 1;
+		}
 		options[i] = p[i];
 	}
 	options[i] = 0;
@@ -106,6 +118,12 @@ static int parse_nfs(struct autofs_point *ap,
 
 	/* Isolate the remote mountpoint for this NFS fs. */
 	for (i = 0; (!isspace(p[i]) && i < (int) sizeof(mount)); i++) {
+		if (!p[i]) {
+			error(ap->logopt, MODPREFIX
+			      "unexpeced end of input looking for NFS "
+			      "mountpoint: %s", p);
+			return 1;
+		}
 		mount[i] = p[i];
 	}
 
@@ -118,15 +136,26 @@ static int parse_nfs(struct autofs_point *ap,
 
 	/* Isolate the remote host. */
 	for (i = 0; (!isspace(p[i]) && i < source_len); i++) {
+		if (!p[i]) {
+			error(ap->logopt, MODPREFIX
+			      "unexpeced end of input looking for NFS "
+			      "host: %s", p);
+			return 1;
+		}
 		source[i] = p[i];
 	}
 
 	source[i] = 0;
 	p += i;
 
+	if (strlen(source) + strlen(mount) + 2 > source_len) {
+		error(ap->logopt, MODPREFIX "entry too log for mount source");
+		return 1;
+	}
+
 	/* Append ":mountpoint" to the source to get "host:mountpoint". */
-	strncat(source, ":", source_len);
-	strncat(source, mount, source_len);
+	strcat(source, ":");
+	strcat(source, mount);
 
 	/* Skip whitespace. */
 	while ((*p) && (isspace(*p)))
@@ -134,6 +163,12 @@ static int parse_nfs(struct autofs_point *ap,
 
 	/* Isolate the mount options. */
 	for (i = 0; (!isspace(p[i]) && i < options_len); i++) {
+		if (!p[i]) {
+			error(ap->logopt, MODPREFIX
+			      "unexpeced end of input looking for NFS "
+			      "mount options: %s", p);
+			return 1;
+		}
 		options[i] = p[i];
 	}
 	options[i] = 0;
@@ -178,6 +213,12 @@ static int parse_generic(struct autofs_point *ap,
 
 	/* Isolate the source for this fs. */
 	for (i = 0; (!isspace(p[i]) && i < source_len); i++) {
+		if (!p[i]) {
+			error(ap->logopt, MODPREFIX
+			      "unexpeced end of input looking for generic "
+			      "mount source: %s", p);
+			return 1;
+		}
 		source[i] = p[i];
 	}
 
@@ -190,6 +231,12 @@ static int parse_generic(struct autofs_point *ap,
 
 	/* Isolate the mount options. */
 	for (i = 0; (!isspace(p[i]) && i < options_len); i++) {
+		if (!p[i]) {
+			error(ap->logopt, MODPREFIX
+			      "unexpeced end of input looking for generic "
+			      "mount options: %s", p);
+			return 1;
+		}
 		options[i] = p[i];
 	}
 	options[i] = 0;
@@ -227,6 +274,7 @@ int parse_mount(struct autofs_point *ap, const char *name,
 	char options[HESIOD_LEN + 1];
 	char *q;
 	const char *p;
+	int ret;
 
 	ap->entry->current = NULL;
 	master_source_current_signal(ap->entry);
@@ -250,19 +298,28 @@ int parse_mount(struct autofs_point *ap, const char *name,
 		return 1;
 	/* If it's an AFS fs... */
 	} else if (!strcasecmp(fstype, "afs"))
-		parse_afs(ap, mapent, name, name_len,
-			  source, sizeof(source), options, sizeof(options));
+		ret = parse_afs(ap, mapent, name, name_len,
+				source, sizeof(source), options,
+				sizeof(options));
 	/* If it's NFS... */
 	else if (!strcasecmp(fstype, "nfs"))
-		parse_nfs(ap, mapent, name, name_len,
-			  source, sizeof(source), options, sizeof(options));
+		ret = parse_nfs(ap, mapent, name, name_len,
+				source, sizeof(source), options,
+				sizeof(options));
 	/* Punt. */
 	else
-		parse_generic(ap, mapent, name, name_len, source, sizeof(source),
-			      options, sizeof(options));
+		ret = parse_generic(ap, mapent, name, name_len,
+				    source, sizeof(source), options,
+				    sizeof(options));
 
-	debug(ap->logopt,
-	      MODPREFIX "mount %s is type %s from %s", name, fstype, source);
+	if (ret) {
+		error(ap->logopt, MODPREFIX "failed to parse entry");
+		return 1;
+	} else {
+		debug(ap->logopt,
+		      MODPREFIX "mount %s is type %s from %s",
+		      name, fstype, source);
+	}
 
 	return do_mount(ap, ap->path, name, name_len, source, fstype, options);
 }

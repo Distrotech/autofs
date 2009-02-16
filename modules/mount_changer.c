@@ -162,6 +162,7 @@ int swapCD(const char *device, const char *slotName)
 		logerr(MODPREFIX
 		      "Device %s is not an ATAPI compliant CD changer.",
 		      device);
+		close(fd);
 		return 1;
 	}
 
@@ -169,6 +170,7 @@ int swapCD(const char *device, const char *slotName)
 	slot = ioctl(fd, CDROM_SELECT_DISC, slot);
 	if (slot < 0) {
 		logerr(MODPREFIX "CDROM_SELECT_DISC failed");
+		close(fd);
 		return 1;
 	}
 

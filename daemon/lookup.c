@@ -1001,12 +1001,16 @@ static char *make_fullpath(const char *root, const char *key)
 		if (l > KEY_MAX_LEN)
 			return NULL;
 		path = malloc(l);
+		if (!path)
+			return NULL;
 		strcpy(path, key);
 	} else {
 		l = strlen(key) + 1 + strlen(root) + 1;
 		if (l > KEY_MAX_LEN)
 			return NULL;
 		path = malloc(l);
+		if (!path)
+			return NULL;
 		sprintf(path, "%s/%s", root, key);
 	}
 	return path;
@@ -1076,10 +1080,6 @@ int lookup_prune_cache(struct autofs_point *ap, time_t age)
 			this = cache_lookup_distinct(mc, key);
 			if (!this) {
 				cache_unlock(mc);
-				free(key);
-				if (next_key)
-					free(next_key);
-				free(path);
 				goto next;
 			}
 
@@ -1097,18 +1097,14 @@ int lookup_prune_cache(struct autofs_point *ap, time_t age)
 			}
 			cache_unlock(mc);
 
-			if (!next_key) {
-				free(key);
-				free(path);
-				cache_readlock(mc);
-				continue;
-			}
 next:
 			cache_readlock(mc);
-			me = cache_lookup_distinct(mc, next_key);
+			if (next_key) {
+				me = cache_lookup_distinct(mc, next_key);
+				free(next_key);
+			}
 			free(key);
 			free(path);
-			free(next_key);
 		}
 		pthread_cleanup_pop(1);
 		map->stale = 0;

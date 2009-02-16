@@ -565,6 +565,7 @@ struct ldap_searchdn *defaults_get_searchdns(void)
 
 			if (!new) {
 				defaults_free_searchdns(sdn);
+				fclose(f);
 				return NULL;
 			}
 

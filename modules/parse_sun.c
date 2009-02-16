@@ -379,15 +379,17 @@ int parse_init(int argc, const char *const *argv, void **context)
 			if (ctxt->optstr) {
 				noptstr =
 				    (char *) realloc(ctxt->optstr, optlen + len + 2);
-				if (!noptstr)
-					break;
-				noptstr[optlen] = ',';
-				strcpy(noptstr + optlen + 1, argv[i] + offset);
-				optlen += len + 1;
+				if (noptstr) {
+					noptstr[optlen] = ',';
+					strcpy(noptstr + optlen + 1, argv[i] + offset);
+					optlen += len + 1;
+				}
 			} else {
 				noptstr = (char *) malloc(len + 1);
-				strcpy(noptstr, argv[i] + offset);
-				optlen = len;
+				if (noptstr) {
+					strcpy(noptstr, argv[i] + offset);
+					optlen = len;
+				}
 			}
 			if (!noptstr) {
 				char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
@@ -895,6 +897,7 @@ static int parse_mapent(const char *ent, char *g_options, char **options, char *
 	if (*p == '/') {
 		warn(logopt, MODPREFIX "error location begins with \"/\"");
 		free(myoptions);
+		free(loc);
 		return 0;
 	}
 
@@ -1636,6 +1639,7 @@ int parse_mount(struct autofs_point *ap, const char *name,
 		/* Location can't begin with a '/' */
 		if (*p == '/') {
 			free(options);
+			free(loc);
 			warn(ap->logopt,
 			      MODPREFIX "error location begins with \"/\"");
 			return 1;
