@@ -732,16 +732,25 @@ sasl_bind_mech(unsigned logopt, LDAP *ldap, struct lookup_context *ctxt, const c
 	debug(logopt, "Attempting sasl bind with mechanism %s", mech);
 
 	result = ldap_get_option(ldap, LDAP_OPT_HOST_NAME, &host);
-	if (result != LDAP_SUCCESS || !host) {
+	if (result != LDAP_OPT_SUCCESS || !host) {
 		debug(logopt, "failed to get hostname for connection");
 		return NULL;
 	}
 
-	if ((tmp = strchr(host, ':')))
-		*tmp = '\0';
+	if ((tmp = strrchr(host, ':'))) {
+		if (*(tmp - 1) != ']') {
+			*tmp = '\0';
+			tmp = host;
+		} else {
+			*(tmp - 1) = '\0';
+			tmp = host;
+			if (*tmp == '[')
+				tmp++;
+		}
+	}
 
 	/* Create a new authentication context for the service. */
-	result = sasl_client_new("ldap", host, NULL, NULL, NULL, 0, &conn);
+	result = sasl_client_new("ldap", tmp, NULL, NULL, NULL, 0, &conn);
 	if (result != SASL_OK) {
 		error(logopt, "sasl_client_new failed with error %d",
 		      result);

@@ -46,7 +46,7 @@
 
 struct conn_info {
 	const char *host;
-	const char *addr;
+	struct sockaddr *addr;
 	size_t addr_len;
 	unsigned short port;
 	unsigned long program;
@@ -63,7 +63,7 @@ int rpc_udp_getclient(struct conn_info *, unsigned int, unsigned int);
 void rpc_destroy_udp_client(struct conn_info *);
 int rpc_tcp_getclient(struct conn_info *, unsigned int, unsigned int);
 void rpc_destroy_tcp_client(struct conn_info *);
-int rpc_portmap_getclient(struct conn_info *, const char *, const char *, size_t, const char *, unsigned int);
+int rpc_portmap_getclient(struct conn_info *, const char *, struct sockaddr *, size_t, const char *, unsigned int);
 unsigned short rpc_portmap_getport(struct conn_info *, struct pmap *);
 int rpc_ping_proto(struct conn_info *);
 int rpc_ping(const char *, long, long, unsigned int);

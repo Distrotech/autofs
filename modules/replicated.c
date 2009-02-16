@@ -45,7 +45,7 @@
 #include <stdlib.h>
 #include <sys/errno.h>
 #include <sys/types.h>
-#include <netinet/in.h>
+#include <stdint.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
@@ -74,6 +74,20 @@ static int volatile ifc_last_len = 0;
 
 #define max(x, y)	(x >= y ? x : y)
 #define mmax(x, y, z)	(max(x, y) == x ? max(x, z) : max(y, z))
+
+unsigned int ipv6_mask_cmp(uint32_t *host, uint32_t *iface, uint32_t *mask)
+{
+	unsigned int ret = 1;
+	unsigned int i;
+
+	for (i = 0; i < 4; i++) {
+		if ((host[i] & mask[i]) != (iface[i] & mask[i])) {
+			ret = 0;
+			break;
+		}
+	}
+	return ret;
+}
 
 void seed_random(void)
 {
@@ -136,20 +150,49 @@ static int alloc_ifreq(struct ifconf *ifc, int sock)
 	return 1;
 }
 
-static unsigned int get_proximity(const char *host_addr, int addr_len)
+static unsigned int get_proximity(struct sockaddr *host_addr)
 {
-	struct sockaddr_in *msk_addr, *if_addr;
+	struct sockaddr_in *addr, *msk_addr, *if_addr;
+	struct sockaddr_in6 *addr6, *msk6_addr, *if6_addr;
 	struct in_addr *hst_addr;
-	char tmp[20], buf[MAX_ERR_BUF], *ptr;
+	struct in6_addr *hst6_addr;
+	int addr_len;
+	char buf[MAX_ERR_BUF], *ptr;
 	struct ifconf ifc;
 	struct ifreq *ifr, nmptr;
 	int sock, ret, i;
-	uint32_t mask, ha, ia;
+	uint32_t mask, ha, ia, *mask6, *ha6, *ia6;
 
-	memcpy(tmp, host_addr, addr_len);
-	hst_addr = (struct in_addr *) tmp;
+	addr = NULL;
+	addr6 = NULL;
+	hst_addr = NULL;
+	hst6_addr = NULL;
+	mask6 = NULL;
+	ha6 = NULL;
+	ia6 = NULL;
 
-	ha = ntohl((uint32_t) hst_addr->s_addr);
+	switch (host_addr->sa_family) {
+	case AF_INET:
+		addr = (struct sockaddr_in *) host_addr;
+		hst_addr = (struct in_addr *) &addr->sin_addr;
+		ha = ntohl((uint32_t) hst_addr->s_addr);
+		addr_len = sizeof(hst_addr);
+		break;
+
+	case AF_INET6:
+#ifndef INET6
+		return PROXIMITY_ERROR;
+#else
+		addr6 = (struct sockaddr_in6 *) host_addr;
+		hst6_addr = (struct in6_addr *) &addr6->sin6_addr;
+		ha6 = &hst6_addr->s6_addr32[0];
+		addr_len = sizeof(hst6_addr);
+		break;
+#endif
+
+	default:
+		return PROXIMITY_ERROR;
+	}
 
 	sock = open_sock(AF_INET, SOCK_DGRAM, 0);
 	if (sock < 0) {
@@ -174,6 +217,10 @@ static unsigned int get_proximity(const char *host_addr, int addr_len)
 
 		switch (ifr->ifr_addr.sa_family) {
 		case AF_INET:
+#ifndef INET6
+			if (host_addr->sa_family == AF_INET6)
+				break;
+#endif
 			if_addr = (struct sockaddr_in *) &ifr->ifr_addr;
 			ret = memcmp(&if_addr->sin_addr, hst_addr, addr_len);
 			if (!ret) {
@@ -182,6 +229,20 @@ static unsigned int get_proximity(const char *host_addr, int addr_len)
 				return PROXIMITY_LOCAL;
 			}
 			break;
+
+		case AF_INET6:
+#ifndef INET6
+			if (host_addr->sa_family == AF_INET)
+				break;
+
+			if6_addr = (struct sockaddr_in6 *) &ifr->ifr_addr;
+			ret = memcmp(&if6_addr->sin6_addr, hst6_addr, addr_len);
+			if (!ret) {
+				close(sock);
+				free(ifc.ifc_req);
+				return PROXIMITY_LOCAL;
+			}
+#endif
 
 		default:
 			break;
@@ -197,22 +258,26 @@ static unsigned int get_proximity(const char *host_addr, int addr_len)
 	while (ptr < (char *) ifc.ifc_req + ifc.ifc_len) {
 		ifr = (struct ifreq *) ptr;
 
+		nmptr = *ifr;
+		ret = ioctl(sock, SIOCGIFNETMASK, &nmptr);
+		if (ret == -1) {
+			char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+			logerr("ioctl: %s", estr);
+			close(sock);
+			free(ifc.ifc_req);
+			return PROXIMITY_ERROR;
+		}
+
 		switch (ifr->ifr_addr.sa_family) {
 		case AF_INET:
+#ifndef INET6
+			if (host_addr->sa_family == AF_INET6)
+				break;
+#endif
 			if_addr = (struct sockaddr_in *) &ifr->ifr_addr;
 			ia =  ntohl((uint32_t) if_addr->sin_addr.s_addr);
 
 			/* Is the address within a localiy attached subnet */
-
-			nmptr = *ifr;
-			ret = ioctl(sock, SIOCGIFNETMASK, &nmptr);
-			if (ret == -1) {
-				char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-				logerr("ioctl: %s", estr);
-				close(sock);
-				free(ifc.ifc_req);
-				return PROXIMITY_ERROR;
-			}
 
 			msk_addr = (struct sockaddr_in *) &nmptr.ifr_netmask;
 			mask = ntohl((uint32_t) msk_addr->sin_addr.s_addr);
@@ -247,6 +312,29 @@ static unsigned int get_proximity(const char *host_addr, int addr_len)
 			}
 			break;
 
+		case AF_INET6:
+#ifndef INET6
+			if (host_addr->sa_family == AF_INET)
+				break;
+
+			if6_addr = (struct sockaddr_in6 *) &ifr->ifr_addr;
+			ia6 = &if6_addr->sin6_addr.s6_addr32[0];
+
+			/* Is the address within the network of the interface */
+
+			msk6_addr = (struct sockaddr_in6 *) &nmptr.ifr_netmask;
+			mask6 = &msk6_addr->sin6_addr.s6_addr32[0];
+
+			if (ipv6_mask_cmp(ha6, ia6, mask6)) {
+				close(sock);
+				free(ifc.ifc_req);
+				return PROXIMITY_SUBNET;
+			}
+
+			/* How do we define "local network" in ipv6? */
+#endif
+			break;
+
 		default:
 			break;
 		}
@@ -262,11 +350,12 @@ static unsigned int get_proximity(const char *host_addr, int addr_len)
 }
 
 static struct host *new_host(const char *name,
-			     const char *addr, size_t addr_len,
+			     struct sockaddr *addr, size_t addr_len,
 			     unsigned int proximity, unsigned int weight)
 {
 	struct host *new;
-	char *tmp1, *tmp2;
+	struct sockaddr *tmp2;
+	char *tmp1;
 
 	if (!name || !addr)
 		return NULL;
@@ -950,65 +1039,78 @@ int prune_host_list(unsigned logopt, struct host **list,
 	return 1;
 }
 
-static int add_host_addrs(struct host **list, const char *host, unsigned int weight)
+static int add_new_host(struct host **list,
+			const char *host, unsigned int weight,
+			struct addrinfo *host_addr)
 {
-	struct hostent he;
-	struct hostent *phe = &he;
-	struct hostent *result;
-	struct sockaddr_in saddr;
-	char buf[MAX_IFC_BUF], **haddr;
-	int ghn_errno, ret;
 	struct host *new;
 	unsigned int prx;
+	int addr_len;
 
-	saddr.sin_family = AF_INET;
-	if (inet_aton(host, &saddr.sin_addr)) {
-		const char *thost = (const char *) &saddr.sin_addr;
+	prx = get_proximity(host_addr->ai_addr);
+	if (prx == PROXIMITY_ERROR)
+		return 0;
 
-		prx = get_proximity(thost, sizeof(saddr.sin_addr));
-		if (prx == PROXIMITY_ERROR)
-			return 0;
+	addr_len = sizeof(struct sockaddr);
+	new = new_host(host, host_addr->ai_addr, addr_len, prx, weight);
+	if (!new)
+		return 0;
 
-		if (!(new = new_host(host, thost, sizeof(saddr.sin_addr), prx, weight)))
-			return 0;
-
-		if (!add_host(list, new))
-			free_host(new);
-
-		return 1;
-	}
-
-	memset(buf, 0, MAX_IFC_BUF);
-	memset(&he, 0, sizeof(struct hostent));
-
-	ret = gethostbyname_r(host, phe,
-			buf, MAX_IFC_BUF, &result, &ghn_errno);
-	if (ret || !result) {
-		if (ghn_errno == -1)
-			logmsg("host %s: lookup failure %d", host, errno);
-		else
-			logmsg("host %s: lookup failure %d", host, ghn_errno);
+	if (!add_host(list, new)) {
+		free_host(new);
 		return 0;
 	}
 
-	for (haddr = phe->h_addr_list; *haddr; haddr++) {
-		struct in_addr tt;
+	return 1;
+}
 
-		prx = get_proximity(*haddr, phe->h_length);
-		if (prx == PROXIMITY_ERROR)
-			return 0;
+static int add_host_addrs(struct host **list, const char *host, unsigned int weight)
+{
+	struct addrinfo hints, *ni, *this;
+	int ret;
 
-		memcpy(&tt, *haddr, sizeof(struct in_addr));
-		if (!(new = new_host(host, *haddr, phe->h_length, prx, weight)))
-			return 0;
+	memset(&hints, 0, sizeof(hints));
+	hints.ai_flags = AI_NUMERICHOST;
+	hints.ai_family = AF_UNSPEC;
+	hints.ai_socktype = SOCK_DGRAM;
 
-		if (!add_host(list, new)) {
-			free_host(new);
-			continue;
-		}
+	ret = getaddrinfo(host, NULL, &hints, &ni);
+	if (ret)
+		goto try_name;
+
+	this = ni;
+	while (this) {
+		ret = add_new_host(list, host, weight, this);
+		if (!ret)
+			break;
+		this = this->ai_next;
+	}
+	freeaddrinfo(ni);
+	goto done;
+
+try_name:
+	memset(&hints, 0, sizeof(hints));
+	hints.ai_flags = AI_ADDRCONFIG;
+	hints.ai_family = AF_UNSPEC;
+	hints.ai_socktype = SOCK_DGRAM;
+
+	ret = getaddrinfo(host, NULL, &hints, &ni);
+	if (ret) {
+		error(LOGOPT_ANY, "hostname lookup failed: %s",
+		      gai_strerror(ret));
+		return 0;
 	}
 
-	return 1;
+	this = ni;
+	while (this) {
+		ret = add_new_host(list, host, weight, this);
+		if (!ret)
+			break;
+		this = this->ai_next;
+	}
+	freeaddrinfo(ni);
+done:
+	return ret;
 }
 
 static int add_path(struct host *hosts, const char *path, int len)
@@ -1057,7 +1159,8 @@ static int add_local_path(struct host **hosts, const char *path)
 	new->path = tmp;
 	new->proximity = PROXIMITY_LOCAL;
 	new->version = NFS_VERS_MASK;
-	new->name = new->addr = NULL;
+	new->name = NULL;
+	new->addr = NULL;
 	new->weight = new->cost = 0;
 
 	add_host(hosts, new);

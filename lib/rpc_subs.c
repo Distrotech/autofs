@@ -17,10 +17,11 @@
 #define _GNU_SOURCE
 #endif
 
+#include "config.h"
+
 #include <rpc/types.h>
 #include <rpc/rpc.h>
 #include <rpc/pmap_prot.h>
-
 #include <sys/socket.h>
 #include <netdb.h>
 #include <net/if.h>
@@ -54,26 +55,269 @@
 
 inline void dump_core(void);
 
+static CLIENT *rpc_clntudp_create(struct sockaddr *addr, struct conn_info *info, int *fd)
+{
+	struct sockaddr_in *in4_raddr;
+	struct sockaddr_in6 *in6_raddr;
+	CLIENT *client = NULL;
+
+	switch (addr->sa_family) {
+	case AF_INET:
+		in4_raddr = (struct sockaddr_in *) addr;
+		in4_raddr->sin_port = htons(info->port);
+		client = clntudp_bufcreate(in4_raddr,
+					   info->program, info->version,
+					   info->timeout, fd,
+					   info->send_sz, info->recv_sz);
+		break;
+
+	case AF_INET6:
+#ifndef INET6
+		/* Quiet compile warning */
+		in6_raddr = NULL;
+#else
+		in6_raddr = (struct sockaddr_in6 *) addr;
+		in6_raddr->sin6_port = htons(info->port);
+		client = clntudp6_bufcreate(in6_raddr,
+					    info->program, info->version,
+					    info->timeout, fd,
+					    info->send_sz, info->recv_sz);
+#endif
+		break;
+
+	default:
+		break;
+	}
+
+	return client;
+}
+
+static CLIENT *rpc_clnttcp_create(struct sockaddr *addr, struct conn_info *info, int *fd)
+{
+	struct sockaddr_in *in4_raddr;
+	struct sockaddr_in6 *in6_raddr;
+	CLIENT *client = NULL;
+
+	switch (addr->sa_family) {
+	case AF_INET:
+		in4_raddr = (struct sockaddr_in *) addr;
+		in4_raddr->sin_port = htons(info->port);
+		client = clnttcp_create(in4_raddr,
+					info->program, info->version, fd,
+					info->send_sz, info->recv_sz);
+		break;
+
+	case AF_INET6:
+#ifndef INET6
+		/* Quiet compile warning */
+		in6_raddr = NULL;
+#else
+		in6_raddr = (struct sockaddr_in6 *) addr;
+		in6_raddr->sin6_port = htons(info->port);
+		client = clnttcp6_create(in6_raddr,
+					 info->program, info->version, fd,
+					 info->send_sz, info->recv_sz);
+#endif
+		break;
+
+	default:
+		break;
+	}
+
+	return client;
+}
+
+/*
+ *  Perform a non-blocking connect on the socket fd.
+ *
+ *  The input struct timeval always has tv_nsec set to zero,
+ *  we only ever use tv_sec for timeouts.
+ */
+static int connect_nb(int fd, struct sockaddr *addr, socklen_t len, struct timeval *tout)
+{
+	struct pollfd pfd[1];
+	int timeout = tout->tv_sec;
+	int flags, ret;
+
+	flags = fcntl(fd, F_GETFL, 0);
+	if (flags < 0)
+		return -1;
+
+	ret = fcntl(fd, F_SETFL, flags | O_NONBLOCK);
+	if (ret < 0)
+		return -1;
+
+	/* 
+	 * From here on subsequent sys calls could change errno so
+	 * we set ret = -errno to capture it in case we decide to
+	 * use it later.
+	 */
+	ret = connect(fd, addr, len);
+	if (ret < 0 && errno != EINPROGRESS) {
+		ret = -errno;
+		goto done;
+	}
+
+	if (ret == 0)
+		goto done;
+
+	pfd[0].fd = fd;
+	pfd[0].events = POLLOUT;
+
+	ret = poll(pfd, 1, timeout);
+	if (ret <= 0) {
+		if (ret == 0)
+			ret = -ETIMEDOUT;
+		else
+			ret = -errno;
+		goto done;
+	}
+
+	if (pfd[0].revents) {
+		int status;
+
+		len = sizeof(ret);
+		status = getsockopt(fd, SOL_SOCKET, SO_ERROR, &ret, &len);
+		if (status < 0) {
+			char buf[MAX_ERR_BUF + 1];
+			char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+
+			/*
+			 * We assume getsockopt amounts to a read on the
+			 * descriptor and gives us the errno we need for
+			 * the POLLERR revent case.
+			 */
+			ret = -errno;
+
+			/* Unexpected case, log it so we know we got caught */
+			if (pfd[0].revents & POLLNVAL)
+				logerr("unexpected poll(2) error on connect:"
+				       " %s", estr);
+
+			goto done;
+		}
+
+		/* Oops - something wrong with connect */
+		if (ret)
+			ret = -ret;
+	}
+
+done:
+	fcntl(fd, F_SETFL, flags);
+	return ret;
+}
+
+static CLIENT *rpc_do_create_client(struct sockaddr *addr, struct conn_info *info, int *fd)
+{
+	CLIENT *client = NULL;
+	struct sockaddr *laddr;
+	struct sockaddr_in in4_laddr;
+	struct sockaddr_in6 in6_laddr;
+	int type, proto;
+	socklen_t slen;
+
+	proto = info->proto->p_proto;
+	if (proto == IPPROTO_UDP)
+		type = SOCK_DGRAM;
+	else
+		type = SOCK_STREAM;
+
+	/*
+	 * bind to any unused port.  If we left this up to the rpc
+	 * layer, it would bind to a reserved port, which has been shown
+	 * to exhaust the reserved port range in some situations.
+	 */
+	switch (addr->sa_family) {
+	case AF_INET:
+		in4_laddr.sin_family = AF_INET;
+		in4_laddr.sin_port = htons(0);
+		in4_laddr.sin_addr.s_addr = htonl(INADDR_ANY);
+		slen = sizeof(struct sockaddr_in);
+		laddr = (struct sockaddr *) &in4_laddr;
+		break;
+
+	case AF_INET6:
+#ifndef INET6
+		/* Quiet compiler */
+		in6_laddr.sin6_family = AF_INET6;
+		return NULL;
+#else
+		in6_laddr.sin6_family = AF_INET6;
+		in6_laddr.sin6_port = htons(0);
+		in6_laddr.sin6_addr = in6addr_any;
+		slen = sizeof(struct sockaddr_in6);
+		laddr = (struct sockaddr *) &in6_laddr;
+		break;
+#endif
+	default:
+		return NULL;
+	}
+
+	if (!info->client) {
+		*fd = open_sock(addr->sa_family, type, proto);
+		if (*fd < 0)
+			return NULL;
+
+		if (bind(*fd, laddr, slen) < 0) {
+			close(*fd);
+			return NULL;
+		}
+	}
+
+	switch (info->proto->p_proto) {
+	case IPPROTO_UDP:
+		if (!info->client) {
+			*fd = open_sock(addr->sa_family, type, proto);
+			if (*fd < 0)
+				return NULL;
+
+			if (bind(*fd, laddr, slen) < 0) {
+				close(*fd);
+				return NULL;
+			}
+		}
+		client = rpc_clntudp_create(addr, info, fd);
+		break;
+
+	case IPPROTO_TCP:
+		if (!info->client) {
+			*fd = open_sock(addr->sa_family, type, proto);
+			if (*fd < 0)
+				return NULL;
+
+			if (connect_nb(*fd, laddr, slen, &info->timeout) < 0) {
+				close(*fd);
+				return NULL;
+			}
+		}
+		client = rpc_clnttcp_create(addr, info, fd);
+		break;
+
+	default:
+		break;
+	}
+
+	return client;
+}
+
 /*
  * Create a UDP RPC client
  */
 static CLIENT *create_udp_client(struct conn_info *info)
 {
-	int fd, ret, ghn_errno;
-	CLIENT *client;
-	struct sockaddr_in laddr, raddr;
-	struct hostent hp;
-	struct hostent *php = &hp;
-	struct hostent *result;
-	char buf[HOST_ENT_BUF_SIZE];
-	size_t len;
+	CLIENT *client = NULL;
+	struct addrinfo *ai, *haddr;
+	struct addrinfo hints;
+	int fd, ret;
 
 	if (info->proto->p_proto != IPPROTO_UDP)
 		return NULL;
 
+	fd = RPC_ANYSOCK;
+
 	if (info->client) {
 		if (!clnt_control(info->client, CLGET_FD, (char *) &fd)) {
-			fd = -1;
+			fd = RPC_ANYSOCK;
 			clnt_destroy(info->client);
 			info->client = NULL;
 		} else {
@@ -82,65 +326,50 @@ static CLIENT *create_udp_client(struct conn_info *info)
 		}
 	}
 
-	memset(&laddr, 0, sizeof(laddr));
-	memset(&raddr, 0, sizeof(raddr));
-
-	raddr.sin_family = AF_INET;
 	if (info->addr) {
-		memcpy(&raddr.sin_addr.s_addr, info->addr, info->addr_len);
-		goto got_addr;
-	}
+		client = rpc_do_create_client(info->addr, info, &fd);
+		if (client)
+			goto done;
 
-	if (inet_aton(info->host, &raddr.sin_addr))
-		goto got_addr;
-
-	memset(&hp, 0, sizeof(struct hostent));
-
-	ret = gethostbyname_r(info->host, php,
-			buf, HOST_ENT_BUF_SIZE, &result, &ghn_errno);
-	if (ret || !result) {
-		int err = ghn_errno == -1 ? errno : ghn_errno;
-		char *estr = strerror_r(err, buf, HOST_ENT_BUF_SIZE);
-		logerr("hostname lookup failed: %s", estr);
-		goto out_close;
-	}
-	memcpy(&raddr.sin_addr.s_addr, php->h_addr, php->h_length);
-
-got_addr:
-	raddr.sin_port = htons(info->port);
-
-	if (!info->client) {
-		/*
-		 * bind to any unused port.  If we left this up to the rpc
-		 * layer, it would bind to a reserved port, which has been shown
-		 * to exhaust the reserved port range in some situations.
-		 */
-		fd = open_sock(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
-		if (fd < 0)
-			return NULL;
-
-		laddr.sin_family = AF_INET;
-		laddr.sin_port = 0;
-		laddr.sin_addr.s_addr = htonl(INADDR_ANY);
-
-		len = sizeof(struct sockaddr_in);
-		if (bind(fd, (struct sockaddr *)&laddr, len) < 0) {
+		if (!info->client) {
 			close(fd);
 			fd = RPC_ANYSOCK;
-			/* FALLTHROUGH */
 		}
 	}
 
-	client = clntudp_bufcreate(&raddr,
-				   info->program, info->version,
-				   info->timeout, &fd,
-				   info->send_sz, info->recv_sz);
+	memset(&hints, 0, sizeof(hints));
+	hints.ai_flags = AI_ADDRCONFIG;
+	hints.ai_family = AF_UNSPEC;
+	hints.ai_socktype = SOCK_DGRAM;
+
+	ret = getaddrinfo(info->host, NULL, &hints, &ai);
+	if (ret) {
+		error(LOGOPT_ANY,
+		      "hostname lookup failed: %s", gai_strerror(ret));
+		goto out_close;
+	}
+
+	haddr = ai;
+	while (haddr) {
+		client = rpc_do_create_client(haddr->ai_addr, info, &fd);
+		if (client)
+			break;
+
+		if (!info->client) {
+			close(fd);
+			fd = RPC_ANYSOCK;
+		}
+
+		haddr = haddr->ai_next;
+	}
+
+	freeaddrinfo(ai);
 
 	if (!client) {
 		info->client = NULL;
 		goto out_close;
 	}
-
+done:
 	/* Close socket fd on destroy, as is default for rpcowned fds */
 	if  (!clnt_control(client, CLSET_FD_CLOSE, NULL)) {
 		clnt_destroy(client);
@@ -196,107 +425,23 @@ void rpc_destroy_udp_client(struct conn_info *info)
 }
 
 /*
- *  Perform a non-blocking connect on the socket fd.
- *
- *  The input struct timeval always has tv_nsec set to zero,
- *  we only ever use tv_sec for timeouts.
- */
-static int connect_nb(int fd, struct sockaddr_in *addr, struct timeval *tout)
-{
-	struct pollfd pfd[1];
-	int timeout = tout->tv_sec;
-	int flags, ret;
-	socklen_t len;
-
-	flags = fcntl(fd, F_GETFL, 0);
-	if (flags < 0)
-		return -1;
-
-	ret = fcntl(fd, F_SETFL, flags | O_NONBLOCK);
-	if (ret < 0)
-		return -1;
-
-	/* 
-	 * From here on subsequent sys calls could change errno so
-	 * we set ret = -errno to capture it in case we decide to
-	 * use it later.
-	 */
-	len = sizeof(struct sockaddr);
-	ret = connect(fd, (struct sockaddr *)addr, len);
-	if (ret < 0 && errno != EINPROGRESS) {
-		ret = -errno;
-		goto done;
-	}
-
-	if (ret == 0)
-		goto done;
-
-	pfd[0].fd = fd;
-	pfd[0].events = POLLOUT;
-
-	ret = poll(pfd, 1, timeout);
-	if (ret <= 0) {
-		if (ret == 0)
-			ret = -ETIMEDOUT;
-		else
-			ret = -errno;
-		goto done;
-	}
-
-	if (pfd[0].revents) {
-		int status;
-
-		len = sizeof(ret);
-		status = getsockopt(fd, SOL_SOCKET, SO_ERROR, &ret, &len);
-		if (status < 0) {
-			char buf[MAX_ERR_BUF + 1];
-			char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-
-			/*
-			 * We assume getsockopt amounts to a read on the
-			 * descriptor and gives us the errno we need for
-			 * the POLLERR revent case.
-			 */
-			ret = -errno;
-
-			/* Unexpected case, log it so we know we got caught */
-			if (pfd[0].revents & POLLNVAL)
-				logerr("unexpected poll(2) error on connect:"
-				       " %s", estr);
-
-			goto done;
-		}
-
-		/* Oops - something wrong with connect */
-		if (ret)
-			ret = -ret;
-	}
-
-done:
-	fcntl(fd, F_SETFL, flags);
-	return ret;
-}
-
-/*
  * Create a TCP RPC client using non-blocking connect
  */
 static CLIENT *create_tcp_client(struct conn_info *info)
 {
-	int fd, ghn_errno;
-	CLIENT *client;
-	struct sockaddr_in addr;
-	struct hostent hp;
-	struct hostent *php = &hp;
-	struct hostent *result;
-	char buf[HOST_ENT_BUF_SIZE];
-	int ret;
+	CLIENT *client = NULL;
+	struct addrinfo *ai, *haddr;
+	struct addrinfo hints;
+	int fd, ret;
 
 	if (info->proto->p_proto != IPPROTO_TCP)
 		return NULL;
 
+	fd = RPC_ANYSOCK;
+
 	if (info->client) {
 		if (!clnt_control(info->client, CLGET_FD, (char *) &fd)) {
-			fd = -1;
+			fd = RPC_ANYSOCK;
 			clnt_destroy(info->client);
 			info->client = NULL;
 		} else {
@@ -305,51 +450,50 @@ static CLIENT *create_tcp_client(struct conn_info *info)
 		}
 	}
 
-	memset(&addr, 0, sizeof(addr));
-
-	addr.sin_family = AF_INET;
 	if (info->addr) {
-		memcpy(&addr.sin_addr.s_addr, info->addr, info->addr_len);
-		goto got_addr;
+		client = rpc_do_create_client(info->addr, info, &fd);
+		if (client)
+			goto done;
+
+		if (!info->client) {
+			close(fd);
+			fd = RPC_ANYSOCK;
+		}
 	}
 
-	if (inet_aton(info->host, &addr.sin_addr))
-		goto got_addr;
+	memset(&hints, 0, sizeof(hints));
+	hints.ai_flags = AI_ADDRCONFIG;
+	hints.ai_family = AF_UNSPEC;
+	hints.ai_socktype = SOCK_STREAM;
 
-	memset(&hp, 0, sizeof(struct hostent));
-
-	ret = gethostbyname_r(info->host, php,
-			buf, HOST_ENT_BUF_SIZE, &result, &ghn_errno);
-	if (ret || !result) {
-		int err = ghn_errno == -1 ? errno : ghn_errno;
-		char *estr =  strerror_r(err, buf, HOST_ENT_BUF_SIZE);
-		logerr("hostname lookup failed: %s", estr);
+	ret = getaddrinfo(info->host, NULL, &hints, &ai);
+	if (ret) {
+		error(LOGOPT_ANY,
+		      "hostname lookup failed: %s", gai_strerror(ret));
 		goto out_close;
 	}
-	memcpy(&addr.sin_addr.s_addr, php->h_addr, php->h_length);
 
-got_addr:
-	addr.sin_port = htons(info->port);
+	haddr = ai;
+	while (haddr) {
+		client = rpc_do_create_client(haddr->ai_addr, info, &fd);
+		if (client)
+			break;
 
-	if (!info->client) {
-		fd = open_sock(PF_INET, SOCK_STREAM, info->proto->p_proto);
-		if (fd < 0)
-			return NULL;
+		if (!info->client) {
+			close(fd);
+			fd = RPC_ANYSOCK;
+		}
 
-		ret = connect_nb(fd, &addr, &info->timeout);
-		if (ret < 0)
-			goto out_close;
+		haddr = haddr->ai_next;
 	}
 
-	client = clnttcp_create(&addr,
-				info->program, info->version, &fd,
-				info->send_sz, info->recv_sz);
+	freeaddrinfo(ai);
 
 	if (!client) {
 		info->client = NULL;
 		goto out_close;
 	}
-
+done:
 	/* Close socket fd on destroy, as is default for rpcowned fds */
 	if  (!clnt_control(client, CLSET_FD_CLOSE, NULL)) {
 		clnt_destroy(client);
@@ -420,7 +564,7 @@ void rpc_destroy_tcp_client(struct conn_info *info)
 }
 
 int rpc_portmap_getclient(struct conn_info *info,
-			  const char *host, const char *addr, size_t addr_len,
+			  const char *host, struct sockaddr *addr, size_t addr_len,
 			  const char *proto, unsigned int option)
 {
 	struct protoent *pe_proto;
