@@ -15,6 +15,7 @@
 - add "forcestart" and "forcerestart" init script options to allow
   use of 5.0.3 strartup behavior if required.
 - always read entire file map into cache to speed lookups.
+- make MAX_ERR_BUF and PARSE_MAX_BUF use easier to audit.
 
 4/11/2008 autofs-5.0.4
 -----------------------
