@@ -22,7 +22,6 @@
 #include <sys/stat.h>
 #include <sys/ioctl.h>
 #include <fcntl.h>
-#include <mntent.h>
 #include <sys/vfs.h>
 
 #include "automount.h"
