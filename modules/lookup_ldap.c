@@ -1474,7 +1474,6 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 		free(query);
 		return NSS_STATUS_UNAVAIL;
 	}
-	query[l] = '\0';
 
 	/* Initialize the LDAP context. */
 	ldap = do_reconnect(logopt, ctxt);
@@ -2213,7 +2212,6 @@ static int read_one_map(struct autofs_point *ap,
 		free(sp.query);
 		return NSS_STATUS_UNAVAIL;
 	}
-	sp.query[l] = '\0';
 
 	/* Initialize the LDAP context. */
 	sp.ldap = do_reconnect(ap->logopt, ctxt);
@@ -2404,7 +2402,6 @@ static int lookup_one(struct autofs_point *ap,
 		free(query);
 		return CHE_FAIL;
 	}
-	query[ql] = '\0';
 
 	/* Initialize the LDAP context. */
 	ldap = do_reconnect(ap->logopt, ctxt);

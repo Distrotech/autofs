@@ -45,7 +45,8 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 {
 	struct startup_cond suc;
 	pthread_t thid;
-	char *realpath, *mountpoint;
+	char realpath[PATH_MAX];
+	char mountpoint[PATH_MAX];
 	const char **argv;
 	int argc, status, ghost = ap->flags & MOUNT_FLAG_GHOST;
 	time_t timeout = ap->exp_timeout;
@@ -62,8 +63,6 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 	/* Root offset of multi-mount */
 	len = strlen(root);
 	if (root[len - 1] == '/') {
-		realpath = alloca(strlen(ap->path) + name_len + 2);
-		mountpoint = alloca(len + 1);
 		strcpy(realpath, ap->path);
 		strcat(realpath, "/");
 		strcat(realpath, name);
@@ -71,8 +70,6 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 		strncpy(mountpoint, root, len);
 		mountpoint[len] = '\0';
 	} else if (*name == '/') {
-		realpath = alloca(name_len + 1);
-		mountpoint = alloca(len + 1);
 		if (ap->flags & MOUNT_FLAG_REMOUNT) {
 			strcpy(mountpoint, name);
 			strcpy(realpath, name);
@@ -81,12 +78,10 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 			strcpy(realpath, name);
 		}
 	} else {
-		realpath = alloca(len + name_len + 2);
-		mountpoint = alloca(len + name_len + 2);
 		strcpy(mountpoint, root);
 		strcat(mountpoint, "/");
-		strcpy(realpath, mountpoint);
 		strcat(mountpoint, name);
+		strcpy(realpath, mountpoint);
 		strcat(realpath, name);
 	}
 

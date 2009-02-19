@@ -58,7 +58,8 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 		const char *what, const char *fstype, const char *options,
 		void *context)
 {
-	char *fullpath, buf[MAX_ERR_BUF];
+	char fullpath[PATH_MAX];
+	char buf[MAX_ERR_BUF];
 	struct host *this, *hosts = NULL;
 	unsigned int vers;
 	char *nfsoptions = NULL;
@@ -150,14 +151,15 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 	/* Root offset of multi-mount */
 	len = strlen(root);
 	if (root[len - 1] == '/') {
-		fullpath = alloca(len);
 		len = snprintf(fullpath, len, "%s", root);
-	/* Direct mount name is absolute path so don't use root */
 	} else if (*name == '/') {
-		fullpath = alloca(len + 1);
+		/*
+		 * Direct or offset mount, name is absolute path so
+		 * don't use root (but with move mount changes root
+		 * is now the same as name).
+		 */
 		len = sprintf(fullpath, "%s", root);
 	} else {
-		fullpath = alloca(len + name_len + 2);
 		len = sprintf(fullpath, "%s/%s", root, name);
 	}
 	fullpath[len] = '\0';
