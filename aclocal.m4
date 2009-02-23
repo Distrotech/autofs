@@ -364,7 +364,8 @@ AC_TRY_LINK(
     [ AC_MSG_RESULT(no) ])
 
 if test "$af_have_libtirpc" = "yes"; then
-    AC_DEFINE(TIRPC_WORKAROUND,1, [Use libtirpc tsd usage workaround])
+    AC_DEFINE(WITH_LIBTIRPC,1, [Define to 1 if you have the libtirpc library installed])
+    AC_DEFINE(TIRPC_WORKAROUND,1, [Define to 1 to use the libtirpc tsd usage workaround])
     TIRPCLIB="-ltirpc"
 fi
 

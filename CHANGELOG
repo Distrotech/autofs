@@ -22,6 +22,9 @@
 - update to provide ipv6 address parsing.
 - easy alloca replacements fix.
 - add check for alternate libxml2 library for libxml2 tsd workaround.
+- add check for alternate libtirpc library for libtirpc tsd workaround.
+- cleanup configure defines for libtirpc.
+- add WITH_LIBTIRPC to -V status report.
 
 4/11/2008 autofs-5.0.4
 -----------------------

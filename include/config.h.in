@@ -117,7 +117,7 @@
 /* Define to 1 if you have the ANSI C header files. */
 #undef STDC_HEADERS
 
-/* Use libtirpc tsd usage workaround */
+/* Define to 1 to use the libtirpc tsd usage workaround */
 #undef TIRPC_WORKAROUND
 
 /* Define if using the dmalloc debugging malloc package */
@@ -128,6 +128,9 @@
 
 /* Define if using LDAP as a source of automount maps */
 #undef WITH_LDAP
+
+/* Define to 1 if you have the libtirpc library installed */
+#undef WITH_LIBTIRPC
 
 /* Define if using SASL authentication with the LDAP module */
 #undef WITH_SASL

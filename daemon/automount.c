@@ -1730,6 +1730,16 @@ static void show_build_info(void)
 #ifdef LIBXML2_WORKAROUND
 	printf("LIBXML2_WORKAROUND ");
 	count = count + 19;
+
+	if (count > 60) {
+		printf("\n  ");
+		count = 0;
+	}
+#endif
+
+#ifdef WITH_LIBTIRPC
+	printf("WITH_LIBTIRPC ");
+	count = count + 14;
 #endif
 
 	printf("\n\n");
@@ -2063,6 +2073,8 @@ int main(int argc, char *argv[])
 #endif
 #ifdef TIRPC_WORKAROUND
 	void *dh_tirpc = dlopen("libitirpc.so", RTLD_NOW);
+	if (!dh_tirpc)
+		dh_tirpc = dlopen("libitirpc.so.1", RTLD_NOW);
 #endif
 
 	if (!master_read_master(master_list, age, 0)) {
