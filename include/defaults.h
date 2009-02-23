@@ -37,6 +37,7 @@
 #define DEFAULT_ENTRY_ATTR		"cn"
 #define DEFAULT_VALUE_ATTR		"nisMapEntry"
 
+#define DEFAULT_NFS_MOUNT_PROTOCOL	3
 #define DEFAULT_APPEND_OPTIONS		1
 #define DEFAULT_AUTH_CONF_FILE		AUTOFS_MAP_DIR "/autofs_ldap_auth.conf"
 
@@ -61,6 +62,7 @@ struct ldap_schema *defaults_get_default_schema(void);
 struct ldap_schema *defaults_get_schema(void);
 struct ldap_searchdn *defaults_get_searchdns(void);
 void defaults_free_searchdns(struct ldap_searchdn *);
+unsigned int defaults_get_mount_nfs_default_proto(void);
 unsigned int defaults_get_append_options(void);
 unsigned int defaults_get_umount_wait(void);
 const char *defaults_get_auth_conf_file(void);

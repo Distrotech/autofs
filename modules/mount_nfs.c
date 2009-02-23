@@ -61,7 +61,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 	char fullpath[PATH_MAX];
 	char buf[MAX_ERR_BUF];
 	struct host *this, *hosts = NULL;
-	unsigned int vers;
+	unsigned int mount_default_proto, vers;
 	char *nfsoptions = NULL;
 	unsigned int random_selection = ap->flags & MOUNT_FLAG_RANDOM_SELECT;
 	int len, status, err, existed = 1;
@@ -130,10 +130,12 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 		      nfsoptions, nosymlink, ro);
 	}
 
+	mount_default_proto = defaults_get_mount_nfs_default_proto();
+	vers = NFS_VERS_MASK | NFS_PROTO_MASK;
 	if (strcmp(fstype, "nfs4") == 0)
 		vers = NFS4_VERS_MASK | TCP_SUPPORTED;
-	else
-		vers = NFS_VERS_MASK | NFS_PROTO_MASK;
+	else if (mount_default_proto == 4)
+		vers = vers | NFS4_VERS_MASK;
 
 	if (!parse_location(ap->logopt, &hosts, what)) {
 		info(ap->logopt, MODPREFIX "no hosts available");

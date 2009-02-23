@@ -45,6 +45,7 @@
 #define ENV_NAME_ENTRY_ATTR		"ENTRY_ATTRIBUTE"
 #define ENV_NAME_VALUE_ATTR		"VALUE_ATTRIBUTE"
 
+#define ENV_MOUNT_NFS_DEFAULT_PROTOCOL	"MOUNT_NFS_DEFAULT_PROTOCOL"
 #define ENV_APPEND_OPTIONS		"APPEND_OPTIONS"
 #define ENV_UMOUNT_WAIT			"UMOUNT_WAIT"
 #define ENV_AUTH_CONF_FILE		"AUTH_CONF_FILE"
@@ -326,7 +327,8 @@ unsigned int defaults_read_config(unsigned int to_syslog)
 		    check_set_config_value(key, ENV_APPEND_OPTIONS, value, to_syslog) ||
 		    check_set_config_value(key, ENV_UMOUNT_WAIT, value, to_syslog) ||
 		    check_set_config_value(key, ENV_AUTH_CONF_FILE, value, to_syslog) ||
-		    check_set_config_value(key, ENV_MAP_HASH_TABLE_SIZE, value, to_syslog))
+		    check_set_config_value(key, ENV_MAP_HASH_TABLE_SIZE, value, to_syslog) ||
+		    check_set_config_value(key, ENV_MOUNT_NFS_DEFAULT_PROTOCOL, value, to_syslog))
 			;
 	}
 
@@ -641,6 +643,17 @@ struct ldap_schema *defaults_get_schema(void)
 	schema->value_attr = va;
 
 	return schema;
+}
+
+unsigned int defaults_get_mount_nfs_default_proto(void)
+{
+	long proto;
+
+	proto = get_env_number(ENV_MOUNT_NFS_DEFAULT_PROTOCOL);
+	if (proto < 2 || proto > 4)
+		proto = DEFAULT_NFS_MOUNT_PROTOCOL;
+
+	return (unsigned int) proto;
 }
 
 unsigned int defaults_get_append_options(void)

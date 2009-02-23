@@ -25,6 +25,7 @@
 - add check for alternate libtirpc library for libtirpc tsd workaround.
 - cleanup configure defines for libtirpc.
 - add WITH_LIBTIRPC to -V status report.
+- add nfs mount protocol default configuration option.
 
 4/11/2008 autofs-5.0.4
 -----------------------

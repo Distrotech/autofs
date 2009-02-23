@@ -22,6 +22,16 @@ TIMEOUT=300
 #
 BROWSE_MODE="no"
 #
+# MOUNT_NFS_DEFAULT_PROTOCOL - specify the default protocol used by
+# 			       mount.nfs(8). Since we can't identify
+# 			       the default automatically we need to
+# 			       set it in our configuration. This will
+# 			       only make a difference for replicated
+# 			       map entries as availability probing isn't
+# 			       used for single host map entries.
+#
+#MOUNT_NFS_DEFAULT_PROTOCOL=3
+#
 # APPEND_OPTIONS - append to global options instead of replace.
 #
 #APPEND_OPTIONS="yes"
