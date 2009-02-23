@@ -2058,6 +2058,8 @@ int main(int argc, char *argv[])
 
 #ifdef LIBXML2_WORKAROUND
 	void *dh_xml2 = dlopen("libxml2.so", RTLD_NOW);
+	if (!dh_xml2)
+		dh_xml2 = dlopen("libxml2.so.2", RTLD_NOW);
 #endif
 #ifdef TIRPC_WORKAROUND
 	void *dh_tirpc = dlopen("libitirpc.so", RTLD_NOW);

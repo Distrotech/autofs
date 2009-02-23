@@ -21,6 +21,7 @@
 - update to provide ipv6 name and address support.
 - update to provide ipv6 address parsing.
 - easy alloca replacements fix.
+- add check for alternate libxml2 library for libxml2 tsd workaround.
 
 4/11/2008 autofs-5.0.4
 -----------------------
