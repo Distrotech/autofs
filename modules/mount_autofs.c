@@ -80,8 +80,8 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 	} else {
 		strcpy(mountpoint, root);
 		strcat(mountpoint, "/");
-		strcat(mountpoint, name);
 		strcpy(realpath, mountpoint);
+		strcat(mountpoint, name);
 		strcat(realpath, name);
 	}
 
