@@ -26,6 +26,7 @@
 - cleanup configure defines for libtirpc.
 - add WITH_LIBTIRPC to -V status report.
 - add nfs mount protocol default configuration option.
+- fix bad token declaration in master map parser.
 
 4/11/2008 autofs-5.0.4
 -----------------------

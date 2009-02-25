@@ -122,7 +122,7 @@ static int master_fprintf(FILE *, char *, ...);
 %token <strtype> MAPNULL
 %token <strtype> MAPXFN
 %token <strtype> MAPNAME
-%token <inttype> NUMBER
+%token <longtype> NUMBER
 %token <strtype> OPTION
 
 %start file
