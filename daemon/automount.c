@@ -60,7 +60,7 @@ long global_negative_timeout = -1;
 int do_force_unlink = 0;		/* Forceably unlink mount tree at startup */
 
 static int start_pipefd[2];
-static int st_stat = 0;
+static int st_stat = 1;
 static int *pst_stat = &st_stat;
 static pthread_t state_mach_thid;
 
@@ -1046,6 +1046,7 @@ static void become_daemon(unsigned foreground, unsigned daemon_check)
 {
 	FILE *pidfp;
 	char buf[MAX_ERR_BUF];
+	int res;
 	pid_t pid;
 
 	/* Don't BUSY any directories unnecessarily */
@@ -1072,10 +1073,9 @@ static void become_daemon(unsigned foreground, unsigned daemon_check)
 	} else {
 		pid = fork();
 		if (pid > 0) {
-			int r;
 			close(start_pipefd[1]);
-			r = read(start_pipefd[0], pst_stat, sizeof(*pst_stat));
-			if (r < 0)
+			res = read(start_pipefd[0], pst_stat, sizeof(*pst_stat));
+			if (res < 0)
 				exit(1);
 			exit(*pst_stat);
 		} else if (pid < 0) {
@@ -1088,8 +1088,13 @@ static void become_daemon(unsigned foreground, unsigned daemon_check)
 		if (daemon_check && !aquire_flag_file()) {
 			fprintf(stderr, "%s: program is already running.\n",
 				program);
+			/* Return success if already running */
+			st_stat = 0;
+			res = write(start_pipefd[1], pst_stat, sizeof(*pst_stat));
+			if (res < 0)
+				exit(1);
 			close(start_pipefd[1]);
-			exit(1);
+			exit(*pst_stat);
 		}
 
 		/*
@@ -1099,8 +1104,9 @@ static void become_daemon(unsigned foreground, unsigned daemon_check)
 		if (setsid() == -1) {
 			char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
 			fprintf(stderr, "setsid: %s", estr);
+			res = write(start_pipefd[1], pst_stat, sizeof(*pst_stat));
 			close(start_pipefd[1]);
-			exit(1);
+			exit(*pst_stat);
 		}
 		log_to_syslog();
 	}
@@ -1991,6 +1997,7 @@ int main(int argc, char *argv[])
 	if (!master_list) {
 		logerr("%s: can't create master map %s",
 			program, argv[0]);
+		res = write(start_pipefd[1], pst_stat, sizeof(*pst_stat));
 		close(start_pipefd[1]);
 		release_flag_file();
 		exit(1);
@@ -1999,6 +2006,7 @@ int main(int argc, char *argv[])
 	if (pthread_attr_init(&th_attr)) {
 		logerr("%s: failed to init thread attribute struct!",
 		     program);
+		res = write(start_pipefd[1], pst_stat, sizeof(*pst_stat));
 		close(start_pipefd[1]);
 		release_flag_file();
 		exit(1);
@@ -2007,6 +2015,7 @@ int main(int argc, char *argv[])
 	if (pthread_attr_init(&th_attr_detached)) {
 		logerr("%s: failed to init thread attribute struct!",
 		     program);
+		res = write(start_pipefd[1], pst_stat, sizeof(*pst_stat));
 		close(start_pipefd[1]);
 		release_flag_file();
 		exit(1);
@@ -2016,6 +2025,7 @@ int main(int argc, char *argv[])
 			&th_attr_detached, PTHREAD_CREATE_DETACHED)) {
 		logerr("%s: failed to set detached thread attribute!",
 		     program);
+		res = write(start_pipefd[1], pst_stat, sizeof(*pst_stat));
 		close(start_pipefd[1]);
 		release_flag_file();
 		exit(1);
@@ -2026,6 +2036,7 @@ int main(int argc, char *argv[])
 			&th_attr_detached, PTHREAD_STACK_MIN*64)) {
 		logerr("%s: failed to set stack size thread attribute!",
 		       program);
+		res = write(start_pipefd[1], pst_stat, sizeof(*pst_stat));
 		close(start_pipefd[1]);
 		release_flag_file();
 		exit(1);
@@ -2043,6 +2054,7 @@ int main(int argc, char *argv[])
 		logerr("%s: failed to create thread data key for std env vars!",
 		       program);
 		master_kill(master_list);
+		res = write(start_pipefd[1], pst_stat, sizeof(*pst_stat));
 		close(start_pipefd[1]);
 		release_flag_file();
 		exit(1);
@@ -2053,6 +2065,7 @@ int main(int argc, char *argv[])
 	if (!alarm_start_handler()) {
 		logerr("%s: failed to create alarm handler thread!", program);
 		master_kill(master_list);
+		res = write(start_pipefd[1], pst_stat, sizeof(*pst_stat));
 		close(start_pipefd[1]);
 		release_flag_file();
 		exit(1);
@@ -2061,6 +2074,7 @@ int main(int argc, char *argv[])
 	if (!st_start_handler()) {
 		logerr("%s: failed to create FSM handler thread!", program);
 		master_kill(master_list);
+		res = write(start_pipefd[1], pst_stat, sizeof(*pst_stat));
 		close(start_pipefd[1]);
 		release_flag_file();
 		exit(1);
@@ -2092,6 +2106,7 @@ int main(int argc, char *argv[])
 	 */
 	do_force_unlink = 0;
 
+	st_stat = 0;
 	res = write(start_pipefd[1], pst_stat, sizeof(*pst_stat));
 	close(start_pipefd[1]);
 
