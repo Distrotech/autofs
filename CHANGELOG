@@ -28,6 +28,7 @@
 - add nfs mount protocol default configuration option.
 - fix bad token declaration in master map parser.
 - fix return start status on fail.
+- fix double free in expire_proc().
 
 4/11/2008 autofs-5.0.4
 -----------------------

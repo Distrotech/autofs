@@ -298,7 +298,6 @@ static enum expire expire_proc(struct autofs_point *ap, int now)
 		error(ap->logopt,
 		      "expire thread create for %s failed", ap->path);
 		expire_proc_cleanup((void *) ea);
-		free(ea);
 		return EXP_ERROR;
 	}
 	ap->exp_thread = thid;
