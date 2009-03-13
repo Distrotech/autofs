@@ -323,7 +323,6 @@ static int get_query_dn(unsigned logopt, LDAP *ldap, struct lookup_context *ctxt
 		}
 		scope = LDAP_SCOPE_SUBTREE;
 	}
-	query[l] = '\0';
 
 	if (!ctxt->base) {
 		sdns = defaults_get_searchdns();
