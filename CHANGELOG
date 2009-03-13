@@ -30,6 +30,7 @@
 - fix return start status on fail.
 - fix double free in expire_proc().
 - another easy alloca replacements fix.
+- add LSB init script parameter block.
 
 4/11/2008 autofs-5.0.4
 -----------------------

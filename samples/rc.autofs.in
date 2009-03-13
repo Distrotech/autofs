@@ -5,7 +5,16 @@
 # On most distributions, this file should be called:
 # /etc/rc.d/init.d/autofs or /etc/init.d/autofs or /etc/rc.d/rc.autofs
 #
-
+#
+### BEGIN INIT INFO
+# Provides: $autofs
+# Should-Start: $network $ypbind
+# Should-Stop: $network $ypbind
+# Default-Start: 3 4 5
+# Default-Stop: 0 1 2 6
+# Short-Description: Automounts filesystems on demand
+# Description: Automounts filesystems on demand
+### END INIT INFO
 #
 # Location of the automount daemon and the init directory
 #
