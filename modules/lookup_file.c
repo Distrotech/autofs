@@ -998,9 +998,20 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 
 		cache_readlock(mc);
 		me = cache_lookup_first(mc);
-		if (me && st.st_mtime <= me->age)
-			goto do_cache_lookup;
-		else
+		if (me && st.st_mtime <= me->age) {
+			/*
+			 * If any map instances are present for this source
+			 * then either we have plus included entries or we
+			 * are looking through the list of nsswitch sources.
+			 * In either case we cannot avoid reading through the
+			 * map because we must preserve the key order over
+			 * multiple sources. But also, we can't know, at this
+			 * point, if a source instance has been changed since
+			 * the last time we checked it.
+			 */
+			if (!source->instance)
+				goto do_cache_lookup;
+		} else
 			source->stale = 1;
 
 		me = cache_lookup_distinct(mc, key);
