@@ -32,6 +32,7 @@
 - another easy alloca replacements fix.
 - add LSB init script parameter block.
 - fix file map lookup when reading included or nsswitch sources.
+- use misc device ioctl interface by default, if available.
 
 4/11/2008 autofs-5.0.4
 -----------------------
