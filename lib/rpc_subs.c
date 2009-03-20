@@ -346,6 +346,7 @@ static CLIENT *create_udp_client(struct conn_info *info)
 	if (ret) {
 		error(LOGOPT_ANY,
 		      "hostname lookup failed: %s", gai_strerror(ret));
+		info->client = NULL;
 		goto out_close;
 	}
 
@@ -470,6 +471,7 @@ static CLIENT *create_tcp_client(struct conn_info *info)
 	if (ret) {
 		error(LOGOPT_ANY,
 		      "hostname lookup failed: %s", gai_strerror(ret));
+		info->client = NULL;
 		goto out_close;
 	}
 
