@@ -33,6 +33,7 @@
 - add LSB init script parameter block.
 - fix file map lookup when reading included or nsswitch sources.
 - use misc device ioctl interface by default, if available.
+- fix call restorecon when misc device file doesn't exist.
 
 4/11/2008 autofs-5.0.4
 -----------------------

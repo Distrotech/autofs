@@ -76,7 +76,7 @@ function start() {
 				mknod -m 0600 /dev/$DEVICE c 10 $MINOR
 			fi
 		fi
-		if [ -x /sbin/restorecon ]; then
+		if [ -x /sbin/restorecon -a -c /dev/$DEVICE ]; then
 			/sbin/restorecon /dev/$DEVICE
 		fi
 	else
