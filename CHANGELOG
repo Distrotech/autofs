@@ -35,6 +35,7 @@
 - use misc device ioctl interface by default, if available.
 - fix call restorecon when misc device file doesn't exist.
 - clear rpc client on lookup fail.
+- fix lsb init script header.
 
 4/11/2008 autofs-5.0.4
 -----------------------
