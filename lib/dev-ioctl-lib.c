@@ -764,12 +764,10 @@ static int dev_ioctl_ismountpoint(unsigned int logopt,
 	if (err) {
 		*mountpoint = DEV_IOCTL_IS_MOUNTED;
 
-		if (param->ismountpoint.out.magic) {
-			if (param->ismountpoint.out.magic == AUTOFS_SUPER_MAGIC)
-				*mountpoint |= DEV_IOCTL_IS_AUTOFS;
-			else
-				*mountpoint |= DEV_IOCTL_IS_OTHER;
-		}
+		if (param->ismountpoint.out.magic == AUTOFS_SUPER_MAGIC)
+			*mountpoint |= DEV_IOCTL_IS_AUTOFS;
+		else
+			*mountpoint |= DEV_IOCTL_IS_OTHER;
 	}
 
 	free_dev_ioctl_path(param);

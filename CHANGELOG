@@ -39,6 +39,7 @@
 - fix memory leak reading master map.
 - fix st_remove_tasks() locking.
 - reset flex scanner when setting buffer.
+- zero s_magic is valid.
 
 4/11/2008 autofs-5.0.4
 -----------------------
