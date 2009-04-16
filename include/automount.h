@@ -238,6 +238,7 @@ int lookup_enumerate(struct autofs_point *ap,
 int lookup_ghost(struct autofs_point *ap, const char *root);
 int lookup_nss_mount(struct autofs_point *ap, struct map_source *source, const char *name, int name_len);
 void lookup_close_lookup(struct autofs_point *ap);
+void lookup_prune_one_cache(struct autofs_point *ap, struct mapent_cache *mc, time_t age);
 int lookup_prune_cache(struct autofs_point *ap, time_t age);
 struct mapent *lookup_source_valid_mapent(struct autofs_point *ap, const char *key, unsigned int type);
 struct mapent *lookup_source_mapent(struct autofs_point *ap, const char *key, unsigned int type);

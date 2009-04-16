@@ -352,6 +352,68 @@ static void tree_mnts_cleanup(void *arg)
 	return;
 }
 
+static void do_readmap_mount(struct autofs_point *ap, struct mnt_list *mnts,
+			     struct map_source *map, struct mapent *me, time_t now)
+{
+	struct mapent_cache *nc;
+	struct mapent *ne, *nested, *valid;
+
+	nc = ap->entry->master->nc;
+
+	ne = cache_lookup_distinct(nc, me->key);
+	if (!ne) {
+		nested = cache_partial_match(nc, me->key);
+		if (nested) {
+			error(ap->logopt,
+			      "removing invalid nested null entry %s",
+			      nested->key);
+			nested = cache_partial_match(nc, me->key);
+			if (nested)
+				cache_delete(nc, nested->key);
+		}
+	}
+
+	if (me->age < now || (ne && map->master_line > ne->age)) {
+		/*
+		 * The map instance may have changed, such as the map name or
+		 * the mount options, but the direct map entry may still exist
+		 * in one of the other maps. If so then update the new cache
+		 * entry device and inode so we can find it at lookup. Later,
+		 * the mount for the new cache entry will just update the
+		 * timeout.
+		 *
+		 * TODO: how do we recognise these orphaned map instances. We
+		 * can't just delete these instances when the cache becomes
+		 * empty because that is a valid state for a master map entry.
+		 * This is becuase of the requirement to continue running with
+		 * an empty cache awaiting a map re-load.
+		 */
+		valid = lookup_source_valid_mapent(ap, me->key, LKP_DISTINCT);
+		if (valid) {
+			struct mapent_cache *vmc = valid->mc;
+			cache_unlock(vmc);
+			debug(ap->logopt,
+			     "updating cache entry for valid direct trigger %s",
+			     me->key);
+			cache_writelock(vmc);
+			valid = cache_lookup_distinct(vmc, me->key);
+			/* Take over the mount if there is one */
+			valid->ioctlfd = me->ioctlfd;
+			me->ioctlfd = -1;
+			/* Set device and inode number of the new mapent */
+			cache_set_ino_index(vmc, me->key, me->dev, me->ino);
+			cache_unlock(vmc);
+		} else if (!tree_is_mounted(mnts, me->key, MNTS_REAL))
+			do_umount_autofs_direct(ap, mnts, me);
+		else
+			debug(ap->logopt,
+			      "%s is mounted", me->key);
+	} else
+		do_mount_autofs_direct(ap, mnts, me);
+
+	return;
+}
+
 static void *do_readmap(void *arg)
 {
 	struct autofs_point *ap;
@@ -398,7 +460,8 @@ static void *do_readmap(void *arg)
 		lookup_prune_cache(ap, now);
 		status = lookup_ghost(ap, ap->path);
 	} else {
-		struct mapent *me, *ne, *nested;
+		struct mapent *me;
+
 		mnts = tree_make_mnt_tree(_PROC_MOUNTS, "/");
 		pthread_cleanup_push(tree_mnts_cleanup, mnts);
 		pthread_cleanup_push(master_source_lock_cleanup, ap->entry);
@@ -418,31 +481,10 @@ static void *do_readmap(void *arg)
 			cache_readlock(mc);
 			me = cache_enumerate(mc, NULL);
 			while (me) {
-				ne = cache_lookup_distinct(nc, me->key);
-				if (!ne) {
-					nested = cache_partial_match(nc, me->key);
-					if (nested) {
-						error(ap->logopt,
-						"removing invalid nested null entry %s",
-						nested->key);
-						nested = cache_partial_match(nc, me->key);
-						if (nested)
-							cache_delete(nc, nested->key);
-					}
-				}
-
-				/* TODO: check return of do_... */
-				if (me->age < now || (ne && map->master_line > ne->age)) {
-					if (!tree_is_mounted(mnts, me->key, MNTS_REAL))
-						do_umount_autofs_direct(ap, mnts, me);
-					else
-                                		debug(ap->logopt,
-						      "%s is mounted", me->key);
-				} else
-					do_mount_autofs_direct(ap, mnts, me);
-
+				do_readmap_mount(ap, mnts, map, me, now);
 				me = cache_enumerate(mc, me);
 			}
+			lookup_prune_one_cache(ap, map->mc, now);
 			pthread_cleanup_pop(1);
 			map->stale = 0;
 			map = map->next;
