@@ -21,8 +21,7 @@
 #ifndef AUTOFS_DEV_IOCTL_LIB_H
 #define AUTOFS_DEV_IOCTL_LIB_H
 
-#include <sys/types.h>
-#include "linux/auto_dev-ioctl.h"
+#include <linux/auto_dev-ioctl.h>
 
 #define CONTROL_DEVICE  "/dev/autofs"
 

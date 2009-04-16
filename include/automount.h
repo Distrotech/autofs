@@ -8,12 +8,11 @@
 #ifndef AUTOMOUNT_H
 #define AUTOMOUNT_H
 
-#include <sys/types.h>
 #include <paths.h>
 #include <limits.h>
 #include <time.h>
 #include <syslog.h>
-#include <linux/types.h>
+#include <sys/types.h>
 #include <pthread.h>
 #include <sched.h>
 #include <errno.h>
