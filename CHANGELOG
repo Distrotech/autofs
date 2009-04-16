@@ -37,6 +37,7 @@
 - clear rpc client on lookup fail.
 - fix lsb init script header.
 - fix memory leak reading master map.
+- fix st_remove_tasks() locking.
 
 4/11/2008 autofs-5.0.4
 -----------------------

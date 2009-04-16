@@ -783,10 +783,14 @@ void st_remove_tasks(struct autofs_point *ap)
 	struct state_queue *task, *waiting;
 	int status;
 
+	st_mutex_lock();
+
 	head = &state_queue;
 
-	if (list_empty(head))
+	if (list_empty(head)) {
+		st_mutex_unlock();
 		return;
+	}
 
 	p = head->next;
 	while (p != head) {
@@ -822,6 +826,8 @@ void st_remove_tasks(struct autofs_point *ap)
 	status = pthread_cond_signal(&cond);
 	if (status)
 		fatal(status);
+
+	st_mutex_unlock();
 
 	return;
 }
