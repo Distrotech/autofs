@@ -607,9 +607,10 @@ static int sun_mount(struct autofs_point *ap, const char *root,
 			int len = strlen(options);
 			int suid = strstr(options, "suid") ? 0 : 7;
 			int dev = strstr(options, "dev") ? 0 : 6;
+			int nointr = strstr(options, "nointr") ? 0 : 5;
 
-			if (suid || dev) {
-				char *tmp = alloca(len + suid + dev + 1);
+			if (suid || dev || nointr) {
+				char *tmp = alloca(len + suid + dev + nointr + 1);
 				if (!tmp) {
 					error(ap->logopt, MODPREFIX
 					      "alloca failed for options");
@@ -623,10 +624,12 @@ static int sun_mount(struct autofs_point *ap, const char *root,
 					strcat(tmp, ",nosuid");
 				if (dev)
 					strcat(tmp, ",nodev");
+				if (nointr)
+					strcat(tmp, ",intr");
 				options = tmp;
 			}
 		} else {
-			char *tmp = alloca(13);
+			char *tmp = alloca(18);
 			if (!tmp) {
 				error(ap->logopt,
 				      MODPREFIX "alloca failed for options");
@@ -634,7 +637,7 @@ static int sun_mount(struct autofs_point *ap, const char *root,
 					return -1;
 				return 1;
 			}
-			strcpy(tmp, "nosuid,nodev");
+			strcpy(tmp, "nosuid,nodev,intr");
 			options = tmp;
 		}
 	}
