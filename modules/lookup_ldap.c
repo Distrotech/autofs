@@ -1563,6 +1563,8 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 			ldap_value_free(values);
 			goto next;
 		}
+		ldap_value_free(values);
+
 		master_parse_entry(parse_buf, timeout, logging, age);
 next:
 		ldap_value_free(keyValue);
