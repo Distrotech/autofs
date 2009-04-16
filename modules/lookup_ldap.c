@@ -60,6 +60,7 @@ struct ldap_search_params {
 };
 
 static LDAP *auth_init(unsigned logopt, const char *, struct lookup_context *);
+static int decode_percent_hack(const char *, char **);
 
 #ifndef HAVE_LDAP_CREATE_PAGE_CONTROL
 int ldap_create_page_control(LDAP *ldap, ber_int_t pagesize,
@@ -1508,6 +1509,9 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 		debug(logopt, MODPREFIX "examining entries");
 
 	while (e) {
+		char *key = NULL;
+		int dec_len, i;
+
 		keyValue = ldap_get_values(ldap, e, entry);
 
 		if (!keyValue || !*keyValue) {
@@ -1519,19 +1523,63 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 		 * By definition keys must be unique within
 		 * each map entry
 		 */
-		if (ldap_count_values(keyValue) > 1) {
-			error(logopt,
-			      MODPREFIX
-			      "key %s has duplicate entries - ignoring",
-			      *keyValue);
-			goto next;
+		count = ldap_count_values(keyValue);
+		if (strcasecmp(class, "nisObject")) {
+			if (count > 1) {
+				error(logopt, MODPREFIX
+				      "key %s has duplicates - ignoring",
+				      *keyValue);
+				goto next;
+			}
+			key = strdup(keyValue[0]);
+			if (!key) {
+				error(logopt, MODPREFIX
+				      "failed to dup map key %s - ignoring",
+				      *keyValue);
+				goto next;
+			}
+		} else if (count == 1) {
+			dec_len = decode_percent_hack(keyValue[0], &key);
+			if (dec_len < 0) {
+				error(logopt, MODPREFIX
+				      "invalid map key %s - ignoring",
+				      *keyValue);
+				goto next;
+			}
+		} else {
+			dec_len = decode_percent_hack(keyValue[0], &key);
+			if (dec_len < 0) {
+				error(logopt, MODPREFIX
+				      "invalid map key %s - ignoring",
+				      *keyValue);
+				goto next;
+			}
+
+			for (i = 1; i < count; i++) {
+				char *k;
+				dec_len = decode_percent_hack(keyValue[i], &k);
+				if (dec_len < 0) {
+					error(logopt, MODPREFIX
+					      "invalid map key %s - ignoring",
+					      *keyValue);
+					goto next;
+				}
+				if (strcmp(key, k)) {
+					error(logopt, MODPREFIX
+					      "key entry mismatch %s - ignoring",
+					      *keyValue);
+					free(k);
+					goto next;
+				}
+				free(k);
+			}
 		}
 
 		/*
 		 * Ignore keys beginning with '+' as plus map
 		 * inclusion is only valid in file maps.
 		 */
-		if (**keyValue == '+') {
+		if (*key == '+') {
 			warn(logopt,
 			     MODPREFIX
 			     "ignoreing '+' map entry - not in file map");
@@ -1558,7 +1606,7 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 		}
 
 		if (snprintf(parse_buf, sizeof(parse_buf), "%s %s",
-			     *keyValue, *values) >= sizeof(parse_buf)) {
+			     key, *values) >= sizeof(parse_buf)) {
 			error(logopt, MODPREFIX "map entry too long");
 			ldap_value_free(values);
 			goto next;
@@ -1568,6 +1616,8 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 		master_parse_entry(parse_buf, timeout, logging, age);
 next:
 		ldap_value_free(keyValue);
+		if (key)
+			free(key);
 		e = ldap_next_entry(ldap, e);
 	}
 
