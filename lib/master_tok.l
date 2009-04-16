@@ -130,7 +130,6 @@ OPTNTOUT	(-n{OPTWS}|-n{OPTWS}={OPTWS}|--negative-timeout{OPTWS}|--negative-timeo
 	\x00 {
 		if (optr != buff) {
 			*optr = '\0';
-			optr = buff;
 			strcpy(master_lval.strtype, buff);
 			return NILL;
 		}
@@ -139,6 +138,11 @@ OPTNTOUT	(-n{OPTWS}|-n{OPTWS}={OPTWS}|--negative-timeout{OPTWS}|--negative-timeo
 	#.*  { return COMMENT; }
 
 	"/" {
+		if (optr != buff) {
+			*optr = '\0';
+			strcpy(master_lval.strtype, buff);
+			return NILL;
+		}
 		BEGIN(PATHSTR);
 		bptr = buff;
 		yyless(0);
@@ -410,6 +414,9 @@ static void master_echo(void)
 
 void master_set_scan_buffer(const char *buffer)
 {
+	master_lex_destroy();
+	optr = buff;
+
 	line = buffer;
 	line_pos = &line[0];
 	/*
