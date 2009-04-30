@@ -44,6 +44,7 @@
 - use intr option as hosts mount default.
 - fix kernel includes.
 - dont umount existing direct mount on master re-read.
+- fix incorrect shutdown introduced by library relaod fixes.
 
 4/11/2008 autofs-5.0.4
 -----------------------

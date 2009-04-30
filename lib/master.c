@@ -1182,7 +1182,6 @@ int master_done(struct master *master)
 	struct master_mapent *entry;
 	int res = 0;
 
-	master_mutex_lock();
 	head = &master->completed;
 	p = head->next;
 	while (p != head) {
@@ -1195,7 +1194,6 @@ int master_done(struct master *master)
 	}
 	if (list_empty(&master->mounts))
 		res = 1;
-	master_mutex_unlock();
 
 	return res;
 }

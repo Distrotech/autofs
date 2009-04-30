@@ -1332,8 +1332,22 @@ static void *statemachine(void *arg)
 		case SIGTERM:
 		case SIGINT:
 		case SIGUSR2:
-			if (master_done(master_list))
-				return NULL;
+			master_mutex_lock();
+			if (list_empty(&master_list->completed)) {
+				if (list_empty(&master_list->mounts)) {
+					master_mutex_unlock();
+					return NULL;
+				}
+			} else {
+				if (master_done(master_list)) {
+					master_mutex_unlock();
+					return NULL;
+				}
+				master_mutex_unlock();
+				break;
+			}
+			master_mutex_unlock();
+
 		case SIGUSR1:
 			do_signals(master_list, sig);
 			break;
