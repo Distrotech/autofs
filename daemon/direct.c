@@ -881,13 +881,14 @@ void *expire_proc_direct(void *arg)
 			 * avoid maintaining a file handle for control
 			 * functions as once it's mounted all opens are
 			 * directed to the mount not the trigger.
-			 * But first expire possible rootless offsets first.
 			 */
 
-			/* Offsets always have a real mount at their base */
+			/* Check for manual umount */
 			cache_writelock(me->mc);
-			if (strstr(next->opts, "offset")) {
-				ops->close(ap->logopt, me->ioctlfd);
+			if (me->ioctlfd != -1 && 
+			    fstat(ioctlfd, &st) != -1 &&
+			    !count_mounts(ap->logopt, next->path, st.st_dev)) {
+				ops->close(ap->logopt, ioctlfd);
 				me->ioctlfd = -1;
 				cache_unlock(me->mc);
 				pthread_setcancelstate(cur_state, NULL);
@@ -903,15 +904,6 @@ void *expire_proc_direct(void *arg)
 				pthread_setcancelstate(cur_state, NULL);
 				continue;
 			}
-
-			cache_writelock(me->mc);
-			if (me->ioctlfd != -1 && 
-			    fstat(ioctlfd, &st) != -1 &&
-			    !count_mounts(ap->logopt, next->path, st.st_dev)) {
-				ops->close(ap->logopt, ioctlfd);
-				me->ioctlfd = -1;
-			}
-			cache_unlock(me->mc);
 
 			pthread_setcancelstate(cur_state, NULL);
 			continue;
@@ -1068,7 +1060,7 @@ int handle_packet_expire_direct(struct autofs_point *ap, autofs_packet_expire_di
 	map = ap->entry->maps;
 	while (map) {
 		mc = map->mc;
-		cache_readlock(mc);
+		cache_writelock(mc);
 		me = cache_lookup_ino(mc, pkt->dev, pkt->ino);
 		if (me)
 			break;
@@ -1345,7 +1337,7 @@ int handle_packet_missing_direct(struct autofs_point *ap, autofs_packet_missing_
 		}
 
 		mc = map->mc;
-		cache_readlock(mc);
+		cache_writelock(mc);
 		me = cache_lookup_ino(mc, pkt->dev, pkt->ino);
 		if (me)
 			break;
@@ -1367,10 +1359,10 @@ int handle_packet_missing_direct(struct autofs_point *ap, autofs_packet_missing_
 
 	if (me->ioctlfd != -1) {
 		/* Maybe someone did a manual umount, clean up ! */
-		ioctlfd = me->ioctlfd;
+		close(me->ioctlfd);
 		me->ioctlfd = -1;
-	} else
-		ops->open(ap->logopt, &ioctlfd, me->dev, me->key);
+	}
+	ops->open(ap->logopt, &ioctlfd, me->dev, me->key);
 
 	if (ioctlfd == -1) {
 		cache_unlock(mc);

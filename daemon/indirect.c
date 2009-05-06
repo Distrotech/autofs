@@ -428,8 +428,53 @@ void *expire_proc_indirect(void *arg)
 			pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cur_state);
 			if (strstr(next->opts, "indirect"))
 				master_notify_submount(ap, next->path, ap->state);
-			pthread_setcancelstate(cur_state, NULL);
+			else if (strstr(next->opts, "offset")) {
+				struct map_source *map;
+				struct mapent_cache *mc = NULL;
+				struct mapent *me = NULL;
+				struct stat st;
 
+				master_source_readlock(ap->entry);
+
+				map = ap->entry->maps;
+				while (map) {
+					mc = map->mc;
+					cache_writelock(mc);
+					me = cache_lookup_distinct(mc, next->path);
+					if (me)
+						break;
+					cache_unlock(mc);
+					map = map->next;
+				}
+
+				if (!mc || !me) {
+					master_source_unlock(ap->entry);
+					pthread_setcancelstate(cur_state, NULL);
+					continue;
+				}
+
+				/* Check for manual umount */
+				if (me->ioctlfd != -1 &&
+				    (fstat(me->ioctlfd, &st) == -1 ||
+				     !count_mounts(ap->logopt, me->key, st.st_dev))) {
+					if (is_mounted(_PROC_MOUNTS, me->key, MNTS_REAL)) {
+						error(ap->logopt,
+						      "error: possible mtab mismatch %s",
+						      me->key);
+						cache_unlock(mc);
+						master_source_unlock(ap->entry);
+						pthread_setcancelstate(cur_state, NULL);
+						continue;
+					}
+					close(me->ioctlfd);
+					me->ioctlfd = -1;
+				}
+
+				cache_unlock(mc);
+				master_source_unlock(ap->entry);
+			}
+
+			pthread_setcancelstate(cur_state, NULL);
 			continue;
 		}
 

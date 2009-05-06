@@ -45,6 +45,7 @@
 - fix kernel includes.
 - dont umount existing direct mount on master re-read.
 - fix incorrect shutdown introduced by library relaod fixes.
+- improve manual umount recovery.
 
 4/11/2008 autofs-5.0.4
 -----------------------
