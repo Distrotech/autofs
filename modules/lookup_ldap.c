@@ -2236,6 +2236,14 @@ static int read_one_map(struct autofs_point *ap,
 	ap->entry->current = NULL;
 	master_source_current_signal(ap->entry);
 
+	/*
+	 * If we don't need to create directories then there's no use
+	 * reading the map. We always need to read the whole map for
+	 * direct mounts in order to mount the triggers.
+	 */
+	if (!(ap->flags & MOUNT_FLAG_GHOST) && ap->type != LKP_DIRECT)
+		return NSS_STATUS_SUCCESS;
+
 	sp.ap = ap;
 	sp.age = age;
 

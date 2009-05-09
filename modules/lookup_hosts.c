@@ -89,6 +89,14 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 	ap->entry->current = NULL;
 	master_source_current_signal(ap->entry);
 
+	/*
+	 * If we don't need to create directories then there's no use
+	 * reading the map. We always need to read the whole map for
+	 * direct mounts in order to mount the triggers.
+	 */
+	if (!(ap->flags & MOUNT_FLAG_GHOST) && ap->type != LKP_DIRECT)
+		return NSS_STATUS_SUCCESS;
+
 	mc = source->mc;
 
 	status = pthread_mutex_lock(&hostent_mutex);

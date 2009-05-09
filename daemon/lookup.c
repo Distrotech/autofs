@@ -278,20 +278,6 @@ static int do_read_map(struct autofs_point *ap, struct map_source *map, time_t a
 	map->lookup = lookup;
 	master_source_unlock(ap->entry);
 
-	/* If we don't need to create directories then there's no use
-	 * reading the map. We just need to test that the map is valid
-	 * for the fail cases to function correctly and to cache the
-	 * lookup handle.
-	 *
-	 * We always need to read the whole map for direct mounts in
-	 * order to mount the triggers. We also want to read the whole
-	 * map if it's a file map to avoid potentially lengthy linear
-	 * file scanning.
-	 */
-	if (strcmp(map->type, "file") &&
-	    !(ap->flags & MOUNT_FLAG_GHOST) && ap->type != LKP_DIRECT)
-		return NSS_STATUS_SUCCESS;
-
 	if (!map->stale)
 		return NSS_STATUS_SUCCESS;
 
