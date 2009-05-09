@@ -181,7 +181,7 @@ static unsigned int get_proximity(struct sockaddr *host_addr)
 
 	case AF_INET6:
 #ifndef INET6
-		return PROXIMITY_ERROR;
+		return PROXIMITY_UNSUPPORTED;
 #else
 		addr6 = (struct sockaddr_in6 *) host_addr;
 		hst6_addr = (struct in6_addr *) &addr6->sin6_addr;
@@ -1048,6 +1048,13 @@ static int add_new_host(struct host **list,
 	int addr_len;
 
 	prx = get_proximity(host_addr->ai_addr);
+	/*
+	 * If we tried to add an IPv6 address and we don't have IPv6
+	 * support return success in the hope of getting an IPv4
+	 * address later.
+	 */
+	if (prx == PROXIMITY_UNSUPPORTED)
+		return 1;
 	if (prx == PROXIMITY_ERROR)
 		return 0;
 

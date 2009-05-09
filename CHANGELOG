@@ -46,6 +46,7 @@
 - dont umount existing direct mount on master re-read.
 - fix incorrect shutdown introduced by library relaod fixes.
 - improve manual umount recovery.
+- dont fail on ipv6 address when adding host.
 
 4/11/2008 autofs-5.0.4
 -----------------------
