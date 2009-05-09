@@ -1003,13 +1003,15 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 			 * If any map instances are present for this source
 			 * then either we have plus included entries or we
 			 * are looking through the list of nsswitch sources.
-			 * In either case we cannot avoid reading through the
-			 * map because we must preserve the key order over
-			 * multiple sources. But also, we can't know, at this
-			 * point, if a source instance has been changed since
-			 * the last time we checked it.
+			 * In either case, or if it's a "multi" source, we
+			 * cannot avoid reading through the map because we
+			 * must preserve the key order over multiple sources
+			 * or maps. But also, we can't know, at this point,
+			 * if a source instance has been changed since the
+			 * last time we checked it.
 			 */
-			if (!source->instance)
+			if (!source->instance &&
+			    source->type && strcmp(source->type, "multi"))
 				goto do_cache_lookup;
 		} else
 			source->stale = 1;
@@ -1054,6 +1056,9 @@ do_cache_lookup:
 		pthread_cleanup_pop(0);
 	}
 	cache_unlock(mc);
+
+	if (!me)
+		return NSS_STATUS_NOTFOUND;
 
 	if (!mapent)
 		return NSS_STATUS_TRYAGAIN;

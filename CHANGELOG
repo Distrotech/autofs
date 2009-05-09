@@ -48,6 +48,7 @@
 - improve manual umount recovery.
 - dont fail on ipv6 address when adding host.
 - always read file maps multi map fix.
+- always read file maps key lookup fixes.
 
 4/11/2008 autofs-5.0.4
 -----------------------
