@@ -50,6 +50,17 @@ BROWSE_MODE="no"
 # 	     Map entries that include a server name override
 # 	     this option.
 #
+#	     This configuration option can also be used to
+#	     request autofs lookup SRV RRs for a domain of
+#	     the form <proto>:///[<domain dn>]. Note that a
+#	     trailing "/" is not allowed when using this form.
+#	     If the domain dn is not specified the dns domain
+#	     name (if any) is used to construct the domain dn
+#	     for the SRV RR lookup. The server list returned
+#	     from an SRV RR lookup is refreshed according to
+#	     the minimum ttl found in the SRV RR records or
+#	     after one hour, whichever is less.
+#
 #LDAP_URI=""
 #
 # LDAP__TIMEOUT - timeout value for the synchronous API  calls

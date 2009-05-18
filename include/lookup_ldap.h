@@ -10,6 +10,8 @@
 #include <krb5.h>
 #endif
 
+#include "dclist.h"
+
 struct ldap_schema {
 	char *map_class;
 	char *map_attr;
@@ -57,6 +59,7 @@ struct lookup_context {
 	pthread_mutex_t uris_mutex;
 	struct list_head *uris;
 	struct ldap_uri *uri;
+	struct dclist *dclist;
 	char *cur_host;
 	struct ldap_searchdn *sdns;
 

@@ -86,9 +86,10 @@ lookup_hesiod.so: lookup_hesiod.c
 cyrus-sasl.o: cyrus-sasl.c
 	$(CC) $(CFLAGS) $(LDAP_FLAGS) -c $<
 
-lookup_ldap.so: lookup_ldap.c $(SASL_OBJ)
+lookup_ldap.so: lookup_ldap.c dclist.o $(SASL_OBJ)
 	$(CC) $(SOLDFLAGS) $(CFLAGS) $(LDAP_FLAGS) -o lookup_ldap.so \
-		lookup_ldap.c $(SASL_OBJ) $(AUTOFS_LIB) $(LIBLDAP)
+		lookup_ldap.c dclist.o $(SASL_OBJ) \
+		$(AUTOFS_LIB) $(LIBLDAP) $(LIBRESOLV)
 	$(STRIP) lookup_ldap.so
 
 mount_nfs.so: mount_nfs.c replicated.o

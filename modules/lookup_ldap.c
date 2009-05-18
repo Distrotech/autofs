@@ -643,14 +643,26 @@ static LDAP *find_server(unsigned logopt, struct lookup_context *ctxt)
 	LDAP *ldap = NULL;
 	struct ldap_uri *this;
 	struct list_head *p, *first;
+	struct dclist *dclist = NULL;
+	char *uri = NULL;
 
-	/* Try each uri in list, add connect fails to tmp list */
 	uris_mutex_lock(ctxt);
+	if (ctxt->dclist) {
+		dclist = ctxt->dclist;
+		if (ctxt->dclist->expire < time(NULL)) {
+			free_dclist(ctxt->dclist);
+			ctxt->dclist = NULL;
+			dclist = NULL;
+		}
+	}
 	if (!ctxt->uri)
 		first = ctxt->uris;
 	else
 		first = &ctxt->uri->list;
 	uris_mutex_unlock(ctxt);
+
+
+	/* Try each uri, save point in server list upon success */
 	p = first->next;
 	while(p != first) {
 		/* Skip list head */
@@ -659,25 +671,62 @@ static LDAP *find_server(unsigned logopt, struct lookup_context *ctxt)
 			continue;
 		}
 		this = list_entry(p, struct ldap_uri, list);
-		debug(logopt, "trying server %s", this->uri);
-		ldap = connect_to_server(logopt, this->uri, ctxt);
+		if (!strstr(this->uri, ":///"))
+			uri = strdup(this->uri);
+		else {
+			if (dclist)
+				uri = strdup(dclist->uri);
+			else {
+				struct dclist *tmp;
+				tmp = get_dc_list(logopt, this->uri);
+				if (!tmp) {
+					p = p->next;
+					continue;
+				}
+				dclist = tmp;
+				uri = strdup(dclist->uri);
+			}
+		}
+		if (!uri) {
+			p = p->next;
+			continue;
+		}
+		debug(logopt, "trying server uri %s", uri);
+		ldap = connect_to_server(logopt, uri, ctxt);
 		if (ldap) {
-			info(logopt, "connected to uri %s", this->uri);
-			uris_mutex_lock(ctxt);
-			ctxt->uri = this;
-			uris_mutex_unlock(ctxt);
+			info(logopt, "connected to uri %s", uri);
+			free(uri);
 			break;
 		}
+		free(uri);
+		uri = NULL;
+		free_dclist(dclist);
+		dclist = NULL;
 		p = p->next;
 	}
+
+	uris_mutex_lock(ctxt);
+	if (ldap)
+		ctxt->uri = this;
+	if (dclist) {
+		if (!ctxt->dclist)
+			ctxt->dclist = dclist;
+		else {
+			if (ctxt->dclist != dclist) {
+				free_dclist(ctxt->dclist);
+				ctxt->dclist = dclist;
+			}
+		}
+	}
+	uris_mutex_unlock(ctxt);
 
 	return ldap;
 }
 
 static LDAP *do_reconnect(unsigned logopt, struct lookup_context *ctxt)
 {
-	struct ldap_uri *this;
 	LDAP *ldap;
+	char *uri;
 
 	if (ctxt->server || !ctxt->uris) {
 		ldap = do_connect(logopt, ctxt->server, ctxt);
@@ -692,9 +741,20 @@ static LDAP *do_reconnect(unsigned logopt, struct lookup_context *ctxt)
 	}
 
 	uris_mutex_lock(ctxt);
-	this = ctxt->uri;
+	if (ctxt->dclist)
+		uri = strdup(ctxt->dclist->uri);
+	else
+		uri = strdup(ctxt->uri->uri);
 	uris_mutex_unlock(ctxt);
-	ldap = do_connect(logopt, this->uri, ctxt);
+
+	if (!uri) {
+		char buf[MAX_ERR_BUF];
+		char *estr = strerror_r(errno, buf, sizeof(buf));
+		crit(logopt, MODPREFIX "strdup: %s", estr);
+		return NULL;
+	}
+
+	ldap = do_connect(logopt, uri, ctxt);
 #ifdef WITH_SASL
 	/*
 	 * Dispose of the sasl authentication connection and try the
@@ -702,9 +762,11 @@ static LDAP *do_reconnect(unsigned logopt, struct lookup_context *ctxt)
 	 */
 	if (!ldap) {
 		autofs_sasl_dispose(ctxt);
-		ldap = connect_to_server(logopt, this->uri, ctxt);
+		ldap = connect_to_server(logopt, uri, ctxt);
 	}
 #endif
+	free(uri);
+
 	if (ldap)
 		return ldap;
 
@@ -1296,6 +1358,8 @@ static void free_context(struct lookup_context *ctxt)
 		fatal(ret);
 	if (ctxt->sdns)
 		defaults_free_searchdns(ctxt->sdns);
+	if (ctxt->dclist)
+		free_dclist(ctxt->dclist);
 	free(ctxt);
 
 	return;
