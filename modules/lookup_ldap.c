@@ -688,6 +688,10 @@ static LDAP *find_server(unsigned logopt, struct lookup_context *ctxt)
 			}
 		}
 		if (!uri) {
+			if (dclist) {
+				free_dclist(dclist);
+				dclist = NULL;
+			}
 			p = p->next;
 			continue;
 		}
@@ -700,8 +704,10 @@ static LDAP *find_server(unsigned logopt, struct lookup_context *ctxt)
 		}
 		free(uri);
 		uri = NULL;
-		free_dclist(dclist);
-		dclist = NULL;
+		if (dclist) {
+			free_dclist(dclist);
+			dclist = NULL;
+		}
 		p = p->next;
 	}
 
