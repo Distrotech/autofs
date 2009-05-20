@@ -34,6 +34,7 @@
 #include <ldap.h>
 #include <sys/param.h>
 #include <errno.h>
+#include <endian.h>
 
 #include "automount.h"
 #include "dclist.h"
@@ -72,8 +73,13 @@
 #define SVAL(buf, pos) (*(const uint16_t *)((const char *)(buf) + (pos)))
 #define IVAL(buf, pos) (*(const uint32_t *)((const char *)(buf) + (pos)))
 
+#if __BYTE_ORDER == __LITTLE_ENDIAN
 #define SREV(x) ((((x)&0xFF)<<8) | (((x)>>8)&0xFF))
 #define IREV(x) ((SREV(x)<<16) | (SREV((x)>>16)))
+#else
+#define SREV(x) (x)
+#define IREV(x) (x)
+#endif
 
 #define RSVAL(buf, pos) SREV(SVAL(buf, pos))
 #define RIVAL(buf, pos) IREV(IVAL(buf, pos))
