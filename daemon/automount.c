@@ -1460,13 +1460,20 @@ static void handle_mounts_cleanup(void *arg)
 	master_remove_mapent(ap->entry);
 	master_source_unlock(ap->entry);
 
+	destroy_logpri_fifo(ap);
+
+	/*
+	 * Submounts are detached threads and don't belong to the
+	 * master map entry list so we need to free their resources
+	 * here.
+	 */
 	if (submount) {
 		mounts_mutex_unlock(ap->parent);
 		master_source_unlock(ap->parent->entry);
+		master_free_mapent_sources(ap->entry, 1);
+		master_free_mapent(ap->entry);
 	}
 	master_mutex_unlock();
-
-	destroy_logpri_fifo(ap);
 
 	if (clean) {
 		if (rmdir(path) == -1) {
