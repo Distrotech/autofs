@@ -174,7 +174,10 @@ static int do_mount_autofs_indirect(struct autofs_point *ap, const char *root)
 	ap->exp_runfreq = (timeout + CHECK_RATIO - 1) / CHECK_RATIO;
 
 	ops->timeout(ap->logopt, ap->ioctlfd, &timeout);
-	notify_mount_result(ap, root, str_indirect);
+	if (ap->logopt & LOGOPT_DEBUG)
+		notify_mount_result(ap, root, str_indirect);
+	else
+		notify_mount_result(ap, ap->path, str_indirect);
 
 	return 0;
 

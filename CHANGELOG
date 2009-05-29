@@ -51,6 +51,7 @@
 - always read file maps key lookup fixes.
 - use srv query for domain dn.
 - fix not releasing resources when using submounts.
+- fix notify mount message path.
 
 4/11/2008 autofs-5.0.4
 -----------------------
