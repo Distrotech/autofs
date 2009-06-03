@@ -1359,18 +1359,17 @@ int try_remount(struct autofs_point *ap, struct mapent *me, unsigned int type)
 	/*
 	 * The directory must exist since we found a device
 	 * number for the mount but we can't know if we created
-	 * it or not. However, if we're mounted on an autofs fs
-	 * then we need to cleanup the path anyway.
+	 * it or not. However, if this is an indirect mount with
+	 * the nobrowse option we need to remove the mount point
+	 * directory at umount anyway.
 	 */
 	if (type == t_indirect) {
-		ap->flags &= ~MOUNT_FLAG_DIR_CREATED;
-		if (ret == DEV_IOCTL_IS_AUTOFS)
+		if (ap->flags & MOUNT_FLAG_GHOST)
+			ap->flags &= ~MOUNT_FLAG_DIR_CREATED;
+		else
 			ap->flags |= MOUNT_FLAG_DIR_CREATED;
-	} else {
+	} else
 		me->flags &= ~MOUNT_FLAG_DIR_CREATED;
-		if (ret == DEV_IOCTL_IS_AUTOFS)
-			me->flags |= MOUNT_FLAG_DIR_CREATED;
-	}
 
 	/*
 	 * Either we opened the mount or we're re-reading the map.
