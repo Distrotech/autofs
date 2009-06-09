@@ -53,6 +53,7 @@
 - fix not releasing resources when using submounts.
 - fix notify mount message path.
 - remount we created mount point fix.
+- fix double free in sasl_bind().
 
 4/11/2008 autofs-5.0.4
 -----------------------

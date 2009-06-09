@@ -348,8 +348,10 @@ do_sasl_bind(unsigned logopt, LDAP *ld, sasl_conn_t *conn, const char **clientou
 			}
 		}
 
-		if (server_cred && server_cred->bv_len > 0)
+		if (server_cred && server_cred->bv_len > 0) {
 			ber_bvfree(server_cred);
+			server_cred = NULL;
+		}
 
 	} while ((bind_result == LDAP_SASL_BIND_IN_PROGRESS) ||
 		 (sasl_result == SASL_CONTINUE));
