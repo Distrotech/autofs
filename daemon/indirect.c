@@ -437,7 +437,19 @@ void *expire_proc_indirect(void *arg)
 				struct mapent *me = NULL;
 				struct stat st;
 
-				master_source_readlock(ap->entry);
+				/* It's got a mount, deal with in the outer loop */
+				if (is_mounted(_PATH_MOUNTED, next->path, MNTS_REAL)) {
+					pthread_setcancelstate(cur_state, NULL);
+					continue;
+				}
+
+				/* Don't touch submounts */
+				if (master_find_submount(ap, next->path)) {
+					pthread_setcancelstate(cur_state, NULL);
+					continue;
+				}
+
+				master_source_writelock(ap->entry);
 
 				map = ap->entry->maps;
 				while (map) {
@@ -456,20 +468,17 @@ void *expire_proc_indirect(void *arg)
 					continue;
 				}
 
+				if (me->ioctlfd == -1) {
+					cache_unlock(mc);
+					master_source_unlock(ap->entry);
+					pthread_setcancelstate(cur_state, NULL);
+					continue;
+				}
+
 				/* Check for manual umount */
-				if (me->ioctlfd != -1 &&
-				    (fstat(me->ioctlfd, &st) == -1 ||
-				     !count_mounts(ap->logopt, me->key, st.st_dev))) {
-					if (is_mounted(_PROC_MOUNTS, me->key, MNTS_REAL)) {
-						error(ap->logopt,
-						      "error: possible mtab mismatch %s",
-						      me->key);
-						cache_unlock(mc);
-						master_source_unlock(ap->entry);
-						pthread_setcancelstate(cur_state, NULL);
-						continue;
-					}
-					close(me->ioctlfd);
+				if (fstat(me->ioctlfd, &st) == -1 ||
+				    !count_mounts(ap->logopt, me->key, st.st_dev)) {
+					ops->close(ap->logopt, me->ioctlfd);
 					me->ioctlfd = -1;
 				}
 

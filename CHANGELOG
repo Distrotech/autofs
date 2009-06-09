@@ -54,6 +54,7 @@
 - fix notify mount message path.
 - remount we created mount point fix.
 - fix double free in sasl_bind().
+- mannual umount recovery fixes.
 
 4/11/2008 autofs-5.0.4
 -----------------------

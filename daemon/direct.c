@@ -889,9 +889,9 @@ void *expire_proc_direct(void *arg)
 			/* Check for manual umount */
 			cache_writelock(me->mc);
 			if (me->ioctlfd != -1 && 
-			    fstat(ioctlfd, &st) != -1 &&
+			    fstat(me->ioctlfd, &st) != -1 &&
 			    !count_mounts(ap->logopt, next->path, st.st_dev)) {
-				ops->close(ap->logopt, ioctlfd);
+				ops->close(ap->logopt, me->ioctlfd);
 				me->ioctlfd = -1;
 				cache_unlock(me->mc);
 				pthread_setcancelstate(cur_state, NULL);
