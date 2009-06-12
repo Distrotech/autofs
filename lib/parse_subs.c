@@ -315,6 +315,7 @@ struct map_type_info *parse_map_type_info(const char *str)
 {
 	struct map_type_info *info;
 	char *buf, *type, *fmt, *map, *tmp;
+	int seen_colon = 0;
 
 	buf = strdup(str);
 	if (!buf)
@@ -335,11 +336,12 @@ struct map_type_info *parse_map_type_info(const char *str)
 		if (*tmp == ' ') {
 			*tmp = '\0';
 			break;
-		} else if (*tmp == ',') {
+		} else if (!seen_colon && *tmp == ',') {
 			type = buf;
 			*tmp++ = '\0';
 			fmt = tmp;
 		} else if (*tmp == ':') {
+			seen_colon = 1;
 			if (!fmt)
 				type = buf;
 			*tmp++ = '\0';
