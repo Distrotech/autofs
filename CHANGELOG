@@ -58,6 +58,7 @@
 - fix map type info parse error.
 - fix an RPC fd leak.
 - don't block signals we expect to dump core.
+- fix pthread push order in expire_proc_direct().
 
 4/11/2008 autofs-5.0.4
 -----------------------

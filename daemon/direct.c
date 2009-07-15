@@ -823,8 +823,8 @@ void *expire_proc_direct(void *arg)
 
 	left = 0;
 
-	pthread_cleanup_push(mnts_cleanup, mnts);
 	mnts = tree_make_mnt_tree(_PROC_MOUNTS, "/");
+	pthread_cleanup_push(mnts_cleanup, mnts);
 
 	/* Get a list of mounts select real ones and expire them if possible */
 	INIT_LIST_HEAD(&list);
