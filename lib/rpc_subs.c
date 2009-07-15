@@ -253,17 +253,6 @@ static CLIENT *rpc_do_create_client(struct sockaddr *addr, struct conn_info *inf
 		return NULL;
 	}
 
-	if (!info->client) {
-		*fd = open_sock(addr->sa_family, type, proto);
-		if (*fd < 0)
-			return NULL;
-
-		if (bind(*fd, laddr, slen) < 0) {
-			close(*fd);
-			return NULL;
-		}
-	}
-
 	switch (info->proto->p_proto) {
 	case IPPROTO_UDP:
 		if (!info->client) {
