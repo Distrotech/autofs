@@ -64,6 +64,8 @@ static int st_stat = 1;
 static int *pst_stat = &st_stat;
 static pthread_t state_mach_thid;
 
+static sigset_t block_sigs;
+
 /* Pre-calculated kernel packet length */
 static size_t kpkt_len;
 
@@ -1321,7 +1323,7 @@ static void *statemachine(void *arg)
 	sigset_t signalset;
 	int sig;
 
-	sigfillset(&signalset);
+	memcpy(&signalset, &block_sigs, sizeof(sigset));
 	sigdelset(&signalset, SIGCHLD);
 	sigdelset(&signalset, SIGCONT);
 
@@ -1817,7 +1819,6 @@ int main(int argc, char *argv[])
 	unsigned foreground, have_global_options;
 	time_t timeout;
 	time_t age = time(NULL);
-	sigset_t allsigs;
 	struct rlimit rlim;
 	static const struct option long_options[] = {
 		{"help", 0, 0, 'h'},
@@ -1837,8 +1838,15 @@ int main(int argc, char *argv[])
 		{0, 0, 0, 0}
 	};
 
-	sigfillset(&allsigs);
-	sigprocmask(SIG_BLOCK, &allsigs, NULL);
+	sigfillset(&block_sigs);
+	/* allow for the dropping of core files */
+	sigdelset(&block_sigs, SIGABRT);
+	sigdelset(&block_sigs, SIGBUS);
+	sigdelset(&block_sigs, SIGSEGV);
+	sigdelset(&block_sigs, SIGILL);
+	sigdelset(&block_sigs, SIGFPE);
+	sigdelset(&block_sigs, SIGTRAP);
+	sigprocmask(SIG_BLOCK, &block_sigs, NULL);
 
 	program = argv[0];
 
