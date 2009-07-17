@@ -1323,7 +1323,7 @@ static void *statemachine(void *arg)
 	sigset_t signalset;
 	int sig;
 
-	memcpy(&signalset, &block_sigs, sizeof(sigset));
+	memcpy(&signalset, &block_sigs, sizeof(signalset));
 	sigdelset(&signalset, SIGCHLD);
 	sigdelset(&signalset, SIGCONT);
 
