@@ -22,6 +22,13 @@ CFLAGS += -DVERSION_STRING=\"$(version)\"
 LDFLAGS += -rdynamic
 LIBS = -ldl
 
+ifeq ($(LDAP), 1)
+  ifeq ($(SASL), 1)
+    CFLAGS += $(XML_FLAGS)
+    LIBS += $(XML_LIBS)
+  endif
+endif
+
 all: automount
 
 automount: $(OBJS) $(AUTOFS_LIB)

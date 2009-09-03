@@ -40,6 +40,7 @@
 #include "automount.h"
 #ifdef LIBXML2_WORKAROUND
 #include <dlfcn.h>
+#include <libxml/parser.h>
 #endif
 
 const char *program;		/* Initialized with argv[0] */
@@ -2113,6 +2114,8 @@ int main(int argc, char *argv[])
 	void *dh_xml2 = dlopen("libxml2.so", RTLD_NOW);
 	if (!dh_xml2)
 		dh_xml2 = dlopen("libxml2.so.2", RTLD_NOW);
+	if (dh_xml2)
+		xmlInitParser();
 #endif
 #ifdef TIRPC_WORKAROUND
 	void *dh_tirpc = dlopen("libitirpc.so", RTLD_NOW);
@@ -2156,8 +2159,10 @@ int main(int argc, char *argv[])
 		dlclose(dh_tirpc);
 #endif
 #ifdef LIBXML2_WORKAROUND
-	if (dh_xml2)
+	if (dh_xml2) {
+		xmlCleanupParser();
 		dlclose(dh_xml2);
+	}
 #endif
 	close_ioctl_ctl();
 

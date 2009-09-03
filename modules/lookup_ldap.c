@@ -897,7 +897,6 @@ int parse_ldap_config(unsigned logopt, struct lookup_context *ctxt)
 		return -1;
 	}
 
-	xmlInitParser();
 	doc = xmlParseFile(auth_conf);
 	if (!doc) {
 		error(logopt, MODPREFIX
@@ -1069,7 +1068,6 @@ int parse_ldap_config(unsigned logopt, struct lookup_context *ctxt)
 
 out:
 	xmlFreeDoc(doc);
-	xmlCleanupParser();
 
 	if (fallback)
 		return 0;
