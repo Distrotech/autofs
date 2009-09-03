@@ -1,4 +1,4 @@
-??/??/2009 autofs-5.0.5
+03/09/2009 autofs-5.0.5
 -----------------------
 - fix dumb libxml2 check
 - fix nested submount expire deadlock.
