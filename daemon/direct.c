@@ -470,6 +470,8 @@ int mount_autofs_direct(struct autofs_point *ap)
 	pthread_cleanup_push(master_source_lock_cleanup, ap->entry);
 	master_source_readlock(ap->entry);
 	nc = ap->entry->master->nc;
+	cache_readlock(nc);
+	pthread_cleanup_push(cache_lock_cleanup, nc);
 	map = ap->entry->maps;
 	while (map) {
 		/*
@@ -482,6 +484,8 @@ int mount_autofs_direct(struct autofs_point *ap)
 		}
 
 		mc = map->mc;
+		cache_readlock(mc);
+		pthread_cleanup_push(cache_lock_cleanup, mc);
 		me = cache_enumerate(mc, NULL);
 		while (me) {
 			ne = cache_lookup_distinct(nc, me->key);
@@ -509,8 +513,10 @@ int mount_autofs_direct(struct autofs_point *ap)
 
 			me = cache_enumerate(mc, me);
 		}
+		pthread_cleanup_pop(1);
 		map = map->next;
 	}
+	pthread_cleanup_pop(1);
 	pthread_cleanup_pop(1);
 	pthread_cleanup_pop(1);
 
