@@ -389,6 +389,16 @@ static void do_readmap_mount(struct autofs_point *ap, struct mnt_list *mnts,
 		 * an empty cache awaiting a map re-load.
 		 */
 		valid = lookup_source_valid_mapent(ap, me->key, LKP_DISTINCT);
+		if (valid && valid->mc == me->mc) {
+			/*
+			 * We've found a map entry that has been removed from
+			 * the current cache so there is no need to update it.
+			 * The stale entry will be dealt with when we prune the
+			 * cache later.
+			 */
+			cache_unlock(valid->mc);
+			valid = NULL;
+		}
 		if (valid) {
 			struct mapent_cache *vmc = valid->mc;
 			cache_unlock(vmc);

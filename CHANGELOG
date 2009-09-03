@@ -61,6 +61,7 @@
 - fix pthread push order in expire_proc_direct().
 - fix libxml2 non-thread-safe calls.
 - fix direct map cache locking.
+- fix dont umount existing direct mount on reread.
 
 4/11/2008 autofs-5.0.4
 -----------------------
