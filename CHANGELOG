@@ -1,3 +1,7 @@
+??/??/20?? autofs-5.0.6
+-----------------------
+- fix included map read fail handling.
+
 03/09/2009 autofs-5.0.5
 -----------------------
 - fix dumb libxml2 check
