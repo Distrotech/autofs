@@ -39,6 +39,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 {
 	char fullpath[PATH_MAX];
 	char buf[MAX_ERR_BUF];
+	char *loc;
 	int err;
 	int len, status, existed = 1;
 
@@ -74,22 +75,44 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 	if (!status)
 		existed = 0;
 
+	/*
+	 * Special case quoting for cifs share names.
+	 *
+	 * Since "\" is a valid seperator for cifs shares it can't be
+	 * used to escape characters in the share name passed to
+	 * mount.cifs. So we have no choice but to require that the
+	 * seperator we use is "/" and de-quote the string before
+	 * sending it to mount.cifs.
+	 */
+	loc = NULL;
+	if (strcmp(fstype, "cifs"))
+		loc = strdup(what);
+	else
+		loc = dequote(what, strlen(what), ap->logopt);
+	if (!loc) {
+		error(ap->logopt,
+		      MODPREFIX "failed to alloc buffer for mount location");
+		return 1;
+	}
+
 	if (options && options[0]) {
 		debug(ap->logopt,
 		      MODPREFIX "calling mount -t %s " SLOPPY "-o %s %s %s",
-		      fstype, options, what, fullpath);
+		      fstype, options, loc, fullpath);
 
 		err = spawn_mount(ap->logopt, "-t", fstype,
-			     SLOPPYOPT "-o", options, what, fullpath, NULL);
+			     SLOPPYOPT "-o", options, loc, fullpath, NULL);
 	} else {
 		debug(ap->logopt, MODPREFIX "calling mount -t %s %s %s",
-		      fstype, what, fullpath);
-		err = spawn_mount(ap->logopt, "-t", fstype, what, fullpath, NULL);
+		      fstype, loc, fullpath);
+		err = spawn_mount(ap->logopt, "-t", fstype, loc, fullpath, NULL);
 	}
 
 	if (err) {
 		info(ap->logopt, MODPREFIX "failed to mount %s (type %s) on %s",
-		     what, fstype, fullpath);
+		     loc, fstype, fullpath);
+
+		free(loc);
 
 		if (ap->type != LKP_INDIRECT)
 			return 1;
@@ -100,7 +123,8 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 		return 1;
 	} else {
 		info(ap->logopt, MODPREFIX "mounted %s type %s on %s",
-		    what, fstype, fullpath);
+		     loc, fstype, fullpath);
+		free(loc);
 		return 0;
 	}
 }
