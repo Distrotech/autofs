@@ -38,9 +38,11 @@
 #include <sys/utsname.h>
 
 #include "automount.h"
-#ifdef LIBXML2_WORKAROUND
+#if defined(LIBXML2_WORKAROUND) || defined(TIRPC_WORKAROUND)
 #include <dlfcn.h>
+#ifdef WITH_LDAP
 #include <libxml/parser.h>
+#endif
 #endif
 
 const char *program;		/* Initialized with argv[0] */
@@ -2110,7 +2112,7 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
-#ifdef LIBXML2_WORKAROUND
+#if defined(WITH_LDAP) && defined(LIBXML2_WORKAROUND)
 	void *dh_xml2 = dlopen("libxml2.so", RTLD_NOW);
 	if (!dh_xml2)
 		dh_xml2 = dlopen("libxml2.so.2", RTLD_NOW);
@@ -2158,7 +2160,7 @@ int main(int argc, char *argv[])
 	if (dh_tirpc)
 		dlclose(dh_tirpc);
 #endif
-#ifdef LIBXML2_WORKAROUND
+#if defined(WITH_LDAP) && defined( LIBXML2_WORKAROUND)
 	if (dh_xml2) {
 		xmlCleanupParser();
 		dlclose(dh_xml2);
