@@ -24,6 +24,7 @@
 
 #define DEFAULT_TIMEOUT			600
 #define DEFAULT_NEGATIVE_TIMEOUT	60
+#define DEFAULT_MOUNT_WAIT		-1
 #define DEFAULT_UMOUNT_WAIT		12
 #define DEFAULT_BROWSE_MODE		1
 #define DEFAULT_LOGGING			0
@@ -64,6 +65,7 @@ struct ldap_searchdn *defaults_get_searchdns(void);
 void defaults_free_searchdns(struct ldap_searchdn *);
 unsigned int defaults_get_mount_nfs_default_proto(void);
 unsigned int defaults_get_append_options(void);
+unsigned int defaults_get_mount_wait(void);
 unsigned int defaults_get_umount_wait(void);
 const char *defaults_get_auth_conf_file(void);
 unsigned int defaults_get_map_hash_table_size(void);

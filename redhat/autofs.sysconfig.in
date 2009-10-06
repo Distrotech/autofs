@@ -14,6 +14,15 @@ TIMEOUT=300
 #
 #NEGATIVE_TIMEOUT=60
 #
+# MOUNT_WAIT - time to wait for a response from umount(8).
+# 	       Setting this timeout can cause problems when
+# 	       mount would otherwise wait for a server that
+# 	       is temporarily unavailable, such as when it's
+# 	       restarting. The defailt of waiting for mount(8)
+# 	       usually results in a wait of around 3 minutes.
+#
+#MOUNT_WAIT=-1
+#
 # UMOUNT_WAIT - time to wait for a response from umount(8).
 #
 #UMOUNT_WAIT=12

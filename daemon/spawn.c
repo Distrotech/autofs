@@ -305,6 +305,7 @@ int spawn_mount(unsigned logopt, ...)
 	unsigned int options;
 	unsigned int retries = MTAB_LOCK_RETRIES;
 	int update_mtab = 1, ret, printed = 0;
+	unsigned int wait = defaults_get_mount_wait();
 	char buf[PATH_MAX];
 
 	/* If we use mount locking we can't validate the location */
@@ -355,7 +356,7 @@ int spawn_mount(unsigned logopt, ...)
 	va_end(arg);
 
 	while (retries--) {
-		ret = do_spawn(logopt, -1, options, prog, (const char **) argv);
+		ret = do_spawn(logopt, wait, options, prog, (const char **) argv);
 		if (ret & MTAB_NOTUPDATED) {
 			struct timespec tm = {3, 0};
 

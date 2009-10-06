@@ -2,6 +2,7 @@
 -----------------------
 - fix included map read fail handling.
 - refactor ldap sasl bind handling.
+- add mount wait timeout parameter.
 
 03/09/2009 autofs-5.0.5
 -----------------------

@@ -47,6 +47,7 @@
 
 #define ENV_MOUNT_NFS_DEFAULT_PROTOCOL	"MOUNT_NFS_DEFAULT_PROTOCOL"
 #define ENV_APPEND_OPTIONS		"APPEND_OPTIONS"
+#define ENV_MOUNT_WAIT			"MOUNT_WAIT"
 #define ENV_UMOUNT_WAIT			"UMOUNT_WAIT"
 #define ENV_AUTH_CONF_FILE		"AUTH_CONF_FILE"
 
@@ -325,6 +326,7 @@ unsigned int defaults_read_config(unsigned int to_syslog)
 		    check_set_config_value(key, ENV_NAME_ENTRY_ATTR, value, to_syslog) ||
 		    check_set_config_value(key, ENV_NAME_VALUE_ATTR, value, to_syslog) ||
 		    check_set_config_value(key, ENV_APPEND_OPTIONS, value, to_syslog) ||
+		    check_set_config_value(key, ENV_MOUNT_WAIT, value, to_syslog) ||
 		    check_set_config_value(key, ENV_UMOUNT_WAIT, value, to_syslog) ||
 		    check_set_config_value(key, ENV_AUTH_CONF_FILE, value, to_syslog) ||
 		    check_set_config_value(key, ENV_MAP_HASH_TABLE_SIZE, value, to_syslog) ||
@@ -665,6 +667,17 @@ unsigned int defaults_get_append_options(void)
 		res = DEFAULT_APPEND_OPTIONS;
 
 	return res;
+}
+
+unsigned int defaults_get_mount_wait(void)
+{
+	long wait;
+
+	wait = get_env_number(ENV_MOUNT_WAIT);
+	if (wait < 0)
+		wait = DEFAULT_MOUNT_WAIT;
+
+	return (unsigned int) wait;
 }
 
 unsigned int defaults_get_umount_wait(void)
