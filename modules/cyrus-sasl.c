@@ -87,8 +87,8 @@ static sasl_callback_t callbacks[] = {
 	{ SASL_CB_LIST_END, NULL, NULL },
 };
 
-static char *sasl_auth_id, *sasl_auth_secret;
-sasl_secret_t *sasl_secret;
+static char *sasl_auth_id = NULL;
+static char *sasl_auth_secret = NULL;
 
 static int
 sasl_log_func(void *context, int level, const char *message)
@@ -798,7 +798,7 @@ sasl_bind_mech(unsigned logopt, LDAP *ldap, struct lookup_context *ctxt, const c
 sasl_conn_t *
 sasl_choose_mech(unsigned logopt, LDAP *ldap, struct lookup_context *ctxt)
 {
-	sasl_conn_t *conn;
+	sasl_conn_t *conn = NULL;
 	int authenticated;
 	int i;
 	char **mechanisms;
@@ -845,22 +845,6 @@ sasl_choose_mech(unsigned logopt, LDAP *ldap, struct lookup_context *ctxt)
 	return conn;
 }
 
-int
-autofs_sasl_bind(unsigned logopt, LDAP *ldap, struct lookup_context *ctxt)
-{
-	sasl_conn_t *conn;
-
-	if (!ctxt->sasl_mech)
-		return -1;
-
-	conn = sasl_bind_mech(logopt, ldap, ctxt, ctxt->sasl_mech);
-	if (!conn)
-		return -1;
-
-	ctxt->sasl_conn = conn;
-	return 0;
-}
-
 /*
  *  Routine called when unbinding an ldap connection.
  */
@@ -883,12 +867,23 @@ autofs_sasl_unbind(struct lookup_context *ctxt)
  * -1  -  Failure
  */
 int
-autofs_sasl_init(unsigned logopt, LDAP *ldap, struct lookup_context *ctxt)
+autofs_sasl_bind(unsigned logopt, LDAP *ldap, struct lookup_context *ctxt)
 {
-	sasl_conn_t *conn;
+	sasl_conn_t *conn = NULL;
+
+	/* If we already have a connection use it */
+	if (ctxt->sasl_conn)
+		return 0;
 
 	sasl_auth_id = ctxt->user;
 	sasl_auth_secret = ctxt->secret;
+
+	if (ctxt->auth_required & LDAP_AUTH_AUTODETECT) {
+		if (ctxt->sasl_mech) {
+			free(ctxt->sasl_mech);
+			ctxt->sasl_mech = NULL;
+		}
+	}
 
 	/*
 	 *  If LDAP_AUTH_AUTODETECT is set, it means that there was no
@@ -896,22 +891,16 @@ autofs_sasl_init(unsigned logopt, LDAP *ldap, struct lookup_context *ctxt)
 	 *  selection has been requested, so try to auto-select an
 	 *  auth mechanism.
 	 */
-	if (!(ctxt->auth_required & LDAP_AUTH_AUTODETECT))
+	if (ctxt->sasl_mech)
 		conn = sasl_bind_mech(logopt, ldap, ctxt, ctxt->sasl_mech);
-	else {
-		if (ctxt->sasl_mech) {
-			free(ctxt->sasl_mech);
-			ctxt->sasl_mech = NULL;
-		}
+	else
 		conn = sasl_choose_mech(logopt, ldap, ctxt);
-	}
 
-	if (conn) {
-		sasl_dispose(&conn);
-		return 0;
-	}
+	if (!conn)
+		return -1;
 
-	return -1;
+	ctxt->sasl_conn = conn;
+	return 0;
 }
 
 /*

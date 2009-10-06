@@ -59,7 +59,6 @@ struct ldap_search_params {
 	time_t age;
 };
 
-static LDAP *auth_init(unsigned logopt, const char *, struct lookup_context *);
 static int decode_percent_hack(const char *, char **);
 
 #ifndef HAVE_LDAP_CREATE_PAGE_CONTROL
@@ -600,33 +599,6 @@ static LDAP *connect_to_server(unsigned logopt, const char *uri, struct lookup_c
 {
 	LDAP *ldap;
 
-#ifdef WITH_SASL
-	/*
-	 * Determine which authentication mechanism to use if we require
-	 * authentication.
-	 */
-	if (ctxt->auth_required & (LDAP_AUTH_REQUIRED|LDAP_AUTH_AUTODETECT)) {
-		ldap = auth_init(logopt, uri, ctxt);
-		if (!ldap && ctxt->auth_required & LDAP_AUTH_AUTODETECT)
-			info(logopt,
-			     "no authentication mechanisms auto detected.");
-		if (!ldap) {
-			error(logopt, MODPREFIX
-			      "cannot initialize authentication setup");
-			return NULL;
-		}
-
-		if (!do_bind(logopt, ldap, uri, ctxt)) {
-			unbind_ldap_connection(logopt, ldap, ctxt);
-			autofs_sasl_dispose(ctxt);
-			error(logopt, MODPREFIX "cannot bind to server");
-			return NULL;
-		}
-
-		return ldap;
-	}
-#endif
-
 	ldap = do_connect(logopt, uri, ctxt);
 	if (!ldap) {
 		warn(logopt,
@@ -1073,38 +1045,6 @@ out:
 		return 0;
 
 	return ret;
-}
-
-/*
- *  Reads in the xml configuration file and parses out the relevant
- *  information.  If there is no configuration file, then we fall back to
- *  trying all supported authentication mechanisms until one works.
- *
- *  Returns ldap connection on success, with authtype, user and secret
- *  filled in as appropriate.  Returns NULL on failre.
- */
-static LDAP *auth_init(unsigned logopt, const char *uri, struct lookup_context *ctxt)
-{
-	int ret;
-	LDAP *ldap;
-
-	ldap = init_ldap_connection(logopt, uri, ctxt);
-	if (!ldap)
-		return NULL;
-
-	/*
-	 *  Initialize the sasl library.  It is okay if user and secret
-	 *  are NULL, here.
-	 *
-	 *  The autofs_sasl_init routine will figure out which mechamism
-	 *  to use. If kerberos is used, it will also take care to initialize
-	 *  the credential cache and the client and service principals.
-	 */
-	ret = autofs_sasl_init(logopt, ldap, ctxt);
-	if (ret)
-		return NULL;
-
-	return ldap;
 }
 #endif
 
