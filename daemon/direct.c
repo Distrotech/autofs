@@ -1245,7 +1245,7 @@ static void *do_mount_direct(void *arg)
 	}
 
 	status = stat(mt.name, &st);
-	if (!S_ISDIR(st.st_mode) || st.st_dev != mt.dev) {
+	if (status != 0 || !S_ISDIR(st.st_mode) || st.st_dev != mt.dev) {
 		error(ap->logopt,
 		     "direct trigger not valid or already mounted %s",
 		     mt.name);

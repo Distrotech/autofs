@@ -119,7 +119,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 			else if (strncmp(cp, "timeout=", 8) == 0) {
 				char *val = strchr(cp, '=');
 				unsigned tout;
-				if (val++) {
+				if (val) {
 					int ret = sscanf(cp, "timeout=%u", &tout);
 					if (ret)
 						timeout = tout;

@@ -1334,7 +1334,7 @@ int parse_mount(struct autofs_point *ap, const char *name,
 	char *pmapent, *options;
 	const char *p;
 	int mapent_len, rv = 0;
-	int optlen, cur_state;
+	int cur_state;
 	int slashify = ctxt->slashify_colons;
 	unsigned int append_options;
 
@@ -1389,7 +1389,6 @@ int parse_mount(struct autofs_point *ap, const char *name,
 		logerr(MODPREFIX "strdup: %s", estr);
 		return 1;
 	}
-	optlen = strlen(options);
 
 	p = skipspace(pmapent);
 

@@ -152,7 +152,7 @@ master_add_map_source(struct master_mapent *entry,
 {
 	struct map_source *source;
 	char *ntype, *nformat;
-	const char **tmpargv, *name = NULL;
+	const char **tmpargv;
 
 	source = malloc(sizeof(struct map_source));
 	if (!source)
@@ -187,10 +187,6 @@ master_add_map_source(struct master_mapent *entry,
 	}
 	source->argc = argc;
 	source->argv = tmpargv;
-
-	/* Can be NULL for "hosts" map */
-	if (argv)
-		name = argv[0];
 
 	master_source_writelock(entry);
 

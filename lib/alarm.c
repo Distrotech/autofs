@@ -239,7 +239,8 @@ int alarm_start_handler(void)
 
 	status = pthread_create(&thid, pattrs, alarm_handler, NULL);
 
-	pthread_attr_destroy(pattrs);
+	if (pattrs)
+		pthread_attr_destroy(pattrs);
 
 	return !status;
 }

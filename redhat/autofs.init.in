@@ -172,7 +172,7 @@ case "$1" in
 		fi
 		;;
 	*)
-		echo $"Usage: $0 {start|forcestart|stop|status|restart|orcerestart|reload|condrestart}"
+		echo $"Usage: $0 {start|forcestart|stop|status|restart|forcerestart|reload|condrestart}"
 		exit 1;
 		;;
 esac

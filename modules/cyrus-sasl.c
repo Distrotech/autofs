@@ -911,7 +911,7 @@ void autofs_sasl_dispose(struct lookup_context *ctxt)
 {
 	int status, ret;
 
-	if (ctxt && ctxt->sasl_conn) {
+	if (ctxt->sasl_conn) {
 		sasl_dispose(&ctxt->sasl_conn);
 		ctxt->sasl_conn = NULL;
 	}

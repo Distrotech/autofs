@@ -389,13 +389,16 @@ static int get_query_dn(unsigned logopt, LDAP *ldap, struct lookup_context *ctxt
 				error(logopt,
 				      MODPREFIX "query failed for search dn %s: %s",
 				      this->basedn, ldap_err2string(rv));
+				if (result) {
+					ldap_msgfree(result);
+					result = NULL;
+				}
 			}
 
 			this = this->next;
 		}
 
 		if (!result) {
-			ldap_msgfree(result);
 			error(logopt,
 			      MODPREFIX "failed to find query dn under search base dns");
 			free(query);
@@ -1954,6 +1957,12 @@ do_paged:
 		sp->cookie = NULL;
 	}
 
+	if (rv != LDAP_SUCCESS) {
+		debug(ap->logopt,
+		      MODPREFIX "ldap_parse_result failed with %d", rv);
+		goto out_free;
+	}
+
 	/*
 	 * Parse the page control returned to get the cookie and
 	 * determine whether there are more pages.
@@ -1970,8 +1979,8 @@ do_paged:
 	if (returnedControls)
 		ldap_controls_free(returnedControls);
 
+out_free:
 	ldap_control_free(pageControl);
-
 	return rv;
 }
 

@@ -534,7 +534,6 @@ void defaults_free_searchdns(struct ldap_searchdn *sdn)
 	struct ldap_searchdn *this = sdn;
 	struct ldap_searchdn *next;
 
-	next = this;
 	while (this) {
 		next = this->next;
 		free(this->basedn);

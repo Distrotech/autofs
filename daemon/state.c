@@ -160,7 +160,7 @@ void expire_cleanup(void *arg)
 			 * been signaled to shutdown.
 			 */
 			rv = ops->askumount(ap->logopt, ap->ioctlfd, &idle);
-			if (!idle && !ap->shutdown) {
+			if (!rv && !idle && !ap->shutdown) {
 				next = ST_READY;
 				if (!ap->submount)
 					alarm_add(ap, ap->exp_runfreq);
@@ -1198,7 +1198,8 @@ int st_start_handler(void)
 
 	status = pthread_create(&thid, pattrs, st_queue_handler, NULL);
 
-	pthread_attr_destroy(pattrs);
+	if (pattrs)
+		pthread_attr_destroy(pattrs);
 
 	return !status;
 }

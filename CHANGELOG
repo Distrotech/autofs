@@ -5,6 +5,7 @@
 - add mount wait timeout parameter.
 - special case cifs escapes.
 - fix compile fail with when LDAP is excluded.
+- more code analysis corrections (and fix a typo in an init script).
 
 03/09/2009 autofs-5.0.5
 -----------------------
