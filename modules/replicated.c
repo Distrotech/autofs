@@ -231,7 +231,7 @@ static unsigned int get_proximity(struct sockaddr *host_addr)
 			break;
 
 		case AF_INET6:
-#ifndef INET6
+#ifdef INET6
 			if (host_addr->sa_family == AF_INET)
 				break;
 
@@ -313,7 +313,7 @@ static unsigned int get_proximity(struct sockaddr *host_addr)
 			break;
 
 		case AF_INET6:
-#ifndef INET6
+#ifdef INET6
 			if (host_addr->sa_family == AF_INET)
 				break;
 
