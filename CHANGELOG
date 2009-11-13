@@ -9,6 +9,7 @@
 - fix backwards #ifndef INET6.
 - fix stale initialization for file map instance.
 - add "preen" fsck for ext4 mounts.
+- don't use master_lex_destroy() to clear parse buffer.
 
 03/09/2009 autofs-5.0.5
 -----------------------

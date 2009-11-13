@@ -414,7 +414,7 @@ static void master_echo(void)
 
 void master_set_scan_buffer(const char *buffer)
 {
-	master_lex_destroy();
+	memset(buff, 0, sizeof(buff));
 	optr = buff;
 
 	line = buffer;
