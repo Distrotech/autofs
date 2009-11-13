@@ -398,6 +398,7 @@ static enum nsswitch_status read_map_source(struct nss_source *this,
 	tmap.instance = map->instance;
 	tmap.recurse = map->recurse;
 	tmap.depth = map->depth;
+	tmap.stale = map->stale;
 	tmap.argc = 0;
 	tmap.argv = NULL;
 
