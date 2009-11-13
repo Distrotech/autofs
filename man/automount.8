@@ -77,7 +77,9 @@ changes. For example, if verbose logging is set in the configuration then
 attempting to set logging to basic logging, by using alert, crit, err
 or emerg won't stop the verbose logging. However, setting logging to debug
 will lead to everything (debug logging) being logged witch can then also
-be disabled, returning the daemon to verbose logging.
+be disabled, returning the daemon to verbose logging. This option can be
+specified to change the logging priority of an already running automount
+process.
 .P
 The \fIpath\fP argument corresponds to the automounted
 path name as specified in the master map.
