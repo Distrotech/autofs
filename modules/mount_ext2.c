@@ -83,13 +83,14 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 			ro = 1;
 	}
 
-#ifdef HAVE_E3FSCK
-	if (!strcmp(fstype,"ext3") || !strcmp(fstype,"auto"))
-		fsck_prog = PATH_E3FSCK;
-	else
-		fsck_prog = PATH_E2FSCK;
-#else
 	fsck_prog = PATH_E2FSCK;
+#ifdef HAVE_E3FSCK
+	if (!strcmp(fstype,"ext3"))
+		fsck_prog = PATH_E3FSCK;
+#endif
+#ifdef HAVE_E4FSCK
+	if (!strcmp(fstype,"ext4"))
+		fsck_prog = PATH_E4FSCK;
 #endif
 	if (ro) {
 		debug(ap->logopt,

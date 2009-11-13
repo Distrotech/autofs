@@ -69,10 +69,16 @@ ifeq ($(EXT2FS), 1)
  ifeq ($(EXT3FS), 1)
 	ln -fs mount_ext2.so $(INSTALLROOT)$(autofslibdir)/mount_ext3.so
  endif
-else
- ifeq ($(EXT3FS), 1)
-	mv $(INSTALLROOT)$(autofslibdir)/mount_ext2.so $(INSTALLROOT)$(autofslibdir)/mount_ext3.so
+ ifeq ($(EXT4FS), 1)
+	ln -fs mount_ext2.so $(INSTALLROOT)$(autofslibdir)/mount_ext4.so
  endif
+else ifeq ($(EXT3FS), 1)
+	mv $(INSTALLROOT)$(autofslibdir)/mount_ext2.so $(INSTALLROOT)$(autofslibdir)/mount_ext3.so
+ ifeq ($(EXT4FS), 1)
+	ln -fs mount_ext3.so $(INSTALLROOT)$(autofslibdir)/mount_ext4.so
+ endif
+else ifeq ($(EXT4FS), 1)
+	mv $(INSTALLROOT)$(autofslibdir)/mount_ext2.so $(INSTALLROOT)$(autofslibdir)/mount_ext4.so
 endif
 
 #

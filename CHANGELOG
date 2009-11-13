@@ -8,6 +8,7 @@
 - more code analysis corrections (and fix a typo in an init script).
 - fix backwards #ifndef INET6.
 - fix stale initialization for file map instance.
+- add "preen" fsck for ext4 mounts.
 
 03/09/2009 autofs-5.0.5
 -----------------------

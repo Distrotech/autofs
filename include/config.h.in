@@ -18,6 +18,9 @@
 /* define if you have E3FSCK */
 #undef HAVE_E3FSCK
 
+/* define if you have E4FSCK */
+#undef HAVE_E4FSCK
+
 /* Define to 1 if you have the <inttypes.h> header file. */
 #undef HAVE_INTTYPES_H
 
@@ -92,6 +95,9 @@
 
 /* define if you have E3FSCK */
 #undef PATH_E3FSCK
+
+/* define if you have E4FSCK */
+#undef PATH_E4FSCK
 
 /* define if you have LEX */
 #undef PATH_LEX

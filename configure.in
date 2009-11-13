@@ -131,6 +131,7 @@ AF_PATH_INCLUDE(MOUNT, mount, /bin/mount, $searchpath)
 AF_PATH_INCLUDE(UMOUNT, umount, /bin/umount, $searchpath)
 AF_PATH_INCLUDE(E2FSCK, fsck.ext2 e2fsck, , $searchpath)
 AF_PATH_INCLUDE(E3FSCK, fsck.ext3 e3fsck, , $searchpath)
+AF_PATH_INCLUDE(E4FSCK, fsck.ext4 e4fsck, , $searchpath)
 AF_PATH_INCLUDE(MODPROBE, modprobe, , $searchpath)
 
 AF_CHECK_PROG(LEX, flex lex, , $searchpath)
