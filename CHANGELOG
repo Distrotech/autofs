@@ -11,6 +11,7 @@
 - add "preen" fsck for ext4 mounts.
 - don't use master_lex_destroy() to clear parse buffer.
 - make documentation for set-log-priority clearer.
+- fix parse_sun() module init.
 
 03/09/2009 autofs-5.0.5
 -----------------------
