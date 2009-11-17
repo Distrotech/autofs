@@ -502,7 +502,6 @@ static void *do_readmap(void *arg)
 		pthread_cleanup_pop(1);
 		pthread_cleanup_pop(1);
 		pthread_cleanup_pop(1);
-		lookup_prune_cache(ap, now);
 	}
 
 	pthread_cleanup_pop(1);

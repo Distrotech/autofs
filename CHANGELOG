@@ -15,6 +15,7 @@
 - dont check null cache on expire.
 - fix null cache race.
 - fix cache_init() on source re-read.
+- reset negative status on cache prune.
 
 03/09/2009 autofs-5.0.5
 -----------------------
