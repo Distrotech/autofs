@@ -1273,14 +1273,16 @@ static int do_hup_signal(struct master *master, time_t age)
 	if (status)
 		fatal(status);
 
+	master_mutex_lock();
 	if (master->reading) {
 		status = pthread_mutex_unlock(&mrc.mutex);
 		if (status)
 			fatal(status);
+		master_mutex_unlock();
 		return 1;
 	}
-
 	master->reading = 1;
+	master_mutex_unlock();
 
 	status = pthread_create(&thid, &th_attr_detached, do_read_master, NULL);
 	if (status) {

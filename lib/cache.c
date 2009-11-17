@@ -228,14 +228,37 @@ struct mapent_cache *cache_init(struct autofs_point *ap, struct map_source *map)
 	return mc;
 }
 
+void cache_clean_null_cache(struct mapent_cache *mc)
+{
+	struct mapent *me, *next;
+	int i;
+
+	for (i = 0; i < mc->size; i++) {
+		me = mc->hash[i];
+		if (me == NULL)
+			continue;
+		next = me->next;
+		free(me->key);
+		if (me->mapent)
+			free(me->mapent);
+		free(me);
+
+		while (next != NULL) {
+			me = next;
+			next = me->next;
+			free(me->key);
+			free(me);
+		}
+	}
+
+	return;
+}
+
 struct mapent_cache *cache_init_null_cache(struct master *master)
 {
 	struct mapent_cache *mc;
 	unsigned int i;
 	int status;
-
-	if (master->nc)
-		cache_release_null_cache(master);
 
 	mc = malloc(sizeof(struct mapent_cache));
 	if (!mc)
@@ -264,8 +287,6 @@ struct mapent_cache *cache_init_null_cache(struct master *master)
 	if (status)
 		fatal(status);
 
-	cache_writelock(mc);
-
 	for (i = 0; i < mc->size; i++) {
 		mc->hash[i] = NULL;
 		INIT_LIST_HEAD(&mc->ino_index[i]);
@@ -273,8 +294,6 @@ struct mapent_cache *cache_init_null_cache(struct master *master)
 
 	mc->ap = NULL;
 	mc->map = NULL;
-
-	cache_unlock(mc);
 
 	return mc;
 }

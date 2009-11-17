@@ -13,6 +13,7 @@
 - make documentation for set-log-priority clearer.
 - fix parse_sun() module init.
 - dont check null cache on expire.
+- fix null cache race.
 
 03/09/2009 autofs-5.0.5
 -----------------------
