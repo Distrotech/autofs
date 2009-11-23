@@ -161,6 +161,13 @@ static int connect_nb(int fd, struct sockaddr *addr, socklen_t len, struct timev
 	if (ret == 0)
 		goto done;
 
+	if (timeout != -1) {
+		if (timeout >= (INT_MAX - 1)/1000)
+			timeout = INT_MAX - 1;
+		else
+			timeout = timeout * 1000;
+	}
+
 	pfd[0].fd = fd;
 	pfd[0].events = POLLOUT;
 
