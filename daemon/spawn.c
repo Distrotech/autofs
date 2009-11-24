@@ -189,9 +189,15 @@ static int do_spawn(unsigned logopt, unsigned int wait,
 			}
 			setpgrp();
 
-			/* Trigger the recursive mount */
-			if (access(argv[loc], F_OK) == -1)
-				_exit(errno);
+			/*
+			 * Trigger the recursive mount.
+			 *
+			 * Ignore the access(2) return code as there may be
+			 * multiple waiters for this mount and we need to
+			 * let the  VFS handle access returns to each
+			 * individual waiter.
+			 */
+			access(argv[loc], F_OK);
 
 			seteuid(0);
 			setegid(0);
