@@ -154,22 +154,30 @@ static int do_spawn(unsigned logopt, unsigned int wait,
 
 	f = fork();
 	if (f == 0) {
+		char **pargv = (char **) argv;
+		int loc = 0;
+
 		reset_signals();
 		close(pipefd[0]);
 		dup2(pipefd[1], STDOUT_FILENO);
 		dup2(pipefd[1], STDERR_FILENO);
 		close(pipefd[1]);
 
-		/* Bind mount - check target exists */
-		if (use_access) {
-			char **pargv = (char **) argv;
-			int argc = 0;
-			pid_t pgrp = getpgrp();
+		/* what to mount must always be second last */
+		while (*pargv++)
+			loc++;
+		loc -= 2;
 
-			/* what to mount must always be second last */
-			while (*pargv++)
-				argc++;
-			argc -= 2;
+		/*
+		 * If the mount location starts with a "/" then it is
+		 * a local path. In this case it is a bind mount, a
+		 * loopback mount or a file system that uses a local
+		 * path so we need to check for dependent mounts.
+		 *
+		 * I hope host names are never allowed "/" as first char
+		 */
+		if (use_access && *(argv[loc]) == '/') {
+			pid_t pgrp = getpgrp();
 
 			/*
 			 * Pretend to be requesting user and set non-autofs
@@ -182,7 +190,7 @@ static int do_spawn(unsigned logopt, unsigned int wait,
 			setpgrp();
 
 			/* Trigger the recursive mount */
-			if (access(argv[argc], F_OK) == -1)
+			if (access(argv[loc], F_OK) == -1)
 				_exit(errno);
 
 			seteuid(0);
@@ -312,7 +320,7 @@ int spawn_mount(unsigned logopt, ...)
 #ifdef ENABLE_MOUNT_LOCKING
 	options = SPAWN_OPT_LOCK;
 #else
-	options = SPAWN_OPT_NONE;
+	options = SPAWN_OPT_ACCESS;
 #endif
 
 	va_start(arg, logopt);
@@ -344,12 +352,17 @@ int spawn_mount(unsigned logopt, ...)
 		p = argv + 2;
 	}
 	while ((*p = va_arg(arg, char *))) {
-		if (options == SPAWN_OPT_NONE && !strcmp(*p, "-o")) {
+		if (options == SPAWN_OPT_ACCESS && !strcmp(*p, "-t")) {
 			*(++p) = va_arg(arg, char *);
 			if (!*p)
 				break;
-			if (strstr(*p, "loop"))
-				options = SPAWN_OPT_ACCESS;
+			/*
+			 * A cifs mount location begins with a "/" but
+			 * is not a local path, so don't try to resolve
+			 * it. Mmmm ... does anyone use smbfs these days?
+			 */
+			if (strstr(*p, "cifs"))
+				options = SPAWN_OPT_NONE;
 		}
 		p++;
 	}
