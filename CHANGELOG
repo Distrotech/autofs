@@ -12,6 +12,7 @@
 - don't use master_lex_destroy() to clear parse buffer.
 - make documentation for set-log-priority clearer.
 - fix timeout in connect_nb().
+- fix pidof init script usage.
 
 03/09/2009 autofs-5.0.5
 -----------------------

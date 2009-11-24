@@ -88,13 +88,13 @@ function start() {
 function stop() {
 	echo -n $"Stopping $prog: "
 	count=0
-	while [ -n "`pidof $DAEMON`" -a $count -lt 15 ] ; do
+	while [ -n "`pidof $prog`" -a $count -lt 15 ] ; do
 		killall -TERM $prog >& /dev/null
 		RETVAL=$?
-		[ $RETVAL = 0 -a -z "`pidof $DAEMON`" ] || sleep 3
+		[ $RETVAL = 0 -a -z "`pidof $prog`" ] || sleep 3
 		count=`expr $count + 1`
 	done
-	if [ -z "`pidof $DAEMON`" ] ; then
+	if [ -z "`pidof $prog`" ] ; then
 		echo "done."
 	else
 		echo "failed."
@@ -108,7 +108,7 @@ function restart() {
 }
 
 function reload() {
-	pid=`pidof $DAEMON`
+	pid=`pidof $prog`
 	if [ -z $pid ]; then
 		echo $"$prog not running"
 		RETVAL=1

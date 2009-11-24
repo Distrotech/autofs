@@ -101,14 +101,14 @@ function start() {
 function stop() {
 	echo -n $"Stopping $prog: "
 	count=0
-	while [ -n "`pidof $DAEMON`" -a $count -lt 15 ] ; do
+	while [ -n "`pidof $prog`" -a $count -lt 15 ] ; do
 		killproc $prog -TERM >& /dev/null
 		RETVAL=$?
-		[ $RETVAL = 0 -a -z "`pidof $DAEMON`" ] || sleep 3
+		[ $RETVAL = 0 -a -z "`pidof $prog`" ] || sleep 3
 		count=`expr $count + 1`
 	done
 	[ $RETVAL -eq 0 ] && rm -f /var/lock/subsys/autofs
-	if [ -n "`pidof $DAEMON`" ] ; then
+	if [ -n "`pidof $prog`" ] ; then
 		failure "$prog shutdown"
 	else
 		success "$prog shutdown"
@@ -128,7 +128,7 @@ function reload() {
 		RETVAL=1
 		return $RETVAL
 	fi
-	pid=`pidof $DAEMON`
+	pid=`pidof $prog`
 	if [ -z $pid ]; then
 		echo $"$prog not running"
 		RETVAL=1
