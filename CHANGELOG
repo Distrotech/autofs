@@ -16,6 +16,7 @@
 - check for path mount location in generic module.
 - dont fail mount on access fail.
 - fix rpc fail on large export list.
+- fix memory leak on reload.
 
 03/09/2009 autofs-5.0.5
 -----------------------

@@ -190,9 +190,15 @@ master_add_map_source(struct master_mapent *entry,
 
 	master_source_writelock(entry);
 
-	if (!entry->maps)
+	if (!entry->maps) {
+		source->mc = cache_init(entry->ap, source);
+		if (!source->mc) {
+			master_free_map_source(source, 0);
+			master_source_unlock(entry);
+			return NULL;
+		}
 		entry->maps = source;
-	else {
+	} else {
 		struct map_source *this, *last, *next;
 
 		/* Typically there only a few map sources */
@@ -203,6 +209,13 @@ master_add_map_source(struct master_mapent *entry,
 			master_free_map_source(source, 0);
 			master_source_unlock(entry);
 			return this;
+		}
+
+		source->mc = cache_init(entry->ap, source);
+		if (!source->mc) {
+			master_free_map_source(source, 0);
+			master_source_unlock(entry);
+			return NULL;
 		}
 
 		last = NULL;
