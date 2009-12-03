@@ -200,14 +200,6 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 	}
 	free_map_type_info(info);
 
-	source->mc = cache_init(entry->ap, source);
-	if (!source->mc) {
-		error(ap->logopt, MODPREFIX "failed to init source cache");
-		master_free_map_source(source, 0);
-		master_free_mapent(entry);
-		return 1;
-	}
-
 	mounts_mutex_lock(ap);
 
 	if (handle_mounts_startup_cond_init(&suc)) {
