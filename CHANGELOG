@@ -18,6 +18,7 @@
 - fix rpc fail on large export list.
 - fix memory leak on reload.
 - dont connect at ldap lookup module init.
+- fix parse_sun() module init.
 
 03/09/2009 autofs-5.0.5
 -----------------------
