@@ -741,21 +741,16 @@ int master_parse_entry(const char *buffer, unsigned int default_timeout, unsigne
 
 	/* Add null map entries to the null map cache */
 	if (type && !strcmp(type, "null")) {
-		cache_writelock(nc);
 		cache_update(nc, NULL, path, NULL, lineno);
-		cache_unlock(nc);
 		local_free_vars();
 		return 1;
 	}
 
 	/* Ignore all subsequent matching nulled entries */
-	cache_readlock(nc);
 	if (cache_lookup_distinct(nc, path)) {
-		cache_unlock(nc);
 		local_free_vars();
 		return 1;
 	}
-	cache_unlock(nc);
 
 	if (debug || verbose) {
 		logopt = (debug ? LOGOPT_DEBUG : 0);
