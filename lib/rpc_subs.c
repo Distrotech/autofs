@@ -53,6 +53,7 @@
 /* Get numeric value of the n bits starting at position p */
 #define getbits(x, p, n)      ((x >> (p + 1 - n)) & ~(~0 << n))
 
+static int connect_nb(int, struct sockaddr *, socklen_t, struct timeval *);
 inline void dump_core(void);
 
 static CLIENT *rpc_clntudp_create(struct sockaddr *addr, struct conn_info *info, int *fd)
@@ -97,11 +98,17 @@ static CLIENT *rpc_clnttcp_create(struct sockaddr *addr, struct conn_info *info,
 	struct sockaddr_in *in4_raddr;
 	struct sockaddr_in6 *in6_raddr;
 	CLIENT *client = NULL;
+	socklen_t slen;
 
 	switch (addr->sa_family) {
 	case AF_INET:
 		in4_raddr = (struct sockaddr_in *) addr;
 		in4_raddr->sin_port = htons(info->port);
+		slen = sizeof(struct sockaddr_in);
+
+		if (connect_nb(*fd, addr, slen, &info->timeout) < 0)
+			break;
+
 		client = clnttcp_create(in4_raddr,
 					info->program, info->version, fd,
 					info->send_sz, info->recv_sz);
@@ -114,6 +121,11 @@ static CLIENT *rpc_clnttcp_create(struct sockaddr *addr, struct conn_info *info,
 #else
 		in6_raddr = (struct sockaddr_in6 *) addr;
 		in6_raddr->sin6_port = htons(info->port);
+		slen = sizeof(struct sockaddr_in6);
+
+		if (connect_nb(*fd, addr, slen, &info->timeout) < 0)
+			break;
+
 		client = clnttcp6_create(in6_raddr,
 					 info->program, info->version, fd,
 					 info->send_sz, info->recv_sz);
@@ -260,32 +272,21 @@ static CLIENT *rpc_do_create_client(struct sockaddr *addr, struct conn_info *inf
 		return NULL;
 	}
 
+	if (!info->client) {
+		*fd = open_sock(addr->sa_family, type, proto);
+		if (*fd < 0)
+			return NULL;
+
+		if (bind(*fd, laddr, slen) < 0)
+			return NULL;
+	}
+
 	switch (info->proto->p_proto) {
 	case IPPROTO_UDP:
-		if (!info->client) {
-			*fd = open_sock(addr->sa_family, type, proto);
-			if (*fd < 0)
-				return NULL;
-
-			if (bind(*fd, laddr, slen) < 0) {
-				close(*fd);
-				return NULL;
-			}
-		}
 		client = rpc_clntudp_create(addr, info, fd);
 		break;
 
 	case IPPROTO_TCP:
-		if (!info->client) {
-			*fd = open_sock(addr->sa_family, type, proto);
-			if (*fd < 0)
-				return NULL;
-
-			if (connect_nb(*fd, laddr, slen, &info->timeout) < 0) {
-				close(*fd);
-				return NULL;
-			}
-		}
 		client = rpc_clnttcp_create(addr, info, fd);
 		break;
 
@@ -327,7 +328,7 @@ static CLIENT *create_udp_client(struct conn_info *info)
 		if (client)
 			goto done;
 
-		if (!info->client) {
+		if (!info->client && fd != RPC_ANYSOCK) {
 			close(fd);
 			fd = RPC_ANYSOCK;
 		}
@@ -352,7 +353,7 @@ static CLIENT *create_udp_client(struct conn_info *info)
 		if (client)
 			break;
 
-		if (!info->client) {
+		if (!info->client && fd != RPC_ANYSOCK) {
 			close(fd);
 			fd = RPC_ANYSOCK;
 		}
@@ -477,7 +478,7 @@ static CLIENT *create_tcp_client(struct conn_info *info)
 		if (client)
 			break;
 
-		if (!info->client) {
+		if (!info->client && fd != RPC_ANYSOCK) {
 			close(fd);
 			fd = RPC_ANYSOCK;
 		}

@@ -15,6 +15,7 @@
 - fix pidof init script usage.
 - check for path mount location in generic module.
 - dont fail mount on access fail.
+- fix rpc fail on large export list.
 
 03/09/2009 autofs-5.0.5
 -----------------------
