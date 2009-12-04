@@ -137,7 +137,7 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 		return 1;
 	}
 
-	ctxt->order = get_map_order(ctxt->domainname, ctxt->mapname);
+	ctxt->order = -1;
 
 	if (!mapfmt)
 		mapfmt = MAPFMT_DEFAULT;
@@ -369,6 +369,7 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 		return NSS_STATUS_NOTFOUND;
 	}
 
+	ctxt->order = get_map_order(ctxt->domainname, ctxt->mapname);
 	source->age = age;
 
 	return NSS_STATUS_SUCCESS;
@@ -493,7 +494,6 @@ static int check_map_indirect(struct autofs_point *ap,
 	struct map_source *source;
 	struct mapent_cache *mc;
 	struct mapent *exists;
-	unsigned int map_order;
 	int ret = 0;
 
 	source = ap->entry->current;
@@ -526,11 +526,17 @@ static int check_map_indirect(struct autofs_point *ap,
 		return NSS_STATUS_UNAVAIL;
 	}
 
-	/* Only read map if it has been modified */
-	map_order = get_map_order(ctxt->domainname, ctxt->mapname);
-	if (map_order > ctxt->order) {
-		ctxt->order = map_order;
+	/* Only read map if it has been modified or not retrieved yet */
+	if (ctxt->order == -1) {
+		ctxt->order = get_map_order(ctxt->domainname, ctxt->mapname);
 		source->stale = 1;
+	} else {
+		unsigned int map_order;
+		map_order = get_map_order(ctxt->domainname, ctxt->mapname);
+		if (map_order > ctxt->order) {
+			ctxt->order = map_order;
+			source->stale = 1;
+		}
 	}
 
 	pthread_cleanup_push(cache_lock_cleanup, mc);
