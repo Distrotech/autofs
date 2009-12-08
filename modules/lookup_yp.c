@@ -247,10 +247,10 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 		     MODPREFIX "read of master map %s failed: %s",
 		     mapname, yperr_string(err));
 
-		if (err == YPERR_PMAP || err == YPERR_YPSERV)
-			return NSS_STATUS_UNAVAIL;
+		if (err == YPERR_PMAP)
+			return NSS_STATUS_NOTFOUND;
 
-		return NSS_STATUS_NOTFOUND;
+		return NSS_STATUS_UNAVAIL;
 	}
 
 	return NSS_STATUS_SUCCESS;

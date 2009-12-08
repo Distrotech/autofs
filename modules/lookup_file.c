@@ -383,14 +383,15 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 	FILE *f;
 	unsigned int path_len, ent_len;
 	int entry, cur_state;
+	int status = NSS_STATUS_SUCCESS;
 
 	if (master->recurse)
-		return NSS_STATUS_UNAVAIL;
+		return NSS_STATUS_NOTFOUND;
 
 	if (master->depth > MAX_INCLUDE_DEPTH) {
 		error(logopt, MODPREFIX
 		      "maximum include depth exceeded %s", master->name);
-		return NSS_STATUS_UNAVAIL;
+		return NSS_STATUS_NOTFOUND;
 	}
 
 	f = open_fopen_r(ctxt->mapname);
@@ -409,6 +410,7 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 			if (ferror(f)) {
 				warn(logopt, MODPREFIX
 				     "error reading map %s", ctxt->mapname);
+				status = NSS_STATUS_UNAVAIL;
 				break;
 			}
 			continue;
@@ -470,7 +472,7 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 
 	fclose(f);
 
-	return NSS_STATUS_SUCCESS;
+	return status;
 }
 
 static int check_self_include(const char *key, struct lookup_context *ctxt)
