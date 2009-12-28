@@ -811,7 +811,8 @@ int master_parse_entry(const char *buffer, unsigned int default_timeout, unsigne
 				ops->timeout(ap->logopt, ap->ioctlfd, &tout);
 		}
 	}
-	entry->ap->flags |= MOUNT_FLAG_RANDOM_SELECT;
+	if (random_selection)
+		entry->ap->flags |= MOUNT_FLAG_RANDOM_SELECT;
 	if (negative_timeout)
 		entry->ap->negative_timeout = negative_timeout;
 
