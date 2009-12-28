@@ -19,6 +19,7 @@
 - fix memory leak on reload.
 - dont connect at ldap lookup module init.
 - fix random selection option.
+- fix disable timeout.
 
 03/09/2009 autofs-5.0.5
 -----------------------

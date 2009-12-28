@@ -67,6 +67,9 @@ int alarm_add(struct autofs_point *ap, time_t seconds)
 	unsigned int empty = 1;
 	int status;
 
+	if (!seconds)
+		return 1;
+
 	new = malloc(sizeof(struct alarm));
 	if (!new)
 		return 0;
