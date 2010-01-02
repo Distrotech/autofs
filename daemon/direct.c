@@ -1167,7 +1167,7 @@ int handle_packet_expire_direct(struct autofs_point *ap, autofs_packet_expire_di
 		gettimeofday(&now, NULL);
 		wait.tv_sec = now.tv_sec + 2;
 		wait.tv_nsec = now.tv_usec * 1000;
-		status = pthread_cond_wait(&mt->cond, &ea_mutex);
+		status = pthread_cond_timedwait(&mt->cond, &ea_mutex, &wait);
 		if (status && status != ETIMEDOUT)
 			fatal(status);
 	}
