@@ -830,16 +830,6 @@ int master_parse_entry(const char *buffer, unsigned int default_timeout, unsigne
 		return 0;
 	}
 
-	if (!source->mc) {
-		source->mc = cache_init(entry->ap, source);
-		if (!source->mc) {
-			error(m_logopt, "failed to init source cache");
-			if (new)
-				master_free_mapent(new);
-			local_free_vars();
-			return 0;
-		}
-	}
 	source->master_line = lineno;
 
 	entry->age = age;
