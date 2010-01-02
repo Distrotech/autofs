@@ -526,19 +526,10 @@ static int umount_subtree_mounts(struct autofs_point *ap, const char *path, unsi
    it also tries to umount path itself */
 int umount_multi(struct autofs_point *ap, const char *path, int incl)
 {
-	struct mapent_cache *nc;
 	int is_autofs_fs;
 	int left;
 
 	debug(ap->logopt, "path %s incl %d", path, incl);
-
-	nc = ap->entry->master->nc;
-	cache_readlock(nc);
-	if (cache_lookup_distinct(nc, path)) {
-		cache_unlock(nc);
-		return 0;
-	}
-	cache_unlock(nc);
 
 	is_autofs_fs = 0;
 	if (master_find_submount(ap, path))
