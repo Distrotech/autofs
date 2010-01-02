@@ -20,6 +20,7 @@
 - dont connect at ldap lookup module init.
 - fix random selection option.
 - fix disable timeout.
+- fix strdup() return value check (Leonardo Chiquitto).
 
 03/09/2009 autofs-5.0.5
 -----------------------
