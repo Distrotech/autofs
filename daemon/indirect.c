@@ -875,10 +875,6 @@ int handle_packet_missing_indirect(struct autofs_point *ap, autofs_packet_missin
 	if (status)
 		fatal(status);
 
-	status = pthread_mutex_lock(&mt->mutex);
-	if (status)
-		fatal(status);
-
 	mt->ap = ap;
 	strncpy(mt->name, pkt->name, pkt->len);
 	mt->name[pkt->len] = '\0';
@@ -888,12 +884,17 @@ int handle_packet_missing_indirect(struct autofs_point *ap, autofs_packet_missin
 	mt->gid = pkt->gid;
 	mt->wait_queue_token = pkt->wait_queue_token;
 
+	master_mutex_unlock();
+
+	status = pthread_mutex_lock(&mt->mutex);
+	if (status)
+		fatal(status);
+
 	status = pthread_create(&thid, &th_attr_detached, do_mount_indirect, mt);
 	if (status) {
 		error(ap->logopt, "expire thread create failed");
 		ops->send_fail(ap->logopt,
 			       ap->ioctlfd, pkt->wait_queue_token, -status);
-		master_mutex_unlock();
 		mount_mutex_unlock(mt);
 		pending_cond_destroy(mt);
 		pending_mutex_destroy(mt);
@@ -901,8 +902,6 @@ int handle_packet_missing_indirect(struct autofs_point *ap, autofs_packet_missin
 		pthread_setcancelstate(state, NULL);
 		return 1;
 	}
-
-	master_mutex_unlock();
 
 	pthread_cleanup_push(free_pending_args, mt);
 	pthread_cleanup_push(pending_mutex_destroy, mt);
