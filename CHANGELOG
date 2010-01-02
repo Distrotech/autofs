@@ -23,6 +23,7 @@
 - fix strdup() return value check (Leonardo Chiquitto).
 - fix parse_sun() module init.
 - dont check null cache on expire.
+- fix null cache race.
 
 03/09/2009 autofs-5.0.5
 -----------------------
