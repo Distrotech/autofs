@@ -17,6 +17,7 @@
 - dont fail mount on access fail.
 - fix rpc fail on large export list.
 - fix memory leak on reload.
+- update kernel patches for 2.6.18 and 2.6.19.
 
 03/09/2009 autofs-5.0.5
 -----------------------
