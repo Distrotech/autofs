@@ -19,6 +19,7 @@
 - fix memory leak on reload.
 - update kernel patches for 2.6.18 and 2.6.19.
 - dont connect at ldap lookup module init.
+- fix random selection option.
 
 03/09/2009 autofs-5.0.5
 -----------------------
