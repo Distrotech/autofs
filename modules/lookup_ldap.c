@@ -724,8 +724,12 @@ static LDAP *do_reconnect(unsigned logopt, struct lookup_context *ctxt)
 	uris_mutex_lock(ctxt);
 	if (ctxt->dclist)
 		uri = strdup(ctxt->dclist->uri);
-	else
+	else if (ctxt->uri)
 		uri = strdup(ctxt->uri->uri);
+	else {
+		uris_mutex_unlock(ctxt);
+		goto find_server;
+	}
 	uris_mutex_unlock(ctxt);
 
 	if (!uri) {
@@ -757,6 +761,7 @@ static LDAP *do_reconnect(unsigned logopt, struct lookup_context *ctxt)
 	autofs_sasl_dispose(ctxt);
 #endif
 
+find_server:
 	/* Current server failed connect, try the rest */
 	ldap = find_server(logopt, ctxt);
 	if (!ldap)
@@ -1342,7 +1347,6 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 {
 	struct lookup_context *ctxt;
 	char buf[MAX_ERR_BUF];
-	LDAP *ldap = NULL;
 	int ret;
 
 	*context = NULL;
@@ -1416,23 +1420,6 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 	}
 #endif
 
-	if (ctxt->server || !ctxt->uris) {
-		ldap = connect_to_server(LOGOPT_NONE, ctxt->server, ctxt);
-		if (!ldap) {
-			free_context(ctxt);
-			return 1;
-		}
-	} else {
-		ldap = find_server(LOGOPT_NONE, ctxt);
-		if (!ldap) {
-			free_context(ctxt);
-			error(LOGOPT_ANY, MODPREFIX
-			     "failed to find available server");
-			return 1;
-		}
-	}
-	unbind_ldap_connection(LOGOPT_ANY, ldap, ctxt);
-
 	/* Open the parser, if we can. */
 	ctxt->parse = open_parse(mapfmt, MODPREFIX, argc - 1, argv + 1);
 	if (!ctxt->parse) {
@@ -1463,6 +1450,11 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 	int scope = LDAP_SCOPE_SUBTREE;
 	LDAP *ldap;
 
+	/* Initialize the LDAP context. */
+	ldap = do_reconnect(logopt, ctxt);
+	if (!ldap)
+		return NSS_STATUS_UNAVAIL;
+
 	class = ctxt->schema->entry_class;
 	entry = ctxt->schema->entry_attr;
 	info = ctxt->schema->value_attr;
@@ -1482,13 +1474,6 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 
 	if (sprintf(query, "(objectclass=%s)", class) >= l) {
 		error(logopt, MODPREFIX "error forming query string");
-		free(query);
-		return NSS_STATUS_UNAVAIL;
-	}
-
-	/* Initialize the LDAP context. */
-	ldap = do_reconnect(logopt, ctxt);
-	if (!ldap) {
 		free(query);
 		return NSS_STATUS_UNAVAIL;
 	}
@@ -2264,6 +2249,11 @@ static int read_one_map(struct autofs_point *ap,
 	sp.ap = ap;
 	sp.age = age;
 
+	/* Initialize the LDAP context. */
+	sp.ldap = do_reconnect(ap->logopt, ctxt);
+	if (!sp.ldap)
+		return NSS_STATUS_UNAVAIL;
+
 	class = ctxt->schema->entry_class;
 	entry = ctxt->schema->entry_attr;
 	info = ctxt->schema->value_attr;
@@ -2285,13 +2275,6 @@ static int read_one_map(struct autofs_point *ap,
 
 	if (sprintf(sp.query, "(objectclass=%s)", class) >= l) {
 		error(ap->logopt, MODPREFIX "error forming query string");
-		free(sp.query);
-		return NSS_STATUS_UNAVAIL;
-	}
-
-	/* Initialize the LDAP context. */
-	sp.ldap = do_reconnect(ap->logopt, ctxt);
-	if (!sp.ldap) {
 		free(sp.query);
 		return NSS_STATUS_UNAVAIL;
 	}
@@ -2401,6 +2384,11 @@ static int lookup_one(struct autofs_point *ap,
 		return CHE_FAIL;
 	}
 
+	/* Initialize the LDAP context. */
+	ldap = do_reconnect(ap->logopt, ctxt);
+	if (!ldap)
+		return CHE_UNAVAIL;
+
 	class = ctxt->schema->entry_class;
 	entry = ctxt->schema->entry_attr;
 	info = ctxt->schema->value_attr;
@@ -2477,13 +2465,6 @@ static int lookup_one(struct autofs_point *ap,
 		      MODPREFIX "error forming query string");
 		free(query);
 		return CHE_FAIL;
-	}
-
-	/* Initialize the LDAP context. */
-	ldap = do_reconnect(ap->logopt, ctxt);
-	if (!ldap) {
-		free(query);
-		return CHE_UNAVAIL;
 	}
 
 	debug(ap->logopt,

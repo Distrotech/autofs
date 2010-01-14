@@ -292,8 +292,13 @@ static int do_read_map(struct autofs_point *ap, struct map_source *map, time_t a
 	 * For maps that don't support enumeration return success
 	 * and do whatever we must to have autofs function with an
 	 * empty map entry cache.
+	 *
+	 * For indirect maps that use the browse option, when the
+	 * server is unavailable continue as best we can with
+	 * whatever we have in the cache, if anything.
 	 */
-	if (status == NSS_STATUS_UNKNOWN)
+	if (status == NSS_STATUS_UNKNOWN ||
+	   (ap->type == LKP_INDIRECT && status == NSS_STATUS_UNAVAIL))
 		return NSS_STATUS_SUCCESS;
 
 	return status;
