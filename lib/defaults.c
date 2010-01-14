@@ -65,7 +65,7 @@ static char *get_env_string(const char *name)
 		return NULL;
 
 	res = strdup(val);
-	if (!val)
+	if (!res)
 		return NULL;
 
 	return res;
