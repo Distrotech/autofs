@@ -556,7 +556,7 @@ static int do_bind(unsigned logopt, LDAP *ldap, const char *uri, struct lookup_c
 		}
 	}
 
-	if (!need_base)
+	if (ctxt->schema && !need_base)
 		return 1;
 
 	/*
