@@ -811,17 +811,29 @@ int master_read_master(struct master *master, time_t age, int readall)
 	unsigned int logopt = master->logopt;
 	struct mapent_cache *nc;
 
-	nc = cache_init_null_cache(master);
-	if (!nc) {
-		error(logopt,
-		      "failed to init null map cache for %s", master->name);
-		return 0;
+	/*
+	 * We need to clear and re-populate the null map entry cache
+	 * before alowing anyone else to use it.
+	 */
+	if (master->nc) {
+		cache_writelock(master->nc);
+		nc = master->nc;
+		cache_clean_null_cache(nc);
+	} else {
+		nc = cache_init_null_cache(master);
+		if (!nc) {
+			error(logopt,
+			      "failed to init null map cache for %s",
+			      master->name);
+			return 0;
+		}
+		cache_writelock(nc);
+		master->nc = nc;
 	}
-	master->nc = nc;
-
 	master_init_scan();
-
 	lookup_nss_read_master(master, age);
+	cache_unlock(nc);
+
 	master_mount_mounts(master, age, readall);
 
 	master_mutex_lock();
