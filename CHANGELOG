@@ -25,6 +25,7 @@
 - fix reconnect get base dn.
 - fix mapent becomes negative during lookup.
 - fix non multi-mount recursive mounts.
+- fix master map bogus keywork match.
 
 03/09/2009 autofs-5.0.5
 -----------------------
