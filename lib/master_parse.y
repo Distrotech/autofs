@@ -75,7 +75,7 @@ static unsigned int debug;
 
 static int lineno;
 
-#define YYDEBUG 0
+#define YYDEBUG 1
 
 #ifndef YYENABLE_NLS
 #define YYENABLE_NLS 0
@@ -541,11 +541,11 @@ options: option {}
 		master_notify($1);
 		YYABORT;
 	}
-	| options EQUAL
+	/*| options EQUAL
 	{
 		master_notify($1);
 		YYABORT;
-	}
+	}*/
 	;
 
 option: daemon_option
