@@ -1622,17 +1622,25 @@ int parse_mount(struct autofs_point *ap, const char *name,
 		 * it's already been parsed (above) and any option string
 		 * has already been stripped so just use the remainder.
 		 */
+		cache_readlock(mc);
 		if (*name == '/' &&
 		   (me = cache_lookup_distinct(mc, name)) && me->multi) {
 			loc = strdup(p);
 			if (!loc) {
 				free(options);
+				cache_unlock(mc);
 				warn(ap->logopt, MODPREFIX "out of memory");
 				return 1;
 			}
-			loclen = strlen(p);
-			goto mount_it;
+			cache_multi_writelock(me);
+			rv = mount_subtree(ap, me, name, loc, options, ctxt);
+			cache_multi_unlock(me);
+			cache_unlock(mc);
+			free(loc);
+			free(options);
+			return rv;
 		}
+		cache_unlock(mc);
 
 		l = chunklen(p, check_colon(p));
 		loc = dequote(p, l, ap->logopt);
@@ -1716,21 +1724,20 @@ int parse_mount(struct autofs_point *ap, const char *name,
 			      MODPREFIX "entry %s is empty!", name);
 			return 1;
 		}
-mount_it:
+
 		debug(ap->logopt,
 		      MODPREFIX "core of entry: options=%s, loc=%.*s",
 		      options, loclen, loc);
 
-		cache_readlock(mc);
-		cache_multi_writelock(me);
-
-		rv = mount_subtree(ap, me, name, loc, options, ctxt);
+		if (!strcmp(ap->path, "/-"))
+			rv = sun_mount(ap, name, name, name_len,
+				       loc, loclen, options, ctxt);
+		else
+			rv = sun_mount(ap, ap->path, name, name_len,
+				       loc, loclen, options, ctxt);
 
 		free(loc);
 		free(options);
-
-		cache_multi_unlock(me);
-		cache_unlock(mc);
 		pthread_setcancelstate(cur_state, NULL);
 	}
 	return rv;

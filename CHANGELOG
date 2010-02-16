@@ -24,6 +24,7 @@
 - fix strdup() return value check (Leonardo Chiquitto).
 - fix reconnect get base dn.
 - fix mapent becomes negative during lookup.
+- fix non multi-mount recursive mounts.
 
 03/09/2009 autofs-5.0.5
 -----------------------
