@@ -92,6 +92,7 @@ NL		\r?\n
 CONT		\\\n{OPTWS}
 
 OPTIONSTR	([\-]?([[:alpha:]_]([[:alnum:]_\-])*(=([[:alnum:]_\-])+)*)+)
+QVOPTIONSTR	([[:alpha:]_]([[:alnum:]_\-])*="([[:alnum:]_\-\:])+")
 MACROSTR	(-D{OPTWS}([[:alpha:]_]([[:alnum:]_\-\.])*)=([[:alnum:]_\-\.])+)
 SLASHIFYSTR	(--(no-)?slashify-colons)
 NUMBER		[0-9]+
@@ -202,6 +203,14 @@ OPTNTOUT	(-n{OPTWS}|-n{OPTWS}={OPTWS}|--negative-timeout{OPTWS}|--negative-timeo
 	{MULTI} {
 		tlen = master_leng - 1;
 		if (bptr != buff && isblank(master_text[tlen])) {
+			/*
+			 * We can't handle unescaped white space in map names
+			 * so just eat the white space. We always have the
+			 * "multi" at the beginning of the string so the while
+			 * will not fall off the end.
+			 */
+			while (isblank(master_text[tlen - 1]))
+				tlen--;
 			strncat(buff, master_text, tlen);
 			bptr += tlen;
 			yyless(tlen);
@@ -216,6 +225,14 @@ OPTNTOUT	(-n{OPTWS}|-n{OPTWS}={OPTWS}|--negative-timeout{OPTWS}|--negative-timeo
 	{MTYPE}/{DNATTRSTR}= {
 		tlen = master_leng - 1;
 		if (bptr != buff && isblank(master_text[tlen])) {
+			/*
+			 * We can't handle unescaped white space in map names
+			 * so just eat the white space. We always have the
+			 * maptype keyword at the beginning of the string so
+			 * the while will not fall off the end.
+			 */
+			while (isblank(master_text[tlen - 1]))
+				tlen--;
 			strncat(buff, master_text, tlen);
 			bptr += tlen;
 			yyless(tlen);
@@ -380,6 +397,11 @@ OPTNTOUT	(-n{OPTWS}|-n{OPTWS}={OPTWS}|--negative-timeout{OPTWS}|--negative-timeo
 	}
 
 	{MACROSTR} {
+		strcpy(master_lval.strtype, master_text);
+		return(OPTION);
+	}
+
+	{QVOPTIONSTR} {
 		strcpy(master_lval.strtype, master_text);
 		return(OPTION);
 	}
