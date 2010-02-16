@@ -1670,6 +1670,7 @@ static void usage(void)
 		"	-f --foreground do not fork into background\n"
 		"	-r --random-multimount-selection\n"
 		"			use ramdom replicated server selection\n"
+		"	-m --dumpmaps	dump automounter maps and exit\n"
 		"	-n --negative-timeout n\n"
 		"			set the timeout for failed key lookups.\n"
 		"	-O --global-options\n"
@@ -1819,7 +1820,7 @@ int main(int argc, char *argv[])
 	int res, opt, status;
 	int logpri = -1;
 	unsigned ghost, logging, daemon_check;
-	unsigned foreground, have_global_options;
+	unsigned dumpmaps, foreground, have_global_options;
 	time_t timeout;
 	time_t age = time(NULL);
 	struct rlimit rlim;
@@ -1833,6 +1834,7 @@ int main(int argc, char *argv[])
 		{"foreground", 0, 0, 'f'},
 		{"random-multimount-selection", 0, 0, 'r'},
 		{"negative-timeout", 1, 0, 'n'},
+		{"dumpmaps", 0, 0, 'm'},
 		{"global-options", 1, 0, 'O'},
 		{"version", 0, 0, 'V'},
 		{"set-log-priority", 1, 0, 'l'},
@@ -1863,10 +1865,11 @@ int main(int argc, char *argv[])
 	global_options = NULL;
 	have_global_options = 0;
 	foreground = 0;
+	dumpmaps = 0;
 	daemon_check = 1;
 
 	opterr = 0;
-	while ((opt = getopt_long(argc, argv, "+hp:t:vdD:fVrO:l:n:CF", long_options, NULL)) != EOF) {
+	while ((opt = getopt_long(argc, argv, "+hp:t:vmdD:fVrO:l:n:CF", long_options, NULL)) != EOF) {
 		switch (opt) {
 		case 'h':
 			usage();
@@ -1906,6 +1909,10 @@ int main(int argc, char *argv[])
 
 		case 'n':
 			global_negative_timeout = getnumopt(optarg, opt);
+			break;
+
+		case 'm':
+			dumpmaps = 1;
 			break;
 
 		case 'O':
@@ -1994,7 +2001,8 @@ int main(int argc, char *argv[])
 	}
 #endif
 
-	if (!query_kproto_ver() || get_kver_major() < 5) {
+	/* Don't need the kernel module just to look at the configured maps */
+	if (!dumpmaps && (!query_kproto_ver() || get_kver_major() < 5)) {
 		fprintf(stderr,
 			"%s: test mount forbidden or "
 			"incorrect kernel protocol version, "
@@ -2019,21 +2027,37 @@ int main(int argc, char *argv[])
 		     "can't increase core file limit - continuing");
 #endif
 
-	become_daemon(foreground, daemon_check);
-
 	if (argc == 0)
 		master_list = master_new(NULL, timeout, ghost);
 	else
 		master_list = master_new(argv[0], timeout, ghost);
 
 	if (!master_list) {
-		logerr("%s: can't create master map %s",
-			program, argv[0]);
-		res = write(start_pipefd[1], pst_stat, sizeof(*pst_stat));
-		close(start_pipefd[1]);
-		release_flag_file();
+		printf("%s: can't create master map %s", program, argv[0]);
 		exit(1);
 	}
+
+	if (dumpmaps) {
+		struct mapent_cache *nc;
+
+		open_log();
+
+		master_init_scan();
+
+		nc = cache_init_null_cache(master_list);
+		if (!nc) {
+			logerr("failed to init null map cache for %s",
+				master_list->name);
+			exit(1);
+		}
+		master_list->nc = nc;
+
+		lookup_nss_read_master(master_list, 0);
+		master_show_mounts(master_list);
+		exit(0);
+	}
+
+	become_daemon(foreground, daemon_check);
 
 	if (pthread_attr_init(&th_attr)) {
 		logerr("%s: failed to init thread attribute struct!",
