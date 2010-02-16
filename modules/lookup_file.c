@@ -1042,7 +1042,7 @@ do_cache_lookup:
 		if (!me)
 			me = cache_lookup_distinct(mc, "*");
 	}
-	if (me && (me->source == source || *me->key == '/')) {
+	if (me && me->mapent && (me->source == source || *me->key == '/')) {
 		pthread_cleanup_push(cache_lock_cleanup, mc);
 		strcpy(mapent_buf, me->mapent);
 		mapent = mapent_buf;
