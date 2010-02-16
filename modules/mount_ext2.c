@@ -42,6 +42,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 	int err, ro = 0;
 	const char *fsck_prog;
 	int len, status, existed = 1;
+	pid_t pgrp;
 
 	if (ap->flags & MOUNT_FLAG_REMOUNT)
 		return 0;
@@ -92,6 +93,17 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 	if (!strcmp(fstype,"ext4"))
 		fsck_prog = PATH_E4FSCK;
 #endif
+
+	/*
+	 * Maybe the path contains a dependent mount so trigger the recursive
+	 * mount by using access(2) with a different process group id. Ignore
+	 * the access(2) return code iand let the subsequent fsck deal with
+	 * any actual access problems.
+	 */
+	pgrp = getpgrp();
+	setpgrp();
+	access(what, F_OK);
+
 	if (ro) {
 		debug(ap->logopt,
 		      MODPREFIX "calling %s -n %s", fsck_prog, what);
@@ -101,6 +113,8 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 		      MODPREFIX "calling %s -p %s", fsck_prog, what);
 		err = spawnl(ap->logopt, fsck_prog, fsck_prog, "-p", what, NULL);
 	}
+
+	setpgid(0, pgrp);
 
 	/*
 	 * spawnl returns the error code, left shifted by 8 bits.  We are
