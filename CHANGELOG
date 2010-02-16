@@ -26,6 +26,7 @@
 - fix mapent becomes negative during lookup.
 - fix non multi-mount recursive mounts.
 - fix master map bogus keywork match.
+- add missing sasl mutex callbacks.
 
 03/09/2009 autofs-5.0.5
 -----------------------
