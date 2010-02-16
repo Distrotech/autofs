@@ -75,7 +75,7 @@ static unsigned int debug;
 
 static int lineno;
 
-#define YYDEBUG 0
+#define YYDEBUG 1
 
 #ifndef YYENABLE_NLS
 #define YYENABLE_NLS 0
@@ -534,22 +534,23 @@ dnattr: DNATTR EQUAL DNNAME
 	;
 
 options: option {}
-	| options COMMA option {}
 	| options option {}
+	| options COMMA option {}
 	| options COMMA COMMA option
 	{
 		master_notify($1);
 		YYABORT;
 	}
-	| options EQUAL
+	/*| options EQUAL
 	{
 		master_notify($1);
 		YYABORT;
-	}
+	}*/
 	;
 
 option: daemon_option
 	| mount_option {}
+	| mount_option EQUAL mount_option {}
 	| error
 	{
 		master_notify("bogus option");
