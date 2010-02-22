@@ -23,6 +23,7 @@
 - fix disable timeout.
 - fix strdup() return value check (Leonardo Chiquitto).
 - fix reconnect get base dn.
+- add missing sasl mutex callbacks.
 
 03/09/2009 autofs-5.0.5
 -----------------------
