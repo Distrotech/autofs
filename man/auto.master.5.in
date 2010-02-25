@@ -157,6 +157,48 @@ command line.
 Set the timeout for caching failed key lookups. This option can be
 used to override the global default given either on the command line
 or in the configuration.
+.SH MAP FORMAT
+.P
+The format of a map is as follows:
+.TP
+.IR key mount-options target
+.TP
+.B key
+defines the key (which is the name of the directory inside the indirect map's
+mountpoint) in case of an indirect map, or the full mountpoint path (always
+absolute path) in case of a direct map.
+.TP
+.B mount-options
+defines the mount options used when the respective filesystem is mounted. The
+options here are the same as the options given after the -o switch of mount,
+but with a leading \fB-\fP (e.g. for \fBmount <mountpoint> -o
+fstype=cifs,user=foo <target>\fP, the equivalent \fBmount-options\fP would be
+\fB-fstype=cifs,user=foo\fP).
+.TP
+.B target
+defines the target which is to be mounted. Targets beginning with \fB/\fP are
+interpreted a local filesystem path. To specify a non-local mount location, a
+leading \fB:\fP must be added. \fB\[rs]\fP is the escape character. A literal
+\fB\[rs]\fP can be used but then must be escaped (e.g. \fB\[rs]\[rs]\fP). A
+literal \fB$\fP can be used but must be escaped (\fB\[rs]$\fP).
+.TP
+As an example, a line in a direct map might look like this:
+.sp
+.RS +.2i
+.ta 1.0i
+.nf
+/srv/smb-e -fstype=smbfs,ip=192.168.1.2,user=administrator,password=secret,uid=root,gid=root ://192.168.1.2/E\[rs]$/
+.fi
+.RE
+.sp
+And a line in an indirect map might look like this:
+.sp
+.RS +.2i
+.ta 1.0i
+.nf
+floppy         -fstype=auto            :/dev/fd0
+.fi
+.RE
 .SH GENERAL SYSTEM DEFAULTS CONFIGURATION
 .P
 The default value of several general settings may be changed in the
