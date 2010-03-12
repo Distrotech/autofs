@@ -24,6 +24,7 @@
 - fix strdup() return value check (Leonardo Chiquitto).
 - fix reconnect get base dn.
 - add missing sasl mutex callbacks.
+- fix get query dn failure.
 
 03/09/2009 autofs-5.0.5
 -----------------------
