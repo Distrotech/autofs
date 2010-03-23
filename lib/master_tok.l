@@ -210,7 +210,7 @@ OPTNTOUT	(-n{OPTWS}|-n{OPTWS}={OPTWS}|--negative-timeout{OPTWS}|--negative-timeo
 	}
 
 	{MTYPE} |
-	{MTYPE}/{DNSERVERSTR}{DNATTRSTR} |
+	{MTYPE}/{DNSERVERSTR}{DNATTRSTR}= |
 	{MTYPE}/{DNATTRSTR}= {
 		tlen = master_leng - 1;
 		if (bptr != buff && isblank(master_text[tlen])) {
@@ -250,7 +250,7 @@ OPTNTOUT	(-n{OPTWS}|-n{OPTWS}={OPTWS}|--negative-timeout{OPTWS}|--negative-timeo
 		yyless(0);
 	}
 
-	{DNSERVERSTR}{DNATTRSTR} {
+	{DNSERVERSTR}{DNATTRSTR}= {
 		BEGIN(DNSTR);
 		yyless(0);
 	}

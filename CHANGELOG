@@ -27,6 +27,7 @@
 - fix get query dn failure.
 - fix ampersand escape in auto.smb.
 - add locality as valid ldap master map attribute.
+- add locality as valid ldap master map attribute fix.
 
 03/09/2009 autofs-5.0.5
 -----------------------
