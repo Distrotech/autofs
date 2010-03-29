@@ -40,6 +40,7 @@ BROWSE_MODE="no"
 # 			       used for single host map entries.
 #
 #MOUNT_NFS_DEFAULT_PROTOCOL=3
+MOUNT_NFS_DEFAULT_PROTOCOL=4
 #
 # APPEND_OPTIONS - append to global options instead of replace.
 #
