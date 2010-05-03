@@ -97,6 +97,7 @@ struct lookup_context {
 #define LDAP_AUTH_NOTREQUIRED	0x0001
 #define LDAP_AUTH_REQUIRED	0x0002
 #define LDAP_AUTH_AUTODETECT	0x0004
+#define LDAP_AUTH_USESIMPLE	0x0008
 
 /* lookup_ldap.c */
 LDAP *init_ldap_connection(unsigned logopt, const char *uri, struct lookup_context *ctxt);

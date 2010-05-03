@@ -137,11 +137,13 @@ static void uris_mutex_unlock(struct lookup_context *ctxt)
 	return;
 }
 
-int bind_ldap_anonymous(unsigned logopt, LDAP *ldap, const char *uri, struct lookup_context *ctxt)
+int bind_ldap_simple(unsigned logopt, LDAP *ldap, const char *uri, struct lookup_context *ctxt)
 {
 	int rv;
 
-	if (ctxt->version == 2)
+	if (ctxt->auth_required == LDAP_AUTH_USESIMPLE)
+		rv = ldap_simple_bind_s(ldap, ctxt->user, ctxt->secret);
+	else if (ctxt->version == 2)
 		rv = ldap_simple_bind_s(ldap, ctxt->base, NULL);
 	else
 		rv = ldap_simple_bind_s(ldap, NULL, NULL);
@@ -517,12 +519,12 @@ static int do_bind(unsigned logopt, LDAP *ldap, const char *uri, struct lookup_c
 		rv = autofs_sasl_bind(logopt, ldap, ctxt);
 		debug(logopt, MODPREFIX "autofs_sasl_bind returned %d", rv);
 	} else {
-		rv = bind_ldap_anonymous(logopt, ldap, uri, ctxt);
-		debug(logopt, MODPREFIX "ldap anonymous bind returned %d", rv);
+		rv = bind_ldap_simple(logopt, ldap, uri, ctxt);
+		debug(logopt, MODPREFIX "ldap simple bind returned %d", rv);
 	}
 #else
-	rv = bind_ldap_anonymous(logopt, ldap, uri, ctxt);
-	debug(logopt, MODPREFIX "ldap anonymous bind returned %d", rv);
+	rv = bind_ldap_simple(logopt, ldap, uri, ctxt);
+	debug(logopt, MODPREFIX "ldap simple bind returned %d", rv);
 #endif
 
 	if (rv != 0)
@@ -971,11 +973,13 @@ int parse_ldap_config(unsigned logopt, struct lookup_context *ctxt)
 			auth_required = LDAP_AUTH_NOTREQUIRED;
 		else if (!strcasecmp(authrequired, "autodetect"))
 			auth_required = LDAP_AUTH_AUTODETECT;
+		else if (!strcasecmp(authrequired, "simple"))
+			auth_required = LDAP_AUTH_USESIMPLE;
 		else {
 			error(logopt,
 			      MODPREFIX
 			      "The authrequired property must have value "
-			      "\"yes\", \"no\" or \"autodetect\".");
+			      "\"yes\", \"no\", \"autodetect\", or \"simple\".");
 			ret = -1;
 			goto out;
 		}
@@ -991,7 +995,8 @@ int parse_ldap_config(unsigned logopt, struct lookup_context *ctxt)
 		goto out;
 	}
 
-	if (authtype && authtype_requires_creds(authtype)) {
+	if (auth_required == LDAP_AUTH_USESIMPLE ||
+	   (authtype && authtype_requires_creds(authtype))) {
 		ret = get_property(logopt, root, "user",  &user);
 		ret |= get_property(logopt, root, "secret", &secret);
 		if (ret != 0 || (!user || !secret)) {
