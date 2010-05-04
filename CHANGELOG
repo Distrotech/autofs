@@ -30,6 +30,7 @@
 - add locality as valid ldap master map attribute fix.
 - add simple bind authentication.
 - fix master map source server unavailable handling.
+- add autofs_ldap_auth.conf man page.
 
 03/09/2009 autofs-5.0.5
 -----------------------

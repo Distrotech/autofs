@@ -365,6 +365,8 @@ and set the location of the client certificate and private key
 in the per-user configuration. The location of these files and the configuration
 entry requirements is system dependent so the documentation for your
 installation will need to be consulted to get further information.
+.P
+See \fBautofs_ldap_auth.conf\fP(5) for more information.
 .SH EXAMPLE
 .sp
 .RS +.2i
@@ -399,6 +401,7 @@ configuration will be used to locate the source of the map
 .BR automount (8),
 .BR autofs (5),
 .BR autofs (8).
+.BR autofs_ldap_auth.conf (5)
 .SH AUTHOR
 This manual page was written by Christoph Lameter <chris@waterf.org>,
 for the Dean GNU/Linux system.  Edited by <hpa@transmeta.com> and

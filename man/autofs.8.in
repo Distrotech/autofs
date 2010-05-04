@@ -50,6 +50,7 @@ will display the status of,
 .BR automount (8),
 .BR autofs (5),
 .BR auto.master (5).
+.BR autofs_ldap_auth.conf (5)
 .SH AUTHOR
 This manual page was written by Christoph Lameter <chris@waterf.org>,
 for the Debi GNU/Linux system.  Edited by H. Peter Anvin
