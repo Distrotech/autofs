@@ -25,6 +25,7 @@ MODULE="autofs4"
 DEVICE="autofs"
 initdir=@@initdir@@
 confdir=@@autofsconfdir@@
+MAX_STOP_WAIT=180
 
 test -e $DAEMON || exit 0
 
@@ -41,6 +42,28 @@ export PATH
 if [ -r $confdir/autofs ]; then
 	. $confdir/autofs
 fi
+UMOUNT_WAIT=${UMOUNT_WAIT:-12}
+
+function wait_mount_umount_quiescent()
+{
+	local count=`wc -l /proc/mounts|awk '{print $1}'`
+	local now=0
+	local timeout=$1
+	local elapsed=0
+
+	while [ $count -ne $now ]; do
+		now=$count
+		while [ -n "`pidof $prog`" ]; do
+			sleep 5
+			elapsed=`expr $elapsed + 5`
+			if [ $elapsed -gt $timeout ]; then
+				elapsed=0
+				break
+			fi
+		done
+		count=`wc -l /proc/mounts|awk '{print $1}'`
+	done
+}
 
 function start() {
 	# Make sure autofs4 module is loaded
@@ -100,12 +123,19 @@ function start() {
 
 function stop() {
 	echo -n $"Stopping $prog: "
+	if [ $UMOUNT_WAIT -le 0 ]; then
+		wait_time=20
+	else
+		wait_time=$UMOUNT_WAIT
+	fi
 	count=0
-	while [ -n "`pidof $prog`" -a $count -lt 15 ] ; do
+	max_wait=`expr $MAX_STOP_WAIT + $wait_time`
+	while [ -n "`pidof $prog`" -a $count -lt $max_wait ] ; do
 		killproc $prog -TERM >& /dev/null
 		RETVAL=$?
-		[ $RETVAL = 0 -a -z "`pidof $prog`" ] || sleep 3
-		count=`expr $count + 1`
+		wait_mount_umount_quiescent $wait_time
+		[ $RETVAL = 0 -a -z "`pidof $prog`" ] || sleep 5
+		count=`expr $count + $wait_time + 5`
 	done
 	[ $RETVAL -eq 0 ] && rm -f /var/lock/subsys/autofs
 	if [ -n "`pidof $prog`" ] ; then
