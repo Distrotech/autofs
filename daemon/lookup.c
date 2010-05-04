@@ -157,6 +157,9 @@ int lookup_nss_read_master(struct master *master, time_t age)
 			result = do_read_master(master, "file", age);
 		}
 
+		if (result == NSS_STATUS_UNAVAIL)
+			master->read_fail = 1;
+
 		return !result;
 	} else {
 		char *name = master->name;
@@ -193,6 +196,9 @@ int lookup_nss_read_master(struct master *master, time_t age)
 
 				result = do_read_master(master, source, age);
 				master->name = name;
+
+				if (result == NSS_STATUS_UNAVAIL)
+					master->read_fail = 1;
 
 				return !result;
 			}
@@ -247,6 +253,9 @@ int lookup_nss_read_master(struct master *master, time_t age)
 			debug(logopt, "no map - continuing to next source");
 			continue;
 		}
+
+		if (result == NSS_STATUS_UNAVAIL)
+			master->read_fail = 1;
 
 		status = check_nss_result(this, result);
 		if (status >= 0) {

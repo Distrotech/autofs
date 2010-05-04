@@ -1478,7 +1478,6 @@ static void handle_mounts_cleanup(void *arg)
 		master_free_mapent_sources(ap->entry, 1);
 		master_free_mapent(ap->entry);
 	}
-	master_mutex_unlock();
 
 	if (clean) {
 		if (rmdir(path) == -1) {
@@ -1497,7 +1496,9 @@ static void handle_mounts_cleanup(void *arg)
 	 */
 	if (!submount)
 		pthread_kill(state_mach_thid, SIGTERM);
-	
+
+	master_mutex_unlock();
+
 	return;
 }
 

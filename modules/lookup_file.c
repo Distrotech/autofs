@@ -656,8 +656,6 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 			if (!status) {
 				warn(ap->logopt,
 				     "failed to read included map %s", key);
-				fclose(f);
-				return NSS_STATUS_UNAVAIL;
 			}
 		} else {
 			char *s_key; 

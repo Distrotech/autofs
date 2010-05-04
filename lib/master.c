@@ -794,6 +794,7 @@ struct master *master_new(const char *name, unsigned int timeout, unsigned int g
 	master->recurse = 0;
 	master->depth = 0;
 	master->reading = 0;
+	master->read_fail = 0;
 	master->default_ghost = ghost;
 	master->default_timeout = timeout;
 	master->default_logging = defaults_get_logging();
@@ -821,7 +822,13 @@ int master_read_master(struct master *master, time_t age, int readall)
 	master_init_scan();
 
 	lookup_nss_read_master(master, age);
-	master_mount_mounts(master, age, readall);
+	if (!master->read_fail)
+		master_mount_mounts(master, age, readall);
+	else {
+		master->read_fail = 0;
+		if (!readall)
+			master_mount_mounts(master, age, readall);
+	}
 
 	master_mutex_lock();
 
