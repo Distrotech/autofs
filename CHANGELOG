@@ -31,6 +31,7 @@
 - add simple bind authentication.
 - fix master map source server unavailable handling.
 - add autofs_ldap_auth.conf man page.
+- fix random selection for host on different network.
 
 03/09/2009 autofs-5.0.5
 -----------------------

@@ -137,7 +137,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 	else if (mount_default_proto == 4)
 		vers = vers | NFS4_VERS_MASK;
 
-	if (!parse_location(ap->logopt, &hosts, what)) {
+	if (!parse_location(ap->logopt, &hosts, what, random_selection)) {
 		info(ap->logopt, MODPREFIX "no hosts available");
 		return 1;
 	}

@@ -1041,13 +1041,23 @@ int prune_host_list(unsigned logopt, struct host **list,
 
 static int add_new_host(struct host **list,
 			const char *host, unsigned int weight,
-			struct addrinfo *host_addr)
+			struct addrinfo *host_addr,
+			unsigned int random_selection)
 {
 	struct host *new;
 	unsigned int prx;
 	int addr_len;
 
-	prx = get_proximity(host_addr->ai_addr);
+	/*
+	 * If we are using random selection we pretend all hosts are at
+	 * the same proximity so hosts further away don't get excluded.
+	 * We can't use PROXIMITY_LOCAL or we won't perform an RPC ping
+	 * to remove hosts that may be down.
+	 */
+	if (random_selection)
+		prx = PROXIMITY_SUBNET;
+	else
+		prx = get_proximity(host_addr->ai_addr);
 	/*
 	 * If we tried to add an IPv6 address and we don't have IPv6
 	 * support return success in the hope of getting an IPv4
@@ -1071,7 +1081,8 @@ static int add_new_host(struct host **list,
 	return 1;
 }
 
-static int add_host_addrs(struct host **list, const char *host, unsigned int weight)
+static int add_host_addrs(struct host **list, const char *host,
+			  unsigned int weight, unsigned int random_selection)
 {
 	struct addrinfo hints, *ni, *this;
 	int ret;
@@ -1087,7 +1098,7 @@ static int add_host_addrs(struct host **list, const char *host, unsigned int wei
 
 	this = ni;
 	while (this) {
-		ret = add_new_host(list, host, weight, this);
+		ret = add_new_host(list, host, weight, this, random_selection);
 		if (!ret)
 			break;
 		this = this->ai_next;
@@ -1110,7 +1121,7 @@ try_name:
 
 	this = ni;
 	while (this) {
-		ret = add_new_host(list, host, weight, this);
+		ret = add_new_host(list, host, weight, this, random_selection);
 		if (!ret)
 			break;
 		this = this->ai_next;
@@ -1197,7 +1208,8 @@ static char *seek_delim(const char *s)
 	return NULL;
 }
 
-int parse_location(unsigned logopt, struct host **hosts, const char *list)
+int parse_location(unsigned logopt, struct host **hosts,
+		   const char *list, unsigned int random_selection)
 {
 	char *str, *p, *delim;
 	unsigned int empty = 1;
@@ -1252,7 +1264,7 @@ int parse_location(unsigned logopt, struct host **hosts, const char *list)
 				}
 
 				if (p != delim) {
-					if (!add_host_addrs(hosts, p, weight)) {
+					if (!add_host_addrs(hosts, p, weight, random_selection)) {
 						if (empty) {
 							p = next;
 							continue;
@@ -1274,7 +1286,7 @@ int parse_location(unsigned logopt, struct host **hosts, const char *list)
 				*delim = '\0';
 				next = delim + 1;
 
-				if (!add_host_addrs(hosts, p, weight)) {
+				if (!add_host_addrs(hosts, p, weight, random_selection)) {
 					p = next;
 					continue;
 				}
