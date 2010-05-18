@@ -37,6 +37,7 @@
 - fix remount locking.
 - fix wildcard map entry match.
 - fix parse_sun() module init.
+- dont check null cache on expire.
 
 03/09/2009 autofs-5.0.5
 -----------------------
