@@ -33,6 +33,7 @@
 - add autofs_ldap_auth.conf man page.
 - fix random selection for host on different network.
 - make redhat init script more lsb compliant.
+- don't hold lock for simple mounts.
 
 03/09/2009 autofs-5.0.5
 -----------------------
