@@ -2681,7 +2681,6 @@ next:
 	unbind_ldap_connection(ap->logopt, ldap, ctxt);
 
 	/* Failed to find wild entry, update cache if needed */
-	pthread_cleanup_push(cache_lock_cleanup, mc);
 	cache_writelock(mc);
 	we = cache_lookup_distinct(mc, "*");
 	if (we) {
@@ -2707,7 +2706,7 @@ next:
 			}
 		}
 	}
-	pthread_cleanup_pop(1);
+	cache_unlock(mc);
 	free(query);
 
 	return ret;
@@ -2817,13 +2816,22 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 		if (me->status >= time(NULL)) {
 			cache_unlock(me->mc);
 			return NSS_STATUS_NOTFOUND;
+		} else {
+			struct mapent_cache *smc = me->mc;
+			struct mapent *sme;
+
+			if (me->mapent)
+				cache_unlock(smc);
+			else {
+				cache_unlock(smc);
+				cache_writelock(smc);
+				sme = cache_lookup_distinct(smc, key);
+				/* Negative timeout expired for non-existent entry. */
+				if (sme && !sme->mapent)
+					cache_delete(smc, key);
+				cache_unlock(smc);
+			}
 		}
-
-		/* Negative timeout expired for non-existent entry. */
-		if (!me->mapent)
-			cache_delete(me->mc, key);
-
-		cache_unlock(me->mc);
 	}
 
         /*

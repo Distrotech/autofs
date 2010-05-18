@@ -871,7 +871,6 @@ static int check_map_indirect(struct autofs_point *ap,
 	if (ret == CHE_FAIL)
 		return NSS_STATUS_NOTFOUND;
 
-	pthread_cleanup_push(cache_lock_cleanup, mc);
 	cache_writelock(mc);
 	exists = cache_lookup_distinct(mc, key);
 	/* Not found in the map but found in the cache */
@@ -882,7 +881,7 @@ static int check_map_indirect(struct autofs_point *ap,
 			exists->status = 0;
 		}
 	}
-	pthread_cleanup_pop(1);
+	cache_unlock(mc);
 
 	if (ret == CHE_MISSING) {
 		struct mapent *we;
@@ -896,7 +895,6 @@ static int check_map_indirect(struct autofs_point *ap,
 		 * Check for map change and update as needed for
 		 * following cache lookup.
 		 */
-		pthread_cleanup_push(cache_lock_cleanup, mc);
 		cache_writelock(mc);
 		we = cache_lookup_distinct(mc, "*");
 		if (we) {
@@ -904,7 +902,7 @@ static int check_map_indirect(struct autofs_point *ap,
 			if (we->source == source && (wild & CHE_MISSING))
 				cache_delete(mc, "*");
 		}
-		pthread_cleanup_pop(1);
+		cache_unlock(mc);
 
 		if (wild & (CHE_OK | CHE_UPDATED))
 			return NSS_STATUS_SUCCESS;
@@ -957,13 +955,22 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 		if (me->status >= time(NULL)) {
 			cache_unlock(me->mc);
 			return NSS_STATUS_NOTFOUND;
+		} else {
+			struct mapent_cache *smc = me->mc;
+			struct mapent *sme;
+
+			if (me->mapent)
+				cache_unlock(smc);
+			else {
+				cache_unlock(smc);
+				cache_writelock(smc);
+				sme = cache_lookup_distinct(smc, key);
+				/* Negative timeout expired for non-existent entry. */
+				if (sme && !sme->mapent)
+					cache_delete(smc, key);
+				cache_unlock(smc);
+			}
 		}
-
-		/* Negative timeout expired for non-existent entry. */
-		if (!me->mapent)
-			cache_delete(me->mc, key);
-
-		cache_unlock(me->mc);
 	}
 
 	/*

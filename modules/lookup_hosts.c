@@ -146,19 +146,25 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 	/* Check if we recorded a mount fail for this key anywhere */
 	me = lookup_source_mapent(ap, name, LKP_DISTINCT);
 	if (me) {
-		struct mapent_cache *fmc = me->mc;
-
 		if (me->status >= time(NULL)) {
-			cache_unlock(fmc);
+			cache_unlock(me->mc);
 			return NSS_STATUS_NOTFOUND;
-		}
+		} else {
+			struct mapent_cache *smc = me->mc;
+			struct mapent *sme;
 
-		if (!me->mapent) {
-			cache_delete(fmc, name);
-			me = NULL;
+			if (me->mapent)
+				cache_unlock(smc);
+			else {
+				cache_unlock(smc);
+				cache_writelock(smc);
+				sme = cache_lookup_distinct(smc, name);
+				/* Negative timeout expired for non-existent entry. */
+				if (sme && !sme->mapent)
+					cache_delete(smc, name);
+				cache_unlock(smc);
+			}
 		}
-
-		cache_unlock(fmc);
 	}
 
 	cache_readlock(mc);
