@@ -36,6 +36,7 @@
 - don't hold lock for simple mounts.
 - fix remount locking.
 - fix wildcard map entry match.
+- fix parse_sun() module init.
 
 03/09/2009 autofs-5.0.5
 -----------------------
