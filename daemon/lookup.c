@@ -600,7 +600,7 @@ int lookup_ghost(struct autofs_point *ap, const char *root)
 		cache_readlock(mc);
 		me = cache_enumerate(mc, NULL);
 		while (me) {
-			if (*me->key == '*')
+			if (!strcmp(me->key, "*"))
 				goto next;
 
 			if (*me->key == '/') {
@@ -1035,7 +1035,7 @@ void lookup_prune_one_cache(struct autofs_point *ap, struct mapent_cache *mc, ti
 
 		key = strdup(me->key);
 		me = cache_enumerate(mc, me);
-		if (!key || *key == '*') {
+		if (!key || !strcmp(key, "*")) {
 			if (key)
 				free(key);
 			continue;

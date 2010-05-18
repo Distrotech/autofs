@@ -35,6 +35,7 @@
 - make redhat init script more lsb compliant.
 - don't hold lock for simple mounts.
 - fix remount locking.
+- fix wildcard map entry match.
 
 03/09/2009 autofs-5.0.5
 -----------------------

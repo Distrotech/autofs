@@ -719,7 +719,7 @@ int cache_update(struct mapent_cache *mc, struct map_source *ms, const char *key
 	me = cache_lookup(mc, key);
 	while (me && me->source != ms)
 		me = cache_lookup_key_next(me);
-	if (!me || (*me->key == '*' && *key != '*')) {
+	if (!me || (!strcmp(me->key, "*") && strcmp(key, "*"))) {
 		ret = cache_add(mc, ms, key, mapent, age);
 		if (!ret) {
 			debug(logopt, "failed for %s", key);
