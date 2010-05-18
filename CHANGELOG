@@ -40,6 +40,7 @@
 - dont check null cache on expire.
 - fix null cache race.
 - fix cache_init() on source re-read.
+- fix mapent becomes negative during lookup.
 
 03/09/2009 autofs-5.0.5
 -----------------------
