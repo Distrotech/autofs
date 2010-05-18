@@ -39,6 +39,7 @@
 - fix parse_sun() module init.
 - dont check null cache on expire.
 - fix null cache race.
+- fix cache_init() on source re-read.
 
 03/09/2009 autofs-5.0.5
 -----------------------
