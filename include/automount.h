@@ -194,6 +194,7 @@ void cache_multi_writelock(struct mapent *me);
 void cache_multi_unlock(struct mapent *me);
 int cache_delete_offset_list(struct mapent_cache *mc, const char *key);
 void cache_release(struct map_source *map);
+void cache_clean_null_cache(struct mapent_cache *mc);
 void cache_release_null_cache(struct master *master);
 struct mapent *cache_enumerate(struct mapent_cache *mc, struct mapent *me);
 char *cache_get_offset(const char *prefix, char *offset, int start, struct list_head *head, struct list_head **pos);
