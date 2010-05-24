@@ -197,10 +197,10 @@ void expire_cleanup(void *arg)
 		}
 	}
 
+	st_set_done(ap);
+
 	if (next != ST_INVAL)
 		__st_add_task(ap, next);
-
-	st_set_done(ap);
 
 	st_mutex_unlock();
 
@@ -332,11 +332,10 @@ static void do_readmap_cleanup(void *arg)
 	st_mutex_lock();
 
 	ap->readmap_thread = 0;
-	st_ready(ap);
 	st_set_done(ap);
-
 	if (!ap->submount)
 		alarm_add(ap, ap->exp_runfreq);
+	st_ready(ap);
 
 	st_mutex_unlock();
 
@@ -1060,8 +1059,6 @@ static void *st_queue_handler(void *arg)
 {
 	struct list_head *head;
 	struct list_head *p;
-	struct timespec wait;
-	struct timeval now;
 	int status, ret;
 
 	st_mutex_lock();
@@ -1072,17 +1069,11 @@ static void *st_queue_handler(void *arg)
 		 * entry is added.
 		 */
 		head = &state_queue;
-		gettimeofday(&now, NULL);
-		wait.tv_sec = now.tv_sec + 1;
-		wait.tv_nsec = now.tv_usec * 1000;
 
 		while (list_empty(head)) {
-			status = pthread_cond_timedwait(&cond, &mutex, &wait);
-			if (status) {
-				if (status == ETIMEDOUT)
-					break;
+			status = pthread_cond_wait(&cond, &mutex);
+			if (status)
 				fatal(status);
-			}
 		}
 
 		p = head->next;
@@ -1108,18 +1099,11 @@ static void *st_queue_handler(void *arg)
 		}
 
 		while (1) {
-			gettimeofday(&now, NULL);
-			wait.tv_sec = now.tv_sec + 1;
-			wait.tv_nsec = now.tv_usec * 1000;
-
 			signaled = 0;
 			while (!signaled) {
-				status = pthread_cond_timedwait(&cond, &mutex, &wait);
-				if (status) {
-					if (status == ETIMEDOUT)
-						break;
+				status = pthread_cond_wait(&cond, &mutex);
+				if (status)
 					fatal(status);
-				}
 			}
 
 			head = &state_queue;

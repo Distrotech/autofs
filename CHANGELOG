@@ -43,6 +43,7 @@
 - fix mapent becomes negative during lookup.
 - check each dc server individually.
 - fix negative cache included map lookup.
+- remove state machine timed wait.
 
 03/09/2009 autofs-5.0.5
 -----------------------
