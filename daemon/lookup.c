@@ -813,6 +813,10 @@ static void update_negative_cache(struct autofs_point *ap, struct map_source *so
 	struct map_source *map;
 	struct mapent *me;
 
+	/* Don't update negative cache for included maps */ 
+	if (source && source->depth)
+		return;
+
 	/* Have we recorded the lookup fail for negative caching? */
 	me = lookup_source_mapent(ap, name, LKP_DISTINCT);
 	if (me)
@@ -823,7 +827,7 @@ static void update_negative_cache(struct autofs_point *ap, struct map_source *so
 		cache_unlock(me->mc);
 	else {
 		/* Notify only once after fail */
-		error(ap->logopt, "key \"%s\" not found in map.", name);
+		logmsg("key \"%s\" not found in map source(s).", name);
 
 		/* Doesn't exist in any source, just add it somewhere */
 		if (source)
