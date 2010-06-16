@@ -45,6 +45,7 @@
 - fix negative cache included map lookup.
 - remove state machine timed wait.
 - remove extra read master map call.
+- fix error handing in do_mount_indirect().
 
 03/09/2009 autofs-5.0.5
 -----------------------
