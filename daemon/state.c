@@ -358,20 +358,7 @@ static void do_readmap_mount(struct autofs_point *ap, struct mnt_list *mnts,
 	struct mapent *ne, *nested, *valid;
 
 	nc = ap->entry->master->nc;
-
 	ne = cache_lookup_distinct(nc, me->key);
-	if (!ne) {
-		nested = cache_partial_match(nc, me->key);
-		if (nested) {
-			error(ap->logopt,
-			      "removing invalid nested null entry %s",
-			      nested->key);
-			nested = cache_partial_match(nc, me->key);
-			if (nested)
-				cache_delete(nc, nested->key);
-		}
-	}
-
 	if (me->age < now || (ne && map->master_line > ne->age)) {
 		/*
 		 * The map instance may have changed, such as the map name or

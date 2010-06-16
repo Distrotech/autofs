@@ -765,7 +765,6 @@ static void *do_mount_indirect(void *arg)
 	struct pending_args *args, mt;
 	struct autofs_point *ap;
 	char buf[PATH_MAX + 1];
-	struct stat st;
 	int len, status, state;
 
 	args = (struct pending_args *) arg;
@@ -789,21 +788,11 @@ static void *do_mount_indirect(void *arg)
 
 	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &state);
 
-	len = ncat_path(buf, sizeof(buf), ap->path, mt.name, mt.len);
+	len = cat_path(buf, sizeof(buf), ap->path, mt.name);
 	if (!len) {
-		crit(ap->logopt, "path to be mounted is to long");
+		crit(ap->logopt, "failed to make mount path");
 		ops->send_fail(ap->logopt,
-			       ap->ioctlfd, mt.wait_queue_token,
-			      -ENAMETOOLONG);
-		pthread_setcancelstate(state, NULL);
-		pthread_exit(NULL);
-	}
-
-	status = lstat(buf, &st);
-	if (status != -1 && !(S_ISDIR(st.st_mode) && st.st_dev == mt.dev)) {
-		error(ap->logopt,
-		      "indirect trigger not valid or already mounted %s", buf);
-		ops->send_ready(ap->logopt, ap->ioctlfd, mt.wait_queue_token);
+			       ap->ioctlfd, mt.wait_queue_token, -EINVAL);
 		pthread_setcancelstate(state, NULL);
 		pthread_exit(NULL);
 	}
@@ -836,11 +825,14 @@ static void *do_mount_indirect(void *arg)
 int handle_packet_missing_indirect(struct autofs_point *ap, autofs_packet_missing_indirect_t *pkt)
 {
 	struct ioctl_ops *ops = get_ioctl_ops();
+	struct mapent_cache *nc;
 	pthread_t thid;
+	char path[PATH_MAX + 1];
 	char buf[MAX_ERR_BUF];
 	struct pending_args *mt;
 	struct timespec wait;
 	struct timeval now;
+	struct stat st;
 	int status, state;
 
 	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &state);
@@ -855,6 +847,34 @@ int handle_packet_missing_indirect(struct autofs_point *ap, autofs_packet_missin
 		ops->send_fail(ap->logopt,
 			       ap->ioctlfd, pkt->wait_queue_token, -ENOENT);
 		master_mutex_unlock();
+		pthread_setcancelstate(state, NULL);
+		return 0;
+	}
+
+	len = ncat_path(path, sizeof(path), ap->path, pkt->name, pkt->len);
+	if (!len) {
+		crit(ap->logopt, "path to be mounted is to long");
+		ops->send_fail(ap->logopt,
+			       ap->ioctlfd, pkt->wait_queue_token,
+			      -ENAMETOOLONG);
+		pthread_setcancelstate(state, NULL);
+		return 1;
+	}
+
+	nc = ap->entry->master->nc;
+	ne = cache_lookup_distinct(nc, path);
+	if (ne) {
+		debug(ap->logopt, "nulled map key %s ignored", pkt->name);
+		ops->send_ready(ap->logopt, ap->ioctlfd, pkt->wait_queue_token);
+		pthread_setcancelstate(state, NULL);
+		return 0;
+	}
+
+	status = lstat(path, &st);
+	if (status != -1 && !(S_ISDIR(st.st_mode) && st.st_dev == pkt->dev)) {
+		error(ap->logopt,
+		      "indirect trigger not valid or already mounted %s", path);
+		ops->send_ready(ap->logopt, ap->ioctlfd, pkt->wait_queue_token);
 		pthread_setcancelstate(state, NULL);
 		return 0;
 	}
@@ -894,7 +914,7 @@ int handle_packet_missing_indirect(struct autofs_point *ap, autofs_packet_missin
 
 	status = pthread_create(&thid, &th_attr_detached, do_mount_indirect, mt);
 	if (status) {
-		error(ap->logopt, "expire thread create failed");
+		error(ap->logopt, "mount thread create failed");
 		ops->send_fail(ap->logopt,
 			       ap->ioctlfd, pkt->wait_queue_token, -status);
 		master_mutex_unlock();

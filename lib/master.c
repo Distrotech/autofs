@@ -1160,15 +1160,6 @@ int master_mount_mounts(struct master *master, time_t age, int readall)
 			st_add_task(ap, ST_SHUTDOWN_PENDING);
 			continue;
 		}
-		nested = cache_partial_match(nc, this->path);
-		if (nested) {
-			error(ap->logopt,
-			     "removing invalid nested null entry %s",
-			     nested->key);
-			nested = cache_partial_match(nc, this->path);
-			if (nested)
-				cache_delete(nc, nested->key);
-		}
 		cache_unlock(nc);
 
 		st_mutex_lock();
