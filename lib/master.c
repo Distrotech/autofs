@@ -840,7 +840,6 @@ int master_read_master(struct master *master, time_t age, int readall)
 	lookup_nss_read_master(master, age);
 	cache_unlock(nc);
 
-	lookup_nss_read_master(master, age);
 	if (!master->read_fail)
 		master_mount_mounts(master, age, readall);
 	else {
