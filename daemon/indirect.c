@@ -792,6 +792,9 @@ static void *do_mount_indirect(void *arg)
 	len = ncat_path(buf, sizeof(buf), ap->path, mt.name, mt.len);
 	if (!len) {
 		crit(ap->logopt, "path to be mounted is to long");
+		ops->send_fail(ap->logopt,
+			       ap->ioctlfd, mt.wait_queue_token,
+			      -ENAMETOOLONG);
 		pthread_setcancelstate(state, NULL);
 		pthread_exit(NULL);
 	}
@@ -800,6 +803,7 @@ static void *do_mount_indirect(void *arg)
 	if (status != -1 && !(S_ISDIR(st.st_mode) && st.st_dev == mt.dev)) {
 		error(ap->logopt,
 		      "indirect trigger not valid or already mounted %s", buf);
+		ops->send_ready(ap->logopt, ap->ioctlfd, mt.wait_queue_token);
 		pthread_setcancelstate(state, NULL);
 		pthread_exit(NULL);
 	}
