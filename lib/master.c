@@ -188,12 +188,6 @@ master_add_map_source(struct master_mapent *entry,
 	source->argc = argc;
 	source->argv = tmpargv;
 
-	source->mc = cache_init(entry->ap, source);
-	if (!source->mc) {
-		master_free_map_source(source, 0);
-		return NULL;
-	}
-
 	master_source_writelock(entry);
 
 	if (!entry->maps) {
