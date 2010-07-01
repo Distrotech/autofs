@@ -375,6 +375,47 @@ struct pending_args {
 	unsigned long wait_queue_token;	/* Associated kernel wait token */
 };
 
+#ifdef INCLUDE_PENDING_FUNCTIONS
+static void pending_cond_destroy(void *arg)
+{
+	struct pending_args *mt = (struct pending_args *) arg;
+	int status;
+	status = pthread_cond_destroy(&mt->cond);
+	if (status)
+		fatal(status);
+}
+
+static void pending_mutex_destroy(void *arg)
+{
+	struct pending_args *mt = (struct pending_args *) arg;
+	int status = pthread_mutex_destroy(&mt->mutex);
+	if (status)
+		fatal(status);
+}
+
+static void free_pending_args(void *arg)
+{
+	struct pending_args *mt = (struct pending_args *) arg;
+	free(mt);
+}
+
+static void pending_mutex_lock(void *arg)
+{
+        struct pending_args *mt = (struct pending_args *) arg;
+        int status = pthread_mutex_lock(&mt->mutex);
+        if (status)
+                fatal(status);
+}
+
+static void pending_mutex_unlock(void *arg)
+{
+        struct pending_args *mt = (struct pending_args *) arg;
+        int status = pthread_mutex_unlock(&mt->mutex);
+        if (status)
+                fatal(status);
+}
+#endif
+
 struct thread_stdenv_vars {
 	uid_t uid;
 	gid_t gid;

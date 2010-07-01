@@ -46,6 +46,7 @@
 - remove state machine timed wait.
 - remove extra read master map call.
 - fix error handing in do_mount_indirect().
+- expire thread use pending mutex.
 
 03/09/2009 autofs-5.0.5
 -----------------------
