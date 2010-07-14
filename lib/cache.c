@@ -761,6 +761,9 @@ int cache_update(struct mapent_cache *mc, struct map_source *ms, const char *key
 			if (me->mapent)
 				free(me->mapent);
 			me->mapent = strcpy(pent, mapent);
+			/* Reset negative status and source */
+			me->status = 0;
+			me->source = ms;
 			ret = CHE_UPDATED;
 		}
 		me->age = age;
@@ -784,6 +787,25 @@ int cache_delete(struct mapent_cache *mc, const char *key)
 		goto done;
 	}
 
+	if (strcmp(this, me->key) == 0) {
+		if (me->multi && !list_empty(&me->multi_list)) {
+			ret = CHE_FAIL;
+			goto done;
+		}
+		mc->hash[hashval] = me->next;
+		status = pthread_rwlock_destroy(&me->multi_rwlock);
+		if (status)
+			fatal(status);
+		ino_index_lock(mc);
+		list_del(&me->ino_index);
+		ino_index_unlock(mc);
+		free(me->key);
+		if (me->mapent)
+			free(me->mapent);
+		free(me);
+		goto done;
+	}
+
 	while (me->next != NULL) {
 		pred = me;
 		me = me->next;
@@ -803,30 +825,8 @@ int cache_delete(struct mapent_cache *mc, const char *key)
 			if (me->mapent)
 				free(me->mapent);
 			free(me);
-			me = pred;
+			break;
 		}
-	}
-
-	me = mc->hash[hashval];
-	if (!me)
-		goto done;
-
-	if (strcmp(this, me->key) == 0) {
-		if (me->multi && !list_empty(&me->multi_list)) {
-			ret = CHE_FAIL;
-			goto done;
-		}
-		mc->hash[hashval] = me->next;
-		status = pthread_rwlock_destroy(&me->multi_rwlock);
-		if (status)
-			fatal(status);
-		ino_index_lock(mc);
-		list_del(&me->ino_index);
-		ino_index_unlock(mc);
-		free(me->key);
-		if (me->mapent)
-			free(me->mapent);
-		free(me);
 	}
 done:
 	return ret;
