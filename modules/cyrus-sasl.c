@@ -875,6 +875,26 @@ autofs_sasl_bind(unsigned logopt, LDAP *ldap, struct lookup_context *ctxt)
 	if (ctxt->sasl_conn)
 		return 0;
 
+	if (!strncmp(ctxt->sasl_mech, "EXTERNAL", 8)) {
+		int result;
+
+		debug(logopt,
+		      "Attempting sasl bind with mechanism %s",
+		      ctxt->sasl_mech);
+
+		result = do_sasl_extern(ldap, ctxt);
+		if (result)
+			debug(logopt,
+			      "Failed to authenticate with mech %s",
+			      ctxt->sasl_mech);
+		else
+			debug(logopt,
+			      "sasl bind with mechanism %s succeeded",
+			      ctxt->sasl_mech);
+
+		return result;
+	}
+
 	sasl_auth_id = ctxt->user;
 	sasl_auth_secret = ctxt->secret;
 

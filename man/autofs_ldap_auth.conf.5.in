@@ -60,12 +60,30 @@ authentication  mechanism. If no suitable mechanism can be found, connections
 to the ldap server are made without authentication. Finally, if it is set to
 simple, then simple authentication will be used instead of SASL.
 .TP
-\fBauthtype="GSSAPI"|"LOGIN"|"PLAIN"|"ANONYMOUS"|"DIGEST-MD5"\fP
+\fBauthtype="GSSAPI"|"LOGIN"|"PLAIN"|"ANONYMOUS"|"DIGEST-MD5|EXTERNAL"\fP
 This attribute can be used to specify a preferred authentication mechanism.
- In normal operations, the automounter will attempt to authenticate to the
+In normal operations, the automounter will attempt to authenticate to the
 ldap server using the list of supportedSASLmechanisms obtained from the
 directory server.  Explicitly setting the authtype will bypass this selection
-and only try the mechanism specified.
+and only try the mechanism specified. The EXTERNAL mechanism may be used to
+authenticate using a client certificate and requires that authrequired
+set to "yes" if using SSL or usetls, tlsrequired and authrequired all set to
+"yes" if using TLS, in addition to authtype being set to EXTERNAL.
+.sp
+If using authtype EXTERNAL two additional configuration entries are
+required:
+.sp
+\fBexternal_cert="<client certificate path>"\fP
+.sp
+This specifies the path of the file containing the client certificate.
+.sp
+\fBexternal_key="<client certificate key path>"\fP
+.sp
+This specifies the path of the file containing the client certificate key.
+.sp
+These two configuration entries are mandatory when using the EXTERNAL method
+as the HOME environment variable cannot be assumed to be set or, if it is,
+to be set to the location we expect.
 .TP
 \fBuser="<username>"\fP
 This attribute holds the authentication identity used by authentication

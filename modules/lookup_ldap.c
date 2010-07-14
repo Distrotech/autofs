@@ -41,6 +41,9 @@
 
 int lookup_version = AUTOFS_LOOKUP_VERSION;	/* Required by protocol */
 
+#define ENV_LDAPTLS_CERT	"LDAPTLS_CERT"
+#define ENV_LDAPTLS_KEY		"LDAPTLS_KEY"
+
 static struct ldap_schema common_schema[] = {
 	{"nisMap", "nisMapName", "nisObject", "cn", "nisMapEntry"},
 	{"automountMap", "ou", "automount", "cn", "automountInformation"},
@@ -60,6 +63,43 @@ struct ldap_search_params {
 };
 
 static int decode_percent_hack(const char *, char **);
+
+static char *get_set_env(unsigned logopt, const char *name, const char *val)
+{
+	char *save = NULL;
+	char *tmp;
+	int ret;
+
+	tmp = getenv(name);
+	if (tmp) {
+		save = strdup(tmp);
+		if (!save) {
+			error(logopt,
+			      "failed to alloc save string for %s", name);
+			return NULL;
+		}
+	}
+
+	ret = setenv(name, val, 1);
+	if (ret == -1) {
+		error(logopt, "failed to set config value for %s", name);
+		free(save);
+		return NULL;
+	}
+
+	return save;
+}
+
+static void restore_env(unsigned logopt, const char *name, char *val)
+{
+	int ret;
+
+	ret = setenv(name, val, 1);
+	if (ret == -1)
+		error(logopt, "failed to restore config value for %s", name);
+	free(val);
+	return;
+}
 
 #ifndef HAVE_LDAP_CREATE_PAGE_CONTROL
 int ldap_create_page_control(LDAP *ldap, ber_int_t pagesize,
@@ -586,16 +626,28 @@ static int do_bind(unsigned logopt, LDAP *ldap, const char *uri, struct lookup_c
 
 static LDAP *do_connect(unsigned logopt, const char *uri, struct lookup_context *ctxt)
 {
+	char *env_tls_cert = NULL;
+	char *env_tls_key = NULL;
 	LDAP *ldap;
 
-	ldap = init_ldap_connection(logopt, uri, ctxt);
-	if (!ldap)
-		return NULL;
-
-	if (!do_bind(logopt, ldap, uri, ctxt)) {
-		unbind_ldap_connection(logopt, ldap, ctxt);
-		return NULL;
+	if (ctxt->extern_cert && ctxt->extern_key) {
+		env_tls_cert = get_set_env(logopt, ENV_LDAPTLS_CERT, ctxt->extern_cert);
+		env_tls_key = get_set_env(logopt, ENV_LDAPTLS_KEY, ctxt->extern_key);
 	}
+
+	ldap = init_ldap_connection(logopt, uri, ctxt);
+	if (ldap) {
+		if (!do_bind(logopt, ldap, uri, ctxt)) {
+			unbind_ldap_connection(logopt, ldap, ctxt);
+			ldap = NULL;
+		}
+	}
+
+	if (env_tls_cert)
+		restore_env(logopt, ENV_LDAPTLS_CERT, env_tls_cert);
+
+	if (env_tls_key)
+		restore_env(logopt, ENV_LDAPTLS_KEY, env_tls_key);
 
 	return ldap;
 }
@@ -849,6 +901,7 @@ int parse_ldap_config(unsigned logopt, struct lookup_context *ctxt)
 	xmlNodePtr   root = NULL;
 	char         *authrequired, *auth_conf, *authtype;
 	char         *user = NULL, *secret = NULL;
+	char         *extern_cert = NULL, *extern_key = NULL;
 	char         *client_princ = NULL, *client_cc = NULL;
 	char	     *usetls, *tlsrequired;
 
@@ -1033,6 +1086,32 @@ int parse_ldap_config(unsigned logopt, struct lookup_context *ctxt)
 			ret = -1;
 			goto out;
 		}
+	} else if (auth_required == LDAP_AUTH_REQUIRED &&
+		  (authtype && !strncmp(authtype, "EXTERNAL", 8))) {
+		ret = get_property(logopt, root, "external_cert",  &extern_cert);
+		ret |= get_property(logopt, root, "external_key",  &extern_key);
+		/*
+		 * For EXTERNAL auth to function we need a client certificate
+		 * and and certificate key. The ca certificate used to verify
+		 * the server certificate must also be set correctly in the
+		 * global configuration as the connection must be encrypted
+		 * and the server and client certificates must have been
+		 * verified for the EXTERNAL method to be offerred by the
+		 * server.
+		 */
+		if (ret != 0 || !extern_cert || !extern_key) {
+			error(logopt, MODPREFIX
+			      "failure getting values for authentication "
+			      "type %s", authtype);
+			free(authtype);
+			if (extern_cert)
+				free(extern_cert);
+			if (extern_key)
+				free(extern_key);
+
+			ret = -1;
+			goto out;
+		}
 	}
 
 	/*
@@ -1053,6 +1132,8 @@ int parse_ldap_config(unsigned logopt, struct lookup_context *ctxt)
 	ctxt->secret = secret;
 	ctxt->client_princ = client_princ;
 	ctxt->client_cc = client_cc;
+	ctxt->extern_cert = extern_cert;
+	ctxt->extern_key = extern_key;
 
 	debug(logopt, MODPREFIX
 	      "ldap authentication configured with the following options:");
@@ -1062,14 +1143,18 @@ int parse_ldap_config(unsigned logopt, struct lookup_context *ctxt)
 	      "auth_required: %u, "
 	      "sasl_mech: %s",
 	      use_tls, tls_required, auth_required, authtype);
-	debug(logopt, MODPREFIX
-	      "user: %s, "
-	      "secret: %s, "
-	      "client principal: %s "
-	      "credential cache: %s",
-	      user, secret ? "specified" : "unspecified",
-	      client_princ, client_cc);
-
+	if (!strncmp(authtype, "EXTERNAL", 8)) {
+		debug(logopt, MODPREFIX "external cert: %s", extern_cert);
+		debug(logopt, MODPREFIX "external key: %s ", extern_key);
+	} else {
+		debug(logopt, MODPREFIX
+		      "user: %s, "
+		      "secret: %s, "
+		      "client principal: %s "
+		      "credential cache: %s",
+		      user, secret ? "specified" : "unspecified",
+		      client_princ, client_cc);
+	}
 out:
 	xmlFreeDoc(doc);
 
@@ -1336,6 +1421,10 @@ static void free_context(struct lookup_context *ctxt)
 		defaults_free_searchdns(ctxt->sdns);
 	if (ctxt->dclist)
 		free_dclist(ctxt->dclist);
+	if (ctxt->extern_cert)
+		free(ctxt->extern_cert);
+	if (ctxt->extern_key)
+		free(ctxt->extern_key);
 	free(ctxt);
 
 	return;
