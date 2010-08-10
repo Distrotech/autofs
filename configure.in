@@ -145,8 +145,9 @@ AF_CHECK_PROG(RPCGEN, rpcgen, , $searchpath)
 #
 AF_SLOPPY_MOUNT()
 
-# LDAP SASL auth need libxml
+# LDAP SASL auth needs libxml and Kerberos
 AF_CHECK_LIBXML()
+AF_CHECK_KRB5()
 
 #
 # glibc/libc 6 new libraries
@@ -275,6 +276,8 @@ AC_SUBST(XML_LIBS)
 AC_SUBST(SASL_FLAGS)
 AC_SUBST(HAVE_SASL)
 AC_SUBST(LIBSASL)
+AC_SUBST(KRB5_LIBS)
+AC_SUBST(KRB5_FLAGS)
 LDFLAGS="${AF_tmp_ldflags}"
 
 #

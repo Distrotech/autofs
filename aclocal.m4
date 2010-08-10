@@ -215,6 +215,25 @@ else
 fi])
 
 dnl --------------------------------------------------------------------------
+dnl AF_CHECK_KRB5
+dnl
+dnl Check for Kerberos 5
+dnl --------------------------------------------------------------------------
+AC_DEFUN([AF_CHECK_KRB5],
+[AC_PATH_PROGS(KRB5_CONFIG, krb5-config, no)
+AC_MSG_CHECKING(for Kerberos library)
+if test "$KRB5_CONFIG" = "no"
+then
+  AC_MSG_RESULT(no)
+  HAVE_KRB5=0
+else
+  AC_MSG_RESULT(yes)
+  HAVE_KRB5=1
+  KRB5_LIBS=`$KRB5_CONFIG --libs`
+  KRB5_FLAGS=`$KRB5_CONFIG --cflags`
+fi])
+
+dnl --------------------------------------------------------------------------
 dnl AF_CHECK_LIBHESIOD
 dnl
 dnl Check for lib hesiod
