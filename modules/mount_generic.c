@@ -122,7 +122,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 
 		return 1;
 	} else {
-		info(ap->logopt, MODPREFIX "mounted %s type %s on %s",
+		debug(ap->logopt, MODPREFIX "mounted %s type %s on %s",
 		     loc, fstype, fullpath);
 		free(loc);
 		return 0;

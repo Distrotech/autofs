@@ -688,7 +688,7 @@ static int lookup_name_file_source_instance(struct autofs_point *ap, struct map_
 	char *type, *format;
 
 	if (stat(map->argv[0], &st) == -1) {
-		warn(ap->logopt, "file map not found");
+		debug(ap->logopt, "file map not found");
 		return NSS_STATUS_NOTFOUND;
 	}
 

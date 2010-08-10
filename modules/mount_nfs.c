@@ -251,7 +251,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 		}
 
 		if (!err) {
-			info(ap->logopt, MODPREFIX "mounted %s on %s", loc, fullpath);
+			debug(ap->logopt, MODPREFIX "mounted %s on %s", loc, fullpath);
 			free(loc);
 			free_host_list(&hosts);
 			return 0;

@@ -512,7 +512,7 @@ static int umount_subtree_mounts(struct autofs_point *ap, const char *path, unsi
 	 * it already to ensure it's ok to remove any offset triggers.
 	 */
 	if (!is_mm_root && is_mounted(_PATH_MOUNTED, path, MNTS_REAL)) {
-		info(ap->logopt, "unmounting dir = %s", path);
+		debug(ap->logopt, "unmounting dir = %s", path);
 		if (umount_ent(ap, path)) {
 			warn(ap->logopt, "could not umount dir %s", path);
 			left++;
