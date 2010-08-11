@@ -169,18 +169,8 @@ int unbind_ldap_connection(unsigned logopt, LDAP *ldap, struct lookup_context *c
 	int rv;
 
 #ifdef WITH_SASL
-	/*
-	 * The OpenSSL library can't handle having its message and error
-	 * string database loaded multiple times and segfaults if the
-	 * TLS environment is not reset at the right times. As there
-	 * is no ldap_stop_tls call in the openldap library we have
-	 * to do the job ourselves, here and in lookup_done when the
-	 * module is closed.
-	 */
-	if (ctxt->use_tls == LDAP_TLS_RELEASE) {
-		ERR_remove_state(0);
+	if (ctxt->use_tls == LDAP_TLS_RELEASE)
 		ctxt->use_tls = LDAP_TLS_INIT;
-	}
 	autofs_sasl_unbind(ctxt);
 #endif
 
