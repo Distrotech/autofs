@@ -48,6 +48,7 @@
 - fix error handing in do_mount_indirect().
 - expire thread use pending mutex.
 - remove ERR_remove_state() openssl call.
+- fix init script restart option.
 
 03/09/2009 autofs-5.0.5
 -----------------------
