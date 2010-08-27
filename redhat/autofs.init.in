@@ -154,7 +154,7 @@ function reload() {
 RETVAL=0
 
 # Only the root user may change the service status
-if [ `id -u` -ne 0 ]; then
+if [ `id -u` -ne 0 ] && [ "$1" != "status" ]; then
 	echo "insufficient privilege to change service status"
 	exit 4
 fi
