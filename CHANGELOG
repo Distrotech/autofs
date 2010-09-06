@@ -50,6 +50,7 @@
 - remove ERR_remove_state() openssl call.
 - fix init script restart option.
 - fix init script status privilege error.
+- always read file maps mount lookup map read fix.
 
 03/09/2009 autofs-5.0.5
 -----------------------

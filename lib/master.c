@@ -489,9 +489,6 @@ void send_map_update_request(struct autofs_point *ap)
 	struct map_source *map;
 	int status, need_update = 0;
 
-	if (!(ap->flags & MOUNT_FLAG_GHOST))
-		return;
-
 	status = pthread_mutex_lock(&instance_mutex);
 	if (status)
 		fatal(status);
