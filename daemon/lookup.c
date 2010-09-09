@@ -295,7 +295,8 @@ static int do_read_map(struct autofs_point *ap, struct map_source *map, time_t a
 
 	status = lookup->lookup_read_map(ap, age, lookup->context);
 
-	map->stale = 0;
+	if (status != NSS_STATUS_SUCCESS)
+		map->stale = 0;
 
 	/*
 	 * For maps that don't support enumeration return success
