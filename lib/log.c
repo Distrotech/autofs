@@ -193,17 +193,23 @@ void logmsg(const char *msg, ...)
 	return;
 }
 
-void log_to_syslog(void)
+void open_log(void)
 {
-	char buf[MAX_ERR_BUF];
-	int nullfd;
-
 	if (!syslog_open) {
 		syslog_open = 1;
 		openlog("automount", LOG_PID, LOG_DAEMON);
 	}
 
 	logging_to_syslog = 1;
+	return;
+}
+
+void log_to_syslog(void)
+{
+	char buf[MAX_ERR_BUF];
+	int nullfd;
+
+	open_log();
 
 	/* Redirect all our file descriptors to /dev/null */
 	nullfd = open("/dev/null", O_RDWR);

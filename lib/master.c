@@ -30,6 +30,7 @@
 /* The root of the map entry tree */
 struct master *master_list = NULL;
 
+extern const char *global_options;
 extern long global_negative_timeout;
 
 /* Attribute to create a joinable thread */
@@ -1185,6 +1186,131 @@ int master_mount_mounts(struct master *master, time_t age, int readall)
 
 	master_mutex_unlock();
 	pthread_setcancelstate(cur_state, NULL);
+
+	return 1;
+}
+
+/* The nss source instances end up in reverse order. */
+static void list_source_instances(struct map_source *source, struct map_source *instance)
+{
+	if (!source || !instance) {
+		printf("none");
+		return;
+	}
+
+	if (instance->next)
+		list_source_instances(source, instance->next);
+
+	/*
+	 * For convienience we map nss instance type "files" to "file".
+	 * Check for that and report corrected instance type.
+	 */
+	if (strcmp(instance->type, "file"))
+		printf("%s ", instance->type);
+	else {
+		if (source->argv && *(source->argv[0]) != '/')
+			printf("files ");
+		else
+			printf("%s ", instance->type);
+	}
+
+	return;
+}
+
+int master_show_mounts(struct master *master)
+{
+	struct list_head *p, *head;
+
+	printf("\nautofs dump map information\n"
+		 "===========================\n\n");
+
+	printf("global options: ");
+	if (!global_options)
+		printf("none configured\n");
+	else {
+		printf("%s\n", global_options);
+		unsigned int append_options = defaults_get_append_options();
+		const char *append = append_options ? "will" : "will not";
+		printf("global options %s be appended to map entries\n", append);
+	}
+
+	if (list_empty(&master->mounts)) {
+		printf("no master map entries found\n\n");
+		return 1;
+	}
+
+	head = &master->mounts;
+	p = head->next;
+	while (p != head) {
+		struct map_source *source;
+		struct master_mapent *this;
+		struct autofs_point *ap;
+		time_t now = time(NULL);
+		int i;
+
+		this = list_entry(p, struct master_mapent, list);
+		p = p->next;
+
+		ap = this->ap;
+
+		printf("\nMount point: %s\n", ap->path);
+		printf("\nsource(s):\n");
+
+		/* Read the map content into the cache */
+		if (lookup_nss_read_map(ap, NULL, now))
+			lookup_prune_cache(ap, now);
+		else {
+			printf("  failed to read map\n\n");
+			continue;
+		}
+
+		if (!this->maps) {
+			printf("  no map sources found\n\n");
+			continue;
+		}
+
+		source = this->maps;
+		while (source) {
+			struct mapent *me;
+
+			if (source->type)
+				printf("\n  type: %s\n", source->type);
+			else {
+				printf("\n  instance type(s): ");
+				list_source_instances(source, source->instance);
+				printf("\n");
+			}
+
+			if (source->argc >= 1) {
+				i = 0;
+				if (source->argv[0] && *source->argv[0] != '-') {
+					printf("  map: %s\n", source->argv[0]);
+					i = 1;
+				}
+				if (source->argc > 1) {
+					printf("  arguments: ");
+					for (; i < source->argc; i++)
+						printf("%s ", source->argv[i]);
+					printf("\n");
+				}
+			}
+
+			printf("\n");
+
+			me = cache_lookup_first(source->mc);
+			if (!me)
+				printf("  no keys found in map\n");
+			else {
+				do {
+					printf("  %s | %s\n", me->key, me->mapent);
+				} while ((me = cache_lookup_next(source->mc, me)));
+			}
+
+			source = source->next;
+		}
+
+		printf("\n");
+	}
 
 	return 1;
 }
