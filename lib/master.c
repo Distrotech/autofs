@@ -905,8 +905,9 @@ int master_notify_submount(struct autofs_point *ap, const char *path, enum state
 		st_wait_task(this, state, 0);
 
 		/*
-		 * If our submount gets to state ST_SHUTDOWN we need to
-		 * wait until it goes away or changes to ST_READY.
+		 * If our submount gets to state ST_SHUTDOWN, ST_SHUTDOWN_PENDING or
+		 * ST_SHUTDOWN_FORCE we need to wait until it goes away or changes
+		 * to ST_READY.
 		 */
 		mounts_mutex_lock(ap);
 		st_mutex_lock();
@@ -914,7 +915,9 @@ int master_notify_submount(struct autofs_point *ap, const char *path, enum state
 			struct timespec t = { 0, 300000000 };
 			struct timespec r;
 
-			if (this->state != ST_SHUTDOWN) {
+			if (this->state != ST_SHUTDOWN &&
+			    this->state != ST_SHUTDOWN_PENDING &&
+			    this->state != ST_SHUTDOWN_FORCE) {
 				ret = 0;
 				break;
 			}
