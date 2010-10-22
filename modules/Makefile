@@ -41,7 +41,7 @@ ifeq ($(LDAP), 1)
   SRCS += lookup_ldap.c
   MODS += lookup_ldap.so
   ifeq ($(SASL), 1)
-    SASL_OBJ = cyrus-sasl.o
+    SASL_OBJ = cyrus-sasl.o cyrus-sasl-extern.o
     LDAP_FLAGS += $(SASL_FLAGS) $(XML_FLAGS) $(KRB5_FLAGS) -DLDAP_THREAD_SAFE
     LIBLDAP += $(LIBSASL) $(XML_LIBS) $(KRB5_LIBS)
   endif
@@ -90,6 +90,9 @@ lookup_hesiod.so: lookup_hesiod.c
 	$(STRIP) lookup_hesiod.so
 
 cyrus-sasl.o: cyrus-sasl.c
+	$(CC) $(CFLAGS) $(LDAP_FLAGS) -c $<
+
+cyrus-sasl-extern.o: cyrus-sasl-extern.c
 	$(CC) $(CFLAGS) $(LDAP_FLAGS) -c $<
 
 lookup_ldap.so: lookup_ldap.c dclist.o $(SASL_OBJ)

@@ -10,6 +10,7 @@
 #include <krb5.h>
 #endif
 
+#include "list.h"
 #include "dclist.h"
 
 struct ldap_schema {
@@ -76,9 +77,13 @@ struct lookup_context {
 	int          kinit_done;
 	int          kinit_successful;
 #ifdef WITH_SASL
+	/* Kerberos */
 	krb5_context krb5ctxt;
 	krb5_ccache  krb5_ccache;
 	sasl_conn_t  *sasl_conn;
+	/* SASL external */
+	char	     *extern_cert;
+	char	     *extern_key;
 #endif
 	/* keytab file name needs to be added */
 
@@ -111,6 +116,8 @@ int autofs_sasl_bind(unsigned logopt, LDAP *ldap, struct lookup_context *ctxt);
 void autofs_sasl_unbind(struct lookup_context *ctxt);
 void autofs_sasl_dispose(struct lookup_context *ctxt);
 void autofs_sasl_done(void);
+/* cyrus-sasl-extern */
+int do_sasl_extern(LDAP *ldap, struct lookup_context *ctxt);
 #endif
 
 #endif
