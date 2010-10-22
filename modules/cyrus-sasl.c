@@ -51,7 +51,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <ldap.h>
 #include <sasl/sasl.h>
 
 #include "automount.h"

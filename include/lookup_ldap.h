@@ -1,6 +1,8 @@
 #ifndef LOOKUP_LDAP_H
 #define LOOKUP_LDAP_H
 
+#include <ldap.h>
+
 #ifdef WITH_SASL
 #include <openssl/ssl.h>
 #include <openssl/evp.h>
@@ -102,6 +104,8 @@ struct lookup_context {
 #define LDAP_AUTH_NOTREQUIRED	0x0001
 #define LDAP_AUTH_REQUIRED	0x0002
 #define LDAP_AUTH_AUTODETECT	0x0004
+#endif
+
 #define LDAP_AUTH_USESIMPLE	0x0008
 
 /* lookup_ldap.c */
@@ -109,6 +113,7 @@ LDAP *init_ldap_connection(unsigned logopt, const char *uri, struct lookup_conte
 int unbind_ldap_connection(unsigned logopt, LDAP *ldap, struct lookup_context *ctxt);
 int authtype_requires_creds(const char *authtype);
 
+#ifdef WITH_SASL
 /* cyrus-sasl.c */
 int autofs_sasl_client_init(unsigned logopt);
 int autofs_sasl_init(unsigned logopt, LDAP *ldap, struct lookup_context *ctxt);

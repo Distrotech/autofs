@@ -28,7 +28,6 @@
 #include <arpa/nameser.h>
 #include <resolv.h>
 #include <lber.h>
-#include <ldap.h>
 
 #define MODULE_LOOKUP
 #include "automount.h"

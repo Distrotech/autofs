@@ -53,6 +53,7 @@
 - always read file maps mount lookup map read fix.
 - fix direct map not updating on reread.
 - add external bind method.
+- fix add simple bind auth.
 
 03/09/2009 autofs-5.0.5
 -----------------------
