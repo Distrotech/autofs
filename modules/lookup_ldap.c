@@ -55,6 +55,7 @@ struct ldap_search_params {
 	LDAP *ldap;
 	char *query, **attrs;
 	struct berval *cookie;
+	ber_int_t pageSize;
 	int morePages;
 	ber_int_t totalCount;
 	LDAPMessage *result;
@@ -1946,7 +1947,6 @@ static int do_paged_query(struct ldap_search_params *sp, struct lookup_context *
 	struct autofs_point *ap = sp->ap;
 	LDAPControl *pageControl=NULL, *controls[2] = { NULL, NULL };
 	LDAPControl **returnedControls = NULL;
-	static ber_int_t pageSize = 1000;
 	static char pagingCriticality = 'T';
 	int rv, scope = LDAP_SCOPE_SUBTREE;
 
@@ -1959,7 +1959,8 @@ static int do_paged_query(struct ldap_search_params *sp, struct lookup_context *
  		 * Check for Size Limit exceeded and force run through loop
 		 * and requery using page control.
  		 */
-		if (rv == LDAP_SIZELIMIT_EXCEEDED)
+		if (rv == LDAP_SIZELIMIT_EXCEEDED ||
+		    rv == LDAP_ADMINLIMIT_EXCEEDED)
 			sp->morePages = TRUE;
 		else {
 			debug(ap->logopt,
@@ -1974,7 +1975,7 @@ do_paged:
 	/* we need to use page controls so requery LDAP */
 	debug(ap->logopt, MODPREFIX "geting page of results");
 
-	rv = ldap_create_page_control(sp->ldap, pageSize, sp->cookie,
+	rv = ldap_create_page_control(sp->ldap, sp->pageSize, sp->cookie,
 				      pagingCriticality, &pageControl);
 	if (rv != LDAP_SUCCESS) {
 		warn(ap->logopt, MODPREFIX "failed to create page control");
@@ -1989,10 +1990,11 @@ do_paged:
 			       ctxt->qdn, scope, sp->query, sp->attrs,
 			       0, controls, NULL, NULL, 0, &sp->result);
 	if ((rv != LDAP_SUCCESS) && (rv != LDAP_PARTIAL_RESULTS)) {
-		debug(ap->logopt,
-		      MODPREFIX "query failed for %s: %s",
-		      sp->query, ldap_err2string(rv));
 		ldap_control_free(pageControl);
+		if (rv != LDAP_ADMINLIMIT_EXCEEDED)
+			debug(ap->logopt,
+			      MODPREFIX "query failed for %s: %s",
+			      sp->query, ldap_err2string(rv));
 		return rv;
 	}
 
@@ -2347,18 +2349,32 @@ static int read_one_map(struct autofs_point *ap,
 	      MODPREFIX "searching for \"%s\" under \"%s\"", sp.query, ctxt->qdn);
 
 	sp.cookie = NULL;
+	sp.pageSize = 1000;
 	sp.morePages = FALSE;
 	sp.totalCount = 0;
 	sp.result = NULL;
 
 	do {
 		rv = do_paged_query(&sp, ctxt);
-		if (rv == LDAP_SIZELIMIT_EXCEEDED)
-		{
+		if (rv == LDAP_SIZELIMIT_EXCEEDED) {
 			debug(ap->logopt, MODPREFIX "result size exceed");
 			if (sp.result)
 				ldap_msgfree(sp.result);
+			continue;
+		}
 
+		if (rv == LDAP_ADMINLIMIT_EXCEEDED) {
+			if (sp.result)
+				ldap_msgfree(sp.result);
+			sp.pageSize = sp.pageSize / 2;
+			if (sp.pageSize < 5) {
+				debug(ap->logopt, MODPREFIX
+				      "administrative result size too small");
+				unbind_ldap_connection(ap->logopt, sp.ldap, ctxt);
+				*result_ldap = rv;
+				free(sp.query);
+				return NSS_STATUS_UNAVAIL;
+			}
 			continue;
 		}
 
