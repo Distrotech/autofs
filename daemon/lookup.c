@@ -1060,6 +1060,14 @@ void lookup_prune_one_cache(struct autofs_point *ap, struct mapent_cache *mc, ti
 		 * cache entry.
 		 */
 		valid = lookup_source_valid_mapent(ap, key, LKP_DISTINCT);
+		if (valid && valid->mc == mc) {
+			 /*
+			  * We've found a map entry that has been removed from
+			  * the current cache so it isn't really valid.
+			  */
+			cache_unlock(valid->mc);
+			valid = NULL;
+		}
 		if (!valid &&
 		    is_mounted(_PATH_MOUNTED, path, MNTS_REAL)) {
 			debug(ap->logopt,

@@ -58,6 +58,7 @@
 - use weight only for server selection.
 - fix isspace() wild card substition.
 - auto adjust ldap page size.
+- fix prune cache valid check.
 
 03/09/2009 autofs-5.0.5
 -----------------------
