@@ -173,7 +173,7 @@ case "$1" in
 	status)
 		status -p /var/run/autofs.pid -l autofs $prog
 		;;
-	restart)
+	restart|force-reload)
 		restart
 		;;
 	forcerestart)
@@ -183,18 +183,14 @@ case "$1" in
 	reload)
 		reload
 		;;
-	condrestart)
+	condrestart|try-restart)
 		if [ -f /var/lock/subsys/autofs ]; then
 			restart
 		fi
 		;;
 	usage)
-		echo $"Usage: $0 {start|forcestart|stop|status|restart|forcerestart|reload|condrestart}"
+		echo $"Usage: $0 {start|forcestart|stop|status|restart|force-reload|forcerestart|reload|condrestart|try-restart}"
 		exit 0
-		;;
-	try-restart|force-reload)
-		echo "$1 service action not supported"
-		exit 3
 		;;
 	*)
 		echo "unknown, invalid or excess argument(s)"
