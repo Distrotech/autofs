@@ -1059,7 +1059,8 @@ int prune_host_list(unsigned logopt, struct host **list,
 
 static int add_new_host(struct host **list,
 			const char *host, unsigned int weight,
-			struct addrinfo *host_addr, unsigned int options)
+			struct addrinfo *host_addr,
+			unsigned int rr, unsigned int options)
 {
 	struct host *new;
 	unsigned int prx;
@@ -1105,6 +1106,7 @@ static int add_new_host(struct host **list,
 		free_host(new);
 		return 0;
 	}
+	new->rr = rr;
 
 	return 1;
 }
@@ -1113,6 +1115,7 @@ static int add_host_addrs(struct host **list, const char *host,
 			  unsigned int weight, unsigned int options)
 {
 	struct addrinfo hints, *ni, *this;
+	int rr = 0;
 	int ret;
 
 	memset(&hints, 0, sizeof(hints));
@@ -1126,7 +1129,7 @@ static int add_host_addrs(struct host **list, const char *host,
 
 	this = ni;
 	while (this) {
-		ret = add_new_host(list, host, weight, this, options);
+		ret = add_new_host(list, host, weight, this, 0, options);
 		if (!ret)
 			break;
 		this = this->ai_next;
@@ -1148,8 +1151,10 @@ try_name:
 	}
 
 	this = ni;
+	if (this->ai_next)
+		rr++;
 	while (this) {
-		ret = add_new_host(list, host, weight, this, options);
+		ret = add_new_host(list, host, weight, this, rr, options);
 		if (!ret)
 			break;
 		this = this->ai_next;

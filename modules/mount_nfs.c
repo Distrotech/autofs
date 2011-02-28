@@ -229,13 +229,32 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 
 		/* Not a local host - do an NFS mount */
 
-		loc = malloc(strlen(this->name) + 1 + strlen(this->path) + 1);
-		if (!loc) {
-			char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-			error(ap->logopt, "malloc: %s", estr);
-			return 1;
+		if (this->rr && this->addr) {
+			socklen_t len = INET6_ADDRSTRLEN;
+			char buf[len + 1];
+			const char *n_addr;
+			n_addr = get_addr_string(this->addr, buf, len);
+			loc = malloc(strlen(n_addr) + strlen(this->path) + 4);
+			if (!loc) {
+				char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+				error(ap->logopt, "malloc: %s", estr);
+				goto forced_fail;
+			}
+			if (this->addr->sa_family == AF_INET6) {
+				strcpy(loc, "[");
+				strcat(loc, n_addr);
+				strcat(loc, "]");
+			} else
+				strcpy(loc, n_addr);
+		} else {
+			loc = malloc(strlen(this->name) + strlen(this->path) + 2);
+			if (!loc) {
+				char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+				error(ap->logopt, "malloc: %s", estr);
+				goto forced_fail;
+			}
+			strcpy(loc, this->name);
 		}
-		strcpy(loc, this->name);
 		strcat(loc, ":");
 		strcat(loc, this->path);
 
