@@ -1525,8 +1525,11 @@ int umount_multi_triggers(struct autofs_point *ap, struct mapent *me, char *root
 		oe_base = oe->key + strlen(root);
 		left += umount_multi_triggers(ap, oe, root, oe_base);
 
-		if (oe->ioctlfd != -1)
+		if (oe->ioctlfd != -1 ||
+		    is_mounted(_PROC_MOUNTS, oe->key, MNTS_REAL)) {
 			left++;
+			break;
+		}
 	}
 
 	if (left)
