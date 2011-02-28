@@ -49,6 +49,13 @@ is used to treat errors when mounting file systems as fatal. This is important w
 multiple file systems should be mounted (`multi-mounts'). If this option
 is given, no file system is mounted at all if at least one file system
 can't be mounted.
+.I -use-weight-only
+is used to make the weight the sole factor in selecting a server when multiple
+servers are present in a map entry.
+and
+.I -no-use-weight-only
+can be used to negate the option if it is present in the master map entry
+for the map but is not wanted for the given mount.
 
 .SS location
 The location specifies from where the file system is to be mounted.  In the

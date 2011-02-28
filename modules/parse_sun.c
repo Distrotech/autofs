@@ -529,6 +529,7 @@ static int sun_mount(struct autofs_point *ap, const char *root,
 {
 	char *fstype = "nfs";	/* Default filesystem type */
 	int nonstrict = 1;
+	int use_weight_only = ap->flags & MOUNT_FLAG_USE_WEIGHT_ONLY;
 	int rv, cur_state;
 	char *mountpoint;
 	char *what;
@@ -575,6 +576,10 @@ static int sun_mount(struct autofs_point *ap, const char *root,
 					memcpy(np, cp, comma - cp + 1);
 					np += comma - cp + 1;
 				}
+			} else if (strncmp("no-use-weight-only", cp, 18) == 0) {
+				use_weight_only = -1;
+			} else if (strncmp("use-weight-only", cp, 15) == 0) {
+				use_weight_only = MOUNT_FLAG_USE_WEIGHT_ONLY;
 			} else if (strncmp("bg", cp, 2) == 0 ||
 				   strncmp("nofg", cp, 4) == 0) {
 				continue;
@@ -593,11 +598,10 @@ static int sun_mount(struct autofs_point *ap, const char *root,
 		options = noptions;
 	}
 
-
 	if (!strcmp(fstype, "autofs") && ctxt->macros) {
 		char *noptions = NULL;
 
-		if (!options) {
+		if (!options || *options == '\0') {
 			noptions = alloca(strlen(ctxt->macros) + 1);
 			*noptions = '\0';
 		} else {
@@ -610,7 +614,7 @@ static int sun_mount(struct autofs_point *ap, const char *root,
 			}
 		}
 
-		if (noptions) {
+		if (noptions && *noptions != '\0') {
 			strcat(noptions, ctxt->macros);
 			options = noptions;
 		} else {
@@ -624,7 +628,7 @@ static int sun_mount(struct autofs_point *ap, const char *root,
 
 	type = ap->entry->maps->type;
 	if (type && !strcmp(type, "hosts")) {
-		if (options) {
+		if (options && *options != '\0') {
 			int len = strlen(options);
 			int suid = strstr(options, "suid") ? 0 : 7;
 			int dev = strstr(options, "dev") ? 0 : 6;
@@ -668,6 +672,30 @@ static int sun_mount(struct autofs_point *ap, const char *root,
 		what = alloca(loclen + 1);
 		memcpy(what, loc, loclen);
 		what[loclen] = '\0';
+
+		/* Add back "[no-]use-weight-only" for NFS mounts only */
+		if (use_weight_only) {
+			char *tmp;
+			int len;
+
+			if (options && *options != '\0') {
+				len = strlen(options) + 19;
+				tmp = alloca(len);
+				strcpy(tmp, options);
+				strcat(tmp, ",");
+				if (use_weight_only == MOUNT_FLAG_USE_WEIGHT_ONLY)
+					strcat(tmp, "use-weight-only");
+				else
+					strcat(tmp, "no-use-weight-only");
+			} else {
+				tmp = alloca(19);
+				if (use_weight_only == MOUNT_FLAG_USE_WEIGHT_ONLY)
+					strcpy(tmp, "use-weight-only");
+				else
+					strcpy(tmp, "no-use-weight-only");
+			}
+			options = tmp;
+		}
 
 		debug(ap->logopt, MODPREFIX
 		      "mounting root %s, mountpoint %s, "

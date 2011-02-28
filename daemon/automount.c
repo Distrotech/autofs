@@ -57,8 +57,8 @@ const char *fifodir = AUTOFS_FIFO_DIR "/autofs.fifo";
 const char *global_options;		/* Global option, from command line */
 
 static char *pid_file = NULL;		/* File in which to keep pid */
-unsigned int global_random_selection;	/* use random policy when selecting
-					 * which multi-mount host to mount */
+unsigned int global_selection_options;
+
 long global_negative_timeout = -1;
 int do_force_unlink = 0;		/* Forceably unlink mount tree at startup */
 
@@ -1855,7 +1855,7 @@ int main(int argc, char *argv[])
 	timeout = defaults_get_timeout();
 	ghost = defaults_get_browse_mode();
 	logging = defaults_get_logging();
-	global_random_selection = 0;
+	global_selection_options = 0;
 	global_options = NULL;
 	have_global_options = 0;
 	foreground = 0;
@@ -1898,7 +1898,7 @@ int main(int argc, char *argv[])
 			exit(0);
 
 		case 'r':
-			global_random_selection = 1;
+			global_selection_options |= MOUNT_FLAG_RANDOM_SELECT;
 			break;
 
 		case 'n':

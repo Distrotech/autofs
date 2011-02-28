@@ -351,7 +351,8 @@ static unsigned int get_proximity(struct sockaddr *host_addr)
 
 static struct host *new_host(const char *name,
 			     struct sockaddr *addr, size_t addr_len,
-			     unsigned int proximity, unsigned int weight)
+			     unsigned int proximity, unsigned int weight,
+			     unsigned int options)
 {
 	struct host *new;
 	struct sockaddr *tmp2;
@@ -385,6 +386,7 @@ static struct host *new_host(const char *name,
 	new->addr = tmp2;
 	new->proximity = proximity;
 	new->weight = weight;
+	new->options = options;
 
 	return new;
 }
@@ -519,9 +521,11 @@ static unsigned short get_port_option(const char *options)
 static unsigned int get_nfs_info(unsigned logopt, struct host *host,
 			 struct conn_info *pm_info, struct conn_info *rpc_info,
 			 const char *proto, unsigned int version,
-			 const char *options, unsigned int random_selection)
+			 const char *options)
 {
 	char *have_port_opt = options ? strstr(options, "port=") : NULL;
+	unsigned int random_selection = host->options & MOUNT_FLAG_RANDOM_SELECT;
+	unsigned int use_weight_only = host->options & MOUNT_FLAG_USE_WEIGHT_ONLY;
 	struct pmap parms;
 	struct timeval start, end;
 	struct timezone tz;
@@ -675,7 +679,10 @@ done_ver:
 		 * Average response time to 7 significant places as
 		 * integral type.
 		 */
-		host->cost = (unsigned long) ((taken * 1000000) / count);
+		if (use_weight_only)
+			host->cost = 1;
+		else
+			host->cost = (unsigned long) ((taken * 1000000) / count);
 
 		/* Allow for user bias */
 		if (host->weight)
@@ -689,8 +696,7 @@ done_ver:
 }
 
 static int get_vers_and_cost(unsigned logopt, struct host *host,
-			     unsigned int version, const char *options,
-			     unsigned int random_selection)
+			     unsigned int version, const char *options)
 {
 	struct conn_info pm_info, rpc_info;
 	time_t timeout = RPC_TIMEOUT;
@@ -717,8 +723,7 @@ static int get_vers_and_cost(unsigned logopt, struct host *host,
 
 	if (version & UDP_REQUESTED) {
 		supported = get_nfs_info(logopt, host,
-					&pm_info, &rpc_info, "udp", vers,
-					options, random_selection);
+				   &pm_info, &rpc_info, "udp", vers, options);
 		if (supported) {
 			ret = 1;
 			host->version |= (supported << 8);
@@ -727,8 +732,7 @@ static int get_vers_and_cost(unsigned logopt, struct host *host,
 
 	if (version & TCP_REQUESTED) {
 		supported = get_nfs_info(logopt, host,
-					 &pm_info, &rpc_info, "tcp", vers,
-					 options, random_selection);
+				   &pm_info, &rpc_info, "tcp", vers, options);
 		if (supported) {
 			ret = 1;
 			host->version |= supported;
@@ -739,10 +743,11 @@ static int get_vers_and_cost(unsigned logopt, struct host *host,
 }
 
 static int get_supported_ver_and_cost(unsigned logopt, struct host *host,
-				      unsigned int version, const char *options,
-				      unsigned int random_selection)
+				      unsigned int version, const char *options)
 {
 	char *have_port_opt = options ? strstr(options, "port=") : NULL;
+	unsigned int random_selection = host->options & MOUNT_FLAG_RANDOM_SELECT;
+	unsigned int use_weight_only = host->options & MOUNT_FLAG_USE_WEIGHT_ONLY;
 	struct conn_info pm_info, rpc_info;
 	struct pmap parms;
 	const char *proto;
@@ -855,7 +860,10 @@ done:
 
 	if (status) {
 		/* Response time to 7 significant places as integral type. */
-		host->cost = (unsigned long) (taken * 1000000);
+		if (use_weight_only)
+			host->cost = 1;
+		else
+			host->cost = (unsigned long) (taken * 1000000);
 
 		/* Allow for user bias */
 		if (host->weight)
@@ -870,8 +878,7 @@ done:
 }
 
 int prune_host_list(unsigned logopt, struct host **list,
-		    unsigned int vers, const char *options,
-		    unsigned int random_selection)
+		    unsigned int vers, const char *options)
 {
 	struct host *this, *last, *first;
 	struct host *new = NULL;
@@ -892,6 +899,7 @@ int prune_host_list(unsigned logopt, struct host **list,
 	this = first;
 	while (this && this->proximity == PROXIMITY_LOCAL)
 		this = this->next;
+	first = this;
 
 	/*
 	 * Check for either a list containing only proximity local hosts
@@ -903,8 +911,6 @@ int prune_host_list(unsigned logopt, struct host **list,
 		return 1;
 
 	proximity = this->proximity;
-	first = this;
-	this = first;
 	while (this) {
 		struct host *next = this->next;
 
@@ -912,8 +918,7 @@ int prune_host_list(unsigned logopt, struct host **list,
 			break;
 
 		if (this->name) {
-			status = get_vers_and_cost(logopt, this, vers,
-						   options, random_selection);
+			status = get_vers_and_cost(logopt, this, vers, options);
 			if (!status) {
 				if (this == first) {
 					first = next;
@@ -1022,8 +1027,7 @@ int prune_host_list(unsigned logopt, struct host **list,
 			add_host(&new, this);
 		} else {
 			status = get_supported_ver_and_cost(logopt, this,
-						selected_version, options,
-						random_selection);
+						selected_version, options);
 			if (status) {
 				this->version = selected_version;
 				remove_host(list, this);
@@ -1041,8 +1045,7 @@ int prune_host_list(unsigned logopt, struct host **list,
 
 static int add_new_host(struct host **list,
 			const char *host, unsigned int weight,
-			struct addrinfo *host_addr,
-			unsigned int random_selection)
+			struct addrinfo *host_addr, unsigned int options)
 {
 	struct host *new;
 	unsigned int prx;
@@ -1054,10 +1057,21 @@ static int add_new_host(struct host **list,
 	 * We can't use PROXIMITY_LOCAL or we won't perform an RPC ping
 	 * to remove hosts that may be down.
 	 */
-	if (random_selection)
+	if (options & MOUNT_FLAG_RANDOM_SELECT)
 		prx = PROXIMITY_SUBNET;
-	else
+	else {
 		prx = get_proximity(host_addr->ai_addr);
+		/*
+		 * If we want the weight to be the determining factor
+		 * when selecting a host then all hosts must have the
+		 * same proximity. However, if this is the local machine
+		 * it should always be used since it is certainly available.
+		 */
+		if (prx != PROXIMITY_LOCAL &&
+		   (options & MOUNT_FLAG_USE_WEIGHT_ONLY))
+			prx = PROXIMITY_SUBNET;
+	}
+
 	/*
 	 * If we tried to add an IPv6 address and we don't have IPv6
 	 * support return success in the hope of getting an IPv4
@@ -1069,7 +1083,7 @@ static int add_new_host(struct host **list,
 		return 0;
 
 	addr_len = sizeof(struct sockaddr);
-	new = new_host(host, host_addr->ai_addr, addr_len, prx, weight);
+	new = new_host(host, host_addr->ai_addr, addr_len, prx, weight, options);
 	if (!new)
 		return 0;
 
@@ -1082,7 +1096,7 @@ static int add_new_host(struct host **list,
 }
 
 static int add_host_addrs(struct host **list, const char *host,
-			  unsigned int weight, unsigned int random_selection)
+			  unsigned int weight, unsigned int options)
 {
 	struct addrinfo hints, *ni, *this;
 	int ret;
@@ -1098,7 +1112,7 @@ static int add_host_addrs(struct host **list, const char *host,
 
 	this = ni;
 	while (this) {
-		ret = add_new_host(list, host, weight, this, random_selection);
+		ret = add_new_host(list, host, weight, this, options);
 		if (!ret)
 			break;
 		this = this->ai_next;
@@ -1121,7 +1135,7 @@ try_name:
 
 	this = ni;
 	while (this) {
-		ret = add_new_host(list, host, weight, this, random_selection);
+		ret = add_new_host(list, host, weight, this, options);
 		if (!ret)
 			break;
 		this = this->ai_next;
@@ -1209,7 +1223,7 @@ static char *seek_delim(const char *s)
 }
 
 int parse_location(unsigned logopt, struct host **hosts,
-		   const char *list, unsigned int random_selection)
+		   const char *list, unsigned int options)
 {
 	char *str, *p, *delim;
 	unsigned int empty = 1;
@@ -1264,7 +1278,7 @@ int parse_location(unsigned logopt, struct host **hosts,
 				}
 
 				if (p != delim) {
-					if (!add_host_addrs(hosts, p, weight, random_selection)) {
+					if (!add_host_addrs(hosts, p, weight, options)) {
 						if (empty) {
 							p = next;
 							continue;
@@ -1286,7 +1300,7 @@ int parse_location(unsigned logopt, struct host **hosts,
 				*delim = '\0';
 				next = delim + 1;
 
-				if (!add_host_addrs(hosts, p, weight, random_selection)) {
+				if (!add_host_addrs(hosts, p, weight, options)) {
 					p = next;
 					continue;
 				}

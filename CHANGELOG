@@ -55,6 +55,7 @@
 - add external bind method.
 - fix add simple bind auth.
 - add option to dump configured automount maps.
+- use weight only for server selection.
 
 03/09/2009 autofs-5.0.5
 -----------------------

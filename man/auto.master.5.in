@@ -153,6 +153,12 @@ list of replicated servers. This option is applied to this mount
 only, overriding the global setting that may be specified on the
 command line.
 .TP
+.I "\-w, \-\-use-weight-only"
+Use only specified weights for server selection where more than one
+server is specified in the map entry. If no server weights are given
+then each available server will be tried in the order listed, within
+proximity.
+.TP
 .I "\-n, \-\-negative\-timeout <seconds>"
 Set the timeout for caching failed key lookups. This option can be
 used to override the global default given either on the command line

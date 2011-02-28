@@ -63,7 +63,8 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 	struct host *this, *hosts = NULL;
 	unsigned int mount_default_proto, vers;
 	char *nfsoptions = NULL;
-	unsigned int random_selection = ap->flags & MOUNT_FLAG_RANDOM_SELECT;
+	unsigned int flags = ap->flags &
+			(MOUNT_FLAG_RANDOM_SELECT | MOUNT_FLAG_USE_WEIGHT_ONLY);
 	int len, status, err, existed = 1;
 	int nosymlink = 0;
 	int ro = 0;            /* Set if mount bind should be read-only */
@@ -112,9 +113,13 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 			while (*comma == ' ' || *comma == '\t')
 				end--;
 
-			if (strncmp("nosymlink", cp, end - cp + 1) == 0)
+			if (strncmp("nosymlink", cp, end - cp + 1) == 0) {
 				nosymlink = 1;
-			else {
+			} else if (strncmp("no-use-weight-only", cp, end - cp + 1) == 0) {
+				flags &= ~MOUNT_FLAG_USE_WEIGHT_ONLY;
+			} else if (strncmp("use-weight-only", cp, end - cp + 1) == 0) {
+				flags |= MOUNT_FLAG_USE_WEIGHT_ONLY;
+			} else {
 				/* Check for options that also make sense
 				   with bind mounts */
 				if (strncmp("ro", cp, end - cp + 1) == 0)
@@ -137,11 +142,11 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 	else if (mount_default_proto == 4)
 		vers = vers | NFS4_VERS_MASK;
 
-	if (!parse_location(ap->logopt, &hosts, what, random_selection)) {
+	if (!parse_location(ap->logopt, &hosts, what, flags)) {
 		info(ap->logopt, MODPREFIX "no hosts available");
 		return 1;
 	}
-	prune_host_list(ap->logopt, &hosts, vers, nfsoptions, random_selection);
+	prune_host_list(ap->logopt, &hosts, vers, nfsoptions);
 
 	if (!hosts) {
 		info(ap->logopt, MODPREFIX "no hosts available");

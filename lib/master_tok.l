@@ -363,6 +363,7 @@ OPTNTOUT	(-n{OPTWS}|-n{OPTWS}={OPTWS}|--negative-timeout{OPTWS}|--negative-timeo
 	-g|--ghost|-?browse	{ return(OPT_GHOST); }
 	-v|--verbose		{ return(OPT_VERBOSE); }
 	-d|--debug		{ return(OPT_DEBUG); }
+	-w|--use-weight-only	{ return(OPT_USE_WEIGHT); }
 	-r|--random-multimount-selection { return(OPT_RANDOM); }
 
 	{OPTWS}","{OPTWS}	{ return(COMMA); }

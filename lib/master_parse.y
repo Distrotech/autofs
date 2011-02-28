@@ -58,8 +58,9 @@ static char *format;
 static long timeout;
 static long negative_timeout;
 static unsigned ghost;
-extern unsigned global_random_selection;
+extern unsigned global_selection_options;
 static unsigned random_selection;
+static unsigned use_weight;
 static char **tmp_argv;
 static int tmp_argc;
 static char **local_argv;
@@ -98,7 +99,7 @@ static int master_fprintf(FILE *, char *, ...);
 %token COMMENT
 %token MAP
 %token OPT_TIMEOUT OPT_NTIMEOUT OPT_NOGHOST OPT_GHOST OPT_VERBOSE
-%token OPT_DEBUG OPT_RANDOM
+%token OPT_DEBUG OPT_RANDOM OPT_USE_WEIGHT
 %token COLON COMMA NL DDASH
 %type <strtype> map
 %type <strtype> options
@@ -181,6 +182,7 @@ line:
 	| PATH OPTION { master_notify($2); YYABORT; }
 	| PATH NILL { master_notify($2); YYABORT; }
 	| PATH OPT_RANDOM { master_notify($1); YYABORT; }
+	| PATH OPT_USE_WEIGHT { master_notify($1); YYABORT; }
 	| PATH OPT_DEBUG { master_notify($1); YYABORT; }
 	| PATH OPT_TIMEOUT { master_notify($1); YYABORT; }
 	| PATH OPT_GHOST { master_notify($1); YYABORT; }
@@ -558,6 +560,7 @@ daemon_option: OPT_TIMEOUT NUMBER { timeout = $2; }
 	| OPT_VERBOSE	{ verbose = 1; }
 	| OPT_DEBUG	{ debug = 1; }
 	| OPT_RANDOM	{ random_selection = 1; }
+	| OPT_USE_WEIGHT { use_weight = 1; }
 	;
 
 mount_option: OPTION
@@ -622,7 +625,8 @@ static void local_init_vars(void)
 	timeout = -1;
 	negative_timeout = 0;
 	ghost = defaults_get_browse_mode();
-	random_selection = global_random_selection;
+	random_selection = global_selection_options & MOUNT_FLAG_RANDOM_SELECT;
+	use_weight = 0;
 	tmp_argv = NULL;
 	tmp_argc = 0;
 	local_argv = NULL;
@@ -808,6 +812,8 @@ int master_parse_entry(const char *buffer, unsigned int default_timeout, unsigne
 	}
 	if (random_selection)
 		entry->ap->flags |= MOUNT_FLAG_RANDOM_SELECT;
+	if (use_weight)
+		entry->ap->flags |= MOUNT_FLAG_USE_WEIGHT_ONLY;
 	if (negative_timeout)
 		entry->ap->negative_timeout = negative_timeout;
 

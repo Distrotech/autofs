@@ -56,6 +56,7 @@ struct host {
 	size_t addr_len;
 	char *path;
 	unsigned int version;
+	unsigned int options;
 	unsigned int proximity;
 	unsigned int weight;
 	unsigned long cost;
@@ -65,7 +66,7 @@ struct host {
 void seed_random(void);
 void free_host_list(struct host **);
 int parse_location(unsigned, struct host **, const char *, unsigned int);
-int prune_host_list(unsigned, struct host **, unsigned int, const char *, unsigned int);
+int prune_host_list(unsigned, struct host **, unsigned int, const char *);
 void dump_host_list(struct host *);
 
 #endif
