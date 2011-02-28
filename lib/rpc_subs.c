@@ -53,6 +53,12 @@
 /* Get numeric value of the n bits starting at position p */
 #define getbits(x, p, n)      ((x >> (p + 1 - n)) & ~(~0 << n))
 
+static const rpcvers_t mount_vers[] = {
+        MOUNTVERS_NFSV3,
+        MOUNTVERS_POSIX,
+        MOUNTVERS,
+};
+
 static int connect_nb(int, struct sockaddr *, socklen_t, struct timeval *);
 inline void dump_core(void);
 
@@ -846,6 +852,7 @@ static int rpc_get_exports_proto(struct conn_info *info, exports *exp)
 	enum clnt_stat status;
 	int proto = info->proto->p_proto;
 	unsigned int option = info->close_option;
+	int vers_entry;
 
 	if (info->proto->p_proto == IPPROTO_UDP) {
 		info->send_sz = UDPMSGSIZE;
@@ -862,10 +869,19 @@ static int rpc_get_exports_proto(struct conn_info *info, exports *exp)
 
 	client->cl_auth = authunix_create_default();
 
-	status = clnt_call(client, MOUNTPROC_EXPORT,
-			 (xdrproc_t) xdr_void, NULL,
-			 (xdrproc_t) xdr_exports, (caddr_t) exp,
-			 info->timeout);
+	vers_entry = 0;
+	while (1) {
+		status = clnt_call(client, MOUNTPROC_EXPORT,
+				 (xdrproc_t) xdr_void, NULL,
+				 (xdrproc_t) xdr_exports, (caddr_t) exp,
+				 info->timeout);
+		if (status != RPC_PROGVERSMISMATCH)
+			break;
+		if (++vers_entry > 2)
+			break;
+		CLNT_CONTROL(client, CLSET_VERS,
+			    (void *) &mount_vers[vers_entry]);
+	}
 
 	/* Only play with the close options if we think it completed OK */
 	if (proto == IPPROTO_TCP && status == RPC_SUCCESS) {
@@ -934,7 +950,7 @@ exports rpc_get_exports(const char *host, long seconds, long micros, unsigned in
 	info.addr = NULL;
 	info.addr_len = 0;
 	info.program = MOUNTPROG;
-	info.version = MOUNTVERS;
+	info.version = mount_vers[0];
 	info.send_sz = 0;
 	info.recv_sz = 0;
 	info.timeout.tv_sec = seconds;

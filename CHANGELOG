@@ -59,6 +59,7 @@
 - fix isspace() wild card substition.
 - auto adjust ldap page size.
 - fix prune cache valid check.
+- fix mountd vers retry.
 
 03/09/2009 autofs-5.0.5
 -----------------------
