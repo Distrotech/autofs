@@ -61,6 +61,7 @@
 - fix prune cache valid check.
 - fix mountd vers retry.
 - fix expire race.
+- include ip address in debug logging.
 
 03/09/2009 autofs-5.0.5
 -----------------------
