@@ -1853,7 +1853,7 @@ int main(int argc, char *argv[])
 	int logpri = -1;
 	unsigned ghost, logging, daemon_check;
 	unsigned dumpmaps, foreground, have_global_options;
-	unsigned master_read;
+	unsigned master_read, master_wait;
 	time_t timeout;
 	time_t age = time(NULL);
 	struct rlimit rlim;
@@ -1873,6 +1873,7 @@ int main(int argc, char *argv[])
 		{"set-log-priority", 1, 0, 'l'},
 		{"dont-check-daemon", 0, 0, 'C'},
 		{"force", 0, 0, 'F'},
+		{"master-wait", 1, 0, 'M'},
 		{0, 0, 0, 0}
 	};
 
@@ -1891,6 +1892,7 @@ int main(int argc, char *argv[])
 	defaults_read_config(0);
 
 	kpkt_len = get_kpkt_len();
+	master_wait = defaults_get_master_wait();
 	timeout = defaults_get_timeout();
 	ghost = defaults_get_browse_mode();
 	logging = defaults_get_logging();
@@ -1902,7 +1904,7 @@ int main(int argc, char *argv[])
 	daemon_check = 1;
 
 	opterr = 0;
-	while ((opt = getopt_long(argc, argv, "+hp:t:vmdD:fVrO:l:n:CF", long_options, NULL)) != EOF) {
+	while ((opt = getopt_long(argc, argv, "+hp:t:vmdD:fVrO:l:n:CFM:", long_options, NULL)) != EOF) {
 		switch (opt) {
 		case 'h':
 			usage();
@@ -1946,6 +1948,10 @@ int main(int argc, char *argv[])
 
 		case 'm':
 			dumpmaps = 1;
+			break;
+
+		case 'M':
+			master_wait = getnumopt(optarg, opt);
 			break;
 
 		case 'O':
@@ -2210,9 +2216,9 @@ int main(int argc, char *argv[])
 		 * a signal is received, in which case exit returning an
 		 * error.
 		 */
-		if (!do_master_read_master(master_list, age, 180)) {
-			logerr("%s: failed to read master map after 180 seconds!",
-			       program);
+		if (!do_master_read_master(master_list, age, master_wait)) {
+			logerr("%s: failed to read master map after %u seconds!",
+			       program, master_wait);
 			master_kill(master_list);
 			release_flag_file();
 			exit(3);
