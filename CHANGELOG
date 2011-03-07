@@ -44,6 +44,7 @@
 - document allowed map sources in auto.master.
 - add enable sloppy mount option to configure.
 - fix interface address null check.
+- wait for master map to be available at start.
 
 25/07/2012 autofs-5.0.7
 =======================
