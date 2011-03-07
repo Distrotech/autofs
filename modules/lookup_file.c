@@ -454,6 +454,12 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 				     MODPREFIX
 				     "failed to read included master map %s",
 				     master->name);
+				/*
+				 * If we're starting up wee need the whole
+				 * master map initially, so tell the upper
+				 * layer to retry.
+				 */
+				master->read_fail = 1;
 			}
 			master->depth--;
 			master->recurse = 0;
