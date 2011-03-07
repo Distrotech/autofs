@@ -865,7 +865,10 @@ int master_read_master(struct master *master, time_t age, int readall)
 		master_mount_mounts(master, age, readall);
 	else {
 		master->read_fail = 0;
+		/* HUP signal sets readall == 1 only */
 		if (!readall)
+			return 0;
+		else
 			master_mount_mounts(master, age, readall);
 	}
 

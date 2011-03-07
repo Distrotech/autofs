@@ -247,12 +247,19 @@ int lookup_nss_read_master(struct master *master, time_t age)
 	}
 
 	/* First one gets it */
+	result = NSS_STATUS_UNKNOWN;
 	head = &nsslist;
 	list_for_each(p, head) {
 		struct nss_source *this;
 		int status;
 
 		this = list_entry(p, struct nss_source, list);
+
+		if (strncmp(this->source, "files", 5) &&
+		    strncmp(this->source, "nis", 3) &&
+		    strncmp(this->source, "nisplus", 7) &&
+		    strncmp(this->source, "ldap", 4))
+			continue;
 
 		debug(logopt,
 		      "reading master %s %s", this->source, master->name);
