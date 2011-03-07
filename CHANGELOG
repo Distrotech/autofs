@@ -63,6 +63,7 @@
 - fix expire race.
 - include ip address in debug logging.
 - mount using address for DNS round robin host names.
+- wait for master map to be available at start.
 
 03/09/2009 autofs-5.0.5
 -----------------------
