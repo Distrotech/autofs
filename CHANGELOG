@@ -42,6 +42,7 @@
 - fix submount tree not all expiring.
 - add enable sloppy mount option to configure.
 - wait for master map to be available at start.
+- add master read wait option.
 
 25/07/2012 autofs-5.0.7
 =======================
