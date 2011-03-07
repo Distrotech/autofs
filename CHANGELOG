@@ -37,6 +37,7 @@
 - fix libtirpc build option to require libtirpc-devel if needed.
 - fix systemd unidir in spec file.
 - document browse option in man page.
+- wait for master map to be available at start.
 
 25/07/2012 autofs-5.0.7
 =======================
@@ -183,6 +184,7 @@
 - fix out of order locking in readmap.
 - include ip address in debug logging.
 - mount using address for DNS round robin host names.
+<<<<<<< current
 - reset negative status on cache prune.
 - remove master_mutex_unlock() leftover.
 - fix sanity checks for brackets in server name.
@@ -194,6 +196,9 @@
 - add base64 password encode.
 - fix ipv6 name for lookup.
 - fix libtirpc ipv6 check.
+=======
+- wait for master map to be available at start.
+>>>>>>> patched
 
 03/09/2009 autofs-5.0.5
 -----------------------
