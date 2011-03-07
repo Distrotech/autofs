@@ -214,6 +214,11 @@ They are:
 .B TIMEOUT
 sets the default mount timeout (program default 600).
 .TP
+.B MASTER_WAIT
+sets the default maximum time to wait for the master map to become
+available if it cannot be read at program start (program default -1,
+wait forever).
+.TP
 .B NEGATIVE_TIMEOUT
 Set the default timeout for caching failed key lookups (program default
 60). If the equivalent command line option is given it will override this

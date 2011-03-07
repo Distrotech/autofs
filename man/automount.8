@@ -34,6 +34,10 @@ Set the global minimum timeout, in seconds, until directories
 are unmounted. The default is 10 minutes. Setting the timeout
 to zero disables umounts completely.
 .TP
+.I "\-M, \-\-master-wait"
+Set the maximum time to wait for the master map to become available
+if it cannot be read at program start.
+.TP
 .I "\-n <seconds>, \-\-negative\-timeout <seconds>"
 Set the default timeout for caching failed key lookups. The default is 60 seconds.
 .TP
