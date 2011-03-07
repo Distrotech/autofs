@@ -1899,12 +1899,53 @@ static void remove_empty_args(char **argv, int *argc)
 	*argc = j;
 }
 
+static int do_master_read_master(struct master *master, time_t age, int wait)
+{
+	sigset_t signalset;
+	unsigned int retry_wait = 2;
+	unsigned int elapsed = 0;
+	int max_wait = wait;
+	int ret = 0;
+
+	sigemptyset(&signalset);
+	sigaddset(&signalset, SIGTERM);
+	sigaddset(&signalset, SIGINT);
+	sigaddset(&signalset, SIGHUP);
+	sigprocmask(SIG_UNBLOCK, &signalset, NULL);
+
+	while (1) {
+		struct timespec t = { retry_wait, 0 };
+
+		if (master_read_master(master, age, 0)) {
+			ret = 1;
+			break;
+		}
+
+		if (nanosleep(&t, NULL) == -1)
+			break;
+
+		if (max_wait > 0) {
+			elapsed += retry_wait;
+			if (elapsed >= max_wait) {
+				logmsg("problem reading master map, "
+					"maximum wait exceeded");
+				break;
+			}
+		}
+	}
+
+	sigprocmask(SIG_BLOCK, &signalset, NULL);
+
+	return ret;
+}
+
 int main(int argc, char *argv[])
 {
 	int res, opt, status;
 	int logpri = -1;
 	unsigned ghost, logging, daemon_check;
 	unsigned dumpmaps, foreground, have_global_options;
+	unsigned master_read;
 	time_t timeout;
 	time_t age = time(NULL);
 	struct rlimit rlim;
@@ -2238,13 +2279,16 @@ int main(int argc, char *argv[])
 		dh_tirpc = dlopen("libtirpc.so.1", RTLD_NOW);
 #endif
 
-	if (!master_read_master(master_list, age, 0)) {
-		master_kill(master_list);
-		*pst_stat = 3;
-		res = write(start_pipefd[1], pst_stat, sizeof(*pst_stat));
-		close(start_pipefd[1]);
-		release_flag_file();
-		exit(3);
+	master_read = master_read_master(master_list, age, 0);
+	if (!master_read) {
+		if (foreground)
+			logerr("%s: failed to read master map, "
+			       "will retry!",
+			       program);
+		else
+			logerr("%s: failed to read master map, "
+			       "will retry in background!",
+			       program);
 	}
 
 	/*
@@ -2256,6 +2300,21 @@ int main(int argc, char *argv[])
 	st_stat = 0;
 	res = write(start_pipefd[1], pst_stat, sizeof(*pst_stat));
 	close(start_pipefd[1]);
+
+	if (!master_read) {
+		/*
+		 * Read master map, waiting until it is available, unless
+		 * a signal is received, in which case exit returning an
+		 * error.
+		 */
+		if (!do_master_read_master(master_list, age, -1)) {
+			logerr("%s: failed to read master map!",
+			       program);
+			master_kill(master_list);
+			release_flag_file();
+			exit(3);
+		}
+	}
 
 	state_mach_thid = pthread_self();
 	statemachine(NULL);
