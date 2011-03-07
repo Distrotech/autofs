@@ -38,6 +38,7 @@
 - fix systemd unidir in spec file.
 - document browse option in man page.
 - fix some automount(8) typos.
+- wait for master map to be available at start.
 
 25/07/2012 autofs-5.0.7
 =======================
