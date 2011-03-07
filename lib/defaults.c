@@ -32,6 +32,7 @@
 #define ENV_NAME_MASTER_MAP		"MASTER_MAP_NAME"
 
 #define ENV_NAME_TIMEOUT		"TIMEOUT"
+#define ENV_NAME_MASTER_WAIT		"MASTER_WAIT"
 #define ENV_NAME_NEGATIVE_TIMEOUT	"NEGATIVE_TIMEOUT"
 #define ENV_NAME_BROWSE_MODE		"BROWSE_MODE"
 #define ENV_NAME_LOGGING		"LOGGING"
@@ -516,6 +517,7 @@ unsigned int defaults_read_config(unsigned int to_syslog)
 
 		if (check_set_config_value(key, ENV_NAME_MASTER_MAP, value, to_syslog) ||
 		    check_set_config_value(key, ENV_NAME_TIMEOUT, value, to_syslog) ||
+		    check_set_config_value(key, ENV_NAME_MASTER_WAIT, value, to_syslog) ||
 		    check_set_config_value(key, ENV_NAME_NEGATIVE_TIMEOUT, value, to_syslog) ||
 		    check_set_config_value(key, ENV_NAME_BROWSE_MODE, value, to_syslog) ||
 		    check_set_config_value(key, ENV_NAME_LOGGING, value, to_syslog) ||
@@ -581,6 +583,17 @@ unsigned int defaults_get_timeout(void)
 		timeout = DEFAULT_TIMEOUT;
 
 	return (unsigned int) timeout;
+}
+
+int defaults_get_master_wait(void)
+{
+	long wait;
+
+	wait = get_env_number(ENV_NAME_MASTER_WAIT);
+	if (wait < 0)
+		wait = DEFAULT_MASTER_WAIT;
+
+	return (int) wait;
 }
 
 unsigned int defaults_get_negative_timeout(void)
