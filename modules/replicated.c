@@ -1123,6 +1123,7 @@ static int add_host_addrs(struct host **list, const char *host,
 	hints.ai_family = AF_UNSPEC;
 	hints.ai_socktype = SOCK_DGRAM;
 
+	ni = NULL;
 	ret = getaddrinfo(host, NULL, &hints, &ni);
 	if (ret)
 		goto try_name;
@@ -1143,6 +1144,7 @@ try_name:
 	hints.ai_family = AF_UNSPEC;
 	hints.ai_socktype = SOCK_DGRAM;
 
+	ni = NULL;
 	ret = getaddrinfo(host, NULL, &hints, &ni);
 	if (ret) {
 		error(LOGOPT_ANY, "hostname lookup failed: %s",

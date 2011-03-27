@@ -345,6 +345,7 @@ static CLIENT *create_udp_client(struct conn_info *info)
 	hints.ai_family = AF_UNSPEC;
 	hints.ai_socktype = SOCK_DGRAM;
 
+	ai = NULL;
 	ret = getaddrinfo(info->host, NULL, &hints, &ai);
 	if (ret) {
 		error(LOGOPT_ANY,
@@ -470,6 +471,7 @@ static CLIENT *create_tcp_client(struct conn_info *info)
 	hints.ai_family = AF_UNSPEC;
 	hints.ai_socktype = SOCK_STREAM;
 
+	ai = NULL;
 	ret = getaddrinfo(info->host, NULL, &hints, &ai);
 	if (ret) {
 		error(LOGOPT_ANY,

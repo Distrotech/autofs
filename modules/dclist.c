@@ -355,6 +355,7 @@ static char *getdnsdomainname(unsigned int logopt)
 	hints.ai_family = AF_UNSPEC;
 	hints.ai_socktype = SOCK_DGRAM;
 
+	ni = NULL;
 	ret = getaddrinfo(name, NULL, &hints, &ni);
 	if (ret) {
 		error(logopt, "hostname lookup failed: %s", gai_strerror(ret));
