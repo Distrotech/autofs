@@ -66,6 +66,7 @@
 - fix fix direct map not updating on re-read.
 - include ip address in debug logging.
 - mount using address for DNS round robin host names.
+- fix out of order locking in readmap.
 
 03/09/2009 autofs-5.0.5
 -----------------------
