@@ -64,6 +64,7 @@
 - replace GPLv3 code.
 - fix next task list update.
 - fix fix direct map not updating on re-read.
+- include ip address in debug logging.
 
 03/09/2009 autofs-5.0.5
 -----------------------

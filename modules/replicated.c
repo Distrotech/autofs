@@ -526,6 +526,8 @@ static unsigned int get_nfs_info(unsigned logopt, struct host *host,
 	char *have_port_opt = options ? strstr(options, "port=") : NULL;
 	unsigned int random_selection = host->options & MOUNT_FLAG_RANDOM_SELECT;
 	unsigned int use_weight_only = host->options & MOUNT_FLAG_USE_WEIGHT_ONLY;
+	socklen_t len = INET6_ADDRSTRLEN;
+	char buf[len + 1];
 	struct pmap parms;
 	struct timeval start, end;
 	struct timezone tz;
@@ -533,9 +535,14 @@ static unsigned int get_nfs_info(unsigned logopt, struct host *host,
 	double taken = 0;
 	int status, count = 0;
 
-	debug(logopt,
-	      "called for host %s proto %s version 0x%x",
-	      host->name, proto, version);
+	if (host->addr)
+		debug(logopt, "called with host %s(%s) proto %s version 0x%x",
+		      host->name, get_addr_string(host->addr, buf, len),
+		      proto, version);
+	else
+		debug(logopt,
+		      "called for host %s proto %s version 0x%x",
+		      host->name, proto, version);
 
 	memset(&parms, 0, sizeof(struct pmap));
 
@@ -748,6 +755,8 @@ static int get_supported_ver_and_cost(unsigned logopt, struct host *host,
 	char *have_port_opt = options ? strstr(options, "port=") : NULL;
 	unsigned int random_selection = host->options & MOUNT_FLAG_RANDOM_SELECT;
 	unsigned int use_weight_only = host->options & MOUNT_FLAG_USE_WEIGHT_ONLY;
+	socklen_t len = INET6_ADDRSTRLEN;
+	char buf[len + 1];
 	struct conn_info pm_info, rpc_info;
 	struct pmap parms;
 	const char *proto;
@@ -758,8 +767,13 @@ static int get_supported_ver_and_cost(unsigned logopt, struct host *host,
 	time_t timeout = RPC_TIMEOUT;
 	int status;
 
-	debug(logopt,
-	      "called with host %s version 0x%x", host->name, version);
+	if (host->addr)
+		debug(logopt, "called with host %s(%s) version 0x%x",
+			host->name, get_addr_string(host->addr, buf, len),
+			version);
+	else
+		debug(logopt, "called with host %s version 0x%x",
+			host->name, version);
 
 	memset(&pm_info, 0, sizeof(struct conn_info));
 	memset(&rpc_info, 0, sizeof(struct conn_info));
