@@ -996,6 +996,8 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 
 		cache_readlock(mc);
 		me = cache_lookup_first(mc);
+		error(ap->logopt, "source->stale %d", source->stale);
+		error(ap->logopt, "st_mtime %d me->age %d mtime <= age %d", st.st_mtime, me->age, st.st_mtime <= me->age);
 		if (me && st.st_mtime <= me->age) {
 			/*
 			 * If any map instances are present for this source
@@ -1013,6 +1015,8 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 				goto do_cache_lookup;
 		} else
 			source->stale = 1;
+
+		error(ap->logopt, "source->stale %d", source->stale);
 
 		me = cache_lookup_distinct(mc, key);
 		if (me && me->multi)
