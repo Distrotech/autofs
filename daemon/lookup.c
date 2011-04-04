@@ -1034,6 +1034,11 @@ void lookup_prune_one_cache(struct autofs_point *ap, struct mapent_cache *mc, ti
 		char *key = NULL, *next_key = NULL;
 
 		if (me->age >= age) {
+			/*
+			 * Reset time of last fail for valid map entries to
+			 * force entry update and subsequent mount retry.
+			 */
+			me->status = 0;
 			me = cache_enumerate(mc, me);
 			continue;
 		}
