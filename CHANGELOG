@@ -69,6 +69,7 @@
 - automount(8) man page correction.
 - fix out of order locking in readmap.
 - include ip address in debug logging.
+- mount using address for DNS round robin host names.
 
 03/09/2009 autofs-5.0.5
 -----------------------
