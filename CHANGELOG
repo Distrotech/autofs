@@ -66,6 +66,7 @@
 - fix next task list update.
 - fix stale map read.
 - fix null cache clean.
+- automount(8) man page correction.
 
 03/09/2009 autofs-5.0.5
 -----------------------
