@@ -465,7 +465,26 @@ master_add_source_instance(struct map_source *source, const char *type, const ch
 	return new;
 }
 
-static void check_stale_instances(struct map_source *source)
+static int check_stale_instances(struct map_source *source)
+{
+	struct map_source *map;
+
+	if (!source)
+		return 0;
+
+	map = source->instance;
+	while (map) {
+		if (map->stale)
+			return 1;
+		if (check_stale_instances(map))
+			return 1;
+		map = map->next;
+	}
+
+	return 0;
+}
+
+void clear_stale_instances(struct map_source *source)
 {
 	struct map_source *map;
 
@@ -474,11 +493,9 @@ static void check_stale_instances(struct map_source *source)
 
 	map = source->instance;
 	while (map) {
-		if (map->stale) {
-			source->stale = 1;
-			break;
-		}
-		check_stale_instances(map->instance);
+		clear_stale_instances(map);
+		if (map->stale)
+			map->stale = 0;
 		map = map->next;
 	}
 
@@ -496,12 +513,8 @@ void send_map_update_request(struct autofs_point *ap)
 
 	map = ap->entry->maps;
 	while (map) {
-		check_stale_instances(map);
-		map = map->next;
-	}
-
-	map = ap->entry->maps;
-	while (map) {
+		if (check_stale_instances(map))
+			map->stale = 1;
 		if (map->stale) {
 			need_update = 1;
 			break;

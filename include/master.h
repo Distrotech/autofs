@@ -89,6 +89,7 @@ struct map_source *
 master_find_source_instance(struct map_source *, const char *, const char *, int, const char **);
 struct map_source *
 master_add_source_instance(struct map_source *, const char *, const char *, time_t, int, const char **);
+void clear_stale_instances(struct map_source *);
 void send_map_update_request(struct autofs_point *);
 void master_source_writelock(struct master_mapent *);
 void master_source_readlock(struct master_mapent *);

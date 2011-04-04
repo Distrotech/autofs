@@ -1139,6 +1139,7 @@ int lookup_prune_cache(struct autofs_point *ap, time_t age)
 		cache_readlock(map->mc);
 		lookup_prune_one_cache(ap, map->mc, age);
 		pthread_cleanup_pop(1);
+		clear_stale_instances(map);
 		map->stale = 0;
 		map = map->next;
 	}
