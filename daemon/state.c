@@ -1150,11 +1150,13 @@ remove:
 				next = list_entry((&task->pending)->next,
 							struct state_queue, pending);
 
-				list_del_init(&next->pending);
-				list_add_tail(&next->list, p);
-
 				list_del(&task->list);
 				free(task);
+
+				list_del_init(&next->pending);
+				list_add_tail(&next->list, head);
+				if (p == head)
+					p = head->next;
 			}
 
 			if (list_empty(head))
