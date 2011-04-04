@@ -604,6 +604,9 @@ int lookup_ghost(struct autofs_point *ap, const char *root)
 			if (!strcmp(me->key, "*"))
 				goto next;
 
+			if (!me->mapent)
+				goto next;
+
 			if (*me->key == '/') {
 				/* It's a busy multi-mount - leave till next time */
 				if (list_empty(&me->multi_list))
