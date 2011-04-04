@@ -62,6 +62,7 @@
 - fix mountd vers retry.
 - fix expire race.
 - replace GPLv3 code.
+- fix paged ldap map read.
 
 03/09/2009 autofs-5.0.5
 -----------------------

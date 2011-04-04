@@ -2349,27 +2349,22 @@ static int read_one_map(struct autofs_point *ap,
 	      MODPREFIX "searching for \"%s\" under \"%s\"", sp.query, ctxt->qdn);
 
 	sp.cookie = NULL;
-	sp.pageSize = 1000;
+	sp.pageSize = 2000;
 	sp.morePages = FALSE;
 	sp.totalCount = 0;
 	sp.result = NULL;
 
 	do {
 		rv = do_paged_query(&sp, ctxt);
-		if (rv == LDAP_SIZELIMIT_EXCEEDED) {
-			debug(ap->logopt, MODPREFIX "result size exceed");
-			if (sp.result)
-				ldap_msgfree(sp.result);
-			continue;
-		}
 
-		if (rv == LDAP_ADMINLIMIT_EXCEEDED) {
+		if (rv == LDAP_ADMINLIMIT_EXCEEDED ||
+		    rv == LDAP_SIZELIMIT_EXCEEDED) {
 			if (sp.result)
 				ldap_msgfree(sp.result);
 			sp.pageSize = sp.pageSize / 2;
 			if (sp.pageSize < 5) {
 				debug(ap->logopt, MODPREFIX
-				      "administrative result size too small");
+				      "result size too small");
 				unbind_ldap_connection(ap->logopt, sp.ldap, ctxt);
 				*result_ldap = rv;
 				free(sp.query);
