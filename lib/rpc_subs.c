@@ -999,6 +999,26 @@ try_tcp:
 	return exportlist;
 }
 
+const char *get_addr_string(struct sockaddr *sa, char *name, socklen_t len)
+{
+	void *addr;
+
+	if (len < INET6_ADDRSTRLEN)
+		return NULL;
+
+	if (sa->sa_family == AF_INET) {
+		struct sockaddr_in *ipv4 = (struct sockaddr_in *) sa;
+		addr = &(ipv4->sin_addr);
+	} else if (sa->sa_family == AF_INET6) {
+		struct sockaddr_in6 *ipv6 = (struct sockaddr_in6 *) sa;
+		addr = &(ipv6->sin6_addr);
+	} else {
+		return NULL;
+	}
+
+	return inet_ntop(sa->sa_family, addr, name, len);
+}
+
 #if 0
 #include <stdio.h>
 
