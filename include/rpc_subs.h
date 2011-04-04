@@ -69,6 +69,7 @@ int rpc_ping_proto(struct conn_info *);
 int rpc_ping(const char *, long, long, unsigned int);
 double elapsed(struct timeval, struct timeval);
 int rpc_time(const char *, unsigned int, unsigned int, long, long, unsigned int, double *);
+const char *get_addr_string(struct sockaddr *, char *, socklen_t);
 
 #endif
 
