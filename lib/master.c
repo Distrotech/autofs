@@ -536,13 +536,26 @@ void send_map_update_request(struct autofs_point *ap)
 
 void master_source_writelock(struct master_mapent *entry)
 {
+	int retries = 5; /* 1 second maximum */
 	int status;
 
-	status = pthread_rwlock_wrlock(&entry->source_lock);
+	while (retries--) {
+		status = pthread_rwlock_wrlock(&entry->source_lock);
+		if (status != EAGAIN)
+			break;
+		else {
+                	struct timespec t = { 0, 200000000 };
+	                struct timespec r;
+                	while (nanosleep(&t, &r) == -1 && errno == EINTR)
+                        	memcpy(&t, &r, sizeof(struct timespec));
+		}
+	}
+
 	if (status) {
 		logmsg("master_mapent source write lock failed");
 		fatal(status);
 	}
+
 	return;
 }
 
