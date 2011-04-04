@@ -249,6 +249,7 @@ void cache_clean_null_cache(struct mapent_cache *mc)
 			free(me->key);
 			free(me);
 		}
+		mc->hash[i] = NULL;
 	}
 
 	return;

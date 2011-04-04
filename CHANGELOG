@@ -65,6 +65,7 @@
 - fix paged ldap map read.
 - fix next task list update.
 - fix stale map read.
+- fix null cache clean.
 
 03/09/2009 autofs-5.0.5
 -----------------------
