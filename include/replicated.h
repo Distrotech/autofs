@@ -54,6 +54,7 @@ struct host {
 	char *name;
 	struct sockaddr *addr;
 	size_t addr_len;
+	unsigned int rr;
 	char *path;
 	unsigned int version;
 	unsigned int options;
