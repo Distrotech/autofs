@@ -66,6 +66,7 @@
 - fix next task list update.
 - fix stale map read.
 - automount(8) man page correction.
+- fix out of order locking in readmap.
 
 03/09/2009 autofs-5.0.5
 -----------------------

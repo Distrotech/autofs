@@ -624,8 +624,6 @@ struct master_mapent *master_find_mapent(struct master *master, const char *path
 {
 	struct list_head *head, *p;
 
-	master_mutex_lock();
-
 	head = &master->mounts;
 	list_for_each(p, head) {
 		struct master_mapent *entry;
@@ -637,8 +635,6 @@ struct master_mapent *master_find_mapent(struct master *master, const char *path
 			return entry;
 		}
 	}
-
-	master_mutex_unlock();
 
 	return NULL;
 }
@@ -716,9 +712,7 @@ struct master_mapent *master_new_mapent(struct master *master, const char *path,
 
 void master_add_mapent(struct master *master, struct master_mapent *entry)
 {
-	master_mutex_lock();
 	list_add_tail(&entry->list, &master->mounts);
-	master_mutex_unlock();
 	return;
 }
 
@@ -826,6 +820,7 @@ int master_read_master(struct master *master, time_t age, int readall)
 	 * We need to clear and re-populate the null map entry cache
 	 * before alowing anyone else to use it.
 	 */
+	master_mutex_lock();
 	if (master->nc) {
 		cache_writelock(master->nc);
 		nc = master->nc;
@@ -844,6 +839,7 @@ int master_read_master(struct master *master, time_t age, int readall)
 	master_init_scan();
 	lookup_nss_read_master(master, age);
 	cache_unlock(nc);
+	master_mutex_unlock();
 
 	if (!master->read_fail)
 		master_mount_mounts(master, age, readall);
