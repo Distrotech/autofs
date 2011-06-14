@@ -554,13 +554,14 @@ prepare_plus_include(struct autofs_point *ap, time_t age, char *key, unsigned in
 	source = master_find_source_instance(current,
 					     info->type, info->format,
 					     argc, argv);
-	if (source)
+	if (source) {
 		/*
 		 * Make sure included map age is in sync with its owner
 		 * or we could incorrectly wipe out its entries.
 		 */
 		source->age = age;
-	else {
+		source->stale = 1;
+	} else {
 		source = master_add_source_instance(current,
 						    info->type, info->format,
 						    age, argc, argv);
@@ -1039,8 +1040,13 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 	cache_readlock(mc);
 do_cache_lookup:
 	me = cache_lookup(mc, key);
-	/* Stale mapent => check for entry in alternate source or wildcard */
-	if (me && !me->mapent) {
+	/*
+	 * Stale mapent => check for entry in alternate source or wildcard.
+	 * Note, plus included direct mount map entries are included as an
+	 * instance (same map entry cache), not in a distinct source.
+	 */
+	if (me && (!me->mapent || 
+	   (ap->type == LKP_INDIRECT && me->source != source))) {
 		while ((me = cache_lookup_key_next(me)))
 			if (me->source == source)
 				break;
