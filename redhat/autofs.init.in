@@ -8,7 +8,7 @@
 # description: Automounts filesystems on demand
 #
 ### BEGIN INIT INFO
-# Provides: $autofs
+# Provides: autofs
 # Required-Start: $network $ypbind
 # Required-Stop: $network $ypbind
 # Default-Start: 3 4 5

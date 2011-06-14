@@ -73,6 +73,7 @@
 - reset negative status on cache prune.
 - remove master_mutex_unlock() leftover.
 - fix sanity checks for brackets in server name.
+- fix lsb service name in init script.
 
 03/09/2009 autofs-5.0.5
 -----------------------
