@@ -1225,7 +1225,7 @@ static char *seek_delim(const char *s)
 	char *delim;
 
 	delim = strpbrk(p, "(, \t:");
-	if (delim && *delim != ':')
+	if (delim && *delim != ':' && (delim == s || *(delim - 1) != '\\'))
 		return delim;
 
 	while (*p) {
@@ -1273,6 +1273,12 @@ int parse_location(unsigned logopt, struct host **hosts,
 				if (delim) {
 					*delim = '\0';
 					weight = atoi(w);
+				}
+				else {
+					/* syntax error - Mismatched brackets */
+					free_host_list(hosts);
+					free(str);
+					return 0;
 				}
 				delim++;
 			}
