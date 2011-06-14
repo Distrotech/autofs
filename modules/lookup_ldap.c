@@ -1463,7 +1463,6 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 		}
 	}
 
-#ifdef WITH_SASL
 	/*
 	 *  First, check to see if a preferred authentication method was
 	 *  specified by the user.  parse_ldap_config will return error
@@ -1476,6 +1475,7 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 		return 1;
 	}
 
+#ifdef WITH_SASL
 	/* Init the sasl callbacks */
 	if (!autofs_sasl_client_init(LOGOPT_NONE)) {
 		error(LOGOPT_ANY, "failed to init sasl client");
