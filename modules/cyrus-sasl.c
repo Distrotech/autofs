@@ -738,6 +738,13 @@ sasl_bind_mech(unsigned logopt, LDAP *ldap, struct lookup_context *ctxt, const c
 		return NULL;
 	}
 
+	/*
+	 * We need a host name to start the client.
+	 * But the ldap library can return a list of host names so
+	 * just use the first one.
+	 */
+	if ((tmp = strchr(host, ' ')))
+		*tmp = '\0';
 	if ((tmp = strrchr(host, ':'))) {
 		if (*(tmp - 1) != ']') {
 			*tmp = '\0';
