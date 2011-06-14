@@ -643,10 +643,8 @@ struct master_mapent *master_find_mapent(struct master *master, const char *path
 
 		entry = list_entry(p, struct master_mapent, list);
 
-		if (!strcmp(entry->path, path)) {
-			master_mutex_unlock();
+		if (!strcmp(entry->path, path))
 			return entry;
-		}
 	}
 
 	return NULL;
