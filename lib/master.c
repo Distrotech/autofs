@@ -65,8 +65,9 @@ void master_mutex_lock_cleanup(void *arg)
 	return;
 }
 
-int master_add_autofs_point(struct master_mapent *entry,
-		time_t timeout, unsigned logopt, unsigned ghost, int submount) 
+int master_add_autofs_point(struct master_mapent *entry, time_t timeout,
+			    unsigned logopt, unsigned nobind, unsigned ghost,
+			    int submount)
 {
 	struct autofs_point *ap;
 	int status;
@@ -103,6 +104,9 @@ int master_add_autofs_point(struct master_mapent *entry,
 	ap->flags = 0;
 	if (ghost)
 		ap->flags = MOUNT_FLAG_GHOST;
+
+	if (nobind)
+		ap->flags |= MOUNT_FLAG_NOBIND;
 
 	if (ap->path[1] == '-')
 		ap->type = LKP_DIRECT;

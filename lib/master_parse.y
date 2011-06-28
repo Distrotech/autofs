@@ -57,6 +57,7 @@ static char *type;
 static char *format;
 static long timeout;
 static long negative_timeout;
+static unsigned nobind;
 static unsigned ghost;
 extern unsigned global_selection_options;
 static unsigned random_selection;
@@ -98,7 +99,7 @@ static int master_fprintf(FILE *, char *, ...);
 
 %token COMMENT
 %token MAP
-%token OPT_TIMEOUT OPT_NTIMEOUT OPT_NOGHOST OPT_GHOST OPT_VERBOSE
+%token OPT_TIMEOUT OPT_NTIMEOUT OPT_NOBIND OPT_NOGHOST OPT_GHOST OPT_VERBOSE
 %token OPT_DEBUG OPT_RANDOM OPT_USE_WEIGHT
 %token COLON COMMA NL DDASH
 %type <strtype> map
@@ -185,6 +186,7 @@ line:
 	| PATH OPT_USE_WEIGHT { master_notify($1); YYABORT; }
 	| PATH OPT_DEBUG { master_notify($1); YYABORT; }
 	| PATH OPT_TIMEOUT { master_notify($1); YYABORT; }
+	| PATH OPT_NOBIND { master_notify($1); YYABORT; }
 	| PATH OPT_GHOST { master_notify($1); YYABORT; }
 	| PATH OPT_NOGHOST { master_notify($1); YYABORT; }
 	| PATH OPT_VERBOSE { master_notify($1); YYABORT; }
@@ -555,6 +557,7 @@ option: daemon_option
 
 daemon_option: OPT_TIMEOUT NUMBER { timeout = $2; }
 	| OPT_NTIMEOUT NUMBER { negative_timeout = $2; }
+	| OPT_NOBIND	{ nobind = 1; }
 	| OPT_NOGHOST	{ ghost = 0; }
 	| OPT_GHOST	{ ghost = 1; }
 	| OPT_VERBOSE	{ verbose = 1; }
@@ -624,6 +627,7 @@ static void local_init_vars(void)
 	debug = 0;
 	timeout = -1;
 	negative_timeout = 0;
+	nobind = 0;
 	ghost = defaults_get_browse_mode();
 	random_selection = global_selection_options & MOUNT_FLAG_RANDOM_SELECT;
 	use_weight = 0;
@@ -786,7 +790,7 @@ int master_parse_entry(const char *buffer, unsigned int default_timeout, unsigne
 	}
 
 	if (!entry->ap) {
-		ret = master_add_autofs_point(entry, timeout, logopt, ghost, 0);
+		ret = master_add_autofs_point(entry, timeout, logopt, nobind, ghost, 0);
 		if (!ret) {
 			error(m_logopt, "failed to add autofs_point");
 			if (new)

@@ -77,6 +77,7 @@
 - fix map source check in file lookup.
 - fix simple bind without SASL support.
 - fix sasl bind host name selection.
+- add nobind option.
 
 03/09/2009 autofs-5.0.5
 -----------------------

@@ -1534,6 +1534,9 @@ void *handle_mounts(void *arg)
 
 	free(root);
 
+	if (ap->flags & MOUNT_FLAG_NOBIND)
+		info(ap->logopt, "bind mounts disabled");
+
 	if (ap->flags & MOUNT_FLAG_GHOST && ap->type != LKP_DIRECT)
 		info(ap->logopt, "ghosting enabled");
 

@@ -359,6 +359,7 @@ OPTNTOUT	(-n{OPTWS}|-n{OPTWS}={OPTWS}|--negative-timeout{OPTWS}|--negative-timeo
 		return(NUMBER);
 	}
 
+	-?nobind		{ return(OPT_NOBIND); }
 	-?nobrowse		{ return(OPT_NOGHOST); }
 	-g|--ghost|-?browse	{ return(OPT_GHOST); }
 	-v|--verbose		{ return(OPT_VERBOSE); }

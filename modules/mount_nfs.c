@@ -65,6 +65,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 	char *nfsoptions = NULL;
 	unsigned int flags = ap->flags &
 			(MOUNT_FLAG_RANDOM_SELECT | MOUNT_FLAG_USE_WEIGHT_ONLY);
+	int nobind = ap->flags & MOUNT_FLAG_NOBIND;
 	int len, status, err, existed = 1;
 	int nosymlink = 0;
 	int ro = 0;            /* Set if mount bind should be read-only */
@@ -115,6 +116,8 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 
 			if (strncmp("nosymlink", cp, end - cp + 1) == 0) {
 				nosymlink = 1;
+			} else if (strncmp("nobind", cp, end - cp + 1) == 0) {
+				nobind = 1;
 			} else if (strncmp("no-use-weight-only", cp, end - cp + 1) == 0) {
 				flags &= ~MOUNT_FLAG_USE_WEIGHT_ONLY;
 			} else if (strncmp("use-weight-only", cp, end - cp + 1) == 0) {
@@ -130,9 +133,9 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 			}
 		}
 
-		debug(ap->logopt, 
-		      MODPREFIX "nfs options=\"%s\", nosymlink=%d, ro=%d",
-		      nfsoptions, nosymlink, ro);
+		debug(ap->logopt, MODPREFIX
+		      "nfs options=\"%s\", nobind=%d, nosymlink=%d, ro=%d",
+		      nfsoptions, nobind, nosymlink, ro);
 	}
 
 	mount_default_proto = defaults_get_mount_nfs_default_proto();

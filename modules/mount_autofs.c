@@ -48,7 +48,9 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 	char realpath[PATH_MAX];
 	char mountpoint[PATH_MAX];
 	const char **argv;
-	int argc, status, ghost = ap->flags & MOUNT_FLAG_GHOST;
+	int argc, status;
+	int nobind = ap->flags & MOUNT_FLAG_NOBIND;
+	int ghost = ap->flags & MOUNT_FLAG_GHOST;
 	time_t timeout = ap->exp_timeout;
 	unsigned logopt = ap->logopt;
 	struct map_type_info *info;
@@ -114,6 +116,8 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 
 			if (strncmp(cp, "nobrowse", 8) == 0)
 				ghost = 0;
+			else if (strncmp(cp, "nobind", 6) == 0)
+				nobind = 1;
 			else if (strncmp(cp, "browse", 6) == 0)
 				ghost = 1;
 			else if (strncmp(cp, "timeout=", 8) == 0) {
@@ -145,7 +149,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 		return 1;
 	}
 
-	ret = master_add_autofs_point(entry, timeout, logopt, ghost, 1);
+	ret = master_add_autofs_point(entry, timeout, logopt, nobind, ghost, 1);
 	if (!ret) {
 		error(ap->logopt,
 		      MODPREFIX "failed to add autofs_point to entry");

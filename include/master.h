@@ -78,7 +78,7 @@ void master_mutex_unlock(void);
 void master_mutex_lock_cleanup(void *);
 void master_set_default_timeout(void);
 void master_set_default_ghost_mode(void);
-int master_add_autofs_point(struct master_mapent *, time_t, unsigned, unsigned, int);
+int master_add_autofs_point(struct master_mapent *, time_t, unsigned, unsigned, unsigned, int);
 void master_free_autofs_point(struct autofs_point *);
 struct map_source *
 master_add_map_source(struct master_mapent *, char *, char *, time_t, int, const char **);

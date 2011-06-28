@@ -446,6 +446,9 @@ struct kernel_mod_version {
 /* Use server weight only for selection */
 #define MOUNT_FLAG_USE_WEIGHT_ONLY	0x0010
 
+/* Don't use bind mounts even when system supports them */
+#define MOUNT_FLAG_NOBIND		0x0020
+
 struct autofs_point {
 	pthread_t thid;
 	char *path;			/* Mount point name */
