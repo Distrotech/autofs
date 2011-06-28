@@ -96,6 +96,12 @@ This attribute holds the secret used by authentication mechanisms that
 require it. Legal values for this attribute include any printable
 characters that can be used by the selected authentication mechanism.
 .TP
+\fBencoded_secret="<base64 encoded password>"\fP
+This attribute holds the base64 encoded secret used by authentication
+mechanisms that require it. If this entry is present as well as the
+secret entry this value will take precedence.
+.TP
+.TP
 \fBclientprinc="<GSSAPI client principal>"\fP
 When using GSSAPI authentication, this attribute is consulted to determine
 the principal name to use when authenticating to the directory server. By

@@ -78,6 +78,7 @@
 - fix simple bind without SASL support.
 - fix sasl bind host name selection.
 - add nobind option.
+- add base64 password encode.
 
 03/09/2009 autofs-5.0.5
 -----------------------

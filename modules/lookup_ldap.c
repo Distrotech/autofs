@@ -33,6 +33,7 @@
 #include "automount.h"
 #include "nsswitch.h"
 #include "lookup_ldap.h"
+#include "base64.h"
 
 #define MAPFMT_DEFAULT "sun"
 
@@ -1024,9 +1025,12 @@ int parse_ldap_config(unsigned logopt, struct lookup_context *ctxt)
 
 	if (auth_required == LDAP_AUTH_USESIMPLE ||
 	   (authtype && authtype_requires_creds(authtype))) {
+		char *s1 = NULL, *s2 = NULL;
 		ret = get_property(logopt, root, "user",  &user);
-		ret |= get_property(logopt, root, "secret", &secret);
-		if (ret != 0 || (!user || !secret)) {
+		ret |= get_property(logopt, root, "secret", &s1);
+		ret |= get_property(logopt, root, "encoded_secret", &s2);
+		if (ret != 0 || (!user || (!s1 && !s2))) {
+auth_fail:
 			error(logopt,
 			      MODPREFIX
 			      "%s authentication type requires a username "
@@ -1035,11 +1039,28 @@ int parse_ldap_config(unsigned logopt, struct lookup_context *ctxt)
 			free(authtype);
 			if (user)
 				free(user);
-			if (secret)
-				free(secret);
+			if (s1)
+				free(s1);
+			if (s2)
+				free(s2);
 
 			ret = -1;
 			goto out;
+		}
+		if (!s2)
+			secret = s1;
+		else {
+			char dec_buf[120];
+			int dec_len = base64_decode(s2, dec_buf, 119);
+			if (dec_len <= 0)
+				goto auth_fail;
+			secret = strdup(dec_buf);
+			if (!secret)
+				goto auth_fail;
+			if (s1)
+				free(s1);
+			if (s2)
+				free(s2);
 		}
 	} else if (auth_required == LDAP_AUTH_REQUIRED &&
 		  (authtype && !strncmp(authtype, "EXTERNAL", 8))) {

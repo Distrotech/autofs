@@ -95,9 +95,9 @@ cyrus-sasl.o: cyrus-sasl.c
 cyrus-sasl-extern.o: cyrus-sasl-extern.c
 	$(CC) $(CFLAGS) $(LDAP_FLAGS) -c $<
 
-lookup_ldap.so: lookup_ldap.c dclist.o $(SASL_OBJ)
+lookup_ldap.so: lookup_ldap.c dclist.o base64.o $(SASL_OBJ)
 	$(CC) $(SOLDFLAGS) $(CFLAGS) $(LDAP_FLAGS) -o lookup_ldap.so \
-		lookup_ldap.c dclist.o $(SASL_OBJ) \
+		lookup_ldap.c dclist.o base64.o $(SASL_OBJ) \
 		$(AUTOFS_LIB) $(LIBLDAP) $(LIBRESOLV)
 	$(STRIP) lookup_ldap.so
 
