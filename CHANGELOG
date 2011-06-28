@@ -80,6 +80,7 @@
 - add nobind option.
 - add base64 password encode.
 - fix ipv6 name for lookup.
+- fix libtirpc ipv6 check.
 
 03/09/2009 autofs-5.0.5
 -----------------------

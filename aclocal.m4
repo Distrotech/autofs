@@ -341,7 +341,7 @@ AC_TRY_LINK(
     [ #define INET6
       #include <rpc/rpc.h> ],
     [ CLIENT *cl;
-      struct sockaddr_in addr;
+      struct sockaddr_in6 addr;
       int fd;
       unsigned long ul; struct timeval t; unsigned int ui;
       cl = clntudp6_bufcreate(&addr,ul,ul,t,&fd,ui,ui); ],
