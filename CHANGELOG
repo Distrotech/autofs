@@ -79,6 +79,7 @@
 - fix sasl bind host name selection.
 - add nobind option.
 - add base64 password encode.
+- fix ipv6 name for lookup.
 
 03/09/2009 autofs-5.0.5
 -----------------------

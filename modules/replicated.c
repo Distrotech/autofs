@@ -217,10 +217,8 @@ static unsigned int get_proximity(struct sockaddr *host_addr)
 
 		switch (ifr->ifr_addr.sa_family) {
 		case AF_INET:
-#ifndef INET6
 			if (host_addr->sa_family == AF_INET6)
 				break;
-#endif
 			if_addr = (struct sockaddr_in *) &ifr->ifr_addr;
 			ret = memcmp(&if_addr->sin_addr, hst_addr, addr_len);
 			if (!ret) {
@@ -270,10 +268,8 @@ static unsigned int get_proximity(struct sockaddr *host_addr)
 
 		switch (ifr->ifr_addr.sa_family) {
 		case AF_INET:
-#ifndef INET6
 			if (host_addr->sa_family == AF_INET6)
 				break;
-#endif
 			if_addr = (struct sockaddr_in *) &ifr->ifr_addr;
 			ia =  ntohl((uint32_t) if_addr->sin_addr.s_addr);
 
@@ -1115,15 +1111,29 @@ static int add_host_addrs(struct host **list, const char *host,
 			  unsigned int weight, unsigned int options)
 {
 	struct addrinfo hints, *ni, *this;
+	char *name = strdup(host);
+	int len;
+	char buf[MAX_ERR_BUF];
 	int rr = 0;
 	int ret;
+
+	if (!name) {
+		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+		error(LOGOPT_ANY, "strdup: %s", estr);
+		error(LOGOPT_ANY, "failed to add host %s", host);
+		return 0;
+	}
+	len = strlen(name);
+
+	if (name[0] == '[' && name[--len] == ']')
+		name[len] = '\0';
 
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_flags = AI_NUMERICHOST;
 	hints.ai_family = AF_UNSPEC;
 	hints.ai_socktype = SOCK_DGRAM;
 
-	ret = getaddrinfo(host, NULL, &hints, &ni);
+	ret = getaddrinfo(name + 1, NULL, &hints, &ni);
 	if (ret)
 		goto try_name;
 
@@ -1143,10 +1153,11 @@ try_name:
 	hints.ai_family = AF_UNSPEC;
 	hints.ai_socktype = SOCK_DGRAM;
 
-	ret = getaddrinfo(host, NULL, &hints, &ni);
+	ret = getaddrinfo(name + 1, NULL, &hints, &ni);
 	if (ret) {
 		error(LOGOPT_ANY, "hostname lookup failed: %s",
 		      gai_strerror(ret));
+		free(name);
 		return 0;
 	}
 
@@ -1161,6 +1172,7 @@ try_name:
 	}
 	freeaddrinfo(ni);
 done:
+	free(name);
 	return ret;
 }
 
