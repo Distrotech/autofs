@@ -473,11 +473,11 @@ static void *do_readmap(void *arg)
 
 		mnts = tree_make_mnt_tree(_PROC_MOUNTS, "/");
 		pthread_cleanup_push(tree_mnts_cleanup, mnts);
-		pthread_cleanup_push(master_source_lock_cleanup, ap->entry);
-		master_source_readlock(ap->entry);
 		nc = ap->entry->master->nc;
 		cache_readlock(nc);
 		pthread_cleanup_push(cache_lock_cleanup, nc);
+		master_source_readlock(ap->entry);
+		pthread_cleanup_push(master_source_lock_cleanup, ap->entry);
 		map = ap->entry->maps;
 		while (map) {
 			/* Is map source up to date or no longer valid */
