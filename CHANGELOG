@@ -1,4 +1,4 @@
-??/??/20?? autofs-5.0.6
+28/06/2011 autofs-5.0.6
 -----------------------
 - fix included map read fail handling.
 - refactor ldap sasl bind handling.
