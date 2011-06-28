@@ -201,7 +201,8 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 			port_opt = strstr(nfsoptions, "port=");
 
 		/* Port option specified, don't try to bind */
-		if (!nosymlink && !port_opt && this->proximity == PROXIMITY_LOCAL) {
+		if (!(nosymlink || nobind) &&
+		    !port_opt && this->proximity == PROXIMITY_LOCAL) {
 			/* Local host -- do a "bind" */
 			const char *bind_options = ro ? "ro" : "";
 
