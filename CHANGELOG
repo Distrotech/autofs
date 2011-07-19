@@ -1,6 +1,7 @@
 ??/??/20?? autofs-5.0.7
 =======================
 - fix ipv6 name for lookup fix.
+- improve mount location error reporting.
 
 28/06/2011 autofs-5.0.6
 -----------------------
