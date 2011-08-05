@@ -452,6 +452,7 @@ static int umount_subtree_mounts(struct autofs_point *ap, const char *path, unsi
 	unsigned int is_mm_root;
 	int left;
 
+	master_source_readlock(ap->entry);
 	me = lookup_source_mapent(ap, path, LKP_DISTINCT);
 	if (!me) {
 		char *ind_key;
@@ -461,9 +462,12 @@ static int umount_subtree_mounts(struct autofs_point *ap, const char *path, unsi
 			ind_key++;
 
 		me = lookup_source_mapent(ap, ind_key, LKP_NORMAL);
-		if (!me)
+		if (!me) {
+			master_source_unlock(ap->entry);
 			return 0;
+		}
 	}
+	master_source_unlock(ap->entry);
 
 	mc = me->mc;
 	is_mm_root = (me->multi == me);
@@ -940,14 +944,11 @@ int do_expire(struct autofs_point *ap, const char *name, int namelen)
 
 	info(ap->logopt, "expiring path %s", buf);
 
-	pthread_cleanup_push(master_source_lock_cleanup, ap->entry);
-	master_source_readlock(ap->entry);
 	ret = umount_multi(ap, buf, 1);
 	if (ret == 0)
 		info(ap->logopt, "expired %s", buf);
 	else
 		warn(ap->logopt, "couldn't complete expire of %s", buf);
-	pthread_cleanup_pop(1);
 
 	return ret;
 }
