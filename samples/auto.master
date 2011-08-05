@@ -12,6 +12,10 @@
 #
 /net	-hosts
 #
+# Include /etc/auto.master.d/*.autofs
+#
++dir:/etc/auto.master.d
+#
 # Include central master map if it can be found using
 # nsswitch sources.
 #
