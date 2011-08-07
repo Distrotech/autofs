@@ -2,6 +2,7 @@
 =======================
 - fix ipv6 name for lookup fix.
 - improve mount location error reporting.
+- fix paged query more results check.
 
 28/06/2011 autofs-5.0.6
 -----------------------
