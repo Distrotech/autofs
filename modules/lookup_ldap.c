@@ -347,6 +347,8 @@ static int get_query_dn(unsigned logopt, LDAP *ldap, struct lookup_context *ctxt
 			error(logopt,
 			      MODPREFIX "query failed for %s: %s",
 			      query, ldap_err2string(rv));
+			if (result)
+				ldap_msgfree(result);
 			free(query);
 			return 0;
 		}
@@ -1573,6 +1575,8 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 		error(logopt, MODPREFIX "query failed for %s: %s",
 		      query, ldap_err2string(rv));
 		unbind_ldap_connection(logging, ldap, ctxt);
+		if (result)
+			ldap_msgfree(result);
 		free(query);
 		return NSS_STATUS_NOTFOUND;
 	}
@@ -2586,6 +2590,8 @@ static int lookup_one(struct autofs_point *ap,
 	if ((rv != LDAP_SUCCESS) || !result) {
 		crit(ap->logopt, MODPREFIX "query failed for %s", query);
 		unbind_ldap_connection(ap->logopt, ldap, ctxt);
+		if (result)
+			ldap_msgfree(result);
 		free(query);
 		return CHE_FAIL;
 	}
