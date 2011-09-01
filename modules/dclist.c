@@ -69,7 +69,7 @@ static void dclist_mutex_unlock(void)
 
 static int do_srv_query(unsigned int logopt, char *name, u_char **packet)
 {
-	unsigned int len = PACKETSZ;
+	int len = PACKETSZ;
 	unsigned int last_len = len;
 	char ebuf[MAX_ERR_BUF];
 	u_char *buf;
@@ -500,7 +500,8 @@ struct dclist *get_dc_list(unsigned int logopt, const char *uri)
 		}
 
 		dclist_mutex_lock();
-		if (!get_srv_rrs(logopt, request, &dcs, &numdcs)) {
+		ret = get_srv_rrs(logopt, request, &dcs, &numdcs);
+		if (!ret | !dcs) {
 			error(logopt,
 			      "DNS SRV query failed for domain %s", domain);
 			dclist_mutex_unlock();
@@ -526,8 +527,7 @@ struct dclist *get_dc_list(unsigned int logopt, const char *uri)
 		if (!tmp) {
 			char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
 			error(logopt, "realloc: %s", estr);
-			if (dcs)
-				free_srv_rrs(dcs, numdcs);
+			free_srv_rrs(dcs, numdcs);
 			goto out_error;
 		}
 
@@ -548,8 +548,7 @@ struct dclist *get_dc_list(unsigned int logopt, const char *uri)
 				if (ret > 6) {
 					error(logopt,
 					      "invalid port: %u", dcs[i].port);
-					if (dcs)
-						free_srv_rrs(dcs, numdcs);
+					free_srv_rrs(dcs, numdcs);
 					goto out_error;
 				}
 				strcat(tmp, port);

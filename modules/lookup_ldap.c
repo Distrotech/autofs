@@ -736,7 +736,6 @@ static LDAP *find_server(unsigned logopt, struct lookup_context *ctxt)
 static LDAP *do_reconnect(unsigned logopt, struct lookup_context *ctxt)
 {
 	LDAP *ldap = NULL;
-	char *uri;
 
 	if (ctxt->server || !ctxt->uris) {
 		ldap = do_connect(logopt, ctxt->server, ctxt);
@@ -780,7 +779,7 @@ static LDAP *do_reconnect(unsigned logopt, struct lookup_context *ctxt)
 	 */
 	if (!ldap) {
 		autofs_sasl_dispose(ctxt);
-		ldap = connect_to_server(logopt, uri, ctxt);
+		ldap = connect_to_server(logopt, ctxt->uri->uri, ctxt);
 	}
 #endif
 	if (ldap)
