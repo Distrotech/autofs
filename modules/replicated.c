@@ -1068,18 +1068,20 @@ static int add_new_host(struct host **list,
 	 * We can't use PROXIMITY_LOCAL or we won't perform an RPC ping
 	 * to remove hosts that may be down.
 	 */
-	if (options & MOUNT_FLAG_RANDOM_SELECT)
+	if (!host_addr)
 		prx = PROXIMITY_SUBNET;
 	else {
 		prx = get_proximity(host_addr->ai_addr);
 		/*
 		 * If we want the weight to be the determining factor
-		 * when selecting a host then all hosts must have the
-		 * same proximity. However, if this is the local machine
-		 * it should always be used since it is certainly available.
+		 * when selecting a host, or we are using random selection,
+		 * then all hosts must have the same proximity. However,
+		 * if this is the local machine it should always be used
+		 * since it is certainly available.
 		 */
 		if (prx != PROXIMITY_LOCAL &&
-		   (options & MOUNT_FLAG_USE_WEIGHT_ONLY))
+		   (options & (MOUNT_FLAG_USE_WEIGHT_ONLY |
+			       MOUNT_FLAG_RANDOM_SELECT)))
 			prx = PROXIMITY_SUBNET;
 	}
 
