@@ -2381,8 +2381,10 @@ static int read_one_map(struct autofs_point *ap,
 
 		if (rv == LDAP_ADMINLIMIT_EXCEEDED ||
 		    rv == LDAP_SIZELIMIT_EXCEEDED) {
-			if (sp.result)
+			if (sp.result) {
 				ldap_msgfree(sp.result);
+				sp.result = NULL;
+			}
 			if (sp.cookie) {
 				ber_bvfree(sp.cookie);
 				sp.cookie = NULL;
@@ -2402,6 +2404,8 @@ static int read_one_map(struct autofs_point *ap,
 		if (rv != LDAP_SUCCESS || !sp.result) {
 			unbind_ldap_connection(ap->logopt, sp.ldap, ctxt);
 			*result_ldap = rv;
+			if (sp.result)
+				ldap_msgfree(sp.result);
 			if (sp.cookie)
 				ber_bvfree(sp.cookie);
 			free(sp.query);
@@ -2419,6 +2423,7 @@ static int read_one_map(struct autofs_point *ap,
 			return NSS_STATUS_NOTFOUND;
 		}
 		ldap_msgfree(sp.result);
+		sp.result = NULL;
 	} while (sp.morePages == TRUE);
 
 	debug(ap->logopt, MODPREFIX "done updating map");
