@@ -67,6 +67,7 @@ mkdir -p -m755 $RPM_BUILD_ROOT%{_sbindir}
 mkdir -p -m755 $RPM_BUILD_ROOT%{_libdir}/autofs
 mkdir -p -m755 $RPM_BUILD_ROOT%{_mandir}/{man5,man8}
 mkdir -p -m755 $RPM_BUILD_ROOT/etc/sysconfig
+mkdir -p -m755 $RPM_BUILD_ROOT/etc/auto.master.d
 
 make install mandir=%{_mandir} initdir=/etc/rc.d/init.d INSTALLROOT=$RPM_BUILD_ROOT
 make -C redhat
@@ -104,6 +105,7 @@ fi
 %dir %{_libdir}/autofs
 %{_libdir}/autofs/*
 %{_mandir}/*/*
+%dir /etc/auto.master.d
 
 %changelog
 * Tue Jun 3 2011 Ian Kent <raven@themaw.net>

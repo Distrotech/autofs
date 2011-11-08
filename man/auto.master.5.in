@@ -107,6 +107,14 @@ appropriate certificate must be configured in the LDAP client.
 .B multi
 This map type allows the specification of multiple maps separated
 by "--". These maps are searched in order to resolve key lookups.
+.TP
+.B dir
+This map type can be used at
+.BR +
+master map including notation. The contents of files under given directory are included
+to the master map. The name of file to be included must be ended with ".autofs". A file
+will be ignored if its name is not ended with the suffix. In addition a dot file, a file
+which name is started with "." is also ignored.
 .RE
 .TP
 \fBformat\fP
@@ -118,7 +126,7 @@ left unspecified, it defaults to \fBsun\fP for all map types except
 .TP
 \fBmap\fP
 Name of the map to use.  This is an absolute UNIX pathname
-for maps of types \fBfile\fP or \fBprogram\fP, and the name of a database
+for maps of types \fBfile\fP, \fBdir\fP, or \fBprogram\fP, and the name of a database
 in the case for maps of type \fByp\fP, \fBnisplus\fP, or \fBhesiod\fP or
 the \fBdn\fP of an LDAP entry for maps of type \fBldap\fP.
 .TP

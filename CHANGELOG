@@ -8,6 +8,7 @@
 - fix LDAP result leaks on error paths.
 - code analysis fixes part 1.
 - fix not bind mounting local filesystem.
+- add "dir" map-type.
 
 28/06/2011 autofs-5.0.6
 -----------------------

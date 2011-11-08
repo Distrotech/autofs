@@ -5,14 +5,14 @@
 -include ../Makefile.conf
 include ../Makefile.rules
 
-SRCS :=	lookup_yp.c  lookup_file.c  lookup_program.c  lookup_userhome.c \
-	lookup_multi.c lookup_hosts.c \
+SRCS :=	lookup_yp.c  lookup_file.c lookup_program.c  lookup_userhome.c \
+	lookup_multi.c lookup_hosts.c lookup_dir.c \
 	parse_sun.c    \
 	mount_generic.c  mount_nfs.c  mount_afs.c  mount_autofs.c \
 	mount_changer.c  mount_bind.c
 
 MODS :=	lookup_yp.so lookup_file.so lookup_program.so lookup_userhome.so \
-	lookup_multi.so lookup_hosts.so \
+	lookup_multi.so lookup_hosts.so lookup_dir.so \
 	parse_sun.so \
 	mount_generic.so mount_nfs.so mount_afs.so mount_autofs.so \
 	mount_changer.so mount_bind.so
