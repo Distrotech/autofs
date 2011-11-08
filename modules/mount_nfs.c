@@ -163,11 +163,6 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 	if (root[len - 1] == '/') {
 		len = snprintf(fullpath, len, "%s", root);
 	} else if (*name == '/') {
-		/*
-		 * Direct or offset mount, name is absolute path so
-		 * don't use root (but with move mount changes root
-		 * is now the same as name).
-		 */
 		len = sprintf(fullpath, "%s", root);
 	} else {
 		len = sprintf(fullpath, "%s/%s", root, name);

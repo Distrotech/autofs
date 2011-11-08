@@ -1028,6 +1028,7 @@ static int parse_mapent(const char *ent, char *g_options, char **options, char *
 	return (p - ent);
 }
 
+#ifdef ENABLE_MOUNT_MOVE
 static int move_mount(struct autofs_point *ap,
 		      const char *mm_tmp_root, const char *mm_root,
 		      unsigned int move)
@@ -1063,6 +1064,7 @@ static int move_mount(struct autofs_point *ap,
 
 	return 1;
 }
+#endif
 
 static void cleanup_multi_root(struct autofs_point *ap, const char *root,
 					 const char *path, unsigned int move)
@@ -1145,6 +1147,7 @@ static void cleanup_multi_triggers(struct autofs_point *ap,
 	return;
 }
 
+#ifdef ENABLE_MOUNT_MOVE
 static int check_fstype_autofs_option(const char *options)
 {
 	char *tok, *tokbuf;
@@ -1171,24 +1174,27 @@ static int check_fstype_autofs_option(const char *options)
 
 	return found;
 }
+#endif
 
 static int mount_subtree(struct autofs_point *ap, struct mapent *me,
 			 const char *name, char *loc, char *options, void *ctxt)
 {
 	struct mapent *mm;
 	struct mapent *ro;
-	char t_dir[] = "/tmp/autoXXXXXX";
-	char *mnt_tmp_root, *mm_root, *mm_base, *mm_key;
+	char *mm_root, *mm_base, *mm_key;
 	const char *mnt_root, *target;
 	unsigned int mm_root_len, mnt_root_len;
 	int start, ret = 0, rv;
-	unsigned int move;
+	unsigned int move = MOUNT_MOVE_NONE;
+#ifdef ENABLE_MOUNT_MOVE
+	char t_dir[] = "/tmp/autoXXXXXX";
+	char *mnt_tmp_root = NULL;
+#endif
 
 	rv = 0;
 
 	mm = me->multi;
 	mm_key = mm->key;
-	move = MOUNT_MOVE_NONE;
 
 	if (*mm_key == '/') {
 		mm_root = mm_key;
@@ -1202,7 +1208,10 @@ static int mount_subtree(struct autofs_point *ap, struct mapent *me,
 	}
 	mm_root_len = strlen(mm_root);
 
-	mnt_tmp_root = NULL;
+#ifndef ENABLE_MOUNT_MOVE
+	mnt_root = mm_root;
+	mnt_root_len = mm_root_len;
+#else
 	if (ap->flags & MOUNT_FLAG_REMOUNT) {
 		mnt_root = mm_root;
 		mnt_root_len = mm_root_len;
@@ -1213,6 +1222,7 @@ static int mount_subtree(struct autofs_point *ap, struct mapent *me,
 		mnt_root_len = strlen(mnt_root);
 		mnt_tmp_root = (char *) mnt_root;
 	}
+#endif
 
 	if (me == me->multi) {
 		/* name = NULL */
@@ -1238,11 +1248,13 @@ static int mount_subtree(struct autofs_point *ap, struct mapent *me,
 			}
 			ro_len = strlen(ro_loc);
 
+#ifdef ENABLE_MOUNT_MOVE
 			if (!(ap->flags & MOUNT_FLAG_REMOUNT)) {
 				move = MOUNT_MOVE_OTHER;
 				if (check_fstype_autofs_option(myoptions))
 					move = MOUNT_MOVE_AUTOFS;
 			}
+#endif
 
 			tmp = alloca(mnt_root_len + 1);
 			strcpy(tmp, mnt_root);
@@ -1266,7 +1278,9 @@ static int mount_subtree(struct autofs_point *ap, struct mapent *me,
 				goto error_out;
 			}
 		} else if (rv <= 0) {
+#ifdef ENABLE_MOUNT_MOVE
 			move = MOUNT_MOVE_NONE;
+#endif
 			ret = mount_multi_triggers(ap, me, mm_root, start, mm_base);
 			if (ret == -1) {
 				error(ap->logopt, MODPREFIX
@@ -1279,11 +1293,21 @@ static int mount_subtree(struct autofs_point *ap, struct mapent *me,
 		int loclen = strlen(loc);
 		int namelen = strlen(name);
 
+#ifndef ENABLE_MOUNT_MOVE
+		/*
+		 * When using move mount to mount offsets or direct mounts
+		 * the base of the tree can be the base of the temporary
+		 * mount point it needs to be the full path when not moving
+		 * the mount after construction.
+		 */
+		mnt_root = name;
+#else
 		if (!(ap->flags & MOUNT_FLAG_REMOUNT)) {
 			move = MOUNT_MOVE_OTHER;
 			if (check_fstype_autofs_option(options))
 				move = MOUNT_MOVE_AUTOFS;
 		}
+#endif
 
 		/* name = mm_root + mm_base */
 		/* destination = mm_root + mm_base = name */
@@ -1303,7 +1327,9 @@ static int mount_subtree(struct autofs_point *ap, struct mapent *me,
 		} else if (rv < 0) {
 			char *mm_root_base = alloca(strlen(mm_root) + strlen(mm_base) + 1);
 	
+#ifdef ENABLE_MOUNT_MOVE
 			move = MOUNT_MOVE_NONE;
+#endif
 
 			strcpy(mm_root_base, mm_root);
 			strcat(mm_root_base, mm_base);
@@ -1318,6 +1344,7 @@ static int mount_subtree(struct autofs_point *ap, struct mapent *me,
 		}
 	}
 
+#ifdef ENABLE_MOUNT_MOVE
 	if (!move_mount(ap, mnt_root, target, move)) {
 		cleanup_multi_triggers(ap, me, mnt_root, start, mm_base);
 		cleanup_multi_root(ap, mnt_root, mm_root, move);
@@ -1326,6 +1353,7 @@ static int mount_subtree(struct autofs_point *ap, struct mapent *me,
 
 	if (mnt_tmp_root)
 		rmdir(mnt_tmp_root);
+#endif
 
 	/* Mount for base of tree failed */
 	if (rv > 0)
@@ -1341,8 +1369,10 @@ static int mount_subtree(struct autofs_point *ap, struct mapent *me,
 	return rv;
 
 error_out:
+#ifdef ENABLE_MOUNT_MOVE
 	if (mnt_tmp_root)
 		rmdir(mnt_tmp_root);
+#endif
 
 	return 1;
 }

@@ -1743,9 +1743,20 @@ static void show_build_info(void)
 	count = 22;
 #endif
 
+#ifndef ENABLE_MOUNT_MOVE
+	printf("DISABLE_MOUNT_MOVE ");
+	count = count + 19;
+#endif
+
 #ifdef ENABLE_FORCED_SHUTDOWN
 	printf("ENABLE_FORCED_SHUTDOWN ");
 	count = count + 23;
+
+	if (count > 60) {
+		printf("\n  ");
+		count = 0;
+	}
+
 #endif
 
 #ifdef ENABLE_IGNORE_BUSY_MOUNTS
