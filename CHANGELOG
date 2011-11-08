@@ -11,6 +11,7 @@
 - add "dir" map-type.
 - fix wait for master source mutex.
 - fix submount shutdown race.
+- fix fix map source check in file lookup.
 
 28/06/2011 autofs-5.0.6
 -----------------------

@@ -1046,7 +1046,7 @@ do_cache_lookup:
 	 * instance (same map entry cache), not in a distinct source.
 	 */
 	if (me && (!me->mapent || 
-	   (ap->type == LKP_INDIRECT && me->source != source))) {
+	   (me->source != source && *me->key != '/'))) {
 		while ((me = cache_lookup_key_next(me)))
 			if (me->source == source)
 				break;
