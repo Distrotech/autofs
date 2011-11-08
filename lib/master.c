@@ -540,12 +540,24 @@ void send_map_update_request(struct autofs_point *ap)
 
 void master_source_writelock(struct master_mapent *entry)
 {
+	int status;
+
+	status = pthread_rwlock_wrlock(&entry->source_lock);
+	if (status) {
+		logmsg("master_mapent source write lock failed");
+		fatal(status);
+	}
+	return;
+}
+
+void master_source_readlock(struct master_mapent *entry)
+{
 	int retries = 5; /* 1 second maximum */
 	int status;
 
 	while (retries--) {
-		status = pthread_rwlock_wrlock(&entry->source_lock);
-		if (status != EAGAIN)
+		status = pthread_rwlock_tryrdlock(&entry->source_lock);
+		if (status != EAGAIN && status != EBUSY)
 			break;
 		else {
                 	struct timespec t = { 0, 200000000 };
@@ -556,22 +568,10 @@ void master_source_writelock(struct master_mapent *entry)
 	}
 
 	if (status) {
-		logmsg("master_mapent source write lock failed");
-		fatal(status);
-	}
-
-	return;
-}
-
-void master_source_readlock(struct master_mapent *entry)
-{
-	int status;
-
-	status = pthread_rwlock_rdlock(&entry->source_lock);
-	if (status) {
 		logmsg("master_mapent source read lock failed");
 		fatal(status);
 	}
+
 	return;
 }
 
