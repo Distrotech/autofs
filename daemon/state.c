@@ -1002,6 +1002,16 @@ static int run_state_task(struct state_queue *task)
 			break;
 
 		case ST_READMAP:
+			/*
+			 * Readmap tasks can arrive at any time, but they
+			 * must not be started unless the mount is in ready
+			 * state.
+			 */
+			if (ap->state != ST_READY) {
+				task->busy = 0;
+				ret = 1;
+				break;
+			}
 			ret = st_readmap(ap);
 			break;
 
@@ -1112,6 +1122,10 @@ static void *st_queue_handler(void *arg)
 
 				task = list_entry(p, struct state_queue, list);
 				p = p->next;
+
+				/* Task may have been canceled before it started */
+				if (!task->thid && task->cancel)
+					goto remove;
 
 				if (!task->busy) {
 					/* Start a new task */
