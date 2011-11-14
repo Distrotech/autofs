@@ -654,6 +654,22 @@ struct master_mapent *master_find_mapent(struct master *master, const char *path
 	return NULL;
 }
 
+struct master_mapent *next_mapent(struct master *master, struct master_mapent *entry)
+{
+	struct list_head *head = &master->mounts;
+	struct list_head *p;
+
+	if (!entry)
+		p = head->next;
+	else
+		p = entry->list.next;
+
+	if (!p || p == head)
+		return NULL;
+
+	return list_entry(p, struct master_mapent, list);
+}
+
 struct autofs_point *__master_find_submount(struct autofs_point *ap, const char *path)
 {
 	struct list_head *head, *p;
@@ -1050,13 +1066,22 @@ static int master_do_mount(struct master_mapent *entry)
 	suc.done = 0;
 	suc.status = 0;
 
-	debug(ap->logopt, "mounting %s", entry->path);
+	if (ap->type == LKP_INDIRECT)
+		debug(ap->logopt, "mounting %s", entry->path);
+	else
+		debug(ap->logopt, "mounting %s source %s",
+		      entry->path, entry->maps->argv[0]);
 
 	status = pthread_create(&thid, &th_attr, handle_mounts, &suc);
 	if (status) {
-		crit(ap->logopt,
-		     "failed to create mount handler thread for %s",
-		     entry->path);
+		if (ap->type == LKP_INDIRECT)
+			crit(ap->logopt,
+			     "failed to create mount handler thread for %s",
+			     entry->path);
+		else
+			crit(ap->logopt,
+			 "failed to create mount handler thread for %s source %s",
+			 entry->path, entry->maps->argv[0]);
 		handle_mounts_startup_cond_destroy(&suc);
 		return 0;
 	}

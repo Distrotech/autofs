@@ -633,16 +633,24 @@ static int fullread(int fd, void *ptr, size_t len)
 	return len;
 }
 
-static char *automount_path_to_fifo(unsigned logopt, const char *path)
+static char *automount_path_to_fifo(unsigned logopt, const char *path, const char *source)
 {
 	char *fifo_name, *p;
-	int  name_len = strlen(path) + strlen(fifodir) + 1;
+	int  name_len;
 	int ret;
+
+	name_len = strlen(path) + strlen(fifodir) + 1;
+	if (source)
+		name_len += strlen(source) + 1;
 
 	fifo_name = malloc(name_len);
 	if (!fifo_name)
 		return NULL;
-	ret = snprintf(fifo_name, name_len, "%s%s", fifodir, path);
+	if (source)
+		ret = snprintf(fifo_name, name_len,
+			       "%s%s%s", fifodir, path, source);
+	else
+		ret = snprintf(fifo_name, name_len, "%s%s", fifodir, path);
 	if (ret >= name_len) {
 		info(logopt,
 		     "fifo path for \"%s\" truncated to \"%s\".  This may "
@@ -673,8 +681,14 @@ static int create_logpri_fifo(struct autofs_point *ap)
 	int fd;
 	char *fifo_name;
 	char buf[MAX_ERR_BUF];
+	const char *source;
 
-	fifo_name = automount_path_to_fifo(ap->logopt, ap->path);
+	if (ap->type == LKP_INDIRECT)
+		source = NULL;
+	else
+		source = ap->entry->maps->argv[0];
+
+	fifo_name = automount_path_to_fifo(ap->logopt, ap->path, source);
 	if (!fifo_name) {
 		crit(ap->logopt, "Failed to allocate memory!");
 		goto out_free; /* free(NULL) is okay */
@@ -719,11 +733,17 @@ int destroy_logpri_fifo(struct autofs_point *ap)
 	int fd = ap->logpri_fifo;
 	char *fifo_name;
 	char buf[MAX_ERR_BUF];
+	const char *source;
 
 	if (fd == -1)
 		return 0;
 
-	fifo_name = automount_path_to_fifo(ap->logopt, ap->path);
+	if (ap->type == LKP_INDIRECT)
+		source = NULL;
+	else
+		source = ap->entry->maps->argv[0];
+
+	fifo_name = automount_path_to_fifo(ap->logopt, ap->path, source);
 	if (!fifo_name) {
 		crit(ap->logopt, "Failed to allocate memory!");
 		goto out_free; /* free(NULL) is okay */
@@ -812,9 +832,41 @@ static void handle_fifo_message(struct autofs_point *ap, int fd)
 	}
 }
 
+static int send_log_priority(const char *fifo, char *priority)
+{
+	int fd, msg_len;
+	char buf[2];
+
+	/*
+	 * Specify O_NONBLOCK so that the open will fail if there is no
+	 * daemon reading from the other side of the FIFO.
+	 */
+	fd = open(fifo, O_WRONLY|O_NONBLOCK);
+	if (fd < 0) {
+		fprintf(stderr, "%s: open of %s failed with %s\n",
+			__FUNCTION__, fifo, strerror(errno));
+		fprintf(stderr, "%s: perhaps the fifo wasn't setup,"
+			" please check your log for more information\n", __FUNCTION__);
+		return -1;
+	}
+
+	/* Send the string plus the NULL */
+	msg_len = strlen(priority) + 1;
+	if (write(fd, buf, msg_len) != msg_len) {
+		fprintf(stderr, "Failed to change logging priority.  ");
+		fprintf(stderr, "write to fifo failed: %s.\n",
+			strerror(errno));
+		close(fd);
+		return -1;
+	}
+	close(fd);
+
+	return 0;
+}
+
 static int set_log_priority(const char *path, int priority)
 {
-	int fd;
+	int ret;
 	char *fifo_name;
 	char buf[2];
 
@@ -830,37 +882,20 @@ static int set_log_priority(const char *path, int priority)
 	 */
 	snprintf(buf, sizeof(buf), "%d", priority);
 
-	fifo_name = automount_path_to_fifo(LOGOPT_NONE, path);
+	fifo_name = automount_path_to_fifo(LOGOPT_NONE, path, NULL);
 	if (!fifo_name) {
 		fprintf(stderr, "%s: Failed to allocate memory!\n",
 			__FUNCTION__);
 		return -1;
 	}
 
-	/*
-	 * Specify O_NONBLOCK so that the open will fail if there is no
-	 * daemon reading from the other side of the FIFO.
-	 */
-	fd = open(fifo_name, O_WRONLY|O_NONBLOCK);
-	if (fd < 0) {
-		fprintf(stderr, "%s: open of %s failed with %s\n",
-			__FUNCTION__, fifo_name, strerror(errno));
-		fprintf(stderr, "%s: perhaps the fifo wasn't setup,"
-			" please check your log for more information\n", __FUNCTION__);
-		free(fifo_name);
-		return -1;
-	}
+	ret = send_log_priority(fifo_name, buf);
 
-	if (write(fd, buf, sizeof(buf)) != sizeof(buf)) {
-		fprintf(stderr, "Failed to change logging priority.  ");
-		fprintf(stderr, "write to fifo failed: %s.\n",
-			strerror(errno));
-		close(fd);
-		free(fifo_name);
-		return -1;
-	}
-	close(fd);
 	free(fifo_name);
+
+	if (!ret)
+		return ret;
+
 	fprintf(stdout, "Successfully set log priority for %s.\n", path);
 
 	return 0;

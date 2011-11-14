@@ -407,7 +407,13 @@ int do_mount_autofs_direct(struct autofs_point *ap, struct mnt_list *mnts, struc
 
 	ret = mount(map_name, me->key, "autofs", MS_MGC_VAL, mp->options);
 	if (ret) {
-		crit(ap->logopt, "failed to mount autofs path %s", me->key);
+		if (errno == EBUSY)
+			crit(ap->logopt,
+			     "failed to mount direct mount map entry %s "
+			     "possible duplicate", me->key);
+		else
+			crit(ap->logopt, "failed to mount autofs path %s",
+			     me->key);
 		goto out_err;
 	}
 
@@ -940,7 +946,8 @@ void *expire_proc_direct(void *arg)
 	pthread_cleanup_pop(1);
 
 	if (left)
-		info(ap->logopt, "%d remaining in %s", left, ap->path);
+		info(ap->logopt, "%d remaining in %s",
+		     left, ap->path, ap->entry->maps->argv[0]);
 
 	ec.status = left;
 

@@ -771,6 +771,22 @@ int master_parse_entry(const char *buffer, unsigned int default_timeout, unsigne
 
 	new = NULL;
 	entry = master_find_mapent(master, path);
+
+	if (entry && !strcmp(path, "/-")) {
+		struct map_source *this;
+		while (entry) {
+			const char **argv = (const char **) local_argv;
+			int argc = local_argc;
+			this = master_find_map_source(entry,
+						 type, format, argc, argv);
+			if (this)
+				break;
+			entry = next_mapent(master, entry);
+		}
+		if (!this)
+			entry = NULL;
+	}
+
 	if (!entry) {
 		new = master_new_mapent(master, path, age);
 		if (!new) {
@@ -780,13 +796,25 @@ int master_parse_entry(const char *buffer, unsigned int default_timeout, unsigne
 		entry = new;
 	} else {
 		if (entry->age && entry->age == age) {
+			char *m_source;
+
 			if (strcmp(path, "/-")) {
 				info(m_logopt,
-				    "ignoring duplicate indirect mount %s",
+				     "ignoring duplicate indirect mount for %s",
 				     path);
 				local_free_vars();
 				return 0;
 			}
+
+			m_source = NULL;
+			if (local_argv && local_argv[0])
+				m_source = local_argv[0];
+			info(m_logopt,
+			     "ignoring duplicate direct mount map for source %s",
+			     path, m_source);
+			local_free_vars();
+
+			return 0;
 		}
 	}
 

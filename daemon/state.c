@@ -105,9 +105,15 @@ void expire_cleanup(void *arg)
 
 	st_mutex_lock();
 
-	debug(ap->logopt,
-	      "got thid %lu path %s stat %d",
-	      (unsigned long) thid, ap->path, success);
+	if (ap->type == LKP_INDIRECT)
+		debug(ap->logopt,
+		      "got thid %lu path %s stat %d",
+		      (unsigned long) thid, ap->path, success);
+	else
+		debug(ap->logopt,
+		      "got thid %lu path %s source %s stat %d",
+		      (unsigned long) thid, ap->path,
+		      ap->entry->maps->argv[0], success);
 
 	/* Check to see if expire process finished */
 	if (thid == ap->exp_thread) {
@@ -175,7 +181,13 @@ void expire_cleanup(void *arg)
 				break;
 
 			/* Failed shutdown returns to ready */
-			warn(ap->logopt, "filesystem %s still busy", ap->path);
+			if (ap->type == LKP_INDIRECT)
+				warn(ap->logopt,
+				     "filesystem %s still busy", ap->path);
+			else
+				warn(ap->logopt,
+				     "filesystem %s (source %s) still busy",
+				     ap->path, ap->entry->maps->argv[0]);
 			if (!ap->submount)
 				alarm_add(ap, ap->exp_runfreq);
 			next = ST_READY;
@@ -209,8 +221,11 @@ void expire_cleanup(void *arg)
 
 static unsigned int st_ready(struct autofs_point *ap)
 {
-	debug(ap->logopt,
-	      "st_ready(): state = %d path %s", ap->state, ap->path);
+	if (ap->type == LKP_INDIRECT)
+		debug(ap->logopt, "state = %d path %s", ap->state, ap->path);
+	else
+		debug(ap->logopt, "state = %d path %s source %s",
+		      ap->state, ap->path, ap->entry->maps->argv[0]);
 
 	ap->shutdown = 0;
 	ap->state = ST_READY;
@@ -262,6 +277,7 @@ static enum expire expire_proc(struct autofs_point *ap, int now)
 	pthread_t thid;
 	struct expire_args *ea;
 	void *(*expire)(void *);
+	char *map;
 	int status;
 
 	assert(ap->exp_thread == 0);
@@ -288,15 +304,23 @@ static enum expire expire_proc(struct autofs_point *ap, int now)
 	ea->when = now;
 	ea->status = 1;
 
-	if (ap->type == LKP_INDIRECT)
+	if (ap->type == LKP_INDIRECT) {
 		expire = expire_proc_indirect;
-	else
+		map = NULL;
+	} else {
 		expire = expire_proc_direct;
+		map = ap->entry->maps->argv[0];
+	}
 
 	status = pthread_create(&thid, &th_attr_detached, expire, ea);
 	if (status) {
-		error(ap->logopt,
-		      "expire thread create for %s failed", ap->path);
+		if (ap->type == LKP_INDIRECT)
+			error(ap->logopt,
+			      "expire thread create failed for %s", ap->path);
+		else
+			error(ap->logopt,
+			      "expire thread create failed for %s source %s",
+			      ap->path, map);
 		expire_proc_cleanup((void *) ea);
 		return EXP_ERROR;
 	}
@@ -305,8 +329,12 @@ static enum expire expire_proc(struct autofs_point *ap, int now)
 
 	pthread_cleanup_push(expire_proc_cleanup, ea);
 
-	debug(ap->logopt, "exp_proc = %lu path %s",
-		(unsigned long) ap->exp_thread, ap->path);
+	if (ap->type == LKP_INDIRECT)
+		debug(ap->logopt, "exp_proc = %lu path %s",
+		      (unsigned long) ap->exp_thread, ap->path);
+	else
+		debug(ap->logopt, "exp_proc = %lu path %s source %s",
+		      (unsigned long) ap->exp_thread, ap->path, map);
 
 	ea->signaled = 0;
 	while (!ea->signaled) {
@@ -456,7 +484,11 @@ static void *do_readmap(void *arg)
 
 	pthread_cleanup_push(do_readmap_cleanup, ra);
 
-	info(ap->logopt, "re-reading map for %s", ap->path);
+	if (ap->type == LKP_INDIRECT)
+		info(ap->logopt, "re-reading map for %s", ap->path);
+	else
+		info(ap->logopt, "re-reading map for %s source %s",
+		     ap->path, ap->entry->maps->argv[0]);
 
 	pthread_cleanup_push(master_mutex_lock_cleanup, NULL);
 	master_mutex_lock();
@@ -537,7 +569,11 @@ static unsigned int st_readmap(struct autofs_point *ap)
 	int status;
 	int now = time(NULL);
 
-	debug(ap->logopt, "state %d path %s", ap->state, ap->path);
+	if (ap->type == LKP_INDIRECT)
+		debug(ap->logopt, "state %d path %s", ap->state, ap->path);
+	else
+		debug(ap->logopt, "state %d path %s source %s",
+		      ap->state, ap->path, ap->entry->maps->argv[0]);
 
 	assert(ap->state == ST_READY);
 	assert(ap->readmap_thread == 0);
@@ -601,7 +637,11 @@ static unsigned int st_prepare_shutdown(struct autofs_point *ap)
 {
 	int exp;
 
-	debug(ap->logopt, "state %d path %s", ap->state, ap->path);
+	if (ap->type == LKP_INDIRECT)
+		debug(ap->logopt, "state %d path %s", ap->state, ap->path);
+	else
+		debug(ap->logopt, "state %d path %s source %s",
+		      ap->state, ap->path, ap->entry->maps->argv[0]);
 
 	assert(ap->state == ST_READY || ap->state == ST_EXPIRE);
 	ap->state = ST_SHUTDOWN_PENDING;
@@ -627,7 +667,11 @@ static unsigned int st_force_shutdown(struct autofs_point *ap)
 {
 	int exp;
 
-	debug(ap->logopt, "state %d path %s", ap->state, ap->path);
+	if (ap->type == LKP_INDIRECT)
+		debug(ap->logopt, "state %d path %s", ap->state, ap->path);
+	else
+		debug(ap->logopt, "state %d path %s source %s",
+		      ap->state, ap->path, ap->entry->maps->argv[0]);
 
 	assert(ap->state == ST_READY || ap->state == ST_EXPIRE);
 	ap->state = ST_SHUTDOWN_FORCE;
@@ -651,7 +695,11 @@ static unsigned int st_force_shutdown(struct autofs_point *ap)
 
 static unsigned int st_shutdown(struct autofs_point *ap)
 {
-	debug(ap->logopt, "state %d path %s", ap->state, ap->path);
+	if (ap->type == LKP_INDIRECT)
+		debug(ap->logopt, "state %d path %s", ap->state, ap->path);
+	else
+		debug(ap->logopt, "state %d path %s source %s",
+		      ap->state, ap->path, ap->entry->maps->argv[0]);
 
 	assert(ap->state == ST_SHUTDOWN_PENDING || ap->state == ST_SHUTDOWN_FORCE);
 
@@ -663,7 +711,11 @@ static unsigned int st_shutdown(struct autofs_point *ap)
 
 static unsigned int st_prune(struct autofs_point *ap)
 {
-	debug(ap->logopt, "state %d path %s", ap->state, ap->path);
+	if (ap->type == LKP_INDIRECT)
+		debug(ap->logopt, "state %d path %s", ap->state, ap->path);
+	else
+		debug(ap->logopt, "state %d path %s source %s",
+		      ap->state, ap->path, ap->entry->maps->argv[0]);
 
 	assert(ap->state == ST_READY);
 	ap->state = ST_PRUNE;
@@ -684,7 +736,11 @@ static unsigned int st_prune(struct autofs_point *ap)
 
 static unsigned int st_expire(struct autofs_point *ap)
 {
-	debug(ap->logopt, "state %d path %s", ap->state, ap->path);
+	if (ap->type == LKP_INDIRECT)
+		debug(ap->logopt, "state %d path %s", ap->state, ap->path);
+	else
+		debug(ap->logopt, "state %d path %s source %s",
+		      ap->state, ap->path, ap->entry->maps->argv[0]);
 
 	assert(ap->state == ST_READY);
 	ap->state = ST_EXPIRE;
