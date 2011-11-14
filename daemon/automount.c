@@ -59,6 +59,9 @@ const char *global_options;		/* Global option, from command line */
 static char *pid_file = NULL;		/* File in which to keep pid */
 unsigned int global_selection_options;
 
+/* Use host name only, even if it has multiple addresses */
+unsigned int global_use_name_only = 0;
+
 long global_negative_timeout = -1;
 int do_force_unlink = 0;		/* Forceably unlink mount tree at startup */
 
@@ -1889,6 +1892,7 @@ int main(int argc, char *argv[])
 		{"version", 0, 0, 'V'},
 		{"set-log-priority", 1, 0, 'l'},
 		{"dont-check-daemon", 0, 0, 'C'},
+		{"use-host-name-only", 0, 0, 'N'},
 		{"force", 0, 0, 'F'},
 		{0, 0, 0, 0}
 	};
@@ -1994,6 +1998,10 @@ int main(int argc, char *argv[])
 
 		case 'C':
 			daemon_check = 0;
+			break;
+
+		case 'N':
+			global_use_name_only = 1;
 			break;
 
 		case 'F':

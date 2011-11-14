@@ -60,6 +60,7 @@ static long negative_timeout;
 static unsigned nobind;
 static unsigned ghost;
 extern unsigned global_selection_options;
+extern unsigned global_use_name_only;
 static unsigned random_selection;
 static unsigned use_weight;
 static char **tmp_argv;
@@ -816,6 +817,8 @@ int master_parse_entry(const char *buffer, unsigned int default_timeout, unsigne
 	}
 	if (random_selection)
 		entry->ap->flags |= MOUNT_FLAG_RANDOM_SELECT;
+	if (global_use_name_only)
+		entry->ap->flags |= MOUNT_FLAG_USE_NAME_ONLY;
 	if (use_weight)
 		entry->ap->flags |= MOUNT_FLAG_USE_WEIGHT_ONLY;
 	if (negative_timeout)

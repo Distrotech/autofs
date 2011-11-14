@@ -449,6 +449,9 @@ struct kernel_mod_version {
 /* Don't use bind mounts even when system supports them */
 #define MOUNT_FLAG_NOBIND		0x0020
 
+/* Use host name only, even if it has multiple addresses */
+#define MOUNT_FLAG_USE_NAME_ONLY	0x0040
+
 struct autofs_point {
 	pthread_t thid;
 	char *path;			/* Mount point name */

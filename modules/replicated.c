@@ -351,7 +351,7 @@ static struct host *new_host(const char *name,
 			     unsigned int options)
 {
 	struct host *new;
-	struct sockaddr *tmp2;
+	struct sockaddr *tmp2 = NULL;
 	char *tmp1;
 
 	if (!name || !addr)
@@ -361,17 +361,20 @@ static struct host *new_host(const char *name,
 	if (!tmp1)
 		return NULL;
 
-	tmp2 = malloc(addr_len);
-	if (!tmp2) {
-		free(tmp1);
-		return NULL;
+	if (addr && addr_len) {
+		tmp2 = malloc(addr_len);
+		if (!tmp2) {
+			free(tmp1);
+			return NULL;
+		}
+		memcpy(tmp2, addr, addr_len);
 	}
-	memcpy(tmp2, addr, addr_len);
 
 	new = malloc(sizeof(struct host));
 	if (!new) {
 		free(tmp1);
-		free(tmp2);
+		if (tmp2)
+			free(tmp2);
 		return NULL;
 	}
 
@@ -1060,7 +1063,8 @@ static int add_new_host(struct host **list,
 {
 	struct host *new;
 	unsigned int prx;
-	int addr_len;
+	struct sockaddr *addr = host_addr ? host_addr->ai_addr : NULL;
+	int addr_len = host_addr ? sizeof(struct sockaddr) : 0;
 
 	/*
 	 * If we are using random selection we pretend all hosts are at
@@ -1095,8 +1099,7 @@ static int add_new_host(struct host **list,
 	if (prx == PROXIMITY_ERROR)
 		return 0;
 
-	addr_len = sizeof(struct sockaddr);
-	new = new_host(host, host_addr->ai_addr, addr_len, prx, weight, options);
+	new = new_host(host, addr, addr_len, prx, weight, options);
 	if (!new)
 		return 0;
 
@@ -1131,6 +1134,14 @@ static int add_host_addrs(struct host **list, const char *host,
 	if (name[0] == '[' && name[--len] == ']') {
 		name[len] = '\0';
 		name++;
+	}
+
+	if (options & MOUNT_FLAG_USE_NAME_ONLY) {
+		ret = add_new_host(list, host, weight, NULL, 0, options);
+		if (!ret) {
+			error(LOGOPT_ANY, "failed to add host %s", host);
+			return 0;
+		}
 	}
 
 	memset(&hints, 0, sizeof(hints));

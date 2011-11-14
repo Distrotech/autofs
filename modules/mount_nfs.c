@@ -64,7 +64,8 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 	unsigned int mount_default_proto, vers;
 	char *nfsoptions = NULL;
 	unsigned int flags = ap->flags &
-			(MOUNT_FLAG_RANDOM_SELECT | MOUNT_FLAG_USE_WEIGHT_ONLY);
+			(MOUNT_FLAG_RANDOM_SELECT | MOUNT_FLAG_USE_WEIGHT_ONLY |
+			 MOUNT_FLAG_USE_NAME_ONLY);
 	int nobind = ap->flags & MOUNT_FLAG_NOBIND;
 	int len, status, err, existed = 1;
 	int nosymlink = 0;
