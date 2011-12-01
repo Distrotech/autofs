@@ -1117,7 +1117,7 @@ static int add_host_addrs(struct host **list, const char *host,
 	char *name = n_ptr = strdup(host);
 	int len;
 	char buf[MAX_ERR_BUF];
-	int rr = 0;
+	int rr = 0, rr4 = 0, rr6 = 0;
 	int ret;
 
 	if (!name) {
@@ -1167,8 +1167,21 @@ try_name:
 	}
 
 	this = ni;
-	if (this->ai_next)
+	while (this->ai_next) {
+		if (this->ai_family == AF_INET) {
+			struct sockaddr_in *addr = (struct sockaddr_in *) this->ai_addr;
+			if (addr->sin_addr.s_addr != INADDR_LOOPBACK)
+				rr4++;
+		} else if (this->ai_family == AF_INET6) {
+			struct sockaddr_in6 *addr = (struct sockaddr_in6 *) this->ai_addr;
+			if (!IN6_IS_ADDR_LOOPBACK(addr->sin6_addr.__in6_u.__u6_addr32))
+				rr6++;
+		}
+		this = this->ai_next;
+	}
+	if (rr4 > 1 || rr6 > 1)
 		rr++;
+	this = ni;
 	while (this) {
 		ret = add_new_host(list, host, weight, this, rr, options);
 		if (!ret)
