@@ -1283,6 +1283,15 @@ int master_show_mounts(struct master *master)
 		printf("\nMount point: %s\n", ap->path);
 		printf("\nsource(s):\n");
 
+		/*
+		 * Ensure we actually read indirect map entries so we can
+		 * list them. The map reads won't read any indirect map
+		 * entries (other than those in a file map) unless the
+		 * browse option is set.
+		 */
+		if (ap->type == LKP_INDIRECT)
+			ap->flags |= MOUNT_FLAG_GHOST;
+
 		/* Read the map content into the cache */
 		if (lookup_nss_read_map(ap, NULL, now))
 			lookup_prune_cache(ap, now);

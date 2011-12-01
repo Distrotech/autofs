@@ -3,6 +3,7 @@
 - fix ipv6 name for lookup fix.
 - improve mount location error reporting.
 - fix paged query more results check.
+- fix dumpmaps not reading maps.
 
 28/06/2011 autofs-5.0.6
 -----------------------
