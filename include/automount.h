@@ -333,7 +333,9 @@ int ncat_path(char *buf, size_t len,
 
 /* Core automount definitions */
 
+#ifndef MNT_DETACH
 #define MNT_DETACH	0x00000002	/* Just detach from the tree */
+#endif
 
 struct startup_cond {
 	pthread_mutex_t mutex;
