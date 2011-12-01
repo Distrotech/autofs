@@ -3087,52 +3087,6 @@ fi
 CFLAGS="$af_check_libtirpc_save_cflags"
 LDFLAGS="$af_check_libtirpc_save_ldflags"
 
-  { $as_echo "$as_me:${as_lineno-$LINENO}: checking if libtirpc has IPv6 support" >&5
-$as_echo_n "checking if libtirpc has IPv6 support... " >&6; }
-
-# save current flags
-af_check_libtirpc_ipv6_save_cflags="$CFLAGS"
-af_check_libtirpc_ipv6_save_ldflags="$LDFLAGS"
-CFLAGS="$CFLAGS -I/usr/include/tirpc"
-LDFLAGS="$LDFLAGS -ltirpc"
-
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
- #define INET6
-      #include <rpc/rpc.h>
-int
-main ()
-{
- CLIENT *cl;
-      struct sockaddr_in6 addr;
-      int fd;
-      unsigned long ul; struct timeval t; unsigned int ui;
-      cl = clntudp6_bufcreate(&addr,ul,ul,t,&fd,ui,ui);
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_link "$LINENO"; then :
-   af_have_libtirpc_ipv6=yes
-      { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-$as_echo "yes" >&6; }
-else
-   { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
-$as_echo "no" >&6; }
-fi
-rm -f core conftest.err conftest.$ac_objext \
-    conftest$ac_exeext conftest.$ac_ext
-
-if test "$af_have_libtirpc_ipv6" = "yes"; then
-
-$as_echo "#define INET6 1" >>confdefs.h
-
-fi
-
-# restore flags
-CFLAGS="$af_check_libtirpc_ipv6_save_cflags"
-LDFLAGS="$af_check_libtirpc_ipv6_save_ldflags"
-
 else
   { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }

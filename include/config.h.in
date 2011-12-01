@@ -72,9 +72,6 @@
 /* Define to 1 if you have the <unistd.h> header file. */
 #undef HAVE_UNISTD_H
 
-/* Use IPv6 with libtirpc */
-#undef INET6
-
 /* Use libxml2 tsd usage workaround */
 #undef LIBXML2_WORKAROUND
 
