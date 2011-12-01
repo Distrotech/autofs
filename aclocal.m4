@@ -121,13 +121,29 @@ AC_DEFUN(AF_MAP_D,
 fi])
 
 dnl --------------------------------------------------------------------------
+dnl AF_PID_D
+dnl
+dnl Check the location of the pid file directory.
+dnl --------------------------------------------------------------------------
+AC_DEFUN(AF_PID_D,
+[if test -z "$piddir"; then
+  for pid_d in /run /var/run /tmp; do
+    if test -z "$piddir"; then
+      if test -d "$pid_d"; then
+        piddir="$pid_d"
+      fi
+    fi
+  done
+fi])
+
+dnl --------------------------------------------------------------------------
 dnl AF_FIFO_D
 dnl
 dnl Check the location of the autofs fifos directory
 dnl --------------------------------------------------------------------------
 AC_DEFUN(AF_FIFO_D,
 [if test -z "$fifodir"; then
-  for fifo_d in /var/run /tmp; do
+  for fifo_d in /run /var/run /tmp; do
     if test -z "$fifodir"; then
       if test -d "$fifo_d"; then
         fifodir="$fifo_d"
@@ -143,7 +159,7 @@ dnl Check the location of the autofs flag file directory
 dnl --------------------------------------------------------------------------
 AC_DEFUN(AF_FLAG_D,
 [if test -z "$flagdir"; then
-  for flag_d in /var/run /tmp; do
+  for flag_d in /run /var/run /tmp; do
     if test -z "$flagdir"; then
       if test -d "$flag_d"; then
         flagdir="$flag_d"

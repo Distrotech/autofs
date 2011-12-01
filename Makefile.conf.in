@@ -79,6 +79,9 @@ autofsconfdir = @confdir@
 # Location for autofs maps
 autofsmapdir = @mapdir@
 
+# Localtion of pid files
+autofspiddir = @piddir@
+
 # Location for autofs fifos
 autofsfifodir = @fifodir@
 

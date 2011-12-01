@@ -21,7 +21,7 @@ dirs:
 	install -d -m 755 $(INSTALLROOT)$(autofsmapdir)
 	install -d -m 755 $(INSTALLROOT)$(autofsconfdir)
 	install -d -m 755 $(INSTALLROOT)$(autofslibdir)
-	install -d -m 755 $(INSTALLROOT)/var/run/autofs
+	install -d -m 755 $(INSTALLROOT)$(autofspiddir)
 
 .PHONY: autofs.init
 autofs.init:

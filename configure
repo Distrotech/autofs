@@ -2184,7 +2184,7 @@ $as_echo "$mapdir" >&6; }
 # The user can specify --with-fifodir=PATH to specify where autofs fifos go
 #
 if test -z "$fifodir"; then
-  for fifo_d in /var/run /tmp; do
+  for fifo_d in /run /var/run /tmp; do
     if test -z "$fifodir"; then
       if test -d "$fifo_d"; then
         fifodir="$fifo_d"
@@ -2214,7 +2214,7 @@ $as_echo "$fifodir" >&6; }
 # The user can specify --with-flagdir=PATH to specify where autofs flag file goes
 #
 if test -z "$flagdir"; then
-  for flag_d in /var/run /tmp; do
+  for flag_d in /run /var/run /tmp; do
     if test -z "$flagdir"; then
       if test -d "$flag_d"; then
         flagdir="$flag_d"
