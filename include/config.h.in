@@ -12,6 +12,9 @@
 /* Disable use of locking when spawning mount command */
 #undef ENABLE_MOUNT_LOCKING
 
+/* Disable use of mount move when preparing tree of mounts */
+#undef ENABLE_MOUNT_MOVE
+
 /* define if you have E2FSCK */
 #undef HAVE_E2FSCK
 
