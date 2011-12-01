@@ -4,6 +4,7 @@
 - improve mount location error reporting.
 - fix paged query more results check.
 - fix dumpmaps not reading maps.
+- fix result null check in read_one_map().
 
 28/06/2011 autofs-5.0.6
 -----------------------
