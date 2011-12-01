@@ -4,7 +4,7 @@ include ../Makefile.rules
 
 SAMPLES = auto.master auto.misc auto.net auto.smb
 
-all: rc.autofs autofs.conf.default
+all: rc.autofs autofs.conf.default autofs.service
 
 rc.autofs: rc.autofs.in
 	sed -e "s|@@sbindir@@|$(sbindir)|g" \
@@ -16,6 +16,12 @@ autofs.conf.default: autofs.conf.default.in
 	sed -e "s|@@autofsmapdir@@|$(autofsmapdir)|g" \
 		< autofs.conf.default.in > autofs.conf.default
 
+autofs.service: autofs.service.in
+	sed -e "s|@@sbindir@@|$(sbindir)|g" \
+	    -e "s|@@autofsconfdir@@|$(autofsconfdir)|g" \
+	    -e "s|@@autofspiddir@@|$(autofspiddir)|g" \
+		< autofs.service.in > autofs.service
+
 .PHONY: dirs
 dirs:
 	install -d -m 755 $(INSTALLROOT)$(autofsmapdir)
@@ -26,13 +32,18 @@ dirs:
 .PHONY: autofs.init
 autofs.init:
 	@echo
-ifneq ($(initdir),)
+ifneq ($(systemddir),)
+	install -d -m 755 $(INSTALLROOT)$(systemddir)
+	install autofs.service -m 644 $(INSTALLROOT)$(systemddir)/autofs.service
+else
+   ifneq ($(initdir),)
 	install -d -m 755 $(INSTALLROOT)$(initdir)
 	install rc.autofs -m 755 $(INSTALLROOT)$(initdir)/autofs
-else
+   else
 	if test -d $(INSTALLROOT)/etc/rc.d ; then \
 		install -c rc.autofs -m 755 $(INSTALLROOT)/etc/rc.d ; \
 	fi
+   endif
 endif
 
 CONFIG = $(shell test -e $(INSTALLROOT)$(autofsconfdir)/autofs.orig || echo "-b --suffix=.orig")
@@ -173,10 +184,10 @@ auto.smb:
 		fi ; \
 	fi
 
-install: rc.autofs autofs.conf.default dirs autofs.init autofs.conf \
-		autofs_ldap_auth.conf $(SAMPLES)
+install: rc.autofs autofs.conf.default dirs autofs.init autofs.service \
+		autofs.conf autofs_ldap_auth.conf $(SAMPLES)
 	@echo
 
 clean:
-	rm -f *.o *.s rc.autofs autofs.conf.default
+	rm -f *.o *.s rc.autofs autofs.conf.default autofs.service
 

@@ -650,6 +650,8 @@ flagdir
 fifodir
 mapdir
 confdir
+systemddir
+piddir
 initdir
 target_alias
 host_alias
@@ -693,6 +695,7 @@ ac_subst_files=''
 ac_user_opts='
 enable_option_checking
 with_path
+with_systemd
 with_confdir
 with_mapdir
 with_fifodir
@@ -1337,6 +1340,8 @@ Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
   --with-path=PATH	  look in PATH for binaries needed by the automounter
+  --with-systemd         install systemd unit file if systemd unit directory
+			  is found on system
   --with-confdir=DIR	  use DIR for autofs configuration files
   --with-mapdir=PATH	  look in PATH for mount maps used by the automounter
   --with-fifodir=PATH	   use PATH as the directory for fifos used by the automounter
@@ -2118,6 +2123,48 @@ $as_echo "$initdir" >&6; }
     fi
   done
 fi
+
+if test -z "$piddir"; then
+  for pid_d in /run /var/run /tmp; do
+    if test -z "$piddir"; then
+      if test -d "$pid_d"; then
+        piddir="$pid_d"
+      fi
+    fi
+  done
+fi
+
+
+#
+# Check for systemd unit files direectory exists if unit file installation
+# is requested
+#
+
+# Check whether --with-systemd was given.
+if test "${with_systemd+set}" = set; then :
+  withval=$with_systemd; if test "$withval" = yes; then
+  if test -z "$systemddir"; then
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking location of the systemd unit files directory" >&5
+$as_echo_n "checking location of the systemd unit files directory... " >&6; }
+    for systemd_d in /lib/systemd/system; do
+      if test -z "$systemddir"; then
+        if test -d "$systemd_d"; then
+          systemddir="$systemd_d"
+        fi
+      fi
+    done
+  fi
+  if test -n "$systemddir"; then
+    { $as_echo "$as_me:${as_lineno-$LINENO}: result: $systemddir" >&5
+$as_echo "$systemddir" >&6; }
+  else
+    { $as_echo "$as_me:${as_lineno-$LINENO}: result: not found" >&5
+$as_echo "not found" >&6; }
+  fi
+fi
+fi
+
+
 
 
 #

@@ -43,6 +43,15 @@ AF_LINUX_PROCFS()
 #
 AF_INIT_D()
 AC_SUBST(initdir)
+AF_PID_D()
+AC_SUBST(piddir)
+
+#
+# Check for systemd unit files direectory exists if unit file installation
+# is requested
+#
+AF_WITH_SYSTEMD()
+AC_SUBST(systemddir)
 
 #
 # Location of system config script directory?

@@ -98,3 +98,5 @@ mandir = @mandir@
 # Location for init.d files
 initdir = @initdir@
 
+# Location of systemd unit files
+systemddir = @systemddir@

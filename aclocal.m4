@@ -199,6 +199,34 @@ fi], [AC_MSG_RESULT(no)])
 ])
 
 dnl --------------------------------------------------------------------------
+dnl AF_WITH_SYSTEMD
+dnl
+dnl Check the location of the systemd unit files directory
+dnl --------------------------------------------------------------------------
+AC_DEFUN([AF_WITH_SYSTEMD],
+[AC_ARG_WITH(systemd,
+[  --with-systemd         install systemd unit file if systemd unit directory
+			  is found on system],
+[if test "$withval" = yes; then
+  if test -z "$systemddir"; then
+    AC_MSG_CHECKING([location of the systemd unit files directory])
+    for systemd_d in /lib/systemd/system; do
+      if test -z "$systemddir"; then
+        if test -d "$systemd_d"; then
+          systemddir="$systemd_d"
+        fi
+      fi
+    done
+  fi
+  if test -n "$systemddir"; then
+    AC_MSG_RESULT($systemddir)
+  else
+    AC_MSG_RESULT(not found)
+  fi
+fi])
+])
+
+dnl --------------------------------------------------------------------------
 dnl AF_CHECK_LIBXML
 dnl
 dnl Check for lib xml

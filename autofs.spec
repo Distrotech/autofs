@@ -8,6 +8,10 @@
 %define _lib lib64
 %endif
 
+# Use --without systemd in your rpmbuild command or force values to 0 to
+# disable them.
+%define with_systemd        %{?_without_systemd:        0} %{?!_without_systemd:        1}
+
 Summary: A tool from automatically mounting and umounting filesystems.
 Name: autofs
 %define version 5.0.6
@@ -18,9 +22,18 @@ License: GPL
 Group: System Environment/Daemons
 Source: ftp://ftp.kernel.org/pub/linux/daemons/autofs/v4/autofs-%{version}.tar.gz
 Buildroot: %{_tmppath}/%{name}-tmp
+%if %{with_systemd}
+BuildRequires: systemd-units
+%endif
 BuildPrereq: autoconf, hesiod-devel, openldap-devel, bison, flex, cyrus-sasl-devel
 Prereq: chkconfig
 Requires: /bin/bash mktemp sed textutils sh-utils grep /bin/ps
+%if %{with_systemd}
+Requires(post): systemd-sysv
+Requires(post): systemd-units
+Requires(preun): systemd-units
+Requires(postun): systemd-units
+%endif
 Obsoletes: autofs-ldap
 Summary(de): autofs daemon 
 Summary(fr): démon autofs
@@ -55,14 +68,22 @@ inkludera nätfilsystem, CD-ROM, floppydiskar, och så vidare.
 %prep
 %setup -q
 echo %{version}-%{release} > .version
+%if %{with_systemd}
+  %define _unitdir %{?_unitdir:/lib/systemd/system}
+  %define systemd_configure_arg --with-systemd
+%endif
 
 %build
-CFLAGS="$RPM_OPT_FLAGS -Wall" ./configure --libdir=%{_libdir} --disable-mount-locking --enable-ignore-busy --with-libtirpc --disable-mount-move
+CFLAGS="$RPM_OPT_FLAGS -Wall" ./configure --libdir=%{_libdir} --disable-mount-locking --enable-ignore-busy --with-libtirpc --disable-mount-move %{?systemd_configure_arg:}
 CFLAGS="$RPM_OPT_FLAGS -Wall" make initdir=/etc/rc.d/init.d DONTSTRIP=1
 
 %install
 rm -rf $RPM_BUILD_ROOT
+%if %{with_systemd}
+install -d -m 755 $RPM_BUILD_ROOT%{_unitdir}
+%else
 mkdir -p -m755 $RPM_BUILD_ROOT/etc/rc.d/init.d
+%endif
 mkdir -p -m755 $RPM_BUILD_ROOT%{_sbindir}
 mkdir -p -m755 $RPM_BUILD_ROOT%{_libdir}/autofs
 mkdir -p -m755 $RPM_BUILD_ROOT%{_mandir}/{man5,man8}
@@ -70,31 +91,56 @@ mkdir -p -m755 $RPM_BUILD_ROOT/etc/sysconfig
 mkdir -p -m755 $RPM_BUILD_ROOT/etc/auto.master.d
 
 make install mandir=%{_mandir} initdir=/etc/rc.d/init.d INSTALLROOT=$RPM_BUILD_ROOT
+echo make -C redhat
 make -C redhat
+%if %{with_systemd}
+install -m 644 redhat/autofs.service $RPM_BUILD_ROOT%{_unitdir}/autofs.service
+%else
 install -m 755 redhat/autofs.init $RPM_BUILD_ROOT/etc/rc.d/init.d/autofs
+%endif
 install -m 644 redhat/autofs.sysconfig $RPM_BUILD_ROOT/etc/sysconfig/autofs
 
 %clean
 [ "$RPM_BUILD_ROOT" != "/" ] && rm -rf $RPM_BUILD_ROOT
 
 %post
+%if %{with_systemd}
+/bin/systemctl daemon-reload >/dev/null 2>&1 || :
+%else
 chkconfig --add autofs
-
-%postun
-if [ $1 -ge 1 ] ; then
-	/sbin/service autofs condrestart > /dev/null 2>&1 || :
-fi
+%endif
 
 %preun
 if [ "$1" = 0 ] ; then
+%if %{with_systemd}
+	/bin/systemctl --no-reload disable autofs.service > /dev/null 2>&1 || :
+	/bin/systemctl stop autofs.service > /dev/null 2>&1 || :
+%else
 	/sbin/service autofs stop > /dev/null 2>&1 || :
 	/sbin/chkconfig --del autofs
+%endif
 fi
+
+%postun
+%if %{with_systemd}
+/bin/systemctl daemon-reload >/dev/null 2>&1 || :
+if [ $1 -ge 1 ] ; then
+	/bin/systemctl try-restart autofs.service >/dev/null 2>&1 || :
+fi
+%else
+if [ $1 -ge 1 ] ; then
+	/sbin/service autofs condrestart > /dev/null 2>&1 || :
+fi
+%endif
 
 %files
 %defattr(-,root,root)
 %doc CREDITS CHANGELOG INSTALL COPY* README* samples/ldap* samples/autofs.schema samples/autofs_ldap_auth.conf
+%if %{with_systemd}
+%{_unitdir}/autofs.service
+%else
 %config /etc/rc.d/init.d/autofs
+%endif
 %config(noreplace) /etc/auto.master
 %config(noreplace,missingok) /etc/auto.misc
 %config(noreplace,missingok) /etc/auto.net
