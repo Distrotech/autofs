@@ -2041,7 +2041,8 @@ do_paged:
 	rv = ldap_parse_page_control(sp->ldap,
 				     returnedControls, &sp->totalCount,
 				     &sp->cookie);
-	if (sp->cookie && sp->cookie->bv_val && strlen(sp->cookie->bv_val))
+	if (sp->cookie && sp->cookie->bv_val &&
+	    (strlen(sp->cookie->bv_val) || sp->cookie->bv_len))
 		sp->morePages = TRUE;
 	else
 		sp->morePages = FALSE;
@@ -2382,6 +2383,10 @@ static int read_one_map(struct autofs_point *ap,
 		    rv == LDAP_SIZELIMIT_EXCEEDED) {
 			if (sp.result)
 				ldap_msgfree(sp.result);
+			if (sp.cookie) {
+				ber_bvfree(sp.cookie);
+				sp.cookie = NULL;
+			}
 			sp.pageSize = sp.pageSize / 2;
 			if (sp.pageSize < 5) {
 				debug(ap->logopt, MODPREFIX
@@ -2397,6 +2402,8 @@ static int read_one_map(struct autofs_point *ap,
 		if (rv != LDAP_SUCCESS || !sp.result) {
 			unbind_ldap_connection(ap->logopt, sp.ldap, ctxt);
 			*result_ldap = rv;
+			if (sp.cookie)
+				ber_bvfree(sp.cookie);
 			free(sp.query);
 			return NSS_STATUS_UNAVAIL;
 		}
@@ -2406,6 +2413,8 @@ static int read_one_map(struct autofs_point *ap,
 			ldap_msgfree(sp.result);
 			unbind_ldap_connection(ap->logopt, sp.ldap, ctxt);
 			*result_ldap = rv;
+			if (sp.cookie)
+				ber_bvfree(sp.cookie);
 			free(sp.query);
 			return NSS_STATUS_NOTFOUND;
 		}
@@ -2417,6 +2426,8 @@ static int read_one_map(struct autofs_point *ap,
 	unbind_ldap_connection(ap->logopt, sp.ldap, ctxt);
 
 	source->age = age;
+	if (sp.cookie)
+		ber_bvfree(sp.cookie);
 	free(sp.query);
 
 	return NSS_STATUS_SUCCESS;
