@@ -280,7 +280,7 @@ static int get_query_dn(unsigned logopt, LDAP *ldap, struct lookup_context *ctxt
 {
 	char buf[MAX_ERR_BUF];
 	char *query, *dn, *qdn;
-	LDAPMessage *result, *e;
+	LDAPMessage *result = NULL, *e;
 	struct ldap_searchdn *sdns = NULL;
 	char *attrs[2];
 	struct berval **value;
@@ -1529,7 +1529,7 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 	char buf[MAX_ERR_BUF];
 	char parse_buf[PARSE_MAX_BUF];
 	char *query;
-	LDAPMessage *result, *e;
+	LDAPMessage *result = NULL, *e;
 	char *class, *info, *entry;
 	char **keyValue = NULL;
 	char **values = NULL;
@@ -2475,7 +2475,7 @@ static int lookup_one(struct autofs_point *ap,
 	char buf[MAX_ERR_BUF];
 	time_t age = time(NULL);
 	char *query;
-	LDAPMessage *result, *e;
+	LDAPMessage *result = NULL, *e;
 	char *class, *info, *entry;
 	char *enc_key1, *enc_key2;
 	int enc_len1 = 0, enc_len2 = 0;

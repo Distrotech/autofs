@@ -6,6 +6,7 @@
 - fix dumpmaps not reading maps.
 - fix result null check in read_one_map().
 - fix LDAP result leaks on error paths.
+- fix fix LDAP result leaks on error paths.
 
 28/06/2011 autofs-5.0.6
 -----------------------
