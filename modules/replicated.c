@@ -1095,7 +1095,13 @@ static int add_new_host(struct host **list,
 	if (prx == PROXIMITY_ERROR)
 		return 0;
 
-	addr_len = sizeof(struct sockaddr);
+	if (host_addr->ai_addr->sa_family == AF_INET)
+		addr_len = INET_ADDRSTRLEN;
+	else if (host_addr->ai_addr->sa_family == AF_INET6)
+		addr_len = INET6_ADDRSTRLEN;
+	else
+		return 0;
+
 	new = new_host(host, host_addr->ai_addr, addr_len, prx, weight, options);
 	if (!new)
 		return 0;

@@ -15,6 +15,7 @@
 - fix fix map source check in file lookup.
 - add disable move mount configure option.
 - fix ipv6 name lookup check.
+- fix ipv6 rpc calls.
 
 28/06/2011 autofs-5.0.6
 -----------------------
