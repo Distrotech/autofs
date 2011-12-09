@@ -19,6 +19,7 @@
 - fix ipv6 configure check.
 - add piddir to configure.
 - add systemd unit support.
+- remove empty command line arguments (passed by systemd).
 
 28/06/2011 autofs-5.0.6
 -----------------------
