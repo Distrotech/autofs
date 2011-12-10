@@ -154,7 +154,7 @@ static CLIENT *rpc_do_create_client(struct sockaddr *addr, struct conn_info *inf
 {
 	CLIENT *client = NULL;
 	struct sockaddr_in in4_laddr;
-	struct sockaddr_in in4_raddr;
+	struct sockaddr_in *in4_raddr;
 	int type, proto;
 	socklen_t slen;
 

@@ -20,6 +20,7 @@
 - add piddir to configure.
 - add systemd unit support.
 - remove empty command line arguments (passed by systemd).
+- fix rpc build error.
 
 28/06/2011 autofs-5.0.6
 -----------------------
