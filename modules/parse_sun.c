@@ -868,6 +868,20 @@ static int validate_location(unsigned int logopt, char *loc)
 	 * have ":", "[" and "]".
 	 */
 	if (!check_colon(ptr)) {
+		char *esc;
+		/*
+		 * Don't forget cases where a colon is present but
+		 * not followed by a "/" or, if there is no colon at
+		 * all, we don't know if it is actually invalid since
+		 * it may be a map name by itself, for example.
+		 */
+		if (!strchr(ptr, ':') ||
+		    ((esc = strchr(ptr, '\\')) && *(esc + 1) == ':') ||
+		    !strncmp(ptr, "file:", 5) || !strncmp(ptr, "yp:", 3) ||
+		    !strncmp(ptr, "nis:", 4) || !strncmp(ptr, "nisplus:", 8) ||
+		    !strncmp(ptr, "ldap:", 5) || !strncmp(ptr, "ldaps:", 6) ||
+		    !strncmp(ptr, "dir:", 4))
+			return 1;
 		error(logopt,
 		      "expected colon delimeter not found in location %s",
 		      loc);
