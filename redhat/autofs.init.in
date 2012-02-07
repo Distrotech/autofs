@@ -151,6 +151,10 @@ function reload() {
 	return $RETVAL
 }
 
+function usage_message() {
+	echo $"Usage: $0 {start|forcestart|stop|status|restart|force-reload|forcerestart|reload|condrestart|try-restart}"
+}
+
 RETVAL=0
 
 # Only the root user may change the service status
@@ -189,11 +193,11 @@ case "$1" in
 		fi
 		;;
 	usage)
-		echo $"Usage: $0 {start|forcestart|stop|status|restart|force-reload|forcerestart|reload|condrestart|try-restart}"
+		usage_message
 		exit 0
 		;;
 	*)
-		echo "unknown, invalid or excess argument(s)"
+		usage_message
 		exit 2
 		;;
 esac

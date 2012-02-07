@@ -25,6 +25,7 @@
 - fix fix wait for master source mutex.
 - add sss lookup module.
 - teach automount about sss source.
+- fix init script usage message.
 
 28/06/2011 autofs-5.0.6
 -----------------------
