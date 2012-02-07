@@ -552,7 +552,7 @@ void master_source_writelock(struct master_mapent *entry)
 
 void master_source_readlock(struct master_mapent *entry)
 {
-	int retries = 5; /* 1 second maximum */
+	int retries = 25; /* 5 second maximum */
 	int status;
 
 	while (retries--) {
