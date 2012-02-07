@@ -24,6 +24,7 @@
 - fix improve mount location error reporting.
 - fix fix wait for master source mutex.
 - add sss lookup module.
+- teach automount about sss source.
 
 28/06/2011 autofs-5.0.6
 -----------------------

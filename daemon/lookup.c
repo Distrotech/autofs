@@ -177,6 +177,7 @@ int lookup_nss_read_master(struct master *master, time_t age)
 			    !strncmp(name, "nisplus:", 8) ||
 			    !strncmp(name, "ldap:", 5) ||
 			    !strncmp(name, "ldaps:", 6) ||
+			    !strncmp(name, "sss:", 4) ||
 			    !strncmp(name, "dir:", 4)) {
 				strncpy(source, name, tmp - name);
 

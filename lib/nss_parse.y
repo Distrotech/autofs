@@ -82,7 +82,8 @@ nss_source: SOURCE
 {
 	if (!strcmp($1, "files") || !strcmp($1, "yp") ||
 	    !strcmp($1, "nis") || !strcmp($1, "ldap") ||
-	    !strcmp($1, "nisplus") || !strcmp($1, "hesiod"))
+	    !strcmp($1, "nisplus") || !strcmp($1, "hesiod") ||
+	    !strcmp($1, "sss"))
 		src = add_source(nss_list, $1);
 	else
 		nss_ignore($1);
@@ -92,7 +93,8 @@ nss_source: SOURCE
 
 	if (!strcmp($1, "files") || !strcmp($1, "yp") ||
 	    !strcmp($1, "nis") || !strcmp($1, "ldap") ||
-	    !strcmp($1, "nisplus") || !strcmp($1, "hesiod")) {
+	    !strcmp($1, "nisplus") || !strcmp($1, "hesiod") ||
+	    !strcmp($1, "sss")) {
 		src = add_source(nss_list, $1);
 		for (a = 0; a < NSS_STATUS_MAX; a++) {
 			if (act[a].action != NSS_ACTION_UNKNOWN) {
