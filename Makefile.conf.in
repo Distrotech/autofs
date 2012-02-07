@@ -25,6 +25,9 @@ LDAP = @HAVE_LDAP@
 LIBLDAP= @LIBLDAP@
 LDAP_FLAGS = @LDAP_FLAGS@
 
+# sssd support
+SSSD = @HAVE_SSS_AUTOFS@
+
 # SASL support: yes (1) no (0)
 XML_LIBS = @XML_LIBS@
 XML_FLAGS = @XML_FLAGS@
@@ -69,6 +72,9 @@ DMALLOCLIB = @DMALLOCLIB@
 # Common install prefix
 prefix = @prefix@
 exec_prefix = @exec_prefix@
+
+# SSS library module directory
+ssslibdir=@sssldir@
 
 # Directory for autofs modules
 autofslibdir = @libdir@/autofs

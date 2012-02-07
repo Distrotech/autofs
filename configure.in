@@ -148,6 +148,10 @@ AF_CHECK_PROG(YACC, bison, , $searchpath)
 AF_CHECK_PROG(RANLIB, ranlib, , $searchpath)
 AF_CHECK_PROG(RPCGEN, rpcgen, , $searchpath)
 
+AF_CHECK_SSS_LIB(SSS_AUTOFS, libsss_autofs.so)
+AC_SUBST(HAVE_SSS_AUTOFS)
+AC_SUBST(sssldir)
+
 #
 # Newer mounts have the -s (sloppy) option to ignore unknown options,
 # good for portability

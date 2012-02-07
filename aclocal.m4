@@ -32,6 +32,30 @@ fi
 AC_SUBST(PATH_$1)])
 
 dnl --------------------------------------------------------------------------
+dnl AF_CHECK_SSS_LIB:
+dnl
+dnl Check if a sss autofs library exists.
+dnl --------------------------------------------------------------------------
+AC_DEFUN(AF_CHECK_SSS_LIB,
+[if test -z $sssldir; then
+  AC_MSG_CHECKING(for sssd autofs library)
+  for libd in /usr/lib64 /usr/lib; do
+    if test -z $sssldir; then
+      if test -e "$libd/sssd/modules/$2"; then
+        sssldir=$libd/sssd/modules
+      fi
+    fi
+  done
+  if test -n $sssldir; then
+    HAVE_$1=1
+    AC_MSG_RESULT(yes)
+  else
+    HAVE_$1=0
+    AC_MSG_RESULT(no)
+  fi
+fi])
+
+dnl --------------------------------------------------------------------------
 dnl AF_SLOPPY_MOUNT
 dnl
 dnl Check to see if mount(8) supports the sloppy (-s) option, and define

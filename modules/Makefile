@@ -47,6 +47,12 @@ ifeq ($(LDAP), 1)
   endif
 endif
 
+ifeq ($(SSSD), 1)
+  CFLAGS += -DSSS_LIB_DIR=\"$(ssslibdir)\"
+  SRCS += lookup_sss.c
+  MODS += lookup_sss.so
+endif
+
 CFLAGS += -I../include -I../lib -fPIC -D_GNU_SOURCE
 CFLAGS += -DAUTOFS_LIB_DIR=\"$(autofslibdir)\"
 CFLAGS += -DAUTOFS_MAP_DIR=\"$(autofsmapdir)\"

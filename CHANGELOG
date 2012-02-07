@@ -23,6 +23,7 @@
 - fix rpc build error.
 - fix improve mount location error reporting.
 - fix fix wait for master source mutex.
+- add sss lookup module.
 
 28/06/2011 autofs-5.0.6
 -----------------------
