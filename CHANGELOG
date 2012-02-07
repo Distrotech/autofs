@@ -26,6 +26,7 @@
 - add sss lookup module.
 - teach automount about sss source.
 - fix init script usage message.
+- ignore duplicate exports in auto.net.
 
 28/06/2011 autofs-5.0.6
 -----------------------
