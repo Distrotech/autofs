@@ -563,7 +563,9 @@ static unsigned int get_nfs_info(unsigned logopt, struct host *host,
 		status = rpc_udp_getclient(rpc_info, NFS_PROGRAM, NFS4_VERSION);
 	else
 		status = rpc_tcp_getclient(rpc_info, NFS_PROGRAM, NFS4_VERSION);
-	if (!status) {
+	if (status == -EHOSTUNREACH)
+		return (unsigned int) status;
+	else if (!status) {
 		gettimeofday(&start, &tz);
 		status = rpc_ping_proto(rpc_info);
 		gettimeofday(&end, &tz);
@@ -589,7 +591,10 @@ v3_ver:
 		status = rpc_portmap_getclient(pm_info,
 				host->name, host->addr, host->addr_len,
 				proto, RPC_CLOSE_DEFAULT);
-		if (status)
+		if (status == -EHOSTUNREACH) {
+			supported = status;
+			goto done_ver;
+		} else if (status)
 			goto done_ver;
 	}
 
@@ -602,16 +607,23 @@ v3_ver:
 	} else {
 		parms.pm_prot = rpc_info->proto->p_proto;
 		parms.pm_vers = NFS3_VERSION;
-		rpc_info->port = rpc_portmap_getport(pm_info, &parms);
-		if (rpc_info->port < 0)
+		status = rpc_portmap_getport(pm_info, &parms);
+		if (status == -EHOSTUNREACH) {
+			supported = status;
+			goto done_ver;
+		} else if (status < 0)
 			goto v2_ver;
+		rpc_info->port = status;
 	}
 
 	if (rpc_info->proto->p_proto == IPPROTO_UDP)
 		status = rpc_udp_getclient(rpc_info, NFS_PROGRAM, NFS3_VERSION);
 	else
 		status = rpc_tcp_getclient(rpc_info, NFS_PROGRAM, NFS3_VERSION);
-	if (!status) {
+	if (status == -EHOSTUNREACH) {
+		supported = status;
+		goto done_ver;
+	} else if (!status) {
 		gettimeofday(&start, &tz);
 		status = rpc_ping_proto(rpc_info);
 		gettimeofday(&end, &tz);
@@ -643,15 +655,23 @@ v2_ver:
 		parms.pm_prot = rpc_info->proto->p_proto;
 		parms.pm_vers = NFS2_VERSION;
 		rpc_info->port = rpc_portmap_getport(pm_info, &parms);
-		if (rpc_info->port < 0)
+		status = rpc_portmap_getport(pm_info, &parms);
+		if (status == -EHOSTUNREACH) {
+			supported = status;
 			goto done_ver;
+		} else if (status < 0)
+			goto done_ver;
+		rpc_info->port = status;
 	}
 
 	if (rpc_info->proto->p_proto == IPPROTO_UDP)
 		status = rpc_udp_getclient(rpc_info, NFS_PROGRAM, NFS2_VERSION);
 	else
 		status = rpc_tcp_getclient(rpc_info, NFS_PROGRAM, NFS2_VERSION);
-	if (!status) {
+	if (status == -EHOSTUNREACH) {
+		supported = status;
+		goto done_ver;
+	} else if (!status) {
 		gettimeofday(&start, &tz);
 		status = rpc_ping_proto(rpc_info);
 		gettimeofday(&end, &tz);
@@ -728,21 +748,24 @@ static int get_vers_and_cost(unsigned logopt, struct host *host,
 
 	vers &= version;
 
+	if (version & TCP_REQUESTED) {
+		supported = get_nfs_info(logopt, host,
+				   &pm_info, &rpc_info, "tcp", vers, options);
+		if (IS_ERR(supported)) {
+			if (ERR(supported) == EHOSTUNREACH)
+				return ret;
+		} else if (supported) {
+			ret = 1;
+			host->version |= supported;
+		}
+	}
+
 	if (version & UDP_REQUESTED) {
 		supported = get_nfs_info(logopt, host,
 				   &pm_info, &rpc_info, "udp", vers, options);
 		if (supported) {
 			ret = 1;
 			host->version |= (supported << 8);
-		}
-	}
-
-	if (version & TCP_REQUESTED) {
-		supported = get_nfs_info(logopt, host,
-				   &pm_info, &rpc_info, "tcp", vers, options);
-		if (supported) {
-			ret = 1;
-			host->version |= supported;
 		}
 	}
 
@@ -848,7 +871,9 @@ static int get_supported_ver_and_cost(unsigned logopt, struct host *host,
 		status = rpc_udp_getclient(&rpc_info, NFS_PROGRAM, parms.pm_vers);
 	else
 		status = rpc_tcp_getclient(&rpc_info, NFS_PROGRAM, parms.pm_vers);
-	if (!status) {
+	if (status == -EHOSTUNREACH)
+		goto done;
+	else if (!status) {
 		gettimeofday(&start, &tz);
 		status = rpc_ping_proto(&rpc_info);
 		gettimeofday(&end, &tz);

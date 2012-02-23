@@ -48,6 +48,9 @@
 #define TCP_SELECTED_MASK	0x00FF
 #define UDP_SELECTED_MASK	0xFF00
 
+#define IS_ERR(supported)	(0x8000 & supported)
+#define ERR(supported)		(IS_ERR(supported) ? (~supported + 1) : supported)
+
 #define RPC_TIMEOUT		5
 
 struct host {
