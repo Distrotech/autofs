@@ -45,6 +45,9 @@
 /* define if you have MOUNT */
 #undef HAVE_MOUNT
 
+/* define if you have MOUNT_NFS */
+#undef HAVE_MOUNT_NFS
+
 /* define if the mount command supports the -s option */
 #undef HAVE_SLOPPY_MOUNT
 
@@ -110,6 +113,9 @@
 
 /* define if you have MOUNT */
 #undef PATH_MOUNT
+
+/* define if you have MOUNT_NFS */
+#undef PATH_MOUNT_NFS
 
 /* define if you have RANLIB */
 #undef PATH_RANLIB

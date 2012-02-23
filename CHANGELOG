@@ -28,6 +28,7 @@
 - fix init script usage message.
 - ignore duplicate exports in auto.net.
 - add kernel verion check function.
+- add function to check mount.nfs version.
 
 28/06/2011 autofs-5.0.6
 -----------------------

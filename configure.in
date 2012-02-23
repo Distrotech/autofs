@@ -137,6 +137,7 @@ AC_SUBST(DMALLOCLIB)
 # Programs needed for various system functions or modules
 #
 AF_PATH_INCLUDE(MOUNT, mount, /bin/mount, $searchpath)
+AF_PATH_INCLUDE(MOUNT_NFS, mount.nfs, /sbin/mount.nfs , $searchpath)
 AF_PATH_INCLUDE(UMOUNT, umount, /bin/umount, $searchpath)
 AF_PATH_INCLUDE(E2FSCK, fsck.ext2 e2fsck, , $searchpath)
 AF_PATH_INCLUDE(E3FSCK, fsck.ext3 e3fsck, , $searchpath)

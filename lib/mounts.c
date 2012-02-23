@@ -19,6 +19,8 @@
 #include <sys/stat.h>
 #include <sys/ioctl.h>
 #include <sys/mount.h>
+#include <sys/wait.h>
+#include <ctype.h>
 #include <stdio.h>
 #include <dirent.h>
 #include <sys/vfs.h>
@@ -29,6 +31,8 @@
 
 #define MAX_OPTIONS_LEN		80
 #define MAX_MNT_NAME_LEN	30
+
+#define EBUFSIZ 1024
 
 const unsigned int t_indirect = AUTOFS_TYPE_INDIRECT;
 const unsigned int t_direct = AUTOFS_TYPE_DIRECT;
@@ -130,6 +134,149 @@ unsigned int get_kver_minor(void)
 {
 	return kver.minor;
 }
+
+#ifdef HAVE_MOUNT_NFS
+static int extract_version(char *start, struct nfs_mount_vers *vers)
+{
+	char *s_ver = strchr(start, ' ');
+	while (*s_ver && !isdigit(*s_ver)) {
+		s_ver++;
+		if (!*s_ver)
+			return 0;
+		break;
+	}
+	vers->major = atoi(strtok(s_ver, "."));
+	vers->minor = (unsigned int) atoi(strtok(NULL, "."));
+	vers->fix = (unsigned int) atoi(strtok(NULL, "."));
+	return 1;
+}
+
+int check_nfs_mount_version(struct nfs_mount_vers *vers,
+			    struct nfs_mount_vers *check)
+{
+	pid_t f;
+	int ret, status, pipefd[2];
+	char errbuf[EBUFSIZ + 1], *p, *sp;
+	int errp, errn;
+	sigset_t allsigs, tmpsig, oldsig;
+	char *s_ver;
+	int cancel_state;
+
+	if (pipe(pipefd))
+		return -1;
+
+	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cancel_state);
+
+	sigfillset(&allsigs);
+	pthread_sigmask(SIG_BLOCK, &allsigs, &oldsig);
+
+	f = fork();
+	if (f == 0) {
+		reset_signals();
+		close(pipefd[0]);
+		dup2(pipefd[1], STDOUT_FILENO);
+		dup2(pipefd[1], STDERR_FILENO);
+		close(pipefd[1]);
+
+		execl(PATH_MOUNT_NFS, PATH_MOUNT_NFS, "-V", (char *) NULL);
+		_exit(255);	/* execv() failed */
+	}
+
+	ret = 0;
+
+	tmpsig = oldsig;
+
+	sigaddset(&tmpsig, SIGCHLD);
+	pthread_sigmask(SIG_SETMASK, &tmpsig, NULL);
+
+	close(pipefd[1]);
+
+	if (f < 0) {
+		close(pipefd[0]);
+		pthread_sigmask(SIG_SETMASK, &oldsig, NULL);
+		pthread_setcancelstate(cancel_state, NULL);
+		return -1;
+	}
+
+	errp = 0;
+	do {
+		while (1) {
+			errn = read(pipefd[0], errbuf + errp, EBUFSIZ - errp);
+			if (errn == -1 && errno == EINTR)
+				continue;
+			break;
+		}
+
+		if (errn > 0) {
+			errp += errn;
+
+			sp = errbuf;
+			while (errp && (p = memchr(sp, '\n', errp))) {
+				*p++ = '\0';
+				errp -= (p - sp);
+				sp = p;
+			}
+
+			if (errp && sp != errbuf)
+				memmove(errbuf, sp, errp);
+
+			if (errp >= EBUFSIZ) {
+				/* Line too long, split */
+				errbuf[errp] = '\0';
+				if ((s_ver = strstr(errbuf, "nfs-utils"))) {
+					if (extract_version(s_ver, vers))
+						ret = 1;
+				}
+				errp = 0;
+			}
+
+			if ((s_ver = strstr(errbuf, "nfs-utils"))) {
+				if (extract_version(s_ver, vers))
+					ret = 1;
+			}
+		}
+	} while (errn > 0);
+
+	close(pipefd[0]);
+
+	if (errp > 0) {
+		/* End of file without \n */
+		errbuf[errp] = '\0';
+		if ((s_ver = strstr(errbuf, "nfs-utils"))) {
+			if (extract_version(s_ver, vers))
+				ret = 1;
+		}
+	}
+
+	if (ret) {
+		if (vers->major == check->major &&
+		    vers->minor == check->minor &&
+		    vers->fix == check->fix)
+			;
+		else {
+			if (vers->major < check->major)
+				ret = 0;
+			else if (vers->minor < check->minor)
+				ret = 0;
+			else if (vers->fix < check->fix)
+				ret = 0;
+		}
+	}
+
+	if (waitpid(f, &status, 0) != f) ;
+
+	pthread_sigmask(SIG_SETMASK, &oldsig, NULL);
+	pthread_setcancelstate(cancel_state, NULL);
+
+	return ret;
+}
+#else
+int check_nfs_mount_version(struct nfs_mount_vers *vers,
+			    struct nfs_mount_vers *check)
+{
+	return 0;
+}
+#endif
 
 /*
  * Make common autofs mount options string

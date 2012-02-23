@@ -89,6 +89,13 @@ static inline unsigned int linux_version_code(void)
         return KERNEL_VERSION(p, q, r);
 }
 
+struct nfs_mount_vers {
+	unsigned int major;
+	unsigned int minor;
+	unsigned int fix;
+};
+int check_nfs_mount_version(struct nfs_mount_vers *, struct nfs_mount_vers *);
+
 unsigned int query_kproto_ver(void);
 unsigned int get_kver_major(void);
 unsigned int get_kver_minor(void);
