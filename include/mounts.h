@@ -16,6 +16,9 @@
 #ifndef MOUNTS_H
 #define MOUNTS_H
 
+#include <linux/version.h>
+#include <sys/utsname.h>
+
 #ifndef AUTOFS_TYPE_ANY
 #define AUTOFS_TYPE_ANY		0x0000
 #endif
@@ -71,6 +74,20 @@ struct mnt_list {
 	 */
 	struct list_head ordered;
 };
+
+static inline unsigned int linux_version_code(void)
+{
+        struct utsname my_utsname;
+        unsigned int p, q, r;
+
+        if (uname(&my_utsname))
+                return 0;
+
+        p = (unsigned int)atoi(strtok(my_utsname.release, "."));
+        q = (unsigned int)atoi(strtok(NULL, "."));
+        r = (unsigned int)atoi(strtok(NULL, "."));
+        return KERNEL_VERSION(p, q, r);
+}
 
 unsigned int query_kproto_ver(void);
 unsigned int get_kver_major(void);
