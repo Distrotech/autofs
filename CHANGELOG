@@ -30,6 +30,7 @@
 - add kernel verion check function.
 - add function to check mount.nfs version.
 - reinstate singleton mount probe.
+- rework error return handling in rpc code.
 
 28/06/2011 autofs-5.0.6
 -----------------------

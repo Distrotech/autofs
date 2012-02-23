@@ -563,11 +563,11 @@ static unsigned int get_nfs_info(unsigned logopt, struct host *host,
 		status = rpc_udp_getclient(rpc_info, NFS_PROGRAM, NFS4_VERSION);
 	else
 		status = rpc_tcp_getclient(rpc_info, NFS_PROGRAM, NFS4_VERSION);
-	if (status) {
+	if (!status) {
 		gettimeofday(&start, &tz);
 		status = rpc_ping_proto(rpc_info);
 		gettimeofday(&end, &tz);
-		if (status) {
+		if (status > 0) {
 			double reply;
 			if (random_selection) {
 				/* Random value between 0 and 1 */
@@ -589,7 +589,7 @@ v3_ver:
 		status = rpc_portmap_getclient(pm_info,
 				host->name, host->addr, host->addr_len,
 				proto, RPC_CLOSE_DEFAULT);
-		if (!status)
+		if (status)
 			goto done_ver;
 	}
 
@@ -603,7 +603,7 @@ v3_ver:
 		parms.pm_prot = rpc_info->proto->p_proto;
 		parms.pm_vers = NFS3_VERSION;
 		rpc_info->port = rpc_portmap_getport(pm_info, &parms);
-		if (!rpc_info->port)
+		if (rpc_info->port < 0)
 			goto v2_ver;
 	}
 
@@ -611,11 +611,11 @@ v3_ver:
 		status = rpc_udp_getclient(rpc_info, NFS_PROGRAM, NFS3_VERSION);
 	else
 		status = rpc_tcp_getclient(rpc_info, NFS_PROGRAM, NFS3_VERSION);
-	if (status) {
+	if (!status) {
 		gettimeofday(&start, &tz);
 		status = rpc_ping_proto(rpc_info);
 		gettimeofday(&end, &tz);
-		if (status) {
+		if (status > 0) {
 			double reply;
 			if (random_selection) {
 				/* Random value between 0 and 1 */
@@ -643,7 +643,7 @@ v2_ver:
 		parms.pm_prot = rpc_info->proto->p_proto;
 		parms.pm_vers = NFS2_VERSION;
 		rpc_info->port = rpc_portmap_getport(pm_info, &parms);
-		if (!rpc_info->port)
+		if (rpc_info->port < 0)
 			goto done_ver;
 	}
 
@@ -651,11 +651,11 @@ v2_ver:
 		status = rpc_udp_getclient(rpc_info, NFS_PROGRAM, NFS2_VERSION);
 	else
 		status = rpc_tcp_getclient(rpc_info, NFS_PROGRAM, NFS2_VERSION);
-	if (status) {
+	if (!status) {
 		gettimeofday(&start, &tz);
 		status = rpc_ping_proto(rpc_info);
 		gettimeofday(&end, &tz);
-		if (status) {
+		if (status > 0) {
 			double reply;
 			if (random_selection) {
 				/* Random value between 0 and 1 */
@@ -835,12 +835,12 @@ static int get_supported_ver_and_cost(unsigned logopt, struct host *host,
 		int ret = rpc_portmap_getclient(&pm_info,
 				host->name, host->addr, host->addr_len,
 				proto, RPC_CLOSE_DEFAULT);
-		if (!ret)
+		if (ret)
 			return 0;
 
 		parms.pm_prot = rpc_info.proto->p_proto;
 		rpc_info.port = rpc_portmap_getport(&pm_info, &parms);
-		if (!rpc_info.port)
+		if (rpc_info.port < 0)
 			goto done;
 	}
 
@@ -848,11 +848,11 @@ static int get_supported_ver_and_cost(unsigned logopt, struct host *host,
 		status = rpc_udp_getclient(&rpc_info, NFS_PROGRAM, parms.pm_vers);
 	else
 		status = rpc_tcp_getclient(&rpc_info, NFS_PROGRAM, parms.pm_vers);
-	if (status) {
+	if (!status) {
 		gettimeofday(&start, &tz);
 		status = rpc_ping_proto(&rpc_info);
 		gettimeofday(&end, &tz);
-		if (status) {
+		if (status > 0) {
 			if (random_selection) {
 				/* Random value between 0 and 1 */
 				taken = ((float) random())/((float) RAND_MAX+1);
