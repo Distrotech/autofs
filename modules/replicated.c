@@ -901,6 +901,7 @@ int prune_host_list(unsigned logopt, struct host **list,
 	unsigned int v2_udp_count, v3_udp_count, v4_udp_count;
 	unsigned int max_udp_count, max_tcp_count, max_count;
 	int status;
+	int kern_vers;
 
 	if (!*list)
 		return 0;
@@ -920,9 +921,22 @@ int prune_host_list(unsigned logopt, struct host **list,
 	 * or a single host entry whose proximity isn't local. If so
 	 * return immediately as we don't want to add probe latency for
 	 * the common case of a single filesystem mount request.
+	 *
+	 * But, if the kernel understands text nfs mount options then
+	 * mount.nfs most likely bypasses its probing and lets the kernel
+	 * do all the work. This can lead to long timeouts for hosts that
+	 * are not available so check the kernel version and mount.nfs
+	 * version and probe singleton mounts if the kernel version is
+	 * greater than 2.6.22 and mount.nfs version is greater than 1.1.1.
 	 */
-	if (!this || !this->next)
-		return 1;
+	if (nfs_mount_uses_string_options &&
+	   (kern_vers = linux_version_code()) > KERNEL_VERSION(2, 6, 22)) {
+		if (!this)
+			return 1;
+	} else {
+		if (!this || !this->next)
+			return 1;
+	}
 
 	proximity = this->proximity;
 	while (this) {

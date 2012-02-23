@@ -51,6 +51,9 @@ const char *libdir = AUTOFS_LIB_DIR;	/* Location of library modules */
 const char *mapdir = AUTOFS_MAP_DIR;	/* Location of mount maps */
 const char *confdir = AUTOFS_CONF_DIR;	/* Location of autofs config file */
 
+unsigned int nfs_mount_uses_string_options = 0;
+static struct nfs_mount_vers vers, check = {1, 1, 1};
+
 /* autofs fifo name prefix */
 const char *fifodir = AUTOFS_FIFO_DIR "/autofs.fifo";
 
@@ -1273,6 +1276,8 @@ static int do_hup_signal(struct master *master, time_t age)
 	if (status)
 		fatal(status);
 
+	nfs_mount_uses_string_options = check_nfs_mount_version(&vers, &check);
+
 	master_mutex_lock();
 	if (master->reading) {
 		status = pthread_mutex_unlock(&mrc.mutex);
@@ -1935,6 +1940,8 @@ int main(int argc, char *argv[])
 	program = argv[0];
 
 	defaults_read_config(0);
+
+	nfs_mount_uses_string_options = check_nfs_mount_version(&vers, &check);
 
 	kpkt_len = get_kpkt_len();
 	timeout = defaults_get_timeout();

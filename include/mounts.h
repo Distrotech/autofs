@@ -95,6 +95,7 @@ struct nfs_mount_vers {
 	unsigned int fix;
 };
 int check_nfs_mount_version(struct nfs_mount_vers *, struct nfs_mount_vers *);
+extern unsigned int nfs_mount_uses_string_options;
 
 unsigned int query_kproto_ver(void);
 unsigned int get_kver_major(void);
