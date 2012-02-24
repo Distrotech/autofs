@@ -1355,6 +1355,10 @@ static int do_remount_indirect(struct autofs_point *ap, int fd, const char *path
 			int i, j;
 
 			i = j = scandir(buf, &de2, 0, alphasort);
+			if (i < 0) {
+				free(de[n]);
+				continue;
+			}
 			while (i--)
 				free(de2[i]);
 			free(de2);

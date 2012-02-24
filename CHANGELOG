@@ -33,6 +33,7 @@
 - rework error return handling in rpc code.
 - catch EHOSTUNREACH and bail out early.
 - systemd support fixes.
+- check scandir() return value.
 
 28/06/2011 autofs-5.0.6
 -----------------------
