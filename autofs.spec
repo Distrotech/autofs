@@ -105,33 +105,52 @@ install -m 644 redhat/autofs.sysconfig $RPM_BUILD_ROOT/etc/sysconfig/autofs
 
 %post
 %if %{with_systemd}
-/bin/systemctl daemon-reload >/dev/null 2>&1 || :
+if [ $1 -eq 1 ]; then
+	%{_bindir}/systemctl daemon-reload >/dev/null 2>&1 || :
+	# autofs has been approved to be enabled by default
+	%{_bindir}/systemctl enable %{name}.service >/dev/null 2>&1 || :
+fi
 %else
-chkconfig --add autofs
+if [ $1 -eq 1 ]; then
+	%{_sbindir}/chkconfig --add autofs
+fi
 %endif
 
 %preun
-if [ "$1" = 0 ] ; then
 %if %{with_systemd}
-	/bin/systemctl --no-reload disable autofs.service > /dev/null 2>&1 || :
-	/bin/systemctl stop autofs.service > /dev/null 2>&1 || :
-%else
-	/sbin/service autofs stop > /dev/null 2>&1 || :
-	/sbin/chkconfig --del autofs
-%endif
+if [ $1 -eq 0 ] ; then
+	%{_bindir}/systemctl --no-reload disable %{name}.service > /dev/null 2>&1 || :
+	%{_bindir}/systemctl stop %{name}.service > /dev/null 2>&1 || :
 fi
+%else
+if [ $1 -eq 0 ] ; then
+	%{_sbindir}/service autofs stop > /dev/null 2>&1 || :
+	%{_sbindir}/chkconfig --del autofs
+fi
+%endif
 
 %postun
 %if %{with_systemd}
-/bin/systemctl daemon-reload >/dev/null 2>&1 || :
+%{_bindir}/systemctl daemon-reload >/dev/null 2>&1 || :
 if [ $1 -ge 1 ] ; then
-	/bin/systemctl try-restart autofs.service >/dev/null 2>&1 || :
+	# Package upgrade, not removal
+	%{_bindir}/systemctl try-restart %{name}.service >/dev/null 2>&1 || :
 fi
 %else
 if [ $1 -ge 1 ] ; then
-	/sbin/service autofs condrestart > /dev/null 2>&1 || :
+	%{_sbindir}/service autofs condrestart > /dev/null 2>&1 || :
 fi
 %endif
+
+#%triggerun -- %{name} < $bla release
+## Save the current service runlevel info
+## User must manually run systemd-sysv-convert --apply %{name}
+## to migrate them to systemd targets
+#%{_bindir}/systemd-sysv-convert --save %{name} >/dev/null 2>&1 ||:
+#
+## Run these because the SysV package being removed won't do them
+#%{_sbindir}/chkconfig --del %{name} >/dev/null 2>&1 || :
+#%{_bindir}/systemctl try-restart %{name}.service >/dev/null 2>&1 || :
 
 %files
 %defattr(-,root,root)

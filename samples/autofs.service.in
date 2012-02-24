@@ -7,6 +7,7 @@ Type=forking
 PIDFile=@@autofspiddir@@/autofs.pid
 EnvironmentFile=-@@autofsconfdir@@/autofs
 ExecStart=@@sbindir@@/automount ${OPTIONS} --pid-file @@autofspiddir@@/autofs.pid
+ExecReload=/usr/bin/kill -HUP $MAINPID
 
 [Install]
 WantedBy=multi-user.target
