@@ -34,6 +34,7 @@
 - catch EHOSTUNREACH and bail out early.
 - systemd support fixes.
 - check scandir() return value.
+- allow for kernel packet size change (in kernel 3.3.0+).
 
 28/06/2011 autofs-5.0.6
 -----------------------

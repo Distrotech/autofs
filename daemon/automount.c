@@ -36,6 +36,7 @@
 #include <dirent.h>
 #include <sys/vfs.h>
 #include <sys/utsname.h>
+#include "mounts.h"
 
 #include "automount.h"
 #if defined(LIBXML2_WORKAROUND) || defined(TIRPC_WORKAROUND)
@@ -598,6 +599,11 @@ static size_t get_kpkt_len(void)
 {
 	size_t pkt_len = sizeof(struct autofs_v5_packet);
 	struct utsname un;
+	int kern_vers;
+
+	kern_vers = linux_version_code();
+	if (kernel_vers >= KERNEL_VERSION(3, 3, 0))
+		return pkt_len;
 
 	uname(&un);
 
