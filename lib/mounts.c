@@ -249,18 +249,11 @@ int check_nfs_mount_version(struct nfs_mount_vers *vers,
 	}
 
 	if (ret) {
-		if (vers->major == check->major &&
-		    vers->minor == check->minor &&
-		    vers->fix == check->fix)
-			;
-		else {
-			if (vers->major < check->major)
-				ret = 0;
-			else if (vers->minor < check->minor)
-				ret = 0;
-			else if (vers->fix < check->fix)
-				ret = 0;
-		}
+		if ((vers->major < check->major) ||
+		    ((vers->major == check->major) && (vers->minor < check->minor)) ||
+		    ((vers->major == check->major) && (vers->minor == check->minor) &&
+		     (vers->fix < check->fix)))
+			ret = 0;
 	}
 
 	if (waitpid(f, &status, 0) != f) ;

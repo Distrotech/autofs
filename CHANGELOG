@@ -35,6 +35,7 @@
 - systemd support fixes.
 - check scandir() return value.
 - allow for kernel packet size change (in kernel 3.3.0+).
+- fix function to check mount.nfs version.
 
 28/06/2011 autofs-5.0.6
 -----------------------
