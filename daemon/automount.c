@@ -2237,9 +2237,9 @@ int main(int argc, char *argv[])
 		xmlInitParser();
 #endif
 #ifdef TIRPC_WORKAROUND
-	void *dh_tirpc = dlopen("libitirpc.so", RTLD_NOW);
+	void *dh_tirpc = dlopen("libtirpc.so", RTLD_NOW);
 	if (!dh_tirpc)
-		dh_tirpc = dlopen("libitirpc.so.1", RTLD_NOW);
+		dh_tirpc = dlopen("libtirpc.so.1", RTLD_NOW);
 #endif
 
 	if (!master_read_master(master_list, age, 0)) {
