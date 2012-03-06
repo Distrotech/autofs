@@ -37,6 +37,7 @@
 - allow for kernel packet size change (in kernel 3.3.0+).
 - fix function to check mount.nfs version.
 - fix typo in libtirpc file name.
+- fix rework error return handling in rpc code.
 
 28/06/2011 autofs-5.0.6
 -----------------------

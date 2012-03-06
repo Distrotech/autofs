@@ -155,7 +155,7 @@ static int rpc_do_create_client(struct sockaddr *addr, struct conn_info *info, i
 	CLIENT *clnt = NULL;
 	struct sockaddr_in in4_laddr;
 	struct sockaddr_in *in4_raddr;
-	int type, proto;
+	int type, proto, ret;
 	socklen_t slen;
 
 	*client = NULL;
@@ -200,7 +200,7 @@ static int rpc_do_create_client(struct sockaddr *addr, struct conn_info *info, i
 		break;
 
 	case IPPROTO_TCP:
-		int ret = connect_nb(*fd, addr, slen, &info->timeout);
+		ret = connect_nb(*fd, addr, slen, &info->timeout);
 		if (ret < 0)
 			return ret;
 
