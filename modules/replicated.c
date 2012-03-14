@@ -953,8 +953,11 @@ int prune_host_list(unsigned logopt, struct host **list,
 	 * are not available so check the kernel version and mount.nfs
 	 * version and probe singleton mounts if the kernel version is
 	 * greater than 2.6.22 and mount.nfs version is greater than 1.1.1.
+	 * But also allow the MOUNT_WAIT configuration parameter to override
+	 * the probing.
 	 */
 	if (nfs_mount_uses_string_options &&
+	    defaults_get_mount_wait() == -1 &&
 	   (kern_vers = linux_version_code()) > KERNEL_VERSION(2, 6, 22)) {
 		if (!this)
 			return 1;
