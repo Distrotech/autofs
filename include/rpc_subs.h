@@ -42,6 +42,9 @@
 #define PMAP_TOUT_UDP	3
 #define PMAP_TOUT_TCP	5
 
+#define RPC_TOUT_UDP	PMAP_TOUT_UDP
+#define RPC_TOUT_TCP	PMAP_TOUT_TCP
+
 #define HOST_ENT_BUF_SIZE       2048
 
 struct conn_info {
@@ -64,7 +67,7 @@ void rpc_destroy_udp_client(struct conn_info *);
 int rpc_tcp_getclient(struct conn_info *, unsigned int, unsigned int);
 void rpc_destroy_tcp_client(struct conn_info *);
 int rpc_portmap_getclient(struct conn_info *, const char *, struct sockaddr *, size_t, const char *, unsigned int);
-unsigned short rpc_portmap_getport(struct conn_info *, struct pmap *);
+int rpc_portmap_getport(struct conn_info *, struct pmap *, unsigned short *);
 int rpc_ping_proto(struct conn_info *);
 int rpc_ping(const char *, long, long, unsigned int);
 double elapsed(struct timeval, struct timeval);

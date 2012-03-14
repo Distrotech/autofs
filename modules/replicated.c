@@ -569,7 +569,9 @@ static unsigned int get_nfs_info(unsigned logopt, struct host *host,
 		gettimeofday(&start, &tz);
 		status = rpc_ping_proto(rpc_info);
 		gettimeofday(&end, &tz);
-		if (status > 0) {
+		if (status == -ETIMEDOUT)
+			return (unsigned int) status;
+		else if (status > 0) {
 			double reply;
 			if (random_selection) {
 				/* Random value between 0 and 1 */
@@ -607,13 +609,12 @@ v3_ver:
 	} else {
 		parms.pm_prot = rpc_info->proto->p_proto;
 		parms.pm_vers = NFS3_VERSION;
-		status = rpc_portmap_getport(pm_info, &parms);
-		if (status == -EHOSTUNREACH) {
+		status = rpc_portmap_getport(pm_info, &parms, &rpc_info->port);
+		if (status == -EHOSTUNREACH || status == -ETIMEDOUT) {
 			supported = status;
 			goto done_ver;
 		} else if (status < 0)
 			goto v2_ver;
-		rpc_info->port = status;
 	}
 
 	if (rpc_info->proto->p_proto == IPPROTO_UDP)
@@ -627,7 +628,10 @@ v3_ver:
 		gettimeofday(&start, &tz);
 		status = rpc_ping_proto(rpc_info);
 		gettimeofday(&end, &tz);
-		if (status > 0) {
+		if (status == -ETIMEDOUT) {
+			supported = status;
+			goto done_ver;
+		} else if (status > 0) {
 			double reply;
 			if (random_selection) {
 				/* Random value between 0 and 1 */
@@ -654,14 +658,12 @@ v2_ver:
 	} else {
 		parms.pm_prot = rpc_info->proto->p_proto;
 		parms.pm_vers = NFS2_VERSION;
-		rpc_info->port = rpc_portmap_getport(pm_info, &parms);
-		status = rpc_portmap_getport(pm_info, &parms);
-		if (status == -EHOSTUNREACH) {
+		status = rpc_portmap_getport(pm_info, &parms, &rpc_info->port);
+		if (status == -EHOSTUNREACH || status == -ETIMEDOUT) {
 			supported = status;
 			goto done_ver;
 		} else if (status < 0)
 			goto done_ver;
-		rpc_info->port = status;
 	}
 
 	if (rpc_info->proto->p_proto == IPPROTO_UDP)
@@ -675,7 +677,9 @@ v2_ver:
 		gettimeofday(&start, &tz);
 		status = rpc_ping_proto(rpc_info);
 		gettimeofday(&end, &tz);
-		if (status > 0) {
+		if (status == -ETIMEDOUT)
+			supported = status;
+		else if (status > 0) {
 			double reply;
 			if (random_selection) {
 				/* Random value between 0 and 1 */
@@ -752,7 +756,8 @@ static int get_vers_and_cost(unsigned logopt, struct host *host,
 		supported = get_nfs_info(logopt, host,
 				   &pm_info, &rpc_info, "tcp", vers, options);
 		if (IS_ERR(supported)) {
-			if (ERR(supported) == EHOSTUNREACH)
+			if (ERR(supported) == EHOSTUNREACH ||
+			    ERR(supported) == ETIMEDOUT)
 				return ret;
 		} else if (supported) {
 			ret = 1;
@@ -763,7 +768,10 @@ static int get_vers_and_cost(unsigned logopt, struct host *host,
 	if (version & UDP_REQUESTED) {
 		supported = get_nfs_info(logopt, host,
 				   &pm_info, &rpc_info, "udp", vers, options);
-		if (supported) {
+		if (IS_ERR(supported)) {
+			if (ERR(supported) == ETIMEDOUT)
+				return ret;
+		} else if (supported) {
 			ret = 1;
 			host->version |= (supported << 8);
 		}
@@ -862,8 +870,8 @@ static int get_supported_ver_and_cost(unsigned logopt, struct host *host,
 			return 0;
 
 		parms.pm_prot = rpc_info.proto->p_proto;
-		rpc_info.port = rpc_portmap_getport(&pm_info, &parms);
-		if (rpc_info.port < 0)
+		ret = rpc_portmap_getport(&pm_info, &parms, &rpc_info.port);
+		if (ret < 0)
 			goto done;
 	}
 

@@ -218,43 +218,24 @@ static int rpc_do_create_client(struct sockaddr *addr, struct conn_info *info, i
 	return 0;
 }
 #else
-struct netconfig *find_netconf(void *handle, char *family, char *proto)
-{
-	struct netconfig *nconf;
-
-	while ((nconf = getnetconfig(handle))) {
-		if ((strcmp(nconf->nc_protofmly, family) == 0) &&
-		    (strcmp(nconf->nc_proto, proto) == 0))
-			break;
-	}
-
-	return nconf;
-}
-
 static int rpc_do_create_client(struct sockaddr *addr, struct conn_info *info, int *fd, CLIENT **client)
 {
 	CLIENT *clnt = NULL;
 	struct sockaddr_in in4_laddr;
 	struct sockaddr_in6 in6_laddr;
 	struct sockaddr *laddr = NULL;
-	struct netconfig *nconf;
 	struct netbuf nb_addr;
 	int type, proto;
-	char *nc_family, *nc_proto;
-	void *handle;
 	size_t slen;
 	int ret;
 
 	*client = NULL;
 
 	proto = info->proto->p_proto;
-	if (proto == IPPROTO_UDP) {
+	if (proto == IPPROTO_UDP)
 		type = SOCK_DGRAM;
-		nc_proto = NC_UDP;
-	} else {
+	else
 		type = SOCK_STREAM;
-		nc_proto = NC_TCP;
-	}
 
 	/*
 	 * bind to any unused port.  If we left this up to the rpc
@@ -269,7 +250,6 @@ static int rpc_do_create_client(struct sockaddr *addr, struct conn_info *info, i
 		laddr = (struct sockaddr *) &in4_laddr;
 		in4_raddr->sin_port = htons(info->port);
 		slen = sizeof(struct sockaddr_in);
-		nc_family = NC_INET;
 	} else if (addr->sa_family == AF_INET6) {
 		struct sockaddr_in6 *in6_raddr = (struct sockaddr_in6 *) addr;
 		in6_laddr.sin6_family = AF_INET6;
@@ -278,19 +258,8 @@ static int rpc_do_create_client(struct sockaddr *addr, struct conn_info *info, i
 		laddr = (struct sockaddr *) &in6_laddr;
 		in6_raddr->sin6_port = htons(info->port);
 		slen = sizeof(struct sockaddr_in6);
-		nc_family = NC_INET6;
 	} else
 		return -EINVAL;
-
-	handle = setnetconfig();
-	if (!handle)
-		return -EINVAL;
-
-	nconf = find_netconf(handle, nc_family, nc_proto);
-	if (!nconf) {
-		endnetconfig(handle);
-		return -EINVAL;
-	}
 
 	/*
 	 * bind to any unused port.  If we left this up to the rpc layer,
@@ -301,13 +270,11 @@ static int rpc_do_create_client(struct sockaddr *addr, struct conn_info *info, i
 		*fd = open_sock(addr->sa_family, type, proto);
 		if (*fd < 0) {
 			ret = -errno;
-			endnetconfig(handle);
 			return ret;
 		}
 
 		if (bind(*fd, laddr, slen) < 0) {
 			ret = -errno;
-			endnetconfig(handle);
 			return ret;
 		}
 	}
@@ -315,19 +282,23 @@ static int rpc_do_create_client(struct sockaddr *addr, struct conn_info *info, i
 	nb_addr.maxlen = nb_addr.len = slen;
 	nb_addr.buf = addr;
 
-	if (info->proto->p_proto == IPPROTO_TCP) {
+	if (info->proto->p_proto == IPPROTO_UDP)
+		clnt = clnt_dg_create(*fd, &nb_addr,
+				      info->program, info->version,
+				      info->send_sz, info->recv_sz);
+	else if (info->proto->p_proto == IPPROTO_TCP) {
 		ret = connect_nb(*fd, addr, slen, &info->timeout);
-		if (ret < 0) {
-			endnetconfig(handle);
+		if (ret < 0)
 			return ret;
-		}
-	}
+		clnt = clnt_vc_create(*fd, &nb_addr,
+				      info->program, info->version,
+				      info->send_sz, info->recv_sz);
+	} else
+		return -EINVAL;
 
-	clnt = clnt_tli_create(*fd, nconf, &nb_addr,
-				info->program, info->version,
-				info->send_sz, info->recv_sz);
-
-	endnetconfig(handle);
+	/* Our timeout is in seconds */
+	if (clnt && info->timeout.tv_sec)
+		clnt_control(clnt, CLSET_TIMEOUT, (void *) &info->timeout);
 
 	*client = clnt;
 
@@ -441,6 +412,8 @@ int rpc_udp_getclient(struct conn_info *info,
 			return -ENOENT;
 
 		info->proto = pe_proto;
+		info->timeout.tv_sec = RPC_TOUT_UDP;
+		info->timeout.tv_usec = 0;
 		info->send_sz = UDPMSGSIZE;
 		info->recv_sz = UDPMSGSIZE;
 	}
@@ -480,6 +453,8 @@ int rpc_tcp_getclient(struct conn_info *info,
 			return -ENOENT;
 
 		info->proto = pe_proto;
+		info->timeout.tv_sec = RPC_TOUT_TCP;
+		info->timeout.tv_usec = 0;
 		info->send_sz = 0;
 		info->recv_sz = 0;
 	}
@@ -559,10 +534,10 @@ int rpc_portmap_getclient(struct conn_info *info,
 	return 0;
 }
 
-unsigned short rpc_portmap_getport(struct conn_info *info, struct pmap *parms)
+int rpc_portmap_getport(struct conn_info *info,
+			struct pmap *parms, unsigned short *port)
 {
 	struct conn_info pmap_info;
-	unsigned short port = 0;
 	CLIENT *client;
 	enum clnt_stat status;
 	int proto = info->proto->p_proto;
@@ -604,7 +579,7 @@ unsigned short rpc_portmap_getport(struct conn_info *info, struct pmap *parms)
 	if (status == RPC_SUCCESS) {
 		status = clnt_call(client, PMAPPROC_GETPORT,
 				 (xdrproc_t) xdr_pmap, (caddr_t) parms,
-				 (xdrproc_t) xdr_u_short, (caddr_t) &port,
+				 (xdrproc_t) xdr_u_short, (caddr_t) port,
 				 pmap_info.timeout);
 	}
 
@@ -631,10 +606,12 @@ unsigned short rpc_portmap_getport(struct conn_info *info, struct pmap *parms)
 		clnt_destroy(client);
 	}
 
-	if (status != RPC_SUCCESS)
+	if (status == RPC_TIMEDOUT)
+		return -ETIMEDOUT;
+	else if (status != RPC_SUCCESS)
 		return -EIO;
 
-	return port;
+	return 0;
 }
 
 int rpc_ping_proto(struct conn_info *info)
@@ -686,7 +663,9 @@ int rpc_ping_proto(struct conn_info *info)
 		clnt_destroy(client);
 	}
 
-	if (status != RPC_SUCCESS)
+	if (status == RPC_TIMEDOUT)
+		return -ETIMEDOUT;
+	else if (status != RPC_SUCCESS)
 		return -EIO;
 
 	return 1;
@@ -725,8 +704,8 @@ static unsigned int __rpc_ping(const char *host,
 	parms.pm_prot = info.proto->p_proto;
 	parms.pm_port = 0;
 
-	info.port = rpc_portmap_getport(&info, &parms);
-	if (info.port < 0)
+	status = rpc_portmap_getport(&info, &parms, &info.port);
+	if (status < 0)
 		return status;
 
 	status = rpc_ping_proto(&info);
@@ -915,8 +894,8 @@ exports rpc_get_exports(const char *host, long seconds, long micros, unsigned in
 
 	parms.pm_prot = info.proto->p_proto;
 
-	info.port = rpc_portmap_getport(&info, &parms);
-	if (info.port < 0)
+	status = rpc_portmap_getport(&info, &parms, &info.port);
+	if (status < 0)
 		goto try_tcp;
 
 	memset(&exportlist, '\0', sizeof(exportlist));
@@ -932,8 +911,8 @@ try_tcp:
 
 	parms.pm_prot = info.proto->p_proto;
 
-	info.port = rpc_portmap_getport(&info, &parms);
-	if (info.port < 0)
+	status = rpc_portmap_getport(&info, &parms, &info.port);
+	if (status < 0)
 		return NULL;
 
 	memset(&exportlist, '\0', sizeof(exportlist));

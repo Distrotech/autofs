@@ -39,6 +39,7 @@
 - fix typo in libtirpc file name.
 - fix rework error return handling in rpc code.
 - allow MOUNT_WAIT to override probe.
+- improve UDP RPC timeout handling.
 
 28/06/2011 autofs-5.0.6
 -----------------------
