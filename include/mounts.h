@@ -77,16 +77,17 @@ struct mnt_list {
 
 static inline unsigned int linux_version_code(void)
 {
-        struct utsname my_utsname;
-        unsigned int p, q, r;
+	struct utsname my_utsname;
+	unsigned int p, q, r;
+	char *save;
 
-        if (uname(&my_utsname))
-                return 0;
+	if (uname(&my_utsname))
+		return 0;
 
-        p = (unsigned int)atoi(strtok(my_utsname.release, "."));
-        q = (unsigned int)atoi(strtok(NULL, "."));
-        r = (unsigned int)atoi(strtok(NULL, "."));
-        return KERNEL_VERSION(p, q, r);
+	p = (unsigned int) atoi(strtok_r(my_utsname.release, ".", &save));
+	q = (unsigned int) atoi(strtok_r(NULL, ".", &save));
+	r = (unsigned int) atoi(strtok_r(NULL, ".", &save));
+	return KERNEL_VERSION(p, q, r);
 }
 
 struct nfs_mount_vers {
