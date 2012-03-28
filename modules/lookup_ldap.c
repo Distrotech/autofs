@@ -281,7 +281,6 @@ static int get_query_dn(unsigned logopt, LDAP *ldap, struct lookup_context *ctxt
 	char buf[MAX_ERR_BUF];
 	char *query, *dn, *qdn;
 	LDAPMessage *result = NULL, *e;
-	struct ldap_searchdn *sdns = NULL;
 	char *attrs[2];
 	struct berval **value;
 	int scope;
@@ -328,15 +327,6 @@ static int get_query_dn(unsigned logopt, LDAP *ldap, struct lookup_context *ctxt
 			return 0;
 		}
 		scope = LDAP_SCOPE_SUBTREE;
-	}
-
-	if (!ctxt->base) {
-		sdns = defaults_get_searchdns();
-		if (sdns) {
-			if (ctxt->sdns)
-				defaults_free_searchdns(ctxt->sdns);
-			ctxt->sdns = sdns;
-		}
 	}
 
 	dn = NULL;
@@ -1466,6 +1456,9 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 		free_context(ctxt);
 		return 1;
 	}
+
+	if (!ctxt->base)
+		ctxt->sdns = defaults_get_searchdns();
 
 	ctxt->timeout = defaults_get_ldap_timeout();
 	ctxt->network_timeout = defaults_get_ldap_network_timeout();
