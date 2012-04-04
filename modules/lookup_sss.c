@@ -325,6 +325,15 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 			continue;
 		}
 
+		if (*key == '/' && strlen(key) == 1) {
+			if (ap->type == LKP_DIRECT) {
+				free(key);
+				free(value);
+				continue;
+			}
+			*key = '*';
+		}
+
 		/*
 		 * TODO: implement sun % hack for key translation for
 		 * mixed case keys in schema that are single case only.
