@@ -3832,17 +3832,17 @@ else
 fi
 
 
-if test -z $sssldir; then
+if test -z "$sssldir"; then
   { $as_echo "$as_me:${as_lineno-$LINENO}: checking for sssd autofs library" >&5
 $as_echo_n "checking for sssd autofs library... " >&6; }
   for libd in /usr/lib64 /usr/lib; do
-    if test -z $sssldir; then
+    if test -z "$sssldir"; then
       if test -e "$libd/sssd/modules/libsss_autofs.so"; then
         sssldir=$libd/sssd/modules
       fi
     fi
   done
-  if test -n $sssldir; then
+  if test -n "$sssldir"; then
     HAVE_SSS_AUTOFS=1
     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
