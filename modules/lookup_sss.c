@@ -94,8 +94,7 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 
 	dh = dlopen(dlbuf, RTLD_LAZY);
 	if (!dh) {
-		estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		logerr(MODPREFIX "dlopen: %s", estr);
+		logerr(MODPREFIX "failed to open %s: %s", dlbuf, dlerror());
 		free(ctxt);
 		return 1;
 	}

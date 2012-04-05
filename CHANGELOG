@@ -42,6 +42,7 @@
 - improve UDP RPC timeout handling.
 - use strtok_r() in linux_version_code().
 - fix sss wildcard match.
+- fix dlopen() error handling in sss module.
 
 28/06/2011 autofs-5.0.6
 -----------------------
