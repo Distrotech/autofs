@@ -44,6 +44,7 @@
 - fix sss wildcard match.
 - fix dlopen() error handling in sss module.
 - fix configure string length tests for sss library.
+- dont retry ldap connect if not required.
 
 28/06/2011 autofs-5.0.6
 -----------------------
