@@ -46,6 +46,7 @@
 - fix configure string length tests for sss library.
 - report map not read when debug logging.
 - duplicate parent options for included maps.
+- move timeout to map_source (allow per direct map timeout).
 
 28/06/2011 autofs-5.0.6
 -----------------------

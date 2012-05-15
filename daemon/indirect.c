@@ -87,7 +87,7 @@ static int do_mount_autofs_indirect(struct autofs_point *ap, const char *root)
 {
 	const char *str_indirect = mount_type_str(t_indirect);
 	struct ioctl_ops *ops = get_ioctl_ops();
-	time_t timeout = ap->exp_timeout;
+	time_t timeout = ap->entry->maps->exp_timeout;
 	char *options = NULL;
 	const char *hosts_map_name = "-hosts";
 	const char *map_name = hosts_map_name;
@@ -170,13 +170,12 @@ static int do_mount_autofs_indirect(struct autofs_point *ap, const char *root)
 	}
 
 	ap->dev = st.st_dev;	/* Device number for mount point checks */
-	ap->exp_runfreq = (timeout + CHECK_RATIO - 1) / CHECK_RATIO;
 
 	ops->timeout(ap->logopt, ap->ioctlfd, &timeout);
 	if (ap->logopt & LOGOPT_DEBUG)
-		notify_mount_result(ap, root, str_indirect);
+		notify_mount_result(ap, root, timeout, str_indirect);
 	else
-		notify_mount_result(ap, ap->path, str_indirect);
+		notify_mount_result(ap, ap->path, timeout, str_indirect);
 
 	return 0;
 
