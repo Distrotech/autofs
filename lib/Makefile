@@ -24,6 +24,10 @@ CFLAGS += -I../include -fPIC -D_GNU_SOURCE
 CFLAGS += -DAUTOFS_MAP_DIR=\"$(autofsmapdir)\"
 CFLAGS += -DAUTOFS_CONF_DIR=\"$(autofsconfdir)\"
 
+ifeq ($(LDAP), 1)
+  CFLAGS += $(XML_FLAGS) $(XML_LIBS)
+endif
+
 .PHONY: all install clean
 
 all: autofs.a
