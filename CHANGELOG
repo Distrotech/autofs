@@ -56,6 +56,7 @@
 - don't override LDFLAGS in make rules.
 - fix a couple of compiler warnings.
 - add after sssd dependency to unit file.
+- dont start readmap unless ready.
 
 25/07/2012 autofs-5.0.7
 =======================
