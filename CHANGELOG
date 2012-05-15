@@ -49,6 +49,7 @@
 - fix kernel verion check of version components.
 - move timeout to map_source (allow per direct map timeout).
 - dont retry ldap connect if not required.
+- fix getautomntbyname_r() declaration.
 
 28/06/2011 autofs-5.0.6
 -----------------------

@@ -36,12 +36,12 @@
 
 int _sss_setautomntent(const char *, void **);
 int _sss_getautomntent_r(char **, char **, void *);
-int _sss_getautomntbyname_r(char *, char **, void *);
+int _sss_getautomntbyname_r(const char *, char **, void *);
 int _sss_endautomntent(void **);
 
 typedef int (*setautomntent_t) (const char *, void **);
 typedef int (*getautomntent_t) (char **, char **, void *);
-typedef int (*getautomntbyname_t) (char *, char **, void *);
+typedef int (*getautomntbyname_t) (const char *, char **, void *);
 typedef int (*endautomntent_t) (void **);
 
 struct lookup_context {
@@ -387,7 +387,7 @@ static int lookup_one(struct autofs_point *ap,
 	if (!setautomntent(ap->logopt, ctxt, ctxt->mapname, &sss_ctxt))
 		return NSS_STATUS_UNAVAIL;
 
-	ret = ctxt->getautomntbyname_r(qKey, &value, sss_ctxt);
+	ret = ctxt->getautomntbyname_r((const char *) qKey, &value, sss_ctxt);
 	if (ret && ret != ENOENT) {
 		char *estr = strerror_r(ret, buf, MAX_ERR_BUF);
 		error(ap->logopt,
