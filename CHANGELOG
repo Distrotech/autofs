@@ -47,6 +47,7 @@
 - report map not read when debug logging.
 - duplicate parent options for included maps.
 - move timeout to map_source (allow per direct map timeout).
+- fix kernel verion check of version components.
 
 28/06/2011 autofs-5.0.6
 -----------------------
