@@ -66,6 +66,7 @@ struct ldap_search_params {
 
 static int decode_percent_hack(const char *, char **);
 
+#ifdef WITH_SASL
 static int set_env(unsigned logopt, const char *name, const char *val)
 {
 	int ret = setenv(name, val, 1);
@@ -75,6 +76,7 @@ static int set_env(unsigned logopt, const char *name, const char *val)
 	}
 	return 1;
 }
+#endif
 
 #ifndef HAVE_LDAP_CREATE_PAGE_CONTROL
 int ldap_create_page_control(LDAP *ldap, ber_int_t pagesize,
@@ -183,9 +185,9 @@ int unbind_ldap_connection(unsigned logopt, LDAP *ldap, struct lookup_context *c
 {
 	int rv;
 
-#ifdef WITH_SASL
 	if (ctxt->use_tls == LDAP_TLS_RELEASE)
 		ctxt->use_tls = LDAP_TLS_INIT;
+#ifdef WITH_SASL
 	autofs_sasl_unbind(ctxt);
 #endif
 
@@ -243,7 +245,6 @@ LDAP *init_ldap_connection(unsigned logopt, const char *uri, struct lookup_conte
 		info(logopt, MODPREFIX "failed to set connection timeout to %d",
 		     net_timeout.tv_sec);
 
-#ifdef WITH_SASL
 	if (ctxt->use_tls) {
 		if (ctxt->version == 2) {
 			if (ctxt->tls_required) {
@@ -272,7 +273,6 @@ LDAP *init_ldap_connection(unsigned logopt, const char *uri, struct lookup_conte
 		}
 		ctxt->use_tls = LDAP_TLS_RELEASE;
 	}
-#endif
 
 	return ldap;
 }
@@ -585,10 +585,12 @@ static LDAP *do_connect(unsigned logopt, const char *uri, struct lookup_context 
 {
 	LDAP *ldap;
 
+#ifdef WITH_SASL
 	if (ctxt->extern_cert && ctxt->extern_key) {
 		set_env(logopt, ENV_LDAPTLS_CERT, ctxt->extern_cert);
 		set_env(logopt, ENV_LDAPTLS_KEY, ctxt->extern_key);
 	}
+#endif
 
 	ldap = init_ldap_connection(logopt, uri, ctxt);
 	if (ldap) {
@@ -791,7 +793,6 @@ find_server:
 	return ldap;
 }
 
-#ifdef WITH_SASL
 int get_property(unsigned logopt, xmlNodePtr node, const char *prop, char **value)
 {
 	xmlChar *ret;
@@ -812,6 +813,7 @@ int get_property(unsigned logopt, xmlNodePtr node, const char *prop, char **valu
 	return 0;
 }
 
+#ifdef WITH_SASL
 /*
  *  For plain text, login and digest-md5 authentication types, we need
  *  user and password credentials.
@@ -824,6 +826,7 @@ int authtype_requires_creds(const char *authtype)
 		return 1;
 	return 0;
 }
+#endif
 
 /*
  *  Returns:
@@ -1056,6 +1059,7 @@ auth_fail:
 		}
 	} else if (auth_required == LDAP_AUTH_REQUIRED &&
 		  (authtype && !strncmp(authtype, "EXTERNAL", 8))) {
+#ifdef WITH_SASL
 		ret = get_property(logopt, root, "external_cert",  &extern_cert);
 		ret |= get_property(logopt, root, "external_key",  &extern_key);
 		/*
@@ -1074,6 +1078,7 @@ auth_fail:
 			if (extern_key)
 				free(extern_key);
 		}
+#endif
 	}
 
 	/*
@@ -1094,8 +1099,10 @@ auth_fail:
 	ctxt->secret = secret;
 	ctxt->client_princ = client_princ;
 	ctxt->client_cc = client_cc;
+#ifdef WITH_SASL
 	ctxt->extern_cert = extern_cert;
 	ctxt->extern_key = extern_key;
+#endif
 
 	debug(logopt, MODPREFIX
 	      "ldap authentication configured with the following options:");
@@ -1127,7 +1134,6 @@ out:
 
 	return ret;
 }
-#endif
 
 /*
  *  Take an input string as specified in the master map, and break it
@@ -1390,10 +1396,12 @@ static void free_context(struct lookup_context *ctxt)
 		defaults_free_searchdns(ctxt->sdns);
 	if (ctxt->dclist)
 		free_dclist(ctxt->dclist);
+#ifdef WITH_SASL
 	if (ctxt->extern_cert)
 		free(ctxt->extern_cert);
 	if (ctxt->extern_key)
 		free(ctxt->extern_key);
+#endif
 	free(ctxt);
 
 	return;
