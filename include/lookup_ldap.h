@@ -11,6 +11,8 @@
 #include <krb5.h>
 #endif
 
+#include <libxml/tree.h>
+
 #include "list.h"
 #include "dclist.h"
 
@@ -92,7 +94,6 @@ struct lookup_context {
 };
 
 
-#ifdef WITH_SASL
 #define LDAP_AUTH_CONF_FILE "test"
 
 #define LDAP_TLS_DONT_USE	0
@@ -104,7 +105,6 @@ struct lookup_context {
 #define LDAP_AUTH_REQUIRED	0x0002
 #define LDAP_AUTH_AUTODETECT	0x0004
 #define LDAP_NEED_AUTH		(LDAP_AUTH_REQUIRED|LDAP_AUTH_AUTODETECT)
-#endif
 
 #define LDAP_AUTH_USESIMPLE	0x0008
 
