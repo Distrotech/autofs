@@ -2326,8 +2326,10 @@ static int read_one_map(struct autofs_point *ap,
 	 * reading the map. We always need to read the whole map for
 	 * direct mounts in order to mount the triggers.
 	 */
-	if (!(ap->flags & MOUNT_FLAG_GHOST) && ap->type != LKP_DIRECT)
+	if (!(ap->flags & MOUNT_FLAG_GHOST) && ap->type != LKP_DIRECT) {
+		debug(ap->logopt, "map read not needed, so not done");
 		return NSS_STATUS_SUCCESS;
+	}
 
 	sp.ap = ap;
 	sp.age = age;

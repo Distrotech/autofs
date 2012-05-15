@@ -327,8 +327,10 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 	 * reading the map. We always need to read the whole map for
 	 * direct mounts in order to mount the triggers.
 	 */
-	if (!(ap->flags & MOUNT_FLAG_GHOST) && ap->type != LKP_DIRECT)
+	if (!(ap->flags & MOUNT_FLAG_GHOST) && ap->type != LKP_DIRECT) {
+		debug(ap->logopt, "map read not needed, so not done");
 		return NSS_STATUS_SUCCESS;
+	}
 
 	ypcb_data.ap = ap;
 	ypcb_data.source = source;
