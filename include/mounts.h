@@ -75,26 +75,13 @@ struct mnt_list {
 	struct list_head ordered;
 };
 
-static inline unsigned int linux_version_code(void)
-{
-	struct utsname my_utsname;
-	unsigned int p, q, r;
-	char *save;
-
-	if (uname(&my_utsname))
-		return 0;
-
-	p = (unsigned int) atoi(strtok_r(my_utsname.release, ".", &save));
-	q = (unsigned int) atoi(strtok_r(NULL, ".", &save));
-	r = (unsigned int) atoi(strtok_r(NULL, ".", &save));
-	return KERNEL_VERSION(p, q, r);
-}
 
 struct nfs_mount_vers {
 	unsigned int major;
 	unsigned int minor;
 	unsigned int fix;
 };
+unsigned int linux_version_code(void);
 int check_nfs_mount_version(struct nfs_mount_vers *, struct nfs_mount_vers *);
 extern unsigned int nfs_mount_uses_string_options;
 

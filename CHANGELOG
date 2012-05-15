@@ -46,6 +46,7 @@
 - fix configure string length tests for sss library.
 - report map not read when debug logging.
 - duplicate parent options for included maps.
+- fix kernel verion check of version components.
 
 28/06/2011 autofs-5.0.6
 -----------------------
