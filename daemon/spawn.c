@@ -288,14 +288,15 @@ int spawnv(unsigned logopt, const char *prog, const char *const *argv)
 int spawnl(unsigned logopt, const char *prog, ...)
 {
 	va_list arg;
-	int argc;
+	int argc, ret;
 	char **argv, **p;
 
 	va_start(arg, prog);
 	for (argc = 1; va_arg(arg, char *); argc++);
 	va_end(arg);
 
-	if (!(argv = alloca(sizeof(char *) * argc)))
+	argv = malloc(sizeof(char *) * argc);
+	if (!argv)
 		return -1;
 
 	va_start(arg, prog);
@@ -303,7 +304,11 @@ int spawnl(unsigned logopt, const char *prog, ...)
 	while ((*p++ = va_arg(arg, char *)));
 	va_end(arg);
 
-	return do_spawn(logopt, -1, SPAWN_OPT_NONE, prog, (const char **) argv);
+	ret = do_spawn(logopt, -1, SPAWN_OPT_NONE, prog, (const char **) argv);
+
+	free(argv);
+
+	return ret;
 }
 
 int spawn_mount(unsigned logopt, ...)
@@ -345,7 +350,8 @@ int spawn_mount(unsigned logopt, ...)
 	}
 
 	/* Alloc 1 extra slot in case we need to use the "-f" option */
-	if (!(argv = alloca(sizeof(char *) * argc + 2)))
+	argv = malloc(sizeof(char *) * argc + 2);
+	if (!argv)
 		return -1;
 
 	argv[0] = arg0;
@@ -422,6 +428,8 @@ int spawn_mount(unsigned logopt, ...)
 		ret = MNT_FORCE_FAIL;
 	}
 
+	free(argv);
+
 	return ret;
 }
 
@@ -475,7 +483,8 @@ int spawn_bind_mount(unsigned logopt, ...)
 		}
 	}
 
-	if (!(argv = alloca(sizeof(char *) * argc + 2)))
+	argv = malloc(sizeof(char *) * argc + 2);
+	if (!argv)
 		return -1;
 
 	argv[0] = arg0;
@@ -539,6 +548,8 @@ int spawn_bind_mount(unsigned logopt, ...)
 		ret = MNT_FORCE_FAIL;
 	}
 
+	free(argv);
+
 	return ret;
 }
 
@@ -577,7 +588,8 @@ int spawn_umount(unsigned logopt, ...)
 		}
 	}
 
-	if (!(argv = alloca(sizeof(char *) * argc + 1)))
+	argv = malloc(sizeof(char *) * argc + 1);
+	if (!argv)
 		return -1;
 
 	argv[0] = arg0;
@@ -626,6 +638,8 @@ int spawn_umount(unsigned logopt, ...)
 		     "and /etc/mtab will differ");
 		ret = 0;
 	}
+
+	free(argv);
 
 	return ret;
 }
