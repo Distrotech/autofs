@@ -114,6 +114,8 @@ int load_autofs4_module(void);
 #define DB(x)           do { } while(0)
 #endif
 
+#define min(a, b)	(a <= b ? a : b)
+
 /* Forward declaraion */
 struct autofs_point; 
 
@@ -461,7 +463,6 @@ struct autofs_point {
 	dev_t dev;			/* "Device" number assigned by kernel */
 	struct master_mapent *entry;	/* Master map entry for this mount */
 	unsigned int type;		/* Type of map direct or indirect */
-	time_t exp_timeout;		/* Timeout for expiring mounts */
 	time_t exp_runfreq;		/* Frequency for polling for timeouts */
 	time_t negative_timeout;	/* timeout in secs for failed mounts */
 	unsigned int flags;		/* autofs mount flags */
@@ -495,7 +496,7 @@ void *expire_proc_indirect(void *);
 void *expire_proc_direct(void *);
 int expire_offsets_direct(struct autofs_point *ap, struct mapent *me, int now);
 int mount_autofs_indirect(struct autofs_point *ap, const char *root);
-int do_mount_autofs_direct(struct autofs_point *ap, struct mnt_list *mnts, struct mapent *me);
+int do_mount_autofs_direct(struct autofs_point *ap, struct mnt_list *mnts, struct mapent *me, time_t timeout);
 int mount_autofs_direct(struct autofs_point *ap);
 int mount_autofs_offset(struct autofs_point *ap, struct mapent *me, const char *root, const char *offset);
 void submount_signal_parent(struct autofs_point *ap, unsigned int success);

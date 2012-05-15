@@ -1590,7 +1590,7 @@ void *handle_mounts(void *arg)
 
 	/* We often start several automounters at the same time.  Add some
 	   randomness so we don't all expire at the same time. */
-	if (!ap->submount && ap->exp_timeout)
+	if (!ap->submount && ap->exp_runfreq)
 		alarm_add(ap, ap->exp_runfreq + rand() % ap->exp_runfreq);
 
 	pthread_setcancelstate(cancel_state, NULL);

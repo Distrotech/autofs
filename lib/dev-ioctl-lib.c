@@ -588,14 +588,27 @@ static int dev_ioctl_timeout(unsigned int logopt, int ioctlfd, time_t *timeout)
 	if (ioctl(ctl.devfd, AUTOFS_DEV_IOCTL_TIMEOUT, &param) == -1)
 		return -1;
 
-	*timeout = param.timeout.timeout;
+	/*
+	 * The returned timeout is not used by us and not setting the
+	 * output saves the inconvenience of always having to use a
+	 * temporary variable when using this function.
+	 */ 
+	/* *timeout = param.timeout.timeout; */
 
 	return 0;
 }
 
 static int ioctl_timeout(unsigned int logopt, int ioctlfd, time_t *timeout)
 {
-	return ioctl(ioctlfd, AUTOFS_IOC_SETTIMEOUT, timeout);
+	time_t tmp = *timeout;
+
+	/*
+	 * The returned timeout is not used by us and not using the
+	 * passed in variable saves the inconvenience of always
+	 * having to use a temporary variable when using this
+	 * function.
+	 */ 
+	return ioctl(ioctlfd, AUTOFS_IOC_SETTIMEOUT, &tmp);
 }
 
 /*
