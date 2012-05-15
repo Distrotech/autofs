@@ -41,9 +41,10 @@ typedef enum {
 typedef enum { got_nothing, got_star, got_real, got_plus } FOUND_STATE;
 typedef enum { esc_none, esc_char, esc_val, esc_all } ESCAPES;
 
-
 struct lookup_context {
 	const char *mapname;
+	int opts_argc;
+	const char **opts_argv;
 	struct parse_mod *parse;
 };
 
@@ -88,8 +89,20 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 	if (!mapfmt)
 		mapfmt = MAPFMT_DEFAULT;
 
-	ctxt->parse = open_parse(mapfmt, MODPREFIX, argc - 1, argv + 1);
+	argc--;
+	argv++;
+
+	ctxt->opts_argv = copy_argv(argc, (const char **) argv);
+	if (ctxt->opts_argv == NULL) {
+		free(ctxt);
+		warn(LOGOPT_NONE, MODPREFIX "failed to duplicate options");
+		return 1;
+	}
+	ctxt->opts_argc = argc;
+
+	ctxt->parse = open_parse(mapfmt, MODPREFIX, argc, argv);
 	if (!ctxt->parse) {
+		free_argv(ctxt->opts_argc, ctxt->opts_argv);
 		free(ctxt);
 		logmsg(MODPREFIX "failed to open parse context");
 		return 1;
@@ -512,12 +525,15 @@ static int check_self_include(const char *key, struct lookup_context *ctxt)
 }
 
 static struct map_source *
-prepare_plus_include(struct autofs_point *ap, time_t age, char *key, unsigned int inc)
+prepare_plus_include(struct autofs_point *ap,
+		     time_t age, char *key, unsigned int inc,
+		     struct lookup_context *ctxt)
 {
 	struct map_source *current;
 	struct map_source *source;
 	struct map_type_info *info;
 	const char *argv[2];
+	char **tmp_argv, **tmp_opts;
 	int argc;
 	char *buf;
 
@@ -551,9 +567,35 @@ prepare_plus_include(struct autofs_point *ap, time_t age, char *key, unsigned in
 	argv[0] = info->map;
 	argv[1] = NULL;
 
+	tmp_argv = (char **) copy_argv(argc, argv);
+	if (!tmp_argv) {
+		error(ap->logopt, MODPREFIX "failed to allocate args vector");
+		free_map_type_info(info);
+		free(buf);
+		return NULL;
+	}
+
+	tmp_opts = (char **) copy_argv(ctxt->opts_argc, ctxt->opts_argv);
+	if (!tmp_opts) {
+		error(ap->logopt, MODPREFIX "failed to allocate options args vector");
+		free_argv(argc, (const char **) tmp_argv);
+		free_map_type_info(info);
+		free(buf);
+		return NULL;
+	}
+
+	tmp_argv = append_argv(argc, tmp_argv, ctxt->opts_argc, tmp_opts);
+	if (!tmp_argv) {
+		error(ap->logopt, MODPREFIX "failed to append options vector");
+		free_map_type_info(info);
+		free(buf);
+		return NULL;
+	}
+	argc += ctxt->opts_argc;
+
 	source = master_find_source_instance(current,
 					     info->type, info->format,
-					     argc, argv);
+					     argc, (const char **) tmp_argv);
 	if (source) {
 		/*
 		 * Make sure included map age is in sync with its owner
@@ -563,15 +605,17 @@ prepare_plus_include(struct autofs_point *ap, time_t age, char *key, unsigned in
 		source->stale = 1;
 	} else {
 		source = master_add_source_instance(current,
-						    info->type, info->format,
-						    age, argc, argv);
+						    info->type, info->format, age,
+						    argc, (const char **) tmp_argv);
 		if (!source) {
+			free_argv(argc, (const char **) tmp_argv);
 			free_map_type_info(info);
 			free(buf);
 			error(ap->logopt, "failed to add included map instance");
 			return NULL;
 		}
 	}
+	free_argv(argc, (const char **) tmp_argv);
 
 	source->depth = current->depth + 1;
 	if (inc)
@@ -645,7 +689,7 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 			master_source_current_wait(ap->entry);
 			ap->entry->current = source;
 
-			inc_source = prepare_plus_include(ap, age, key, inc);
+			inc_source = prepare_plus_include(ap, age, key, inc, ctxt);
 			if (!inc_source) {
 				debug(ap->logopt,
 				      "failed to select included map %s", key);
@@ -729,7 +773,7 @@ static int lookup_one(struct autofs_point *ap,
 				master_source_current_wait(ap->entry);
 				ap->entry->current = source;
 
-				inc_source = prepare_plus_include(ap, age, mkey, inc);
+				inc_source = prepare_plus_include(ap, age, mkey, inc, ctxt);
 				if (!inc_source) {
 					debug(ap->logopt,
 					      MODPREFIX
@@ -1096,6 +1140,7 @@ int lookup_done(void *context)
 {
 	struct lookup_context *ctxt = (struct lookup_context *) context;
 	int rv = close_parse(ctxt->parse);
+	free_argv(ctxt->opts_argc, ctxt->opts_argv);
 	free(ctxt);
 	return rv;
 }
