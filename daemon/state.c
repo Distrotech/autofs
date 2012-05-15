@@ -818,13 +818,12 @@ done:
 		new = st_alloc_task(ap, state);
 		if (new)
 			list_add(&new->list, head);
+		/* Added to empty state queue, kick state machine */
+		signaled = 1;
+		status = pthread_cond_signal(&cond);
+		if (status)
+			fatal(status);
 	}
-
-	/* Added task, encourage state machine */
-	signaled = 1;
-	status = pthread_cond_signal(&cond);
-	if (status)
-		fatal(status);
 
 	return 1;
 }
@@ -1130,6 +1129,10 @@ static void *st_queue_handler(void *arg)
 
 				task = list_entry(p, struct state_queue, list);
 				p = p->next;
+
+				/* Task may have been canceled before it started */
+				if (!task->thid && task->cancel)
+					goto remove;
 
 				if (!task->busy) {
 					/* Start a new task */
