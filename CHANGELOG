@@ -65,6 +65,7 @@
 - remove hard-coded STRIP variable.
 - use LIBS for link libraries.
 - unbundle NOTSTRIP from DEBUG so they dont depend on each other.
+- fix compilation of lookup_ldap.c without sasl.
 
 25/07/2012 autofs-5.0.7
 =======================
