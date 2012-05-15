@@ -51,6 +51,7 @@
 - dont retry ldap connect if not required.
 - fix getautomntbyname_r() declaration.
 - fix compilation of defaults.c without openldap.
+- fix compilation of lookup_ldap.c without sasl.
 
 28/06/2011 autofs-5.0.6
 -----------------------
