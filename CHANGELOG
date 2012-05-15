@@ -58,6 +58,7 @@
 - add after sssd dependency to unit file.
 - dont start readmap unless ready.
 - fix typo forced-shutdown should be force-shutdown.
+- fix compilation of lookup_ldap.c without sasl.
 
 25/07/2012 autofs-5.0.7
 =======================
