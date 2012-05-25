@@ -316,6 +316,7 @@ static int create_client(struct conn_info *info, CLIENT **client)
 	int fd, ret;
 
 	fd = RPC_ANYSOCK;
+	*client = NULL;
 
 	if (info->client) {
 		if (!clnt_control(info->client, CLGET_FD, (char *) &fd)) {
@@ -344,7 +345,10 @@ static int create_client(struct conn_info *info, CLIENT **client)
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_flags = AI_ADDRCONFIG;
 	hints.ai_family = AF_UNSPEC;
-	hints.ai_socktype = SOCK_DGRAM;
+	if (info->proto->p_proto == IPPROTO_UDP)
+		hints.ai_socktype = SOCK_DGRAM;
+	else
+		hints.ai_socktype = SOCK_STREAM;
 
 	ret = getaddrinfo(info->host, NULL, &hints, &ai);
 	if (ret) {
@@ -377,12 +381,13 @@ static int create_client(struct conn_info *info, CLIENT **client)
 
 	freeaddrinfo(ai);
 
+done:
 	if (!*client) {
 		info->client = NULL;
 		ret = -ENOTCONN;
 		goto out_close;
 	}
-done:
+
 	/* Close socket fd on destroy, as is default for rpcowned fds */
 	if  (!clnt_control(*client, CLSET_FD_CLOSE, NULL)) {
 		clnt_destroy(*client);
@@ -800,7 +805,7 @@ static int rpc_get_exports_proto(struct conn_info *info, exports *exp)
 				 (xdrproc_t) xdr_void, NULL,
 				 (xdrproc_t) xdr_exports, (caddr_t) exp,
 				 info->timeout);
-		if (status != RPC_PROGVERSMISMATCH)
+		if (status == RPC_SUCCESS)
 			break;
 		if (++vers_entry > 2)
 			break;

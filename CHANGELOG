@@ -50,6 +50,7 @@
 - move timeout to map_source (allow per direct map timeout).
 - fix kernel verion check of version components.
 - dont retry ldap connect if not required.
+- fix initialization in rpc create_client().
 
 28/06/2011 autofs-5.0.6
 -----------------------
