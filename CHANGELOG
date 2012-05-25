@@ -49,6 +49,7 @@
 - update ->timeout() function to not return timeout.
 - move timeout to map_source (allow per direct map timeout).
 - fix kernel verion check of version components.
+- dont retry ldap connect if not required.
 
 28/06/2011 autofs-5.0.6
 -----------------------

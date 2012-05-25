@@ -511,7 +511,7 @@ static int do_bind(unsigned logopt, LDAP *ldap, const char *uri, struct lookup_c
 	debug(logopt, MODPREFIX "auth_required: %d, sasl_mech %s",
 	      ctxt->auth_required, ctxt->sasl_mech);
 
-	if (ctxt->auth_required & (LDAP_AUTH_REQUIRED|LDAP_AUTH_AUTODETECT)) {
+	if (ctxt->auth_required & LDAP_NEED_AUTH) {
 		rv = autofs_sasl_bind(logopt, ldap, ctxt);
 		debug(logopt, MODPREFIX "autofs_sasl_bind returned %d", rv);
 	} else {
@@ -731,7 +731,7 @@ static LDAP *do_reconnect(unsigned logopt, struct lookup_context *ctxt)
 		ldap = do_connect(logopt, ctxt->server, ctxt);
 #ifdef WITH_SASL
 		/* Dispose of the sasl authentication connection and try again. */
-		if (!ldap) {
+		if (!ldap && ctxt->auth_required & LDAP_NEED_AUTH) {
 			autofs_sasl_dispose(ctxt);
 			ldap = connect_to_server(logopt, ctxt->server, ctxt);
 		}
@@ -767,7 +767,7 @@ static LDAP *do_reconnect(unsigned logopt, struct lookup_context *ctxt)
 	 * Dispose of the sasl authentication connection and try the
 	 * current server again before trying other servers in the list.
 	 */
-	if (!ldap) {
+	if (!ldap && ctxt->auth_required & LDAP_NEED_AUTH) {
 		autofs_sasl_dispose(ctxt);
 		ldap = connect_to_server(logopt, ctxt->uri->uri, ctxt);
 	}
