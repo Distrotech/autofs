@@ -34,6 +34,16 @@
 #include <pthread.h>
 #include <poll.h>
 
+#ifdef WITH_LIBTIRPC
+#undef auth_destroy
+#define auth_destroy(auth)                                              \
+                do {                                                    \
+                        int refs;                                       \
+                        if ((refs = auth_put((auth))) == 0)             \
+                                ((*((auth)->ah_ops->ah_destroy))(auth));\
+                } while (0)
+#endif
+
 #include "mount.h"
 #include "rpc_subs.h"
 #include "automount.h"
