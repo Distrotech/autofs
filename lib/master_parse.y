@@ -801,7 +801,6 @@ int master_parse_entry(const char *buffer, unsigned int default_timeout, unsigne
 	} else {
 		struct ioctl_ops *ops = get_ioctl_ops();
 		struct autofs_point *ap = entry->ap;
-		time_t tout = timeout;
 
 		/*
 		 * Second and subsequent instances of a mount point
@@ -811,7 +810,7 @@ int master_parse_entry(const char *buffer, unsigned int default_timeout, unsigne
 			ap->exp_timeout = timeout;
 			ap->exp_runfreq = (ap->exp_timeout + CHECK_RATIO - 1) / CHECK_RATIO;
 			if (ap->ioctlfd != -1 && ap->type == LKP_INDIRECT)
-				ops->timeout(ap->logopt, ap->ioctlfd, &tout);
+				ops->timeout(ap->logopt, ap->ioctlfd, timeout);
 		}
 	}
 	if (random_selection)

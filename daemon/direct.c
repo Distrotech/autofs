@@ -302,7 +302,7 @@ static int unlink_active_mounts(struct autofs_point *ap, struct mnt_list *mnts, 
 				return 0;
 			}
 
-			ops->timeout(ap->logopt, ioctlfd, &tout);
+			ops->timeout(ap->logopt, ioctlfd, tout);
 
 			if (save_ioctlfd == -1)
 				ops->close(ap->logopt, ioctlfd);
@@ -424,7 +424,7 @@ int do_mount_autofs_direct(struct autofs_point *ap, struct mnt_list *mnts, struc
 		goto out_umount;
 	}
 
-	ops->timeout(ap->logopt, ioctlfd, &timeout);
+	ops->timeout(ap->logopt, ioctlfd, timeout);
 	notify_mount_result(ap, me->key, str_direct);
 	cache_set_ino_index(me->mc, me->key, st.st_dev, st.st_ino);
 	ops->close(ap->logopt, ioctlfd);
@@ -771,7 +771,7 @@ int mount_autofs_offset(struct autofs_point *ap, struct mapent *me, const char *
 		goto out_umount;
 	}
 
-	ops->timeout(ap->logopt, ioctlfd, &timeout);
+	ops->timeout(ap->logopt, ioctlfd, timeout);
 	cache_set_ino_index(me->mc, me->key, st.st_dev, st.st_ino);
 	if (ap->logopt & LOGOPT_DEBUG)
 		notify_mount_result(ap, mountpoint, str_offset);

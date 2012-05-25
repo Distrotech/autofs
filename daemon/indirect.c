@@ -172,7 +172,7 @@ static int do_mount_autofs_indirect(struct autofs_point *ap, const char *root)
 	ap->dev = st.st_dev;	/* Device number for mount point checks */
 	ap->exp_runfreq = (timeout + CHECK_RATIO - 1) / CHECK_RATIO;
 
-	ops->timeout(ap->logopt, ap->ioctlfd, &timeout);
+	ops->timeout(ap->logopt, ap->ioctlfd, timeout);
 	if (ap->logopt & LOGOPT_DEBUG)
 		notify_mount_result(ap, root, str_indirect);
 	else
