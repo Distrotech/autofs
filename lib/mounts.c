@@ -1268,13 +1268,12 @@ const char *mount_type_str(const unsigned int type)
 }
 
 void notify_mount_result(struct autofs_point *ap,
-			 const char *path, const char *type)
+			 const char *path, time_t timeout, const char *type)
 {
-	if (ap->exp_timeout)
+	if (timeout)
 		info(ap->logopt,
 		    "mounted %s on %s with timeout %u, freq %u seconds",
-		    type, path,
-		    (unsigned int) ap->exp_timeout,
+		    type, path, (unsigned int) timeout,
 		    (unsigned int) ap->exp_runfreq);
 	else
 		info(ap->logopt,
@@ -1382,16 +1381,14 @@ static int do_remount_indirect(struct autofs_point *ap, int fd, const char *path
 }
 
 static int remount_active_mount(struct autofs_point *ap,
-				struct mapent_cache *mc,
-				const char *path, dev_t devid,
-				const unsigned int type,
-				int *ioctlfd)
+				struct mapent *me, const char *path, dev_t devid,
+				const unsigned int type, int *ioctlfd)
 {
 	struct ioctl_ops *ops = get_ioctl_ops();
-	time_t timeout = ap->exp_timeout;
 	const char *str_type = mount_type_str(type);
 	char buf[MAX_ERR_BUF];
 	unsigned int mounted;
+	time_t timeout;
 	struct stat st;
 	int fd;
 
@@ -1401,6 +1398,12 @@ static int remount_active_mount(struct autofs_point *ap,
 	ops->open(ap->logopt, &fd, devid, path);
 	if (fd == -1)
 		return REMOUNT_OPEN_FAIL;
+	else {
+		if (type == t_indirect || type == t_offset)
+			timeout = ap->entry->maps->exp_timeout;
+		else
+			timeout = me->source->exp_timeout;
+	}
 
 	/* Re-reading the map, set timeout and return */
 	if (ap->state == ST_READMAP) {
@@ -1434,11 +1437,11 @@ static int remount_active_mount(struct autofs_point *ap,
 		ops->close(ap->logopt, fd);
 		return REMOUNT_STAT_FAIL;
 	}
-	if (mc)
-		cache_set_ino_index(mc, path, st.st_dev, st.st_ino);
+	if (type != t_indirect)
+		cache_set_ino_index(me->mc, path, st.st_dev, st.st_ino);
 	else
 		ap->dev = st.st_dev;
-	notify_mount_result(ap, path, str_type);
+	notify_mount_result(ap, path, timeout, str_type);
 
 	*ioctlfd = fd;
 
@@ -1481,24 +1484,20 @@ static int remount_active_mount(struct autofs_point *ap,
 int try_remount(struct autofs_point *ap, struct mapent *me, unsigned int type)
 {
 	struct ioctl_ops *ops = get_ioctl_ops();
-	struct mapent_cache *mc;
 	const char *path;
 	int ret, fd;
 	dev_t devid;
 
-	if (type == t_indirect) {
-		mc = NULL;
+	if (type == t_indirect)
 		path = ap->path;
-	} else {
-		mc = me->mc;
+	else
 		path = me->key;
-	}
 
 	ret = ops->mount_device(ap->logopt, path, type, &devid);
 	if (ret == -1 || ret == 0)
 		return -1;
 
-	ret = remount_active_mount(ap, mc, path, devid, type, &fd);
+	ret = remount_active_mount(ap, me, path, devid, type, &fd);
 
 	/*
 	 * The directory must exist since we found a device

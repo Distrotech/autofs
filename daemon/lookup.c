@@ -413,6 +413,7 @@ static enum nsswitch_status read_map_source(struct nss_source *this,
 	tmap.lookup = map->lookup;
 	tmap.mc = map->mc;
 	tmap.instance = map->instance;
+	tmap.exp_timeout = map->exp_timeout;
 	tmap.recurse = map->recurse;
 	tmap.depth = map->depth;
 	tmap.stale = map->stale;
@@ -770,6 +771,7 @@ static enum nsswitch_status lookup_map_name(struct nss_source *this,
 	tmap.format = map->format;
 	tmap.mc = map->mc;
 	tmap.instance = map->instance;
+	tmap.exp_timeout = map->exp_timeout;
 	tmap.recurse = map->recurse;
 	tmap.depth = map->depth;
 	tmap.argc = 0;

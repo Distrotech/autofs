@@ -65,9 +65,8 @@ void master_mutex_lock_cleanup(void *arg)
 	return;
 }
 
-int master_add_autofs_point(struct master_mapent *entry, time_t timeout,
-			    unsigned logopt, unsigned nobind, unsigned ghost,
-			    int submount)
+int master_add_autofs_point(struct master_mapent *entry, unsigned logopt,
+			    unsigned nobind, unsigned ghost, int submount)
 {
 	struct autofs_point *ap;
 	int status;
@@ -91,7 +90,6 @@ int master_add_autofs_point(struct master_mapent *entry, time_t timeout,
 	ap->entry = entry;
 	ap->exp_thread = 0;
 	ap->readmap_thread = 0;
-	ap->exp_timeout = timeout;
 	/*
 	 * Program command line option overrides config.
 	 * We can't use 0 negative timeout so use default.
@@ -100,7 +98,7 @@ int master_add_autofs_point(struct master_mapent *entry, time_t timeout,
 		ap->negative_timeout = defaults_get_negative_timeout();
 	else
 		ap->negative_timeout = global_negative_timeout;
-	ap->exp_runfreq = (timeout + CHECK_RATIO - 1) / CHECK_RATIO;
+	ap->exp_runfreq = 0;
 	ap->flags = 0;
 	if (ghost)
 		ap->flags = MOUNT_FLAG_GHOST;
@@ -437,6 +435,7 @@ master_add_source_instance(struct map_source *source, const char *type, const ch
 	new->age = age;
 	new->master_line = 0;
 	new->mc = source->mc;
+	new->exp_timeout = source->exp_timeout;
 	new->stale = 1;
 
 	tmpargv = copy_argv(argc, argv);

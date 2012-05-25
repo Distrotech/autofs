@@ -47,6 +47,7 @@
 - report map not read when debug logging.
 - duplicate parent options for included maps.
 - update ->timeout() function to not return timeout.
+- move timeout to map_source (allow per direct map timeout).
 
 28/06/2011 autofs-5.0.6
 -----------------------

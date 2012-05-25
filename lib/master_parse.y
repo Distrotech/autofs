@@ -765,9 +765,6 @@ int master_parse_entry(const char *buffer, unsigned int default_timeout, unsigne
 		logopt |= (verbose ? LOGOPT_VERBOSE : 0);
 	}
 
-	if (timeout < 0)
-		timeout = default_timeout;
-
 	new = NULL;
 	entry = master_find_mapent(master, path);
 	if (!entry) {
@@ -789,28 +786,25 @@ int master_parse_entry(const char *buffer, unsigned int default_timeout, unsigne
 		}
 	}
 
+	if (timeout < 0) {
+		/*
+		 * If no timeout is given get the timout from first
+		 * map (if it exists).
+		 */
+		if (entry->maps)
+			timeout = entry->maps->exp_timeout;
+		else
+			timeout = default_timeout;
+	}
+
 	if (!entry->ap) {
-		ret = master_add_autofs_point(entry, timeout, logopt, nobind, ghost, 0);
+		ret = master_add_autofs_point(entry, logopt, nobind, ghost, 0);
 		if (!ret) {
 			error(m_logopt, "failed to add autofs_point");
 			if (new)
 				master_free_mapent(new);
 			local_free_vars();
 			return 0;
-		}
-	} else {
-		struct ioctl_ops *ops = get_ioctl_ops();
-		struct autofs_point *ap = entry->ap;
-
-		/*
-		 * Second and subsequent instances of a mount point
-		 * use the ghost, log and timeout of the first
-		 */
-		if (entry->age < age) {
-			ap->exp_timeout = timeout;
-			ap->exp_runfreq = (ap->exp_timeout + CHECK_RATIO - 1) / CHECK_RATIO;
-			if (ap->ioctlfd != -1 && ap->type == LKP_INDIRECT)
-				ops->timeout(ap->logopt, ap->ioctlfd, timeout);
 		}
 	}
 	if (random_selection)
@@ -838,7 +832,7 @@ int master_parse_entry(const char *buffer, unsigned int default_timeout, unsigne
 		local_free_vars();
 		return 0;
 	}
-
+	source->exp_timeout = timeout;
 	source->master_line = lineno;
 
 	entry->age = age;
