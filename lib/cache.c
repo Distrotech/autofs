@@ -658,10 +658,12 @@ int cache_add_offset(struct mapent_cache *mc, const char *mkey, const char *key,
 		return CHE_FAIL;
 
 	me = cache_lookup_distinct(mc, key);
-	if (me && me != owner)
-		return CHE_DUPLICATE;
+	if (me && me->age == age) {
+		if (me != owner)
+			return CHE_DUPLICATE;
+	}
 
-	ret = cache_add(mc, owner->source, key, mapent, age);
+	ret = cache_update(mc, owner->source, key, mapent, age);
 	if (ret == CHE_FAIL) {
 		warn(logopt, "failed to add key %s to cache", key);
 		return CHE_FAIL;

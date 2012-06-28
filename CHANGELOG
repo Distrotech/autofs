@@ -55,6 +55,7 @@
 - check if /etc/mtab is a link to /proc/self/mounts.
 - fix nfs4 contacts portmap.
 - fix sss map age not updated.
+- fix remount deadlock.
 
 28/06/2011 autofs-5.0.6
 -----------------------
