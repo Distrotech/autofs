@@ -1605,6 +1605,33 @@ int umount_ent(struct autofs_point *ap, const char *path)
 	return rv;
 }
 
+static int do_mount_autofs_offset(struct autofs_point *ap,
+				  struct mapent *oe, const char *root,
+				  char *offset)
+
+{
+	int mounted = 0;
+	int ret;
+
+	debug(ap->logopt, "mount offset %s at %s", oe->key, root);
+
+	ret = mount_autofs_offset(ap, oe, root, offset);
+	if (ret >= MOUNT_OFFSET_OK)
+		mounted++;
+	else {
+		if (ret != MOUNT_OFFSET_IGNORE)
+			warn(ap->logopt, "failed to mount offset");
+		else {
+			debug(ap->logopt, "ignoring \"nohide\" trigger %s",
+			      oe->key);
+			free(oe->mapent);
+			oe->mapent = NULL;
+		}
+	}
+
+	return mounted;
+}
+
 int mount_multi_triggers(struct autofs_point *ap, struct mapent *me,
 			 const char *root, unsigned int start, const char *base)
 {
@@ -1613,8 +1640,7 @@ int mount_multi_triggers(struct autofs_point *ap, struct mapent *me,
 	struct mapent *oe;
 	struct list_head *pos = NULL;
 	unsigned int fs_path_len;
-	unsigned int mounted;
-	int ret;
+	int mounted;
 
 	fs_path_len = start + strlen(base);
 	if (fs_path_len > PATH_MAX)
@@ -1634,22 +1660,7 @@ int mount_multi_triggers(struct autofs_point *ap, struct mapent *me,
 		if (!oe || !oe->mapent)
 			goto cont;
 
-		debug(ap->logopt, "mount offset %s at %s", oe->key, root);
-
-		ret = mount_autofs_offset(ap, oe, root, offset);
-		if (ret >= MOUNT_OFFSET_OK)
-			mounted++;
-		else {
-			if (ret != MOUNT_OFFSET_IGNORE)
-				warn(ap->logopt, "failed to mount offset");
-			else {
-				debug(ap->logopt,
-				      "ignoring \"nohide\" trigger %s",
-				      oe->key);
-				free(oe->mapent);
-				oe->mapent = NULL;
-			}
-		}
+		mounted += do_mount_autofs_offset(ap, oe, root, offset);
 cont:
 		offset = cache_get_offset(base,
 				offset, start, &me->multi_list, &pos);
@@ -1681,7 +1692,6 @@ int umount_multi_triggers(struct autofs_point *ap, struct mapent *me, char *root
 	pos = NULL;
 	offset = path;
 
-	/* Make sure "none" of the offsets have an active mount. */
 	while ((offset = cache_get_offset(mm_base, offset, start, mm_root, &pos))) {
 		char *oe_base;
 
@@ -1700,28 +1710,32 @@ int umount_multi_triggers(struct autofs_point *ap, struct mapent *me, char *root
 		if (oe->ioctlfd != -1 ||
 		    is_mounted(_PROC_MOUNTS, oe->key, MNTS_REAL)) {
 			left++;
-			break;
-		}
-	}
-
-	if (left)
-		return left;
-
-	pos = NULL;
-	offset = path;
-
-	/* Make sure "none" of the offsets have an active mount. */
-	while ((offset = cache_get_offset(mm_base, offset, start, mm_root, &pos))) {
-		oe = cache_lookup_offset(mm_base, offset, start, &me->multi_list);
-		/* root offset is a special case */
-		if (!oe || !oe->mapent || (strlen(oe->key) - start) == 1)
 			continue;
+		}
 
 		debug(ap->logopt, "umount offset %s", oe->key);
 
 		if (umount_autofs_offset(ap, oe)) {
 			warn(ap->logopt, "failed to umount offset");
 			left++;
+		} else {
+			struct stat st;
+			int ret;
+
+			if (!(oe->flags & MOUNT_FLAG_DIR_CREATED))
+				continue;
+
+			/*
+			 * An error due to partial directory removal is
+			 * ok so only try and remount the offset if the
+			 * actual mount point still exists.
+			 */
+			ret = rmdir_path(ap, oe->key, ap->dev);
+			if (ret == -1 && !stat(oe->key, &st)) {
+				ret = do_mount_autofs_offset(ap, oe, root, offset);
+				if (ret)
+					left++;
+			}
 		}
 	}
 
