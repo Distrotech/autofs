@@ -270,8 +270,10 @@ static struct autofs_dev_ioctl *alloc_dev_ioctl_path(int ioctlfd, const char *pa
 	struct autofs_dev_ioctl *ioctl;
 	size_t size, p_len;
 
-	if (!path)
+	if (!path) {
+		errno = EINVAL;
 		return NULL;
+	}
 
 	p_len = strlen(path);
 	size = sizeof(struct autofs_dev_ioctl) + p_len + 1;
