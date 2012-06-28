@@ -84,7 +84,8 @@ int load_autofs4_module(void);
 #define MTAB_NOTUPDATED 0x1000			/* mtab succeded but not updated */
 #define NOT_MOUNTED     0x0100			/* path notmounted */
 #define MNT_FORCE_FAIL	-1
-#define _PROC_MOUNTS	"/proc/mounts"
+#define _PROC_MOUNTS		"/proc/mounts"
+#define _PROC_SELF_MOUNTS	"/proc/self/mounts"
 
 /* Constants for lookup modules */
 

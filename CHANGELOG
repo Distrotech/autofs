@@ -52,6 +52,7 @@
 - dont retry ldap connect if not required.
 - fix initialization in rpc create_client().
 - fix libtirpc name clash.
+- check if /etc/mtab is a link to /proc/self/mounts.
 
 28/06/2011 autofs-5.0.6
 -----------------------

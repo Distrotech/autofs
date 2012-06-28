@@ -336,7 +336,8 @@ int spawn_mount(unsigned logopt, ...)
 	ret = readlink(_PATH_MOUNTED, buf, PATH_MAX);
 	if (ret != -1) {
 		buf[ret] = '\0';
-		if (!strcmp(buf, _PROC_MOUNTS)) {
+		if (!strcmp(buf, _PROC_MOUNTS) ||
+		    !strcmp(buf, _PROC_SELF_MOUNTS)) {
 			debug(logopt,
 			      "mtab link detected, passing -n to mount");
 			argc++;
@@ -467,7 +468,8 @@ int spawn_bind_mount(unsigned logopt, ...)
 	ret = readlink(_PATH_MOUNTED, buf, PATH_MAX);
 	if (ret != -1) {
 		buf[ret] = '\0';
-		if (!strcmp(buf, _PROC_MOUNTS)) {
+		if (!strcmp(buf, _PROC_MOUNTS) ||
+		    !strcmp(buf, _PROC_SELF_MOUNTS)) {
 			debug(logopt,
 			      "mtab link detected, passing -n to mount");
 			argc++;
@@ -569,7 +571,8 @@ int spawn_umount(unsigned logopt, ...)
 	ret = readlink(_PATH_MOUNTED, buf, PATH_MAX);
 	if (ret != -1) {
 		buf[ret] = '\0';
-		if (!strcmp(buf, _PROC_MOUNTS)) {
+		if (!strcmp(buf, _PROC_MOUNTS) ||
+		    !strcmp(buf, _PROC_SELF_MOUNTS)) {
 			debug(logopt,
 			      "mtab link detected, passing -n to mount");
 			argc++;
