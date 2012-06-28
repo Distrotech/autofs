@@ -1391,29 +1391,6 @@ int parse_mount(struct autofs_point *ap, const char *name,
 			strcat(m_root, name);
 		}
 
-		/*
-		 * Can't take the write lock for direct mount entries here
-		 * but they should always be present in the map entry cache.
-		 */
-		if (ap->type == LKP_INDIRECT) {
-			cache_writelock(mc);
-			me = cache_lookup_distinct(mc, name);
-			if (!me) {
-				int ret;
-				/*
-				 * Not in the cache, perhaps it's a program map
-				 * or one that doesn't support enumeration.
-				 */
-				ret = cache_add(mc, source, name, mapent, age);
-				if (ret == CHE_FAIL) {
-					cache_unlock(mc);
-					free(options);
-					return 1;
-				}
-			}
-			cache_unlock(mc);
-		}
-
 		cache_readlock(mc);
 		me = cache_lookup_distinct(mc, name);
 		if (me) {
