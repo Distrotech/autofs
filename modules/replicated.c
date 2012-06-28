@@ -589,6 +589,9 @@ static unsigned int get_nfs_info(unsigned logopt, struct host *host,
 	}
 
 v3_ver:
+	if (!(version & NFS3_REQUESTED))
+		goto v2_ver;
+
 	if (!have_port_opt) {
 		status = rpc_portmap_getclient(pm_info,
 				host->name, host->addr, host->addr_len,
@@ -599,9 +602,6 @@ v3_ver:
 		} else if (status)
 			goto done_ver;
 	}
-
-	if (!(version & NFS3_REQUESTED))
-		goto v2_ver;
 
 	if (have_port_opt) {
 		if (!(rpc_info->port = get_port_option(options)))
