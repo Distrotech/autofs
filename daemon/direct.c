@@ -193,15 +193,6 @@ int umount_autofs_direct(struct autofs_point *ap)
 	struct mnt_list *mnts;
 	struct mapent *me, *ne;
 
-	close(ap->state_pipe[0]);
-	close(ap->state_pipe[1]);
-	if (ap->pipefd >= 0)
-		close(ap->pipefd);
-	if (ap->kpipefd >= 0) {
-		close(ap->kpipefd);
-		ap->kpipefd = -1;
-	}
-
 	mnts = tree_make_mnt_tree(_PROC_MOUNTS, "/");
 	pthread_cleanup_push(mnts_cleanup, mnts);
 	nc = ap->entry->master->nc;
@@ -230,6 +221,15 @@ int umount_autofs_direct(struct autofs_point *ap)
 	}
 	pthread_cleanup_pop(1);
 	pthread_cleanup_pop(1);
+
+	close(ap->state_pipe[0]);
+	close(ap->state_pipe[1]);
+	if (ap->pipefd >= 0)
+		close(ap->pipefd);
+	if (ap->kpipefd >= 0) {
+		close(ap->kpipefd);
+		ap->kpipefd = -1;
+	}
 
 	return 0;
 }
