@@ -1571,14 +1571,16 @@ int try_remount(struct autofs_point *ap, struct mapent *me, unsigned int type)
 	return 0;
 }
 
-int umount_ent(struct autofs_point *ap, const char *path)
+int umount_ent(struct autofs_point *ap, const char *path, unsigned int force)
 {
 	int rv;
 
 	rv = spawn_umount(ap->logopt, path, NULL);
 	/* We are doing a forced shutcwdown down so unlink busy mounts */
-	if (rv && (ap->state == ST_SHUTDOWN_FORCE || ap->state == ST_SHUTDOWN)) {
-		if (ap->state == ST_SHUTDOWN_FORCE) {
+	if (rv && (force || 
+		  (ap->state == ST_SHUTDOWN_FORCE ||
+		   ap->state == ST_SHUTDOWN))) {
+		if (force || ap->state == ST_SHUTDOWN_FORCE) {
 			info(ap->logopt, "forcing umount of %s", path);
 			rv = spawn_umount(ap->logopt, "-l", path, NULL);
 		}
@@ -1766,7 +1768,7 @@ int umount_multi_triggers(struct autofs_point *ap, struct mapent *me, char *root
 		 */
 		if (is_mounted(_PATH_MOUNTED, root, MNTS_REAL)) {
 			info(ap->logopt, "unmounting dir = %s", root);
-			if (umount_ent(ap, root)) {
+			if (umount_ent(ap, root, 0)) {
 				if (mount_multi_triggers(ap, me, root, strlen(root), "/") < 0)
 					warn(ap->logopt,
 					     "failed to remount offset triggers");
