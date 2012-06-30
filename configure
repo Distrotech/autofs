@@ -719,7 +719,6 @@ with_openldap
 with_sasl
 enable_ext_env
 enable_mount_locking
-enable_mount_move
 enable_forced_shutdown
 enable_ignore_busy
 '
@@ -1343,7 +1342,6 @@ Optional Features:
   --enable-FEATURE[=ARG]  include FEATURE [ARG=yes]
   --disable-ext-env	  disable search in environment for substitution variable
   --disable-mount-locking disable use of locking when spawning mount command
-  --disable-mount-move    disable use of mount move when when preparing tree of mounts
   --enable-force-shutdown enable USR1 signal to force unlink umount of any
 			  busy mounts during shutdown
   --enable-ignore-busy	  enable exit without umounting busy mounts during
@@ -5444,22 +5442,6 @@ fi
 if test x$enable_mount_locking = xyes -o x$enableval = xyes; then
 
 $as_echo "#define ENABLE_MOUNT_LOCKING 1" >>confdefs.h
-
-fi
-
-#
-# Disable use of mount move
-#
-# Check whether --enable-mount-move was given.
-if test "${enable_mount_move+set}" = set; then :
-  enableval=$enable_mount_move;
-else
-  enableval=yes
-fi
-
-if test x$enable_mount_move = xyes -o x$enableval = xyes; then
-
-$as_echo "#define ENABLE_MOUNT_MOVE 1" >>confdefs.h
 
 fi
 
