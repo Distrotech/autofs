@@ -362,6 +362,8 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 
 	endautomntent(ap->logopt, ctxt, &sss_ctxt);
 
+	source->age = age;
+
 	return NSS_STATUS_SUCCESS;
 }
 

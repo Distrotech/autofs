@@ -55,6 +55,7 @@
 - check if /etc/mtab is a link to /proc/self/mounts.
 - fix nfs4 contacts portmap.
 - make autofs wait longer for shutdown completion.
+- fix sss map age not updated.
 
 28/06/2011 autofs-5.0.6
 -----------------------
