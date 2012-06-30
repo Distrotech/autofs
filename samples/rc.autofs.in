@@ -91,7 +91,7 @@ function stop() {
 	while [ -n "`pidof $prog`" -a $count -lt 15 ] ; do
 		killall -TERM $prog >& /dev/null
 		RETVAL=$?
-		[ $RETVAL = 0 -a -z "`pidof $prog`" ] || sleep 3
+		[ $RETVAL = 0 -a -z "`pidof $prog`" ] || sleep 20
 		count=`expr $count + 1`
 	done
 	if [ -z "`pidof $prog`" ] ; then
@@ -104,6 +104,9 @@ function stop() {
 
 function restart() {
 	stop
+	while [ -n "`pidof $prog`" ] ; do
+		sleep 5
+	done
 	start
 }
 

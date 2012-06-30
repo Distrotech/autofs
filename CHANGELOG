@@ -54,6 +54,7 @@
 - fix libtirpc name clash.
 - check if /etc/mtab is a link to /proc/self/mounts.
 - fix nfs4 contacts portmap.
+- make autofs wait longer for shutdown completion.
 
 28/06/2011 autofs-5.0.6
 -----------------------

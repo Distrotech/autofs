@@ -108,7 +108,7 @@ function stop() {
 	while [ -n "`pidof $prog`" -a $count -lt 15 ] ; do
 		killproc $prog -TERM >& /dev/null
 		RETVAL=$?
-		[ $RETVAL = 0 -a -z "`pidof $prog`" ] || sleep 3
+		[ $RETVAL = 0 -a -z "`pidof $prog`" ] || sleep 20
 		count=`expr $count + 1`
 	done
 	if [ $RETVAL -eq 0 ]; then
@@ -129,6 +129,9 @@ function restart() {
 	status autofs > /dev/null 2>&1
 	if [ $? -eq 0 ]; then
 		stop
+		while [ -n "`pidof $prog`" ] ; do
+			sleep 5
+		done
 	fi
 	start
 }
