@@ -843,12 +843,17 @@ add_offset_entry(struct autofs_point *ap, const char *name,
 		strcpy(m_mapent, loc);
 
 	ret = cache_add_offset(mc, name, m_key, m_mapent, age);
-	if (ret == CHE_OK)
+	if (ret == CHE_DUPLICATE)
+		warn(ap->logopt, MODPREFIX
+		     "syntax error or duplicate offset %s -> %s", path, loc);
+	else if (ret == CHE_FAIL)
+		debug(ap->logopt, MODPREFIX
+		      "failed to add multi-mount offset %s -> %s", path, m_mapent);
+	else {
+		ret = CHE_OK;
 		debug(ap->logopt, MODPREFIX
 		      "added multi-mount offset %s -> %s", path, m_mapent);
-	else
-		warn(ap->logopt, MODPREFIX
-		      "syntax error or duplicate offset %s -> %s", path, loc);
+	}
 
 	return ret;
 }
@@ -1410,7 +1415,7 @@ int parse_mount(struct autofs_point *ap, const char *name,
 	char buf[MAX_ERR_BUF];
 	struct map_source *source;
 	struct mapent_cache *mc;
-	struct mapent *me = NULL;
+	struct mapent *me;
 	char *pmapent, *options;
 	const char *p;
 	int mapent_len, rv = 0;
@@ -1561,33 +1566,28 @@ int parse_mount(struct autofs_point *ap, const char *name,
 			strcat(m_root, name);
 		}
 
-		cache_writelock(mc);
-		me = cache_lookup_distinct(mc, name);
-		if (!me) {
-			int ret;
-			/*
-			 * Not in the cache, perhaps it's a program map
-			 * or one that doesn't support enumeration
-			 */
-			ret = cache_add(mc, source, name, mapent, time(NULL));
-			if (ret == CHE_FAIL) {
-				cache_unlock(mc);
-				free(options);
-				return 1;
+		/*
+		 * Can't take the write lock for direct mount entries here
+		 * but they should always be present in the map entry cache.
+		 */
+		if (ap->type == LKP_INDIRECT) {
+			cache_writelock(mc);
+			me = cache_lookup_distinct(mc, name);
+			if (!me) {
+				int ret;
+				/*
+				 * Not in the cache, perhaps it's a program map
+				 * or one that doesn't support enumeration.
+				 */
+				ret = cache_add(mc, source, name, mapent, age);
+				if (ret == CHE_FAIL) {
+					cache_unlock(mc);
+					free(options);
+					return 1;
+				}
 			}
-		} else {
-			/*
-			 * If the entry exists it must not have any existing
-			 * multi-mount subordinate entries since we are
-			 * mounting this afresh. We need to do this to allow
-			 * us to fail on the check for duplicate offsets in
-			 * we don't know when submounts go away.
-			 */
-			cache_multi_writelock(me);
-			cache_delete_offset_list(mc, name);
-			cache_multi_unlock(me);
+			cache_unlock(mc);
 		}
-		cache_unlock(mc);
 
 		cache_readlock(mc);
 		me = cache_lookup_distinct(mc, name);
