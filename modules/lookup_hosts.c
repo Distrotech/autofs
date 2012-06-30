@@ -78,6 +78,94 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 	return NSS_STATUS_UNKNOWN;
 }
 
+static char *get_exports(struct autofs_point *ap, const char *host)
+{
+	char *mapent = NULL;
+	exports exp;
+
+	debug(ap->logopt, MODPREFIX "fetchng export list for %s", name);
+
+	exp = rpc_get_exports(host, 10, 0, RPC_CLOSE_NOLINGER);
+
+	mapent = NULL;
+	while (exp) {
+		if (mapent) {
+			int len = strlen(mapent) + 1;
+
+			len += strlen(name) + 2*(strlen(exp->ex_dir) + 2) + 3;
+			mapent = realloc(mapent, len);
+			if (!mapent) {
+				char *estr;
+				estr = strerror_r(errno, buf, MAX_ERR_BUF);
+				error(ap->logopt, MODPREFIX "malloc: %s", estr);
+				rpc_exports_free(exp);
+				return NSS_STATUS_UNAVAIL;
+			}
+			strcat(mapent, " \"");
+			strcat(mapent, exp->ex_dir);
+			strcat(mapent, "\"");
+		} else {
+			int len = 2*(strlen(exp->ex_dir) + 2) + strlen(name) + 3;
+
+			mapent = malloc(len);
+			if (!mapent) {
+				char *estr;
+				estr = strerror_r(errno, buf, MAX_ERR_BUF);
+				error(ap->logopt, MODPREFIX "malloc: %s", estr);
+				rpc_exports_free(exp);
+				return NSS_STATUS_UNAVAIL;
+			}
+			strcpy(mapent, "\"");
+			strcat(mapent, exp->ex_dir);
+			strcat(mapent, "\"");
+		}
+		strcat(mapent, " \"");
+		strcat(mapent, name);
+		strcat(mapent, ":");
+		strcat(mapent, exp->ex_dir);
+		strcat(mapent, "\"");
+
+		exp = exp->ex_next;
+	}
+	rpc_exports_free(exp);
+
+	if (!mapent)
+		error(ap->logopt, "exports lookup failed for %s", name);
+
+	return mapent;
+}
+
+static int do_parse_mount(struct autofs_point *ap,
+			  const char *name, int name_len, char *mapent,
+			  void *context)
+{
+	int ret;
+
+	master_source_current_wait(ap->entry);
+	ap->entry->current = source;
+
+	ret = ctxt->parse->parse_mount(ap, name, name_len,
+				 mapent, ctxt->parse->context);
+	if (ret) {
+		time_t now = time(NULL);
+		struct mapent_cache *mc = source->mc;
+		struct mapent *me;
+		int rv = CHE_OK;
+
+		cache_writelock(mc);
+		me = cache_lookup_distinct(mc, name);
+		if (!me)
+			rv = cache_update(mc, source, name, NULL, now);
+		if (rv != CHE_FAIL) {
+			me = cache_lookup_distinct(mc, name);
+			me->status = now + ap->negative_timeout;
+		}
+		cache_unlock(mc);
+		return NSS_STATUS_TRYAGAIN;
+	}
+	return NSS_STATUS_SUCCESS;
+}
+
 int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 {
 	struct map_source *source;
@@ -209,126 +297,34 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 	if (*name == '/') {
 		pthread_cleanup_push(cache_lock_cleanup, mc);
 		mapent_len = strlen(me->mapent);
-		mapent = alloca(mapent_len + 1);
+		mapent = malloc(mapent_len + 1);
 		if (mapent)
 			strcpy(mapent, me->mapent);
 		pthread_cleanup_pop(0);
 	}
 	cache_unlock(mc);
 
-	if (mapent) {
-		master_source_current_wait(ap->entry);
-		ap->entry->current = source;
-
-		debug(ap->logopt, MODPREFIX "%s -> %s", name, me->mapent);
-
-		ret = ctxt->parse->parse_mount(ap, name, name_len,
-				 mapent, ctxt->parse->context);
-
-		if (ret) {
-			time_t now = time(NULL);
-			int rv = CHE_OK;
-
-			cache_writelock(mc);
-			me = cache_lookup_distinct(mc, name);
-			if (!me)
-				rv = cache_update(mc, source, name, NULL, now);
-			if (rv != CHE_FAIL) {
-				me = cache_lookup_distinct(mc, name);
-				me->status = now + ap->negative_timeout;
-			}
-			cache_unlock(mc);
-			return NSS_STATUS_TRYAGAIN;
-		}
-		return NSS_STATUS_SUCCESS;
-	}
 done:
-	/*
-	 * Otherwise we need to get the exports list and add update
-	 * the cache.
-	 */
-	debug(ap->logopt, MODPREFIX "fetchng export list for %s", name);
-
-	exp = rpc_get_exports(name, 10, 0, RPC_CLOSE_NOLINGER);
-
-	mapent = NULL;
-	while (exp) {
-		if (mapent) {
-			int len = strlen(mapent) + 1;
-
-			len += strlen(name) + 2*(strlen(exp->ex_dir) + 2) + 3;
-			mapent = realloc(mapent, len);
-			if (!mapent) {
-				char *estr;
-				estr = strerror_r(errno, buf, MAX_ERR_BUF);
-				logerr(MODPREFIX "malloc: %s", estr);
-				rpc_exports_free(exp);
-				return NSS_STATUS_UNAVAIL;
-			}
-			strcat(mapent, " \"");
-			strcat(mapent, exp->ex_dir);
-			strcat(mapent, "\"");
-		} else {
-			int len = 2*(strlen(exp->ex_dir) + 2) + strlen(name) + 3;
-
-			mapent = malloc(len);
-			if (!mapent) {
-				char *estr;
-				estr = strerror_r(errno, buf, MAX_ERR_BUF);
-				logerr(MODPREFIX "malloc: %s", estr);
-				rpc_exports_free(exp);
-				return NSS_STATUS_UNAVAIL;
-			}
-			strcpy(mapent, "\"");
-			strcat(mapent, exp->ex_dir);
-			strcat(mapent, "\"");
-		}
-		strcat(mapent, " \"");
-		strcat(mapent, name);
-		strcat(mapent, ":");
-		strcat(mapent, exp->ex_dir);
-		strcat(mapent, "\"");
-
-		exp = exp->ex_next;
-	}
-	rpc_exports_free(exp);
-
-	/* Exports lookup failed so we're outa here */
-	if (!mapent) {
-		error(ap->logopt, "exports lookup failed for %s", name);
-		return NSS_STATUS_UNAVAIL;
-	}
-
 	debug(ap->logopt, MODPREFIX "%s -> %s", name, mapent);
 
-	cache_writelock(mc);
-	cache_update(mc, source, name, mapent, now);
-	cache_unlock(mc);
+	if (!mapent) {
+		/* We need to get the exports list and update the cache. */
+		mapent = get_exports(ap, name);
 
-	master_source_current_wait(ap->entry);
-	ap->entry->current = source;
-
-	ret = ctxt->parse->parse_mount(ap, name, name_len,
-				 mapent, ctxt->parse->context);
-	free(mapent);
-
-	if (ret) {
-		time_t now = time(NULL);
-		int rv = CHE_OK;
+		/* Exports lookup failed so we're outa here */
+		if (!mapent)
+			return NSS_STATUS_UNAVAIL;
 
 		cache_writelock(mc);
-		me = cache_lookup_distinct(mc, name);
-		if (!me)
-			rv = cache_update(mc, source, name, NULL, now);
-		if (rv != CHE_FAIL) {
-			me = cache_lookup_distinct(mc, name);
-			me->status = now + ap->negative_timeout;
-		}
+		cache_update(mc, source, name, mapent, now);
 		cache_unlock(mc);
-		return NSS_STATUS_TRYAGAIN;
 	}
 
-	return NSS_STATUS_SUCCESS;
+	ret = do_parse_mount(ap, name, name_len, mapent, ctxt->parse->context);
+
+	free(mapent);
+
+	return ret;
 }
 
 int lookup_done(void *context)
