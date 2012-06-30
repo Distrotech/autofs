@@ -633,13 +633,6 @@ force_umount:
 	} else
 		info(ap->logopt, "umounted offset mount %s", me->key);
 
-	if (!rv && me->flags & MOUNT_FLAG_DIR_CREATED) {
-		if  (rmdir(me->key) == -1) {
-			char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-			warn(ap->logopt, "failed to remove dir %s: %s",
-			     me->key, estr);
-		}
-	}
 	return rv;
 }
 

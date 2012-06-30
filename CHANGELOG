@@ -58,6 +58,7 @@
 - fix sss map age not updated.
 - fix remount deadlock.
 - fix umount recovery of busy direct mount.
+- fix offset mount point directory removal.
 
 28/06/2011 autofs-5.0.6
 -----------------------
