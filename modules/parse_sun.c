@@ -781,10 +781,10 @@ static int check_is_multi(const char *mapent)
 }
 
 static int
-add_offset_entry(struct autofs_point *ap, const char *name,
-		 const char *m_root, int m_root_len,
-		 const char *path, const char *myoptions, const char *loc,
-		 time_t age)
+update_offset_entry(struct autofs_point *ap, const char *name,
+		    const char *m_root, int m_root_len,
+		    const char *path, const char *myoptions, const char *loc,
+		    time_t age)
 {
 	struct map_source *source;
 	struct mapent_cache *mc;
@@ -838,17 +838,17 @@ add_offset_entry(struct autofs_point *ap, const char *name,
 	} else
 		strcpy(m_mapent, loc);
 
-	ret = cache_add_offset(mc, name, m_key, m_mapent, age);
+	ret = cache_update_offset(mc, name, m_key, m_mapent, age);
 	if (ret == CHE_DUPLICATE)
 		warn(ap->logopt, MODPREFIX
 		     "syntax error or duplicate offset %s -> %s", path, loc);
 	else if (ret == CHE_FAIL)
 		debug(ap->logopt, MODPREFIX
-		      "failed to add multi-mount offset %s -> %s", path, m_mapent);
+		      "failed to update multi-mount offset %s -> %s", path, m_mapent);
 	else {
 		ret = CHE_OK;
 		debug(ap->logopt, MODPREFIX
-		      "added multi-mount offset %s -> %s", path, m_mapent);
+		      "updated multi-mount offset %s -> %s", path, m_mapent);
 	}
 
 	return ret;
@@ -1448,9 +1448,9 @@ int parse_mount(struct autofs_point *ap, const char *name,
 			master_source_current_wait(ap->entry);
 			ap->entry->current = source;
 
-			status = add_offset_entry(ap, name,
-						m_root, m_root_len,
-						path, myoptions, loc, age);
+			status = update_offset_entry(ap, name,
+						     m_root, m_root_len,
+						     path, myoptions, loc, age);
 
 			if (status != CHE_OK) {
 				warn(ap->logopt, MODPREFIX "error adding multi-mount");

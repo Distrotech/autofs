@@ -647,7 +647,7 @@ static void cache_add_ordered_offset(struct mapent *me, struct list_head *head)
 }
 
 /* cache must be write locked by caller */
-int cache_add_offset(struct mapent_cache *mc, const char *mkey, const char *key, const char *mapent, time_t age)
+int cache_update_offset(struct mapent_cache *mc, const char *mkey, const char *key, const char *mapent, time_t age)
 {
 	unsigned logopt = mc->ap ? mc->ap->logopt : master_get_logopt();
 	struct mapent *me, *owner;
@@ -659,7 +659,7 @@ int cache_add_offset(struct mapent_cache *mc, const char *mkey, const char *key,
 
 	me = cache_lookup_distinct(mc, key);
 	if (me && me->age == age) {
-		if (me != owner)
+		if (me->multi != owner)
 			return CHE_DUPLICATE;
 	}
 
