@@ -1355,7 +1355,7 @@ int parse_mount(struct autofs_point *ap, const char *name,
 	if (check_is_multi(p)) {
 		char *m_root = NULL;
 		int m_root_len;
-		time_t age = time(NULL);
+		time_t age;
 		int l;
 
 		/* If name starts with "/" it's a direct mount */
@@ -1398,6 +1398,8 @@ int parse_mount(struct autofs_point *ap, const char *name,
 			      MODPREFIX "can't find multi root %s", name);
 			return 1;
 		}
+
+		age = me->age;
 
 		pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cur_state);
 		cache_multi_writelock(me);
@@ -1472,8 +1474,11 @@ int parse_mount(struct autofs_point *ap, const char *name,
 
 		/*
 		 * We've got the ordered list of multi-mount entries so go
-		 * through and set the parent entry of each
+		 * through and remove any stale entries if this is the top
+		 * of the multi-mount and set the parent entry of each.
 		 */
+		if (me == me->multi)
+			clean_stale_multi_triggers(ap, me, NULL, NULL);
 		cache_set_parents(me);
 
 		rv = mount_subtree(ap, me, name, NULL, options, ctxt);

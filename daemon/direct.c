@@ -654,7 +654,9 @@ int mount_autofs_offset(struct autofs_point *ap, struct mapent *me, const char *
 		ret = try_remount(ap, me, t_offset);
 		if (ret == 1)
 			return MOUNT_OFFSET_OK;
-		return MOUNT_OFFSET_FAIL;
+		/* Offset mount not found, fall thru and try to mount it */
+		if (!(ret == -1 && errno == ENOENT))
+			return MOUNT_OFFSET_FAIL;
 	} else {
 /*
 		if (is_mounted(_PROC_MOUNTS, me->key, MNTS_AUTOFS)) {

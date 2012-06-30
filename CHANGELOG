@@ -61,6 +61,7 @@
 - fix offset mount point directory removal.
 - fix remount of multi mount.
 - fix devce ioctl alloc path check.
+- add hup signal handling to hosts map.
 
 28/06/2011 autofs-5.0.6
 -----------------------

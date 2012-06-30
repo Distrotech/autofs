@@ -80,10 +80,11 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 
 static char *get_exports(struct autofs_point *ap, const char *host)
 {
-	char *mapent = NULL;
+	char buf[MAX_ERR_BUF];
+	char *mapent;
 	exports exp;
 
-	debug(ap->logopt, MODPREFIX "fetchng export list for %s", name);
+	debug(ap->logopt, MODPREFIX "fetchng export list for %s", host);
 
 	exp = rpc_get_exports(host, 10, 0, RPC_CLOSE_NOLINGER);
 
@@ -92,20 +93,20 @@ static char *get_exports(struct autofs_point *ap, const char *host)
 		if (mapent) {
 			int len = strlen(mapent) + 1;
 
-			len += strlen(name) + 2*(strlen(exp->ex_dir) + 2) + 3;
+			len += strlen(host) + 2*(strlen(exp->ex_dir) + 2) + 3;
 			mapent = realloc(mapent, len);
 			if (!mapent) {
 				char *estr;
 				estr = strerror_r(errno, buf, MAX_ERR_BUF);
 				error(ap->logopt, MODPREFIX "malloc: %s", estr);
 				rpc_exports_free(exp);
-				return NSS_STATUS_UNAVAIL;
+				return NULL;
 			}
 			strcat(mapent, " \"");
 			strcat(mapent, exp->ex_dir);
 			strcat(mapent, "\"");
 		} else {
-			int len = 2*(strlen(exp->ex_dir) + 2) + strlen(name) + 3;
+			int len = 2*(strlen(exp->ex_dir) + 2) + strlen(host) + 3;
 
 			mapent = malloc(len);
 			if (!mapent) {
@@ -113,14 +114,14 @@ static char *get_exports(struct autofs_point *ap, const char *host)
 				estr = strerror_r(errno, buf, MAX_ERR_BUF);
 				error(ap->logopt, MODPREFIX "malloc: %s", estr);
 				rpc_exports_free(exp);
-				return NSS_STATUS_UNAVAIL;
+				return NULL;
 			}
 			strcpy(mapent, "\"");
 			strcat(mapent, exp->ex_dir);
 			strcat(mapent, "\"");
 		}
 		strcat(mapent, " \"");
-		strcat(mapent, name);
+		strcat(mapent, host);
 		strcat(mapent, ":");
 		strcat(mapent, exp->ex_dir);
 		strcat(mapent, "\"");
@@ -130,14 +131,14 @@ static char *get_exports(struct autofs_point *ap, const char *host)
 	rpc_exports_free(exp);
 
 	if (!mapent)
-		error(ap->logopt, "exports lookup failed for %s", name);
+		error(ap->logopt, MODPREFIX "exports lookup failed for %s", host);
 
 	return mapent;
 }
 
-static int do_parse_mount(struct autofs_point *ap,
+static int do_parse_mount(struct autofs_point *ap, struct map_source *source,
 			  const char *name, int name_len, char *mapent,
-			  void *context)
+			  struct lookup_context *ctxt)
 {
 	int ret;
 
@@ -166,8 +167,68 @@ static int do_parse_mount(struct autofs_point *ap,
 	return NSS_STATUS_SUCCESS;
 }
 
+static int update_hosts_mounts(struct autofs_point *ap,
+			       struct map_source *source, time_t age,
+			       struct lookup_context *ctxt)
+{
+	struct mapent_cache *mc;
+	struct mapent *me;
+	char *mapent;
+	int ret;
+
+	mc = source->mc;
+
+	pthread_cleanup_push(cache_lock_cleanup, mc);
+	cache_writelock(mc);
+	me = cache_lookup_first(mc);
+	while (me) {
+		/* Hosts map entry not yet expanded or already expired */
+		if (!me->multi)
+			goto next;
+
+		debug(ap->logopt, MODPREFIX "get list of exports for %s", me->key);
+
+		mapent = get_exports(ap, me->key);
+		if (mapent) {
+			cache_update(mc, source, me->key, mapent, age);
+			free(mapent);
+		}
+next:
+		me = cache_lookup_next(mc, me);
+	}	
+	pthread_cleanup_pop(1);
+
+	pthread_cleanup_push(cache_lock_cleanup, mc);
+	cache_readlock(mc);
+	me = cache_lookup_first(mc);
+	while (me) {
+		/*
+		 * Hosts map entry not yet expanded, already expired
+		 * or not the base of the tree
+		 */
+		if (!me->multi || me->multi != me)
+			goto cont;
+
+		debug(ap->logopt, MODPREFIX
+		      "attempt to update exports for exports for %s", me->key);
+
+		master_source_current_wait(ap->entry);
+		ap->entry->current = source;
+		ap->flags |= MOUNT_FLAG_REMOUNT;
+		ret = ctxt->parse->parse_mount(ap, me->key, strlen(me->key),
+					       me->mapent, ctxt->parse->context);
+		ap->flags &= ~MOUNT_FLAG_REMOUNT;
+cont:
+		me = cache_lookup_next(mc, me);
+	}
+	pthread_cleanup_pop(1);
+
+	return NSS_STATUS_SUCCESS;
+}
+
 int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 {
+	struct lookup_context *ctxt = (struct lookup_context *) context;
 	struct map_source *source;
 	struct mapent_cache *mc;
 	struct hostent *host;
@@ -177,17 +238,22 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 	ap->entry->current = NULL;
 	master_source_current_signal(ap->entry);
 
+	mc = source->mc;
+
+	debug(ap->logopt, MODPREFIX "read hosts map");
+
 	/*
 	 * If we don't need to create directories then there's no use
 	 * reading the map. We always need to read the whole map for
 	 * direct mounts in order to mount the triggers.
 	 */
 	if (!(ap->flags & MOUNT_FLAG_GHOST) && ap->type != LKP_DIRECT) {
-		debug(ap->logopt, "map read not needed, so not done");
+		debug(ap->logopt, MODPREFIX
+		      "map not browsable, update existing host entries only");
+		update_hosts_mounts(ap, source, age, ctxt);
+		source->age = age;
 		return NSS_STATUS_SUCCESS;
 	}
-
-	mc = source->mc;
 
 	status = pthread_mutex_lock(&hostent_mutex);
 	if (status) {
@@ -209,6 +275,7 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 	if (status)
 		error(ap->logopt, MODPREFIX "failed to unlock hostent mutex");
 
+	update_hosts_mounts(ap, source, age, ctxt);
 	source->age = age;
 
 	return NSS_STATUS_SUCCESS;
@@ -220,11 +287,9 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 	struct map_source *source;
 	struct mapent_cache *mc;
 	struct mapent *me;
-	char buf[MAX_ERR_BUF];
 	char *mapent = NULL;
 	int mapent_len;
 	time_t now = time(NULL);
-	exports exp;
 	int ret;
 
 	source = ap->entry->current;
@@ -320,7 +385,7 @@ done:
 		cache_unlock(mc);
 	}
 
-	ret = do_parse_mount(ap, name, name_len, mapent, ctxt->parse->context);
+	ret = do_parse_mount(ap, source, name, name_len, mapent, ctxt);
 
 	free(mapent);
 

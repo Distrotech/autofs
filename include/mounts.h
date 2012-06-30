@@ -112,5 +112,6 @@ int try_remount(struct autofs_point *, struct mapent *, unsigned int);
 int umount_ent(struct autofs_point *, const char *);
 int mount_multi_triggers(struct autofs_point *, struct mapent *, const char *, unsigned int, const char *);
 int umount_multi_triggers(struct autofs_point *, struct mapent *, char *, const char *);
+int clean_stale_multi_triggers(struct autofs_point *, struct mapent *, char *, const char *);
 
 #endif

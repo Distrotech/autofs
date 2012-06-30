@@ -13,10 +13,10 @@ These maps describe how file systems below the mount point of the map
 map format; if another map format is specified (e.g. \fBhesiod\fP),
 this documentation does not apply.
 
-Indirect maps can be changed on the fly and the automouter will recognize
-those changes on the next operation it performs on that map. Direct maps
-require a HUP signal be sent to the daemon to refresh their contents as does
-the master map.
+Indirect maps, except for the internal hosts map, can be changed on the fly
+and the automouter will recognize those changes on the next operation it
+performs on that map. Direct maps require a HUP signal be sent to the
+daemon to refresh their contents as does the master map.
 .SH "FORMAT"
 This is a description of the text file format.  Other methods of specifying
 these files may exist.  All empty lines or lines beginning with # are
