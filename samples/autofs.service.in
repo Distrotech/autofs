@@ -6,7 +6,7 @@ After=network.target ypbind.service
 Type=forking
 PIDFile=@@autofspiddir@@/autofs.pid
 EnvironmentFile=-@@autofsconfdir@@/autofs
-ExecStart=@@sbindir@@/automount ${OPTIONS} --pid-file @@autofspiddir@@/autofs.pid
+ExecStart=@@sbindir@@/automount $OPTIONS --pid-file @@autofspiddir@@/autofs.pid
 ExecReload=/usr/bin/kill -HUP $MAINPID
 TimeoutSec=180
 

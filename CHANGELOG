@@ -62,6 +62,7 @@
 - fix remount of multi mount.
 - fix devce ioctl alloc path check.
 - add hup signal handling to hosts map.
+- fix systemd argument passing.
 
 28/06/2011 autofs-5.0.6
 -----------------------
