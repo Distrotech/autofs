@@ -63,6 +63,7 @@
 - fix devce ioctl alloc path check.
 - add hup signal handling to hosts map.
 - fix systemd argument passing.
+- fix get_nfs_info() can incorrectly fail.
 
 28/06/2011 autofs-5.0.6
 -----------------------

@@ -769,7 +769,7 @@ static int get_vers_and_cost(unsigned logopt, struct host *host,
 		supported = get_nfs_info(logopt, host,
 				   &pm_info, &rpc_info, "udp", vers, options);
 		if (IS_ERR(supported)) {
-			if (ERR(supported) == ETIMEDOUT)
+			if (!ret && ERR(supported) == ETIMEDOUT)
 				return ret;
 		} else if (supported) {
 			ret = 1;
