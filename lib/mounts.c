@@ -1687,6 +1687,41 @@ cont:
 	return mounted;
 }
 
+static int rmdir_path_offset(struct autofs_point *ap, struct mapent *oe)
+{
+	char *dir, *path;
+	unsigned int split;
+	int ret;
+
+	if (ap->type == LKP_DIRECT)
+		return rmdir_path(ap, oe->key, oe->multi->dev);
+
+	dir = strdup(oe->key);
+
+	if (ap->flags & MOUNT_FLAG_GHOST)
+		split = strlen(ap->path) + strlen(oe->multi->key) + 1;
+	else
+		split = strlen(ap->path);
+
+	dir[split] = '\0';
+	path = &dir[split + 1];
+
+	if (chdir(dir) == -1) {
+		error(ap->logopt, "failed to chdir to %s", dir);
+		free(dir);
+		return -1;
+	}
+
+	ret = rmdir_path(ap, path, ap->dev);
+
+	free(dir);
+
+	if (chdir("/") == -1)
+		error(ap->logopt, "failed to chdir to /");
+
+	return ret;
+}
+
 int umount_multi_triggers(struct autofs_point *ap, struct mapent *me, char *root, const char *base)
 {
 	char path[PATH_MAX + 1];
@@ -1748,11 +1783,13 @@ int umount_multi_triggers(struct autofs_point *ap, struct mapent *me, char *root
 			 * ok so only try and remount the offset if the
 			 * actual mount point still exists.
 			 */
-			ret = rmdir_path(ap, oe->key, ap->dev);
+			ret = rmdir_path_offset(ap, oe);
 			if (ret == -1 && !stat(oe->key, &st)) {
 				ret = do_mount_autofs_offset(ap, oe, root, offset);
 				if (ret)
 					left++;
+				/* But we did origianlly create this */
+				oe->flags |= MOUNT_FLAG_DIR_CREATED;
 			}
 		}
 	}
@@ -1914,11 +1951,13 @@ int clean_stale_multi_triggers(struct autofs_point *ap,
 			 * ok so only try and remount the offset if the
 			 * actual mount point still exists.
 			 */
-			ret = rmdir_path(ap, oe->key, ap->dev);
+			ret = rmdir_path_offset(ap, oe);
 			if (ret == -1 && !stat(oe->key, &st)) {
 				ret = do_mount_autofs_offset(ap, oe, root, offset);
 				if (ret) {
 					left++;
+					/* But we did origianlly create this */
+					oe->flags |= MOUNT_FLAG_DIR_CREATED;
 					free(key);
 					continue;
 				}
