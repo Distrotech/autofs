@@ -1436,7 +1436,7 @@ static int remount_active_mount(struct autofs_point *ap,
 
 	/* Re-reading the map, set timeout and return */
 	if (ap->state == ST_READMAP) {
-		debug(ap->logopt, "already mounted, update timeout"); 
+		debug(ap->logopt, "already mounted, update timeout");
 		ops->timeout(ap->logopt, fd, timeout);
 		ops->close(ap->logopt, fd);
 		return REMOUNT_READ_MAP;

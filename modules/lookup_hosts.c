@@ -195,7 +195,7 @@ static int update_hosts_mounts(struct autofs_point *ap,
 		}
 next:
 		me = cache_lookup_next(mc, me);
-	}	
+	}
 	pthread_cleanup_pop(1);
 
 	pthread_cleanup_push(cache_lock_cleanup, mc);
