@@ -66,6 +66,7 @@
 - fix get_nfs_info() can incorrectly fail.
 - fix offset directory removal.
 - check negative cache much earlier.
+- dont use pthread_rwlock_tryrdlock().
 
 28/06/2011 autofs-5.0.6
 -----------------------
