@@ -65,6 +65,7 @@
 - fix systemd argument passing.
 - fix get_nfs_info() can incorrectly fail.
 - fix offset directory removal.
+- fix ldap handling of backslash in key.
 
 28/06/2011 autofs-5.0.6
 -----------------------

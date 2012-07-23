@@ -2460,6 +2460,39 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 	return ret;
 }
 
+static char *quote_backslash(char *qKey)
+{
+	char *p = qKey;
+	char *q, *key;
+	unsigned int len = strlen(qKey);
+
+	while (*p++) {
+		if (!*p)
+			break;
+		if (*p != '\\' && *(p - 1) == '\\')
+			len++;
+	}
+
+	key = malloc(len + 1);
+	if (!key)
+		return NULL;
+
+	p = qKey;
+	q = key;
+	while (*p) {
+		if (!*(p + 1))
+			goto cont;
+		if (*(p + 1) != '\\' && *p == '\\') {
+			*q++ = '\\';
+		}
+cont:
+		*q++ = *p++;
+	}
+	*q = '\0';
+
+	return key;
+}
+
 static int lookup_one(struct autofs_point *ap,
 		char *qKey, int qKey_len, struct lookup_context *ctxt)
 {
@@ -2468,7 +2501,7 @@ static int lookup_one(struct autofs_point *ap,
 	int rv, i, l, ql, count;
 	char buf[MAX_ERR_BUF];
 	time_t age = time(NULL);
-	char *query;
+	char *key, *query;
 	LDAPMessage *result = NULL, *e;
 	char *class, *info, *entry;
 	char *enc_key1, *enc_key2;
@@ -2527,8 +2560,15 @@ static int lookup_one(struct autofs_point *ap,
 		}
 	}
 
+	key = quote_backslash(qKey);
+	if (!key) {
+		char *estr = strerror_r(errno, buf, sizeof(buf));
+		crit(ap->logopt, MODPREFIX "malloc: %s", estr);
+		return CHE_FAIL;
+	}
+
 	/* Build a query string. */
-	l = strlen(class) + 3*strlen(entry) + strlen(qKey) + 35;
+	l = strlen(class) + 3*strlen(entry) + strlen(key) + 35;
 	if (enc_len1)
 		l += 2*strlen(entry) + enc_len1 + enc_len2 + 6;
 
@@ -2541,6 +2581,7 @@ static int lookup_one(struct autofs_point *ap,
 			free(enc_key2);
 		}
 		free(query);
+		free(key);
 		return CHE_FAIL;
 	}
 
@@ -2551,13 +2592,13 @@ static int lookup_one(struct autofs_point *ap,
 	if (!enc_len1) {
 		ql = sprintf(query,
 			"(&(objectclass=%s)(|(%s=%s)(%s=/)(%s=\\2A)))",
-			class, entry, qKey, entry, entry);
+			class, entry, key, entry, entry);
 	} else {
 		if (enc_len2) {
 			ql = sprintf(query,
 				"(&(objectclass=%s)"
 				"(|(%s=%s)(%s=%s)(%s=%s)(%s=/)(%s=\\2A)))",
-				class, entry, qKey,
+				class, entry, key,
 				entry, enc_key1, entry, enc_key2, entry, entry);
 			free(enc_key1);
 			free(enc_key2);
@@ -2565,7 +2606,7 @@ static int lookup_one(struct autofs_point *ap,
 			ql = sprintf(query,
 				"(&(objectclass=%s)"
 				"(|(%s=%s)(%s=%s)(%s=/)(%s=\\2A)))",
-				class, entry, qKey, entry, enc_key1, entry, entry);
+				class, entry, key, entry, enc_key1, entry, entry);
 			free(enc_key1);
 		}
 	}
@@ -2573,6 +2614,7 @@ static int lookup_one(struct autofs_point *ap,
 		error(ap->logopt,
 		      MODPREFIX "error forming query string");
 		free(query);
+		free(key);
 		return CHE_FAIL;
 	}
 
@@ -2587,11 +2629,14 @@ static int lookup_one(struct autofs_point *ap,
 		if (result)
 			ldap_msgfree(result);
 		free(query);
+		free(key);
 		return CHE_FAIL;
 	}
 
 	debug(ap->logopt,
-	      MODPREFIX "getting first entry for %s=\"%s\"", entry, qKey);
+	      MODPREFIX "getting first entry for %s=\"%s\"", entry, key);
+
+	free(key);
 
 	e = ldap_first_entry(ldap, result);
 	if (!e) {
