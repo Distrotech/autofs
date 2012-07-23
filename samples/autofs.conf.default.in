@@ -14,7 +14,7 @@ TIMEOUT=300
 #
 #NEGATIVE_TIMEOUT=60
 #
-# MOUNT_WAIT - time to wait for a response from umount(8).
+# MOUNT_WAIT - time to wait for a response from mount(8).
 # 	       Setting this timeout can cause problems when
 # 	       mount would otherwise wait for a server that
 # 	       is temporarily unavailable, such as when it's
@@ -34,10 +34,7 @@ BROWSE_MODE="no"
 # MOUNT_NFS_DEFAULT_PROTOCOL - specify the default protocol used by
 # 			       mount.nfs(8). Since we can't identify
 # 			       the default automatically we need to
-# 			       set it in our configuration. This will
-# 			       only make a difference for replicated
-# 			       map entries as availability probing isn't
-# 			       used for single host map entries.
+# 			       set it in our configuration.
 #
 #MOUNT_NFS_DEFAULT_PROTOCOL=3
 #

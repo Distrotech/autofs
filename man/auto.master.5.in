@@ -207,8 +207,7 @@ Maps are browsable by default (program default "yes").
 .B MOUNT_NFS_DEFAULT_PROTOCOL
 Specify the default protocol used by mount.nfs(8) (program default 3). Since
 we can't identify this default automatically we need to set it in the autofs
-configuration. This option will only make a difference for replicated map
-entries as availability probing isn't used for single host map entries.
+configuration.
 .TP
 .B APPEND_OPTIONS
 Determine whether global options, given on the command line or per mount

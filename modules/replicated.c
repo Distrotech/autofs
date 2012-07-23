@@ -512,7 +512,6 @@ static unsigned int get_nfs_info(unsigned logopt, struct host *host,
 		      "called for host %s proto %s version 0x%x",
 		      host->name, proto, version);
 
-	/* Try to prode UDP first to conserve socket space */
 	rpc_info->proto = getprotobyname(proto);
 	if (!rpc_info->proto)
 		return 0;
