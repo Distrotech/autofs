@@ -63,11 +63,13 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 	struct host *this, *hosts = NULL;
 	unsigned int mount_default_proto, vers;
 	char *nfsoptions = NULL;
+	const char *port_opt = NULL;
 	unsigned int flags = ap->flags &
 			(MOUNT_FLAG_RANDOM_SELECT | MOUNT_FLAG_USE_WEIGHT_ONLY);
 	int nobind = ap->flags & MOUNT_FLAG_NOBIND;
 	int len, status, err, existed = 1;
 	int nosymlink = 0;
+	int port = -1;
 	int ro = 0;            /* Set if mount bind should be read-only */
 
 	if (ap->flags & MOUNT_FLAG_REMOUNT)
@@ -134,6 +136,17 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 				if (strncmp("vers=4", cp, o_len) == 0 ||
 				    strncmp("nfsvers=4", cp, o_len) == 0)
 					vers = NFS4_VERS_MASK | TCP_SUPPORTED;
+				else if (strstr(cp, "port=") == cp &&
+					 o_len - 5 < 25) {
+					char optport[25];
+
+					strncpy(optport, cp + 5, o_len - 5);
+					optport[o_len - 5] = '\0';
+					port = atoi(optport);
+					if (port < 0)
+						port = 0;
+					port_opt = cp;
+				}
 				/* Check for options that also make sense
 				   with bind mounts */
 				else if (strncmp("ro", cp, o_len) == 0)
@@ -153,7 +166,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 		info(ap->logopt, MODPREFIX "no hosts available");
 		return 1;
 	}
-	prune_host_list(ap->logopt, &hosts, vers, nfsoptions);
+	prune_host_list(ap->logopt, &hosts, vers, port);
 
 	if (!hosts) {
 		info(ap->logopt, MODPREFIX "no hosts available");
@@ -186,18 +199,18 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 	if (!status)
 		existed = 0;
 
+	/*
+	 * If any *port= option is specified, then we don't want
+	 * a bind mount. Use the "port" option if you want to
+	 * avoid attempting a local bind mount, such as when
+	 * tunneling NFS via localhost.
+	 */
+	if (nfsoptions && *nfsoptions && !port_opt)
+		port_opt = strstr(nfsoptions, "port=");
+
 	this = hosts;
 	while (this) {
-		char *loc, *port_opt = NULL;
-
-		/*
-		 * If the "port" option is specified, then we don't want
-		 * a bind mount. Use the "port" option if you want to
-		 * avoid attempting a local bind mount, such as when
-		 * tunneling NFS via localhost.
-		 */
-		if (nfsoptions && *nfsoptions)
-			port_opt = strstr(nfsoptions, "port=");
+		char *loc;
 
 		/* Port option specified, don't try to bind */
 		if (!(nosymlink || nobind) &&
