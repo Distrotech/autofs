@@ -77,6 +77,13 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 	      MODPREFIX "root=%s name=%s what=%s, fstype=%s, options=%s",
 	      root, name, what, fstype, options);
 
+	mount_default_proto = defaults_get_mount_nfs_default_proto();
+	vers = NFS_VERS_MASK | NFS_PROTO_MASK;
+	if (strcmp(fstype, "nfs4") == 0)
+		vers = NFS4_VERS_MASK | TCP_SUPPORTED;
+	else if (mount_default_proto == 4)
+		vers = vers | NFS4_VERS_MASK;
+
 	/* Extract "nosymlink" pseudo-option which stops local filesystems
 	 * from being symlinked.
 	 *
@@ -114,18 +121,22 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 			while (*comma == ' ' || *comma == '\t')
 				end--;
 
-			if (strncmp("nosymlink", cp, end - cp + 1) == 0) {
+			o_len = end - cp + 1;
+			if (strncmp("nosymlink", cp, o_len) == 0) {
 				nosymlink = 1;
-			} else if (strncmp("nobind", cp, end - cp + 1) == 0) {
+			} else if (strncmp("nobind", cp, o_len) == 0) {
 				nobind = 1;
-			} else if (strncmp("no-use-weight-only", cp, end - cp + 1) == 0) {
+			} else if (strncmp("no-use-weight-only", cp, o_len) == 0) {
 				flags &= ~MOUNT_FLAG_USE_WEIGHT_ONLY;
-			} else if (strncmp("use-weight-only", cp, end - cp + 1) == 0) {
+			} else if (strncmp("use-weight-only", cp, o_len) == 0) {
 				flags |= MOUNT_FLAG_USE_WEIGHT_ONLY;
 			} else {
+				if (strncmp("vers=4", cp, o_len) == 0 ||
+				    strncmp("nfsvers=4", cp, o_len) == 0)
+					vers = NFS4_VERS_MASK | TCP_SUPPORTED;
 				/* Check for options that also make sense
 				   with bind mounts */
-				if (strncmp("ro", cp, end - cp + 1) == 0)
+				else if (strncmp("ro", cp, o_len) == 0)
 					ro = 1;
 				/* and jump over trailing white space */
 				memcpy(nfsp, cp, comma - cp + 1);
@@ -137,13 +148,6 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 		      "nfs options=\"%s\", nobind=%d, nosymlink=%d, ro=%d",
 		      nfsoptions, nobind, nosymlink, ro);
 	}
-
-	mount_default_proto = defaults_get_mount_nfs_default_proto();
-	vers = NFS_VERS_MASK | NFS_PROTO_MASK;
-	if (strcmp(fstype, "nfs4") == 0)
-		vers = NFS4_VERS_MASK | TCP_SUPPORTED;
-	else if (mount_default_proto == 4)
-		vers = vers | NFS4_VERS_MASK;
 
 	if (!parse_location(ap->logopt, &hosts, what, flags)) {
 		info(ap->logopt, MODPREFIX "no hosts available");

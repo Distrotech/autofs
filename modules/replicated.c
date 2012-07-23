@@ -588,6 +588,9 @@ static unsigned int get_nfs_info(unsigned logopt, struct host *host,
 		}
 	}
 
+	if (!(version & NFS_VERS_MASK))
+		goto done_ver;
+
 v3_ver:
 	if (!(version & NFS3_REQUESTED))
 		goto v2_ver;
