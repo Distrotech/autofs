@@ -800,6 +800,7 @@ int handle_packet_missing_indirect(struct autofs_point *ap, autofs_packet_missin
 	struct pending_args *mt;
 	struct timespec wait;
 	struct timeval now;
+	struct mapent *me;
 	int status, state;
 
 	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &state);
@@ -816,6 +817,20 @@ int handle_packet_missing_indirect(struct autofs_point *ap, autofs_packet_missin
 		master_mutex_unlock();
 		pthread_setcancelstate(state, NULL);
 		return 0;
+	}
+
+	/* Check if we recorded a mount fail for this key anywhere */
+	me = lookup_source_mapent(ap, pkt->name, LKP_DISTINCT);
+	if (me) {
+		if (me->status >= time(NULL)) {
+			ops->send_fail(ap->logopt, ap->ioctlfd,
+				       pkt->wait_queue_token, -ENOENT);
+			cache_unlock(me->mc);
+			master_mutex_unlock();
+			pthread_setcancelstate(state, NULL);
+			return 0;
+		}
+		cache_unlock(me->mc);
 	}
 
 	mt = malloc(sizeof(struct pending_args));

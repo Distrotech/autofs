@@ -1327,6 +1327,7 @@ int handle_packet_missing_direct(struct autofs_point *ap, autofs_packet_missing_
 		logerr("can't find map entry for (%lu,%lu)",
 		    (unsigned long) pkt->dev, (unsigned long) pkt->ino);
 		master_source_unlock(ap->entry);
+		master_mutex_unlock();
 		pthread_setcancelstate(state, NULL);
 		return 1;
 	}
@@ -1361,6 +1362,18 @@ int handle_packet_missing_direct(struct autofs_point *ap, autofs_packet_missing_
 		master_mutex_unlock();
 		pthread_setcancelstate(state, NULL);
 		return 1;
+	}
+
+	/* Check if we recorded a mount fail for this key */
+	if (me->status >= time(NULL)) {
+		ops->send_fail(ap->logopt,
+			       ioctlfd, pkt->wait_queue_token, -ENOENT);
+		ops->close(ap->logopt, ioctlfd);
+		cache_unlock(me->mc);
+		master_source_unlock(ap->entry);
+		master_mutex_unlock();
+		pthread_setcancelstate(state, NULL);
+		return 0;
 	}
 
 	len = strlen(me->key);
