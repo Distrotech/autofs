@@ -1663,6 +1663,42 @@ int mount_multi_triggers(struct autofs_point *ap, struct mapent *me,
 		if (!oe || !oe->mapent)
 			goto cont;
 
+		/*
+		 * Normally the mount tree is constructed from the top
+		 * down and expired from the bottom up. But when trying
+		 * to update a multi-mount where an offset has been added
+		 * higher up the tree we can't mount a mount at this point
+		 * in the tree or the mounts below will become hidden.
+		 */
+		if (ap->state == ST_READMAP && ap->flags & MOUNT_FLAG_REMOUNT) {
+			struct mapent *clash;
+
+			/* No subtree below, go ahead */
+			clash = cache_partial_match(oe->mc, oe->key);
+			if (!clash)
+				goto do_mount;
+
+			/*
+			 * If this offset is already mounted we must assume
+			 * it's ok continue since we won't mount a new mount
+			 * when one already exists.
+			 */
+			if (oe->ioctlfd != -1 ||
+			    is_mounted(_PROC_MOUNTS, oe->key, MNTS_REAL))
+				goto do_mount;
+	
+			while (clash) {
+				/*
+				 * Only need one mount of any type underneath
+				 * to cause an over mount problem. We have no
+				 * choice by to ignore these.
+				 */
+				if (is_mounted(_PROC_MOUNTS, clash->key, MNTS_ALL))
+					goto cont;
+				clash = cache_partial_match_next(clash, oe->key);
+			}
+		}
+do_mount:
 		mounted += do_mount_autofs_offset(ap, oe, root, offset);
 
 		/*

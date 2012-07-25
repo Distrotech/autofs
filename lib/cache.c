@@ -548,6 +548,48 @@ struct mapent *cache_partial_match(struct mapent_cache *mc, const char *prefix)
 	return NULL;
 }
 
+/* cache must be read locked by caller */
+struct mapent *cache_partial_match_next(struct mapent *me, const char *prefix)
+{
+	struct mapent_cache *mc;
+	struct mapent *this;
+	size_t len = strlen(prefix);
+	u_int32_t hashval;
+	unsigned int i;
+
+	if (!me)
+		return NULL;
+
+	mc = me->mc;
+
+	this = me->next;
+	while (this) {
+		if (len < strlen(this->key) &&
+		    (strncmp(prefix, this->key, len) == 0) &&
+		     this->key[len] == '/')
+			return this;
+		this = this->next;
+	}
+
+	hashval = hash(me->key, mc->size) + 1;
+	if (hashval < mc->size) {
+		for (i = (unsigned int) hashval; i < mc->size; i++) {
+			this = mc->hash[i];
+			if (!this)
+				continue;
+
+			while (this) {
+				if (len < strlen(this->key) &&
+				    (strncmp(prefix, this->key, len) == 0) &&
+				     this->key[len] == '/')
+					return this;
+				this = this->next;
+			}
+		}
+	}
+	return NULL;
+}
+
 /* cache must be write locked by caller */
 int cache_add(struct mapent_cache *mc, struct map_source *ms, const char *key, const char *mapent, time_t age)
 {

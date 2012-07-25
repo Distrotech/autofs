@@ -187,6 +187,7 @@ struct mapent *cache_lookup(struct mapent_cache *mc, const char *key);
 struct mapent *cache_lookup_distinct(struct mapent_cache *mc, const char *key);
 struct mapent *cache_lookup_offset(const char *prefix, const char *offset, int start, struct list_head *head);
 struct mapent *cache_partial_match(struct mapent_cache *mc, const char *prefix);
+struct mapent *cache_partial_match_next(struct mapent *me, const char *prefix);
 int cache_add(struct mapent_cache *mc, struct map_source *ms, const char *key, const char *mapent, time_t age);
 int cache_update_offset(struct mapent_cache *mc, const char *mkey, const char *key, const char *mapent, time_t age);
 int cache_set_parents(struct mapent *mm);
