@@ -14,7 +14,7 @@
 
 Summary: A tool from automatically mounting and umounting filesystems.
 Name: autofs
-%define version 5.0.6
+%define version 5.0.7
 %define release 1
 Version: %{version}
 Release: %{release}
@@ -173,6 +173,9 @@ fi
 %dir /etc/auto.master.d
 
 %changelog
+* Wed Jul 25 2012 Ian Kent <raven@themaw.net>
+- Update package to version 5.0.7.
+
 * Tue Jun 3 2011 Ian Kent <raven@themaw.net>
 - Update package to version 5.0.6.
 
