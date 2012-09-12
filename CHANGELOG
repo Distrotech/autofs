@@ -1,3 +1,7 @@
+??/??/2012 autofs-5.0.8
+=======================
+- fix nobind sun escaped map entries.
+
 25/07/2012 autofs-5.0.7
 =======================
 - fix ipv6 name for lookup fix.
