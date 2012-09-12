@@ -4,6 +4,7 @@
 - fix use cache entry after free in lookup_prune_one_cache().
 - fix ipv6 proximity calculation.
 - fix parse buffer initialization.
+- fix typo in automount(8).
 
 25/07/2012 autofs-5.0.7
 =======================
