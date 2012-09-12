@@ -3,6 +3,7 @@
 - fix nobind sun escaped map entries.
 - fix use cache entry after free in lookup_prune_one_cache().
 - fix ipv6 proximity calculation.
+- fix parse buffer initialization.
 
 25/07/2012 autofs-5.0.7
 =======================
