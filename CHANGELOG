@@ -7,6 +7,7 @@
 - fix typo in automount(8).
 - dont wait forever to restart.
 - add timeout option description to man page.
+- fix null map entry order handling.
 
 25/07/2012 autofs-5.0.7
 =======================
