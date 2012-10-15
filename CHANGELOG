@@ -11,6 +11,7 @@
 - make description of default MOUNT_WAIT setting clear.
 - configure.in: allow cross compilation.
 - README: update mailing list subscription info.
+- allow non root user to check status.
 
 25/07/2012 autofs-5.0.7
 =======================
