@@ -167,6 +167,11 @@ server is specified in the map entry. If no server weights are given
 then each available server will be tried in the order listed, within
 proximity.
 .TP
+.I "\-t, \-\-timeout <seconds>"
+Set the expire timeout for map entries. This option can be used to
+override the global default given either on the command line
+or in the configuration.
+.TP
 .I "\-n, \-\-negative\-timeout <seconds>"
 Set the timeout for caching failed key lookups. This option can be
 used to override the global default given either on the command line
