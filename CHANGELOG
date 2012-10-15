@@ -8,6 +8,7 @@
 - dont wait forever to restart.
 - add timeout option description to man page.
 - fix null map entry order handling.
+- make description of default MOUNT_WAIT setting clear.
 
 25/07/2012 autofs-5.0.7
 =======================

@@ -18,8 +18,9 @@ TIMEOUT=300
 # 	       Setting this timeout can cause problems when
 # 	       mount would otherwise wait for a server that
 # 	       is temporarily unavailable, such as when it's
-# 	       restarting. The defailt of waiting for mount(8)
-# 	       usually results in a wait of around 3 minutes.
+# 	       restarting. The default setting (-1) of waiting
+# 	       for mount(8) usually results in a wait of around
+# 	       3 minutes.
 #
 #MOUNT_WAIT=-1
 #
