@@ -43,9 +43,20 @@ Fitzhardinge's <jeremy@goop.org> work on autofs 3. Further enhancements
 have been made by Ian Kent <raven@themaw.net>.
 
 If you use or want to help develop autofs, please join the autofs
-mailing list by visiting:
+mailing list by sending an email to:
 
-	http://linux.kernel.org/mailman/listinfo/autofs
+	majordomo@vger.kernel.org
 
-and folling the instructions there to subscribe to the autofs mailing list.
+With the body text:
+
+	subscribe autofs
+
+Once subscribed you can send patches to:
+
+	autofs@vger.kernel.org
+
+The autofs mailing list archive can be viewed on gmane:
+
+	http://news.gmane.org/gmane.linux.kernel.autofs
+	http://blog.gmane.org/gmane.linux.kernel.autofs
 

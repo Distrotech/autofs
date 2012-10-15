@@ -10,6 +10,7 @@
 - fix null map entry order handling.
 - make description of default MOUNT_WAIT setting clear.
 - configure.in: allow cross compilation.
+- README: update mailing list subscription info.
 
 25/07/2012 autofs-5.0.7
 =======================
