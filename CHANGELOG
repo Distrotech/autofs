@@ -12,6 +12,7 @@
 - configure.in: allow cross compilation.
 - README: update mailing list subscription info.
 - allow non root user to check status.
+- fix recursive mount deadlock.
 
 25/07/2012 autofs-5.0.7
 =======================
