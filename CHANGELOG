@@ -14,6 +14,7 @@
 - allow non root user to check status.
 - fix recursive mount deadlock.
 - increase file map read buffer size.
+- handle new location of systemd.
 
 25/07/2012 autofs-5.0.7
 =======================

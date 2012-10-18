@@ -234,7 +234,7 @@ AC_DEFUN([AF_WITH_SYSTEMD],
 [if test "$withval" = yes; then
   if test -z "$systemddir"; then
     AC_MSG_CHECKING([location of the systemd unit files directory])
-    for systemd_d in /lib/systemd/system; do
+    for systemd_d in /usr/lib/systemd/system /usr/lib64/systemd/system /lib/systemd/system /lib64/systemd/system; do
       if test -z "$systemddir"; then
         if test -d "$systemd_d"; then
           systemddir="$systemd_d"
