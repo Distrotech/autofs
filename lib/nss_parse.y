@@ -72,6 +72,7 @@ file: {
 		nss_debug = YYDEBUG;
 #endif
 	} sources NL
+	| /* empty */
 	;
 
 sources: nss_source
