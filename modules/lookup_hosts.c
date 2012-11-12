@@ -248,10 +248,7 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 	 * direct mounts in order to mount the triggers.
 	 */
 	if (!(ap->flags & MOUNT_FLAG_GHOST) && ap->type != LKP_DIRECT) {
-		debug(ap->logopt, MODPREFIX
-		      "map not browsable, update existing host entries only");
-		update_hosts_mounts(ap, source, age, ctxt);
-		source->age = age;
+		debug(ap->logopt, "map read not needed, so not done");
 		return NSS_STATUS_SUCCESS;
 	}
 
@@ -275,7 +272,6 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 	if (status)
 		error(ap->logopt, MODPREFIX "failed to unlock hostent mutex");
 
-	update_hosts_mounts(ap, source, age, ctxt);
 	source->age = age;
 
 	return NSS_STATUS_SUCCESS;
