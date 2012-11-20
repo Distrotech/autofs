@@ -15,6 +15,7 @@
 - fix recursive mount deadlock.
 - increase file map read buffer size.
 - handle new location of systemd.
+- fix map entry duplicate offset detection.
 
 25/07/2012 autofs-5.0.7
 =======================
