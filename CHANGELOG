@@ -17,6 +17,7 @@
 - handle new location of systemd.
 - fix map entry duplicate offset detection.
 - Allow nsswitch.conf to not contain "automount:" lines.
+- fix nobind man page description.
 
 25/07/2012 autofs-5.0.7
 =======================

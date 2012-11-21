@@ -151,9 +151,13 @@ can't be mounted.
 This is an autofs specific option that is a pseudo mount option and
 so is given without a leading dash. It may be used either in the master
 map entry (so it effects all the map entries) or with individual map
-entries to prevent bind mounting of local NFS filesystems. Bind mounting
-of NFS file systems can also be prevented for specific map entrys by
-adding the "port=" mount option to the entries.
+entries to prevent bind mounting of local NFS filesystems. For direct
+mount maps the option is only effective if specified on the first direct
+map entry and is applied to all direct mount maps in the master map. It
+is ignored if given on subsequent direct map entries. It may be used
+on individual map entries of both types. Bind mounting of NFS file
+systems can also be prevented for specific map entrys by adding the
+"port=" mount option to the entries.
 .TP
 .I "\-r, \-\-random-multimount-selection"
 Enables the use of ramdom selection when choosing a host from a
