@@ -149,8 +149,15 @@ static int do_mount_autofs_indirect(struct autofs_point *ap, const char *root)
 	ret = mount(map_name, root, "autofs", MS_MGC_VAL, options);
 	if (ret) {
 		crit(ap->logopt,
-		     "failed to mount autofs path %s at %s", ap->path, root);
+		     "failed to mount autofs path %s at %s errno %d", ap->path, root, errno);
 		goto out_rmdir;
+	}
+
+	ret = mount(NULL, root, NULL, MS_UNBINDABLE|MS_PRIVATE, NULL);
+	if (ret) {
+		crit(ap->logopt,
+		     "failed to change mount propogation of path %s at %s errno %d", ap->path, root, errno);
+		goto out_umount;
 	}
 
 	free(options);

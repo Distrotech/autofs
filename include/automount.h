@@ -19,6 +19,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <mntent.h>
+#include <sys/mount.h>
 #include "config.h"
 #include "list.h"
 
@@ -69,6 +70,12 @@ int load_autofs4_module(void);
 #else
 #define SLOPPYOPT
 #define SLOPPY
+#endif
+
+#ifdef MS_PRIVATE
+#define MOUNTOPTIONS	(MS_MGC_VAL|MS_UNBINDABLE)
+#else
+#define MOUNTOPTIONS	(MS_MGC_VAL)
 #endif
 
 #define AUTOFS_SUPER_MAGIC 0x00000187L
