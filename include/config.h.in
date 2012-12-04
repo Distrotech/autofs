@@ -135,6 +135,9 @@
 /* Define to 1 to use the libtirpc tsd usage workaround */
 #undef TIRPC_WORKAROUND
 
+/* Define if your C library does not provide versionsort */
+#undef WITHOUT_VERSIONSORT
+
 /* Define if using the dmalloc debugging malloc package */
 #undef WITH_DMALLOC
 

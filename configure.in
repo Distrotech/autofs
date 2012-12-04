@@ -163,6 +163,12 @@ AF_SLOPPY_MOUNT()
 AF_CHECK_LIBXML()
 AF_CHECK_KRB5()
 
+AC_SEARCH_LIBS([versionsort],[])
+if test "$ac_cv_search_versionsort" = "no"; then
+	AC_DEFINE(WITHOUT_VERSIONSORT, 1,
+		[Define if your C library does not provide versionsort])
+fi
+
 #
 # glibc/libc 6 new libraries
 #

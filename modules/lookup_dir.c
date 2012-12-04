@@ -39,6 +39,11 @@
 #define AUTOFS_DIR_EXT ".autofs"
 #define AUTOFS_DIR_EXTSIZ (sizeof(AUTOFS_DIR_EXT) - 1)
 
+/* Work around non-GNU systems that don't provide versionsort */
+#ifdef WITHOUT_VERSIONSORT
+#define versionsort alphasort
+#endif
+
 struct lookup_context {
   const char *mapname;
 };

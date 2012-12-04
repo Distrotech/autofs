@@ -22,6 +22,7 @@
 - lib/defaults.c: use WITH_LDAP conditional around LDAP types.
 - make yellow pages support optional.
 - modules/replicated.c: use sin6_addr.s6_addr32.
+- workaround missing GNU versionsort extension.
 
 25/07/2012 autofs-5.0.7
 =======================
