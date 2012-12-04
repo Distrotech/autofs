@@ -18,6 +18,7 @@
 - fix map entry duplicate offset detection.
 - Allow nsswitch.conf to not contain "automount:" lines.
 - fix nobind man page description.
+- fix use get_proximity() without libtirpc.
 
 25/07/2012 autofs-5.0.7
 =======================

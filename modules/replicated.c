@@ -184,9 +184,7 @@ static unsigned int get_proximity(struct sockaddr *host_addr)
 			break;
 
 		case AF_INET6:
-#ifndef WITH_LIBTIRPC
-			return PROXIMITY_UNSUPPORTED;
-#else
+#ifdef WITH_LIBTIRPC
 			if (host_addr->sa_family == AF_INET)
 				break;
 			if6_addr = (struct sockaddr_in6 *) this->ifa_addr;
@@ -251,9 +249,7 @@ static unsigned int get_proximity(struct sockaddr *host_addr)
 			break;
 
 		case AF_INET6:
-#ifndef WITH_LIBTIRPC
-			return PROXIMITY_UNSUPPORTED;
-#else
+#ifdef WITH_LIBTIRPC
 			if (host_addr->sa_family == AF_INET)
 				break;
 			if6_addr = (struct sockaddr_in6 *) this->ifa_addr;
