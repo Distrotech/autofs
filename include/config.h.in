@@ -72,6 +72,9 @@
 /* Define to 1 if you have the <unistd.h> header file. */
 #undef HAVE_UNISTD_H
 
+/* Define if using YellowPages */
+#undef HAVE_YPCLNT
+
 /* Use libxml2 tsd usage workaround */
 #undef LIBXML2_WORKAROUND
 

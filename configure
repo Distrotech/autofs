@@ -614,6 +614,7 @@ XML_FLAGS
 LIBLDAP
 HAVE_LDAP
 LDAP_FLAGS
+HAVE_YPCLNT
 HAVE_NISPLUS
 EGREP
 GREP
@@ -4574,6 +4575,21 @@ fi
 
 
 
+
+# YellowPages support?
+HAVE_YPCLNT=0
+ac_fn_c_check_header_mongrel "$LINENO" "rpcsvc/ypclnt.h" "ac_cv_header_rpcsvc_ypclnt_h" "$ac_includes_default"
+if test "x$ac_cv_header_rpcsvc_ypclnt_h" = xyes; then :
+  HAVE_YPCLNT=1
+fi
+
+
+
+if test "$HAVE_YPCLNT" = "1"; then
+
+$as_echo "#define HAVE_YPCLNT 1" >>confdefs.h
+
+fi
 
 #
 # OpenLDAP support?  Expect that this may have a special directory...
