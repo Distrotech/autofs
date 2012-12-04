@@ -44,8 +44,16 @@
 
 #define DEFAULT_MAP_HASH_TABLE_SIZE	1024
 
+#ifdef WITH_LDAP
 struct ldap_schema;
 struct ldap_searchdn;
+void defaults_free_uris(struct list_head *);
+struct list_head *defaults_get_uris(void);
+struct ldap_schema *defaults_get_default_schema(void);
+void defaults_free_searchdns(struct ldap_searchdn *);
+struct ldap_searchdn *defaults_get_searchdns(void);
+struct ldap_schema *defaults_get_schema(void);
+#endif
 
 unsigned int defaults_read_config(unsigned int);
 const char *defaults_get_master_map(void);
@@ -57,12 +65,6 @@ unsigned int defaults_get_logging(void);
 const char *defaults_get_ldap_server(void);
 unsigned int defaults_get_ldap_timeout(void);
 unsigned int defaults_get_ldap_network_timeout(void);
-struct list_head *defaults_get_uris(void);
-void defaults_free_uris(struct list_head *);
-struct ldap_schema *defaults_get_default_schema(void);
-struct ldap_schema *defaults_get_schema(void);
-struct ldap_searchdn *defaults_get_searchdns(void);
-void defaults_free_searchdns(struct ldap_searchdn *);
 unsigned int defaults_get_mount_nfs_default_proto(void);
 unsigned int defaults_get_append_options(void);
 unsigned int defaults_get_mount_wait(void);

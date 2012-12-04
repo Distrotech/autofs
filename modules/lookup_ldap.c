@@ -28,6 +28,7 @@
 #include <arpa/nameser.h>
 #include <resolv.h>
 #include <lber.h>
+#include <libxml/tree.h>
 
 #define MODULE_LOOKUP
 #include "automount.h"
