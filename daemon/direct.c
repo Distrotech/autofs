@@ -82,11 +82,33 @@ static void mnts_cleanup(void *arg)
 	return;
 }
 
+static int ask_umount(struct autofs_point *ap, int ioctlfd)
+{
+	struct ioctl_ops *ops = get_ioctl_ops();
+	unsigned int status = 1;
+	char buf[MAX_ERR_BUF];
+	int rv;
+
+	rv = ops->askumount(ap->logopt, ioctlfd, &status);
+	if (rv) {
+		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+		error(ap->logopt, "ioctl failed: %s", estr);
+		ops->close(ap->logopt, ioctlfd);
+		return 0;
+	}
+
+	if (!status)
+		return 0;
+
+	return 1;
+}
+
 int do_umount_autofs_direct(struct autofs_point *ap, struct mnt_list *mnts, struct mapent *me)
 {
 	struct ioctl_ops *ops = get_ioctl_ops();
 	char buf[MAX_ERR_BUF];
 	int ioctlfd, rv, left, retries;
+	int ret, mounted;
 
 	left = umount_multi(ap, me->key, 0);
 	if (left) {
@@ -95,47 +117,85 @@ int do_umount_autofs_direct(struct autofs_point *ap, struct mnt_list *mnts, stru
 		return 1;
 	}
 
-	if (me->ioctlfd != -1) {
-		if (tree_is_mounted(mnts, me->key, MNTS_REAL)) {
+	mounted = tree_is_mounted(mnts, me->key, MNTS_REAL);
+	if (!mounted) {
+		/* No active mount on top, stale file handle or manual umount */
+		if (me->ioctlfd != -1) {
+			ioctlfd = me->ioctlfd;
+			me->ioctlfd = -1;
+		} else {
+			ioctlfd = -1;
+
+			ret = ops->open(ap->logopt, &ioctlfd, me->dev, me->key);
+			if (ret == -1) {
+				/* Something is badly broken, just try and umount */
+				error(ap->logopt,
+				      "couldn't get ioctl fd for direct mount %s",
+				       me->key);
+				goto do_umount;
+			}
+		}
+
+		if (!ask_umount(ap, ioctlfd)) {
+			/*
+			 * This souldn't happen and there's not much that can
+			 * be done if it does, return a fail.
+			 */
+			if (ap->state != ST_SHUTDOWN_FORCE) {
+				error(ap->logopt,
+				      "ask umount returned busy for %s",
+				      me->key);
+				ops->close(ap->logopt, ioctlfd);
+				return 1;
+			}
+			/* Forced shutdown, continue since were terminating */
+		}
+		ops->catatonic(ap->logopt, ioctlfd);
+		ops->close(ap->logopt, ioctlfd);
+	} else {
+		/* Active mount with control file handle, busy mount */
+		if (me->ioctlfd != -1) {
 			error(ap->logopt,
 			      "attempt to umount busy direct mount %s",
 			      me->key);
 			return 1;
 		}
-		ioctlfd = me->ioctlfd;
-	} else
-		ops->open(ap->logopt, &ioctlfd, me->dev, me->key);
 
-	if (ioctlfd >= 0) {
-		unsigned int status = 1;
+		/*
+		 * Active mount with no control file handle, try and
+		 * open a control fd and check we can umount otherwise
+		 * just try and umount.
+		 */
+		ioctlfd = -1;
+		ret = ops->open(ap->logopt, &ioctlfd, me->dev, me->key);
+		if (ret == -1) {
+			/* Something is badly broken, just try and umount */
+			error(ap->logopt,
+			      "couldn't get ioctl fd for direct mount %s",
+			       me->key);
+			goto do_umount;
+		}
 
-		rv = ops->askumount(ap->logopt, ioctlfd, &status);
-		if (rv) {
-			char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-			error(ap->logopt, "ioctl failed: %s", estr);
-			return 1;
-		} else if (!status) {
+		if (!ask_umount(ap, ioctlfd)) {
+			/*
+			 * This shouldn't happen, but if it does try and
+			 * recover by turning it into an active mount so
+			 * we can attempt to expire it.
+			 */
 			if (ap->state != ST_SHUTDOWN_FORCE) {
 				error(ap->logopt,
 				      "ask umount returned busy for %s",
 				      me->key);
+				me->ioctlfd = ioctlfd;
 				return 1;
-			} else {
-				me->ioctlfd = -1;
-				ops->catatonic(ap->logopt, ioctlfd);
-				ops->close(ap->logopt, ioctlfd);
-				goto force_umount;
 			}
+			/* Forced shutdown, continue since were terminating */
 		}
-		me->ioctlfd = -1;
 		ops->catatonic(ap->logopt, ioctlfd);
 		ops->close(ap->logopt, ioctlfd);
-	} else {
-		error(ap->logopt,
-		      "couldn't get ioctl fd for direct mount %s", me->key);
-		return 1;
 	}
 
+do_umount:
 	sched_yield();
 
 	retries = UMOUNT_RETRIES;
@@ -537,66 +597,97 @@ int umount_autofs_offset(struct autofs_point *ap, struct mapent *me)
 	struct ioctl_ops *ops = get_ioctl_ops();
 	char buf[MAX_ERR_BUF];
 	int ioctlfd, rv = 1, retries;
+	int ret, mounted;
 
-	if (me->ioctlfd != -1) {
-		if (is_mounted(_PATH_MOUNTED, me->key, MNTS_REAL)) {
+	mounted = is_mounted(_PATH_MOUNTED, me->key, MNTS_REAL);
+	if (!mounted) {
+		/* No active mount on top, stale file handle or manual umount */
+		if (me->ioctlfd != -1) {
+			ioctlfd = me->ioctlfd;
+			me->ioctlfd = -1;
+		} else {
+			ioctlfd = -1;
+
+			ret = ops->open(ap->logopt, &ioctlfd, me->dev, me->key);
+			if (ret == -1) {
+				struct stat st;
+				char *estr;
+				int save_errno = errno;
+
+				/* Non existent directory on remote fs - no mount */
+				if (stat(me->key, &st) == -1 && errno == ENOENT)
+					return 0;
+
+				/* Something is badly broken, just try and umount */
+				estr = strerror_r(save_errno, buf, MAX_ERR_BUF);
+				error(ap->logopt,
+				      "couldn't get ioctl fd for offset %s: %s",
+				      me->key, estr);
+				goto do_umount;
+			}
+		}
+
+		if (!ask_umount(ap, ioctlfd)) {
+			/*
+			 * This souldn't happen and there's not much that can
+			 * be done if it does, return a fail.
+			 */
+			if (ap->state != ST_SHUTDOWN_FORCE) {
+				error(ap->logopt,
+				      "ask umount returned busy for %s",
+				      me->key);
+				ops->close(ap->logopt, ioctlfd);
+				return 1;
+			}
+			/* Forced shutdown, continue since were terminating */
+		}
+		ops->catatonic(ap->logopt, ioctlfd);
+		ops->close(ap->logopt, ioctlfd);
+	} else {
+		/* Active mount with control file handle, busy mount */
+		if (me->ioctlfd != -1) {
 			error(ap->logopt,
 			      "attempt to umount busy offset %s", me->key);
 			return 1;
 		}
-		ioctlfd = me->ioctlfd;
-	} else {
-		/* offset isn't mounted, return success and try to recover */
-		if (!is_mounted(_PROC_MOUNTS, me->key, MNTS_AUTOFS)) {
-			debug(ap->logopt,
-			      "offset %s not mounted",
-			      me->key);
-			return 0;
+
+		/*
+		 * Active mount with no control file handle, try and
+		 * open a control fd and check we can umount.
+		 */
+		ioctlfd = -1;
+		ret = ops->open(ap->logopt, &ioctlfd, me->dev, me->key);
+		if (ret == -1) {
+			char *estr;
+			/* Something is badly broken, just try and umount */
+			estr = strerror_r(errno, buf, MAX_ERR_BUF);
+			error(ap->logopt,
+			      "couldn't get ioctl fd for offset %s: %s",
+			      me->key, estr);
+			goto do_umount;
 		}
-		ops->open(ap->logopt, &ioctlfd, me->dev, me->key);
-	}
 
-	if (ioctlfd >= 0) {
-		unsigned int status = 1;
-
-		rv = ops->askumount(ap->logopt, ioctlfd, &status);
-		if (rv) {
-			char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-			logerr("ioctl failed: %s", estr);
-			return 1;
-		} else if (!status) {
+		if (!ask_umount(ap, ioctlfd)) {
+			/*
+			 * This shouldn't happen, but if it does try and
+			 * recover by turning it into an active mount so
+			 * we can attempt to expire it.
+			 */
 			if (ap->state != ST_SHUTDOWN_FORCE) {
 				if (ap->shutdown)
 					error(ap->logopt,
 					     "ask umount returned busy for %s",
 					     me->key);
+				me->ioctlfd = ioctlfd;
 				return 1;
-			} else {
-				me->ioctlfd = -1;
-				ops->catatonic(ap->logopt, ioctlfd);
-				ops->close(ap->logopt, ioctlfd);
-				goto force_umount;
 			}
+			/* Forced shutdown, continue since were terminating */
 		}
-		me->ioctlfd = -1;
 		ops->catatonic(ap->logopt, ioctlfd);
 		ops->close(ap->logopt, ioctlfd);
-	} else {
-		struct stat st;
-		char *estr;
-		int save_errno = errno;
-
-		/* Non existent directory on remote fs - no mount */
-		if (stat(me->key, &st) == -1 && errno == ENOENT)
-			return 0;
-
-		estr = strerror_r(save_errno, buf, MAX_ERR_BUF);
-		error(ap->logopt,
-		      "couldn't get ioctl fd for offset %s: %s",
-		      me->key, estr);
-		goto force_umount;
 	}
 
+do_umount:
 	sched_yield();
 
 	retries = UMOUNT_RETRIES;
