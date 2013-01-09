@@ -20,6 +20,7 @@
 - fix nobind man page description.
 - fix submount offset delete.
 - fix init script status return.
+- fix use get_proximity() without libtirpc.
 
 25/07/2012 autofs-5.0.7
 =======================
