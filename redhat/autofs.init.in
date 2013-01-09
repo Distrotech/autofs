@@ -172,7 +172,7 @@ RETVAL=0
 case "$1" in
 	status)
 		status -p @@autofspiddir@@/autofs.pid -l autofs $prog
-		exit 0;
+		exit $?;
 		;;
 	usage)
 		usage_message
