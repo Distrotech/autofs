@@ -103,10 +103,6 @@ static int acceptable_dirent_p(const struct dirent *e)
 {
   size_t namesz;
 
-
-  if (!(e->d_type == DT_REG || e->d_type == DT_LNK))
-	  return 0;
-
   namesz = strlen(e->d_name);
   if (!namesz)
 	  return 0;

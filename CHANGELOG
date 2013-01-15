@@ -21,6 +21,7 @@
 - fix submount offset delete.
 - fix init script status return.
 - fix use get_proximity() without libtirpc.
+- don't use dirent d_type to filter out files in scandir()
 
 25/07/2012 autofs-5.0.7
 =======================
