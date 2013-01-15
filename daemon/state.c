@@ -144,7 +144,7 @@ void expire_cleanup(void *arg)
 					ap->submount = 2;
 			}
 
-			if (!ap->submount)
+			if (ap->state == ST_EXPIRE && !ap->submount)
 				alarm_add(ap, ap->exp_runfreq);
 
 			/* FALLTHROUGH */
@@ -330,13 +330,9 @@ static void do_readmap_cleanup(void *arg)
 	ap = ra->ap;
 
 	st_mutex_lock();
-
 	ap->readmap_thread = 0;
 	st_set_done(ap);
-	if (!ap->submount)
-		alarm_add(ap, ap->exp_runfreq);
 	st_ready(ap);
-
 	st_mutex_unlock();
 
 	free(ra);
