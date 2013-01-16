@@ -1146,7 +1146,7 @@ try_name:
 				rr4++;
 		} else if (this->ai_family == AF_INET6) {
 			struct sockaddr_in6 *addr = (struct sockaddr_in6 *) this->ai_addr;
-			if (!IN6_IS_ADDR_LOOPBACK(addr->sin6_addr.__in6_u.__u6_addr32))
+			if (!IN6_IS_ADDR_LOOPBACK(addr->sin6_addr.s6_addr32))
 				rr6++;
 		}
 		this = this->ai_next;
