@@ -27,7 +27,6 @@
 #include <net/if.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#include <rpcsvc/ypclnt.h>
 #include <errno.h>
 #include <sys/ioctl.h>
 #include <ctype.h>

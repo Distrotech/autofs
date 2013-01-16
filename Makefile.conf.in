@@ -43,6 +43,9 @@ NISPLUS = @HAVE_NISPLUS@
 # SMBFS support: yes (1) no (0)
 SMBFS = @HAVE_SMBMOUNT@
 
+# YellowPages support: yes (1) no (0)
+YPCLNT = @HAVE_YPCLNT@
+
 # Support for calling e2fsck when mounting ext2 filesystems
 EXT2FS = @HAVE_E2FSCK@
 

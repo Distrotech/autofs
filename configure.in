@@ -213,6 +213,15 @@ HAVE_NISPLUS=0
 AC_CHECK_HEADER(rpcsvc/nis.h, HAVE_NISPLUS=1)
 AC_SUBST(HAVE_NISPLUS)
 
+# YellowPages support?
+HAVE_YPCLNT=0
+AC_CHECK_HEADER([rpcsvc/ypclnt.h], HAVE_YPCLNT=1)
+AC_SUBST(HAVE_YPCLNT)
+if test "$HAVE_YPCLNT" = "1"; then
+	AC_DEFINE(HAVE_YPCLNT, 1,
+		[Define if using YellowPages])
+fi
+
 #
 # OpenLDAP support?  Expect that this may have a special directory...
 #
