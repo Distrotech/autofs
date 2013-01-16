@@ -23,6 +23,7 @@
 - fix use get_proximity() without libtirpc.
 - don't use dirent d_type to filter out files in scandir()
 - don't schedule new alarms after readmap.
+- use numeric protocol ids instead of protoent structs.
 
 25/07/2012 autofs-5.0.7
 =======================
