@@ -662,7 +662,7 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 			return status;
 	}
 
-	cache_readlock(mc);
+	cache_writelock(mc);
 	me = cache_lookup(mc, key);
 	/* Stale mapent => check for entry in alternate source or wildcard */
 	if (me && !me->mapent) {
@@ -672,10 +672,21 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 		if (!me)
 			me = cache_lookup_distinct(mc, "*");
 	}
-	if (me && me->mapent && (me->source == source || *me->key == '/')) {
-		mapent_len = strlen(me->mapent);
-		mapent = alloca(mapent_len + 1);
-		strcpy(mapent, me->mapent);
+	if (me && me->mapent) {
+		/*
+		 * Add wildcard match for later validation checks and
+		 * negative cache lookups.
+		 */
+		if (ap->type == LKP_INDIRECT && me->key == '*') {
+			ret = cache_update(mc, source, key, me->mapent, me->age);
+			if (!(ret & (CHE_OK | CHE_UPDATED)))
+				me = NULL;
+		}
+		if (me && (me->source == source || *me->key == '/')) {
+			mapent_len = strlen(me->mapent);
+			mapent = alloca(mapent_len + 1);
+			strcpy(mapent, me->mapent);
+		}
 	}
 	cache_unlock(mc);
 
