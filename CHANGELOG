@@ -29,6 +29,7 @@
 - modules/replicated.c: use sin6_addr.s6_addr32.
 - workaround missing GNU versionsort extension.
 - dont fail on master map self include.
+- fix wildcard multi map regression.
 
 25/07/2012 autofs-5.0.7
 =======================
