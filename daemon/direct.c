@@ -86,7 +86,8 @@ int do_umount_autofs_direct(struct autofs_point *ap, struct mnt_list *mnts, stru
 {
 	struct ioctl_ops *ops = get_ioctl_ops();
 	char buf[MAX_ERR_BUF];
-	int ioctlfd, rv, left, retries;
+	int ioctlfd = -1, rv, left, retries;
+	int opened = 0;
 
 	left = umount_multi(ap, me->key, 0);
 	if (left) {
@@ -103,8 +104,10 @@ int do_umount_autofs_direct(struct autofs_point *ap, struct mnt_list *mnts, stru
 			return 1;
 		}
 		ioctlfd = me->ioctlfd;
-	} else
+	} else {
 		ops->open(ap->logopt, &ioctlfd, me->dev, me->key);
+		opened = 1;
+	}
 
 	if (ioctlfd >= 0) {
 		unsigned int status = 1;
@@ -113,12 +116,16 @@ int do_umount_autofs_direct(struct autofs_point *ap, struct mnt_list *mnts, stru
 		if (rv) {
 			char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
 			error(ap->logopt, "ioctl failed: %s", estr);
+			if (opened && ioctlfd != -1)
+				ops->close(ap->logopt, ioctlfd);
 			return 1;
 		} else if (!status) {
 			if (ap->state != ST_SHUTDOWN_FORCE) {
 				error(ap->logopt,
 				      "ask umount returned busy for %s",
 				      me->key);
+				if (opened && ioctlfd != -1)
+					ops->close(ap->logopt, ioctlfd);
 				return 1;
 			} else {
 				me->ioctlfd = -1;
@@ -536,7 +543,8 @@ int umount_autofs_offset(struct autofs_point *ap, struct mapent *me)
 {
 	struct ioctl_ops *ops = get_ioctl_ops();
 	char buf[MAX_ERR_BUF];
-	int ioctlfd, rv = 1, retries;
+	int ioctlfd = -1, rv = 1, retries;
+	int opened = 0;
 
 	if (me->ioctlfd != -1) {
 		if (is_mounted(_PATH_MOUNTED, me->key, MNTS_REAL)) {
@@ -554,6 +562,7 @@ int umount_autofs_offset(struct autofs_point *ap, struct mapent *me)
 			return 0;
 		}
 		ops->open(ap->logopt, &ioctlfd, me->dev, me->key);
+		opened = 1;
 	}
 
 	if (ioctlfd >= 0) {
@@ -563,6 +572,8 @@ int umount_autofs_offset(struct autofs_point *ap, struct mapent *me)
 		if (rv) {
 			char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
 			logerr("ioctl failed: %s", estr);
+			if (opened && ioctlfd != -1)
+				ops->close(ap->logopt, ioctlfd);
 			return 1;
 		} else if (!status) {
 			if (ap->state != ST_SHUTDOWN_FORCE) {
@@ -570,6 +581,8 @@ int umount_autofs_offset(struct autofs_point *ap, struct mapent *me)
 					error(ap->logopt,
 					     "ask umount returned busy for %s",
 					     me->key);
+				if (opened && ioctlfd != -1)
+					ops->close(ap->logopt, ioctlfd);
 				return 1;
 			} else {
 				me->ioctlfd = -1;
