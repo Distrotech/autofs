@@ -30,6 +30,7 @@
 - workaround missing GNU versionsort extension.
 - fix map read fail incorrectly set on master re-read.
 - fix wildcard multi map regression.
+- fix file descriptor leak when reloading the daemon.
 
 25/07/2012 autofs-5.0.7
 =======================
