@@ -12,6 +12,7 @@
 #define _LINUX_AUTO_FS4_H
 
 /* Include common v3 definitions */
+#include <linux/types.h>
 #include <linux/auto_fs.h>
 
 /* autofs v4 definitions */
@@ -23,7 +24,7 @@
 #define AUTOFS_MIN_PROTO_VERSION	3
 #define AUTOFS_MAX_PROTO_VERSION	5
 
-#define AUTOFS_PROTO_SUBVERSION		1
+#define AUTOFS_PROTO_SUBVERSION		2
 
 /* Mask for expire behaviour */
 #define AUTOFS_EXP_IMMEDIATE		1
