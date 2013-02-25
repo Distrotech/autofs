@@ -73,9 +73,43 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 	char buf[MAX_ERR_BUF];
 	int err;
 	int i, len;
+	int symlink = ap->flags & MOUNT_FLAG_SYMLINK;
 
 	if (ap->flags & MOUNT_FLAG_REMOUNT)
 		return 0;
+
+	/* Extract "symlink" pseudo-option which forces local filesystems
+	 * to be symlinked instead of bound.
+	 */
+	if (!symlink && options) {
+		const char *comma;
+		int o_len = strlen(options) + 1;
+
+		for (comma = options; *comma != '\0';) {
+			const char *cp;
+			const char *end;
+
+			while (*comma == ',')
+				comma++;
+
+			/* Skip leading white space */
+			while (*comma == ' ' || *comma == '\t')
+				comma++;
+
+			cp = comma;
+			while (*comma != '\0' && *comma != ',')
+				comma++;
+
+			/* Skip trailing white space */
+			end = comma - 1;
+			while (*comma == ' ' || *comma == '\t')
+				end--;
+
+			o_len = end - cp + 1;
+			if (strncmp("symlink", cp, o_len) == 0)
+				symlink = 1;
+		}
+	}
 
 	/* Root offset of multi-mount */
 	len = strlen(root);
@@ -100,7 +134,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 	if (options == NULL || *options == '\0')
 		options = "defaults";
 
-	if (bind_works) {
+	if (!symlink && bind_works) {
 		int status, existed = 1;
 
 		debug(ap->logopt, MODPREFIX "calling mkdir_path %s", fullpath);
