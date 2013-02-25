@@ -57,6 +57,7 @@ static char *type;
 static char *format;
 static long timeout;
 static long negative_timeout;
+static unsigned symlnk;
 static unsigned nobind;
 static unsigned ghost;
 extern unsigned global_selection_options;
@@ -100,7 +101,7 @@ static int master_fprintf(FILE *, char *, ...);
 %token COMMENT
 %token MAP
 %token OPT_TIMEOUT OPT_NTIMEOUT OPT_NOBIND OPT_NOGHOST OPT_GHOST OPT_VERBOSE
-%token OPT_DEBUG OPT_RANDOM OPT_USE_WEIGHT
+%token OPT_DEBUG OPT_RANDOM OPT_USE_WEIGHT OPT_SYMLINK
 %token COLON COMMA NL DDASH
 %type <strtype> map
 %type <strtype> options
@@ -186,6 +187,7 @@ line:
 	| PATH OPT_USE_WEIGHT { master_notify($1); YYABORT; }
 	| PATH OPT_DEBUG { master_notify($1); YYABORT; }
 	| PATH OPT_TIMEOUT { master_notify($1); YYABORT; }
+	| PATH OPT_SYMLINK { master_notify($1); YYABORT; }
 	| PATH OPT_NOBIND { master_notify($1); YYABORT; }
 	| PATH OPT_GHOST { master_notify($1); YYABORT; }
 	| PATH OPT_NOGHOST { master_notify($1); YYABORT; }
@@ -557,6 +559,7 @@ option: daemon_option
 
 daemon_option: OPT_TIMEOUT NUMBER { timeout = $2; }
 	| OPT_NTIMEOUT NUMBER { negative_timeout = $2; }
+	| OPT_SYMLINK	{ symlnk = 1; }
 	| OPT_NOBIND	{ nobind = 1; }
 	| OPT_NOGHOST	{ ghost = 0; }
 	| OPT_GHOST	{ ghost = 1; }
@@ -627,6 +630,7 @@ static void local_init_vars(void)
 	debug = 0;
 	timeout = -1;
 	negative_timeout = 0;
+	symlnk = 0;
 	nobind = 0;
 	ghost = defaults_get_browse_mode();
 	random_selection = global_selection_options & MOUNT_FLAG_RANDOM_SELECT;
@@ -811,6 +815,8 @@ int master_parse_entry(const char *buffer, unsigned int default_timeout, unsigne
 		entry->ap->flags |= MOUNT_FLAG_RANDOM_SELECT;
 	if (use_weight)
 		entry->ap->flags |= MOUNT_FLAG_USE_WEIGHT_ONLY;
+	if (symlnk)
+		entry->ap->flags |= MOUNT_FLAG_SYMLINK;
 	if (negative_timeout)
 		entry->ap->negative_timeout = negative_timeout;
 
