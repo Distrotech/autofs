@@ -455,6 +455,9 @@ struct kernel_mod_version {
 /* Don't use bind mounts even when system supports them */
 #define MOUNT_FLAG_NOBIND		0x0020
 
+/* Use symlinks instead of bind mounting local mounts */
+#define MOUNT_FLAG_SYMLINK		0x0040
+
 struct autofs_point {
 	pthread_t thid;
 	char *path;			/* Mount point name */
