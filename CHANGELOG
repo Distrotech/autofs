@@ -31,6 +31,7 @@
 - fix wildcard multi map regression.
 - fix file descriptor leak when reloading the daemon.
 - depricate nosymlink pseudo option.
+- add symlink pseudo option.
 
 25/07/2012 autofs-5.0.7
 =======================
