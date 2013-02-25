@@ -452,6 +452,9 @@ struct kernel_mod_version {
 /* Use server weight only for selection */
 #define MOUNT_FLAG_USE_WEIGHT_ONLY	0x0010
 
+/* Use symlinks instead of bind mounting local mounts */
+#define MOUNT_FLAG_SYMLINK		0x0020
+
 /* Don't use bind mounts even when system supports them */
 #define MOUNT_FLAG_NOBIND		0x0020
 
