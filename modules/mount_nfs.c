@@ -125,6 +125,10 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 
 			o_len = end - cp + 1;
 			if (strncmp("nosymlink", cp, o_len) == 0) {
+				warn(ap->logopt, MODPREFIX
+				     "the \"nosymlink\" option is depricated "
+				     "and will soon be removed, "
+				     "use the \"nobind\" option instead");
 				nosymlink = 1;
 			} else if (strncmp("nobind", cp, o_len) == 0) {
 				nobind = 1;
