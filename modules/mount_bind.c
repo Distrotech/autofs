@@ -73,7 +73,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 	char buf[MAX_ERR_BUF];
 	int err;
 	int i, len;
-	int symlink = (*name != '/' && (ap->flags & MOUNT_FLAG_SYMLINK));
+	int symlnk = (*name != '/' && (ap->flags & MOUNT_FLAG_SYMLINK));
 
 	if (ap->flags & MOUNT_FLAG_REMOUNT)
 		return 0;
@@ -81,7 +81,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 	/* Extract "symlink" pseudo-option which forces local filesystems
 	 * to be symlinked instead of bound.
 	 */
-	if (*name != '/' && !symlink && options) {
+	if (*name != '/' && !symlnk && options) {
 		const char *comma;
 		int o_len = strlen(options) + 1;
 
@@ -107,7 +107,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 
 			o_len = end - cp + 1;
 			if (strncmp("symlink", cp, o_len) == 0)
-				symlink = 1;
+				symlnk = 1;
 		}
 	}
 
@@ -134,7 +134,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 	if (options == NULL || *options == '\0')
 		options = "defaults";
 
-	if (!symlink && bind_works) {
+	if (!symlnk && bind_works) {
 		int status, existed = 1;
 
 		debug(ap->logopt, MODPREFIX "calling mkdir_path %s", fullpath);
