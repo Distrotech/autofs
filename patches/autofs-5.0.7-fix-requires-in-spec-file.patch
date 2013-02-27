@@ -1,5 +1,5 @@
 Bottom: d5fde90696525d58f49d13c981b7e982626832b0
-Top:    8f4ad70dc805f53cd8009647c7e216c1300644c6
+Top:    59ff854e13d722ce1b272ea9654e1eeb7ec582f3
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-02-27 13:22:04 +0800
 
@@ -8,6 +8,18 @@ autofs-5.0.7 - fix requires in spec file
 
 ---
 
+diff --git a/CHANGELOG b/CHANGELOG
+index 1199759..8fa31fc 100644
+--- a/CHANGELOG
++++ b/CHANGELOG
+@@ -32,6 +32,7 @@
+ - fix file descriptor leak when reloading the daemon.
+ - depricate nosymlink pseudo option.
+ - add symlink pseudo option.
++- fix requires in spec file.
+ 
+ 25/07/2012 autofs-5.0.7
+ =======================
 diff --git a/autofs.spec b/autofs.spec
 index fd4a120..d49a78f 100644
 --- a/autofs.spec
