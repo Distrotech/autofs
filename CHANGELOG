@@ -33,6 +33,7 @@
 - depricate nosymlink pseudo option.
 - add symlink pseudo option.
 - fix requires in spec file.
+- fix libtirpc build option to require libtirpc-devel if needed.
 
 25/07/2012 autofs-5.0.7
 =======================
