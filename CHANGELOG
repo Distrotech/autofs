@@ -36,6 +36,7 @@
 - fix requires in spec file.
 - fix libtirpc build option to require libtirpc-devel if needed.
 - fix systemd unidir in spec file.
+- document browse option in man page.
 
 25/07/2012 autofs-5.0.7
 =======================
