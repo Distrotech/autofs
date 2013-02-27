@@ -5,6 +5,11 @@ Date:   2013-02-25 14:24:46 +0800
 
 autofs-5.0.7 - add symlink pseudo option
 
+Add a "symlink" pseudo option to tell the bind mount module to symlink
+instead of bind when mounting mounts other than direct mounts and
+non-root indirect mount offset mounts (aka. non-root multi-mount
+entries).
+
 
 ---
 
