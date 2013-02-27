@@ -1,5 +1,5 @@
 Bottom: 0dbbf1a9ae9d915ec521c6509739bce5b864a66a
-Top:    3a7f70c8f9b38229a5c04063ad5ead2eaa940b93
+Top:    076b8753ddab5823017da8f6c5ed6d3ff24fbfe1
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-02-25 14:24:46 +0800
 
@@ -9,19 +9,19 @@ autofs-5.0.7 - add symlink pseudo option
 ---
 
 diff --git a/include/automount.h b/include/automount.h
-index 37541f5..a8fe305 100644
+index 37541f5..e72fa0d 100644
 --- a/include/automount.h
 +++ b/include/automount.h
-@@ -452,6 +452,9 @@ struct kernel_mod_version {
- /* Use server weight only for selection */
- #define MOUNT_FLAG_USE_WEIGHT_ONLY	0x0010
- 
-+/* Use symlinks instead of bind mounting local mounts */
-+#define MOUNT_FLAG_SYMLINK		0x0020
-+
+@@ -455,6 +455,9 @@ struct kernel_mod_version {
  /* Don't use bind mounts even when system supports them */
  #define MOUNT_FLAG_NOBIND		0x0020
  
++/* Use symlinks instead of bind mounting local mounts */
++#define MOUNT_FLAG_SYMLINK		0x0040
++
+ struct autofs_point {
+ 	pthread_t thid;
+ 	char *path;			/* Mount point name */
 diff --git a/lib/master_parse.y b/lib/master_parse.y
 index f925b5a..f3e0433 100644
 --- a/lib/master_parse.y
@@ -89,10 +89,10 @@ index 30abb15..f9b4e55 100644
  	-?nobrowse		{ return(OPT_NOGHOST); }
  	-g|--ghost|-?browse	{ return(OPT_GHOST); }
 diff --git a/man/auto.master.5.in b/man/auto.master.5.in
-index 8007542..d0d582c 100644
+index 8007542..bbea43a 100644
 --- a/man/auto.master.5.in
 +++ b/man/auto.master.5.in
-@@ -159,6 +159,13 @@ on individual map entries of both types. Bind mounting of NFS file
+@@ -159,6 +159,14 @@ on individual map entries of both types. Bind mounting of NFS file
  systems can also be prevented for specific map entrys by adding the
  "port=" mount option to the entries.
  .TP
@@ -100,21 +100,22 @@ index 8007542..d0d582c 100644
 +This option makes bind mounting use a symlink instead of an actual bind
 +mount. It is an autofs specific option that is a pseudo mount option and
 +so is given without a leading dash. It may be used with indirect map
-+entries either in the master map (so it effects all map entries) or with
-+individual map entries.
++entries only, either in the master map (so it effects all map entries)
++or with individual map entries. The option is ignored for direct mounts
++and non-root offest mount entries.
 +.TP
  .I "\-r, \-\-random-multimount-selection"
  Enables the use of ramdom selection when choosing a host from a
  list of replicated servers. This option is applied to this mount
 diff --git a/modules/mount_bind.c b/modules/mount_bind.c
-index 9bce686..129e24a 100644
+index 9bce686..c5ac340 100644
 --- a/modules/mount_bind.c
 +++ b/modules/mount_bind.c
 @@ -73,10 +73,44 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
  	char buf[MAX_ERR_BUF];
  	int err;
  	int i, len;
-+	int symlink = ap->flags & MOUNT_FLAG_SYMLINK;
++	int symlink = (*name != '/' && (ap->flags & MOUNT_FLAG_SYMLINK));
  
  	if (ap->flags & MOUNT_FLAG_REMOUNT)
  		return 0;
@@ -122,7 +123,7 @@ index 9bce686..129e24a 100644
 +	/* Extract "symlink" pseudo-option which forces local filesystems
 +	 * to be symlinked instead of bound.
 +	 */
-+	if (!symlink && options) {
++	if (*name != '/' && !symlink && options) {
 +		const char *comma;
 +		int o_len = strlen(options) + 1;
 +
