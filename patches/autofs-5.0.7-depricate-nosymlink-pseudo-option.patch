@@ -3,7 +3,7 @@ Top:    0dbbf1a9ae9d915ec521c6509739bce5b864a66a
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-02-25 14:24:39 +0800
 
-utofs-5.0.7 - remove nosymlink pseudo option
+autofs-5.0.7 - remove nosymlink pseudo option
 
 
 ---
