@@ -89,7 +89,7 @@ CFLAGS="$RPM_OPT_FLAGS -Wall" \
 	--disable-mount-locking \
 	--enable-ignore-busy \
 	%{?systemd_configure_arg:} \
-	%{?ilibtirpc_configure_arg:}
+	%{?libtirpc_configure_arg:}
 CFLAGS="$RPM_OPT_FLAGS -Wall" make initdir=/etc/rc.d/init.d DONTSTRIP=1
 
 %install
