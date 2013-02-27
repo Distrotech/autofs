@@ -1,12 +1,12 @@
 Version: 1
-Previous: 3e7eaa5c28477e0dd0944bf85d815d9657f73e5a
-Head: 513b66d5ce8404e78fdc234128b731852b3a338b
+Previous: f2a3d717f8857a718030a74336ce4424290d0aa1
+Head: 090c1fc4e38fa0110b102e0659b1477125274f92
 Applied:
   autofs-5.0.7-fix-wildcard-multi-map-regression.patch: f04a4f143d3b266f2887d5fbfbe2a66cc4646e17
   autofs-5.0.7-fix-file-descriptor-leak-when-reloading-the-daemon.patch: c028343e369e1381b92b2d729059331853617bfb
   autofs-5.0.7-depricate-nosymlink-pseudo-option.patch: e685c3b4ae4d8ae5e615f7392e119163fb514ec1
   autofs-5.0.7-add-symlink-pseudo-option.patch: 7e286afb1afb6e7bc46309bced9343bb1fcbd88e
-  autofs-5.0.7-update-kernel-include-files.patch: 513b66d5ce8404e78fdc234128b731852b3a338b
+  autofs-5.0.7-update-kernel-include-files.patch: 090c1fc4e38fa0110b102e0659b1477125274f92
 Unapplied:
   autofs-5.0.7-fix-requires-in-spec-file.patch: 3e4563e081a09936666c37615573afa4efc262a4
   autofs-5.0.7-fix-libtirpc-build-option.patch: 16997aebaeea1c9f788882e364b55781f891d0c5

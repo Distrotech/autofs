@@ -5,6 +5,8 @@ Date:   2013-02-13 10:37:26 +0800
 
 autofs-5.0.7 - update kernel include files
 
+Update autofs include files to include the latest changes.
+
 
 ---
 
