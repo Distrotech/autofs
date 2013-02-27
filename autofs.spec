@@ -12,6 +12,10 @@
 # disable them.
 %define with_systemd        %{?_without_systemd:        0} %{?!_without_systemd:        1}
 
+# Use --without libtirpc in your rpmbuild command or force values to 0 to
+# disable them.
+%define with_libtirpc        %{?_without_libtirpc:        0} %{?!_without_libtirpc:        1}
+
 Summary: A tool from automatically mounting and umounting filesystems.
 Name: autofs
 %define version 5.0.7
@@ -24,6 +28,9 @@ Source: ftp://ftp.kernel.org/pub/linux/daemons/autofs/v4/autofs-%{version}.tar.g
 Buildroot: %{_tmppath}/%{name}-tmp
 %if %{with_systemd}
 BuildRequires: systemd-units
+%endif
+%if %{with_libtirpc}
+BuildRequires: libtirpc-devel
 %endif
 BuildPrereq: autoconf, hesiod-devel, openldap-devel, bison, flex, cyrus-sasl-devel
 Prereq: chkconfig
@@ -72,9 +79,17 @@ echo %{version}-%{release} > .version
   %define _unitdir %{?_unitdir:/lib/systemd/system}
   %define systemd_configure_arg --with-systemd
 %endif
+%if %{with_libtirpc}
+  %define libtirpc_configure_arg --with-libtirpc
+%endif
 
 %build
-CFLAGS="$RPM_OPT_FLAGS -Wall" ./configure --libdir=%{_libdir} --disable-mount-locking --enable-ignore-busy --with-libtirpc %{?systemd_configure_arg:}
+CFLAGS="$RPM_OPT_FLAGS -Wall" \
+./configure --libdir=%{_libdir} \
+	--disable-mount-locking \
+	--enable-ignore-busy \
+	%{?systemd_configure_arg:} \
+	%{?ilibtirpc_configure_arg:}
 CFLAGS="$RPM_OPT_FLAGS -Wall" make initdir=/etc/rc.d/init.d DONTSTRIP=1
 
 %install
