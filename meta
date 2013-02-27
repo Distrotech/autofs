@@ -1,6 +1,6 @@
 Version: 1
-Previous: 18950b8f636c66225c51a815210bad2db4ba0fab
-Head: 2d334dd825e6aca75d4f5a39d66cf14a346c23cc
+Previous: 8b5a19501a75f505ba7c5ac183933bb366cf07fe
+Head: b4663a56c2e2915417d14533834120ffa2000d10
 Applied:
   autofs-5.0.7-fix-wildcard-multi-map-regression.patch: f04a4f143d3b266f2887d5fbfbe2a66cc4646e17
   autofs-5.0.7-fix-file-descriptor-leak-when-reloading-the-daemon.patch: c028343e369e1381b92b2d729059331853617bfb
@@ -10,6 +10,7 @@ Applied:
   autofs-5.0.7-fix-requires-in-spec-file.patch: 89235f22f9ced7c4bed022db6c42477bea2421f0
   autofs-5.0.7-fix-libtirpc-build-option.patch: a9aa64c623274d79bd06bd33390ead7c5f429765
   autofs-5.0.7-fix-systemd-unidir-in-spec-file.patch: 2d334dd825e6aca75d4f5a39d66cf14a346c23cc
+  autofs-5.0.7-document-browse-option-in-man-page.patch: b4663a56c2e2915417d14533834120ffa2000d10
 Unapplied:
   autofs-5.0.6-account-for-new-offset-mount-overlap.patch: 37e2af93a6428f7f253b552a9954b76e21be04e3
   autofs-5.0.5-automount-daemon-getting-killed-by-SIGBUS.patch: 2b09c3c182b2732f576cd9798c0e2d19f925ed6b
