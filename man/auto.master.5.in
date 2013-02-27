@@ -163,8 +163,9 @@ systems can also be prevented for specific map entrys by adding the
 This option makes bind mounting use a symlink instead of an actual bind
 mount. It is an autofs specific option that is a pseudo mount option and
 so is given without a leading dash. It may be used with indirect map
-entries either in the master map (so it effects all map entries) or with
-individual map entries.
+entries only, either in the master map (so it effects all map entries)
+or with individual map entries. The option is ignored for direct mounts
+and non-root offest mount entries.
 .TP
 .I "\-r, \-\-random-multimount-selection"
 Enables the use of ramdom selection when choosing a host from a

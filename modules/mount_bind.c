@@ -73,7 +73,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 	char buf[MAX_ERR_BUF];
 	int err;
 	int i, len;
-	int symlink = ap->flags & MOUNT_FLAG_SYMLINK;
+	int symlink = (*name != '/' && (ap->flags & MOUNT_FLAG_SYMLINK));
 
 	if (ap->flags & MOUNT_FLAG_REMOUNT)
 		return 0;
@@ -81,7 +81,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 	/* Extract "symlink" pseudo-option which forces local filesystems
 	 * to be symlinked instead of bound.
 	 */
-	if (!symlink && options) {
+	if (*name != '/' && !symlink && options) {
 		const char *comma;
 		int o_len = strlen(options) + 1;
 
