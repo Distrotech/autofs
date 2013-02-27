@@ -1,5 +1,5 @@
 Bottom: 70a882dcff42e9b1e2de7bb1f1185554222c4111
-Top:    0dbbf1a9ae9d915ec521c6509739bce5b864a66a
+Top:    6b6d4815c4cb732d29f22e28a0c7ec28573014f5
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-02-25 14:24:39 +0800
 
@@ -13,6 +13,18 @@ So depricate the "nosymlink" option in favour of the "nobind" option.
 
 ---
 
+diff --git a/CHANGELOG b/CHANGELOG
+index 7cf4847..7939daf 100644
+--- a/CHANGELOG
++++ b/CHANGELOG
+@@ -30,6 +30,7 @@
+ - workaround missing GNU versionsort extension.
+ - fix wildcard multi map regression.
+ - fix file descriptor leak when reloading the daemon.
++- depricate nosymlink pseudo option.
+ 
+ 25/07/2012 autofs-5.0.7
+ =======================
 diff --git a/modules/mount_nfs.c b/modules/mount_nfs.c
 index bbbb1de..e61320b 100644
 --- a/modules/mount_nfs.c
