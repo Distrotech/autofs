@@ -1,5 +1,5 @@
 Bottom: 6b6d4815c4cb732d29f22e28a0c7ec28573014f5
-Top:    1010b23199c55904432edf0d944b316ad242ce3a
+Top:    ef9c1d416a99aa9eb3aea2c3c497e96bb16f0712
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-02-25 14:24:46 +0800
 
@@ -125,14 +125,14 @@ index 8007542..bbea43a 100644
  Enables the use of ramdom selection when choosing a host from a
  list of replicated servers. This option is applied to this mount
 diff --git a/modules/mount_autofs.c b/modules/mount_autofs.c
-index ef16020..6f2e096 100644
+index ef16020..8c1e600 100644
 --- a/modules/mount_autofs.c
 +++ b/modules/mount_autofs.c
 @@ -51,6 +51,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
  	int argc, status;
  	int nobind = ap->flags & MOUNT_FLAG_NOBIND;
  	int ghost = ap->flags & MOUNT_FLAG_GHOST;
-+	int symlink = ap->flags & MOUNT_FLAG_SYMLINK;
++	int symlnk = ap->flags & MOUNT_FLAG_SYMLINK;
  	time_t timeout = ap->entry->maps->exp_timeout;
  	unsigned logopt = ap->logopt;
  	struct map_type_info *info;
@@ -141,7 +141,7 @@ index ef16020..6f2e096 100644
  			else if (strncmp(cp, "browse", 6) == 0)
  				ghost = 1;
 +			else if (strncmp(cp, "symlink", 7) == 0)
-+				symlink = 1;
++				symlnk = 1;
  			else if (strncmp(cp, "timeout=", 8) == 0) {
  				char *val = strchr(cp, '=');
  				unsigned tout;
@@ -149,7 +149,7 @@ index ef16020..6f2e096 100644
  	}
  	nap = entry->ap;
  	nap->parent = ap;
-+	if (symlink)
++	if (symlnk)
 +		nap->flags |= MOUNT_FLAG_SYMLINK;
  
  	argc = 1;
