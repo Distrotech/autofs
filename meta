@@ -1,5 +1,5 @@
 Version: 1
-Previous: 9414b356e9164412a6eb2dfab3de3d44c8a57b26
+Previous: 24d4b13bc2a8e93d4d9094216248897065f5d526
 Head: 9fe22579d4e84ccaf186de001db65c4f8c3ac7ff
 Applied:
   autofs-5.0.7-fix-wildcard-multi-map-regression.patch: e8fb238a62dea118d47435394d484a1714a779b2
@@ -35,7 +35,6 @@ Unapplied:
   autofs-5.0.6-add-ability-to-force-umount.patch: 06071701c5298ecb57beeaf1d1525125bd91e585
 Hidden:
   autofs-5.0.5-use-null-cache-to-mask-invalid-map-keys.patch: e2807d7aa6fb1b7b9308a6293b57dc099ba66c1b
-  autofs-5.0.5-clear-rpc-client-after-get-export-list.patch: 6046f3ebaa9d6715f455f0d35b8d903ad548dbca
   autofs-5.0.6-move-sss-init-to-init.patch: 408211b20134dac3ba1176bc354cf8c0583b3773
   autofs-5.0.6-fix-ldap-handling-of-backslash-in-key.patch: fef3953aa9a63b9e9846d5496e0dee08f869a0dd
   autofs-5.0.7-fix-fd-leak-in-direct-mount-umount.patch: 8b8b9a802124640b02fb8c21042a2e4a92974bb4
