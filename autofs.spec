@@ -32,8 +32,8 @@ BuildRequires: systemd-units
 %if %{with_libtirpc}
 BuildRequires: libtirpc-devel
 %endif
-BuildPrereq: autoconf, hesiod-devel, openldap-devel, bison, flex, cyrus-sasl-devel
-Prereq: chkconfig
+BuildRequires: autoconf, hesiod-devel, openldap-devel, bison, flex, cyrus-sasl-devel
+Requires: chkconfig
 Requires: /bin/bash mktemp sed textutils sh-utils grep /bin/ps
 %if %{with_systemd}
 Requires(post): systemd-sysv
