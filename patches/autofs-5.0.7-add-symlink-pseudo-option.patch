@@ -1,5 +1,5 @@
 Bottom: 6b6d4815c4cb732d29f22e28a0c7ec28573014f5
-Top:    619408a6ad48d4af5a77a7139da9120b8630b9c6
+Top:    29a54d7394f1512ae39f5d6322b2bb0d689ce00c
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-02-25 14:24:46 +0800
 
@@ -13,6 +13,18 @@ entries).
 
 ---
 
+diff --git a/CHANGELOG b/CHANGELOG
+index 7939daf..1199759 100644
+--- a/CHANGELOG
++++ b/CHANGELOG
+@@ -31,6 +31,7 @@
+ - fix wildcard multi map regression.
+ - fix file descriptor leak when reloading the daemon.
+ - depricate nosymlink pseudo option.
++- add symlink pseudo option.
+ 
+ 25/07/2012 autofs-5.0.7
+ =======================
 diff --git a/include/automount.h b/include/automount.h
 index 37541f5..e72fa0d 100644
 --- a/include/automount.h
