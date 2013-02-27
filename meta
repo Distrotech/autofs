@@ -1,5 +1,5 @@
 Version: 1
-Previous: f7cfeaebd752cc1043adcb528d3e3473cc9a74f7
+Previous: 811747756b8a676299b2b7f385824cd0ab4355d3
 Head: e23a40f6d7f4f3f8fdf2b35241cc2ebf5bf7a5d3
 Applied:
   autofs-5.0.7-fix-wildcard-multi-map-regression.patch: f04a4f143d3b266f2887d5fbfbe2a66cc4646e17
@@ -8,7 +8,7 @@ Applied:
   autofs-5.0.7-add-symlink-pseudo-option.patch: 7e286afb1afb6e7bc46309bced9343bb1fcbd88e
   autofs-5.0.7-update-kernel-include-files.patch: 513b66d5ce8404e78fdc234128b731852b3a338b
   autofs-5.0.7-fix-libtirpc-build-option.patch: 250c05330453eea73fd6e7de5d1f8f0c87743b8a
-  autofs-5.0.7-fix-build-requires.patch: e23a40f6d7f4f3f8fdf2b35241cc2ebf5bf7a5d3
+  autofs-5.0.7-fix-build-requires-in-spec-file.patch: e23a40f6d7f4f3f8fdf2b35241cc2ebf5bf7a5d3
 Unapplied:
   autofs-5.0.6-account-for-new-offset-mount-overlap.patch: db1886ece256681f8f26726437cc7a923f4e9afb
   autofs-5.0.5-automount-daemon-getting-killed-by-SIGBUS.patch: 2b09c3c182b2732f576cd9798c0e2d19f925ed6b
