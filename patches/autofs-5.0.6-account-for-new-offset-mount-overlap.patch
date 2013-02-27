@@ -1,5 +1,5 @@
-Bottom: 881add498e524087e40ef8db4c2dfae387326f7b
-Top:    acd48cf90f91e48461cc9769e3a169038d7a7b91
+Bottom: 59ff854e13d722ce1b272ea9654e1eeb7ec582f3
+Top:    25feccf113fa026d7712e258f023414b508df9e6
 Author: Ian Kent <ikent@redhat.com>
 Date:   2012-07-25 13:21:39 +0800
 
@@ -9,7 +9,7 @@ autofs-5.0.6 - account for new offset mount overlap
 ---
 
 diff --git a/include/automount.h b/include/automount.h
-index 561fcc2..176a2b7 100644
+index e72fa0d..2a7eb79 100644
 --- a/include/automount.h
 +++ b/include/automount.h
 @@ -187,6 +187,7 @@ struct mapent *cache_lookup(struct mapent_cache *mc, const char *key);
@@ -21,7 +21,7 @@ index 561fcc2..176a2b7 100644
  int cache_update_offset(struct mapent_cache *mc, const char *mkey, const char *key, const char *mapent, time_t age);
  int cache_set_parents(struct mapent *mm);
 diff --git a/lib/cache.c b/lib/cache.c
-index 9179ad5..4aaa893 100644
+index 1e05a99..8267d78 100644
 --- a/lib/cache.c
 +++ b/lib/cache.c
 @@ -548,6 +548,48 @@ struct mapent *cache_partial_match(struct mapent_cache *mc, const char *prefix)
