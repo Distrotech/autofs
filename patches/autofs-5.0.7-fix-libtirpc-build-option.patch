@@ -1,5 +1,5 @@
 Bottom: 4281bcc6a82f5f962610fdb19afca40a721cbb51
-Top:    526fe8e7b5cbac58e196a9a0926c852e114c1bd6
+Top:    fc68a8447581d200f45f1451729682d15f206dad
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-02-27 13:15:06 +0800
 
@@ -9,7 +9,7 @@ autofs-5.0.7 - fix libtirpc build option
 ---
 
 diff --git a/autofs.spec b/autofs.spec
-index b8a3b7a..01f715c 100644
+index b8a3b7a..4b3a5cd 100644
 --- a/autofs.spec
 +++ b/autofs.spec
 @@ -12,6 +12,10 @@
@@ -33,3 +33,21 @@ index b8a3b7a..01f715c 100644
  BuildPrereq: autoconf, hesiod-devel, openldap-devel, bison, flex, cyrus-sasl-devel
  Prereq: chkconfig
  Requires: /bin/bash mktemp sed textutils sh-utils grep /bin/ps
+@@ -72,9 +79,16 @@ echo %{version}-%{release} > .version
+   %define _unitdir %{?_unitdir:/lib/systemd/system}
+   %define systemd_configure_arg --with-systemd
+ %endif
++%if %{with_libtirpc}
++  %define libtirpc_configure_arg --with-libtirpc
++%endif
+ 
+ %build
+-CFLAGS="$RPM_OPT_FLAGS -Wall" ./configure --libdir=%{_libdir} --disable-mount-locking --enable-ignore-busy --with-libtirpc %{?systemd_configure_arg:}
++CFLAGS="$RPM_OPT_FLAGS -Wall" \
++./configure --libdir=%{_libdir} \
++	--disable-mount-locking --enable-ignore-busy \
++	%{?systemd_configure_arg:} \
++	%{?ilibtirpc_configure_arg:}
+ CFLAGS="$RPM_OPT_FLAGS -Wall" make initdir=/etc/rc.d/init.d DONTSTRIP=1
+ 
+ %install
