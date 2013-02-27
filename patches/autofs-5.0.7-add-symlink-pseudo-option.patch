@@ -1,0 +1,148 @@
+Bottom: 0dbbf1a9ae9d915ec521c6509739bce5b864a66a
+Top:    93dc66a9364592da81d18f53aa39c3b705415730
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-02-25 14:24:46 +0800
+
+autofs-5.0.7 - add symlink pseudo option
+
+
+---
+
+diff --git a/include/automount.h b/include/automount.h
+index 37541f5..a8fe305 100644
+--- a/include/automount.h
++++ b/include/automount.h
+@@ -452,6 +452,9 @@ struct kernel_mod_version {
+ /* Use server weight only for selection */
+ #define MOUNT_FLAG_USE_WEIGHT_ONLY	0x0010
+ 
++/* Use symlinks instead of bind mounting local mounts */
++#define MOUNT_FLAG_SYMLINK		0x0020
++
+ /* Don't use bind mounts even when system supports them */
+ #define MOUNT_FLAG_NOBIND		0x0020
+ 
+diff --git a/lib/master_parse.y b/lib/master_parse.y
+index f925b5a..f3e0433 100644
+--- a/lib/master_parse.y
++++ b/lib/master_parse.y
+@@ -57,6 +57,7 @@ static char *type;
+ static char *format;
+ static long timeout;
+ static long negative_timeout;
++static unsigned symlink;
+ static unsigned nobind;
+ static unsigned ghost;
+ extern unsigned global_selection_options;
+@@ -100,7 +101,7 @@ static int master_fprintf(FILE *, char *, ...);
+ %token COMMENT
+ %token MAP
+ %token OPT_TIMEOUT OPT_NTIMEOUT OPT_NOBIND OPT_NOGHOST OPT_GHOST OPT_VERBOSE
+-%token OPT_DEBUG OPT_RANDOM OPT_USE_WEIGHT
++%token OPT_DEBUG OPT_RANDOM OPT_USE_WEIGHT OPT_SYMLINK
+ %token COLON COMMA NL DDASH
+ %type <strtype> map
+ %type <strtype> options
+@@ -186,6 +187,7 @@ line:
+ 	| PATH OPT_USE_WEIGHT { master_notify($1); YYABORT; }
+ 	| PATH OPT_DEBUG { master_notify($1); YYABORT; }
+ 	| PATH OPT_TIMEOUT { master_notify($1); YYABORT; }
++	| PATH OPT_SYMLINK { master_notify($1); YYABORT; }
+ 	| PATH OPT_NOBIND { master_notify($1); YYABORT; }
+ 	| PATH OPT_GHOST { master_notify($1); YYABORT; }
+ 	| PATH OPT_NOGHOST { master_notify($1); YYABORT; }
+@@ -557,6 +559,7 @@ option: daemon_option
+ 
+ daemon_option: OPT_TIMEOUT NUMBER { timeout = $2; }
+ 	| OPT_NTIMEOUT NUMBER { negative_timeout = $2; }
++	| OPT_SYMLINK	{ symlink = 1; }
+ 	| OPT_NOBIND	{ nobind = 1; }
+ 	| OPT_NOGHOST	{ ghost = 0; }
+ 	| OPT_GHOST	{ ghost = 1; }
+@@ -627,6 +630,7 @@ static void local_init_vars(void)
+ 	debug = 0;
+ 	timeout = -1;
+ 	negative_timeout = 0;
++	symlink = 0;
+ 	nobind = 0;
+ 	ghost = defaults_get_browse_mode();
+ 	random_selection = global_selection_options & MOUNT_FLAG_RANDOM_SELECT;
+@@ -811,6 +815,8 @@ int master_parse_entry(const char *buffer, unsigned int default_timeout, unsigne
+ 		entry->ap->flags |= MOUNT_FLAG_RANDOM_SELECT;
+ 	if (use_weight)
+ 		entry->ap->flags |= MOUNT_FLAG_USE_WEIGHT_ONLY;
++	if (symlink)
++		entry->ap->flags |= MOUNT_FLAG_SYMLINK;
+ 	if (negative_timeout)
+ 		entry->ap->negative_timeout = negative_timeout;
+ 
+diff --git a/lib/master_tok.l b/lib/master_tok.l
+index 30abb15..f9b4e55 100644
+--- a/lib/master_tok.l
++++ b/lib/master_tok.l
+@@ -361,6 +361,7 @@ OPTNTOUT	(-n{OPTWS}|-n{OPTWS}={OPTWS}|--negative-timeout{OPTWS}|--negative-timeo
+ 		return(NUMBER);
+ 	}
+ 
++	-?symlink		{ return(OPT_SYMLINK); }
+ 	-?nobind		{ return(OPT_NOBIND); }
+ 	-?nobrowse		{ return(OPT_NOGHOST); }
+ 	-g|--ghost|-?browse	{ return(OPT_GHOST); }
+diff --git a/modules/mount_bind.c b/modules/mount_bind.c
+index 9bce686..129e24a 100644
+--- a/modules/mount_bind.c
++++ b/modules/mount_bind.c
+@@ -73,10 +73,44 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
+ 	char buf[MAX_ERR_BUF];
+ 	int err;
+ 	int i, len;
++	int symlink = ap->flags & MOUNT_FLAG_SYMLINK;
+ 
+ 	if (ap->flags & MOUNT_FLAG_REMOUNT)
+ 		return 0;
+ 
++	/* Extract "symlink" pseudo-option which forces local filesystems
++	 * to be symlinked instead of bound.
++	 */
++	if (!symlink && options) {
++		const char *comma;
++		int o_len = strlen(options) + 1;
++
++		for (comma = options; *comma != '\0';) {
++			const char *cp;
++			const char *end;
++
++			while (*comma == ',')
++				comma++;
++
++			/* Skip leading white space */
++			while (*comma == ' ' || *comma == '\t')
++				comma++;
++
++			cp = comma;
++			while (*comma != '\0' && *comma != ',')
++				comma++;
++
++			/* Skip trailing white space */
++			end = comma - 1;
++			while (*comma == ' ' || *comma == '\t')
++				end--;
++
++			o_len = end - cp + 1;
++			if (strncmp("symlink", cp, o_len) == 0)
++				symlink = 1;
++		}
++	}
++
+ 	/* Root offset of multi-mount */
+ 	len = strlen(root);
+ 	if (root[len - 1] == '/') {
+@@ -100,7 +134,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
+ 	if (options == NULL || *options == '\0')
+ 		options = "defaults";
+ 
+-	if (bind_works) {
++	if (!symlink && bind_works) {
+ 		int status, existed = 1;
+ 
+ 		debug(ap->logopt, MODPREFIX "calling mkdir_path %s", fullpath);

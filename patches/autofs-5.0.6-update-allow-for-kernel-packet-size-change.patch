@@ -1,0 +1,47 @@
+Bottom: 73b4bac4ce1c504b352961813ab75943a7023fac
+Top:    34c82ea48d9c77b760f36f379648c0a3a627ff83
+Author: Ian Kent <raven@themaw.net>
+Date:   2012-05-15 11:24:22 +0800
+
+autofs-5.0.6 - allow for kernel packet size changes
+
+Kernel 3.3.0 has a patch to allow for the original missdesign of
+the autofs v5 kernel packet. That change is being back ported to
+earlier stable kernel releases which is causing autofs to hang in
+mixed 32-bit user space/64-bit kernel
+
+The problem is that while all the structure fields are alligned
+correctly structure allignment on x86-64 causes the packet size
+to be 4 bytes larger than on x86. So when running an x86 binary
+on an x86-64 install the packet size did not match causing user
+space pipe reads to hang.
+
+
+---
+
+diff --git a/daemon/automount.c b/daemon/automount.c
+index 7dea73b..edef77c 100644
+--- a/daemon/automount.c
++++ b/daemon/automount.c
+@@ -36,6 +36,7 @@
+ #include <dirent.h>
+ #include <sys/vfs.h>
+ #include <sys/utsname.h>
++#include "mounts.h"
+ 
+ #include "automount.h"
+ #if defined(LIBXML2_WORKAROUND) || defined(TIRPC_WORKAROUND)
+@@ -601,9 +602,11 @@ static size_t get_kpkt_len(void)
+ 	int kern_vers;
+ 
+ 	kern_vers = linux_version_code();
+-	if (kern_vers >= KERNEL_VERSION(3, 3, 0))
++	if (kern_vers > KERNEL_VERSION(3, 2, 9) ||
++	    (kern_vers > KERNEL_VERSION(3, 0, 23) &&
++	     kern_vers < KERNEL_VERSION(3, 1, 0)))
+ 		return pkt_len;
+-
++ 
+ 	uname(&un);
+ 
+ 	if (pkt_len % 8) {

@@ -1,0 +1,67 @@
+Bottom: 8f6889ec83f34e2263dcc593261744f621f4415a
+Top:    6cb4e6a48ec9ab5fa29109db8618398c2d6034ee
+Author: Ian Kent <raven@themaw.net>
+Date:   2009-12-08 10:51:47 +0800
+
+autofs-5.0.5 - don't fail on master map not available
+
+
+---
+
+diff --git a/modules/lookup_file.c b/modules/lookup_file.c
+index e43ab2f..5d3d164 100644
+--- a/modules/lookup_file.c
++++ b/modules/lookup_file.c
+@@ -383,14 +383,15 @@ int lookup_read_master(struct master *master, time_t age, void *context)
+ 	FILE *f;
+ 	unsigned int path_len, ent_len;
+ 	int entry, cur_state;
++	int status = NSS_STATUS_SUCCESS;
+ 
+ 	if (master->recurse)
+-		return NSS_STATUS_UNAVAIL;
++		return NSS_STATUS_NOTFOUND;
+ 
+ 	if (master->depth > MAX_INCLUDE_DEPTH) {
+ 		error(logopt, MODPREFIX
+ 		      "maximum include depth exceeded %s", master->name);
+-		return NSS_STATUS_UNAVAIL;
++		return NSS_STATUS_NOTFOUND;
+ 	}
+ 
+ 	f = open_fopen_r(ctxt->mapname);
+@@ -409,6 +410,7 @@ int lookup_read_master(struct master *master, time_t age, void *context)
+ 			if (ferror(f)) {
+ 				warn(logopt, MODPREFIX
+ 				     "error reading map %s", ctxt->mapname);
++				status = NSS_STATUS_UNAVAIL;
+ 				break;
+ 			}
+ 			continue;
+@@ -470,7 +472,7 @@ int lookup_read_master(struct master *master, time_t age, void *context)
+ 
+ 	fclose(f);
+ 
+-	return NSS_STATUS_SUCCESS;
++	return status;
+ }
+ 
+ static int check_self_include(const char *key, struct lookup_context *ctxt)
+diff --git a/modules/lookup_yp.c b/modules/lookup_yp.c
+index c8e6d4b..ae9e793 100644
+--- a/modules/lookup_yp.c
++++ b/modules/lookup_yp.c
+@@ -247,10 +247,10 @@ int lookup_read_master(struct master *master, time_t age, void *context)
+ 		     MODPREFIX "read of master map %s failed: %s",
+ 		     mapname, yperr_string(err));
+ 
+-		if (err == YPERR_PMAP || err == YPERR_YPSERV)
+-			return NSS_STATUS_UNAVAIL;
++		if (err == YPERR_PMAP)
++			return NSS_STATUS_NOTFOUND;
+ 
+-		return NSS_STATUS_NOTFOUND;
++		return NSS_STATUS_UNAVAIL;
+ 	}
+ 
+ 	return NSS_STATUS_SUCCESS;

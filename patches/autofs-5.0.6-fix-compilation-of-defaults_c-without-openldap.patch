@@ -1,0 +1,86 @@
+Bottom: 395b85f95dc0cc88214f7033563c2e6f521938bc
+Top:    23514c8f09368ec8cb4c24ebfb9361204ca377e1
+Author: Dustin Polke <DuPol@gmx.de>
+Date:   2012-05-15 11:26:27 +0800
+
+autofs-5.0.6 - fix compilation of defaults.c without openldap
+
+Compiling autofs needs openldap headers, even if the option
+"--without-openldap" is used.
+
+
+---
+
+diff --git a/CHANGELOG b/CHANGELOG
+index d1a648c..752d28a 100644
+--- a/CHANGELOG
++++ b/CHANGELOG
+@@ -50,6 +50,7 @@
+ - move timeout to map_source (allow per direct map timeout).
+ - dont retry ldap connect if not required.
+ - fix getautomntbyname_r() declaration.
++- fix compilation of defaults.c without openldap.
+ 
+ 28/06/2011 autofs-5.0.6
+ -----------------------
+diff --git a/lib/defaults.c b/lib/defaults.c
+index 5ce71b7..2450bc4 100644
+--- a/lib/defaults.c
++++ b/lib/defaults.c
+@@ -19,7 +19,10 @@
+ 
+ #include "list.h"
+ #include "defaults.h"
++#include "config.h"
++#ifdef WITH_LDAP
+ #include "lookup_ldap.h"
++#endif
+ #include "log.h"
+ #include "automount.h"
+ 
+@@ -197,6 +200,7 @@ static int parse_line(char *line, char **res, char **value)
+ 	return 1;
+ }
+ 
++#ifdef WITH_LDAP
+ void defaults_free_uris(struct list_head *list)
+ {
+ 	struct list_head *next;
+@@ -252,9 +256,11 @@ static unsigned int add_uris(char *value, struct list_head *list)
+ 
+ 	return 1;
+ }
++#endif
+ 
+ struct list_head *defaults_get_uris(void)
+ {
++#ifdef WITH_LDAP
+ 	FILE *f;
+ 	char buf[MAX_LINE_LEN];
+ 	char *res;
+@@ -288,6 +294,9 @@ struct list_head *defaults_get_uris(void)
+ 
+ 	fclose(f);
+ 	return list;
++#else
++	return NULL;
++#endif
+ }
+ 
+ /*
+@@ -450,6 +459,7 @@ unsigned int defaults_get_ldap_network_timeout(void)
+ 	return res;
+ }
+ 
++#ifdef WITH_LDAP
+ struct ldap_schema *defaults_get_default_schema(void)
+ {
+ 	struct ldap_schema *schema;
+@@ -645,6 +655,7 @@ struct ldap_schema *defaults_get_schema(void)
+ 
+ 	return schema;
+ }
++#endif
+ 
+ unsigned int defaults_get_mount_nfs_default_proto(void)
+ {

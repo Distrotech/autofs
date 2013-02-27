@@ -1,0 +1,100 @@
+Bottom: 353883411ca109faa8cb840c6938f3dce133fbb2
+Top:    89c8918439689681fc47b3f62f7ff22792b6fdaf
+Author: Ian Kent <raven@themaw.net>
+Date:   2010-07-14 10:48:15 +0800
+
+autofs-5.0.5 - fix cache_delete() is to aggressive
+
+If a mount is attempted for a non-existent map key and that key is then
+added to the map and a reload performed both the negative cached key and
+the newly added key were being deleted, causing mounts for the key to
+fail. This is because the cache_delete() function was being to aggressive
+in deleting map keys.
+
+
+---
+
+diff --git a/CHANGELOG b/CHANGELOG
+index 24ee0d4..a02e74e 100644
+--- a/CHANGELOG
++++ b/CHANGELOG
+@@ -48,6 +48,7 @@
+ - fix error handing in do_mount_indirect().
+ - expire thread use pending mutex.
+ - add external bind method.
++- fix cache_delete() is to aggressive.
+ 
+ 03/09/2009 autofs-5.0.5
+ -----------------------
+diff --git a/lib/cache.c b/lib/cache.c
+index a096150..7e30f48 100644
+--- a/lib/cache.c
++++ b/lib/cache.c
+@@ -761,6 +761,9 @@ int cache_update(struct mapent_cache *mc, struct map_source *ms, const char *key
+ 			if (me->mapent)
+ 				free(me->mapent);
+ 			me->mapent = strcpy(pent, mapent);
++			/* Reset negative status and source */
++			me->status = 0;
++			me->source = ms;
+ 			ret = CHE_UPDATED;
+ 		}
+ 		me->age = age;
+@@ -784,6 +787,25 @@ int cache_delete(struct mapent_cache *mc, const char *key)
+ 		goto done;
+ 	}
+ 
++	if (strcmp(this, me->key) == 0) {
++		if (me->multi && !list_empty(&me->multi_list)) {
++			ret = CHE_FAIL;
++			goto done;
++		}
++		mc->hash[hashval] = me->next;
++		status = pthread_rwlock_destroy(&me->multi_rwlock);
++		if (status)
++			fatal(status);
++		ino_index_lock(mc);
++		list_del(&me->ino_index);
++		ino_index_unlock(mc);
++		free(me->key);
++		if (me->mapent)
++			free(me->mapent);
++		free(me);
++		goto done;
++	}
++
+ 	while (me->next != NULL) {
+ 		pred = me;
+ 		me = me->next;
+@@ -803,30 +825,8 @@ int cache_delete(struct mapent_cache *mc, const char *key)
+ 			if (me->mapent)
+ 				free(me->mapent);
+ 			free(me);
+-			me = pred;
+-		}
+-	}
+-
+-	me = mc->hash[hashval];
+-	if (!me)
+-		goto done;
+-
+-	if (strcmp(this, me->key) == 0) {
+-		if (me->multi && !list_empty(&me->multi_list)) {
+-			ret = CHE_FAIL;
+-			goto done;
++			break;
+ 		}
+-		mc->hash[hashval] = me->next;
+-		status = pthread_rwlock_destroy(&me->multi_rwlock);
+-		if (status)
+-			fatal(status);
+-		ino_index_lock(mc);
+-		list_del(&me->ino_index);
+-		ino_index_unlock(mc);
+-		free(me->key);
+-		if (me->mapent)
+-			free(me->mapent);
+-		free(me);
+ 	}
+ done:
+ 	return ret;

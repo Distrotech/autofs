@@ -1,0 +1,202 @@
+Bottom: 23514c8f09368ec8cb4c24ebfb9361204ca377e1
+Top:    39c462bab4ef39d3efb28d09b3c7acd2b83bac73
+Author: Dustin Polke <DuPol@gmx.de>
+Date:   2012-05-15 11:28:27 +0800
+
+autofs-5.0.6 - fix compilation of lookup_ldap.c without sasl
+
+See https://bugs.gentoo.org/show_bug.cgi?id=361899 for more info.
+
+Edited by: Ian Kent <raven@themaw.net>
+- fix parse_ldap_config() is needed by ldap but previously excluded.
+- exclude other references to ctxt->extern_cert and ctxt->extern_key.
+- prevent memory leak if present in config but not used.
+- remove now unused set_env().
+
+
+---
+
+diff --git a/CHANGELOG b/CHANGELOG
+index 752d28a..0d47ac0 100644
+--- a/CHANGELOG
++++ b/CHANGELOG
+@@ -51,6 +51,7 @@
+ - dont retry ldap connect if not required.
+ - fix getautomntbyname_r() declaration.
+ - fix compilation of defaults.c without openldap.
++- fix compilation of lookup_ldap.c without sasl.
+ 
+ 28/06/2011 autofs-5.0.6
+ -----------------------
+diff --git a/include/lookup_ldap.h b/include/lookup_ldap.h
+index e441a61..f34c029 100644
+--- a/include/lookup_ldap.h
++++ b/include/lookup_ldap.h
+@@ -8,10 +8,11 @@
+ #include <openssl/evp.h>
+ #include <openssl/err.h>
+ #include <sasl/sasl.h>
+-#include <libxml/tree.h>
+ #include <krb5.h>
+ #endif
+ 
++#include <libxml/tree.h>
++
+ #include "list.h"
+ #include "dclist.h"
+ 
+@@ -93,7 +94,6 @@ struct lookup_context {
+ };
+ 
+ 
+-#ifdef WITH_SASL
+ #define LDAP_AUTH_CONF_FILE "test"
+ 
+ #define LDAP_TLS_DONT_USE	0
+@@ -105,7 +105,6 @@ struct lookup_context {
+ #define LDAP_AUTH_REQUIRED	0x0002
+ #define LDAP_AUTH_AUTODETECT	0x0004
+ #define LDAP_NEED_AUTH		(LDAP_AUTH_REQUIRED|LDAP_AUTH_AUTODETECT)
+-#endif
+ 
+ #define LDAP_AUTH_USESIMPLE	0x0008
+ 
+diff --git a/lib/Makefile b/lib/Makefile
+index 5418009..4a5b712 100644
+--- a/lib/Makefile
++++ b/lib/Makefile
+@@ -24,6 +24,10 @@ CFLAGS += -I../include -fPIC -D_GNU_SOURCE
+ CFLAGS += -DAUTOFS_MAP_DIR=\"$(autofsmapdir)\"
+ CFLAGS += -DAUTOFS_CONF_DIR=\"$(autofsconfdir)\"
+ 
++ifeq ($(LDAP), 1)
++  CFLAGS += $(XML_FLAGS) $(XML_LIBS)
++endif
++
+ .PHONY: all install clean
+ 
+ all: autofs.a
+diff --git a/modules/Makefile b/modules/Makefile
+index 939da7c..b2ec237 100644
+--- a/modules/Makefile
++++ b/modules/Makefile
+@@ -40,10 +40,12 @@ endif
+ ifeq ($(LDAP), 1)
+   SRCS += lookup_ldap.c
+   MODS += lookup_ldap.so
++  LDAP_FLAGS += $(XML_FLAGS) -DLDAP_THREAD_SAFE
++  LIBLDAP += $(XML_LIBS)
+   ifeq ($(SASL), 1)
+     SASL_OBJ = cyrus-sasl.o cyrus-sasl-extern.o
+-    LDAP_FLAGS += $(SASL_FLAGS) $(XML_FLAGS) $(KRB5_FLAGS) -DLDAP_THREAD_SAFE
+-    LIBLDAP += $(LIBSASL) $(XML_LIBS) $(KRB5_LIBS)
++    LDAP_FLAGS += $(SASL_FLAGS) $(KRB5_FLAGS) -DLDAP_THREAD_SAFE
++    LIBLDAP += $(LIBSASL) $(KRB5_LIBS)
+   endif
+ endif
+ 
+diff --git a/modules/lookup_ldap.c b/modules/lookup_ldap.c
+index 3bc4dc5..b0ba7a1 100644
+--- a/modules/lookup_ldap.c
++++ b/modules/lookup_ldap.c
+@@ -65,6 +65,7 @@ struct ldap_search_params {
+ 
+ static int decode_percent_hack(const char *, char **);
+ 
++#ifdef HAVE_SASL
+ static int set_env(unsigned logopt, const char *name, const char *val)
+ {
+ 	int ret = setenv(name, val, 1);
+@@ -74,6 +75,7 @@ static int set_env(unsigned logopt, const char *name, const char *val)
+ 	}
+ 	return 1;
+ }
++#endif
+ 
+ #ifndef HAVE_LDAP_CREATE_PAGE_CONTROL
+ int ldap_create_page_control(LDAP *ldap, ber_int_t pagesize,
+@@ -584,10 +586,12 @@ static LDAP *do_connect(unsigned logopt, const char *uri, struct lookup_context
+ {
+ 	LDAP *ldap;
+ 
++#ifdef HAVE_SASL
+ 	if (ctxt->extern_cert && ctxt->extern_key) {
+ 		set_env(logopt, ENV_LDAPTLS_CERT, ctxt->extern_cert);
+ 		set_env(logopt, ENV_LDAPTLS_KEY, ctxt->extern_key);
+ 	}
++#endif
+ 
+ 	ldap = init_ldap_connection(logopt, uri, ctxt);
+ 	if (ldap) {
+@@ -790,7 +794,6 @@ find_server:
+ 	return ldap;
+ }
+ 
+-#ifdef WITH_SASL
+ int get_property(unsigned logopt, xmlNodePtr node, const char *prop, char **value)
+ {
+ 	xmlChar *ret;
+@@ -811,6 +814,7 @@ int get_property(unsigned logopt, xmlNodePtr node, const char *prop, char **valu
+ 	return 0;
+ }
+ 
++#ifdef WITH_SASL
+ /*
+  *  For plain text, login and digest-md5 authentication types, we need
+  *  user and password credentials.
+@@ -823,6 +827,7 @@ int authtype_requires_creds(const char *authtype)
+ 		return 1;
+ 	return 0;
+ }
++#endif
+ 
+ /*
+  *  Returns:
+@@ -1055,6 +1060,7 @@ auth_fail:
+ 		}
+ 	} else if (auth_required == LDAP_AUTH_REQUIRED &&
+ 		  (authtype && !strncmp(authtype, "EXTERNAL", 8))) {
++#ifdef WITH_SASL
+ 		ret = get_property(logopt, root, "external_cert",  &extern_cert);
+ 		ret |= get_property(logopt, root, "external_key",  &extern_key);
+ 		/*
+@@ -1073,6 +1079,7 @@ auth_fail:
+ 			if (extern_key)
+ 				free(extern_key);
+ 		}
++#endif
+ 	}
+ 
+ 	/*
+@@ -1093,8 +1100,10 @@ auth_fail:
+ 	ctxt->secret = secret;
+ 	ctxt->client_princ = client_princ;
+ 	ctxt->client_cc = client_cc;
++#ifdef WITH_SASL
+ 	ctxt->extern_cert = extern_cert;
+ 	ctxt->extern_key = extern_key;
++#endif
+ 
+ 	debug(logopt, MODPREFIX
+ 	      "ldap authentication configured with the following options:");
+@@ -1126,7 +1135,6 @@ out:
+ 
+ 	return ret;
+ }
+-#endif
+ 
+ /*
+  *  Take an input string as specified in the master map, and break it
+@@ -1384,10 +1392,12 @@ static void free_context(struct lookup_context *ctxt)
+ 		defaults_free_searchdns(ctxt->sdns);
+ 	if (ctxt->dclist)
+ 		free_dclist(ctxt->dclist);
++#ifdef HAVE_SASL
+ 	if (ctxt->extern_cert)
+ 		free(ctxt->extern_cert);
+ 	if (ctxt->extern_key)
+ 		free(ctxt->extern_key);
++#endif
+ 	free(ctxt);
+ 
+ 	return;

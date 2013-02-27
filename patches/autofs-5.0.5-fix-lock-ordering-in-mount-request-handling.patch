@@ -1,0 +1,162 @@
+Bottom: a35429e8a6ae5cc6d6a8a0a87d959fa6f721f3b6
+Top:    943c2791f0eb0be4f55091a0d06e2f9c2689119f
+Author: Ian Kent <raven@themaw.net>
+Date:   2010-01-02 09:50:55 +0800
+
+autofs-5.0.5 - fix lock ordering in mount request handling
+
+We haven't seen any problems with this but there are some lock
+ordering violations here that need to be fixed. Also fixed is
+a missing master mutex unlock. In a sense that wasn't a problem
+because if that error condition is true then it is fatal anyway.
+
+
+---
+
+diff --git a/daemon/direct.c b/daemon/direct.c
+index cc6938d..ec75090 100644
+--- a/daemon/direct.c
++++ b/daemon/direct.c
+@@ -1124,10 +1124,6 @@ int handle_packet_expire_direct(struct autofs_point *ap, autofs_packet_expire_di
+ 	if (status)
+ 		fatal(status);
+ 
+-	status = pthread_mutex_lock(&ea_mutex);
+-	if (status)
+-		fatal(status);
+-
+ 	mt->ap = ap;
+ 	mt->ioctlfd = me->ioctlfd;
+ 	mt->mc = mc;
+@@ -1137,16 +1133,21 @@ int handle_packet_expire_direct(struct autofs_point *ap, autofs_packet_expire_di
+ 	mt->type = NFY_EXPIRE;
+ 	mt->wait_queue_token = pkt->wait_queue_token;
+ 
++	cache_unlock(mc);
++	master_source_unlock(ap->entry);
++
+ 	debug(ap->logopt, "token %ld, name %s",
+ 		  (unsigned long) pkt->wait_queue_token, mt->name);
+ 
++	status = pthread_mutex_lock(&ea_mutex);
++	if (status)
++		fatal(status);
++
+ 	status = pthread_create(&thid, &th_attr_detached, do_expire_direct, mt);
+ 	if (status) {
+ 		error(ap->logopt, "expire thread create failed");
+ 		ops->send_fail(ap->logopt,
+ 			       mt->ioctlfd, pkt->wait_queue_token, -status);
+-		cache_unlock(mc);
+-		master_source_unlock(ap->entry);
+ 		expire_mutex_unlock(NULL);
+ 		pending_cond_destroy(mt);
+ 		free_pending_args(mt);
+@@ -1154,9 +1155,6 @@ int handle_packet_expire_direct(struct autofs_point *ap, autofs_packet_expire_di
+ 		return 1;
+ 	}
+ 
+-	cache_unlock(mc);
+-	master_source_unlock(ap->entry);
+-
+ 	pthread_cleanup_push(free_pending_args, mt);
+ 	pthread_cleanup_push(pending_cond_destroy, mt);
+ 	pthread_cleanup_push(expire_mutex_unlock, NULL);
+@@ -1362,6 +1360,7 @@ int handle_packet_missing_direct(struct autofs_point *ap, autofs_packet_missing_
+ 		logerr("can't find map entry for (%lu,%lu)",
+ 		    (unsigned long) pkt->dev, (unsigned long) pkt->ino);
+ 		master_source_unlock(ap->entry);
++		master_mutex_unlock();
+ 		pthread_setcancelstate(state, NULL);
+ 		return 1;
+ 	}
+@@ -1434,10 +1433,6 @@ int handle_packet_missing_direct(struct autofs_point *ap, autofs_packet_missing_
+ 	if (status)
+ 		fatal(status);
+ 
+-	status = pthread_mutex_lock(&mt->mutex);
+-	if (status)
+-		fatal(status);
+-
+ 	mt->ap = ap;
+ 	mt->ioctlfd = ioctlfd;
+ 	mt->mc = mc;
+@@ -1449,15 +1444,20 @@ int handle_packet_missing_direct(struct autofs_point *ap, autofs_packet_missing_
+ 	mt->gid = pkt->gid;
+ 	mt->wait_queue_token = pkt->wait_queue_token;
+ 
++	cache_unlock(mc);
++	master_source_unlock(ap->entry);
++	master_mutex_unlock();
++
++	status = pthread_mutex_lock(&mt->mutex);
++	if (status)
++		fatal(status);
++
+ 	status = pthread_create(&thid, &th_attr_detached, do_mount_direct, mt);
+ 	if (status) {
+ 		error(ap->logopt, "missing mount thread create failed");
+ 		ops->send_fail(ap->logopt,
+ 			       ioctlfd, pkt->wait_queue_token, -status);
+ 		ops->close(ap->logopt, ioctlfd);
+-		cache_unlock(mc);
+-		master_source_unlock(ap->entry);
+-		master_mutex_unlock();
+ 		mount_mutex_unlock(mt);
+ 		pending_cond_destroy(mt);
+ 		pending_mutex_destroy(mt);
+@@ -1466,11 +1466,6 @@ int handle_packet_missing_direct(struct autofs_point *ap, autofs_packet_missing_
+ 		return 1;
+ 	}
+ 
+-	cache_unlock(mc);
+-	master_source_unlock(ap->entry);
+-
+-	master_mutex_unlock();
+-
+ 	pthread_cleanup_push(free_pending_args, mt);
+ 	pthread_cleanup_push(pending_mutex_destroy, mt);
+ 	pthread_cleanup_push(pending_cond_destroy, mt);
+diff --git a/daemon/indirect.c b/daemon/indirect.c
+index 8025ee4..6098420 100644
+--- a/daemon/indirect.c
++++ b/daemon/indirect.c
+@@ -875,10 +875,6 @@ int handle_packet_missing_indirect(struct autofs_point *ap, autofs_packet_missin
+ 	if (status)
+ 		fatal(status);
+ 
+-	status = pthread_mutex_lock(&mt->mutex);
+-	if (status)
+-		fatal(status);
+-
+ 	mt->ap = ap;
+ 	strncpy(mt->name, pkt->name, pkt->len);
+ 	mt->name[pkt->len] = '\0';
+@@ -888,12 +884,17 @@ int handle_packet_missing_indirect(struct autofs_point *ap, autofs_packet_missin
+ 	mt->gid = pkt->gid;
+ 	mt->wait_queue_token = pkt->wait_queue_token;
+ 
++	master_mutex_unlock();
++
++	status = pthread_mutex_lock(&mt->mutex);
++	if (status)
++		fatal(status);
++
+ 	status = pthread_create(&thid, &th_attr_detached, do_mount_indirect, mt);
+ 	if (status) {
+ 		error(ap->logopt, "expire thread create failed");
+ 		ops->send_fail(ap->logopt,
+ 			       ap->ioctlfd, pkt->wait_queue_token, -status);
+-		master_mutex_unlock();
+ 		mount_mutex_unlock(mt);
+ 		pending_cond_destroy(mt);
+ 		pending_mutex_destroy(mt);
+@@ -902,8 +903,6 @@ int handle_packet_missing_indirect(struct autofs_point *ap, autofs_packet_missin
+ 		return 1;
+ 	}
+ 
+-	master_mutex_unlock();
+-
+ 	pthread_cleanup_push(free_pending_args, mt);
+ 	pthread_cleanup_push(pending_mutex_destroy, mt);
+ 	pthread_cleanup_push(pending_cond_destroy, mt);

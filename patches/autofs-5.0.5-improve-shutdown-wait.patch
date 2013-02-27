@@ -1,0 +1,160 @@
+Bottom: 1346bc90f3c99bd0dc82afdadb17620e160f0df0
+Top:    ba4167397487df2c50a37cd772de017aa3d0435a
+Author: Ian Kent <raven@themaw.net>
+Date:   2010-05-05 01:05:08 +0800
+
+autofs-5.0.5 - improve shutdown wait
+
+When autofs manages a large number of mounts, umounting all of them
+during shutdown can take a long time. The init script waits 45 seconds
+for the daemon to exit, after which it reports that shutdown has failed.
+But the daemon may still be busy umounting NFS mounts at this point.
+
+The limited timeout was originally done to prevent the shutdown blocking
+for a long time if a server was down. Given that the expire is now timed
+we should be able to rely on /proc/mounts becoming quiesent to check if
+the daemon has completed its task.
+
+
+---
+
+diff --git a/CHANGELOG b/CHANGELOG
+index 470de69..e6bb28e 100644
+--- a/CHANGELOG
++++ b/CHANGELOG
+@@ -32,6 +32,7 @@
+ - fix master map source server unavailable handling.
+ - add autofs_ldap_auth.conf man page.
+ - fix random selection for host on different network.
++- improve shutdown wait.
+ 
+ 03/09/2009 autofs-5.0.5
+ -----------------------
+diff --git a/redhat/autofs.init.in b/redhat/autofs.init.in
+index 363e824..c4c90f0 100644
+--- a/redhat/autofs.init.in
++++ b/redhat/autofs.init.in
+@@ -25,6 +25,7 @@ MODULE="autofs4"
+ DEVICE="autofs"
+ initdir=@@initdir@@
+ confdir=@@autofsconfdir@@
++MAX_STOP_WAIT=180
+ 
+ test -e $DAEMON || exit 0
+ 
+@@ -41,6 +42,28 @@ export PATH
+ if [ -r $confdir/autofs ]; then
+ 	. $confdir/autofs
+ fi
++UMOUNT_WAIT=${UMOUNT_WAIT:-12}
++
++function wait_mount_umount_quiescent()
++{
++	local count=`wc -l /proc/mounts|awk '{print $1}'`
++	local now=0
++	local timeout=$1
++	local elapsed=0
++
++	while [ $count -ne $now ]; do
++		now=$count
++		while [ -n "`pidof $prog`" ]; do
++			sleep 5
++			elapsed=`expr $elapsed + 5`
++			if [ $elapsed -gt $timeout ]; then
++				elapsed=0
++				break
++			fi
++		done
++		count=`wc -l /proc/mounts|awk '{print $1}'`
++	done
++}
+ 
+ function start() {
+ 	# Make sure autofs4 module is loaded
+@@ -100,12 +123,19 @@ function start() {
+ 
+ function stop() {
+ 	echo -n $"Stopping $prog: "
++	if [ $UMOUNT_WAIT -le 0 ]; then
++		wait_time=20
++	else
++		wait_time=$UMOUNT_WAIT
++	fi
+ 	count=0
+-	while [ -n "`pidof $prog`" -a $count -lt 15 ] ; do
++	max_wait=`expr $MAX_STOP_WAIT + $wait_time`
++	while [ -n "`pidof $prog`" -a $count -lt $max_wait ] ; do
+ 		killproc $prog -TERM >& /dev/null
+ 		RETVAL=$?
+-		[ $RETVAL = 0 -a -z "`pidof $prog`" ] || sleep 3
+-		count=`expr $count + 1`
++		wait_mount_umount_quiescent $wait_time
++		[ $RETVAL = 0 -a -z "`pidof $prog`" ] || sleep 5
++		count=`expr $count + $wait_time + 5`
+ 	done
+ 	[ $RETVAL -eq 0 ] && rm -f /var/lock/subsys/autofs
+ 	if [ -n "`pidof $prog`" ] ; then
+diff --git a/samples/rc.autofs.in b/samples/rc.autofs.in
+index ae2e907..3218bb1 100644
+--- a/samples/rc.autofs.in
++++ b/samples/rc.autofs.in
+@@ -23,6 +23,7 @@ prog=`basename $DAEMON`
+ MODULE="autofs4"
+ DEVICE="autofs"
+ confdir=@@autofsconfdir@@
++MAX_STOP_WAIT=180
+ 
+ test -e $DAEMON || exit 0
+ 
+@@ -35,6 +36,28 @@ export PATH
+ if [ -r $confdir/autofs ]; then
+ 	. $confdir/autofs
+ fi
++UMOUNT_WAIT=${UMOUNT_WAIT:-12}
++
++function wait_mount_umount_quiescent()
++{
++	local count=`wc -l /proc/mounts|awk '{print $1}'`
++	local now=0
++	local timeout=$1
++	local elapsed=0
++
++	while [ $count -ne $now ]; do
++		now=$count
++		while [ -n "`pidof $prog`" ]; do
++			sleep 5
++			elapsed=`expr $elapsed + 5`
++			if [ $elapsed -gt $timeout ]; then
++				elapsed=0
++				break
++			fi
++		done
++		count=`wc -l /proc/mounts|awk '{print $1}'`
++	done
++}
+ 
+ function start() {
+ 	echo -n "Starting $prog: "
+@@ -87,12 +110,19 @@ function start() {
+ 
+ function stop() {
+ 	echo -n $"Stopping $prog: "
++	if [ $UMOUNT_WAIT -le 0 ]; then
++		wait_time=20
++	else
++		wait_time=$UMOUNT_WAIT
++	fi
+ 	count=0
+-	while [ -n "`pidof $prog`" -a $count -lt 15 ] ; do
++	max_wait=`expr $MAX_STOP_WAIT + $wait_time`
++	while [ -n "`pidof $prog`" -a $count -lt $max_wait ] ; do
+ 		killall -TERM $prog >& /dev/null
+ 		RETVAL=$?
+-		[ $RETVAL = 0 -a -z "`pidof $prog`" ] || sleep 3
+-		count=`expr $count + 1`
++		wait_mount_umount_quiescent $wait_time
++		[ $RETVAL = 0 -a -z "`pidof $prog`" ] || sleep 5
++		count=`expr $count + $wait_time + 5`
+ 	done
+ 	if [ -z "`pidof $prog`" ] ; then
+ 		echo "done."

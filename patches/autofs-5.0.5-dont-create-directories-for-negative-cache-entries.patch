@@ -1,0 +1,27 @@
+Bottom: 3917f1e97a1fd7398d1be5616a28a1165d5bb2ff
+Top:    c8115b2adabc975ce41b7cb3ce71bbad2be03600
+Author: Leonardo Chiquitto <leonardo.lists@gmail.com>
+Date:   2011-04-04 15:42:12 +0800
+
+autofs-5.0.5 - don't create directories for negative cache entries
+
+When ghosting is enabled, don't create mount points for negative
+cache entries on map read.
+
+
+---
+
+diff --git a/daemon/lookup.c b/daemon/lookup.c
+index 0f7051b..5f0d396 100644
+--- a/daemon/lookup.c
++++ b/daemon/lookup.c
+@@ -604,6 +604,9 @@ int lookup_ghost(struct autofs_point *ap, const char *root)
+ 			if (!strcmp(me->key, "*"))
+ 				goto next;
+ 
++			if (!me->mapent)
++				goto next;
++
+ 			if (*me->key == '/') {
+ 				/* It's a busy multi-mount - leave till next time */
+ 				if (list_empty(&me->multi_list))
