@@ -1,5 +1,5 @@
 Bottom: 7275cec7806c80a512f25875bd90519e1f108cee
-Top:    3c80ce2a67baeab96fd06c350716dccc4bb7ad72
+Top:    0cf18140759f544d7939aa62d2647161675c47b4
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-02-27 14:31:43 +0800
 
@@ -12,6 +12,18 @@ note of the potential performance implications.
 
 ---
 
+diff --git a/CHANGELOG b/CHANGELOG
+index 50966bc..df40b41 100644
+--- a/CHANGELOG
++++ b/CHANGELOG
+@@ -35,6 +35,7 @@
+ - fix requires in spec file.
+ - fix libtirpc build option to require libtirpc-devel if needed.
+ - fix systemd unidir in spec file.
++- document browse option in man page.
+ 
+ 25/07/2012 autofs-5.0.7
+ =======================
 diff --git a/man/auto.master.5.in b/man/auto.master.5.in
 index bbea43a..c552e56 100644
 --- a/man/auto.master.5.in
