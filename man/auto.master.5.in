@@ -147,6 +147,17 @@ multiple file systems should be mounted (`multimounts'). If this option
 is given, no file system is mounted at all if at least one file system
 can't be mounted.
 .TP
+.I "[no]browse"
+This is an autofs specific option that is a pseudo mount option and
+so is given without a leading dash. Use of the browse option pre-creates
+mount point directories for indirect mount maps so the map keys can be
+seen in a directory listing without being mounted. Use of this option
+can cause performance problem if the indirect map is large so it should
+be used with caution. The internal program default is to enable browse
+mode for indirect mounts but the default installed configuration overrides
+this by setting BROWSE_MODE to "no" because of the potential performance
+problem.
+.TP
 .I "nobind"
 This is an autofs specific option that is a pseudo mount option and
 so is given without a leading dash. It may be used either in the master
