@@ -1,11 +1,12 @@
 Version: 1
-Previous: 664f87b1106bddbb5df955e2f8a56e8a38a85f62
-Head: 7fd310bcdb0bf042c4a6bdb754ab063cd90dd461
+Previous: d1ed0724ae96b9bee3ea417ff3cb23137cbec4a9
+Head: 8bfe2cd2a4551652212a4f9c7549af4e88013bcd
 Applied:
   autofs-5.0.7-fix-wildcard-multi-map-regression.patch: e8fb238a62dea118d47435394d484a1714a779b2
   autofs-5.0.7-fix-file-descriptor-leak-when-reloading-the-daemon.patch: e51cc080a69f2e40523effa4ab8fb7f63007d8a1
   autofs-5.0.7-depricate-nosymlink-pseudo-option.patch: 93e768283d0eddc32969be962e3c088b1ce63cff
   autofs-5.0.7-add-symlink-pseudo-option.patch: 7fd310bcdb0bf042c4a6bdb754ab063cd90dd461
+  refresh-temp: 8bfe2cd2a4551652212a4f9c7549af4e88013bcd
 Unapplied:
   autofs-5.0.7-update-kernel-include-files.patch: a32021d2c7e0a0131e76aff7d8d3adac5ff851ac
   autofs-5.0.7-mount-private-debug.patch: 4917e0551140b5ee0223f0a5406f77692ac9c5c5

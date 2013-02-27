@@ -1,0 +1,38 @@
+Bottom: 076b8753ddab5823017da8f6c5ed6d3ff24fbfe1
+Top:    288891e82837f8165aa0246023f0ae81f8892148
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-02-27 11:16:19 +0800
+
+Refresh of autofs-5.0.7-add-symlink-pseudo-option.patch
+
+---
+
+diff --git a/modules/mount_autofs.c b/modules/mount_autofs.c
+index ef16020..6f2e096 100644
+--- a/modules/mount_autofs.c
++++ b/modules/mount_autofs.c
+@@ -51,6 +51,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
+ 	int argc, status;
+ 	int nobind = ap->flags & MOUNT_FLAG_NOBIND;
+ 	int ghost = ap->flags & MOUNT_FLAG_GHOST;
++	int symlink = ap->flags & MOUNT_FLAG_SYMLINK;
+ 	time_t timeout = ap->entry->maps->exp_timeout;
+ 	unsigned logopt = ap->logopt;
+ 	struct map_type_info *info;
+@@ -120,6 +121,8 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
+ 				nobind = 1;
+ 			else if (strncmp(cp, "browse", 6) == 0)
+ 				ghost = 1;
++			else if (strncmp(cp, "symlink", 7) == 0)
++				symlink = 1;
+ 			else if (strncmp(cp, "timeout=", 8) == 0) {
+ 				char *val = strchr(cp, '=');
+ 				unsigned tout;
+@@ -158,6 +161,8 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
+ 	}
+ 	nap = entry->ap;
+ 	nap->parent = ap;
++	if (symlink)
++		nap->flags |= MOUNT_FLAG_SYMLINK;
+ 
+ 	argc = 1;
