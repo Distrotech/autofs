@@ -1,5 +1,5 @@
 Version: 1
-Previous: 0688eb6dafcfa3823c55e765103ed0e0312a51f3
+Previous: e963fd45ad31fd05d38fc120b7a437c9f34ca897
 Head: f70bcdcc70685f2073f96150e8bae9c86fb60807
 Applied:
   autofs-5.0.7-fix-wildcard-multi-map-regression.patch: e8fb238a62dea118d47435394d484a1714a779b2
@@ -10,7 +10,6 @@ Unapplied:
   autofs-5.0.7-update-kernel-include-files.patch: a32021d2c7e0a0131e76aff7d8d3adac5ff851ac
   autofs-5.0.6-account-for-new-offset-mount-overlap.patch: db1886ece256681f8f26726437cc7a923f4e9afb
   autofs-5.0.5-automount-daemon-getting-killed-by-SIGBUS.patch: 2b09c3c182b2732f576cd9798c0e2d19f925ed6b
-  autofs-5.0.6-update-allow-for-kernel-packet-size-change.patch: 4a1b778ec4c6b61f0c90d7f3448eae9142168a9f
   autofs-5.0.6-dont-kick-state-machine-unless-ready.patch: d1bb33ddce5b00eebcd4763fa59f00f89a2abb51
   autofs-5.0.6-fix-getautomntbyname_r-declaration.patch: b0507b79e1f90e3670e1a56ba21fab32eb305d5d
   autofs-5.0.6-fix-compilation-of-defaults_c-without-openldap.patch: 878abd9e237da7631b3b3bd87b218ee66485aa99
@@ -33,6 +32,7 @@ Unapplied:
   autofs-5.0.5-add-master-read-wait-option.patch: 6ee4076f75ffcd25a358745825b3318a418af830
   autofs-5.0.6-add-ability-to-force-umount.patch: 06071701c5298ecb57beeaf1d1525125bd91e585
 Hidden:
+  autofs-5.0.6-update-allow-for-kernel-packet-size-change.patch: 4a1b778ec4c6b61f0c90d7f3448eae9142168a9f
   autofs-5.0.7-disable-hosts-map-HUP-signal-update.patch: 18a8bc06fcb08d3e9b9f8c4dad83c26e1f472142
   autofs-5.0.5-use-null-cache-to-mask-invalid-map-keys.patch: e2807d7aa6fb1b7b9308a6293b57dc099ba66c1b
   autofs-5.0.6-move-sss-init-to-init.patch: 408211b20134dac3ba1176bc354cf8c0583b3773
