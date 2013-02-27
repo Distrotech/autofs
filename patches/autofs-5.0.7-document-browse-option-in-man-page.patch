@@ -1,5 +1,5 @@
 Bottom: 7275cec7806c80a512f25875bd90519e1f108cee
-Top:    cda58795298ab3fd6eaa9cc5c32fa407527d2f56
+Top:    3c80ce2a67baeab96fd06c350716dccc4bb7ad72
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-02-27 14:31:43 +0800
 
@@ -9,10 +9,10 @@ autofs-5.0.7 - document browse option in man page
 ---
 
 diff --git a/man/auto.master.5.in b/man/auto.master.5.in
-index bbea43a..72766a2 100644
+index bbea43a..c552e56 100644
 --- a/man/auto.master.5.in
 +++ b/man/auto.master.5.in
-@@ -147,6 +147,14 @@ multiple file systems should be mounted (`multimounts'). If this option
+@@ -147,6 +147,17 @@ multiple file systems should be mounted (`multimounts'). If this option
  is given, no file system is mounted at all if at least one file system
  can't be mounted.
  .TP
@@ -22,7 +22,10 @@ index bbea43a..72766a2 100644
 +mount point directories for indirect mount maps so the map keys can be
 +seen in a directory listing without being mounted. Use of this option
 +can cause performance problem if the indirect map is large so it should
-+be used with caution.
++be used with caution. The internal program default is to enable browse
++mode for indirect mounts but the default installed configuration overrides
++this by setting BROWSE_MODE to "no" because of the potential performance
++problem.
 +.TP
  .I "nobind"
  This is an autofs specific option that is a pseudo mount option and
