@@ -1,5 +1,5 @@
 Bottom: d56cf047a62e1d834f93eec581ff861efff6b169
-Top:    a8043384706cbb2a03c388849e3b8eee4a7e79da
+Top:    3cbb32e77456133e5cc8da40ab9d72795e588f07
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-02-12 12:00:38 +0800
 
@@ -31,7 +31,7 @@ index 39388a5..1e63b93 100644
  25/07/2012 autofs-5.0.7
  =======================
 diff --git a/modules/lookup_file.c b/modules/lookup_file.c
-index facb305..ef64bf1 100644
+index facb305..46771b6 100644
 --- a/modules/lookup_file.c
 +++ b/modules/lookup_file.c
 @@ -1039,7 +1039,7 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
@@ -66,7 +66,7 @@ index facb305..ef64bf1 100644
 +		 * Add wildcard match for later validation checks and
 +		 * negative cache lookups.
 +		 */
-+		if (ap->type == LKP_INDIRECT && me->key == '*') {
++		if (ap->type == LKP_INDIRECT && *me->key == '*') {
 +			ret = cache_update(mc, source, key, me->mapent, me->age);
 +			if (!(ret & (CHE_OK | CHE_UPDATED)))
 +				me == NULL;
@@ -79,7 +79,7 @@ index facb305..ef64bf1 100644
  	cache_unlock(mc);
  
 diff --git a/modules/lookup_ldap.c b/modules/lookup_ldap.c
-index 431e50d..c69b9f8 100644
+index 431e50d..d7c2cf6 100644
 --- a/modules/lookup_ldap.c
 +++ b/modules/lookup_ldap.c
 @@ -2969,7 +2969,7 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
@@ -103,7 +103,7 @@ index 431e50d..c69b9f8 100644
 +		 * Add wildcard match for later validation checks and
 +		 * negative cache lookups.
 +		 */
-+		if (ap->type == LKP_INDIRECT && me->key == '*') {
++		if (ap->type == LKP_INDIRECT && *me->key == '*') {
 +			ret = cache_update(mc, source, key, me->mapent, me->age);
 +			if (!(ret & (CHE_OK | CHE_UPDATED)))
 +				me == NULL;
@@ -116,7 +116,7 @@ index 431e50d..c69b9f8 100644
  	cache_unlock(mc);
  
 diff --git a/modules/lookup_nisplus.c b/modules/lookup_nisplus.c
-index 9fced96..457bb0b 100644
+index 9fced96..735a1b3 100644
 --- a/modules/lookup_nisplus.c
 +++ b/modules/lookup_nisplus.c
 @@ -561,7 +561,7 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
@@ -141,7 +141,7 @@ index 9fced96..457bb0b 100644
 +		 * Add wildcard match for later validation checks and
 +		 * negative cache lookups.
 +		 */
-+		if (ap->type == LKP_INDIRECT && me->key == '*') {
++		if (ap->type == LKP_INDIRECT && *me->key == '*') {
 +			ret = cache_update(mc, source, key, me->mapent, me->age);
 +			if (!(ret & (CHE_OK | CHE_UPDATED)))
 +				me == NULL;
@@ -155,7 +155,7 @@ index 9fced96..457bb0b 100644
  	cache_unlock(mc);
  
 diff --git a/modules/lookup_sss.c b/modules/lookup_sss.c
-index e0b84cc..77e9a93 100644
+index e0b84cc..cca862a 100644
 --- a/modules/lookup_sss.c
 +++ b/modules/lookup_sss.c
 @@ -645,9 +645,20 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
@@ -170,7 +170,7 @@ index e0b84cc..77e9a93 100644
 +		 * Add wildcard match for later validation checks and
 +		 * negative cache lookups.
 +		 */
-+		if (ap->type == LKP_INDIRECT && me->key == '*') {
++		if (ap->type == LKP_INDIRECT && *me->key == '*') {
 +			ret = cache_update(mc, source, key, me->mapent, me->age);
 +			if (!(ret & (CHE_OK | CHE_UPDATED)))
 +				me == NULL;
