@@ -1,5 +1,5 @@
 Bottom: 6b6d4815c4cb732d29f22e28a0c7ec28573014f5
-Top:    29a54d7394f1512ae39f5d6322b2bb0d689ce00c
+Top:    1010b23199c55904432edf0d944b316ad242ce3a
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-02-25 14:24:46 +0800
 
@@ -40,14 +40,14 @@ index 37541f5..e72fa0d 100644
  	pthread_t thid;
  	char *path;			/* Mount point name */
 diff --git a/lib/master_parse.y b/lib/master_parse.y
-index f925b5a..f3e0433 100644
+index f925b5a..11caf5b 100644
 --- a/lib/master_parse.y
 +++ b/lib/master_parse.y
 @@ -57,6 +57,7 @@ static char *type;
  static char *format;
  static long timeout;
  static long negative_timeout;
-+static unsigned symlink;
++static unsigned symlnk;
  static unsigned nobind;
  static unsigned ghost;
  extern unsigned global_selection_options;
@@ -72,7 +72,7 @@ index f925b5a..f3e0433 100644
  
  daemon_option: OPT_TIMEOUT NUMBER { timeout = $2; }
  	| OPT_NTIMEOUT NUMBER { negative_timeout = $2; }
-+	| OPT_SYMLINK	{ symlink = 1; }
++	| OPT_SYMLINK	{ symlnk = 1; }
  	| OPT_NOBIND	{ nobind = 1; }
  	| OPT_NOGHOST	{ ghost = 0; }
  	| OPT_GHOST	{ ghost = 1; }
@@ -80,7 +80,7 @@ index f925b5a..f3e0433 100644
  	debug = 0;
  	timeout = -1;
  	negative_timeout = 0;
-+	symlink = 0;
++	symlnk = 0;
  	nobind = 0;
  	ghost = defaults_get_browse_mode();
  	random_selection = global_selection_options & MOUNT_FLAG_RANDOM_SELECT;
@@ -88,7 +88,7 @@ index f925b5a..f3e0433 100644
  		entry->ap->flags |= MOUNT_FLAG_RANDOM_SELECT;
  	if (use_weight)
  		entry->ap->flags |= MOUNT_FLAG_USE_WEIGHT_ONLY;
-+	if (symlink)
++	if (symlnk)
 +		entry->ap->flags |= MOUNT_FLAG_SYMLINK;
  	if (negative_timeout)
  		entry->ap->negative_timeout = negative_timeout;
