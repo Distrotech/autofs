@@ -1,6 +1,6 @@
 Version: 1
-Previous: dc4aefcaa3100e764cdff3365c657f036117178d
-Head: 74ebd0e6f140abb8270177f8ddc0f34c36848783
+Previous: faa80ce3efa2df88e5c09ac6886dd7c1c2b7725b
+Head: 89235f22f9ced7c4bed022db6c42477bea2421f0
 Applied:
   autofs-5.0.7-fix-wildcard-multi-map-regression.patch: f04a4f143d3b266f2887d5fbfbe2a66cc4646e17
   autofs-5.0.7-fix-file-descriptor-leak-when-reloading-the-daemon.patch: c028343e369e1381b92b2d729059331853617bfb
@@ -8,7 +8,6 @@ Applied:
   autofs-5.0.7-add-symlink-pseudo-option.patch: 7e286afb1afb6e7bc46309bced9343bb1fcbd88e
   autofs-5.0.7-update-kernel-include-files.patch: 090c1fc4e38fa0110b102e0659b1477125274f92
   autofs-5.0.7-fix-requires-in-spec-file.patch: 89235f22f9ced7c4bed022db6c42477bea2421f0
-  refresh-temp: 74ebd0e6f140abb8270177f8ddc0f34c36848783
 Unapplied:
   autofs-5.0.7-fix-libtirpc-build-option.patch: 16997aebaeea1c9f788882e364b55781f891d0c5
   autofs-5.0.7-fix-systemd-unidir-in-spec-file.patch: 9872b719eedc5623635f7235de61fdc4dd3fc802
