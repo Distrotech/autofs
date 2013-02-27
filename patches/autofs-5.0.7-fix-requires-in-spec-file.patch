@@ -5,6 +5,8 @@ Date:   2013-02-27 13:22:04 +0800
 
 autofs-5.0.7 - fix requires in spec file
 
+Fix the use of depricated reqires in tar spec file.
+
 
 ---
 
