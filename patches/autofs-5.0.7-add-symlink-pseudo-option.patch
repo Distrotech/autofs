@@ -1,5 +1,5 @@
 Bottom: 6b6d4815c4cb732d29f22e28a0c7ec28573014f5
-Top:    ef9c1d416a99aa9eb3aea2c3c497e96bb16f0712
+Top:    834d7f09457992c45c73188a3836b72304bead0b
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-02-25 14:24:46 +0800
 
@@ -155,14 +155,14 @@ index ef16020..8c1e600 100644
  	argc = 1;
  
 diff --git a/modules/mount_bind.c b/modules/mount_bind.c
-index 9bce686..c5ac340 100644
+index 9bce686..4975294 100644
 --- a/modules/mount_bind.c
 +++ b/modules/mount_bind.c
 @@ -73,10 +73,44 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
  	char buf[MAX_ERR_BUF];
  	int err;
  	int i, len;
-+	int symlink = (*name != '/' && (ap->flags & MOUNT_FLAG_SYMLINK));
++	int symlnk = (*name != '/' && (ap->flags & MOUNT_FLAG_SYMLINK));
  
  	if (ap->flags & MOUNT_FLAG_REMOUNT)
  		return 0;
@@ -170,7 +170,7 @@ index 9bce686..c5ac340 100644
 +	/* Extract "symlink" pseudo-option which forces local filesystems
 +	 * to be symlinked instead of bound.
 +	 */
-+	if (*name != '/' && !symlink && options) {
++	if (*name != '/' && !symlnk && options) {
 +		const char *comma;
 +		int o_len = strlen(options) + 1;
 +
@@ -196,7 +196,7 @@ index 9bce686..c5ac340 100644
 +
 +			o_len = end - cp + 1;
 +			if (strncmp("symlink", cp, o_len) == 0)
-+				symlink = 1;
++				symlnk = 1;
 +		}
 +	}
 +
@@ -208,7 +208,7 @@ index 9bce686..c5ac340 100644
  		options = "defaults";
  
 -	if (bind_works) {
-+	if (!symlink && bind_works) {
++	if (!symlnk && bind_works) {
  		int status, existed = 1;
  
  		debug(ap->logopt, MODPREFIX "calling mkdir_path %s", fullpath);
