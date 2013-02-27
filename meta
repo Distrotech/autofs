@@ -1,5 +1,5 @@
 Version: 1
-Previous: 217cb0d0b6504af1ac8ab03c6fa24e02dc65e5fc
+Previous: 0688eb6dafcfa3823c55e765103ed0e0312a51f3
 Head: f70bcdcc70685f2073f96150e8bae9c86fb60807
 Applied:
   autofs-5.0.7-fix-wildcard-multi-map-regression.patch: e8fb238a62dea118d47435394d484a1714a779b2
@@ -8,7 +8,6 @@ Applied:
   autofs-5.0.7-add-symlink-pseudo-option.patch: f70bcdcc70685f2073f96150e8bae9c86fb60807
 Unapplied:
   autofs-5.0.7-update-kernel-include-files.patch: a32021d2c7e0a0131e76aff7d8d3adac5ff851ac
-  autofs-5.0.7-disable-hosts-map-HUP-signal-update.patch: 18a8bc06fcb08d3e9b9f8c4dad83c26e1f472142
   autofs-5.0.6-account-for-new-offset-mount-overlap.patch: db1886ece256681f8f26726437cc7a923f4e9afb
   autofs-5.0.5-automount-daemon-getting-killed-by-SIGBUS.patch: 2b09c3c182b2732f576cd9798c0e2d19f925ed6b
   autofs-5.0.6-update-allow-for-kernel-packet-size-change.patch: 4a1b778ec4c6b61f0c90d7f3448eae9142168a9f
@@ -34,6 +33,7 @@ Unapplied:
   autofs-5.0.5-add-master-read-wait-option.patch: 6ee4076f75ffcd25a358745825b3318a418af830
   autofs-5.0.6-add-ability-to-force-umount.patch: 06071701c5298ecb57beeaf1d1525125bd91e585
 Hidden:
+  autofs-5.0.7-disable-hosts-map-HUP-signal-update.patch: 18a8bc06fcb08d3e9b9f8c4dad83c26e1f472142
   autofs-5.0.5-use-null-cache-to-mask-invalid-map-keys.patch: e2807d7aa6fb1b7b9308a6293b57dc099ba66c1b
   autofs-5.0.6-move-sss-init-to-init.patch: 408211b20134dac3ba1176bc354cf8c0583b3773
   autofs-5.0.6-fix-ldap-handling-of-backslash-in-key.patch: fef3953aa9a63b9e9846d5496e0dee08f869a0dd
