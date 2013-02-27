@@ -1,0 +1,197 @@
+Bottom: 30bd43ad90b2d02d50a5e491518cacd912384ac2
+Top:    83291e14302e2f982014a6530278666cff532dc3
+Author: Ian Kent <raven@themaw.net>
+Date:   2011-03-07 13:04:01 +0800
+
+autofs-5.0.5 - add master read wait option
+
+Add command line and configuration options to set the amount of time to
+wait for the master map to become available at program start.
+
+
+---
+
+diff --git a/daemon/automount.c b/daemon/automount.c
+index 7f049e2..60b77d7 100644
+--- a/daemon/automount.c
++++ b/daemon/automount.c
+@@ -1853,7 +1853,7 @@ int main(int argc, char *argv[])
+ 	int logpri = -1;
+ 	unsigned ghost, logging, daemon_check;
+ 	unsigned dumpmaps, foreground, have_global_options;
+-	unsigned master_read;
++	unsigned master_read, master_wait;
+ 	time_t timeout;
+ 	time_t age = time(NULL);
+ 	struct rlimit rlim;
+@@ -1873,6 +1873,7 @@ int main(int argc, char *argv[])
+ 		{"set-log-priority", 1, 0, 'l'},
+ 		{"dont-check-daemon", 0, 0, 'C'},
+ 		{"force", 0, 0, 'F'},
++		{"master-wait", 1, 0, 'M'},
+ 		{0, 0, 0, 0}
+ 	};
+ 
+@@ -1891,6 +1892,7 @@ int main(int argc, char *argv[])
+ 	defaults_read_config(0);
+ 
+ 	kpkt_len = get_kpkt_len();
++	master_wait = defaults_get_master_wait();
+ 	timeout = defaults_get_timeout();
+ 	ghost = defaults_get_browse_mode();
+ 	logging = defaults_get_logging();
+@@ -1902,7 +1904,7 @@ int main(int argc, char *argv[])
+ 	daemon_check = 1;
+ 
+ 	opterr = 0;
+-	while ((opt = getopt_long(argc, argv, "+hp:t:vmdD:fVrO:l:n:CF", long_options, NULL)) != EOF) {
++	while ((opt = getopt_long(argc, argv, "+hp:t:vmdD:fVrO:l:n:CFM:", long_options, NULL)) != EOF) {
+ 		switch (opt) {
+ 		case 'h':
+ 			usage();
+@@ -1948,6 +1950,10 @@ int main(int argc, char *argv[])
+ 			dumpmaps = 1;
+ 			break;
+ 
++		case 'M':
++			master_wait = getnumopt(optarg, opt);
++			break;
++
+ 		case 'O':
+ 			if (!have_global_options) {
+ 				global_options = strdup(optarg);
+@@ -2210,9 +2216,9 @@ int main(int argc, char *argv[])
+ 		 * a signal is received, in which case exit returning an
+ 		 * error.
+ 		 */
+-		if (!do_master_read_master(master_list, age, 180)) {
+-			logerr("%s: failed to read master map after 180 seconds!",
+-			       program);
++		if (!do_master_read_master(master_list, age, master_wait)) {
++			logerr("%s: failed to read master map after %u seconds!",
++			       program, master_wait);
+ 			master_kill(master_list);
+ 			release_flag_file();
+ 			exit(3);
+diff --git a/include/defaults.h b/include/defaults.h
+index cda2174..ac6e352 100644
+--- a/include/defaults.h
++++ b/include/defaults.h
+@@ -23,6 +23,7 @@
+ #define DEFAULT_MASTER_MAP_NAME	"auto.master"
+ 
+ #define DEFAULT_TIMEOUT			600
++#define DEFAULT_MASTER_WAIT		180
+ #define DEFAULT_NEGATIVE_TIMEOUT	60
+ #define DEFAULT_MOUNT_WAIT		-1
+ #define DEFAULT_UMOUNT_WAIT		12
+@@ -51,6 +52,7 @@ unsigned int defaults_read_config(unsigned int);
+ const char *defaults_get_master_map(void);
+ int defaults_master_set(void);
+ unsigned int defaults_get_timeout(void);
++unsigned int defaults_get_master_wait(void);
+ unsigned int defaults_get_negative_timeout(void);
+ unsigned int defaults_get_browse_mode(void);
+ unsigned int defaults_get_logging(void);
+diff --git a/lib/defaults.c b/lib/defaults.c
+index 5ce71b7..07ae9a0 100644
+--- a/lib/defaults.c
++++ b/lib/defaults.c
+@@ -29,6 +29,7 @@
+ #define ENV_NAME_MASTER_MAP		"MASTER_MAP_NAME"
+ 
+ #define ENV_NAME_TIMEOUT		"TIMEOUT"
++#define ENV_NAME_MASTER_WAIT		"MASTER_WAIT"
+ #define ENV_NAME_NEGATIVE_TIMEOUT	"NEGATIVE_TIMEOUT"
+ #define ENV_NAME_BROWSE_MODE		"BROWSE_MODE"
+ #define ENV_NAME_LOGGING		"LOGGING"
+@@ -315,6 +316,7 @@ unsigned int defaults_read_config(unsigned int to_syslog)
+ 
+ 		if (check_set_config_value(key, ENV_NAME_MASTER_MAP, value, to_syslog) ||
+ 		    check_set_config_value(key, ENV_NAME_TIMEOUT, value, to_syslog) ||
++		    check_set_config_value(key, ENV_NAME_MASTER_WAIT, value, to_syslog) ||
+ 		    check_set_config_value(key, ENV_NAME_NEGATIVE_TIMEOUT, value, to_syslog) ||
+ 		    check_set_config_value(key, ENV_NAME_BROWSE_MODE, value, to_syslog) ||
+ 		    check_set_config_value(key, ENV_NAME_LOGGING, value, to_syslog) ||
+@@ -382,6 +384,17 @@ unsigned int defaults_get_timeout(void)
+ 	return (unsigned int) timeout;
+ }
+ 
++unsigned int defaults_get_master_wait(void)
++{
++	long wait;
++
++	wait = get_env_number(ENV_NAME_MASTER_WAIT);
++	if (wait < 0)
++		wait = DEFAULT_MASTER_WAIT;
++
++	return (unsigned int) wait;
++}
++
+ unsigned int defaults_get_negative_timeout(void)
+ {
+ 	long n_timeout;
+diff --git a/man/auto.master.5.in b/man/auto.master.5.in
+index 380b706..94a1603 100644
+--- a/man/auto.master.5.in
++++ b/man/auto.master.5.in
+@@ -175,6 +175,10 @@ They are:
+ .B TIMEOUT
+ sets the default mount timeout (program default 600).
+ .TP
++.B MASTER_WAIT
++sets the default maximum time to wait for the master map to become
++available if it cannot be read at program start (program default 180).
++.TP
+ .B NEGATIVE_TIMEOUT
+ Set the default timeout for caching failed key lookups (program default
+ 60). If the equivalent command line option is given it will override this
+diff --git a/man/automount.8 b/man/automount.8
+index d57ecba..371d510 100644
+--- a/man/automount.8
++++ b/man/automount.8
+@@ -34,6 +34,10 @@ Set the global minimum timeout, in seconds, until directories
+ are unmounted. The default is 10 minutes. Setting the timeout
+ to zero disables umounts completely.
+ .TP
++.I "\-M, \-\-master-wait"
++Set the maximum time to wait for the master map to become available
++if it cannot be read at program start.
++.TP
+ .I "\-n <seconds>, \-\-negative\-timeout <seconds>"
+ Set the default timeout for caching failed key lookups. The default is 60 seconds.
+ .TP
+diff --git a/redhat/autofs.sysconfig.in b/redhat/autofs.sysconfig.in
+index a46335d..75324b5 100644
+--- a/redhat/autofs.sysconfig.in
++++ b/redhat/autofs.sysconfig.in
+@@ -9,6 +9,12 @@
+ #
+ TIMEOUT=300
+ #
++# MASTER_WAIT - set the default maximum time to wait for the
++# 		master map to become available if it cannot
++# 		be read at program start (default 180).
++#
++#MASTER_WAIT=180
++#
+ # NEGATIVE_TIMEOUT - set the default negative timeout for
+ # 		     failed mount attempts (default 60).
+ #
+diff --git a/samples/autofs.conf.default.in b/samples/autofs.conf.default.in
+index b87c4d0..8099637 100644
+--- a/samples/autofs.conf.default.in
++++ b/samples/autofs.conf.default.in
+@@ -9,6 +9,12 @@
+ #
+ TIMEOUT=300
+ #
++# MASTER_WAIT - set the default maximum time to wait for the
++# 		master map to become available if it cannot
++#		be read at program start (default 180).
++#
++#MASTER_WAIT=180
++#
+ # NEGATIVE_TIMEOUT - set the default negative timeout for
+ # 		     failed mount attempts (default 60).
+ #

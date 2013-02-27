@@ -1,0 +1,122 @@
+Bottom: 881add498e524087e40ef8db4c2dfae387326f7b
+Top:    acd48cf90f91e48461cc9769e3a169038d7a7b91
+Author: Ian Kent <ikent@redhat.com>
+Date:   2012-07-25 13:21:39 +0800
+
+autofs-5.0.6 - account for new offset mount overlap
+
+
+---
+
+diff --git a/include/automount.h b/include/automount.h
+index 561fcc2..176a2b7 100644
+--- a/include/automount.h
++++ b/include/automount.h
+@@ -187,6 +187,7 @@ struct mapent *cache_lookup(struct mapent_cache *mc, const char *key);
+ struct mapent *cache_lookup_distinct(struct mapent_cache *mc, const char *key);
+ struct mapent *cache_lookup_offset(const char *prefix, const char *offset, int start, struct list_head *head);
+ struct mapent *cache_partial_match(struct mapent_cache *mc, const char *prefix);
++struct mapent *cache_partial_match_next(struct mapent *me, const char *prefix);
+ int cache_add(struct mapent_cache *mc, struct map_source *ms, const char *key, const char *mapent, time_t age);
+ int cache_update_offset(struct mapent_cache *mc, const char *mkey, const char *key, const char *mapent, time_t age);
+ int cache_set_parents(struct mapent *mm);
+diff --git a/lib/cache.c b/lib/cache.c
+index 9179ad5..4aaa893 100644
+--- a/lib/cache.c
++++ b/lib/cache.c
+@@ -548,6 +548,48 @@ struct mapent *cache_partial_match(struct mapent_cache *mc, const char *prefix)
+ 	return NULL;
+ }
+ 
++/* cache must be read locked by caller */
++struct mapent *cache_partial_match_next(struct mapent *me, const char *prefix)
++{
++	struct mapent_cache *mc;
++	struct mapent *this;
++	size_t len = strlen(prefix);
++	u_int32_t hashval;
++	unsigned int i;
++
++	if (!me)
++		return NULL;
++
++	mc = me->mc;
++
++	this = me->next;
++	while (this) {
++		if (len < strlen(this->key) &&
++		    (strncmp(prefix, this->key, len) == 0) &&
++		     this->key[len] == '/')
++			return this;
++		this = this->next;
++	}
++
++	hashval = hash(me->key, mc->size) + 1;
++	if (hashval < mc->size) {
++		for (i = (unsigned int) hashval; i < mc->size; i++) {
++			this = mc->hash[i];
++			if (!this)
++				continue;
++
++			while (this) {
++				if (len < strlen(this->key) &&
++				    (strncmp(prefix, this->key, len) == 0) &&
++				     this->key[len] == '/')
++					return this;
++				this = this->next;
++			}
++		}
++	}
++	return NULL;
++}
++
+ /* cache must be write locked by caller */
+ int cache_add(struct mapent_cache *mc, struct map_source *ms, const char *key, const char *mapent, time_t age)
+ {
+diff --git a/lib/mounts.c b/lib/mounts.c
+index 550445c..e14502b 100644
+--- a/lib/mounts.c
++++ b/lib/mounts.c
+@@ -1663,6 +1663,42 @@ int mount_multi_triggers(struct autofs_point *ap, struct mapent *me,
+ 		if (!oe || !oe->mapent)
+ 			goto cont;
+ 
++		/*
++		 * Normally the mount tree is constructed from the top
++		 * down and expired from the bottom up. But when trying
++		 * to update a multi-mount where an offset has been added
++		 * higher up the tree we can't mount a mount at this point
++		 * in the tree or the mounts below will become hidden.
++		 */
++		if (ap->state == ST_READMAP && ap->flags & MOUNT_FLAG_REMOUNT) {
++			struct mapent *clash;
++
++			/* No subtree below, go ahead */
++			clash = cache_partial_match(oe->mc, oe->key);
++			if (!clash)
++				goto do_mount;
++
++			/*
++			 * If this offset is already mounted we must assume
++			 * it's ok continue since we won't mount a new mount
++			 * when one already exists.
++			 */
++			if (oe->ioctlfd != -1 ||
++			    is_mounted(_PROC_MOUNTS, oe->key, MNTS_REAL))
++				goto do_mount;
++	
++			while (clash) {
++				/*
++				 * Only need one mount of any type underneath
++				 * to cause an over mount problem. We have no
++				 * choice by to ignore these.
++				 */
++				if (is_mounted(_PROC_MOUNTS, clash->key, MNTS_ALL))
++					goto cont;
++				clash = cache_partial_match_next(clash, oe->key);
++			}
++		}
++do_mount:
+ 		mounted += do_mount_autofs_offset(ap, oe, root, offset);
+ 
+ 		/*

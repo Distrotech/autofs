@@ -1,0 +1,77 @@
+Bottom: cc6bdedb26e21b0d5424084e7586867383fc2f35
+Top:    c514a6ddffacc684a899d2a6d644c0c51a264030
+Author: Ian Kent <ikent@redhat.com>
+Date:   2012-06-29 10:04:58 +0800
+
+autofs-5.0.6 - add ability to force umount
+
+If a file system is removed from the exports list of a server
+when it is mounted it becomes stale. Once such a file system
+has been umounted it can be mounted again without an error
+return. The contents of the mount appear empty since the file
+system isn't exported which could be confusing so a forced
+umount (lazy umount), although not a good thing to do, should
+be able to be done to prevent further access.
+
+
+---
+
+diff --git a/daemon/automount.c b/daemon/automount.c
+index e56f9e1..ee9de0f 100644
+--- a/daemon/automount.c
++++ b/daemon/automount.c
+@@ -516,7 +516,7 @@ static int umount_subtree_mounts(struct autofs_point *ap, const char *path, unsi
+ 	 */
+ 	if (!is_mm_root && is_mounted(_PATH_MOUNTED, path, MNTS_REAL)) {
+ 		debug(ap->logopt, "unmounting dir = %s", path);
+-		if (umount_ent(ap, path)) {
++		if (umount_ent(ap, path, 0)) {
+ 			warn(ap->logopt, "could not umount dir %s", path);
+ 			left++;
+ 		}
+diff --git a/include/mounts.h b/include/mounts.h
+index 1efce64..74fa516 100644
+--- a/include/mounts.h
++++ b/include/mounts.h
+@@ -109,7 +109,7 @@ void set_tsd_user_vars(unsigned int, uid_t, gid_t);
+ const char *mount_type_str(unsigned int);
+ void notify_mount_result(struct autofs_point *, const char *, time_t, const char *);
+ int try_remount(struct autofs_point *, struct mapent *, unsigned int);
+-int umount_ent(struct autofs_point *, const char *);
++int umount_ent(struct autofs_point *, const char *, unsigned int);
+ int mount_multi_triggers(struct autofs_point *, struct mapent *, const char *, unsigned int, const char *);
+ int umount_multi_triggers(struct autofs_point *, struct mapent *, char *, const char *);
+ 
+diff --git a/lib/mounts.c b/lib/mounts.c
+index eec7e43..0e09817 100644
+--- a/lib/mounts.c
++++ b/lib/mounts.c
+@@ -1571,14 +1571,16 @@ int try_remount(struct autofs_point *ap, struct mapent *me, unsigned int type)
+ 	return 0;
+ }
+ 
+-int umount_ent(struct autofs_point *ap, const char *path)
++int umount_ent(struct autofs_point *ap, const char *path, unsigned int force)
+ {
+ 	int rv;
+ 
+ 	rv = spawn_umount(ap->logopt, path, NULL);
+ 	/* We are doing a forced shutcwdown down so unlink busy mounts */
+-	if (rv && (ap->state == ST_SHUTDOWN_FORCE || ap->state == ST_SHUTDOWN)) {
+-		if (ap->state == ST_SHUTDOWN_FORCE) {
++	if (rv && (force || 
++		  (ap->state == ST_SHUTDOWN_FORCE ||
++		   ap->state == ST_SHUTDOWN))) {
++		if (force || ap->state == ST_SHUTDOWN_FORCE) {
+ 			info(ap->logopt, "forcing umount of %s", path);
+ 			rv = spawn_umount(ap->logopt, "-l", path, NULL);
+ 		}
+@@ -1766,7 +1768,7 @@ int umount_multi_triggers(struct autofs_point *ap, struct mapent *me, char *root
+ 		 */
+ 		if (is_mounted(_PATH_MOUNTED, root, MNTS_REAL)) {
+ 			info(ap->logopt, "unmounting dir = %s", root);
+-			if (umount_ent(ap, root)) {
++			if (umount_ent(ap, root, 0)) {
+ 				if (mount_multi_triggers(ap, me, root, strlen(root), "/") < 0)
+ 					warn(ap->logopt,
+ 					     "failed to remount offset triggers");

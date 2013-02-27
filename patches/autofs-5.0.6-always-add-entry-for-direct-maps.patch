@@ -1,0 +1,506 @@
+Bottom: 191a6d1ea4e632bd38ee4f4e03c77f4d44487585
+Top:    9dde83be5e17feb51b2bec214538bd41e4408e4d
+Author: Ian Kent <ikent@redhat.com>
+Date:   2011-11-14 15:25:40 +0800
+
+autofs-5.0.6 - always add entry for direct maps
+
+
+---
+
+diff --git a/daemon/automount.c b/daemon/automount.c
+index 1ce6f65..5c3960c 100644
+--- a/daemon/automount.c
++++ b/daemon/automount.c
+@@ -633,16 +633,24 @@ static int fullread(int fd, void *ptr, size_t len)
+ 	return len;
+ }
+ 
+-static char *automount_path_to_fifo(unsigned logopt, const char *path)
++static char *automount_path_to_fifo(unsigned logopt, const char *path, const char *source)
+ {
+ 	char *fifo_name, *p;
+-	int  name_len = strlen(path) + strlen(fifodir) + 1;
++	int  name_len;
+ 	int ret;
+ 
++	name_len = strlen(path) + strlen(fifodir) + 1;
++	if (source)
++		name_len += strlen(source) + 1;
++
+ 	fifo_name = malloc(name_len);
+ 	if (!fifo_name)
+ 		return NULL;
+-	ret = snprintf(fifo_name, name_len, "%s%s", fifodir, path);
++	if (source)
++		ret = snprintf(fifo_name, name_len,
++			       "%s%s%s", fifodir, path, source);
++	else
++		ret = snprintf(fifo_name, name_len, "%s%s", fifodir, path);
+ 	if (ret >= name_len) {
+ 		info(logopt,
+ 		     "fifo path for \"%s\" truncated to \"%s\".  This may "
+@@ -673,8 +681,14 @@ static int create_logpri_fifo(struct autofs_point *ap)
+ 	int fd;
+ 	char *fifo_name;
+ 	char buf[MAX_ERR_BUF];
++	const char *source;
+ 
+-	fifo_name = automount_path_to_fifo(ap->logopt, ap->path);
++	if (ap->type == LKP_INDIRECT)
++		source = NULL;
++	else
++		source = ap->entry->maps->argv[0];
++
++	fifo_name = automount_path_to_fifo(ap->logopt, ap->path, source);
+ 	if (!fifo_name) {
+ 		crit(ap->logopt, "Failed to allocate memory!");
+ 		goto out_free; /* free(NULL) is okay */
+@@ -719,11 +733,17 @@ int destroy_logpri_fifo(struct autofs_point *ap)
+ 	int fd = ap->logpri_fifo;
+ 	char *fifo_name;
+ 	char buf[MAX_ERR_BUF];
++	const char *source;
+ 
+ 	if (fd == -1)
+ 		return 0;
+ 
+-	fifo_name = automount_path_to_fifo(ap->logopt, ap->path);
++	if (ap->type == LKP_INDIRECT)
++		source = NULL;
++	else
++		source = ap->entry->maps->argv[0];
++
++	fifo_name = automount_path_to_fifo(ap->logopt, ap->path, source);
+ 	if (!fifo_name) {
+ 		crit(ap->logopt, "Failed to allocate memory!");
+ 		goto out_free; /* free(NULL) is okay */
+@@ -812,9 +832,41 @@ static void handle_fifo_message(struct autofs_point *ap, int fd)
+ 	}
+ }
+ 
++static int send_log_priority(const char *fifo, char *priority)
++{
++	int fd, msg_len;
++	char buf[2];
++
++	/*
++	 * Specify O_NONBLOCK so that the open will fail if there is no
++	 * daemon reading from the other side of the FIFO.
++	 */
++	fd = open(fifo, O_WRONLY|O_NONBLOCK);
++	if (fd < 0) {
++		fprintf(stderr, "%s: open of %s failed with %s\n",
++			__FUNCTION__, fifo, strerror(errno));
++		fprintf(stderr, "%s: perhaps the fifo wasn't setup,"
++			" please check your log for more information\n", __FUNCTION__);
++		return -1;
++	}
++
++	/* Send the string plus the NULL */
++	msg_len = strlen(priority) + 1;
++	if (write(fd, buf, msg_len) != msg_len) {
++		fprintf(stderr, "Failed to change logging priority.  ");
++		fprintf(stderr, "write to fifo failed: %s.\n",
++			strerror(errno));
++		close(fd);
++		return -1;
++	}
++	close(fd);
++
++	return 0;
++}
++
+ static int set_log_priority(const char *path, int priority)
+ {
+-	int fd;
++	int ret;
+ 	char *fifo_name;
+ 	char buf[2];
+ 
+@@ -830,37 +882,20 @@ static int set_log_priority(const char *path, int priority)
+ 	 */
+ 	snprintf(buf, sizeof(buf), "%d", priority);
+ 
+-	fifo_name = automount_path_to_fifo(LOGOPT_NONE, path);
++	fifo_name = automount_path_to_fifo(LOGOPT_NONE, path, NULL);
+ 	if (!fifo_name) {
+ 		fprintf(stderr, "%s: Failed to allocate memory!\n",
+ 			__FUNCTION__);
+ 		return -1;
+ 	}
+ 
+-	/*
+-	 * Specify O_NONBLOCK so that the open will fail if there is no
+-	 * daemon reading from the other side of the FIFO.
+-	 */
+-	fd = open(fifo_name, O_WRONLY|O_NONBLOCK);
+-	if (fd < 0) {
+-		fprintf(stderr, "%s: open of %s failed with %s\n",
+-			__FUNCTION__, fifo_name, strerror(errno));
+-		fprintf(stderr, "%s: perhaps the fifo wasn't setup,"
+-			" please check your log for more information\n", __FUNCTION__);
+-		free(fifo_name);
+-		return -1;
+-	}
++	ret = send_log_priority(fifo_name, buf);
+ 
+-	if (write(fd, buf, sizeof(buf)) != sizeof(buf)) {
+-		fprintf(stderr, "Failed to change logging priority.  ");
+-		fprintf(stderr, "write to fifo failed: %s.\n",
+-			strerror(errno));
+-		close(fd);
+-		free(fifo_name);
+-		return -1;
+-	}
+-	close(fd);
+ 	free(fifo_name);
++
++	if (!ret)
++		return ret;
++
+ 	fprintf(stdout, "Successfully set log priority for %s.\n", path);
+ 
+ 	return 0;
+diff --git a/daemon/direct.c b/daemon/direct.c
+index 4e8749b..e52096a 100644
+--- a/daemon/direct.c
++++ b/daemon/direct.c
+@@ -407,7 +407,13 @@ int do_mount_autofs_direct(struct autofs_point *ap, struct mnt_list *mnts, struc
+ 
+ 	ret = mount(map_name, me->key, "autofs", MS_MGC_VAL, mp->options);
+ 	if (ret) {
+-		crit(ap->logopt, "failed to mount autofs path %s", me->key);
++		if (errno == EBUSY)
++			crit(ap->logopt,
++			     "failed to mount direct mount map entry %s "
++			     "possible duplicate", me->key);
++		else
++			crit(ap->logopt, "failed to mount autofs path %s",
++			     me->key);
+ 		goto out_err;
+ 	}
+ 
+@@ -940,7 +946,8 @@ void *expire_proc_direct(void *arg)
+ 	pthread_cleanup_pop(1);
+ 
+ 	if (left)
+-		info(ap->logopt, "%d remaining in %s", left, ap->path);
++		info(ap->logopt, "%d remaining in %s",
++		     left, ap->path, ap->entry->maps->argv[0]);
+ 
+ 	ec.status = left;
+ 
+diff --git a/daemon/state.c b/daemon/state.c
+index 7a9f20f..8b0b1d4 100644
+--- a/daemon/state.c
++++ b/daemon/state.c
+@@ -105,9 +105,15 @@ void expire_cleanup(void *arg)
+ 
+ 	st_mutex_lock();
+ 
+-	debug(ap->logopt,
+-	      "got thid %lu path %s stat %d",
+-	      (unsigned long) thid, ap->path, success);
++	if (ap->type == LKP_INDIRECT)
++		debug(ap->logopt,
++		      "got thid %lu path %s stat %d",
++		      (unsigned long) thid, ap->path, success);
++	else
++		debug(ap->logopt,
++		      "got thid %lu path %s source %s stat %d",
++		      (unsigned long) thid, ap->path,
++		      ap->entry->maps->argv[0], success);
+ 
+ 	/* Check to see if expire process finished */
+ 	if (thid == ap->exp_thread) {
+@@ -175,7 +181,13 @@ void expire_cleanup(void *arg)
+ 				break;
+ 
+ 			/* Failed shutdown returns to ready */
+-			warn(ap->logopt, "filesystem %s still busy", ap->path);
++			if (ap->type == LKP_INDIRECT)
++				warn(ap->logopt,
++				     "filesystem %s still busy", ap->path);
++			else
++				warn(ap->logopt,
++				     "filesystem %s (source %s) still busy",
++				     ap->path, ap->entry->maps->argv[0]);
+ 			if (!ap->submount)
+ 				alarm_add(ap, ap->exp_runfreq);
+ 			next = ST_READY;
+@@ -209,8 +221,11 @@ void expire_cleanup(void *arg)
+ 
+ static unsigned int st_ready(struct autofs_point *ap)
+ {
+-	debug(ap->logopt,
+-	      "st_ready(): state = %d path %s", ap->state, ap->path);
++	if (ap->type == LKP_INDIRECT)
++		debug(ap->logopt, "state = %d path %s", ap->state, ap->path);
++	else
++		debug(ap->logopt, "state = %d path %s source %s",
++		      ap->state, ap->path, ap->entry->maps->argv[0]);
+ 
+ 	ap->shutdown = 0;
+ 	ap->state = ST_READY;
+@@ -262,6 +277,7 @@ static enum expire expire_proc(struct autofs_point *ap, int now)
+ 	pthread_t thid;
+ 	struct expire_args *ea;
+ 	void *(*expire)(void *);
++	char *map;
+ 	int status;
+ 
+ 	assert(ap->exp_thread == 0);
+@@ -288,15 +304,23 @@ static enum expire expire_proc(struct autofs_point *ap, int now)
+ 	ea->when = now;
+ 	ea->status = 1;
+ 
+-	if (ap->type == LKP_INDIRECT)
++	if (ap->type == LKP_INDIRECT) {
+ 		expire = expire_proc_indirect;
+-	else
++		map = NULL;
++	} else {
+ 		expire = expire_proc_direct;
++		map = ap->entry->maps->argv[0];
++	}
+ 
+ 	status = pthread_create(&thid, &th_attr_detached, expire, ea);
+ 	if (status) {
+-		error(ap->logopt,
+-		      "expire thread create for %s failed", ap->path);
++		if (ap->type == LKP_INDIRECT)
++			error(ap->logopt,
++			      "expire thread create failed for %s", ap->path);
++		else
++			error(ap->logopt,
++			      "expire thread create failed for %s source %s",
++			      ap->path, map);
+ 		expire_proc_cleanup((void *) ea);
+ 		return EXP_ERROR;
+ 	}
+@@ -305,8 +329,12 @@ static enum expire expire_proc(struct autofs_point *ap, int now)
+ 
+ 	pthread_cleanup_push(expire_proc_cleanup, ea);
+ 
+-	debug(ap->logopt, "exp_proc = %lu path %s",
+-		(unsigned long) ap->exp_thread, ap->path);
++	if (ap->type == LKP_INDIRECT)
++		debug(ap->logopt, "exp_proc = %lu path %s",
++		      (unsigned long) ap->exp_thread, ap->path);
++	else
++		debug(ap->logopt, "exp_proc = %lu path %s source %s",
++		      (unsigned long) ap->exp_thread, ap->path, map);
+ 
+ 	ea->signaled = 0;
+ 	while (!ea->signaled) {
+@@ -456,7 +484,11 @@ static void *do_readmap(void *arg)
+ 
+ 	pthread_cleanup_push(do_readmap_cleanup, ra);
+ 
+-	info(ap->logopt, "re-reading map for %s", ap->path);
++	if (ap->type == LKP_INDIRECT)
++		info(ap->logopt, "re-reading map for %s", ap->path);
++	else
++		info(ap->logopt, "re-reading map for %s source %s",
++		     ap->path, ap->entry->maps->argv[0]);
+ 
+ 	pthread_cleanup_push(master_mutex_lock_cleanup, NULL);
+ 	master_mutex_lock();
+@@ -537,7 +569,11 @@ static unsigned int st_readmap(struct autofs_point *ap)
+ 	int status;
+ 	int now = time(NULL);
+ 
+-	debug(ap->logopt, "state %d path %s", ap->state, ap->path);
++	if (ap->type == LKP_INDIRECT)
++		debug(ap->logopt, "state %d path %s", ap->state, ap->path);
++	else
++		debug(ap->logopt, "state %d path %s source %s",
++		      ap->state, ap->path, ap->entry->maps->argv[0]);
+ 
+ 	assert(ap->state == ST_READY);
+ 	assert(ap->readmap_thread == 0);
+@@ -601,7 +637,11 @@ static unsigned int st_prepare_shutdown(struct autofs_point *ap)
+ {
+ 	int exp;
+ 
+-	debug(ap->logopt, "state %d path %s", ap->state, ap->path);
++	if (ap->type == LKP_INDIRECT)
++		debug(ap->logopt, "state %d path %s", ap->state, ap->path);
++	else
++		debug(ap->logopt, "state %d path %s source %s",
++		      ap->state, ap->path, ap->entry->maps->argv[0]);
+ 
+ 	assert(ap->state == ST_READY || ap->state == ST_EXPIRE);
+ 	ap->state = ST_SHUTDOWN_PENDING;
+@@ -627,7 +667,11 @@ static unsigned int st_force_shutdown(struct autofs_point *ap)
+ {
+ 	int exp;
+ 
+-	debug(ap->logopt, "state %d path %s", ap->state, ap->path);
++	if (ap->type == LKP_INDIRECT)
++		debug(ap->logopt, "state %d path %s", ap->state, ap->path);
++	else
++		debug(ap->logopt, "state %d path %s source %s",
++		      ap->state, ap->path, ap->entry->maps->argv[0]);
+ 
+ 	assert(ap->state == ST_READY || ap->state == ST_EXPIRE);
+ 	ap->state = ST_SHUTDOWN_FORCE;
+@@ -651,7 +695,11 @@ static unsigned int st_force_shutdown(struct autofs_point *ap)
+ 
+ static unsigned int st_shutdown(struct autofs_point *ap)
+ {
+-	debug(ap->logopt, "state %d path %s", ap->state, ap->path);
++	if (ap->type == LKP_INDIRECT)
++		debug(ap->logopt, "state %d path %s", ap->state, ap->path);
++	else
++		debug(ap->logopt, "state %d path %s source %s",
++		      ap->state, ap->path, ap->entry->maps->argv[0]);
+ 
+ 	assert(ap->state == ST_SHUTDOWN_PENDING || ap->state == ST_SHUTDOWN_FORCE);
+ 
+@@ -663,7 +711,11 @@ static unsigned int st_shutdown(struct autofs_point *ap)
+ 
+ static unsigned int st_prune(struct autofs_point *ap)
+ {
+-	debug(ap->logopt, "state %d path %s", ap->state, ap->path);
++	if (ap->type == LKP_INDIRECT)
++		debug(ap->logopt, "state %d path %s", ap->state, ap->path);
++	else
++		debug(ap->logopt, "state %d path %s source %s",
++		      ap->state, ap->path, ap->entry->maps->argv[0]);
+ 
+ 	assert(ap->state == ST_READY);
+ 	ap->state = ST_PRUNE;
+@@ -684,7 +736,11 @@ static unsigned int st_prune(struct autofs_point *ap)
+ 
+ static unsigned int st_expire(struct autofs_point *ap)
+ {
+-	debug(ap->logopt, "state %d path %s", ap->state, ap->path);
++	if (ap->type == LKP_INDIRECT)
++		debug(ap->logopt, "state %d path %s", ap->state, ap->path);
++	else
++		debug(ap->logopt, "state %d path %s source %s",
++		      ap->state, ap->path, ap->entry->maps->argv[0]);
+ 
+ 	assert(ap->state == ST_READY);
+ 	ap->state = ST_EXPIRE;
+diff --git a/include/master.h b/include/master.h
+index b443abb..60d5bc8 100644
+--- a/include/master.h
++++ b/include/master.h
+@@ -98,6 +98,7 @@ void master_source_lock_cleanup(void *);
+ void master_source_current_wait(struct master_mapent *);
+ void master_source_current_signal(struct master_mapent *);
+ struct master_mapent *master_find_mapent(struct master *, const char *);
++struct master_mapent *next_mapent(struct master *, struct master_mapent *);
+ struct autofs_point *__master_find_submount(struct autofs_point *, const char *);
+ struct autofs_point *master_find_submount(struct autofs_point *, const char *);
+ struct master_mapent *master_new_mapent(struct master *, const char *, time_t);
+diff --git a/lib/master.c b/lib/master.c
+index 87d1269..29379a3 100644
+--- a/lib/master.c
++++ b/lib/master.c
+@@ -654,6 +654,22 @@ struct master_mapent *master_find_mapent(struct master *master, const char *path
+ 	return NULL;
+ }
+ 
++struct master_mapent *next_mapent(struct master *master, struct master_mapent *entry)
++{
++	struct list_head *head = &master->mounts;
++	struct list_head *p;
++
++	if (!entry)
++		p = head->next;
++	else
++		p = entry->list.next;
++
++	if (!p || p == head)
++		return NULL;
++
++	return list_entry(p, struct master_mapent, list);
++}
++
+ struct autofs_point *__master_find_submount(struct autofs_point *ap, const char *path)
+ {
+ 	struct list_head *head, *p;
+@@ -1050,13 +1066,22 @@ static int master_do_mount(struct master_mapent *entry)
+ 	suc.done = 0;
+ 	suc.status = 0;
+ 
+-	debug(ap->logopt, "mounting %s", entry->path);
++	if (ap->type == LKP_INDIRECT)
++		debug(ap->logopt, "mounting %s", entry->path);
++	else
++		debug(ap->logopt, "mounting %s source %s",
++		      entry->path, entry->maps->argv[0]);
+ 
+ 	status = pthread_create(&thid, &th_attr, handle_mounts, &suc);
+ 	if (status) {
+-		crit(ap->logopt,
+-		     "failed to create mount handler thread for %s",
+-		     entry->path);
++		if (ap->type == LKP_INDIRECT)
++			crit(ap->logopt,
++			     "failed to create mount handler thread for %s",
++			     entry->path);
++		else
++			crit(ap->logopt,
++			 "failed to create mount handler thread for %s source %s",
++			 entry->path, entry->maps->argv[0]);
+ 		handle_mounts_startup_cond_destroy(&suc);
+ 		return 0;
+ 	}
+diff --git a/lib/master_parse.y b/lib/master_parse.y
+index f8655c3..13f53c5 100644
+--- a/lib/master_parse.y
++++ b/lib/master_parse.y
+@@ -771,6 +771,22 @@ int master_parse_entry(const char *buffer, unsigned int default_timeout, unsigne
+ 
+ 	new = NULL;
+ 	entry = master_find_mapent(master, path);
++
++	if (entry && !strcmp(path, "/-")) {
++		struct map_source *this;
++		while (entry) {
++			const char **argv = (const char **) local_argv;
++			int argc = local_argc;
++			this = master_find_map_source(entry,
++						 type, format, argc, argv);
++			if (this)
++				break;
++			entry = next_mapent(master, entry);
++		}
++		if (!this)
++			entry = NULL;
++	}
++
+ 	if (!entry) {
+ 		new = master_new_mapent(master, path, age);
+ 		if (!new) {
+@@ -780,13 +796,25 @@ int master_parse_entry(const char *buffer, unsigned int default_timeout, unsigne
+ 		entry = new;
+ 	} else {
+ 		if (entry->age && entry->age == age) {
++			char *m_source;
++
+ 			if (strcmp(path, "/-")) {
+ 				info(m_logopt,
+-				    "ignoring duplicate indirect mount %s",
++				     "ignoring duplicate indirect mount for %s",
+ 				     path);
+ 				local_free_vars();
+ 				return 0;
+ 			}
++
++			m_source = NULL;
++			if (local_argv && local_argv[0])
++				m_source = local_argv[0];
++			info(m_logopt,
++			     "ignoring duplicate direct mount map for source %s",
++			     path, m_source);
++			local_free_vars();
++
++			return 0;
+ 		}
+ 	}

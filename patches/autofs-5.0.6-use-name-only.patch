@@ -1,0 +1,167 @@
+Bottom: 2f2c3385345b366486aa09f6ed543c23d31427a6
+Top:    191a6d1ea4e632bd38ee4f4e03c77f4d44487585
+Author: Ian Kent <ikent@redhat.com>
+Date:   2011-11-14 15:25:39 +0800
+
+autofs-5.0.6 - use name only
+
+
+---
+
+diff --git a/daemon/automount.c b/daemon/automount.c
+index 6bb5aa8..1ce6f65 100644
+--- a/daemon/automount.c
++++ b/daemon/automount.c
+@@ -59,6 +59,9 @@ const char *global_options;		/* Global option, from command line */
+ static char *pid_file = NULL;		/* File in which to keep pid */
+ unsigned int global_selection_options;
+ 
++/* Use host name only, even if it has multiple addresses */
++unsigned int global_use_name_only = 0;
++
+ long global_negative_timeout = -1;
+ int do_force_unlink = 0;		/* Forceably unlink mount tree at startup */
+ 
+@@ -1889,6 +1892,7 @@ int main(int argc, char *argv[])
+ 		{"version", 0, 0, 'V'},
+ 		{"set-log-priority", 1, 0, 'l'},
+ 		{"dont-check-daemon", 0, 0, 'C'},
++		{"use-host-name-only", 0, 0, 'N'},
+ 		{"force", 0, 0, 'F'},
+ 		{0, 0, 0, 0}
+ 	};
+@@ -1996,6 +2000,10 @@ int main(int argc, char *argv[])
+ 			daemon_check = 0;
+ 			break;
+ 
++		case 'N':
++			global_use_name_only = 1;
++			break;
++
+ 		case 'F':
+ 			do_force_unlink = 1;
+ 			break;
+diff --git a/include/automount.h b/include/automount.h
+index 8816c15..c6a5068 100644
+--- a/include/automount.h
++++ b/include/automount.h
+@@ -449,6 +449,9 @@ struct kernel_mod_version {
+ /* Don't use bind mounts even when system supports them */
+ #define MOUNT_FLAG_NOBIND		0x0020
+ 
++/* Use host name only, even if it has multiple addresses */
++#define MOUNT_FLAG_USE_NAME_ONLY	0x0040
++
+ struct autofs_point {
+ 	pthread_t thid;
+ 	char *path;			/* Mount point name */
+diff --git a/lib/master_parse.y b/lib/master_parse.y
+index d56d044..f8655c3 100644
+--- a/lib/master_parse.y
++++ b/lib/master_parse.y
+@@ -60,6 +60,7 @@ static long negative_timeout;
+ static unsigned nobind;
+ static unsigned ghost;
+ extern unsigned global_selection_options;
++extern unsigned global_use_name_only;
+ static unsigned random_selection;
+ static unsigned use_weight;
+ static char **tmp_argv;
+@@ -816,6 +817,8 @@ int master_parse_entry(const char *buffer, unsigned int default_timeout, unsigne
+ 	}
+ 	if (random_selection)
+ 		entry->ap->flags |= MOUNT_FLAG_RANDOM_SELECT;
++	if (global_use_name_only)
++		entry->ap->flags |= MOUNT_FLAG_USE_NAME_ONLY;
+ 	if (use_weight)
+ 		entry->ap->flags |= MOUNT_FLAG_USE_WEIGHT_ONLY;
+ 	if (negative_timeout)
+diff --git a/modules/mount_nfs.c b/modules/mount_nfs.c
+index 7eab728..170e42e 100644
+--- a/modules/mount_nfs.c
++++ b/modules/mount_nfs.c
+@@ -64,7 +64,8 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
+ 	unsigned int mount_default_proto, vers;
+ 	char *nfsoptions = NULL;
+ 	unsigned int flags = ap->flags &
+-			(MOUNT_FLAG_RANDOM_SELECT | MOUNT_FLAG_USE_WEIGHT_ONLY);
++			(MOUNT_FLAG_RANDOM_SELECT | MOUNT_FLAG_USE_WEIGHT_ONLY |
++			 MOUNT_FLAG_USE_NAME_ONLY);
+ 	int nobind = ap->flags & MOUNT_FLAG_NOBIND;
+ 	int len, status, err, existed = 1;
+ 	int nosymlink = 0;
+diff --git a/modules/replicated.c b/modules/replicated.c
+index eee1a06..a6a99e8 100644
+--- a/modules/replicated.c
++++ b/modules/replicated.c
+@@ -351,7 +351,7 @@ static struct host *new_host(const char *name,
+ 			     unsigned int options)
+ {
+ 	struct host *new;
+-	struct sockaddr *tmp2;
++	struct sockaddr *tmp2 = NULL;
+ 	char *tmp1;
+ 
+ 	if (!name || !addr)
+@@ -361,17 +361,20 @@ static struct host *new_host(const char *name,
+ 	if (!tmp1)
+ 		return NULL;
+ 
+-	tmp2 = malloc(addr_len);
+-	if (!tmp2) {
+-		free(tmp1);
+-		return NULL;
++	if (addr && addr_len) {
++		tmp2 = malloc(addr_len);
++		if (!tmp2) {
++			free(tmp1);
++			return NULL;
++		}
++		memcpy(tmp2, addr, addr_len);
+ 	}
+-	memcpy(tmp2, addr, addr_len);
+ 
+ 	new = malloc(sizeof(struct host));
+ 	if (!new) {
+ 		free(tmp1);
+-		free(tmp2);
++		if (tmp2)
++			free(tmp2);
+ 		return NULL;
+ 	}
+ 
+@@ -1060,7 +1063,8 @@ static int add_new_host(struct host **list,
+ {
+ 	struct host *new;
+ 	unsigned int prx;
+-	int addr_len;
++	struct sockaddr *addr = host_addr ? host_addr->ai_addr : NULL;
++	int addr_len = host_addr ? sizeof(struct sockaddr) : 0;
+ 
+ 	/*
+ 	 * If we are using random selection we pretend all hosts are at
+@@ -1095,8 +1099,7 @@ static int add_new_host(struct host **list,
+ 	if (prx == PROXIMITY_ERROR)
+ 		return 0;
+ 
+-	addr_len = sizeof(struct sockaddr);
+-	new = new_host(host, host_addr->ai_addr, addr_len, prx, weight, options);
++	new = new_host(host, addr, addr_len, prx, weight, options);
+ 	if (!new)
+ 		return 0;
+ 
+@@ -1133,6 +1136,14 @@ static int add_host_addrs(struct host **list, const char *host,
+ 		name++;
+ 	}
+ 
++	if (options & MOUNT_FLAG_USE_NAME_ONLY) {
++		ret = add_new_host(list, host, weight, NULL, 0, options);
++		if (!ret) {
++			error(LOGOPT_ANY, "failed to add host %s", host);
++			return 0;
++		}
++	}
++
+ 	memset(&hints, 0, sizeof(hints));
+ 	hints.ai_flags = AI_NUMERICHOST;
+ 	hints.ai_family = AF_UNSPEC;

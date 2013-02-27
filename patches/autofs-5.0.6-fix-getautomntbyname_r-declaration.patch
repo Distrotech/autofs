@@ -1,0 +1,52 @@
+Bottom: 2c7b12df4164653463aa74aaed6cd68b9a690b88
+Top:    395b85f95dc0cc88214f7033563c2e6f521938bc
+Author: Ian Kent <ikent@redhat.com>
+Date:   2012-05-15 11:24:36 +0800
+
+autofs-5.0.6 - fix getautomntbyname_r() declaration
+
+Add missing const declarator for _sss_getautomntbyname_r() function.
+
+
+---
+
+diff --git a/CHANGELOG b/CHANGELOG
+index fbb6211..d1a648c 100644
+--- a/CHANGELOG
++++ b/CHANGELOG
+@@ -49,6 +49,7 @@
+ - fix kernel verion check of version components.
+ - move timeout to map_source (allow per direct map timeout).
+ - dont retry ldap connect if not required.
++- fix getautomntbyname_r() declaration.
+ 
+ 28/06/2011 autofs-5.0.6
+ -----------------------
+diff --git a/modules/lookup_sss.c b/modules/lookup_sss.c
+index a1155c0..0c83465 100644
+--- a/modules/lookup_sss.c
++++ b/modules/lookup_sss.c
+@@ -36,12 +36,12 @@
+ 
+ int _sss_setautomntent(const char *, void **);
+ int _sss_getautomntent_r(char **, char **, void *);
+-int _sss_getautomntbyname_r(char *, char **, void *);
++int _sss_getautomntbyname_r(const char *, char **, void *);
+ int _sss_endautomntent(void **);
+ 
+ typedef int (*setautomntent_t) (const char *, void **);
+ typedef int (*getautomntent_t) (char **, char **, void *);
+-typedef int (*getautomntbyname_t) (char *, char **, void *);
++typedef int (*getautomntbyname_t) (const char *, char **, void *);
+ typedef int (*endautomntent_t) (void **);
+ 
+ struct lookup_context {
+@@ -387,7 +387,7 @@ static int lookup_one(struct autofs_point *ap,
+ 	if (!setautomntent(ap->logopt, ctxt, ctxt->mapname, &sss_ctxt))
+ 		return NSS_STATUS_UNAVAIL;
+ 
+-	ret = ctxt->getautomntbyname_r(qKey, &value, sss_ctxt);
++	ret = ctxt->getautomntbyname_r((const char *) qKey, &value, sss_ctxt);
+ 	if (ret && ret != ENOENT) {
+ 		char *estr = strerror_r(ret, buf, MAX_ERR_BUF);
+ 		error(ap->logopt,

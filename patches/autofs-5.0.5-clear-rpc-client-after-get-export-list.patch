@@ -1,0 +1,60 @@
+Bottom: b13b65fd335e6c5bdbbbc2a6afc9787891a48502
+Top:    064effbfda710f5d0ef35e64bc30229347ba8730
+Author: Ian Kent <raven@themaw.net>
+Date:   2009-11-17 12:44:06 +0800
+
+autofs-5.0.5 - clear RPC client after getting export list
+
+
+---
+
+diff --git a/lib/rpc_subs.c b/lib/rpc_subs.c
+index cafc775..47c78ea 100644
+--- a/lib/rpc_subs.c
++++ b/lib/rpc_subs.c
+@@ -305,14 +305,12 @@ static CLIENT *create_udp_client(struct conn_info *info)
+ 	fd = RPC_ANYSOCK;
+ 
+ 	if (info->client) {
+-		if (!clnt_control(info->client, CLGET_FD, (char *) &fd)) {
++		if (!clnt_control(info->client, CLGET_FD, (char *) &fd))
+ 			fd = RPC_ANYSOCK;
+-			clnt_destroy(info->client);
+-			info->client = NULL;
+-		} else {
++		else
+ 			clnt_control(info->client, CLSET_FD_NCLOSE, NULL);
+-			clnt_destroy(info->client);
+-		}
++		clnt_destroy(info->client);
++		info->client = NULL;
+ 	}
+ 
+ 	if (info->addr) {
+@@ -430,14 +428,12 @@ static CLIENT *create_tcp_client(struct conn_info *info)
+ 	fd = RPC_ANYSOCK;
+ 
+ 	if (info->client) {
+-		if (!clnt_control(info->client, CLGET_FD, (char *) &fd)) {
++		if (!clnt_control(info->client, CLGET_FD, (char *) &fd))
+ 			fd = RPC_ANYSOCK;
+-			clnt_destroy(info->client);
+-			info->client = NULL;
+-		} else {
++		else
+ 			clnt_control(info->client, CLSET_FD_NCLOSE, NULL);
+-			clnt_destroy(info->client);
+-		}
++		clnt_destroy(info->client);
++		info->client = NULL;
+ 	}
+ 
+ 	if (info->addr) {
+@@ -877,6 +873,7 @@ static int rpc_get_exports_proto(struct conn_info *info, exports *exp)
+ 	}
+ 	auth_destroy(client->cl_auth);
+ 	clnt_destroy(client);
++	info->client = NULL;
+ 
+ 	if (status != RPC_SUCCESS)
+ 		return 0;

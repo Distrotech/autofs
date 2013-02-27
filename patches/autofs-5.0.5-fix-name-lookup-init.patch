@@ -1,0 +1,62 @@
+Bottom: 61899df03f5dc68edaaa2c0c2954bbde6eb9af91
+Top:    e101570c902c7a3e330a7ef47d4fc5e81749cc45
+Author: Ian Kent <raven@themaw.net>
+Date:   2011-03-27 17:50:30 +0800
+
+autofs-5.0.5 - fix name lookup init
+
+
+---
+
+diff --git a/lib/rpc_subs.c b/lib/rpc_subs.c
+index af8c101..5621813 100644
+--- a/lib/rpc_subs.c
++++ b/lib/rpc_subs.c
+@@ -345,6 +345,7 @@ static CLIENT *create_udp_client(struct conn_info *info)
+ 	hints.ai_family = AF_UNSPEC;
+ 	hints.ai_socktype = SOCK_DGRAM;
+ 
++	ai = NULL;
+ 	ret = getaddrinfo(info->host, NULL, &hints, &ai);
+ 	if (ret) {
+ 		error(LOGOPT_ANY,
+@@ -470,6 +471,7 @@ static CLIENT *create_tcp_client(struct conn_info *info)
+ 	hints.ai_family = AF_UNSPEC;
+ 	hints.ai_socktype = SOCK_STREAM;
+ 
++	ai = NULL;
+ 	ret = getaddrinfo(info->host, NULL, &hints, &ai);
+ 	if (ret) {
+ 		error(LOGOPT_ANY,
+diff --git a/modules/dclist.c b/modules/dclist.c
+index aeb107f..f788887 100644
+--- a/modules/dclist.c
++++ b/modules/dclist.c
+@@ -355,6 +355,7 @@ static char *getdnsdomainname(unsigned int logopt)
+ 	hints.ai_family = AF_UNSPEC;
+ 	hints.ai_socktype = SOCK_DGRAM;
+ 
++	ni = NULL;
+ 	ret = getaddrinfo(name, NULL, &hints, &ni);
+ 	if (ret) {
+ 		error(logopt, "hostname lookup failed: %s", gai_strerror(ret));
+diff --git a/modules/replicated.c b/modules/replicated.c
+index c9a8695..788daaa 100644
+--- a/modules/replicated.c
++++ b/modules/replicated.c
+@@ -1123,6 +1123,7 @@ static int add_host_addrs(struct host **list, const char *host,
+ 	hints.ai_family = AF_UNSPEC;
+ 	hints.ai_socktype = SOCK_DGRAM;
+ 
++	ni = NULL;
+ 	ret = getaddrinfo(host, NULL, &hints, &ni);
+ 	if (ret)
+ 		goto try_name;
+@@ -1143,6 +1144,7 @@ try_name:
+ 	hints.ai_family = AF_UNSPEC;
+ 	hints.ai_socktype = SOCK_DGRAM;
+ 
++	ni = NULL;
+ 	ret = getaddrinfo(host, NULL, &hints, &ni);
+ 	if (ret) {
+ 		error(LOGOPT_ANY, "hostname lookup failed: %s",
