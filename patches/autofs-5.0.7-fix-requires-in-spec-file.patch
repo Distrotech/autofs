@@ -3,7 +3,7 @@ Top:    d5fde90696525d58f49d13c981b7e982626832b0
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-02-27 13:22:04 +0800
 
-autofs-5.0.7 - fix build requires in spec file
+autofs-5.0.7 - fix requires in spec file
 
 
 ---
