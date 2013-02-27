@@ -1102,7 +1102,7 @@ do_cache_lookup:
 		 * Add wildcard match for later validation checks and
 		 * negative cache lookups.
 		 */
-		if (ap->type == LKP_INDIRECT && me->key == '*') {
+		if (ap->type == LKP_INDIRECT && *me->key == '*') {
 			ret = cache_update(mc, source, key, me->mapent, me->age);
 			if (!(ret & (CHE_OK | CHE_UPDATED)))
 				me == NULL;
