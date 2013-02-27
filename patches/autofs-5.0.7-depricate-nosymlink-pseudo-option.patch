@@ -5,6 +5,11 @@ Date:   2013-02-25 14:24:39 +0800
 
 autofs-5.0.7 - depricate nosymlink pseudo option
 
+The undocumented "nosymlink" option was the only way to force local
+NFS mounting until the more descriptive "nobind" option was added.
+
+Depricate the "nosymlink" option in favour of the "nobind" option.
+
 
 ---
 
