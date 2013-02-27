@@ -1,14 +1,14 @@
 Version: 1
-Previous: f2a3d717f8857a718030a74336ce4424290d0aa1
-Head: 090c1fc4e38fa0110b102e0659b1477125274f92
+Previous: 64e48925b4e7d20975399cb042801fb3b130c4e7
+Head: 2b48e872ffa79421f2286c658b1c78f2fa9d72e4
 Applied:
   autofs-5.0.7-fix-wildcard-multi-map-regression.patch: f04a4f143d3b266f2887d5fbfbe2a66cc4646e17
   autofs-5.0.7-fix-file-descriptor-leak-when-reloading-the-daemon.patch: c028343e369e1381b92b2d729059331853617bfb
   autofs-5.0.7-depricate-nosymlink-pseudo-option.patch: e685c3b4ae4d8ae5e615f7392e119163fb514ec1
   autofs-5.0.7-add-symlink-pseudo-option.patch: 7e286afb1afb6e7bc46309bced9343bb1fcbd88e
   autofs-5.0.7-update-kernel-include-files.patch: 090c1fc4e38fa0110b102e0659b1477125274f92
+  autofs-5.0.7-fix-requires-in-spec-file.patch: 2b48e872ffa79421f2286c658b1c78f2fa9d72e4
 Unapplied:
-  autofs-5.0.7-fix-requires-in-spec-file.patch: 3e4563e081a09936666c37615573afa4efc262a4
   autofs-5.0.7-fix-libtirpc-build-option.patch: 16997aebaeea1c9f788882e364b55781f891d0c5
   autofs-5.0.7-fix-systemd-unidir-in-spec-file.patch: 9872b719eedc5623635f7235de61fdc4dd3fc802
   autofs-5.0.6-account-for-new-offset-mount-overlap.patch: 37e2af93a6428f7f253b552a9954b76e21be04e3
