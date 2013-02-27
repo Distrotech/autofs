@@ -1,0 +1,22 @@
+Bottom: f64721d74cfba43d9c91793bc52d924837afe4df
+Top:    0f37c5c3ef20274c2ede19969555a17d8c370b2f
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-02-27 13:06:46 +0800
+
+Refresh of autofs-5.0.7-fix-wildcard-multi-map-regression.patch
+
+---
+
+diff --git a/modules/lookup_yp.c b/modules/lookup_yp.c
+index 3db7584..a716e1f 100644
+--- a/modules/lookup_yp.c
++++ b/modules/lookup_yp.c
+@@ -677,7 +677,7 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
+ 		 * Add wildcard match for later validation checks and
+ 		 * negative cache lookups.
+ 		 */
+-		if (ap->type == LKP_INDIRECT && me->key == '*') {
++		if (ap->type == LKP_INDIRECT && *me->key == '*') {
+ 			ret = cache_update(mc, source, key, me->mapent, me->age);
+ 			if (!(ret & (CHE_OK | CHE_UPDATED)))
+ 				me = NULL;
