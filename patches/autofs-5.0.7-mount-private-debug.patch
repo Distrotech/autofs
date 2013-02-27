@@ -1,0 +1,80 @@
+Bottom: 3e8d74bcbfac69f17e835686cb45f2427df91d69
+Top:    34ad0352027e51fb6e691e14256f9a4a34cb1231
+Author: Ian Kent <ikent@redhat.com>
+Date:   2012-11-26 10:28:29 +0800
+
+autofs-5.0.7 - mount private debug
+
+
+---
+
+diff --git a/daemon/direct.c b/daemon/direct.c
+index 3e09c5d..f7aca0c 100644
+--- a/daemon/direct.c
++++ b/daemon/direct.c
+@@ -413,7 +413,7 @@ int do_mount_autofs_direct(struct autofs_point *ap,
+ 
+ 	map_name = me->mc->map->argv[0];
+ 
+-	ret = mount(map_name, me->key, "autofs", MS_MGC_VAL, mp->options);
++	ret = mount(map_name, me->key, "autofs", MOUNTOPTIONS, mp->options);
+ 	if (ret) {
+ 		crit(ap->logopt, "failed to mount autofs path %s", me->key);
+ 		goto out_err;
+@@ -755,7 +755,7 @@ int mount_autofs_offset(struct autofs_point *ap, struct mapent *me, const char *
+ 	if (!type || strcmp(ap->entry->maps->type, "hosts"))
+ 		map_name = me->mc->map->argv[0];
+ 
+-	ret = mount(map_name, mountpoint, "autofs", MS_MGC_VAL, mp->options);
++	ret = mount(map_name, mountpoint, "autofs", MOUNTOPTIONS, mp->options);
+ 	if (ret) {
+ 		crit(ap->logopt,
+ 		     "failed to mount offset trigger %s at %s",
+diff --git a/daemon/indirect.c b/daemon/indirect.c
+index f4476dc..b271675 100644
+--- a/daemon/indirect.c
++++ b/daemon/indirect.c
+@@ -149,10 +149,17 @@ static int do_mount_autofs_indirect(struct autofs_point *ap, const char *root)
+ 	ret = mount(map_name, root, "autofs", MS_MGC_VAL, options);
+ 	if (ret) {
+ 		crit(ap->logopt,
+-		     "failed to mount autofs path %s at %s", ap->path, root);
++		     "failed to mount autofs path %s at %s errno %d", ap->path, root, errno);
+ 		goto out_rmdir;
+ 	}
+ 
++	ret = mount(NULL, root, NULL, MS_UNBINDABLE|MS_PRIVATE, NULL);
++	if (ret) {
++		crit(ap->logopt,
++		     "failed to change mount propogation of path %s at %s errno %d", ap->path, root, errno);
++		goto out_umount;
++	}
++
+ 	free(options);
+ 	options = NULL;
+ 
+diff --git a/include/automount.h b/include/automount.h
+index 37541f5..26c2252 100644
+--- a/include/automount.h
++++ b/include/automount.h
+@@ -19,6 +19,7 @@
+ #include <unistd.h>
+ #include <fcntl.h>
+ #include <mntent.h>
++#include <sys/mount.h>
+ #include "config.h"
+ #include "list.h"
+ 
+@@ -71,6 +72,12 @@ int load_autofs4_module(void);
+ #define SLOPPY
+ #endif
+ 
++#ifdef MS_PRIVATE
++#define MOUNTOPTIONS	(MS_MGC_VAL|MS_UNBINDABLE)
++#else
++#define MOUNTOPTIONS	(MS_MGC_VAL)
++#endif
++
+ #define AUTOFS_SUPER_MAGIC 0x00000187L
+ #define SMB_SUPER_MAGIC    0x0000517BL
+ #define CIFS_MAGIC_NUMBER  0xFF534D42L
