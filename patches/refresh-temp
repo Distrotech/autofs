@@ -1,0 +1,22 @@
+Bottom: 59ff854e13d722ce1b272ea9654e1eeb7ec582f3
+Top:    0579e5b4aae4e538bd9c696446700d9bc07d8840
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-02-27 13:31:22 +0800
+
+Refresh of autofs-5.0.7-fix-libtirpc-build-option.patch
+
+---
+
+diff --git a/autofs.spec b/autofs.spec
+index d49a78f..f77acc1 100644
+--- a/autofs.spec
++++ b/autofs.spec
+@@ -89,7 +89,7 @@ CFLAGS="$RPM_OPT_FLAGS -Wall" \
+ 	--disable-mount-locking \
+ 	--enable-ignore-busy \
+ 	%{?systemd_configure_arg:} \
+-	%{?ilibtirpc_configure_arg:}
++	%{?libtirpc_configure_arg:}
+ CFLAGS="$RPM_OPT_FLAGS -Wall" make initdir=/etc/rc.d/init.d DONTSTRIP=1
+ 
+ %install
