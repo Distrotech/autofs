@@ -79,9 +79,16 @@ echo %{version}-%{release} > .version
   %define _unitdir %{?_unitdir:/lib/systemd/system}
   %define systemd_configure_arg --with-systemd
 %endif
+%if %{with_libtirpc}
+  %define libtirpc_configure_arg --with-libtirpc
+%endif
 
 %build
-CFLAGS="$RPM_OPT_FLAGS -Wall" ./configure --libdir=%{_libdir} --disable-mount-locking --enable-ignore-busy --with-libtirpc %{?systemd_configure_arg:}
+CFLAGS="$RPM_OPT_FLAGS -Wall" \
+./configure --libdir=%{_libdir} \
+	--disable-mount-locking --enable-ignore-busy \
+	%{?systemd_configure_arg:} \
+	%{?ilibtirpc_configure_arg:}
 CFLAGS="$RPM_OPT_FLAGS -Wall" make initdir=/etc/rc.d/init.d DONTSTRIP=1
 
 %install
