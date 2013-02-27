@@ -1,5 +1,5 @@
 Version: 1
-Previous: 0eb0149d0c979a6532ae785daddace3e9b2670b1
+Previous: 9414b356e9164412a6eb2dfab3de3d44c8a57b26
 Head: 9fe22579d4e84ccaf186de001db65c4f8c3ac7ff
 Applied:
   autofs-5.0.7-fix-wildcard-multi-map-regression.patch: e8fb238a62dea118d47435394d484a1714a779b2
@@ -8,7 +8,6 @@ Applied:
   autofs-5.0.7-add-symlink-pseudo-option.patch: 9fe22579d4e84ccaf186de001db65c4f8c3ac7ff
 Unapplied:
   autofs-5.0.7-update-kernel-include-files.patch: a32021d2c7e0a0131e76aff7d8d3adac5ff851ac
-  autofs-5.0.7-mount-private-debug.patch: 4917e0551140b5ee0223f0a5406f77692ac9c5c5
   autofs-5.0.7-disable-hosts-map-HUP-signal-update.patch: 18a8bc06fcb08d3e9b9f8c4dad83c26e1f472142
   autofs-5.0.6-account-for-new-offset-mount-overlap.patch: db1886ece256681f8f26726437cc7a923f4e9afb
   autofs-5.0.5-automount-daemon-getting-killed-by-SIGBUS.patch: 2b09c3c182b2732f576cd9798c0e2d19f925ed6b
