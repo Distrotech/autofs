@@ -1,0 +1,11 @@
+Bottom: 4281bcc6a82f5f962610fdb19afca40a721cbb51
+Top:    4281bcc6a82f5f962610fdb19afca40a721cbb51
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-02-27 13:15:06 +0800
+
+autofs-5.0.7 - fix libtirpc build option
+
+
+---
+
+
