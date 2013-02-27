@@ -1105,7 +1105,7 @@ do_cache_lookup:
 		if (ap->type == LKP_INDIRECT && *me->key == '*') {
 			ret = cache_update(mc, source, key, me->mapent, me->age);
 			if (!(ret & (CHE_OK | CHE_UPDATED)))
-				me == NULL;
+				me = NULL;
 		}
 		if (me && (me->source == source || *me->key == '/')) {
 			strcpy(mapent_buf, me->mapent);

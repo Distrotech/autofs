@@ -579,7 +579,7 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 		if (ap->type == LKP_INDIRECT && *me->key == '*') {
 			ret = cache_update(mc, source, key, me->mapent, me->age);
 			if (!(ret & (CHE_OK | CHE_UPDATED)))
-				me == NULL;
+				me = NULL;
 		}
 		if (me && (me->source == source || *me->key == '/')) {
 			mapent_len = strlen(me->mapent);
