@@ -443,7 +443,7 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 
 			inc = check_master_self_include(master, ctxt);
 			if (inc) 
-				master->recurse = 1;;
+				master->recurse = 1;
 			master->depth++;
 			status = lookup_nss_read_master(master, age);
 			if (!status) {
@@ -452,6 +452,11 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 				     "failed to read included master map %s",
 				     master->name);
 			}
+			/*
+			 * Plus map include failures don't cause the map
+			 * read to fail.
+			 */
+			master->read_fail = 0;
 			master->depth--;
 			master->recurse = 0;
 
