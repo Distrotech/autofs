@@ -1,5 +1,5 @@
-Bottom: 0cf18140759f544d7939aa62d2647161675c47b4
-Top:    08abd3b0f605ac12a943dd030b33e4bdb69e4afb
+Bottom: d56cf047a62e1d834f93eec581ff861efff6b169
+Top:    fe62b3a43dda87bf8abb80b5bd31e02f5b113530
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-03-01 15:37:45 +0800
 
@@ -12,7 +12,7 @@ should not cause the map read to fail, they should be ingored.
 ---
 
 diff --git a/modules/lookup_file.c b/modules/lookup_file.c
-index 9a5bb8b..dd35dae 100644
+index facb305..bca92fd 100644
 --- a/modules/lookup_file.c
 +++ b/modules/lookup_file.c
 @@ -443,7 +443,7 @@ int lookup_read_master(struct master *master, time_t age, void *context)
