@@ -1044,7 +1044,7 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 			return NSS_STATUS_UNAVAIL;
 		}
 
-		cache_readlock(mc);
+		cache_writelock(mc);
 		me = cache_lookup_first(mc);
 		if (me && st.st_mtime <= me->age) {
 			/*
@@ -1086,7 +1086,7 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 		}
 	}
 
-	cache_readlock(mc);
+	cache_writelock(mc);
 do_cache_lookup:
 	me = cache_lookup(mc, key);
 	/*
@@ -1102,11 +1102,20 @@ do_cache_lookup:
 		if (!me)
 			me = cache_lookup_distinct(mc, "*");
 	}
-	if (me && me->mapent && (me->source == source || *me->key == '/')) {
-		pthread_cleanup_push(cache_lock_cleanup, mc);
-		strcpy(mapent_buf, me->mapent);
-		mapent = mapent_buf;
-		pthread_cleanup_pop(0);
+	if (me && me->mapent) {
+		/*
+		 * Add wildcard match for later validation checks and
+		 * negative cache lookups.
+		 */
+		if (ap->type == LKP_INDIRECT && *me->key == '*') {
+			ret = cache_update(mc, source, key, me->mapent, me->age);
+			if (!(ret & (CHE_OK | CHE_UPDATED)))
+				me = NULL;
+		}
+		if (me && (me->source == source || *me->key == '/')) {
+			strcpy(mapent_buf, me->mapent);
+			mapent = mapent_buf;
+		}
 	}
 	cache_unlock(mc);
 
