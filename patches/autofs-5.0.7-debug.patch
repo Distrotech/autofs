@@ -3,7 +3,7 @@ Top:    08abd3b0f605ac12a943dd030b33e4bdb69e4afb
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-03-01 15:37:45 +0800
 
-debug
+autofs-5.0.7 - fix read failure incorrectly set on re-read of master map
 
 
 ---
