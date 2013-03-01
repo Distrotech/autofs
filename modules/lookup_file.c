@@ -452,8 +452,8 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 				     "failed to read included master map %s",
 				     master->name);
 				/*
-				 * + map include failures don't cause the map
-				 * read to fail
+				 * Plus map include failures don't cause the map
+				 * read to fail.
 				 */
 				master->read_fail = 0;
 			}
