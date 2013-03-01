@@ -1,5 +1,5 @@
-Bottom: a3d5c72f9f0aa5302384206c0453882dd209a70d
-Top:    7275cec7806c80a512f25875bd90519e1f108cee
+Bottom: 3ff9da368a63145978a7b4ad67b5cb175fb32ae0
+Top:    8a2125159ba36307a1ebc1a4bf5f8b45c02dca06
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-02-27 14:05:37 +0800
 
@@ -9,10 +9,10 @@ autofs-5.0.7 - fix systemd unidir in spec file
 ---
 
 diff --git a/CHANGELOG b/CHANGELOG
-index 25aa5fc..50966bc 100644
+index 3876650..ff6a74b 100644
 --- a/CHANGELOG
 +++ b/CHANGELOG
-@@ -34,6 +34,7 @@
+@@ -35,6 +35,7 @@
  - add symlink pseudo option.
  - fix requires in spec file.
  - fix libtirpc build option to require libtirpc-devel if needed.
