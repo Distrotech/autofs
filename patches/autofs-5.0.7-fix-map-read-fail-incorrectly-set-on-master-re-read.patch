@@ -1,5 +1,5 @@
 Bottom: d56cf047a62e1d834f93eec581ff861efff6b169
-Top:    fe62b3a43dda87bf8abb80b5bd31e02f5b113530
+Top:    ae625098e721592d642a82e38d1edabfaf46d7a3
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-03-01 15:37:45 +0800
 
@@ -11,6 +11,18 @@ should not cause the map read to fail, they should be ingored.
 
 ---
 
+diff --git a/CHANGELOG b/CHANGELOG
+index 39388a5..b13a5f5 100644
+--- a/CHANGELOG
++++ b/CHANGELOG
+@@ -28,6 +28,7 @@
+ - make yellow pages support optional.
+ - modules/replicated.c: use sin6_addr.s6_addr32.
+ - workaround missing GNU versionsort extension.
++- fix map read fail incorrectly set on master re-read.
+ 
+ 25/07/2012 autofs-5.0.7
+ =======================
 diff --git a/modules/lookup_file.c b/modules/lookup_file.c
 index facb305..bca92fd 100644
 --- a/modules/lookup_file.c
