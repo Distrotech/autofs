@@ -1,5 +1,5 @@
 Bottom: 0cf18140759f544d7939aa62d2647161675c47b4
-Top:    ec7b8a91970739eed29b1338c43afe9f72f491bc
+Top:    08abd3b0f605ac12a943dd030b33e4bdb69e4afb
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-03-01 15:37:45 +0800
 
@@ -9,7 +9,7 @@ debug
 ---
 
 diff --git a/modules/lookup_file.c b/modules/lookup_file.c
-index 9a5bb8b..b70b344 100644
+index 9a5bb8b..dd35dae 100644
 --- a/modules/lookup_file.c
 +++ b/modules/lookup_file.c
 @@ -443,7 +443,7 @@ int lookup_read_master(struct master *master, time_t age, void *context)
@@ -26,8 +26,8 @@ index 9a5bb8b..b70b344 100644
  				     "failed to read included master map %s",
  				     master->name);
 +				/*
-+				 * + map include failures don't cause the map
-+				 * read to fail
++				 * Plus map include failures don't cause the map
++				 * read to fail.
 +				 */
 +				master->read_fail = 0;
  			}
