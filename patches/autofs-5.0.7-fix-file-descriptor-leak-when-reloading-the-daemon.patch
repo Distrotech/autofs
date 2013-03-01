@@ -1,5 +1,5 @@
-Bottom: 0f37c5c3ef20274c2ede19969555a17d8c370b2f
-Top:    10603a9a6234c0df2c77d2bdc3247b6b8925eead
+Bottom: a27fb0a68cda1be2e264093c5e495459328a8b4b
+Top:    734e2dcab00dd360ca9637dc67164e60fddef5e1
 Author: Leonardo Chiquitto <leonardo.lists@gmail.com>
 Date:   2013-02-12 12:02:44 +0800
 
@@ -89,12 +89,12 @@ int do_umount_autofs_direct(struct autofs_point *ap, struct mnt_list
 ---
 
 diff --git a/CHANGELOG b/CHANGELOG
-index 1e63b93..7cf4847 100644
+index 10550ad..6114576 100644
 --- a/CHANGELOG
 +++ b/CHANGELOG
-@@ -29,6 +29,7 @@
- - modules/replicated.c: use sin6_addr.s6_addr32.
+@@ -30,6 +30,7 @@
  - workaround missing GNU versionsort extension.
+ - fix map read fail incorrectly set on master re-read.
  - fix wildcard multi map regression.
 +- fix file descriptor leak when reloading the daemon.
  
