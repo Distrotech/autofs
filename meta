@@ -1,6 +1,6 @@
 Version: 1
-Previous: 0ef492a6e0ed38d4e612ac9ac61ce9e7e4847a20
-Head: bd6b3250ebc8b9704826de178319d0a5776ec6d2
+Previous: 6361579085f37ae86155cd5f8c8647ce66e23abc
+Head: c46858350143be53f6a8d0d10c33add0f194d51b
 Applied:
   autofs-5.0.7-fix-map-read-fail-incorrectly-set-on-master-re-read.patch: 499810920375ebce76f19b5805b4c6870f02df60
   autofs-5.0.7-fix-wildcard-multi-map-regression.patch: 2751dbed4495d8062e455373829aaff869e2ac76
@@ -8,8 +8,8 @@ Applied:
   autofs-5.0.7-depricate-nosymlink-pseudo-option.patch: 1f67b767886b9721c602a740ad578b773ab9dcc8
   autofs-5.0.7-add-symlink-pseudo-option.patch: d464ca807cb7175d97069a9750155e401e1f250a
   autofs-5.0.7-update-kernel-include-files.patch: bd6b3250ebc8b9704826de178319d0a5776ec6d2
+  autofs-5.0.7-fix-requires-in-spec-file.patch: c46858350143be53f6a8d0d10c33add0f194d51b
 Unapplied:
-  autofs-5.0.7-fix-requires-in-spec-file.patch: 89235f22f9ced7c4bed022db6c42477bea2421f0
   autofs-5.0.7-fix-libtirpc-build-option.patch: a9aa64c623274d79bd06bd33390ead7c5f429765
   autofs-5.0.7-fix-systemd-unidir-in-spec-file.patch: 2d334dd825e6aca75d4f5a39d66cf14a346c23cc
   autofs-5.0.7-document-browse-option-in-man-page.patch: 0251ed13053c0e57b2e634af3f2a0bb17c7eee3b

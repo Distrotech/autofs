@@ -1,5 +1,5 @@
-Bottom: 4281bcc6a82f5f962610fdb19afca40a721cbb51
-Top:    5e7c36180b4aa98f4d1708cb64dda41635834788
+Bottom: 46988d6f638711da9650a4bf4d293546e64a6463
+Top:    a57c16009bd9cf345e1db58f72bf4ff328babbcd
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-02-27 13:22:04 +0800
 
@@ -11,10 +11,10 @@ Fix the use of depricated reqires in tar spec file.
 ---
 
 diff --git a/CHANGELOG b/CHANGELOG
-index 1199759..8fa31fc 100644
+index 8885d20..e97597b 100644
 --- a/CHANGELOG
 +++ b/CHANGELOG
-@@ -32,6 +32,7 @@
+@@ -33,6 +33,7 @@
  - fix file descriptor leak when reloading the daemon.
  - depricate nosymlink pseudo option.
  - add symlink pseudo option.
