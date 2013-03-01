@@ -5,6 +5,9 @@ Date:   2013-03-01 15:37:45 +0800
 
 autofs-5.0.7 - fix map read fail incorrectly set on master re-read
 
+When re-reading the master map read failures for plus included maps
+should not cause the map read to fail, they should be ingored.
+
 
 ---
 
