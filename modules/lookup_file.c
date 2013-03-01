@@ -397,8 +397,9 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 	unsigned int path_len, ent_len;
 	int entry, cur_state;
 
+	/* Don't return fail on self include, skip source */
 	if (master->recurse)
-		return NSS_STATUS_UNAVAIL;
+		return NSS_STATUS_SUCCESS;
 
 	if (master->depth > MAX_INCLUDE_DEPTH) {
 		error(logopt, MODPREFIX
@@ -443,7 +444,7 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 
 			inc = check_master_self_include(master, ctxt);
 			if (inc) 
-				master->recurse = 1;;
+				master->recurse = 1;
 			master->depth++;
 			status = lookup_nss_read_master(master, age);
 			if (!status) {
@@ -645,7 +646,7 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 	mc = source->mc;
 
 	if (source->recurse)
-		return NSS_STATUS_UNAVAIL;
+		return NSS_STATUS_TRYAGAIN;
 
 	if (source->depth > MAX_INCLUDE_DEPTH) {
 		error(ap->logopt,
