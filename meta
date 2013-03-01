@@ -1,13 +1,13 @@
 Version: 1
-Previous: de0c22035dbd1acbc9ce8bc4c2278df2b224abf6
-Head: 1f67b767886b9721c602a740ad578b773ab9dcc8
+Previous: 9c0d4d0bd87260b574c70f69ce62f5540f6877f4
+Head: d464ca807cb7175d97069a9750155e401e1f250a
 Applied:
   autofs-5.0.7-fix-map-read-fail-incorrectly-set-on-master-re-read.patch: 499810920375ebce76f19b5805b4c6870f02df60
   autofs-5.0.7-fix-wildcard-multi-map-regression.patch: 2751dbed4495d8062e455373829aaff869e2ac76
   autofs-5.0.7-fix-file-descriptor-leak-when-reloading-the-daemon.patch: fc669fcd6ceb431bfb08dc93707b19ee1babb824
   autofs-5.0.7-depricate-nosymlink-pseudo-option.patch: 1f67b767886b9721c602a740ad578b773ab9dcc8
+  autofs-5.0.7-add-symlink-pseudo-option.patch: d464ca807cb7175d97069a9750155e401e1f250a
 Unapplied:
-  autofs-5.0.7-add-symlink-pseudo-option.patch: 7e286afb1afb6e7bc46309bced9343bb1fcbd88e
   autofs-5.0.7-update-kernel-include-files.patch: 090c1fc4e38fa0110b102e0659b1477125274f92
   autofs-5.0.7-fix-requires-in-spec-file.patch: 89235f22f9ced7c4bed022db6c42477bea2421f0
   autofs-5.0.7-fix-libtirpc-build-option.patch: a9aa64c623274d79bd06bd33390ead7c5f429765
