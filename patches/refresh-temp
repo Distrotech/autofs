@@ -1,0 +1,24 @@
+Bottom: ec7b8a91970739eed29b1338c43afe9f72f491bc
+Top:    08abd3b0f605ac12a943dd030b33e4bdb69e4afb
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-03-01 16:31:21 +0800
+
+Refresh of autofs-5.0.7-debug.patch
+
+---
+
+diff --git a/modules/lookup_file.c b/modules/lookup_file.c
+index b70b344..dd35dae 100644
+--- a/modules/lookup_file.c
++++ b/modules/lookup_file.c
+@@ -452,8 +452,8 @@ int lookup_read_master(struct master *master, time_t age, void *context)
+ 				     "failed to read included master map %s",
+ 				     master->name);
+ 				/*
+-				 * + map include failures don't cause the map
+-				 * read to fail
++				 * Plus map include failures don't cause the map
++				 * read to fail.
+ 				 */
+ 				master->read_fail = 0;
+ 			}
