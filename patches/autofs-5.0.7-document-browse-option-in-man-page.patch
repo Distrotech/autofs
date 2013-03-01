@@ -1,5 +1,5 @@
-Bottom: 7275cec7806c80a512f25875bd90519e1f108cee
-Top:    0cf18140759f544d7939aa62d2647161675c47b4
+Bottom: 8a2125159ba36307a1ebc1a4bf5f8b45c02dca06
+Top:    0f45774f311925921378e3c756831b2435bc2f29
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-02-27 14:31:43 +0800
 
@@ -13,10 +13,10 @@ note of the potential performance implications.
 ---
 
 diff --git a/CHANGELOG b/CHANGELOG
-index 50966bc..df40b41 100644
+index ff6a74b..6c35cd1 100644
 --- a/CHANGELOG
 +++ b/CHANGELOG
-@@ -35,6 +35,7 @@
+@@ -36,6 +36,7 @@
  - fix requires in spec file.
  - fix libtirpc build option to require libtirpc-devel if needed.
  - fix systemd unidir in spec file.
