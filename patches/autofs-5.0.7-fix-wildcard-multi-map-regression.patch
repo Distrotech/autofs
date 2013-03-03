@@ -1,5 +1,5 @@
-Bottom: ae625098e721592d642a82e38d1edabfaf46d7a3
-Top:    a27fb0a68cda1be2e264093c5e495459328a8b4b
+Bottom: fe4cb17f4c0c26ecadfff46a5a44815176c4acbd
+Top:    93e144d6a849a8c40eeba51e4ad90f666cd41728
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-02-12 12:00:38 +0800
 
@@ -31,7 +31,7 @@ index b13a5f5..10550ad 100644
  25/07/2012 autofs-5.0.7
  =======================
 diff --git a/modules/lookup_file.c b/modules/lookup_file.c
-index bca92fd..dd35dae 100644
+index b6432ff..a0a6349 100644
 --- a/modules/lookup_file.c
 +++ b/modules/lookup_file.c
 @@ -1044,7 +1044,7 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
