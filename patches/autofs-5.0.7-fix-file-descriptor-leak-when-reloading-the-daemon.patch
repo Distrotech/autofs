@@ -1,5 +1,5 @@
-Bottom: 52d53ae4e7aa30766d71618825b5e76e2f8cdd33
-Top:    6e705dae520cf2f9f421595c8be0c23027adcdf7
+Bottom: 8bc15f6d5977d5a493d747c438762d9d6b8f802d
+Top:    b68dc19434dbb54a3c5bb5c0072583e6d27f1bb9
 Author: Leonardo Chiquitto <leonardo.lists@gmail.com>
 Date:   2013-02-12 12:02:44 +0800
 
@@ -89,12 +89,12 @@ int do_umount_autofs_direct(struct autofs_point *ap, struct mnt_list
 ---
 
 diff --git a/CHANGELOG b/CHANGELOG
-index 10550ad..6114576 100644
+index 46ef335..a7ed212 100644
 --- a/CHANGELOG
 +++ b/CHANGELOG
 @@ -30,6 +30,7 @@
  - workaround missing GNU versionsort extension.
- - fix map read fail incorrectly set on master re-read.
+ - dont fail on master map self include.
  - fix wildcard multi map regression.
 +- fix file descriptor leak when reloading the daemon.
  
