@@ -1,5 +1,5 @@
-Bottom: 6e705dae520cf2f9f421595c8be0c23027adcdf7
-Top:    6a114aa0325261c19ee769295a965efa23790a8f
+Bottom: b68dc19434dbb54a3c5bb5c0072583e6d27f1bb9
+Top:    085927802d0f4542727990a59e082fe36b226a36
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-02-25 14:24:39 +0800
 
@@ -14,11 +14,11 @@ So depricate the "nosymlink" option in favour of the "nobind" option.
 ---
 
 diff --git a/CHANGELOG b/CHANGELOG
-index 6114576..5704518 100644
+index a7ed212..c189483 100644
 --- a/CHANGELOG
 +++ b/CHANGELOG
 @@ -31,6 +31,7 @@
- - fix map read fail incorrectly set on master re-read.
+ - dont fail on master map self include.
  - fix wildcard multi map regression.
  - fix file descriptor leak when reloading the daemon.
 +- depricate nosymlink pseudo option.

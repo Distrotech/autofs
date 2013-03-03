@@ -1,5 +1,5 @@
-Bottom: be5474fa068c9980252cd99c54c438c85136acb5
-Top:    45f92de287b2b0fcfbb95c0833b440254a5cb805
+Bottom: 1c14b62975573244a0fdf311385d1657ba0b0206
+Top:    bf6a6bd25f2957789f487e97286f0f343d9d9e27
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-02-27 13:22:04 +0800
 
@@ -11,7 +11,7 @@ Fix the use of depricated reqires in tar spec file.
 ---
 
 diff --git a/CHANGELOG b/CHANGELOG
-index 8885d20..e97597b 100644
+index 247d334..e848bcd 100644
 --- a/CHANGELOG
 +++ b/CHANGELOG
 @@ -33,6 +33,7 @@

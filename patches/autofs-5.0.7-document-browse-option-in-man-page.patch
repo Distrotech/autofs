@@ -1,5 +1,5 @@
-Bottom: ad061514f70126c0c2a52233b8e0f29b025dcfa1
-Top:    9886215ea25703240203804e6366c89e4e5f8b48
+Bottom: 28d671cc83aa7278f6701c646c5c5329715baf7c
+Top:    0a85b51950c54c12377df00df31923c23ec8a97b
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-02-27 14:31:43 +0800
 
@@ -13,7 +13,7 @@ note of the potential performance implications.
 ---
 
 diff --git a/CHANGELOG b/CHANGELOG
-index ff6a74b..6c35cd1 100644
+index ecdea0b..d8e4049 100644
 --- a/CHANGELOG
 +++ b/CHANGELOG
 @@ -36,6 +36,7 @@

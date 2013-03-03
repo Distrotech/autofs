@@ -1,18 +1,18 @@
 Version: 1
-Previous: 41847fbd449537d705f8c15df2c44ecd8b5f32ad
-Head: 14e039ae7a371800b50e30398016d2fe52db8945
+Previous: df4e1273c3a0bdc9df3ce5a43eaea77c9df439ab
+Head: fe5754859bfdf5591b9ffcd66e0ef3e14a8a84eb
 Applied:
   autofs-5.0.7-dont-fail-on-master-map-self-include.patch: f1ee58cac0b0ff2fc90fa72dfa7101a095cc4355
   autofs-5.0.7-fix-wildcard-multi-map-regression.patch: 2965c59bc37d8ac395b740b285dc2e497d95d48f
   autofs-5.0.7-fix-file-descriptor-leak-when-reloading-the-daemon.patch: 14e039ae7a371800b50e30398016d2fe52db8945
+  autofs-5.0.7-depricate-nosymlink-pseudo-option.patch: ca46d23e3b90d5c2284ebbdcd06cdeca36c380f3
+  autofs-5.0.7-add-symlink-pseudo-option.patch: 771dc3e86d82cae4a5afc5f75c2bfac3fe44e1d9
+  autofs-5.0.7-update-kernel-include-files.patch: fea2694d3bfbcbd9531bc0a5ac4894927b19bd45
+  autofs-5.0.7-fix-requires-in-spec-file.patch: cfbe565f16632804fe2f0ce45bbb8b86b0ae0cce
+  autofs-5.0.7-fix-libtirpc-build-option.patch: f25d96c74168369878c9acbd8137cb32a4b014c4
+  autofs-5.0.7-fix-systemd-unidir-in-spec-file.patch: 215124ae5b3ba681e7dab62781ef8abb568584e1
+  autofs-5.0.7-document-browse-option-in-man-page.patch: fe5754859bfdf5591b9ffcd66e0ef3e14a8a84eb
 Unapplied:
-  autofs-5.0.7-depricate-nosymlink-pseudo-option.patch: c741975869ef5dcd90fcacb05d91c31fe0b34ad0
-  autofs-5.0.7-add-symlink-pseudo-option.patch: b2fd012cf04132c527406ad724924dfbf83e5729
-  autofs-5.0.7-update-kernel-include-files.patch: 491a65b2c7f415373bca36de74ec3b8b66ab2114
-  autofs-5.0.7-fix-requires-in-spec-file.patch: 6903f33ad59f8a8f0e81e2bd39404a14024bac13
-  autofs-5.0.7-fix-libtirpc-build-option.patch: 8f5e49e95c81336779b109217af18843d38dd576
-  autofs-5.0.7-fix-systemd-unidir-in-spec-file.patch: 560248573d132d6910a4848d880465c3e0203865
-  autofs-5.0.7-document-browse-option-in-man-page.patch: 1f42b54bbcf7d7b76d857d68731f67d870cb9c18
   autofs-5.0.6-account-for-new-offset-mount-overlap.patch: 58e4b78cc2bd0742cf8ac3856f33448a782348aa
   autofs-5.0.5-automount-daemon-getting-killed-by-SIGBUS.patch: 2b09c3c182b2732f576cd9798c0e2d19f925ed6b
   autofs-5.0.6-dont-kick-state-machine-unless-ready.patch: d1bb33ddce5b00eebcd4763fa59f00f89a2abb51

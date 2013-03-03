@@ -1,5 +1,5 @@
-Bottom: fe6cec320846e001b7c4993a5279766721dbe022
-Top:    ad061514f70126c0c2a52233b8e0f29b025dcfa1
+Bottom: 03cac2d0f6b96caec7c44a3d3c05b7cf439c7cfe
+Top:    28d671cc83aa7278f6701c646c5c5329715baf7c
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-02-27 14:05:37 +0800
 
@@ -9,7 +9,7 @@ autofs-5.0.7 - fix systemd unidir in spec file
 ---
 
 diff --git a/CHANGELOG b/CHANGELOG
-index 3876650..ff6a74b 100644
+index b6b2679..ecdea0b 100644
 --- a/CHANGELOG
 +++ b/CHANGELOG
 @@ -35,6 +35,7 @@
