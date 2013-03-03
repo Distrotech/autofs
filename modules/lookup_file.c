@@ -397,8 +397,9 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 	unsigned int path_len, ent_len;
 	int entry, cur_state;
 
+	/* Don't return fail on self include, skip source */
 	if (master->recurse)
-		return NSS_STATUS_UNAVAIL;
+		return NSS_STATUS_SUCCESS;
 
 	if (master->depth > MAX_INCLUDE_DEPTH) {
 		error(logopt, MODPREFIX
@@ -452,11 +453,6 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 				     "failed to read included master map %s",
 				     master->name);
 			}
-			/*
-			 * Plus map include failures don't cause the map
-			 * read to fail.
-			 */
-			master->read_fail = 0;
 			master->depth--;
 			master->recurse = 0;
 
