@@ -1,5 +1,5 @@
-Bottom: fe4cb17f4c0c26ecadfff46a5a44815176c4acbd
-Top:    93e144d6a849a8c40eeba51e4ad90f666cd41728
+Bottom: 554e6b222e782e46b98a3cd6e93fd0556bdee98b
+Top:    52d53ae4e7aa30766d71618825b5e76e2f8cdd33
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-02-12 12:00:38 +0800
 
@@ -31,10 +31,10 @@ index b13a5f5..10550ad 100644
  25/07/2012 autofs-5.0.7
  =======================
 diff --git a/modules/lookup_file.c b/modules/lookup_file.c
-index b6432ff..a0a6349 100644
+index 411f280..40d5734 100644
 --- a/modules/lookup_file.c
 +++ b/modules/lookup_file.c
-@@ -1044,7 +1044,7 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
+@@ -1040,7 +1040,7 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
  			return NSS_STATUS_UNAVAIL;
  		}
  
@@ -43,7 +43,7 @@ index b6432ff..a0a6349 100644
  		me = cache_lookup_first(mc);
  		if (me && st.st_mtime <= me->age) {
  			/*
-@@ -1086,7 +1086,7 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
+@@ -1082,7 +1082,7 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
  		}
  	}
  
@@ -52,7 +52,7 @@ index b6432ff..a0a6349 100644
  do_cache_lookup:
  	me = cache_lookup(mc, key);
  	/*
-@@ -1102,11 +1102,20 @@ do_cache_lookup:
+@@ -1098,11 +1098,20 @@ do_cache_lookup:
  		if (!me)
  			me = cache_lookup_distinct(mc, "*");
  	}
