@@ -1,8 +1,9 @@
 Version: 1
-Previous: f69c5840a675be72476320cbaa0801f74130ac19
-Head: 8c887c14bc943dd79981259ac5e737245f43378e
+Previous: a364d49a22edda9a6d26ad479ad03a0fa2a22655
+Head: 3e711abad49072d22a528bb75bf870fda8b5bd6c
 Applied:
   autofs-5.0.7-fix-map-read-fail-incorrectly-set-on-master-re-read.patch: 8c887c14bc943dd79981259ac5e737245f43378e
+  refresh-temp: 3e711abad49072d22a528bb75bf870fda8b5bd6c
 Unapplied:
   autofs-5.0.7-fix-wildcard-multi-map-regression.patch: e3b6c026b8c19b140cc5c8f1e4aeb4420f9e5479
   autofs-5.0.7-fix-file-descriptor-leak-when-reloading-the-daemon.patch: aa7f73eff5b93b1bbb2fc929567178ea7ee55189
