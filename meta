@@ -1,17 +1,17 @@
 Version: 1
-Previous: f9a067dc14c1ae8ec4036e0464389976ce227c34
-Head: 3495eb37f796237a8af05bd1b6c79e77429d8974
+Previous: 7150476bf8a2a7202f2e338426622dfd0fb02534
+Head: 1f42b54bbcf7d7b76d857d68731f67d870cb9c18
 Applied:
-  autofs-5.0.7-dont-fail-on-master-map-self-include.patch: 86dc1f31f5ee2d686446bdb6f7610ca95f147b1f
-  autofs-5.0.7-fix-wildcard-multi-map-regression.patch: f7eace5a6ad2382c81ff86edca8e6ef6f7733878
-  autofs-5.0.7-fix-file-descriptor-leak-when-reloading-the-daemon.patch: 08bc4968c0519e615e68e436a6bdf4de070b1d74
-  autofs-5.0.7-depricate-nosymlink-pseudo-option.patch: 2d875c18d6aea8c9a8657ebc3bc8ae2e4d077d25
-  autofs-5.0.7-add-symlink-pseudo-option.patch: d5e67a2ed1aba3393b554ca00e961b95fdd56bfc
-  autofs-5.0.7-update-kernel-include-files.patch: b9cb8f2ad22fe2fa5403b752e169260b30ef2d44
-  autofs-5.0.7-fix-requires-in-spec-file.patch: 27dd9c06c74d339ece273d93a9ae9a5fd1a5e73e
-  autofs-5.0.7-fix-libtirpc-build-option.patch: 545672162ede36940fff69634a451f659ce7f225
-  autofs-5.0.7-fix-systemd-unidir-in-spec-file.patch: 59fa33e0788f8698011a9361e5a8d91e3657d242
-  autofs-5.0.7-document-browse-option-in-man-page.patch: 3495eb37f796237a8af05bd1b6c79e77429d8974
+  autofs-5.0.7-dont-fail-on-master-map-self-include.patch: 3c57a2ac957e7372a42326c9846f16c287f49d8d
+  autofs-5.0.7-fix-wildcard-multi-map-regression.patch: db28e8a66c1e13a509470c7af6f86d2dc68e5965
+  autofs-5.0.7-fix-file-descriptor-leak-when-reloading-the-daemon.patch: edfce7e5db85de8657f83687355f608948c5450c
+  autofs-5.0.7-depricate-nosymlink-pseudo-option.patch: c741975869ef5dcd90fcacb05d91c31fe0b34ad0
+  autofs-5.0.7-add-symlink-pseudo-option.patch: b2fd012cf04132c527406ad724924dfbf83e5729
+  autofs-5.0.7-update-kernel-include-files.patch: 491a65b2c7f415373bca36de74ec3b8b66ab2114
+  autofs-5.0.7-fix-requires-in-spec-file.patch: 6903f33ad59f8a8f0e81e2bd39404a14024bac13
+  autofs-5.0.7-fix-libtirpc-build-option.patch: 8f5e49e95c81336779b109217af18843d38dd576
+  autofs-5.0.7-fix-systemd-unidir-in-spec-file.patch: 560248573d132d6910a4848d880465c3e0203865
+  autofs-5.0.7-document-browse-option-in-man-page.patch: 1f42b54bbcf7d7b76d857d68731f67d870cb9c18
 Unapplied:
   autofs-5.0.6-account-for-new-offset-mount-overlap.patch: 58e4b78cc2bd0742cf8ac3856f33448a782348aa
   autofs-5.0.5-automount-daemon-getting-killed-by-SIGBUS.patch: 2b09c3c182b2732f576cd9798c0e2d19f925ed6b

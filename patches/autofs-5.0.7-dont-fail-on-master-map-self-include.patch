@@ -3,10 +3,10 @@ Top:    554e6b222e782e46b98a3cd6e93fd0556bdee98b
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-03-01 15:37:45 +0800
 
-autofs-5.0.7 - fix map read fail incorrectly set on master re-read
+autofs-5.0.7 - dont fail on master map self include
 
-When re-reading the master map read failures for plus included maps
-should not cause the map read to fail, they should be ingored.
+When reading the master map a self included file map should skip the source
+and proceed to the next so, in this case, don't return a map read failure.
 
 
 ---
