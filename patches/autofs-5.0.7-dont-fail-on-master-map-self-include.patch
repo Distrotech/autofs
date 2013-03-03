@@ -1,5 +1,5 @@
 Bottom: d56cf047a62e1d834f93eec581ff861efff6b169
-Top:    554e6b222e782e46b98a3cd6e93fd0556bdee98b
+Top:    0d51a85de97c601609590dcc7326e6da10b941a8
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-03-01 15:37:45 +0800
 
@@ -12,14 +12,14 @@ and proceed to the next so, in this case, don't return a map read failure.
 ---
 
 diff --git a/CHANGELOG b/CHANGELOG
-index 39388a5..b13a5f5 100644
+index 39388a5..97d6f48 100644
 --- a/CHANGELOG
 +++ b/CHANGELOG
 @@ -28,6 +28,7 @@
  - make yellow pages support optional.
  - modules/replicated.c: use sin6_addr.s6_addr32.
  - workaround missing GNU versionsort extension.
-+- fix map read fail incorrectly set on master re-read.
++- dont fail on master map self include.
  
  25/07/2012 autofs-5.0.7
  =======================
