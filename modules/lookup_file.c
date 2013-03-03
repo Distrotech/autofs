@@ -451,12 +451,12 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 				     MODPREFIX
 				     "failed to read included master map %s",
 				     master->name);
-				/*
-				 * Plus map include failures don't cause the map
-				 * read to fail.
-				 */
-				master->read_fail = 0;
 			}
+			/*
+			 * Plus map include failures don't cause the map
+			 * read to fail.
+			 */
+			master->read_fail = 0;
 			master->depth--;
 			master->recurse = 0;
 
