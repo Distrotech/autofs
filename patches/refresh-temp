@@ -1,0 +1,35 @@
+Bottom: aff6c329c203cf3a4688737babf1d6e6b57881b8
+Top:    9886215ea25703240203804e6366c89e4e5f8b48
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-03-03 09:42:01 +0800
+
+Refresh of autofs-5.0.7-document-browse-option-in-man-page.patch
+
+---
+
+diff --git a/modules/lookup_file.c b/modules/lookup_file.c
+index a0a6349..40d5734 100644
+--- a/modules/lookup_file.c
++++ b/modules/lookup_file.c
+@@ -397,8 +397,9 @@ int lookup_read_master(struct master *master, time_t age, void *context)
+ 	unsigned int path_len, ent_len;
+ 	int entry, cur_state;
+ 
++	/* Don't return fail on self include, skip source */
+ 	if (master->recurse)
+-		return NSS_STATUS_UNAVAIL;
++		return NSS_STATUS_SUCCESS;
+ 
+ 	if (master->depth > MAX_INCLUDE_DEPTH) {
+ 		error(logopt, MODPREFIX
+@@ -452,11 +453,6 @@ int lookup_read_master(struct master *master, time_t age, void *context)
+ 				     "failed to read included master map %s",
+ 				     master->name);
+ 			}
+-			/*
+-			 * Plus map include failures don't cause the map
+-			 * read to fail.
+-			 */
+-			master->read_fail = 0;
+ 			master->depth--;
+ 			master->recurse = 0;
