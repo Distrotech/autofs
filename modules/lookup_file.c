@@ -399,7 +399,7 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 
 	/* Don't return fail on self include, skip source */
 	if (master->recurse)
-		return NSS_STATUS_SUCCESS;
+		return NSS_STATUS_TRYAGAIN;
 
 	if (master->depth > MAX_INCLUDE_DEPTH) {
 		error(logopt, MODPREFIX
