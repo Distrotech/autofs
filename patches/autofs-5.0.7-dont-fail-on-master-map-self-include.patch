@@ -6,7 +6,8 @@ Date:   2013-03-01 15:37:45 +0800
 autofs-5.0.7 - dont fail on master map self include
 
 When reading the master map a self included file map should skip the source
-and proceed to the next so, in this case, don't return a map read failure.
+and proceed to the next so, in this case, return an nss status that will
+allow the map read to continue.
 
 
 ---
