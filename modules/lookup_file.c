@@ -646,7 +646,7 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 	mc = source->mc;
 
 	if (source->recurse)
-		return NSS_STATUS_UNAVAIL;
+		return NSS_STATUS_TRYAGAIN;
 
 	if (source->depth > MAX_INCLUDE_DEPTH) {
 		error(ap->logopt,
