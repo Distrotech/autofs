@@ -1,8 +1,8 @@
 Version: 1
-Previous: d64b4917df04a1a661cb96f85a36a113feaae64c
-Head: 2f6ef2efc22f026b104f665eab2daee3e05a00b4
+Previous: 345c326ab3f64f38ff936b1097aa22891173ecba
+Head: 1eef4b2494fc4129cdfb1c45347fe19b41a13c40
 Applied:
-  autofs-5.0.7-dont-fail-on-master-map-self-include.patch: 2f6ef2efc22f026b104f665eab2daee3e05a00b4
+  autofs-5.0.7-dont-fail-on-master-map-self-include.patch: 1eef4b2494fc4129cdfb1c45347fe19b41a13c40
 Unapplied:
   autofs-5.0.7-fix-wildcard-multi-map-regression.patch: 2965c59bc37d8ac395b740b285dc2e497d95d48f
   autofs-5.0.7-fix-file-descriptor-leak-when-reloading-the-daemon.patch: 14e039ae7a371800b50e30398016d2fe52db8945
