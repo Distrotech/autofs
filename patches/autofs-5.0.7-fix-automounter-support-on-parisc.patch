@@ -1,0 +1,43 @@
+Bottom: 6cfe64536ee67ed956a1fb7a68cb32cdf3eb8221
+Top:    1f5b25ecd6a90e4be81ba9dfb4ad907df20e0b6c
+Author: Helge Deller <deller@gmx.de>
+Date:   2013-03-08 13:44:05 +0800
+
+autofs-5.0.7 - fix automounter support on parisc
+
+This patch fixes automounter support on the parisc architecture with
+64-bit kernel and 32-bit userspace.
+
+The patch consists of two parts: Part 1 adds code to detect a 64bit
+parisc kernel (uname reports "parisc64"). This is similiar to how x86_64
+and ppc64 is already detected.
+
+Part 2 patches the auto_fs.h Linux kernel header file to bring
+it in sync again with the upstream Linux kernel header file.
+Linux kernel upstream commit 4f4ffc3a5398ef9bdbb32db04756d7d34e356fcf
+(https://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/commit/?id=4f4ffc3a5398ef9bdbb32db04756d7d34e356fcf)
+simplified the #if defined() statements to define autofs_wqt_t as
+"unsigned long" only for pure 64bit architectures. This change makes the
+kernel source code more robust for new upcoming architectures as well.
+A backport of this patch has already been accepted for various stable
+linux kernels during the last few weeks.
+
+It would be nice, if you could apply this patch for the next upcoming
+release of the autofs package.
+
+Signed-off-by: Helge Deller <deller@gmx.de>
+
+
+---
+
+diff --git a/daemon/automount.c b/daemon/automount.c
+index 4a3eb3d..4c651cf 100644
+--- a/daemon/automount.c
++++ b/daemon/automount.c
+@@ -610,6 +610,7 @@ static size_t get_kpkt_len(void)
+ 		if (strcmp(un.machine, "alpha") == 0 ||
+ 		    strcmp(un.machine, "ia64") == 0 ||
+ 		    strcmp(un.machine, "x86_64") == 0 ||
++		    strcmp(un.machine, "parisc64") == 0 ||
+ 		    strcmp(un.machine, "ppc64") == 0)
+ 			pkt_len += 4;
