@@ -1,17 +1,7 @@
 Version: 1
-Previous: 062e8a3d47d6cbdce8c4d5c1df670359479af851
+Previous: bb638f2ad70c7c654d30ed3e4e0d0103b90c18c9
 Head: 9131ce60f15b8abeed659e8d57142280fab8adce
 Applied:
-  autofs-5.0.7-fix-wildcard-multi-map-regression.patch: ecf3ebbb523eb9c770c712363c9e47ce9d848d88
-  autofs-5.0.7-fix-file-descriptor-leak-when-reloading-the-daemon.patch: 7bcbad9bccb000cffa1295a93d6f0231dd66c61a
-  autofs-5.0.7-depricate-nosymlink-pseudo-option.patch: 61e6b979b441eb9f3777ffef3f9f951bdc645aa0
-  autofs-5.0.7-add-symlink-pseudo-option.patch: 3513eae432fe4a06ca16f9565f75436a61a6c9fd
-  autofs-5.0.7-update-kernel-include-files.patch: c1208f5e1f4fd39e9fed7fc5867cbec27097161b
-  autofs-5.0.7-fix-requires-in-spec-file.patch: 2eebe20cf6fab6c4d5b18166a614f9c2ddf55ca4
-  autofs-5.0.7-fix-libtirpc-build-option.patch: a7f4014d56b05e7d195536a3ddb607a91e3b2eb0
-  autofs-5.0.7-fix-systemd-unidir-in-spec-file.patch: c57eec7a3190a39ef38a29ab7cdbe0778924063c
-  autofs-5.0.7-document-browse-option-in-man-page.patch: 3f3806e711898c2cc0b798eb9b7aa5655ca85d0e
-  autofs-5.0.7-fix-automounter-support-on-parisc.patch: 9131ce60f15b8abeed659e8d57142280fab8adce
 Unapplied:
   autofs-5.0.6-account-for-new-offset-mount-overlap.patch: 58e4b78cc2bd0742cf8ac3856f33448a782348aa
   autofs-5.0.5-automount-daemon-getting-killed-by-SIGBUS.patch: 2b09c3c182b2732f576cd9798c0e2d19f925ed6b
