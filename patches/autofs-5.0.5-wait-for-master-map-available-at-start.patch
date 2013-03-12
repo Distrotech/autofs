@@ -1,5 +1,5 @@
 Bottom: 1f5b25ecd6a90e4be81ba9dfb4ad907df20e0b6c
-Top:    e71901eb2ef756ed3bd1440827c8ec4a2219914f
+Top:    595d16b81a0c4e92b953604054118d2e7544a3e5
 Author: Ian Kent <raven@themaw.net>
 Date:   2011-03-07 13:03:55 +0800
 
@@ -25,22 +25,13 @@ index d8e4049..7af6a76 100644
  25/07/2012 autofs-5.0.7
  =======================
 diff --git a/daemon/automount.c b/daemon/automount.c
-index 4c651cf..8a3acf7 100644
+index 4c651cf..293d8dc 100644
 --- a/daemon/automount.c
 +++ b/daemon/automount.c
-@@ -1871,6 +1871,7 @@ static int convert_log_priority(char *priority_name)
- 	return -1;
+@@ -1899,12 +1899,51 @@ static void remove_empty_args(char **argv, int *argc)
+ 	*argc = j;
  }
  
-+<<<<<<< current
- static void remove_empty_args(char **argv, int *argc)
- {
- 	int next_to_last = *argc - 1;
-@@ -1897,6 +1898,44 @@ static void remove_empty_args(char **argv, int *argc)
- 		}
- 	}
- 	*argc = j;
-+=======
 +static int do_master_read_master(struct master *master, time_t age, unsigned int wait)
 +{
 +	sigset_t signalset;
@@ -77,11 +68,11 @@ index 4c651cf..8a3acf7 100644
 +	sigprocmask(SIG_BLOCK, &signalset, NULL);
 +
 +	return ret;
-+>>>>>>> patched
- }
- 
++}
++
  int main(int argc, char *argv[])
-@@ -1905,6 +1944,7 @@ int main(int argc, char *argv[])
+ {
+ 	int res, opt, status;
  	int logpri = -1;
  	unsigned ghost, logging, daemon_check;
  	unsigned dumpmaps, foreground, have_global_options;
@@ -89,7 +80,7 @@ index 4c651cf..8a3acf7 100644
  	time_t timeout;
  	time_t age = time(NULL);
  	struct rlimit rlim;
-@@ -2238,13 +2278,16 @@ int main(int argc, char *argv[])
+@@ -2238,13 +2277,16 @@ int main(int argc, char *argv[])
  		dh_tirpc = dlopen("libtirpc.so.1", RTLD_NOW);
  #endif
  
@@ -113,7 +104,7 @@ index 4c651cf..8a3acf7 100644
  	}
  
  	/*
-@@ -2257,6 +2300,21 @@ int main(int argc, char *argv[])
+@@ -2257,6 +2299,21 @@ int main(int argc, char *argv[])
  	res = write(start_pipefd[1], pst_stat, sizeof(*pst_stat));
  	close(start_pipefd[1]);
  
