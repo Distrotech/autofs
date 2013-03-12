@@ -1,5 +1,5 @@
 Bottom: 1f5b25ecd6a90e4be81ba9dfb4ad907df20e0b6c
-Top:    1f5b25ecd6a90e4be81ba9dfb4ad907df20e0b6c
+Top:    abb7220ed155b6e9fdbc72dac81c97f21c587cfa
 Author: Ian Kent <raven@themaw.net>
 Date:   2011-03-07 13:03:55 +0800
 
@@ -12,4 +12,243 @@ so we can get a startup map.
 
 ---
 
-
+diff --git a/CHANGELOG b/CHANGELOG
+index d8e4049..a9ee19e 100644
+--- a/CHANGELOG
++++ b/CHANGELOG
+@@ -37,6 +37,7 @@
+ - fix libtirpc build option to require libtirpc-devel if needed.
+ - fix systemd unidir in spec file.
+ - document browse option in man page.
++- wait for master map to be available at start.
+ 
+ 25/07/2012 autofs-5.0.7
+ =======================
+@@ -183,6 +184,7 @@
+ - fix out of order locking in readmap.
+ - include ip address in debug logging.
+ - mount using address for DNS round robin host names.
++<<<<<<< current
+ - reset negative status on cache prune.
+ - remove master_mutex_unlock() leftover.
+ - fix sanity checks for brackets in server name.
+@@ -194,6 +196,9 @@
+ - add base64 password encode.
+ - fix ipv6 name for lookup.
+ - fix libtirpc ipv6 check.
++=======
++- wait for master map to be available at start.
++>>>>>>> patched
+ 
+ 03/09/2009 autofs-5.0.5
+ -----------------------
+diff --git a/daemon/automount.c b/daemon/automount.c
+index 4c651cf..8a3acf7 100644
+--- a/daemon/automount.c
++++ b/daemon/automount.c
+@@ -1871,6 +1871,7 @@ static int convert_log_priority(char *priority_name)
+ 	return -1;
+ }
+ 
++<<<<<<< current
+ static void remove_empty_args(char **argv, int *argc)
+ {
+ 	int next_to_last = *argc - 1;
+@@ -1897,6 +1898,44 @@ static void remove_empty_args(char **argv, int *argc)
+ 		}
+ 	}
+ 	*argc = j;
++=======
++static int do_master_read_master(struct master *master, time_t age, unsigned int wait)
++{
++	sigset_t signalset;
++	unsigned int max_wait = wait;
++	unsigned int retry_wait = 2;
++	unsigned int elapsed = 0;
++	int ret = 0;
++
++	sigemptyset(&signalset);
++	sigaddset(&signalset, SIGTERM);
++	sigaddset(&signalset, SIGINT);
++	sigaddset(&signalset, SIGHUP);
++	sigprocmask(SIG_UNBLOCK, &signalset, NULL);
++
++	while (1) {
++		struct timespec t = { retry_wait, 0 };
++
++		if (master_read_master(master, age, 0)) {
++			ret = 1;
++			break;
++		}
++
++		if (nanosleep(&t, NULL) == -1)
++			break;
++
++		elapsed += retry_wait;
++		if (elapsed >= max_wait) {
++			logmsg("problem reading master map, "
++				"maximum wait exceeded");
++			break;
++		}
++	}
++
++	sigprocmask(SIG_BLOCK, &signalset, NULL);
++
++	return ret;
++>>>>>>> patched
+ }
+ 
+ int main(int argc, char *argv[])
+@@ -1905,6 +1944,7 @@ int main(int argc, char *argv[])
+ 	int logpri = -1;
+ 	unsigned ghost, logging, daemon_check;
+ 	unsigned dumpmaps, foreground, have_global_options;
++	unsigned master_read;
+ 	time_t timeout;
+ 	time_t age = time(NULL);
+ 	struct rlimit rlim;
+@@ -2238,13 +2278,16 @@ int main(int argc, char *argv[])
+ 		dh_tirpc = dlopen("libtirpc.so.1", RTLD_NOW);
+ #endif
+ 
+-	if (!master_read_master(master_list, age, 0)) {
+-		master_kill(master_list);
+-		*pst_stat = 3;
+-		res = write(start_pipefd[1], pst_stat, sizeof(*pst_stat));
+-		close(start_pipefd[1]);
+-		release_flag_file();
+-		exit(3);
++	master_read = master_read_master(master_list, age, 0);
++	if (!master_read) {
++		if (foreground)
++			logerr("%s: failed to read master map, "
++			       "will retry!",
++			       program);
++		else
++			logerr("%s: failed to read master map, "
++			       "will retry in background!",
++			       program);
+ 	}
+ 
+ 	/*
+@@ -2257,6 +2300,21 @@ int main(int argc, char *argv[])
+ 	res = write(start_pipefd[1], pst_stat, sizeof(*pst_stat));
+ 	close(start_pipefd[1]);
+ 
++	if (!master_read) {
++		/*
++		 * Read master map, waiting until it is available, unless
++		 * a signal is received, in which case exit returning an
++		 * error.
++		 */
++		if (!do_master_read_master(master_list, age, 180)) {
++			logerr("%s: failed to read master map after 180 seconds!",
++			       program);
++			master_kill(master_list);
++			release_flag_file();
++			exit(3);
++		}
++	}
++
+ 	state_mach_thid = pthread_self();
+ 	statemachine(NULL);
+ 
+diff --git a/daemon/lookup.c b/daemon/lookup.c
+index e3d9536..ee90556 100644
+--- a/daemon/lookup.c
++++ b/daemon/lookup.c
+@@ -218,6 +218,7 @@ int lookup_nss_read_master(struct master *master, time_t age)
+ 	}
+ 
+ 	/* First one gets it */
++	result = NSS_STATUS_UNKNOWN;
+ 	head = &nsslist;
+ 	list_for_each(p, head) {
+ 		struct nss_source *this;
+@@ -225,6 +226,12 @@ int lookup_nss_read_master(struct master *master, time_t age)
+ 
+ 		this = list_entry(p, struct nss_source, list);
+ 
++		if (strncmp(this->source, "files", 5) &&
++		    strncmp(this->source, "nis", 3) &&
++		    strncmp(this->source, "nisplus", 7) &&
++		    strncmp(this->source, "ldap", 4))
++			continue;
++
+ 		debug(logopt,
+ 		      "reading master %s %s", this->source, master->name);
+ 
+diff --git a/lib/master.c b/lib/master.c
+index a0e62f2..0cb8076 100644
+--- a/lib/master.c
++++ b/lib/master.c
+@@ -865,7 +865,10 @@ int master_read_master(struct master *master, time_t age, int readall)
+ 		master_mount_mounts(master, age, readall);
+ 	else {
+ 		master->read_fail = 0;
++		/* HUP signal sets readall == 1 only */
+ 		if (!readall)
++			return 0;
++		else
+ 			master_mount_mounts(master, age, readall);
+ 	}
+ 
+diff --git a/modules/lookup_file.c b/modules/lookup_file.c
+index 65e5ee6..e6e6c8d 100644
+--- a/modules/lookup_file.c
++++ b/modules/lookup_file.c
+@@ -452,6 +452,12 @@ int lookup_read_master(struct master *master, time_t age, void *context)
+ 				     MODPREFIX
+ 				     "failed to read included master map %s",
+ 				     master->name);
++				/*
++				 * If we're starting up wee need the whole
++				 * master map initially, so tell the upper
++				 * layer to retry.
++				 */
++				master->read_fail = 1;
+ 			}
+ 			master->depth--;
+ 			master->recurse = 0;
+diff --git a/modules/lookup_yp.c b/modules/lookup_yp.c
+index a716e1f..f16b4b4 100644
+--- a/modules/lookup_yp.c
++++ b/modules/lookup_yp.c
+@@ -214,9 +214,9 @@ int lookup_read_master(struct master *master, time_t age, void *context)
+ 	char *mapname;
+ 	int err;
+ 
+-	mapname = alloca(strlen(ctxt->mapname) + 1);
++	mapname = malloc(strlen(ctxt->mapname) + 1);
+ 	if (!mapname)
+-		return 0;
++		return NSS_STATUS_UNKNOWN;
+ 
+ 	strcpy(mapname, ctxt->mapname);
+ 
+@@ -240,19 +240,24 @@ int lookup_read_master(struct master *master, time_t age, void *context)
+ 			err = yp_all((char *) ctxt->domainname, mapname, &ypcb);
+ 		}
+ 
+-		if (err == YPERR_SUCCESS)
++		if (err == YPERR_SUCCESS) {
++			free(mapname);
+ 			return NSS_STATUS_SUCCESS;
++		}
+ 
+ 		info(logopt,
+ 		     MODPREFIX "read of master map %s failed: %s",
+ 		     mapname, yperr_string(err));
+ 
+-		if (err == YPERR_PMAP || err == YPERR_YPSERV)
++		free(mapname);
++
++		if (err == YPERR_YPSERV || err == YPERR_DOMAIN)
+ 			return NSS_STATUS_UNAVAIL;
+ 
+ 		return NSS_STATUS_NOTFOUND;
+ 	}
+ 
++	free(mapname);
+ 	return NSS_STATUS_SUCCESS;
+ }
