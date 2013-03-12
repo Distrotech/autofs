@@ -1,8 +1,9 @@
 Version: 1
-Previous: 54d1047d7b6f25c71455746f43f4771c35f4dcc0
-Head: f0c2c5bf0eb60741c0010a20467ed11c650b837f
+Previous: 8aea569616c1c4fd4c7b4b0c5edee05859fcb889
+Head: 4b50e3a00193a7e5c71fb68cc41611bccba91ce8
 Applied:
   autofs-5.0.5-wait-for-master-map-available-at-start.patch: f0c2c5bf0eb60741c0010a20467ed11c650b837f
+  autofs-5.0.5-add-master-read-wait-option.patch: 4b50e3a00193a7e5c71fb68cc41611bccba91ce8
 Unapplied:
   autofs-5.0.6-account-for-new-offset-mount-overlap.patch: 58e4b78cc2bd0742cf8ac3856f33448a782348aa
   autofs-5.0.5-automount-daemon-getting-killed-by-SIGBUS.patch: 2b09c3c182b2732f576cd9798c0e2d19f925ed6b
@@ -24,7 +25,6 @@ Unapplied:
   autofs-5.0.5-dont-fetch-yporder-at-module-init.patch: 452bc37de447522563dd5af636bb76e4c60f85f0
   autofs-5.0.5-dont-fail-on-master-map-not-available.patch: 9f3e0bed5e174892f1d32fdb4a98c0e393f26f2d
   autofs-5.0.5-use-null-cache-to-mask-invalid-map-keys.patch: e2807d7aa6fb1b7b9308a6293b57dc099ba66c1b
-  autofs-5.0.5-add-master-read-wait-option.patch: 6ee4076f75ffcd25a358745825b3318a418af830
   autofs-5.0.6-add-ability-to-force-umount.patch: 06071701c5298ecb57beeaf1d1525125bd91e585
 Hidden:
   autofs-5.0.6-update-allow-for-kernel-packet-size-change.patch: 4a1b778ec4c6b61f0c90d7f3448eae9142168a9f
