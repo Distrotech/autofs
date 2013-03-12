@@ -1871,7 +1871,6 @@ static int convert_log_priority(char *priority_name)
 	return -1;
 }
 
-<<<<<<< current
 static void remove_empty_args(char **argv, int *argc)
 {
 	int next_to_last = *argc - 1;
@@ -1898,7 +1897,8 @@ static void remove_empty_args(char **argv, int *argc)
 		}
 	}
 	*argc = j;
-=======
+}
+
 static int do_master_read_master(struct master *master, time_t age, unsigned int wait)
 {
 	sigset_t signalset;
@@ -1935,7 +1935,6 @@ static int do_master_read_master(struct master *master, time_t age, unsigned int
 	sigprocmask(SIG_BLOCK, &signalset, NULL);
 
 	return ret;
->>>>>>> patched
 }
 
 int main(int argc, char *argv[])
