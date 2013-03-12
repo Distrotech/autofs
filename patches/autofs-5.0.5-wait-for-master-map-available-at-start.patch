@@ -1,5 +1,5 @@
 Bottom: 1f5b25ecd6a90e4be81ba9dfb4ad907df20e0b6c
-Top:    abb7220ed155b6e9fdbc72dac81c97f21c587cfa
+Top:    e71901eb2ef756ed3bd1440827c8ec4a2219914f
 Author: Ian Kent <raven@themaw.net>
 Date:   2011-03-07 13:03:55 +0800
 
@@ -13,7 +13,7 @@ so we can get a startup map.
 ---
 
 diff --git a/CHANGELOG b/CHANGELOG
-index d8e4049..a9ee19e 100644
+index d8e4049..7af6a76 100644
 --- a/CHANGELOG
 +++ b/CHANGELOG
 @@ -37,6 +37,7 @@
@@ -24,24 +24,6 @@ index d8e4049..a9ee19e 100644
  
  25/07/2012 autofs-5.0.7
  =======================
-@@ -183,6 +184,7 @@
- - fix out of order locking in readmap.
- - include ip address in debug logging.
- - mount using address for DNS round robin host names.
-+<<<<<<< current
- - reset negative status on cache prune.
- - remove master_mutex_unlock() leftover.
- - fix sanity checks for brackets in server name.
-@@ -194,6 +196,9 @@
- - add base64 password encode.
- - fix ipv6 name for lookup.
- - fix libtirpc ipv6 check.
-+=======
-+- wait for master map to be available at start.
-+>>>>>>> patched
- 
- 03/09/2009 autofs-5.0.5
- -----------------------
 diff --git a/daemon/automount.c b/daemon/automount.c
 index 4c651cf..8a3acf7 100644
 --- a/daemon/automount.c
