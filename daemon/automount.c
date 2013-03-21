@@ -1899,12 +1899,12 @@ static void remove_empty_args(char **argv, int *argc)
 	*argc = j;
 }
 
-static int do_master_read_master(struct master *master, time_t age, unsigned int wait)
+static int do_master_read_master(struct master *master, time_t age, int wait)
 {
 	sigset_t signalset;
-	unsigned int max_wait = wait;
 	unsigned int retry_wait = 2;
 	unsigned int elapsed = 0;
+	int max_wait = wait;
 	int ret = 0;
 
 	sigemptyset(&signalset);
@@ -1925,7 +1925,7 @@ static int do_master_read_master(struct master *master, time_t age, unsigned int
 			break;
 
 		elapsed += retry_wait;
-		if (elapsed >= max_wait) {
+		if (max_wait > 0 && elapsed >= max_wait) {
 			logmsg("problem reading master map, "
 				"maximum wait exceeded");
 			break;
@@ -2305,8 +2305,8 @@ int main(int argc, char *argv[])
 		 * a signal is received, in which case exit returning an
 		 * error.
 		 */
-		if (!do_master_read_master(master_list, age, 180)) {
-			logerr("%s: failed to read master map after 180 seconds!",
+		if (!do_master_read_master(master_list, age, -1)) {
+			logerr("%s: failed to read master map!",
 			       program);
 			master_kill(master_list);
 			release_flag_file();
