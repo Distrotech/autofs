@@ -1,5 +1,5 @@
 Bottom: a1d9ab0d1d177ca7fdf5336aa9b00ea760c62ba3
-Top:    035ef6098f208872e949f20bd8e1f2aa87eddcff
+Top:    689b008910a308915dd888f3aa1662003e474920
 Author: Ian Kent <raven@themaw.net>
 Date:   2011-03-07 13:04:01 +0800
 
@@ -57,14 +57,14 @@ index 4f5d0ca..d9d4569 100644
  			if (!have_global_options) {
  				global_options = strdup(optarg);
 diff --git a/include/defaults.h b/include/defaults.h
-index 871e14b..912c2d0 100644
+index 871e14b..50dc000 100644
 --- a/include/defaults.h
 +++ b/include/defaults.h
 @@ -23,6 +23,7 @@
  #define DEFAULT_MASTER_MAP_NAME	"auto.master"
  
  #define DEFAULT_TIMEOUT			600
-+#define DEFAULT_MASTER_WAIT		180
++#define DEFAULT_MASTER_WAIT		-1
  #define DEFAULT_NEGATIVE_TIMEOUT	60
  #define DEFAULT_MOUNT_WAIT		-1
  #define DEFAULT_UMOUNT_WAIT		12
@@ -145,35 +145,37 @@ index dddebce..6df8994 100644
  Set the default timeout for caching failed key lookups. The default is 60 seconds.
  .TP
 diff --git a/redhat/autofs.sysconfig.in b/redhat/autofs.sysconfig.in
-index a8992c4..a856f25 100644
+index a8992c4..b9d6eef 100644
 --- a/redhat/autofs.sysconfig.in
 +++ b/redhat/autofs.sysconfig.in
-@@ -9,6 +9,12 @@
+@@ -9,6 +9,13 @@
  #
  TIMEOUT=300
  #
 +# MASTER_WAIT - set the default maximum time to wait for the
 +# 		master map to become available if it cannot
-+# 		be read at program start (default 180).
++# 		be read at program start (default -1, wait
++# 		forever).
 +#
-+#MASTER_WAIT=180
++#MASTER_WAIT=-1
 +#
  # NEGATIVE_TIMEOUT - set the default negative timeout for
  # 		     failed mount attempts (default 60).
  #
 diff --git a/samples/autofs.conf.default.in b/samples/autofs.conf.default.in
-index 1da89cf..f56344e 100644
+index 1da89cf..805b7f3 100644
 --- a/samples/autofs.conf.default.in
 +++ b/samples/autofs.conf.default.in
-@@ -9,6 +9,12 @@
+@@ -9,6 +9,13 @@
  #
  TIMEOUT=300
  #
 +# MASTER_WAIT - set the default maximum time to wait for the
 +# 		master map to become available if it cannot
-+#		be read at program start (default 180).
++#		be read at program start (default -1, wait
++#		forever).
 +#
-+#MASTER_WAIT=180
++#MASTER_WAIT=-1
 +#
  # NEGATIVE_TIMEOUT - set the default negative timeout for
  # 		     failed mount attempts (default 60).
