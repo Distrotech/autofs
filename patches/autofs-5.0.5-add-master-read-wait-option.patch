@@ -1,5 +1,5 @@
 Bottom: a1d9ab0d1d177ca7fdf5336aa9b00ea760c62ba3
-Top:    5320ac4de600b00402745e4464e48ee4585352f2
+Top:    5a85dbcc4aeda09b546416c49294ff9a3ce63fdd
 Author: Ian Kent <raven@themaw.net>
 Date:   2011-03-07 13:04:01 +0800
 
@@ -12,15 +12,16 @@ wait for the master map to become available at program start.
 ---
 
 diff --git a/daemon/automount.c b/daemon/automount.c
-index 4f5d0ca..d9d4569 100644
+index 4f5d0ca..05196f4 100644
 --- a/daemon/automount.c
 +++ b/daemon/automount.c
-@@ -1943,11 +1943,11 @@ int main(int argc, char *argv[])
+@@ -1943,11 +1943,12 @@ int main(int argc, char *argv[])
  	int logpri = -1;
  	unsigned ghost, logging, daemon_check;
  	unsigned dumpmaps, foreground, have_global_options;
 -	unsigned master_read;
 +	unsigned master_read, master_wait;
++	int master_wait;
  	time_t timeout;
  	time_t age = time(NULL);
  	struct rlimit rlim;
@@ -29,7 +30,7 @@ index 4f5d0ca..d9d4569 100644
  	static const struct option long_options[] = {
  		{"help", 0, 0, 'h'},
  		{"pid-file", 1, 0, 'p'},
-@@ -1964,6 +1964,7 @@ int main(int argc, char *argv[])
+@@ -1964,6 +1965,7 @@ int main(int argc, char *argv[])
  		{"set-log-priority", 1, 0, 'l'},
  		{"dont-check-daemon", 0, 0, 'C'},
  		{"force", 0, 0, 'F'},
@@ -37,7 +38,7 @@ index 4f5d0ca..d9d4569 100644
  		{0, 0, 0, 0}
  	};
  
-@@ -1984,6 +1985,7 @@ int main(int argc, char *argv[])
+@@ -1984,6 +1986,7 @@ int main(int argc, char *argv[])
  	nfs_mount_uses_string_options = check_nfs_mount_version(&vers, &check);
  
  	kpkt_len = get_kpkt_len();
@@ -45,7 +46,7 @@ index 4f5d0ca..d9d4569 100644
  	timeout = defaults_get_timeout();
  	ghost = defaults_get_browse_mode();
  	logging = defaults_get_logging();
-@@ -2043,6 +2045,10 @@ int main(int argc, char *argv[])
+@@ -2043,6 +2046,10 @@ int main(int argc, char *argv[])
  			dumpmaps = 1;
  			break;
  
