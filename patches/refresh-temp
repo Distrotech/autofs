@@ -1,0 +1,34 @@
+Bottom: 689b008910a308915dd888f3aa1662003e474920
+Top:    5320ac4de600b00402745e4464e48ee4585352f2
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-03-21 12:12:35 +0800
+
+Refresh of autofs-5.0.5-add-master-read-wait-option.patch
+
+---
+
+diff --git a/include/defaults.h b/include/defaults.h
+index 50dc000..1181d25 100644
+--- a/include/defaults.h
++++ b/include/defaults.h
+@@ -60,7 +60,7 @@ unsigned int defaults_read_config(unsigned int);
+ const char *defaults_get_master_map(void);
+ int defaults_master_set(void);
+ unsigned int defaults_get_timeout(void);
+-unsigned int defaults_get_master_wait(void);
++int defaults_get_master_wait(void);
+ unsigned int defaults_get_negative_timeout(void);
+ unsigned int defaults_get_browse_mode(void);
+ unsigned int defaults_get_logging(void);
+diff --git a/lib/defaults.c b/lib/defaults.c
+index 0d1162c..688461a 100644
+--- a/lib/defaults.c
++++ b/lib/defaults.c
+@@ -585,7 +585,7 @@ unsigned int defaults_get_timeout(void)
+ 	return (unsigned int) timeout;
+ }
+ 
+-unsigned int defaults_get_master_wait(void)
++int defaults_get_master_wait(void)
+ {
+ 	long wait;
