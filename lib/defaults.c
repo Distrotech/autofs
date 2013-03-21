@@ -593,7 +593,7 @@ int defaults_get_master_wait(void)
 	if (wait < 0)
 		wait = DEFAULT_MASTER_WAIT;
 
-	return (unsigned int) wait;
+	return (int) wait;
 }
 
 unsigned int defaults_get_negative_timeout(void)
