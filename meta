@@ -1,8 +1,9 @@
 Version: 1
-Previous: 539713af0fce14c7e4ef62502077af394aa91f8a
-Head: f0c2c5bf0eb60741c0010a20467ed11c650b837f
+Previous: 261a7cf66417805f78675ad1de86918982dab8f8
+Head: 1c6970589cdbbe849f20d42007599436c4686939
 Applied:
   autofs-5.0.5-wait-for-master-map-available-at-start.patch: f0c2c5bf0eb60741c0010a20467ed11c650b837f
+  refresh-temp: 1c6970589cdbbe849f20d42007599436c4686939
 Unapplied:
   autofs-5.0.5-add-master-read-wait-option.patch: eb6608e7fb4cd6f645fbf7d6c0b121327e07fd3e
   autofs-5.0.6-account-for-new-offset-mount-overlap.patch: 58e4b78cc2bd0742cf8ac3856f33448a782348aa
