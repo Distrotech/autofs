@@ -1943,7 +1943,7 @@ int main(int argc, char *argv[])
 	int logpri = -1;
 	unsigned ghost, logging, daemon_check;
 	unsigned dumpmaps, foreground, have_global_options;
-	unsigned master_read, master_wait;
+	unsigned master_read;
 	int master_wait;
 	time_t timeout;
 	time_t age = time(NULL);
@@ -2312,7 +2312,7 @@ int main(int argc, char *argv[])
 		 * a signal is received, in which case exit returning an
 		 * error.
 		 */
-		if (!do_master_read_master(master_list, age, -1)) {
+		if (!do_master_read_master(master_list, age, master_wait)) {
 			logerr("%s: failed to read master map!",
 			       program);
 			master_kill(master_list);
