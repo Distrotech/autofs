@@ -1,0 +1,56 @@
+Bottom: 035ef6098f208872e949f20bd8e1f2aa87eddcff
+Top:    689b008910a308915dd888f3aa1662003e474920
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-03-21 12:11:30 +0800
+
+Refresh of autofs-5.0.5-add-master-read-wait-option.patch
+
+---
+
+diff --git a/include/defaults.h b/include/defaults.h
+index 912c2d0..50dc000 100644
+--- a/include/defaults.h
++++ b/include/defaults.h
+@@ -23,7 +23,7 @@
+ #define DEFAULT_MASTER_MAP_NAME	"auto.master"
+ 
+ #define DEFAULT_TIMEOUT			600
+-#define DEFAULT_MASTER_WAIT		180
++#define DEFAULT_MASTER_WAIT		-1
+ #define DEFAULT_NEGATIVE_TIMEOUT	60
+ #define DEFAULT_MOUNT_WAIT		-1
+ #define DEFAULT_UMOUNT_WAIT		12
+diff --git a/redhat/autofs.sysconfig.in b/redhat/autofs.sysconfig.in
+index a856f25..b9d6eef 100644
+--- a/redhat/autofs.sysconfig.in
++++ b/redhat/autofs.sysconfig.in
+@@ -11,9 +11,10 @@ TIMEOUT=300
+ #
+ # MASTER_WAIT - set the default maximum time to wait for the
+ # 		master map to become available if it cannot
+-# 		be read at program start (default 180).
++# 		be read at program start (default -1, wait
++# 		forever).
+ #
+-#MASTER_WAIT=180
++#MASTER_WAIT=-1
+ #
+ # NEGATIVE_TIMEOUT - set the default negative timeout for
+ # 		     failed mount attempts (default 60).
+diff --git a/samples/autofs.conf.default.in b/samples/autofs.conf.default.in
+index f56344e..805b7f3 100644
+--- a/samples/autofs.conf.default.in
++++ b/samples/autofs.conf.default.in
+@@ -11,9 +11,10 @@ TIMEOUT=300
+ #
+ # MASTER_WAIT - set the default maximum time to wait for the
+ # 		master map to become available if it cannot
+-#		be read at program start (default 180).
++#		be read at program start (default -1, wait
++#		forever).
+ #
+-#MASTER_WAIT=180
++#MASTER_WAIT=-1
+ #
+ # NEGATIVE_TIMEOUT - set the default negative timeout for
+ # 		     failed mount attempts (default 60).
