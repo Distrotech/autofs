@@ -1,5 +1,5 @@
 Bottom: a1d9ab0d1d177ca7fdf5336aa9b00ea760c62ba3
-Top:    8efe426ae2ffd9b8634376c9996e17db17730b88
+Top:    704df4239d203b287a45f6ddb38ee56d7f4a4307
 Author: Ian Kent <raven@themaw.net>
 Date:   2011-03-07 13:04:01 +0800
 
@@ -116,16 +116,17 @@ index ae1162f..ed521b7 100644
  {
  	long n_timeout;
 diff --git a/man/auto.master.5.in b/man/auto.master.5.in
-index c552e56..228af19 100644
+index c552e56..091f517 100644
 --- a/man/auto.master.5.in
 +++ b/man/auto.master.5.in
-@@ -211,6 +211,10 @@ They are:
+@@ -211,6 +211,11 @@ They are:
  .B TIMEOUT
  sets the default mount timeout (program default 600).
  .TP
 +.B MASTER_WAIT
 +sets the default maximum time to wait for the master map to become
-+available if it cannot be read at program start (program default 180).
++available if it cannot be read at program start (program default -1,
++wait forever).
 +.TP
  .B NEGATIVE_TIMEOUT
  Set the default timeout for caching failed key lookups (program default
