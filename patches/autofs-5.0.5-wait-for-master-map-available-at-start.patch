@@ -1,5 +1,5 @@
 Bottom: 1f5b25ecd6a90e4be81ba9dfb4ad907df20e0b6c
-Top:    595d16b81a0c4e92b953604054118d2e7544a3e5
+Top:    a1d9ab0d1d177ca7fdf5336aa9b00ea760c62ba3
 Author: Ian Kent <raven@themaw.net>
 Date:   2011-03-07 13:03:55 +0800
 
@@ -25,19 +25,19 @@ index d8e4049..7af6a76 100644
  25/07/2012 autofs-5.0.7
  =======================
 diff --git a/daemon/automount.c b/daemon/automount.c
-index 4c651cf..293d8dc 100644
+index 4c651cf..4f5d0ca 100644
 --- a/daemon/automount.c
 +++ b/daemon/automount.c
 @@ -1899,12 +1899,51 @@ static void remove_empty_args(char **argv, int *argc)
  	*argc = j;
  }
  
-+static int do_master_read_master(struct master *master, time_t age, unsigned int wait)
++static int do_master_read_master(struct master *master, time_t age, int wait)
 +{
 +	sigset_t signalset;
-+	unsigned int max_wait = wait;
 +	unsigned int retry_wait = 2;
 +	unsigned int elapsed = 0;
++	int max_wait = wait;
 +	int ret = 0;
 +
 +	sigemptyset(&signalset);
@@ -58,7 +58,7 @@ index 4c651cf..293d8dc 100644
 +			break;
 +
 +		elapsed += retry_wait;
-+		if (elapsed >= max_wait) {
++		if (max_wait > 0 && elapsed >= max_wait) {
 +			logmsg("problem reading master map, "
 +				"maximum wait exceeded");
 +			break;
@@ -114,8 +114,8 @@ index 4c651cf..293d8dc 100644
 +		 * a signal is received, in which case exit returning an
 +		 * error.
 +		 */
-+		if (!do_master_read_master(master_list, age, 180)) {
-+			logerr("%s: failed to read master map after 180 seconds!",
++		if (!do_master_read_master(master_list, age, -1)) {
++			logerr("%s: failed to read master map!",
 +			       program);
 +			master_kill(master_list);
 +			release_flag_file();
