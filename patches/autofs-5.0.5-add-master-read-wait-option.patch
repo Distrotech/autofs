@@ -1,5 +1,5 @@
 Bottom: a1d9ab0d1d177ca7fdf5336aa9b00ea760c62ba3
-Top:    704df4239d203b287a45f6ddb38ee56d7f4a4307
+Top:    21f6fd5398dd43dd7c79973a06007d8a10ed2e8a
 Author: Ian Kent <raven@themaw.net>
 Date:   2011-03-07 13:04:01 +0800
 
@@ -12,15 +12,13 @@ wait for the master map to become available at program start.
 ---
 
 diff --git a/daemon/automount.c b/daemon/automount.c
-index 4f5d0ca..05196f4 100644
+index 4f5d0ca..2b2e57f 100644
 --- a/daemon/automount.c
 +++ b/daemon/automount.c
-@@ -1943,11 +1943,12 @@ int main(int argc, char *argv[])
- 	int logpri = -1;
+@@ -1944,10 +1944,11 @@ int main(int argc, char *argv[])
  	unsigned ghost, logging, daemon_check;
  	unsigned dumpmaps, foreground, have_global_options;
--	unsigned master_read;
-+	unsigned master_read, master_wait;
+ 	unsigned master_read;
 +	int master_wait;
  	time_t timeout;
  	time_t age = time(NULL);
@@ -57,6 +55,15 @@ index 4f5d0ca..05196f4 100644
  		case 'O':
  			if (!have_global_options) {
  				global_options = strdup(optarg);
+@@ -2305,7 +2312,7 @@ int main(int argc, char *argv[])
+ 		 * a signal is received, in which case exit returning an
+ 		 * error.
+ 		 */
+-		if (!do_master_read_master(master_list, age, -1)) {
++		if (!do_master_read_master(master_list, age, master_wait)) {
+ 			logerr("%s: failed to read master map!",
+ 			       program);
+ 			master_kill(master_list);
 diff --git a/include/defaults.h b/include/defaults.h
 index 871e14b..1181d25 100644
 --- a/include/defaults.h
