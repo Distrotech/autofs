@@ -1,0 +1,23 @@
+Bottom: 50f815026778a39dac6ff1b288fa6aa2230f23ff
+Top:    dc9fa99dd1f50439e1ac858cc105e68926f15609
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-03-21 12:21:48 +0800
+
+Refresh of autofs-5.0.5-wait-for-master-map-available-at-start.patch
+
+---
+
+diff --git a/daemon/automount.c b/daemon/automount.c
+index cdbc226..14e780e 100644
+--- a/daemon/automount.c
++++ b/daemon/automount.c
+@@ -2308,8 +2308,7 @@ int main(int argc, char *argv[])
+ 		 * error.
+ 		 */
+ 		if (!do_master_read_master(master_list, age, -1)) {
+-			logerr("%s: failed to read master map!",
+-			       program);
++			logerr("%s: failed to read master map!", program);
+ 			master_kill(master_list);
+ 			release_flag_file();
+ 			exit(3);
