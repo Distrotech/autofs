@@ -1924,11 +1924,13 @@ static int do_master_read_master(struct master *master, time_t age, int wait)
 		if (nanosleep(&t, NULL) == -1)
 			break;
 
-		elapsed += retry_wait;
-		if (max_wait > 0 && elapsed >= max_wait) {
-			logmsg("problem reading master map, "
-				"maximum wait exceeded");
-			break;
+		if (max_wait > 0) {
+			elapsed += retry_wait;
+			if (elapsed >= max_wait) {
+				logmsg("problem reading master map, "
+					"maximum wait exceeded");
+				break;
+			}
 		}
 	}
 
