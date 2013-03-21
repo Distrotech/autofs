@@ -2308,8 +2308,7 @@ int main(int argc, char *argv[])
 		 * error.
 		 */
 		if (!do_master_read_master(master_list, age, -1)) {
-			logerr("%s: failed to read master map!",
-			       program);
+			logerr("%s: failed to read master map!", program);
 			master_kill(master_list);
 			release_flag_file();
 			exit(3);
