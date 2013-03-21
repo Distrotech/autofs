@@ -585,7 +585,7 @@ unsigned int defaults_get_timeout(void)
 	return (unsigned int) timeout;
 }
 
-unsigned int defaults_get_master_wait(void)
+int defaults_get_master_wait(void)
 {
 	long wait;
 
