@@ -1944,6 +1944,7 @@ int main(int argc, char *argv[])
 	unsigned ghost, logging, daemon_check;
 	unsigned dumpmaps, foreground, have_global_options;
 	unsigned master_read, master_wait;
+	int master_wait;
 	time_t timeout;
 	time_t age = time(NULL);
 	struct rlimit rlim;
