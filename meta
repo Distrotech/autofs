@@ -1,9 +1,10 @@
 Version: 1
-Previous: 9d2fdd83784bff9ec97f206c54e1cee3798c0f55
-Head: 1201cc385db30a272d178cc841e4b08d64c86f1f
+Previous: a6494acfb59861b03cf3af686a4afb3e4141d4ec
+Head: 62436a6da74d06accfcccea97765b29c5b92aa41
 Applied:
   autofs-5.0.5-wait-for-master-map-available-at-start.patch: 5700f5cf72feedcbdc509dd1b063daf351e92545
   autofs-5.0.5-add-master-read-wait-option.patch: 1201cc385db30a272d178cc841e4b08d64c86f1f
+  refresh-temp: 62436a6da74d06accfcccea97765b29c5b92aa41
 Unapplied:
   autofs-5.0.6-account-for-new-offset-mount-overlap.patch: 58e4b78cc2bd0742cf8ac3856f33448a782348aa
   autofs-5.0.5-automount-daemon-getting-killed-by-SIGBUS.patch: 2b09c3c182b2732f576cd9798c0e2d19f925ed6b
