@@ -1,5 +1,5 @@
 Bottom: a1d9ab0d1d177ca7fdf5336aa9b00ea760c62ba3
-Top:    5a85dbcc4aeda09b546416c49294ff9a3ce63fdd
+Top:    8efe426ae2ffd9b8634376c9996e17db17730b88
 Author: Ian Kent <raven@themaw.net>
 Date:   2011-03-07 13:04:01 +0800
 
@@ -78,7 +78,7 @@ index 871e14b..1181d25 100644
  unsigned int defaults_get_browse_mode(void);
  unsigned int defaults_get_logging(void);
 diff --git a/lib/defaults.c b/lib/defaults.c
-index ae1162f..688461a 100644
+index ae1162f..ed521b7 100644
 --- a/lib/defaults.c
 +++ b/lib/defaults.c
 @@ -32,6 +32,7 @@
@@ -109,7 +109,7 @@ index ae1162f..688461a 100644
 +	if (wait < 0)
 +		wait = DEFAULT_MASTER_WAIT;
 +
-+	return (unsigned int) wait;
++	return (int) wait;
 +}
 +
  unsigned int defaults_get_negative_timeout(void)
