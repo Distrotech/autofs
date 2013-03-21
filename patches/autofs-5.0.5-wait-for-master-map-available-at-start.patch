@@ -1,5 +1,5 @@
 Bottom: 1f5b25ecd6a90e4be81ba9dfb4ad907df20e0b6c
-Top:    a1d9ab0d1d177ca7fdf5336aa9b00ea760c62ba3
+Top:    50f815026778a39dac6ff1b288fa6aa2230f23ff
 Author: Ian Kent <raven@themaw.net>
 Date:   2011-03-07 13:03:55 +0800
 
@@ -25,10 +25,10 @@ index d8e4049..7af6a76 100644
  25/07/2012 autofs-5.0.7
  =======================
 diff --git a/daemon/automount.c b/daemon/automount.c
-index 4c651cf..4f5d0ca 100644
+index 4c651cf..cdbc226 100644
 --- a/daemon/automount.c
 +++ b/daemon/automount.c
-@@ -1899,12 +1899,51 @@ static void remove_empty_args(char **argv, int *argc)
+@@ -1899,12 +1899,53 @@ static void remove_empty_args(char **argv, int *argc)
  	*argc = j;
  }
  
@@ -57,11 +57,13 @@ index 4c651cf..4f5d0ca 100644
 +		if (nanosleep(&t, NULL) == -1)
 +			break;
 +
-+		elapsed += retry_wait;
-+		if (max_wait > 0 && elapsed >= max_wait) {
-+			logmsg("problem reading master map, "
-+				"maximum wait exceeded");
-+			break;
++		if (max_wait > 0) {
++			elapsed += retry_wait;
++			if (elapsed >= max_wait) {
++				logmsg("problem reading master map, "
++					"maximum wait exceeded");
++				break;
++			}
 +		}
 +	}
 +
@@ -80,7 +82,7 @@ index 4c651cf..4f5d0ca 100644
  	time_t timeout;
  	time_t age = time(NULL);
  	struct rlimit rlim;
-@@ -2238,13 +2277,16 @@ int main(int argc, char *argv[])
+@@ -2238,13 +2279,16 @@ int main(int argc, char *argv[])
  		dh_tirpc = dlopen("libtirpc.so.1", RTLD_NOW);
  #endif
  
@@ -104,7 +106,7 @@ index 4c651cf..4f5d0ca 100644
  	}
  
  	/*
-@@ -2257,6 +2299,21 @@ int main(int argc, char *argv[])
+@@ -2257,6 +2301,21 @@ int main(int argc, char *argv[])
  	res = write(start_pipefd[1], pst_stat, sizeof(*pst_stat));
  	close(start_pipefd[1]);
  
