@@ -1,0 +1,23 @@
+Bottom: 8efe426ae2ffd9b8634376c9996e17db17730b88
+Top:    704df4239d203b287a45f6ddb38ee56d7f4a4307
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-03-21 12:15:19 +0800
+
+Refresh of autofs-5.0.5-add-master-read-wait-option.patch
+
+---
+
+diff --git a/man/auto.master.5.in b/man/auto.master.5.in
+index 228af19..091f517 100644
+--- a/man/auto.master.5.in
++++ b/man/auto.master.5.in
+@@ -213,7 +213,8 @@ sets the default mount timeout (program default 600).
+ .TP
+ .B MASTER_WAIT
+ sets the default maximum time to wait for the master map to become
+-available if it cannot be read at program start (program default 180).
++available if it cannot be read at program start (program default -1,
++wait forever).
+ .TP
+ .B NEGATIVE_TIMEOUT
+ Set the default timeout for caching failed key lookups (program default
