@@ -5,6 +5,9 @@ Date:   2013-03-26 09:12:36 +0800
 
 autofs-5.0.7 - fix some automount(8) typos
 
+Fix a couple of spelling errors in the automount(8) man page
+that have been around for a long time.
+
 
 ---
 
