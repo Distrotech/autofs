@@ -1,0 +1,21 @@
+Bottom: 52d7cd82b42c2cb7e8e8552d9cdaf6d8bd5386f0
+Top:    9e400f7e63a698fc10980946938addf0e6bc4513
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-03-26 09:18:15 +0800
+
+Refresh of autofs-5.0.5-add-master-read-wait-option.patch
+
+---
+
+diff --git a/CHANGELOG b/CHANGELOG
+index bfadd6d..f4a894b 100644
+--- a/CHANGELOG
++++ b/CHANGELOG
+@@ -39,6 +39,7 @@
+ - document browse option in man page.
+ - fix some automount(8) typos.
+ - wait for master map to be available at start.
++- add master read wait option.
+ 
+ 25/07/2012 autofs-5.0.7
+ =======================
