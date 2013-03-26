@@ -1,5 +1,5 @@
 Bottom: a880c2259e7d42f73edc2ec551be2312596ac494
-Top:    52d7cd82b42c2cb7e8e8552d9cdaf6d8bd5386f0
+Top:    9e400f7e63a698fc10980946938addf0e6bc4513
 Author: Ian Kent <raven@themaw.net>
 Date:   2011-03-07 13:04:01 +0800
 
@@ -11,6 +11,18 @@ wait for the master map to become available at program start.
 
 ---
 
+diff --git a/CHANGELOG b/CHANGELOG
+index bfadd6d..f4a894b 100644
+--- a/CHANGELOG
++++ b/CHANGELOG
+@@ -39,6 +39,7 @@
+ - document browse option in man page.
+ - fix some automount(8) typos.
+ - wait for master map to be available at start.
++- add master read wait option.
+ 
+ 25/07/2012 autofs-5.0.7
+ =======================
 diff --git a/daemon/automount.c b/daemon/automount.c
 index 14e780e..2d5b3c9 100644
 --- a/daemon/automount.c
