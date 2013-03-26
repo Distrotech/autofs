@@ -1,5 +1,5 @@
-Bottom: d9e4762f4ae281b3bd692d2ca75a84e3d2e10ea4
-Top:    50dcc177c02450d100b9ec9dc61f56b39c855766
+Bottom: 1f5b25ecd6a90e4be81ba9dfb4ad907df20e0b6c
+Top:    c1e2d879342fd328a673d043c3537c4883fccd2f
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-03-26 09:12:36 +0800
 
@@ -9,10 +9,10 @@ autofs-5.0.7 - fix some automount(8) typos
 ---
 
 diff --git a/man/automount.8 b/man/automount.8
-index 6df8994..fec2905 100644
+index dddebce..7cc32c5 100644
 --- a/man/automount.8
 +++ b/man/automount.8
-@@ -47,7 +47,7 @@ autofs managed mounts.
+@@ -43,7 +43,7 @@ autofs managed mounts.
  .TP
  .I "\-d, \-\-debug"
  Enables logging of general status and progress messages as well as
@@ -21,7 +21,7 @@ index 6df8994..fec2905 100644
  .TP
  .I "\-Dvariable=value"
  Define a global macro substitution variable. Global definitions
-@@ -137,7 +137,7 @@ unused. If the force umount at exit option is used the filesystems
+@@ -133,7 +133,7 @@ unused. If the force umount at exit option is used the filesystems
  will be umounted but the mount will not be released by the kernel
  until they are no longer in use by the processes that held them busy.
  If automount managed filesystems are found mounted when autofs is
