@@ -39,6 +39,7 @@
 - document browse option in man page.
 - fix some automount(8) typos.
 - wait for master map to be available at start.
+- add master read wait option.
 
 25/07/2012 autofs-5.0.7
 =======================
