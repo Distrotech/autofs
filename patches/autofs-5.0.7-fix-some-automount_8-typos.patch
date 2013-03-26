@@ -1,5 +1,5 @@
 Bottom: 1f5b25ecd6a90e4be81ba9dfb4ad907df20e0b6c
-Top:    c1e2d879342fd328a673d043c3537c4883fccd2f
+Top:    f150652ca82a5866f82c590caaa5312f4a3a62bf
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-03-26 09:12:36 +0800
 
@@ -11,6 +11,18 @@ that have been around for a long time.
 
 ---
 
+diff --git a/CHANGELOG b/CHANGELOG
+index d8e4049..488ad1e 100644
+--- a/CHANGELOG
++++ b/CHANGELOG
+@@ -37,6 +37,7 @@
+ - fix libtirpc build option to require libtirpc-devel if needed.
+ - fix systemd unidir in spec file.
+ - document browse option in man page.
++- fix some automount(8) typos.
+ 
+ 25/07/2012 autofs-5.0.7
+ =======================
 diff --git a/man/automount.8 b/man/automount.8
 index dddebce..7cc32c5 100644
 --- a/man/automount.8
