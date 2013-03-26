@@ -1,5 +1,5 @@
-Bottom: dc9fa99dd1f50439e1ac858cc105e68926f15609
-Top:    d9e4762f4ae281b3bd692d2ca75a84e3d2e10ea4
+Bottom: a880c2259e7d42f73edc2ec551be2312596ac494
+Top:    52d7cd82b42c2cb7e8e8552d9cdaf6d8bd5386f0
 Author: Ian Kent <raven@themaw.net>
 Date:   2011-03-07 13:04:01 +0800
 
@@ -139,7 +139,7 @@ index c552e56..091f517 100644
  Set the default timeout for caching failed key lookups (program default
  60). If the equivalent command line option is given it will override this
 diff --git a/man/automount.8 b/man/automount.8
-index dddebce..6df8994 100644
+index 7cc32c5..fec2905 100644
 --- a/man/automount.8
 +++ b/man/automount.8
 @@ -34,6 +34,10 @@ Set the global minimum timeout, in seconds, until directories
