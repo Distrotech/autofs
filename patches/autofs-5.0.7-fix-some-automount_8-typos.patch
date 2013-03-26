@@ -1,0 +1,11 @@
+Bottom: d9e4762f4ae281b3bd692d2ca75a84e3d2e10ea4
+Top:    d9e4762f4ae281b3bd692d2ca75a84e3d2e10ea4
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-03-26 09:12:36 +0800
+
+autofs-5.0.7 - fix some automount(8) typos
+
+
+---
+
+
