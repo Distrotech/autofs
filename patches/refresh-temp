@@ -1,0 +1,21 @@
+Bottom: c1e2d879342fd328a673d043c3537c4883fccd2f
+Top:    f150652ca82a5866f82c590caaa5312f4a3a62bf
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-03-26 09:17:00 +0800
+
+Refresh of autofs-5.0.7-fix-some-automount_8-typos.patch
+
+---
+
+diff --git a/CHANGELOG b/CHANGELOG
+index d8e4049..488ad1e 100644
+--- a/CHANGELOG
++++ b/CHANGELOG
+@@ -37,6 +37,7 @@
+ - fix libtirpc build option to require libtirpc-devel if needed.
+ - fix systemd unidir in spec file.
+ - document browse option in man page.
++- fix some automount(8) typos.
+ 
+ 25/07/2012 autofs-5.0.7
+ =======================
