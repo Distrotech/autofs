@@ -1,0 +1,31 @@
+Bottom: d9e4762f4ae281b3bd692d2ca75a84e3d2e10ea4
+Top:    50dcc177c02450d100b9ec9dc61f56b39c855766
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-03-26 09:13:50 +0800
+
+Refresh of autofs-5.0.7-fix-some-automount_8-typos.patch
+
+---
+
+diff --git a/man/automount.8 b/man/automount.8
+index 6df8994..fec2905 100644
+--- a/man/automount.8
++++ b/man/automount.8
+@@ -47,7 +47,7 @@ autofs managed mounts.
+ .TP
+ .I "\-d, \-\-debug"
+ Enables logging of general status and progress messages as well as
+-debuging messages for all autofs managed mounts.
++debugging messages for all autofs managed mounts.
+ .TP
+ .I "\-Dvariable=value"
+ Define a global macro substitution variable. Global definitions
+@@ -137,7 +137,7 @@ unused. If the force umount at exit option is used the filesystems
+ will be umounted but the mount will not be released by the kernel
+ until they are no longer in use by the processes that held them busy.
+ If automount managed filesystems are found mounted when autofs is
+-started they will be recoverd unless they are no longer present in
++started they will be recovered unless they are no longer present in
+ the map in which case they need to umounted manually.
+ .P
+ If the option to disable the check to see if the daemon is already
