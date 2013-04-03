@@ -1344,11 +1344,11 @@ static void *statemachine(void *arg)
 			master_mutex_lock();
 			if (list_empty(&master_list->completed)) {
 				if (!list_empty(&master_list->mounts)) {
-					debug(LOGOPT_ANY, "list empty completed and mounts");
+					debug(LOGOPT_ANY, "list empty completed and mounts not empty");
 					master_mutex_unlock();
 					return NULL;
 				}
-				debug(LOGOPT_ANY, "list empty completed, do nothing");
+				debug(LOGOPT_ANY, "list empty completed and mounts, shutdown");
 			} else {
 				if (master_done(master_list)) {
 					debug(LOGOPT_ANY, "master_done returns true");
