@@ -1,5 +1,5 @@
 Bottom: f150652ca82a5866f82c590caaa5312f4a3a62bf
-Top:    fcc922b3867725a607261c11f3e65da207856e70
+Top:    e1f4fd4cb6d9028c4e97208e717a82f10af9f289
 Author: Ian Kent <ikent@redhat.com>
 Date:   2013-04-03 15:38:27 +0800
 
@@ -9,7 +9,7 @@ debug.patch
 ---
 
 diff --git a/daemon/automount.c b/daemon/automount.c
-index 4c651cf..252a49e 100644
+index 4c651cf..462bba6 100644
 --- a/daemon/automount.c
 +++ b/daemon/automount.c
 @@ -1343,15 +1343,19 @@ static void *statemachine(void *arg)
@@ -18,11 +18,11 @@ index 4c651cf..252a49e 100644
  			if (list_empty(&master_list->completed)) {
 -				if (list_empty(&master_list->mounts)) {
 +				if (!list_empty(&master_list->mounts)) {
-+					debug(LOGOPT_ANY, "list empty completed and mounts");
++					debug(LOGOPT_ANY, "list empty completed and mounts not empty");
  					master_mutex_unlock();
  					return NULL;
  				}
-+				debug(LOGOPT_ANY, "list empty completed, do nothing");
++				debug(LOGOPT_ANY, "list empty completed and mounts, shutdown");
  			} else {
  				if (master_done(master_list)) {
 +					debug(LOGOPT_ANY, "master_done returns true");
