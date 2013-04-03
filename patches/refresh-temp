@@ -1,0 +1,29 @@
+Bottom: e1f4fd4cb6d9028c4e97208e717a82f10af9f289
+Top:    fb97f06de40a47b411574f10c022867c6881a019
+Author: Ian Kent <ikent@redhat.com>
+Date:   2013-04-03 16:33:09 +0800
+
+Refresh of debug.patch
+
+---
+
+diff --git a/daemon/automount.c b/daemon/automount.c
+index 462bba6..eaae74c 100644
+--- a/daemon/automount.c
++++ b/daemon/automount.c
+@@ -1343,12 +1343,12 @@ static void *statemachine(void *arg)
+ 		case SIGUSR2:
+ 			master_mutex_lock();
+ 			if (list_empty(&master_list->completed)) {
+-				if (!list_empty(&master_list->mounts)) {
+-					debug(LOGOPT_ANY, "list empty completed and mounts not empty");
++				if (list_empty(&master_list->mounts)) {
++					debug(LOGOPT_ANY, "list empty completed and mounts");
+ 					master_mutex_unlock();
+ 					return NULL;
+ 				}
+-				debug(LOGOPT_ANY, "list empty completed and mounts, shutdown");
++				debug(LOGOPT_ANY, "list empty completed, try shutdown");
+ 			} else {
+ 				if (master_done(master_list)) {
+ 					debug(LOGOPT_ANY, "master_done returns true");

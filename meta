@@ -1,9 +1,10 @@
 Version: 1
-Previous: 19c09c48d2952f57f625109305ac7536d456d36a
-Head: bd5a0246c0b418ebc5a757564533cee83a5b0558
+Previous: b648d2a1e9df660c7ddd5ea53ac83c564d1ece30
+Head: eea241a7b98257c88d47e5b56dd71bc9bb9ca3fb
 Applied:
   autofs-5.0.7-fix-some-automount_8-typos.patch: ef7de25145dae29275f2895edd8537c63597df22
   debug.patch: bd5a0246c0b418ebc5a757564533cee83a5b0558
+  refresh-temp: eea241a7b98257c88d47e5b56dd71bc9bb9ca3fb
 Unapplied:
   autofs-5.0.5-wait-for-master-map-available-at-start.patch: 4d3bced9874067bd3b6ac8e830f8fc830ad3eee5
   autofs-5.0.5-add-master-read-wait-option.patch: fb6140416bb3f0cdcd55bfe263cafa86ab5fb209
