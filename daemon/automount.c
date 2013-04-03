@@ -1343,15 +1343,19 @@ static void *statemachine(void *arg)
 		case SIGUSR2:
 			master_mutex_lock();
 			if (list_empty(&master_list->completed)) {
-				if (list_empty(&master_list->mounts)) {
+				if (!list_empty(&master_list->mounts)) {
+					debug(LOGOPT_ANY, "list empty completed and mounts not empty");
 					master_mutex_unlock();
 					return NULL;
 				}
+				debug(LOGOPT_ANY, "list empty completed and mounts, shutdown");
 			} else {
 				if (master_done(master_list)) {
+					debug(LOGOPT_ANY, "master_done returns true");
 					master_mutex_unlock();
 					return NULL;
 				}
+				debug(LOGOPT_ANY, "master_done returns false");
 				master_mutex_unlock();
 				break;
 			}
@@ -1491,6 +1495,8 @@ static void handle_mounts_cleanup(void *arg)
 		}
 	}
 
+	master_mutex_unlock();
+
 	info(logopt, "shut down path %s", path);
 
 	/*
@@ -1498,10 +1504,10 @@ static void handle_mounts_cleanup(void *arg)
 	 * so it can join with any completed handle_mounts() threads and
 	 * perform final cleanup.
 	 */
-	if (!submount)
+	if (!submount) {
+		debug(LOGOPT_ANY, "send SIGTERM to statemachine");
 		pthread_kill(state_mach_thid, SIGTERM);
-
-	master_mutex_unlock();
+	}
 
 	return;
 }
