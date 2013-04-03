@@ -1,5 +1,5 @@
 Bottom: f150652ca82a5866f82c590caaa5312f4a3a62bf
-Top:    9c6276fb1f4a9f78faca3cb229042bc3d99c77b9
+Top:    fcc922b3867725a607261c11f3e65da207856e70
 Author: Ian Kent <ikent@redhat.com>
 Date:   2013-04-03 15:38:27 +0800
 
@@ -9,13 +9,15 @@ debug.patch
 ---
 
 diff --git a/daemon/automount.c b/daemon/automount.c
-index 4c651cf..45ca99b 100644
+index 4c651cf..252a49e 100644
 --- a/daemon/automount.c
 +++ b/daemon/automount.c
-@@ -1344,14 +1344,18 @@ static void *statemachine(void *arg)
+@@ -1343,15 +1343,19 @@ static void *statemachine(void *arg)
+ 		case SIGUSR2:
  			master_mutex_lock();
  			if (list_empty(&master_list->completed)) {
- 				if (list_empty(&master_list->mounts)) {
+-				if (list_empty(&master_list->mounts)) {
++				if (!list_empty(&master_list->mounts)) {
 +					debug(LOGOPT_ANY, "list empty completed and mounts");
  					master_mutex_unlock();
  					return NULL;
