@@ -1,5 +1,5 @@
 Bottom: f150652ca82a5866f82c590caaa5312f4a3a62bf
-Top:    7245b1f142c9e2c56230ccee03ebe9e8abad0045
+Top:    af32107058da460cd8e1965b187dd1c38b961556
 Author: Ian Kent <ikent@redhat.com>
 Date:   2013-04-03 15:38:27 +0800
 
@@ -9,7 +9,7 @@ debug.patch
 ---
 
 diff --git a/daemon/automount.c b/daemon/automount.c
-index 4c651cf..1da00df 100644
+index 4c651cf..1a71cb4 100644
 --- a/daemon/automount.c
 +++ b/daemon/automount.c
 @@ -1345,10 +1345,12 @@ static void *statemachine(void *arg)
@@ -25,3 +25,26 @@ index 4c651cf..1da00df 100644
  					master_mutex_unlock();
  					return NULL;
  				}
+@@ -1491,6 +1493,8 @@ static void handle_mounts_cleanup(void *arg)
+ 		}
+ 	}
+ 
++	master_mutex_unlock();
++
+ 	info(logopt, "shut down path %s", path);
+ 
+ 	/*
+@@ -1498,10 +1502,10 @@ static void handle_mounts_cleanup(void *arg)
+ 	 * so it can join with any completed handle_mounts() threads and
+ 	 * perform final cleanup.
+ 	 */
+-	if (!submount)
++	if (!submount) {
++		debug(LOGOPT_ANY, "send SIGTERM to statemachine");
+ 		pthread_kill(state_mach_thid, SIGTERM);
+-
+-	master_mutex_unlock();
++	}
+ 
+ 	return;
+ }
