@@ -1,5 +1,5 @@
 Bottom: f150652ca82a5866f82c590caaa5312f4a3a62bf
-Top:    af32107058da460cd8e1965b187dd1c38b961556
+Top:    9c6276fb1f4a9f78faca3cb229042bc3d99c77b9
 Author: Ian Kent <ikent@redhat.com>
 Date:   2013-04-03 15:38:27 +0800
 
@@ -9,23 +9,29 @@ debug.patch
 ---
 
 diff --git a/daemon/automount.c b/daemon/automount.c
-index 4c651cf..1a71cb4 100644
+index 4c651cf..45ca99b 100644
 --- a/daemon/automount.c
 +++ b/daemon/automount.c
-@@ -1345,10 +1345,12 @@ static void *statemachine(void *arg)
+@@ -1344,14 +1344,18 @@ static void *statemachine(void *arg)
+ 			master_mutex_lock();
  			if (list_empty(&master_list->completed)) {
  				if (list_empty(&master_list->mounts)) {
- 					master_mutex_unlock();
 +					debug(LOGOPT_ANY, "list empty completed and mounts");
+ 					master_mutex_unlock();
  					return NULL;
  				}
++				debug(LOGOPT_ANY, "list empty completed, do nothing");
  			} else {
  				if (master_done(master_list)) {
 +					debug(LOGOPT_ANY, "master_done returns true");
  					master_mutex_unlock();
  					return NULL;
  				}
-@@ -1491,6 +1493,8 @@ static void handle_mounts_cleanup(void *arg)
++				debug(LOGOPT_ANY, "master_done returns false");
+ 				master_mutex_unlock();
+ 				break;
+ 			}
+@@ -1491,6 +1495,8 @@ static void handle_mounts_cleanup(void *arg)
  		}
  	}
  
@@ -34,7 +40,7 @@ index 4c651cf..1a71cb4 100644
  	info(logopt, "shut down path %s", path);
  
  	/*
-@@ -1498,10 +1502,10 @@ static void handle_mounts_cleanup(void *arg)
+@@ -1498,10 +1504,10 @@ static void handle_mounts_cleanup(void *arg)
  	 * so it can join with any completed handle_mounts() threads and
  	 * perform final cleanup.
  	 */
