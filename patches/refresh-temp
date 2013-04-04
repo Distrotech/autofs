@@ -1,0 +1,30 @@
+Bottom: 8a94234e75af6a68d14636d0718e4bb082891542
+Top:    4d2bf0a44d79491942a67782d9e14a57445c9b9a
+Author: Ian Kent <ikent@redhat.com>
+Date:   2013-04-04 15:07:53 +0800
+
+Refresh of autofs-5.0.7-syncronize-handle_mounts-shutdown.patch
+
+---
+
+diff --git a/lib/master.c b/lib/master.c
+index 1b027cc..07b08e3 100644
+--- a/lib/master.c
++++ b/lib/master.c
+@@ -1402,7 +1402,7 @@ void master_finish(struct master *master)
+ 
+ 	finish_mutex_lock();
+ 
+-	while (sdc.busy) {
++	while (fc.busy) {
+ 		head = &master->completed;
+ 		p = head->next;
+ 		while (p != head) {
+@@ -1412,7 +1412,7 @@ void master_finish(struct master *master)
+ 			pthread_join(entry->thid, NULL);
+ 			master_free_mapent_sources(entry, 1);
+ 			master_free_mapent(entry);
+-			sdc.busy--;
++			fc.busy--;
+ 		}
+ 	}
