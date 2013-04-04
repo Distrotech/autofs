@@ -1,0 +1,11 @@
+Bottom: f150652ca82a5866f82c590caaa5312f4a3a62bf
+Top:    f150652ca82a5866f82c590caaa5312f4a3a62bf
+Author: Ian Kent <ikent@redhat.com>
+Date:   2013-04-04 12:56:54 +0800
+
+autofs-5.0.7 - syncronize handle_mounts() shutdown
+
+
+---
+
+
