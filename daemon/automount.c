@@ -1340,7 +1340,7 @@ static void *statemachine(void *arg)
 		switch (sig) {
 		case SIGCONT:
 			master_mutex_lock();
-			master_done(master_list);
+			master_finish(master_list);
 			master_mutex_unlock();
 			break;
 

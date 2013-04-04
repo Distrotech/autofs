@@ -1394,7 +1394,7 @@ int master_list_empty(struct master *master)
 	return res;
 }
 
-void master_done(struct master *master)
+void master_finish(struct master *master)
 {
 	struct list_head *head, *p;
 	struct master_mapent *entry;
