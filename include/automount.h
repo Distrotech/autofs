@@ -353,15 +353,15 @@ struct startup_cond {
 int handle_mounts_startup_cond_init(struct startup_cond *suc);
 void handle_mounts_startup_cond_destroy(void *arg);
 
-struct shutdown_cond {
+struct finish_cond {
 	pthread_mutex_t mutex;
 	pthread_cond_t  cond;
-	struct autofs_point *ap;
 	unsigned int busy;
-	unsigned int done;
 };
 
-extern struct shutdown_cond sdc;
+extern struct finish_cond fc;
+void finish_mutex_lock(void);
+void finish_mutex_unlock(void);
 
 struct master_readmap_cond {
 	pthread_mutex_t mutex;

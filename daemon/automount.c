@@ -88,7 +88,7 @@ struct master_readmap_cond mrc = {
 /*struct startup_cond suc = {
 	PTHREAD_MUTEX_INITIALIZER, PTHREAD_COND_INITIALIZER, 0, 0};*/
 
-struct shutdown_cond sdc = {
+struct shutdown_cond fc = {
 	PTHREAD_MUTEX_INITIALIZER, PTHREAD_COND_INITIALIZER, 0, 0, 0};
 
 pthread_key_t key_thread_stdenv_vars;
@@ -1342,25 +1342,22 @@ static void *statemachine(void *arg)
 
 		switch (sig) {
 		case SIGCONT:
+			master_mutex_lock();
 			master_done(master_list);
+			master_mutex_unlock();
 			break;
 
 		case SIGTERM:
 		case SIGINT:
 		case SIGUSR2:
 			master_mutex_lock();
-			if (list_empty(&master_list->completed)) {
-				if (list_empty(&master_list->mounts)) {
-					master_mutex_unlock();
-					return NULL;
-				}
-			} else {
-				if (master_done(master_list)) {
-					master_mutex_unlock();
-					return NULL;
-				}
+			while (!list_empty(&master_list->completed)) {
 				master_mutex_unlock();
-				break;
+				master_mutex_lock();
+			}
+			if (list_empty(&master_list->mounts)) {
+				master_mutex_unlock();
+				return NULL;
 			}
 			master_mutex_unlock();
 
@@ -1450,6 +1447,43 @@ void handle_mounts_startup_cond_destroy(void *arg)
 	return;
 }
 
+void finish_mutex_lock(void)
+{
+	int status = pthread_mutex_lock(&fc.mutex);
+	if (status)
+		logerr("failed to lock shutdown condition mutex!");
+		fatal(status);
+	}
+}
+
+void finish_mutex_unlock(void)
+{
+	int status = pthread_mutex_unlock(&fc.mutex);
+	if (status)
+		logerr("failed to unlock shutdown condition mutex!");
+		fatal(status);
+	}
+}
+
+void handle_mounts_done(void)
+{
+	int status, cancel_state;
+
+	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cancel_state);
+	finish_mutex_lock();
+
+	sdc.busy++;
+
+	/* Poke signal handler */
+	pthread_kill(state_mach_thid, SIGCONT);
+	status = pthread_cond_wait(&sdc.cond, &sdc.mutex);
+	if (status)
+		fatal(status);
+
+	finish_mutex_unlock();
+	pthread_setcancelstate(cancel_state, NULL);
+}
+
 static void handle_mounts_cleanup(void *arg)
 {
 	struct autofs_point *ap;
@@ -1507,35 +1541,8 @@ static void handle_mounts_cleanup(void *arg)
 	 * so it can join with any completed handle_mounts() threads and
 	 * perform final cleanup.
 	 */
-	if (!submount) {
-		int status, cancel_state;
-
-		pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cancel_state);
-
-		status = pthread_mutex_lock(&sdc.mutex);
-		if (status) {
-			logerr("failed to lock shutdown condition mutex!");
-			fatal(status);
-		}
-
-		sdc.busy++;
-
-		/* Wake up signal handler */
-		pthread_kill(state_mach_thid, SIGCONT);
-
-		status = pthread_cond_wait(&sdc.cond, &sdc.mutex);
-		if (status)
-			fatal(status);
-
-		status = pthread_mutex_unlock(&sdc.mutex);
-		if (status) {
-			logerr("failed to unlock shutdown condition mutex!");
-			fatal(status);
-		}
-
-		pthread_setcancelstate(cancel_state, NULL);
-	}
-
+	if (!submount)
+		handle_mounts_done();
 
 	return;
 }
