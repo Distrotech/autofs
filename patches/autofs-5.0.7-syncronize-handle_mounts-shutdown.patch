@@ -1,5 +1,5 @@
 Bottom: f150652ca82a5866f82c590caaa5312f4a3a62bf
-Top:    e64f4d4550097124d1308243aaf6aefe72febded
+Top:    518dce469fbaa9c1ae345cdf4610d940f0283c41
 Author: Ian Kent <ikent@redhat.com>
 Date:   2013-04-04 12:56:54 +0800
 
@@ -9,7 +9,7 @@ autofs-5.0.7 - syncronize handle_mounts() shutdown
 ---
 
 diff --git a/daemon/automount.c b/daemon/automount.c
-index 4c651cf..a016903 100644
+index 4c651cf..476ff14 100644
 --- a/daemon/automount.c
 +++ b/daemon/automount.c
 @@ -85,8 +85,8 @@ pthread_attr_t th_attr_detached;
@@ -36,7 +36,17 @@ index 4c651cf..a016903 100644
  		case SIGTERM:
  		case SIGINT:
  		case SIGUSR2:
-@@ -1443,6 +1449,47 @@ void handle_mounts_startup_cond_destroy(void *arg)
+@@ -1348,7 +1354,8 @@ static void *statemachine(void *arg)
+ 					return NULL;
+ 				}
+ 			} else {
+-				if (master_done(master_list)) {
++				master_done(master_list);
++				if (list_empty(&master_list->mounts)) {
+ 					master_mutex_unlock();
+ 					return NULL;
+ 				}
+@@ -1443,6 +1450,47 @@ void handle_mounts_startup_cond_destroy(void *arg)
  	return;
  }
  
@@ -84,7 +94,7 @@ index 4c651cf..a016903 100644
  static void handle_mounts_cleanup(void *arg)
  {
  	struct autofs_point *ap;
-@@ -1493,15 +1540,15 @@ static void handle_mounts_cleanup(void *arg)
+@@ -1493,15 +1541,15 @@ static void handle_mounts_cleanup(void *arg)
  
  	info(logopt, "shut down path %s", path);
  
