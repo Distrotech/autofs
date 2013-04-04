@@ -1420,7 +1420,7 @@ again:
 		master_free_mapent(entry);
 	}
 
-	status = pthread_cond_broadcast(&fc);
+	status = pthread_cond_broadcast(&fc.cond);
 	if (status)
 		fatal(status);
 

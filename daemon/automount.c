@@ -1464,9 +1464,13 @@ void finish_mutex_unlock(void)
 
 void finish_cond_wait(void)
 {
+	error(LOGOPT_ANY, "before signal fc.busy %d", fc.busy);
+	fc.busy++;
 	int status = pthread_cond_wait(&fc.cond, &fc.mutex);
 	if (status)
 		fatal(status);
+	fc.busy--;
+	error(LOGOPT_ANY, "after wait fc.busy %d", fc.busy);
 }
 
 static void handle_mounts_finish(void)
@@ -1476,13 +1480,9 @@ static void handle_mounts_finish(void)
 	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cancel_state);
 
 	finish_mutex_lock();
-	fc.busy++;
-	error(LOGOPT_ANY, "before signal fc.busy %d", fc.busy);
 	/* Poke signal handler */
 	pthread_kill(state_mach_thid, SIGTERM);
 	finish_cond_wait();
-	fc.busy--;
-	error(LOGOPT_ANY, "after wait fc.busy %d", fc.busy);
 	finish_mutex_unlock();
 
 	pthread_setcancelstate(cancel_state, NULL);
