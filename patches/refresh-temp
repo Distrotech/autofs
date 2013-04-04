@@ -1,0 +1,23 @@
+Bottom: c029397dfdc13d478ec6460048872ac20b443889
+Top:    1a0c7a43d7de984bf9789f847d2c014f2fb1c1f4
+Author: Ian Kent <ikent@redhat.com>
+Date:   2013-04-04 18:25:19 +0800
+
+Refresh of autofs-5.0.7-syncronize-handle_mounts-shutdown-2.patch
+
+---
+
+diff --git a/daemon/automount.c b/daemon/automount.c
+index c83dc46..e468dcd 100644
+--- a/daemon/automount.c
++++ b/daemon/automount.c
+@@ -1467,7 +1467,8 @@ static void handle_mounts_cleanup(void *arg)
+ 		list_del_init(&ap->mounts);
+ 	}
+ 
+-	if (list_empty(&master_list->completed))
++	/* Don't signal the handler if we have already done so */
++	if (!list_empty(&master_list->completed))
+ 		pending = 1;
+ 	master_remove_mapent(ap->entry);
+ 	master_source_unlock(ap->entry);
