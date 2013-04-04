@@ -1338,12 +1338,6 @@ static void *statemachine(void *arg)
 		sigwait(&signalset, &sig);
 
 		switch (sig) {
-		case SIGCONT:
-			master_mutex_lock();
-			master_finish(master_list);
-			master_mutex_unlock();
-			break;
-
 		case SIGTERM:
 		case SIGINT:
 		case SIGUSR2:
@@ -1484,7 +1478,7 @@ static void handle_mounts_finish(void)
 	finish_mutex_lock();
 	sdc.busy++;
 	/* Poke signal handler */
-	pthread_kill(state_mach_thid, SIGCONT);
+	pthread_kill(state_mach_thid, SIGTERM);
 	finish_cond_wait();
 	finish_mutex_unlock();
 
