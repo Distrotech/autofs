@@ -1475,7 +1475,7 @@ void finish_cond_wait(void)
 		fatal(status);
 }
 
-void handle_mounts_done(void)
+static void handle_mounts_finish(void)
 {
 	int status, cancel_state;
 
@@ -1549,7 +1549,7 @@ static void handle_mounts_cleanup(void *arg)
 	 * perform final cleanup.
 	 */
 	if (!submount)
-		handle_mounts_done();
+		handle_mounts_finish();
 
 	return;
 }
