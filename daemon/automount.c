@@ -1467,7 +1467,8 @@ static void handle_mounts_cleanup(void *arg)
 		list_del_init(&ap->mounts);
 	}
 
-	if (list_empty(&master_list->completed))
+	/* Don't signal the handler if we have already done so */
+	if (!list_empty(&master_list->completed))
 		pending = 1;
 	master_remove_mapent(ap->entry);
 	master_source_unlock(ap->entry);
