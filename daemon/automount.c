@@ -85,8 +85,11 @@ pthread_attr_t th_attr_detached;
 struct master_readmap_cond mrc = {
 	PTHREAD_MUTEX_INITIALIZER, PTHREAD_COND_INITIALIZER, 0, NULL, 0, 0, 0, 0};
 
-struct startup_cond suc = {
-	PTHREAD_MUTEX_INITIALIZER, PTHREAD_COND_INITIALIZER, 0, 0};
+/*struct startup_cond suc = {
+	PTHREAD_MUTEX_INITIALIZER, PTHREAD_COND_INITIALIZER, 0, 0};*/
+
+struct shutdown_cond sdc = {
+	PTHREAD_MUTEX_INITIALIZER, PTHREAD_COND_INITIALIZER, 0, 0, 0};
 
 pthread_key_t key_thread_stdenv_vars;
 
@@ -1338,6 +1341,10 @@ static void *statemachine(void *arg)
 		sigwait(&signalset, &sig);
 
 		switch (sig) {
+		case SIGCONT:
+			master_done(master_list);
+			break;
+
 		case SIGTERM:
 		case SIGINT:
 		case SIGUSR2:
@@ -1493,15 +1500,42 @@ static void handle_mounts_cleanup(void *arg)
 
 	info(logopt, "shut down path %s", path);
 
+	master_mutex_unlock();
+
 	/*
 	 * If we are not a submount send a signal to the signal handler
 	 * so it can join with any completed handle_mounts() threads and
 	 * perform final cleanup.
 	 */
-	if (!submount)
-		pthread_kill(state_mach_thid, SIGTERM);
+	if (!submount) {
+		int status, cancel_state;
 
-	master_mutex_unlock();
+		pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cancel_state);
+
+		status = pthread_mutex_lock(&sdc.mutex);
+		if (status) {
+			logerr("failed to lock shutdown condition mutex!");
+			fatal(status);
+		}
+
+		sdc.busy++;
+
+		/* Wake up signal handler */
+		pthread_kill(state_mach_thid, SIGCONT);
+
+		status = pthread_cond_wait(&sdc.cond, &sdc.mutex);
+		if (status)
+			fatal(status);
+
+		status = pthread_mutex_unlock(&sdc.mutex);
+		if (status) {
+			logerr("failed to unlock shutdown condition mutex!");
+			fatal(status);
+		}
+
+		pthread_setcancelstate(cancel_state, NULL);
+	}
+
 
 	return;
 }
