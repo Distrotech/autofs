@@ -1547,9 +1547,8 @@ static void handle_mounts_cleanup(void *arg)
 		fc.busy++;
 		master_mutex_unlock();
 		handle_mounts_finish();
-		master_mutex_lock();
-		fc.busy--;
 		error(LOGOPT_ANY, "after wait fc.busy %d", fc.busy);
+		return;
 	}
 
 	master_mutex_unlock();

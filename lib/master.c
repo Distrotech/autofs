@@ -1400,13 +1400,7 @@ void master_finish(struct master *master)
 	struct master_mapent *entry;
 	int status;
 
-again:
 	finish_mutex_lock();
-
-	if (!fc.busy) {
-		finish_mutex_unlock();
-		return;
-	}
 
 	error(LOGOPT_ANY, "before broadcast fc.busy %d", fc.busy);
 
@@ -1418,6 +1412,7 @@ again:
 		list_del(&entry->join);
 		master_free_mapent_sources(entry, 1);
 		master_free_mapent(entry);
+		fc.busy--;
 	}
 
 	status = pthread_cond_broadcast(&fc.cond);
@@ -1425,19 +1420,6 @@ again:
 		fatal(status);
 
 	finish_mutex_unlock();
-
-	/* Try to reduce the number of times around the loop, waiting
-	 * for these guys to exit.
-	 */
-	if (fc.busy) {
-		struct timespec tm = {0, 100000000};
-		nanosleep(&tm, NULL);
-	}
-
-	/*finish_mutex_lock();
-	error(LOGOPT_ANY, "after broadcast fc.busy %d", fc.busy);
-	finish_mutex_unlock();*/
-	goto again;
 }
 
 inline unsigned int master_get_logopt(void)
