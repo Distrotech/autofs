@@ -1,0 +1,71 @@
+Bottom: 3cf789b5085dd31331d9d4ff218818a4d210478f
+Top:    215556e89e6173bfe531e901b367fbd4af8cc4f5
+Author: Ian Kent <ikent@redhat.com>
+Date:   2013-04-04 17:46:17 +0800
+
+Refresh of autofs-5.0.7-syncronize-handle_mounts-shutdown.patch
+
+---
+
+diff --git a/daemon/automount.c b/daemon/automount.c
+index b2b1b68..d656c63 100644
+--- a/daemon/automount.c
++++ b/daemon/automount.c
+@@ -1547,9 +1547,8 @@ static void handle_mounts_cleanup(void *arg)
+ 		fc.busy++;
+ 		master_mutex_unlock();
+ 		handle_mounts_finish();
+-		master_mutex_lock();
+-		fc.busy--;
+ 		error(LOGOPT_ANY, "after wait fc.busy %d", fc.busy);
++		return;
+ 	}
+ 
+ 	master_mutex_unlock();
+diff --git a/lib/master.c b/lib/master.c
+index 28c7717..ece5afa 100644
+--- a/lib/master.c
++++ b/lib/master.c
+@@ -1400,14 +1400,8 @@ void master_finish(struct master *master)
+ 	struct master_mapent *entry;
+ 	int status;
+ 
+-again:
+ 	finish_mutex_lock();
+ 
+-	if (!fc.busy) {
+-		finish_mutex_unlock();
+-		return;
+-	}
+-
+ 	error(LOGOPT_ANY, "before broadcast fc.busy %d", fc.busy);
+ 
+ 	head = &master->completed;
+@@ -1418,6 +1412,7 @@ again:
+ 		list_del(&entry->join);
+ 		master_free_mapent_sources(entry, 1);
+ 		master_free_mapent(entry);
++		fc.busy--;
+ 	}
+ 
+ 	status = pthread_cond_broadcast(&fc.cond);
+@@ -1425,19 +1420,6 @@ again:
+ 		fatal(status);
+ 
+ 	finish_mutex_unlock();
+-
+-	/* Try to reduce the number of times around the loop, waiting
+-	 * for these guys to exit.
+-	 */
+-	if (fc.busy) {
+-		struct timespec tm = {0, 100000000};
+-		nanosleep(&tm, NULL);
+-	}
+-
+-	/*finish_mutex_lock();
+-	error(LOGOPT_ANY, "after broadcast fc.busy %d", fc.busy);
+-	finish_mutex_unlock();*/
+-	goto again;
+ }
+ 
+ inline unsigned int master_get_logopt(void)
