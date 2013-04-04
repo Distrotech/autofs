@@ -1348,9 +1348,15 @@ static void *statemachine(void *arg)
 		case SIGINT:
 		case SIGUSR2:
 			master_mutex_lock();
-			if (list_empty(&master_list->mounts)) {
-				master_mutex_unlock();
-				break;
+			if (list_empty(&master_list->completed)) {
+				if (list_empty(&master_list->mounts)) {
+					master_mutex_unlock();
+					return NULL;
+				}
+			} else {
+				if (list_empty(&master_list->mounts)) {
+					master_mutex_unlock();
+					break;
 			}
 			master_mutex_unlock();
 
