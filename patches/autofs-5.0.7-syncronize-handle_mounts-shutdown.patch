@@ -1,5 +1,5 @@
 Bottom: f150652ca82a5866f82c590caaa5312f4a3a62bf
-Top:    0409c41f5aa9698dea2ab9fde8291d0fad626fd7
+Top:    68924b100a93e4f53bc3e5c917b20d7dc61c58af
 Author: Ian Kent <ikent@redhat.com>
 Date:   2013-04-04 12:56:54 +0800
 
@@ -148,13 +148,19 @@ index e72fa0d..565adad 100644
  	pthread_mutex_t mutex;
  	pthread_cond_t  cond;
 diff --git a/lib/master.c b/lib/master.c
-index a0e62f2..4341003 100644
+index a0e62f2..491fda0 100644
 --- a/lib/master.c
 +++ b/lib/master.c
-@@ -1399,20 +1399,33 @@ int master_done(struct master *master)
+@@ -1394,26 +1394,33 @@ int master_list_empty(struct master *master)
+ 	return res;
+ }
+ 
+-int master_done(struct master *master)
++void master_done(struct master *master)
+ {
  	struct list_head *head, *p;
  	struct master_mapent *entry;
- 	int res = 0;
+-	int res = 0;
 +	int status;
  
 -	head = &master->completed;
@@ -182,15 +188,14 @@ index a0e62f2..4341003 100644
 +		}
  	}
 -	if (list_empty(&master->mounts))
-+
+-		res = 1;
+ 
+-	return res;
 +	status = pthread_cond_broadcast(&fc);
 +	if (status)
 +		fatal(status);
 +
-+	if (sdc.busy)
- 		res = 1;
- 
 +	finish_mutex_unlock();
-+
- 	return res;
  }
+ 
+ inline unsigned int master_get_logopt(void)
