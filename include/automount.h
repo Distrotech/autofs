@@ -362,6 +362,7 @@ struct finish_cond {
 extern struct finish_cond fc;
 void finish_mutex_lock(void);
 void finish_mutex_unlock(void);
+void finish_cond_wait(void);
 
 struct master_readmap_cond {
 	pthread_mutex_t mutex;

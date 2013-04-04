@@ -1401,11 +1401,7 @@ int master_done(struct master *master)
 	int res = 0;
 	int status;
 
-	status = pthread_mutex_lock(&sdc.mutex);
-	if (status) {
-		logerr("failed to lock shutdown condition mutex!");
-		fatal(status);
-	}
+	finish_mutex_lock();
 
 	while (sdc.busy) {
 		head = &master->completed;
@@ -1421,18 +1417,14 @@ int master_done(struct master *master)
 		}
 	}
 
-	status = pthread_cond_broadcast(&sdc);
+	status = pthread_cond_broadcast(&fc);
 	if (status)
 		fatal(status);
 
 	if (sdc.busy)
 		res = 1;
 
-	status = pthread_mutex_unlock(&sdc.mutex);
-	if (status) {
-		logerr("failed to unlock shutdown condition mutex!");
-		fatal(status);
-	}
+	finish_mutex_unlock();
 
 	return res;
 }

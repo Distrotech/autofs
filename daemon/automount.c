@@ -1353,6 +1353,7 @@ static void *statemachine(void *arg)
 			master_mutex_lock();
 			while (!list_empty(&master_list->completed)) {
 				master_mutex_unlock();
+				finish_cond_wait();
 				master_mutex_lock();
 			}
 			if (list_empty(&master_list->mounts)) {
@@ -1465,22 +1466,26 @@ void finish_mutex_unlock(void)
 	}
 }
 
+void finish_cond_wait(void)
+{
+	int status = pthread_cond_wait(&fc.cond, &fc.mutex);
+	if (status)
+		fatal(status);
+}
+
 void handle_mounts_done(void)
 {
 	int status, cancel_state;
 
 	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cancel_state);
+
 	finish_mutex_lock();
-
 	sdc.busy++;
-
 	/* Poke signal handler */
 	pthread_kill(state_mach_thid, SIGCONT);
-	status = pthread_cond_wait(&sdc.cond, &sdc.mutex);
-	if (status)
-		fatal(status);
-
+	finish_cond_wait();
 	finish_mutex_unlock();
+
 	pthread_setcancelstate(cancel_state, NULL);
 }
 
