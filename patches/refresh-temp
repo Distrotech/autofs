@@ -1,0 +1,25 @@
+Bottom: d54de15131c8534fecb850e76e97a2cb01bfb0c3
+Top:    34d5822fa8ad5fa84780c20c0bce697cd3103803
+Author: Ian Kent <ikent@redhat.com>
+Date:   2013-04-04 16:03:21 +0800
+
+Refresh of autofs-5.0.7-syncronize-handle_mounts-shutdown.patch
+
+---
+
+diff --git a/lib/master.c b/lib/master.c
+index 092aa90..6119d30 100644
+--- a/lib/master.c
++++ b/lib/master.c
+@@ -1426,6 +1426,11 @@ again:
+ 
+ 	finish_mutex_unlock();
+ 
++	/* Try to reduce the number of times around the loop, waiting
++	 * for these guys to exit.
++	 */
++	sched_yield();
++
+ 	/*finish_mutex_lock();
+ 	error(LOGOPT_ANY, "after broadcast fc.busy %d", fc.busy);
+ 	finish_mutex_unlock();*/
