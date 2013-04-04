@@ -1358,6 +1358,8 @@ static void *statemachine(void *arg)
 					master_mutex_unlock();
 					return NULL;
 				}
+				master_mutex_unlock();
+				break;
 			}
 			master_mutex_unlock();
 
