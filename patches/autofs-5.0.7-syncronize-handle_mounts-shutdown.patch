@@ -1,5 +1,5 @@
 Bottom: f150652ca82a5866f82c590caaa5312f4a3a62bf
-Top:    0c645cbe633603e94823152262061516f9d7da71
+Top:    35df34c0d1839221f8efd58936e3a13861bea590
 Author: Ian Kent <ikent@redhat.com>
 Date:   2013-04-04 12:56:54 +0800
 
@@ -9,20 +9,21 @@ autofs-5.0.7 - syncronize handle_mounts() shutdown
 ---
 
 diff --git a/daemon/automount.c b/daemon/automount.c
-index 4c651cf..9e83913 100644
+index 4c651cf..ec22fa0 100644
 --- a/daemon/automount.c
 +++ b/daemon/automount.c
-@@ -88,6 +88,9 @@ struct master_readmap_cond mrc = {
- struct startup_cond suc = {
- 	PTHREAD_MUTEX_INITIALIZER, PTHREAD_COND_INITIALIZER, 0, 0};
+@@ -85,8 +85,8 @@ pthread_attr_t th_attr_detached;
+ struct master_readmap_cond mrc = {
+ 	PTHREAD_MUTEX_INITIALIZER, PTHREAD_COND_INITIALIZER, 0, NULL, 0, 0, 0, 0};
  
+-struct startup_cond suc = {
+-	PTHREAD_MUTEX_INITIALIZER, PTHREAD_COND_INITIALIZER, 0, 0};
 +struct shutdown_cond fc = {
 +	PTHREAD_MUTEX_INITIALIZER, PTHREAD_COND_INITIALIZER, 0, 0, 0};
-+
+ 
  pthread_key_t key_thread_stdenv_vars;
  
- #define MAX_OPEN_FILES		10240
-@@ -1338,22 +1341,24 @@ static void *statemachine(void *arg)
+@@ -1338,22 +1338,24 @@ static void *statemachine(void *arg)
  		sigwait(&signalset, &sig);
  
  		switch (sig) {
@@ -58,7 +59,7 @@ index 4c651cf..9e83913 100644
  			}
  			master_mutex_unlock();
  
-@@ -1443,6 +1448,47 @@ void handle_mounts_startup_cond_destroy(void *arg)
+@@ -1443,6 +1445,47 @@ void handle_mounts_startup_cond_destroy(void *arg)
  	return;
  }
  
@@ -106,7 +107,7 @@ index 4c651cf..9e83913 100644
  static void handle_mounts_cleanup(void *arg)
  {
  	struct autofs_point *ap;
-@@ -1493,15 +1539,15 @@ static void handle_mounts_cleanup(void *arg)
+@@ -1493,15 +1536,15 @@ static void handle_mounts_cleanup(void *arg)
  
  	info(logopt, "shut down path %s", path);
  
