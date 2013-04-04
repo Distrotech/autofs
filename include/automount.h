@@ -353,6 +353,17 @@ struct startup_cond {
 int handle_mounts_startup_cond_init(struct startup_cond *suc);
 void handle_mounts_startup_cond_destroy(void *arg);
 
+struct finish_cond {
+	pthread_mutex_t mutex;
+	pthread_cond_t  cond;
+	unsigned int busy;
+};
+
+extern struct finish_cond fc;
+void finish_mutex_lock(void);
+void finish_mutex_unlock(void);
+void finish_cond_wait(void);
+
 struct master_readmap_cond {
 	pthread_mutex_t mutex;
 	pthread_cond_t  cond;
