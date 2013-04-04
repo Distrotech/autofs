@@ -1285,6 +1285,13 @@ static int do_hup_signal(struct master *master, time_t age)
 	nfs_mount_uses_string_options = check_nfs_mount_version(&vers, &check);
 
 	master_mutex_lock();
+	/* Already shutdown or no mounts ? */
+	if (list_empty(&master->mounts)) {
+		status = pthread_mutex_unlock(&mrc.mutex);
+		if (status)
+			fatal(status);
+		return;
+	}
 	if (master->reading) {
 		status = pthread_mutex_unlock(&mrc.mutex);
 		if (status)
@@ -1341,6 +1348,7 @@ static void *statemachine(void *arg)
 		case SIGTERM:
 		case SIGINT:
 		case SIGUSR2:
+			logerr("got signal %d", sig);
 			master_mutex_lock();
 			if (list_empty(&master_list->completed)) {
 				if (list_empty(&master_list->mounts)) {
