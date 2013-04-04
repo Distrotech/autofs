@@ -85,8 +85,8 @@ pthread_attr_t th_attr_detached;
 struct master_readmap_cond mrc = {
 	PTHREAD_MUTEX_INITIALIZER, PTHREAD_COND_INITIALIZER, 0, NULL, 0, 0, 0, 0};
 
-/*struct startup_cond suc = {
-	PTHREAD_MUTEX_INITIALIZER, PTHREAD_COND_INITIALIZER, 0, 0};*/
+struct startup_cond suc = {
+	PTHREAD_MUTEX_INITIALIZER, PTHREAD_COND_INITIALIZER, 0, 0};
 
 struct shutdown_cond fc = {
 	PTHREAD_MUTEX_INITIALIZER, PTHREAD_COND_INITIALIZER, 0, 0, 0};
