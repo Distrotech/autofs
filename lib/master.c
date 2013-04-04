@@ -1426,6 +1426,11 @@ again:
 
 	finish_mutex_unlock();
 
+	/* Try to reduce the number of times around the loop, waiting
+	 * for these guys to exit.
+	 */
+	sched_yield();
+
 	/*finish_mutex_lock();
 	error(LOGOPT_ANY, "after broadcast fc.busy %d", fc.busy);
 	finish_mutex_unlock();*/
