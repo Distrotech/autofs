@@ -85,7 +85,7 @@ pthread_attr_t th_attr_detached;
 struct master_readmap_cond mrc = {
 	PTHREAD_MUTEX_INITIALIZER, PTHREAD_COND_INITIALIZER, 0, NULL, 0, 0, 0, 0};
 
-struct shutdown_cond fc = {
+struct finish_cond fc = {
 	PTHREAD_MUTEX_INITIALIZER, PTHREAD_COND_INITIALIZER, 0};
 
 pthread_key_t key_thread_stdenv_vars;
@@ -1447,7 +1447,7 @@ void handle_mounts_startup_cond_destroy(void *arg)
 void finish_mutex_lock(void)
 {
 	int status = pthread_mutex_lock(&fc.mutex);
-	if (status)
+	if (status) {
 		logerr("failed to lock shutdown condition mutex!");
 		fatal(status);
 	}
@@ -1456,7 +1456,7 @@ void finish_mutex_lock(void)
 void finish_mutex_unlock(void)
 {
 	int status = pthread_mutex_unlock(&fc.mutex);
-	if (status)
+	if (status) {
 		logerr("failed to unlock shutdown condition mutex!");
 		fatal(status);
 	}
@@ -1471,12 +1471,12 @@ void finish_cond_wait(void)
 
 static void handle_mounts_finish(void)
 {
-	int status, cancel_state;
+	int cancel_state;
 
 	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cancel_state);
 
 	finish_mutex_lock();
-	sdc.busy++;
+	fc.busy++;
 	/* Poke signal handler */
 	pthread_kill(state_mach_thid, SIGTERM);
 	finish_cond_wait();
