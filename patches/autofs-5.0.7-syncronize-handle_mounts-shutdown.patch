@@ -1,5 +1,5 @@
 Bottom: f150652ca82a5866f82c590caaa5312f4a3a62bf
-Top:    f91e709d2436c09a357dc294064e803e0caae2f8
+Top:    0409c41f5aa9698dea2ab9fde8291d0fad626fd7
 Author: Ian Kent <ikent@redhat.com>
 Date:   2013-04-04 12:56:54 +0800
 
@@ -9,7 +9,7 @@ autofs-5.0.7 - syncronize handle_mounts() shutdown
 ---
 
 diff --git a/daemon/automount.c b/daemon/automount.c
-index 4c651cf..46289f0 100644
+index 4c651cf..9e83913 100644
 --- a/daemon/automount.c
 +++ b/daemon/automount.c
 @@ -88,6 +88,9 @@ struct master_readmap_cond mrc = {
@@ -22,7 +22,7 @@ index 4c651cf..46289f0 100644
  pthread_key_t key_thread_stdenv_vars;
  
  #define MAX_OPEN_FILES		10240
-@@ -1338,22 +1341,23 @@ static void *statemachine(void *arg)
+@@ -1338,22 +1341,24 @@ static void *statemachine(void *arg)
  		sigwait(&signalset, &sig);
  
  		switch (sig) {
@@ -49,6 +49,7 @@ index 4c651cf..46289f0 100644
 +			while (!list_empty(&master_list->completed)) {
  				master_mutex_unlock();
 -				break;
++				finish_cond_wait();
 +				master_mutex_lock();
 +			}
 +			if (list_empty(&master_list->mounts)) {
@@ -57,7 +58,7 @@ index 4c651cf..46289f0 100644
  			}
  			master_mutex_unlock();
  
-@@ -1443,6 +1447,43 @@ void handle_mounts_startup_cond_destroy(void *arg)
+@@ -1443,6 +1448,47 @@ void handle_mounts_startup_cond_destroy(void *arg)
  	return;
  }
  
@@ -79,29 +80,33 @@ index 4c651cf..46289f0 100644
 +	}
 +}
 +
++void finish_cond_wait(void)
++{
++	int status = pthread_cond_wait(&fc.cond, &fc.mutex);
++	if (status)
++		fatal(status);
++}
++
 +void handle_mounts_done(void)
 +{
 +	int status, cancel_state;
 +
 +	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cancel_state);
++
 +	finish_mutex_lock();
-+
 +	sdc.busy++;
-+
 +	/* Poke signal handler */
 +	pthread_kill(state_mach_thid, SIGCONT);
-+	status = pthread_cond_wait(&sdc.cond, &sdc.mutex);
-+	if (status)
-+		fatal(status);
-+
++	finish_cond_wait();
 +	finish_mutex_unlock();
++
 +	pthread_setcancelstate(cancel_state, NULL);
 +}
 +
  static void handle_mounts_cleanup(void *arg)
  {
  	struct autofs_point *ap;
-@@ -1493,15 +1534,15 @@ static void handle_mounts_cleanup(void *arg)
+@@ -1493,15 +1539,15 @@ static void handle_mounts_cleanup(void *arg)
  
  	info(logopt, "shut down path %s", path);
  
@@ -121,10 +126,10 @@ index 4c651cf..46289f0 100644
  	return;
  }
 diff --git a/include/automount.h b/include/automount.h
-index e72fa0d..8c2d060 100644
+index e72fa0d..565adad 100644
 --- a/include/automount.h
 +++ b/include/automount.h
-@@ -353,6 +353,16 @@ struct startup_cond {
+@@ -353,6 +353,17 @@ struct startup_cond {
  int handle_mounts_startup_cond_init(struct startup_cond *suc);
  void handle_mounts_startup_cond_destroy(void *arg);
  
@@ -137,15 +142,16 @@ index e72fa0d..8c2d060 100644
 +extern struct finish_cond fc;
 +void finish_mutex_lock(void);
 +void finish_mutex_unlock(void);
++void finish_cond_wait(void);
 +
  struct master_readmap_cond {
  	pthread_mutex_t mutex;
  	pthread_cond_t  cond;
 diff --git a/lib/master.c b/lib/master.c
-index a0e62f2..c4b15e6 100644
+index a0e62f2..4341003 100644
 --- a/lib/master.c
 +++ b/lib/master.c
-@@ -1399,20 +1399,41 @@ int master_done(struct master *master)
+@@ -1399,20 +1399,33 @@ int master_done(struct master *master)
  	struct list_head *head, *p;
  	struct master_mapent *entry;
  	int res = 0;
@@ -160,12 +166,7 @@ index a0e62f2..c4b15e6 100644
 -		pthread_join(entry->thid, NULL);
 -		master_free_mapent_sources(entry, 1);
 -		master_free_mapent(entry);
-+	status = pthread_mutex_lock(&sdc.mutex);
-+	if (status) {
-+		logerr("failed to lock shutdown condition mutex!");
-+		fatal(status);
- 	}
--	if (list_empty(&master->mounts))
++	finish_mutex_lock();
 +
 +	while (sdc.busy) {
 +		head = &master->completed;
@@ -179,20 +180,17 @@ index a0e62f2..c4b15e6 100644
 +			master_free_mapent(entry);
 +			sdc.busy--;
 +		}
-+	}
+ 	}
+-	if (list_empty(&master->mounts))
 +
-+	status = pthread_cond_broadcast(&sdc);
++	status = pthread_cond_broadcast(&fc);
 +	if (status)
 +		fatal(status);
 +
 +	if (sdc.busy)
  		res = 1;
  
-+	status = pthread_mutex_unlock(&sdc.mutex);
-+	if (status) {
-+		logerr("failed to unlock shutdown condition mutex!");
-+		fatal(status);
-+	}
++	finish_mutex_unlock();
 +
  	return res;
  }
