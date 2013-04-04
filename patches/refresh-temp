@@ -1,0 +1,48 @@
+Bottom: 518dce469fbaa9c1ae345cdf4610d940f0283c41
+Top:    6984f1322ccabfcd77ae29c9422ba33a52aa6632
+Author: Ian Kent <ikent@redhat.com>
+Date:   2013-04-04 14:59:07 +0800
+
+Refresh of autofs-5.0.7-syncronize-handle_mounts-shutdown.patch
+
+---
+
+diff --git a/daemon/automount.c b/daemon/automount.c
+index 476ff14..e08d2b9 100644
+--- a/daemon/automount.c
++++ b/daemon/automount.c
+@@ -1340,7 +1340,7 @@ static void *statemachine(void *arg)
+ 		switch (sig) {
+ 		case SIGCONT:
+ 			master_mutex_lock();
+-			master_done(master_list);
++			master_finish(master_list);
+ 			master_mutex_unlock();
+ 			break;
+ 
+diff --git a/include/master.h b/include/master.h
+index 8913740..25ce856 100644
+--- a/include/master.h
++++ b/include/master.h
+@@ -115,7 +115,7 @@ int master_mount_mounts(struct master *, time_t, int);
+ int master_show_mounts(struct master *);
+ extern inline unsigned int master_get_logopt(void);
+ int master_list_empty(struct master *);
+-void master_done(struct master *);
++void master_finish(struct master *);
+ int master_kill(struct master *);
+ 
+ #endif
+diff --git a/lib/master.c b/lib/master.c
+index 491fda0..1b027cc 100644
+--- a/lib/master.c
++++ b/lib/master.c
+@@ -1394,7 +1394,7 @@ int master_list_empty(struct master *master)
+ 	return res;
+ }
+ 
+-void master_done(struct master *master)
++void master_finish(struct master *master)
+ {
+ 	struct list_head *head, *p;
+ 	struct master_mapent *entry;
