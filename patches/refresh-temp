@@ -1,0 +1,33 @@
+Bottom: d6ac2289056f6725cfb2706b77434acd12704c49
+Top:    8187fc685f7a3aa4d0eb5d2235d301456b916cd9
+Author: Ian Kent <ikent@redhat.com>
+Date:   2013-04-04 15:44:29 +0800
+
+Refresh of autofs-5.0.7-syncronize-handle_mounts-shutdown.patch
+
+---
+
+diff --git a/lib/master.c b/lib/master.c
+index 302668a..0a3725e 100644
+--- a/lib/master.c
++++ b/lib/master.c
+@@ -33,8 +33,8 @@ struct master *master_list = NULL;
+ extern const char *global_options;
+ extern long global_negative_timeout;
+ 
+-/* Attribute to create a joinable thread */
+-extern pthread_attr_t th_attr;
++/* Attribute to create a detached thread */
++extern pthread_attr_t th_attr_detached;
+ 
+ extern struct startup_cond suc;
+ 
+@@ -1057,7 +1057,7 @@ static int master_do_mount(struct master_mapent *entry)
+ 
+ 	debug(ap->logopt, "mounting %s", entry->path);
+ 
+-	status = pthread_create(&thid, &th_attr, handle_mounts, &suc);
++	status = pthread_create(&thid, &th_attr_detached, handle_mounts, &suc);
+ 	if (status) {
+ 		crit(ap->logopt,
+ 		     "failed to create mount handler thread for %s",
