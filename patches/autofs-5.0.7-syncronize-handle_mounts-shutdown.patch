@@ -1,5 +1,5 @@
 Bottom: f150652ca82a5866f82c590caaa5312f4a3a62bf
-Top:    fa78051214f840e13a44f2c4f364a11708d5f09e
+Top:    b1268db2128e71c7a82feef2031351628c138872
 Author: Ian Kent <ikent@redhat.com>
 Date:   2013-04-04 12:56:54 +0800
 
@@ -9,7 +9,7 @@ autofs-5.0.7 - syncronize handle_mounts() shutdown
 ---
 
 diff --git a/daemon/automount.c b/daemon/automount.c
-index 4c651cf..7a5a08e 100644
+index 4c651cf..92287fb 100644
 --- a/daemon/automount.c
 +++ b/daemon/automount.c
 @@ -85,8 +85,8 @@ pthread_attr_t th_attr_detached;
@@ -95,7 +95,7 @@ index 4c651cf..7a5a08e 100644
 +
 +	finish_mutex_lock();
 +	/* Poke signal handler */
-+	pthread_kill(state_mach_thid, SIGTERM);
++	pthread_kill(state_mach_thid, SIGCONT);
 +	error(LOGOPT_ANY, "before signal fc.busy %d", fc.busy);
 +	fc.busy++;
 +	finish_cond_wait();
