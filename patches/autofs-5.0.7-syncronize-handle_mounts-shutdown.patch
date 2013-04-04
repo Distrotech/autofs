@@ -3,7 +3,20 @@ Top:    47142b4a6d42e76c81caf36b1b48b4a38063eaf9
 Author: Ian Kent <ikent@redhat.com>
 Date:   2013-04-04 18:16:28 +0800
 
-autofs-5.0.7 - syncronize handle_mounts() shutdown-2
+autofs-5.0.7 - syncronize handle_mounts() shutdown
+
+When re-reading the master map the signal handler thread receives
+a SIGTERM signal from handle_mounts_cleanup() for map entries that
+have been removed. This is done to allow joining with handle_mounts()
+threads before shutting down to ensure clean up has been completed
+before the thread terminates.
+
+But, if more than one map entry is removed, multiple threads may be
+cleaned up during the handling of a single signal so there can be no
+work to do when a subsequent signal is received. In this case the
+signal handler thread interprets the additional SIGTERM signal as a
+request to shutdown and exits.
+
 
 
 ---
