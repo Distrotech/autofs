@@ -85,8 +85,8 @@ pthread_attr_t th_attr_detached;
 struct master_readmap_cond mrc = {
 	PTHREAD_MUTEX_INITIALIZER, PTHREAD_COND_INITIALIZER, 0, NULL, 0, 0, 0, 0};
 
-struct startup_cond suc = {
-	PTHREAD_MUTEX_INITIALIZER, PTHREAD_COND_INITIALIZER, 0, 0};
+struct finish_cond fc = {
+	PTHREAD_MUTEX_INITIALIZER, PTHREAD_COND_INITIALIZER, 0};
 
 pthread_key_t key_thread_stdenv_vars;
 
@@ -1341,6 +1341,7 @@ static void *statemachine(void *arg)
 		case SIGTERM:
 		case SIGINT:
 		case SIGUSR2:
+			error(LOGOPT_ANY, "received SIGTERM");
 			master_mutex_lock();
 			if (list_empty(&master_list->completed)) {
 				if (list_empty(&master_list->mounts)) {
@@ -1348,7 +1349,8 @@ static void *statemachine(void *arg)
 					return NULL;
 				}
 			} else {
-				if (master_done(master_list)) {
+				master_finish(master_list);
+				if (list_empty(&master_list->mounts)) {
 					master_mutex_unlock();
 					return NULL;
 				}
@@ -1443,6 +1445,51 @@ void handle_mounts_startup_cond_destroy(void *arg)
 	return;
 }
 
+void finish_mutex_lock(void)
+{
+	int status = pthread_mutex_lock(&fc.mutex);
+	if (status) {
+		logerr("failed to lock shutdown condition mutex!");
+		fatal(status);
+	}
+}
+
+void finish_mutex_unlock(void)
+{
+	int status = pthread_mutex_unlock(&fc.mutex);
+	if (status) {
+		logerr("failed to unlock shutdown condition mutex!");
+		fatal(status);
+	}
+}
+
+void finish_cond_wait(void)
+{
+	int status = pthread_cond_wait(&fc.cond, &fc.mutex);
+	if (status)
+		fatal(status);
+}
+
+static void handle_mounts_finish(void)
+{
+	int cancel_state;
+
+	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cancel_state);
+
+	finish_mutex_lock();
+	/* Poke signal handler if we haven't already done so */
+	if (!fc.busy)
+		pthread_kill(state_mach_thid, SIGTERM);
+	fc.busy++;
+	error(LOGOPT_ANY, "before signal fc.busy %d", fc.busy);
+	finish_cond_wait();
+	fc.busy--;
+	error(LOGOPT_ANY, "after wait fc.busy %d", fc.busy);
+	finish_mutex_unlock();
+
+	pthread_setcancelstate(cancel_state, NULL);
+}
+
 static void handle_mounts_cleanup(void *arg)
 {
 	struct autofs_point *ap;
@@ -1493,15 +1540,15 @@ static void handle_mounts_cleanup(void *arg)
 
 	info(logopt, "shut down path %s", path);
 
+	master_mutex_unlock();
+
 	/*
 	 * If we are not a submount send a signal to the signal handler
 	 * so it can join with any completed handle_mounts() threads and
 	 * perform final cleanup.
 	 */
 	if (!submount)
-		pthread_kill(state_mach_thid, SIGTERM);
-
-	master_mutex_unlock();
+		handle_mounts_finish();
 
 	return;
 }
