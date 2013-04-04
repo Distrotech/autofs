@@ -1477,14 +1477,7 @@ static void handle_mounts_finish(void)
 	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cancel_state);
 
 	finish_mutex_lock();
-	/* Poke signal handler if we haven't already done so */
-	if (!fc.busy)
-		pthread_kill(state_mach_thid, SIGTERM);
-	fc.busy++;
-	error(LOGOPT_ANY, "before signal fc.busy %d", fc.busy);
 	finish_cond_wait();
-	fc.busy--;
-	error(LOGOPT_ANY, "after wait fc.busy %d", fc.busy);
 	finish_mutex_unlock();
 
 	pthread_setcancelstate(cancel_state, NULL);
@@ -1540,15 +1533,26 @@ static void handle_mounts_cleanup(void *arg)
 
 	info(logopt, "shut down path %s", path);
 
-	master_mutex_unlock();
 
 	/*
 	 * If we are not a submount send a signal to the signal handler
 	 * so it can join with any completed handle_mounts() threads and
 	 * perform final cleanup.
 	 */
-	if (!submount)
+	if (!submount) {
+		/* Poke signal handler if we haven't already done so */
+		if (!fc.busy)
+			pthread_kill(state_mach_thid, SIGTERM);
+		error(LOGOPT_ANY, "before signal fc.busy %d", fc.busy);
+		fc.busy++;
+		master_mutex_unlock();
 		handle_mounts_finish();
+		master_mutex_lock();
+		fc.busy--;
+		error(LOGOPT_ANY, "after wait fc.busy %d", fc.busy);
+	}
+
+	master_mutex_unlock();
 
 	return;
 }
