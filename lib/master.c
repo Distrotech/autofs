@@ -33,8 +33,8 @@ struct master *master_list = NULL;
 extern const char *global_options;
 extern long global_negative_timeout;
 
-/* Attribute to create a joinable thread */
-extern pthread_attr_t th_attr;
+/* Attribute to create a detached thread */
+extern pthread_attr_t th_attr_detached;
 
 extern struct startup_cond suc;
 
@@ -1057,7 +1057,7 @@ static int master_do_mount(struct master_mapent *entry)
 
 	debug(ap->logopt, "mounting %s", entry->path);
 
-	status = pthread_create(&thid, &th_attr, handle_mounts, &suc);
+	status = pthread_create(&thid, &th_attr_detached, handle_mounts, &suc);
 	if (status) {
 		crit(ap->logopt,
 		     "failed to create mount handler thread for %s",
