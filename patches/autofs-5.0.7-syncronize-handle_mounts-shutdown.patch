@@ -1,5 +1,5 @@
 Bottom: f150652ca82a5866f82c590caaa5312f4a3a62bf
-Top:    d54de15131c8534fecb850e76e97a2cb01bfb0c3
+Top:    34d5822fa8ad5fa84780c20c0bce697cd3103803
 Author: Ian Kent <ikent@redhat.com>
 Date:   2013-04-04 12:56:54 +0800
 
@@ -139,7 +139,7 @@ index 824707c..25ce856 100644
  
  #endif
 diff --git a/lib/master.c b/lib/master.c
-index a0e62f2..092aa90 100644
+index a0e62f2..6119d30 100644
 --- a/lib/master.c
 +++ b/lib/master.c
 @@ -33,8 +33,8 @@ struct master *master_list = NULL;
@@ -186,7 +186,7 @@ index a0e62f2..092aa90 100644
  
  	head = &master->completed;
  	p = head->next;
-@@ -1406,14 +1416,20 @@ int master_done(struct master *master)
+@@ -1406,14 +1416,25 @@ int master_done(struct master *master)
  		entry = list_entry(p, struct master_mapent, join);
  		p = p->next;
  		list_del(&entry->join);
@@ -203,6 +203,11 @@ index a0e62f2..092aa90 100644
 +		fatal(status);
 +
 +	finish_mutex_unlock();
++
++	/* Try to reduce the number of times around the loop, waiting
++	 * for these guys to exit.
++	 */
++	sched_yield();
 +
 +	/*finish_mutex_lock();
 +	error(LOGOPT_ANY, "after broadcast fc.busy %d", fc.busy);
