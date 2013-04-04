@@ -1399,19 +1399,40 @@ int master_done(struct master *master)
 	struct list_head *head, *p;
 	struct master_mapent *entry;
 	int res = 0;
+	int status;
 
-	head = &master->completed;
-	p = head->next;
-	while (p != head) {
-		entry = list_entry(p, struct master_mapent, join);
-		p = p->next;
-		list_del(&entry->join);
-		pthread_join(entry->thid, NULL);
-		master_free_mapent_sources(entry, 1);
-		master_free_mapent(entry);
+	status = pthread_mutex_lock(&sdc.mutex);
+	if (status) {
+		logerr("failed to lock shutdown condition mutex!");
+		fatal(status);
 	}
-	if (list_empty(&master->mounts))
+
+	while (sdc.busy) {
+		head = &master->completed;
+		p = head->next;
+		while (p != head) {
+			entry = list_entry(p, struct master_mapent, join);
+			p = p->next;
+			list_del(&entry->join);
+			pthread_join(entry->thid, NULL);
+			master_free_mapent_sources(entry, 1);
+			master_free_mapent(entry);
+			sdc.busy--;
+		}
+	}
+
+	status = pthread_cond_broadcast(&sdc);
+	if (status)
+		fatal(status);
+
+	if (sdc.busy)
 		res = 1;
+
+	status = pthread_mutex_unlock(&sdc.mutex);
+	if (status) {
+		logerr("failed to unlock shutdown condition mutex!");
+		fatal(status);
+	}
 
 	return res;
 }
