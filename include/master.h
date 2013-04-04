@@ -115,7 +115,7 @@ int master_mount_mounts(struct master *, time_t, int);
 int master_show_mounts(struct master *);
 extern inline unsigned int master_get_logopt(void);
 int master_list_empty(struct master *);
-int master_done(struct master *);
+void master_done(struct master *);
 int master_kill(struct master *);
 
 #endif
