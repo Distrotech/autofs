@@ -1,10 +1,9 @@
 Version: 1
-Previous: 5326c9db8e7bc7601657159960f83c688e240d50
-Head: 1c0675a53d7886955c8908fac02b70c0bc37c7b8
+Previous: 8a0bf1737933b7187f36dab35c6083b903965129
+Head: 550b3d468e1e489c7116903a6f46cfd1526327bf
 Applied:
   autofs-5.0.7-fix-some-automount_8-typos.patch: ef7de25145dae29275f2895edd8537c63597df22
-  autofs-5.0.7-syncronize-handle_mounts-shutdown.patch: e615dabee955ef34226e4463c367a29056639073
-  refresh-temp: 1c0675a53d7886955c8908fac02b70c0bc37c7b8
+  autofs-5.0.7-syncronize-handle_mounts-shutdown.patch: 550b3d468e1e489c7116903a6f46cfd1526327bf
 Unapplied:
   debug.patch: 53e6cc3c02501913caf1793355248c60a65de37d
   autofs-5.0.5-wait-for-master-map-available-at-start.patch: 4d3bced9874067bd3b6ac8e830f8fc830ad3eee5
