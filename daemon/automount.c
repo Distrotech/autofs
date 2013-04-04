@@ -1285,14 +1285,8 @@ static int do_hup_signal(struct master *master, time_t age)
 	nfs_mount_uses_string_options = check_nfs_mount_version(&vers, &check);
 
 	master_mutex_lock();
-	/* Already shutdown or no mounts ? */
-	if (list_empty(&master->mounts)) {
-		status = pthread_mutex_unlock(&mrc.mutex);
-		if (status)
-			fatal(status);
-		return;
-	}
-	if (master->reading) {
+	/* Already doing a map read or shutdown or no mounts */
+	if (master->reading || list_empty(&master->mounts)) {
 		status = pthread_mutex_unlock(&mrc.mutex);
 		if (status)
 			fatal(status);
