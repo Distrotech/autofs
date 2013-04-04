@@ -1,5 +1,5 @@
 Bottom: f150652ca82a5866f82c590caaa5312f4a3a62bf
-Top:    c0dc31e53f32abe725e79fadc071bf075440cf20
+Top:    201ed5320b47fcd7f111d95b48398b2bb25fa1c6
 Author: Ian Kent <ikent@redhat.com>
 Date:   2013-04-04 12:56:54 +0800
 
@@ -9,7 +9,7 @@ autofs-5.0.7 - syncronize handle_mounts() shutdown
 ---
 
 diff --git a/daemon/automount.c b/daemon/automount.c
-index 4c651cf..92e1895 100644
+index 4c651cf..31a6a73 100644
 --- a/daemon/automount.c
 +++ b/daemon/automount.c
 @@ -85,8 +85,11 @@ pthread_attr_t th_attr_detached;
@@ -21,23 +21,91 @@ index 4c651cf..92e1895 100644
 +/*struct startup_cond suc = {
 +	PTHREAD_MUTEX_INITIALIZER, PTHREAD_COND_INITIALIZER, 0, 0};*/
 +
-+struct shutdown_cond sdc = {
++struct shutdown_cond fc = {
 +	PTHREAD_MUTEX_INITIALIZER, PTHREAD_COND_INITIALIZER, 0, 0, 0};
  
  pthread_key_t key_thread_stdenv_vars;
  
-@@ -1338,6 +1341,10 @@ static void *statemachine(void *arg)
+@@ -1338,22 +1341,23 @@ static void *statemachine(void *arg)
  		sigwait(&signalset, &sig);
  
  		switch (sig) {
 +		case SIGCONT:
++			master_mutex_lock();
 +			master_done(master_list);
++			master_mutex_unlock();
 +			break;
 +
  		case SIGTERM:
  		case SIGINT:
  		case SIGUSR2:
-@@ -1493,15 +1500,42 @@ static void handle_mounts_cleanup(void *arg)
+ 			master_mutex_lock();
+-			if (list_empty(&master_list->completed)) {
+-				if (list_empty(&master_list->mounts)) {
+-					master_mutex_unlock();
+-					return NULL;
+-				}
+-			} else {
+-				if (master_done(master_list)) {
+-					master_mutex_unlock();
+-					return NULL;
+-				}
++			while (!list_empty(&master_list->completed)) {
+ 				master_mutex_unlock();
+-				break;
++				master_mutex_lock();
++			}
++			if (list_empty(&master_list->mounts)) {
++				master_mutex_unlock();
++				return NULL;
+ 			}
+ 			master_mutex_unlock();
+ 
+@@ -1443,6 +1447,43 @@ void handle_mounts_startup_cond_destroy(void *arg)
+ 	return;
+ }
+ 
++void finish_mutex_lock(void)
++{
++	int status = pthread_mutex_lock(&fc.mutex);
++	if (status)
++		logerr("failed to lock shutdown condition mutex!");
++		fatal(status);
++	}
++}
++
++void finish_mutex_unlock(void)
++{
++	int status = pthread_mutex_unlock(&fc.mutex);
++	if (status)
++		logerr("failed to unlock shutdown condition mutex!");
++		fatal(status);
++	}
++}
++
++void handle_mounts_done(void)
++{
++	int status, cancel_state;
++
++	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cancel_state);
++	finish_mutex_lock();
++
++	sdc.busy++;
++
++	/* Poke signal handler */
++	pthread_kill(state_mach_thid, SIGCONT);
++	status = pthread_cond_wait(&sdc.cond, &sdc.mutex);
++	if (status)
++		fatal(status);
++
++	finish_mutex_unlock();
++	pthread_setcancelstate(cancel_state, NULL);
++}
++
+ static void handle_mounts_cleanup(void *arg)
+ {
+ 	struct autofs_point *ap;
+@@ -1493,15 +1534,15 @@ static void handle_mounts_cleanup(void *arg)
  
  	info(logopt, "shut down path %s", path);
  
@@ -48,59 +116,87 @@ index 4c651cf..92e1895 100644
  	 * so it can join with any completed handle_mounts() threads and
  	 * perform final cleanup.
  	 */
--	if (!submount)
+ 	if (!submount)
 -		pthread_kill(state_mach_thid, SIGTERM);
-+	if (!submount) {
-+		int status, cancel_state;
-+
-+		pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cancel_state);
-+
-+		status = pthread_mutex_lock(&sdc.mutex);
-+		if (status) {
-+			logerr("failed to lock shutdown condition mutex!");
-+			fatal(status);
-+		}
-+
-+		sdc.busy++;
-+
-+		/* Wake up signal handler */
-+		pthread_kill(state_mach_thid, SIGCONT);
-+
-+		status = pthread_cond_wait(&sdc.cond, &sdc.mutex);
-+		if (status)
-+			fatal(status);
-+
-+		status = pthread_mutex_unlock(&sdc.mutex);
-+		if (status) {
-+			logerr("failed to unlock shutdown condition mutex!");
-+			fatal(status);
-+		}
-+
-+		pthread_setcancelstate(cancel_state, NULL);
-+	}
- 
+-
 -	master_mutex_unlock();
++		handle_mounts_done();
  
  	return;
  }
 diff --git a/include/automount.h b/include/automount.h
-index e72fa0d..cb16438 100644
+index e72fa0d..8c2d060 100644
 --- a/include/automount.h
 +++ b/include/automount.h
 @@ -353,6 +353,16 @@ struct startup_cond {
  int handle_mounts_startup_cond_init(struct startup_cond *suc);
  void handle_mounts_startup_cond_destroy(void *arg);
  
-+struct shutdown_cond {
++struct finish_cond {
 +	pthread_mutex_t mutex;
 +	pthread_cond_t  cond;
-+	struct autofs_point *ap;
 +	unsigned int busy;
-+	unsigned int done;
 +};
 +
-+extern struct shutdown_cond sdc;
++extern struct finish_cond fc;
++void finish_mutex_lock(void);
++void finish_mutex_unlock(void);
 +
  struct master_readmap_cond {
  	pthread_mutex_t mutex;
  	pthread_cond_t  cond;
+diff --git a/lib/master.c b/lib/master.c
+index a0e62f2..c4b15e6 100644
+--- a/lib/master.c
++++ b/lib/master.c
+@@ -1399,20 +1399,41 @@ int master_done(struct master *master)
+ 	struct list_head *head, *p;
+ 	struct master_mapent *entry;
+ 	int res = 0;
++	int status;
+ 
+-	head = &master->completed;
+-	p = head->next;
+-	while (p != head) {
+-		entry = list_entry(p, struct master_mapent, join);
+-		p = p->next;
+-		list_del(&entry->join);
+-		pthread_join(entry->thid, NULL);
+-		master_free_mapent_sources(entry, 1);
+-		master_free_mapent(entry);
++	status = pthread_mutex_lock(&sdc.mutex);
++	if (status) {
++		logerr("failed to lock shutdown condition mutex!");
++		fatal(status);
+ 	}
+-	if (list_empty(&master->mounts))
++
++	while (sdc.busy) {
++		head = &master->completed;
++		p = head->next;
++		while (p != head) {
++			entry = list_entry(p, struct master_mapent, join);
++			p = p->next;
++			list_del(&entry->join);
++			pthread_join(entry->thid, NULL);
++			master_free_mapent_sources(entry, 1);
++			master_free_mapent(entry);
++			sdc.busy--;
++		}
++	}
++
++	status = pthread_cond_broadcast(&sdc);
++	if (status)
++		fatal(status);
++
++	if (sdc.busy)
+ 		res = 1;
+ 
++	status = pthread_mutex_unlock(&sdc.mutex);
++	if (status) {
++		logerr("failed to unlock shutdown condition mutex!");
++		fatal(status);
++	}
++
+ 	return res;
+ }
