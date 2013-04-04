@@ -1,0 +1,21 @@
+Bottom: 4d2bf0a44d79491942a67782d9e14a57445c9b9a
+Top:    82ee9105dab4633cb3d402cafa3c56f9122b2499
+Author: Ian Kent <ikent@redhat.com>
+Date:   2013-04-04 15:09:33 +0800
+
+Refresh of autofs-5.0.7-syncronize-handle_mounts-shutdown.patch
+
+---
+
+diff --git a/daemon/automount.c b/daemon/automount.c
+index 7b884d9..048a053 100644
+--- a/daemon/automount.c
++++ b/daemon/automount.c
+@@ -86,7 +86,7 @@ struct master_readmap_cond mrc = {
+ 	PTHREAD_MUTEX_INITIALIZER, PTHREAD_COND_INITIALIZER, 0, NULL, 0, 0, 0, 0};
+ 
+ struct shutdown_cond fc = {
+-	PTHREAD_MUTEX_INITIALIZER, PTHREAD_COND_INITIALIZER, 0, 0, 0};
++	PTHREAD_MUTEX_INITIALIZER, PTHREAD_COND_INITIALIZER, 0};
+ 
+ pthread_key_t key_thread_stdenv_vars;
