@@ -1,5 +1,5 @@
 Bottom: f150652ca82a5866f82c590caaa5312f4a3a62bf
-Top:    8187fc685f7a3aa4d0eb5d2235d301456b916cd9
+Top:    9c2578218d5713bd21174f5f34ee079f446d3e4d
 Author: Ian Kent <ikent@redhat.com>
 Date:   2013-04-04 12:56:54 +0800
 
@@ -9,7 +9,7 @@ autofs-5.0.7 - syncronize handle_mounts() shutdown
 ---
 
 diff --git a/daemon/automount.c b/daemon/automount.c
-index 4c651cf..32862b8 100644
+index 4c651cf..5cd9d9a 100644
 --- a/daemon/automount.c
 +++ b/daemon/automount.c
 @@ -85,8 +85,8 @@ pthread_attr_t th_attr_detached;
@@ -33,7 +33,7 @@ index 4c651cf..32862b8 100644
  					master_mutex_unlock();
  					return NULL;
  				}
-@@ -1443,6 +1444,49 @@ void handle_mounts_startup_cond_destroy(void *arg)
+@@ -1443,6 +1444,50 @@ void handle_mounts_startup_cond_destroy(void *arg)
  	return;
  }
  
@@ -74,6 +74,7 @@ index 4c651cf..32862b8 100644
 +	/* Poke signal handler */
 +	pthread_kill(state_mach_thid, SIGTERM);
 +	finish_cond_wait();
++	fc.busy--;
 +	error(LOGOPT_ANY, "after wait fc.busy %d", fc.busy);
 +	finish_mutex_unlock();
 +
@@ -83,7 +84,7 @@ index 4c651cf..32862b8 100644
  static void handle_mounts_cleanup(void *arg)
  {
  	struct autofs_point *ap;
-@@ -1493,15 +1537,15 @@ static void handle_mounts_cleanup(void *arg)
+@@ -1493,15 +1538,15 @@ static void handle_mounts_cleanup(void *arg)
  
  	info(logopt, "shut down path %s", path);
  
@@ -138,7 +139,7 @@ index 824707c..25ce856 100644
  
  #endif
 diff --git a/lib/master.c b/lib/master.c
-index a0e62f2..0a3725e 100644
+index a0e62f2..739ea8f 100644
 --- a/lib/master.c
 +++ b/lib/master.c
 @@ -33,8 +33,8 @@ struct master *master_list = NULL;
@@ -161,7 +162,7 @@ index a0e62f2..0a3725e 100644
  	if (status) {
  		crit(ap->logopt,
  		     "failed to create mount handler thread for %s",
-@@ -1394,26 +1394,37 @@ int master_list_empty(struct master *master)
+@@ -1394,11 +1394,21 @@ int master_list_empty(struct master *master)
  	return res;
  }
  
@@ -172,44 +173,41 @@ index a0e62f2..0a3725e 100644
  	struct master_mapent *entry;
 -	int res = 0;
 +	int status;
- 
--	head = &master->completed;
--	p = head->next;
--	while (p != head) {
--		entry = list_entry(p, struct master_mapent, join);
--		p = p->next;
--		list_del(&entry->join);
--		pthread_join(entry->thid, NULL);
--		master_free_mapent_sources(entry, 1);
--		master_free_mapent(entry);
++
++again:
 +	finish_mutex_lock();
 +
-+	error(LOGOPT_ANY, "before fc.busy %d", fc.busy);
++	if (!fc.busy) {
++		finish_mutex_unlock();
++		return;
++	}
 +
-+	while (fc.busy) {
-+		head = &master->completed;
-+		p = head->next;
-+		while (p != head) {
-+			entry = list_entry(p, struct master_mapent, join);
-+			p = p->next;
-+			list_del(&entry->join);
-+			pthread_join(entry->thid, NULL);
-+			master_free_mapent_sources(entry, 1);
-+			master_free_mapent(entry);
-+			fc.busy--;
-+		}
++	error(LOGOPT_ANY, "before broadcast fc.busy %d", fc.busy);
+ 
+ 	head = &master->completed;
+ 	p = head->next;
+@@ -1406,14 +1416,20 @@ int master_done(struct master *master)
+ 		entry = list_entry(p, struct master_mapent, join);
+ 		p = p->next;
+ 		list_del(&entry->join);
+-		pthread_join(entry->thid, NULL);
+ 		master_free_mapent_sources(entry, 1);
+ 		master_free_mapent(entry);
  	}
 -	if (list_empty(&master->mounts))
 -		res = 1;
  
 -	return res;
-+	error(LOGOPT_ANY, "after fc.busy %d", fc.busy);
-+
 +	status = pthread_cond_broadcast(&fc);
 +	if (status)
 +		fatal(status);
 +
 +	finish_mutex_unlock();
++
++	/*finish_mutex_lock();
++	error(LOGOPT_ANY, "after broadcast fc.busy %d", fc.busy);
++	finish_mutex_unlock();*/
++	goto again;
  }
  
  inline unsigned int master_get_logopt(void)
