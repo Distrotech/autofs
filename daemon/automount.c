@@ -1502,7 +1502,7 @@ static void handle_mounts_cleanup(void *arg)
 	 * so it can join with any completed handle_mounts() threads and
 	 * perform final cleanup.
 	 */
-	if (!submount && !pending) {
+	if (!submount && !pending)
 		pthread_kill(state_mach_thid, SIGTERM);
 
 	master_mutex_unlock();
