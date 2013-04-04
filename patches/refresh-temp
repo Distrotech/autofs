@@ -1,0 +1,24 @@
+Bottom: 0efd1a45e76729a602502ee96da409fd24c12650
+Top:    58d85caabb21531d21cbaae338d31045dbecad21
+Author: Ian Kent <ikent@redhat.com>
+Date:   2013-04-04 14:54:28 +0800
+
+Refresh of autofs-5.0.7-syncronize-handle_mounts-shutdown.patch
+
+---
+
+diff --git a/daemon/automount.c b/daemon/automount.c
+index bb5b100..59d4da2 100644
+--- a/daemon/automount.c
++++ b/daemon/automount.c
+@@ -1354,9 +1354,10 @@ static void *statemachine(void *arg)
+ 					return NULL;
+ 				}
+ 			} else {
+-				if (list_empty(&master_list->mounts)) {
++				if (master_done(master_list)) {
+ 					master_mutex_unlock();
+ 					break;
++				}
+ 			}
+ 			master_mutex_unlock();
