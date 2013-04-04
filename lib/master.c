@@ -1399,19 +1399,32 @@ int master_done(struct master *master)
 	struct list_head *head, *p;
 	struct master_mapent *entry;
 	int res = 0;
+	int status;
 
-	head = &master->completed;
-	p = head->next;
-	while (p != head) {
-		entry = list_entry(p, struct master_mapent, join);
-		p = p->next;
-		list_del(&entry->join);
-		pthread_join(entry->thid, NULL);
-		master_free_mapent_sources(entry, 1);
-		master_free_mapent(entry);
+	finish_mutex_lock();
+
+	while (sdc.busy) {
+		head = &master->completed;
+		p = head->next;
+		while (p != head) {
+			entry = list_entry(p, struct master_mapent, join);
+			p = p->next;
+			list_del(&entry->join);
+			pthread_join(entry->thid, NULL);
+			master_free_mapent_sources(entry, 1);
+			master_free_mapent(entry);
+			sdc.busy--;
+		}
 	}
-	if (list_empty(&master->mounts))
+
+	status = pthread_cond_broadcast(&fc);
+	if (status)
+		fatal(status);
+
+	if (sdc.busy)
 		res = 1;
+
+	finish_mutex_unlock();
 
 	return res;
 }
