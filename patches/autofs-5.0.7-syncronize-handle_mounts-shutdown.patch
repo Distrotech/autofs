@@ -1,5 +1,5 @@
 Bottom: f150652ca82a5866f82c590caaa5312f4a3a62bf
-Top:    58d85caabb21531d21cbaae338d31045dbecad21
+Top:    4ecf68c79b54229ab2d9666eff07ea1303946bda
 Author: Ian Kent <ikent@redhat.com>
 Date:   2013-04-04 12:56:54 +0800
 
@@ -9,7 +9,7 @@ autofs-5.0.7 - syncronize handle_mounts() shutdown
 ---
 
 diff --git a/daemon/automount.c b/daemon/automount.c
-index 4c651cf..59d4da2 100644
+index 4c651cf..3781ca3 100644
 --- a/daemon/automount.c
 +++ b/daemon/automount.c
 @@ -85,8 +85,8 @@ pthread_attr_t th_attr_detached;
@@ -36,12 +36,9 @@ index 4c651cf..59d4da2 100644
  		case SIGTERM:
  		case SIGINT:
  		case SIGUSR2:
-@@ -1350,10 +1356,8 @@ static void *statemachine(void *arg)
- 			} else {
- 				if (master_done(master_list)) {
+@@ -1352,8 +1358,6 @@ static void *statemachine(void *arg)
  					master_mutex_unlock();
--					return NULL;
-+					break;
+ 					return NULL;
  				}
 -				master_mutex_unlock();
 -				break;
