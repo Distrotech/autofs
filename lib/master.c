@@ -1394,11 +1394,10 @@ int master_list_empty(struct master *master)
 	return res;
 }
 
-int master_done(struct master *master)
+void master_done(struct master *master)
 {
 	struct list_head *head, *p;
 	struct master_mapent *entry;
-	int res = 0;
 	int status;
 
 	finish_mutex_lock();
@@ -1421,12 +1420,7 @@ int master_done(struct master *master)
 	if (status)
 		fatal(status);
 
-	if (sdc.busy)
-		res = 1;
-
 	finish_mutex_unlock();
-
-	return res;
 }
 
 inline unsigned int master_get_logopt(void)
