@@ -1,5 +1,5 @@
 Bottom: f150652ca82a5866f82c590caaa5312f4a3a62bf
-Top:    518dce469fbaa9c1ae345cdf4610d940f0283c41
+Top:    6984f1322ccabfcd77ae29c9422ba33a52aa6632
 Author: Ian Kent <ikent@redhat.com>
 Date:   2013-04-04 12:56:54 +0800
 
@@ -9,7 +9,7 @@ autofs-5.0.7 - syncronize handle_mounts() shutdown
 ---
 
 diff --git a/daemon/automount.c b/daemon/automount.c
-index 4c651cf..476ff14 100644
+index 4c651cf..e08d2b9 100644
 --- a/daemon/automount.c
 +++ b/daemon/automount.c
 @@ -85,8 +85,8 @@ pthread_attr_t th_attr_detached;
@@ -29,7 +29,7 @@ index 4c651cf..476ff14 100644
  		switch (sig) {
 +		case SIGCONT:
 +			master_mutex_lock();
-+			master_done(master_list);
++			master_finish(master_list);
 +			master_mutex_unlock();
 +			break;
 +
@@ -136,7 +136,7 @@ index e72fa0d..565adad 100644
  	pthread_mutex_t mutex;
  	pthread_cond_t  cond;
 diff --git a/include/master.h b/include/master.h
-index 824707c..8913740 100644
+index 824707c..25ce856 100644
 --- a/include/master.h
 +++ b/include/master.h
 @@ -115,7 +115,7 @@ int master_mount_mounts(struct master *, time_t, int);
@@ -144,12 +144,12 @@ index 824707c..8913740 100644
  extern inline unsigned int master_get_logopt(void);
  int master_list_empty(struct master *);
 -int master_done(struct master *);
-+void master_done(struct master *);
++void master_finish(struct master *);
  int master_kill(struct master *);
  
  #endif
 diff --git a/lib/master.c b/lib/master.c
-index a0e62f2..491fda0 100644
+index a0e62f2..1b027cc 100644
 --- a/lib/master.c
 +++ b/lib/master.c
 @@ -1394,26 +1394,33 @@ int master_list_empty(struct master *master)
@@ -157,7 +157,7 @@ index a0e62f2..491fda0 100644
  }
  
 -int master_done(struct master *master)
-+void master_done(struct master *master)
++void master_finish(struct master *master)
  {
  	struct list_head *head, *p;
  	struct master_mapent *entry;
