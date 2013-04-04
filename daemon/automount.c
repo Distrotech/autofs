@@ -1285,6 +1285,13 @@ static int do_hup_signal(struct master *master, time_t age)
 	nfs_mount_uses_string_options = check_nfs_mount_version(&vers, &check);
 
 	master_mutex_lock();
+	/* Already shutdown or no mounts ? */
+	if (list_empty(&master->mounts)) {
+		status = pthread_mutex_unlock(&mrc.mutex);
+		if (status)
+			fatal(status);
+		return;
+	}
 	if (master->reading) {
 		status = pthread_mutex_unlock(&mrc.mutex);
 		if (status)
@@ -1341,6 +1348,7 @@ static void *statemachine(void *arg)
 		case SIGTERM:
 		case SIGINT:
 		case SIGUSR2:
+			logerr("got signal %d", sig);
 			master_mutex_lock();
 			if (list_empty(&master_list->completed)) {
 				if (list_empty(&master_list->mounts)) {
@@ -1449,6 +1457,7 @@ static void handle_mounts_cleanup(void *arg)
 	char path[PATH_MAX + 1];
 	char buf[MAX_ERR_BUF];
 	unsigned int clean = 0, submount, logopt;
+	unsigned int pending = 0;
 
 	ap = (struct autofs_point *) arg;
 
@@ -1466,6 +1475,9 @@ static void handle_mounts_cleanup(void *arg)
 		list_del_init(&ap->mounts);
 	}
 
+	/* Don't signal the handler if we have already done so */
+	if (!list_empty(&master_list->completed))
+		pending = 1;
 	master_remove_mapent(ap->entry);
 	master_source_unlock(ap->entry);
 
@@ -1498,7 +1510,7 @@ static void handle_mounts_cleanup(void *arg)
 	 * so it can join with any completed handle_mounts() threads and
 	 * perform final cleanup.
 	 */
-	if (!submount)
+	if (!submount && !pending)
 		pthread_kill(state_mach_thid, SIGTERM);
 
 	master_mutex_unlock();
