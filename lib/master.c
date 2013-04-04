@@ -1402,6 +1402,8 @@ void master_finish(struct master *master)
 
 	finish_mutex_lock();
 
+	error(LOGOPT_ANY, "before fc.busy %d", fc.busy);
+
 	while (fc.busy) {
 		head = &master->completed;
 		p = head->next;
@@ -1415,6 +1417,8 @@ void master_finish(struct master *master)
 			fc.busy--;
 		}
 	}
+
+	error(LOGOPT_ANY, "after fc.busy %d", fc.busy);
 
 	status = pthread_cond_broadcast(&fc);
 	if (status)
