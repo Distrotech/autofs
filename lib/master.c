@@ -1429,7 +1429,10 @@ again:
 	/* Try to reduce the number of times around the loop, waiting
 	 * for these guys to exit.
 	 */
-	sched_yield();
+	if (fc.busy) {
+		struct timespec tm = {0, 100000000};
+		nanosleep(&tm, NULL);
+	}
 
 	/*finish_mutex_lock();
 	error(LOGOPT_ANY, "after broadcast fc.busy %d", fc.busy);
