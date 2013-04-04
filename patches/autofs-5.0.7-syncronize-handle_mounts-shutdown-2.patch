@@ -1,5 +1,5 @@
 Bottom: f150652ca82a5866f82c590caaa5312f4a3a62bf
-Top:    c0bb31377e4893f58a51a2685232067828159eb8
+Top:    47142b4a6d42e76c81caf36b1b48b4a38063eaf9
 Author: Ian Kent <ikent@redhat.com>
 Date:   2013-04-04 18:16:28 +0800
 
@@ -9,7 +9,7 @@ autofs-5.0.7 - syncronize handle_mounts() shutdown-2
 ---
 
 diff --git a/daemon/automount.c b/daemon/automount.c
-index 4c651cf..6082a8c 100644
+index 4c651cf..3f9337f 100644
 --- a/daemon/automount.c
 +++ b/daemon/automount.c
 @@ -1285,7 +1285,8 @@ static int do_hup_signal(struct master *master, time_t age)
@@ -22,15 +22,7 @@ index 4c651cf..6082a8c 100644
  		status = pthread_mutex_unlock(&mrc.mutex);
  		if (status)
  			fatal(status);
-@@ -1341,6 +1342,7 @@ static void *statemachine(void *arg)
- 		case SIGTERM:
- 		case SIGINT:
- 		case SIGUSR2:
-+			logerr("got signal %d", sig);
- 			master_mutex_lock();
- 			if (list_empty(&master_list->completed)) {
- 				if (list_empty(&master_list->mounts)) {
-@@ -1449,6 +1451,7 @@ static void handle_mounts_cleanup(void *arg)
+@@ -1449,6 +1450,7 @@ static void handle_mounts_cleanup(void *arg)
  	char path[PATH_MAX + 1];
  	char buf[MAX_ERR_BUF];
  	unsigned int clean = 0, submount, logopt;
@@ -38,7 +30,7 @@ index 4c651cf..6082a8c 100644
  
  	ap = (struct autofs_point *) arg;
  
-@@ -1466,6 +1469,9 @@ static void handle_mounts_cleanup(void *arg)
+@@ -1466,6 +1468,9 @@ static void handle_mounts_cleanup(void *arg)
  		list_del_init(&ap->mounts);
  	}
  
@@ -48,7 +40,7 @@ index 4c651cf..6082a8c 100644
  	master_remove_mapent(ap->entry);
  	master_source_unlock(ap->entry);
  
-@@ -1498,7 +1504,7 @@ static void handle_mounts_cleanup(void *arg)
+@@ -1498,7 +1503,7 @@ static void handle_mounts_cleanup(void *arg)
  	 * so it can join with any completed handle_mounts() threads and
  	 * perform final cleanup.
  	 */
