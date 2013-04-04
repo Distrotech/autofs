@@ -1339,6 +1339,7 @@ static void *statemachine(void *arg)
 
 		switch (sig) {
 		case SIGCONT:
+			error(LOGOPT_ANY, "received SIGCONT");
 			master_mutex_lock();
 			master_finish(master_list);
 			master_mutex_unlock();
@@ -1347,6 +1348,7 @@ static void *statemachine(void *arg)
 		case SIGTERM:
 		case SIGINT:
 		case SIGUSR2:
+			error(LOGOPT_ANY, "received SIGTERM");
 			master_mutex_lock();
 			if (list_empty(&master_list->completed)) {
 				if (list_empty(&master_list->mounts)) {
@@ -1360,6 +1362,9 @@ static void *statemachine(void *arg)
 					finish_cond_wait();
 				finish_mutex_unlock();
 				master_mutex_lock();
+				/* A thread pending shutdown ? */
+				if (sigpending(SIGCONT))
+					master_finish(master_list);
 				if (list_empty(&master_list->mounts)) {
 					master_mutex_unlock();
 					return NULL;
@@ -1489,8 +1494,8 @@ static void handle_mounts_finish(void)
 	finish_mutex_lock();
 	/* Poke signal handler */
 	pthread_kill(state_mach_thid, SIGCONT);
-	error(LOGOPT_ANY, "before signal fc.busy %d", fc.busy);
 	fc.busy++;
+	error(LOGOPT_ANY, "before signal fc.busy %d", fc.busy);
 	finish_cond_wait();
 	fc.busy--;
 	error(LOGOPT_ANY, "after wait fc.busy %d", fc.busy);
