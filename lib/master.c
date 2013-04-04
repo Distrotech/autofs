@@ -33,8 +33,8 @@ struct master *master_list = NULL;
 extern const char *global_options;
 extern long global_negative_timeout;
 
-/* Attribute to create a joinable thread */
-extern pthread_attr_t th_attr;
+/* Attribute to create a detached thread */
+extern pthread_attr_t th_attr_detached;
 
 extern struct startup_cond suc;
 
@@ -1057,7 +1057,7 @@ static int master_do_mount(struct master_mapent *entry)
 
 	debug(ap->logopt, "mounting %s", entry->path);
 
-	status = pthread_create(&thid, &th_attr, handle_mounts, &suc);
+	status = pthread_create(&thid, &th_attr_detached, handle_mounts, &suc);
 	if (status) {
 		crit(ap->logopt,
 		     "failed to create mount handler thread for %s",
@@ -1394,26 +1394,37 @@ int master_list_empty(struct master *master)
 	return res;
 }
 
-int master_done(struct master *master)
+void master_finish(struct master *master)
 {
 	struct list_head *head, *p;
 	struct master_mapent *entry;
-	int res = 0;
+	int status;
 
-	head = &master->completed;
-	p = head->next;
-	while (p != head) {
-		entry = list_entry(p, struct master_mapent, join);
-		p = p->next;
-		list_del(&entry->join);
-		pthread_join(entry->thid, NULL);
-		master_free_mapent_sources(entry, 1);
-		master_free_mapent(entry);
+	finish_mutex_lock();
+
+	error(LOGOPT_ANY, "before fc.busy %d", fc.busy);
+
+	while (fc.busy) {
+		head = &master->completed;
+		p = head->next;
+		while (p != head) {
+			entry = list_entry(p, struct master_mapent, join);
+			p = p->next;
+			list_del(&entry->join);
+			pthread_join(entry->thid, NULL);
+			master_free_mapent_sources(entry, 1);
+			master_free_mapent(entry);
+			fc.busy--;
+		}
 	}
-	if (list_empty(&master->mounts))
-		res = 1;
 
-	return res;
+	error(LOGOPT_ANY, "after fc.busy %d", fc.busy);
+
+	status = pthread_cond_broadcast(&fc);
+	if (status)
+		fatal(status);
+
+	finish_mutex_unlock();
 }
 
 inline unsigned int master_get_logopt(void)
