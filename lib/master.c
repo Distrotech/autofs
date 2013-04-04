@@ -1400,31 +1400,36 @@ void master_finish(struct master *master)
 	struct master_mapent *entry;
 	int status;
 
+again:
 	finish_mutex_lock();
 
-	error(LOGOPT_ANY, "before fc.busy %d", fc.busy);
-
-	while (fc.busy) {
-		head = &master->completed;
-		p = head->next;
-		while (p != head) {
-			entry = list_entry(p, struct master_mapent, join);
-			p = p->next;
-			list_del(&entry->join);
-			pthread_join(entry->thid, NULL);
-			master_free_mapent_sources(entry, 1);
-			master_free_mapent(entry);
-			fc.busy--;
-		}
+	if (!fc.busy) {
+		finish_mutex_unlock();
+		return;
 	}
 
-	error(LOGOPT_ANY, "after fc.busy %d", fc.busy);
+	error(LOGOPT_ANY, "before broadcast fc.busy %d", fc.busy);
+
+	head = &master->completed;
+	p = head->next;
+	while (p != head) {
+		entry = list_entry(p, struct master_mapent, join);
+		p = p->next;
+		list_del(&entry->join);
+		master_free_mapent_sources(entry, 1);
+		master_free_mapent(entry);
+	}
 
 	status = pthread_cond_broadcast(&fc);
 	if (status)
 		fatal(status);
 
 	finish_mutex_unlock();
+
+	/*finish_mutex_lock();
+	error(LOGOPT_ANY, "after broadcast fc.busy %d", fc.busy);
+	finish_mutex_unlock();*/
+	goto again;
 }
 
 inline unsigned int master_get_logopt(void)

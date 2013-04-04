@@ -1481,6 +1481,7 @@ static void handle_mounts_finish(void)
 	/* Poke signal handler */
 	pthread_kill(state_mach_thid, SIGTERM);
 	finish_cond_wait();
+	fc.busy--;
 	error(LOGOPT_ANY, "after wait fc.busy %d", fc.busy);
 	finish_mutex_unlock();
 
