@@ -1,0 +1,73 @@
+Bottom: 34d5822fa8ad5fa84780c20c0bce697cd3103803
+Top:    fa78051214f840e13a44f2c4f364a11708d5f09e
+Author: Ian Kent <ikent@redhat.com>
+Date:   2013-04-04 16:20:16 +0800
+
+Refresh of autofs-5.0.7-syncronize-handle_mounts-shutdown.patch
+
+---
+
+diff --git a/daemon/automount.c b/daemon/automount.c
+index 04a0b12..7a5a08e 100644
+--- a/daemon/automount.c
++++ b/daemon/automount.c
+@@ -1332,12 +1332,18 @@ static void *statemachine(void *arg)
+ 
+ 	memcpy(&signalset, &block_sigs, sizeof(signalset));
+ 	sigdelset(&signalset, SIGCHLD);
+-	sigdelset(&signalset, SIGCONT);
++	/*sigdelset(&signalset, SIGCONT);*/
+ 
+ 	while (1) {
+ 		sigwait(&signalset, &sig);
+ 
+ 		switch (sig) {
++		case SIGCONT:
++			master_mutex_lock();
++			master_finish(master_list);
++			master_mutex_unlock();
++			break;
++
+ 		case SIGTERM:
+ 		case SIGINT:
+ 		case SIGUSR2:
+@@ -1348,7 +1354,12 @@ static void *statemachine(void *arg)
+ 					return NULL;
+ 				}
+ 			} else {
+-				master_finish(master_list);
++				master_mutex_unlock();
++				finish_mutex_lock();
++				while (fc.busy)
++					finish_cond_wait();
++				finish_mutex_unlock();
++				master_mutex_lock();
+ 				if (list_empty(&master_list->mounts)) {
+ 					master_mutex_unlock();
+ 					return NULL;
+@@ -1464,13 +1475,9 @@ void finish_mutex_unlock(void)
+ 
+ void finish_cond_wait(void)
+ {
+-	error(LOGOPT_ANY, "before signal fc.busy %d", fc.busy);
+-	fc.busy++;
+ 	int status = pthread_cond_wait(&fc.cond, &fc.mutex);
+ 	if (status)
+ 		fatal(status);
+-	fc.busy--;
+-	error(LOGOPT_ANY, "after wait fc.busy %d", fc.busy);
+ }
+ 
+ static void handle_mounts_finish(void)
+@@ -1482,7 +1489,11 @@ static void handle_mounts_finish(void)
+ 	finish_mutex_lock();
+ 	/* Poke signal handler */
+ 	pthread_kill(state_mach_thid, SIGTERM);
++	error(LOGOPT_ANY, "before signal fc.busy %d", fc.busy);
++	fc.busy++;
+ 	finish_cond_wait();
++	fc.busy--;
++	error(LOGOPT_ANY, "after wait fc.busy %d", fc.busy);
+ 	finish_mutex_unlock();
+ 
+ 	pthread_setcancelstate(cancel_state, NULL);
