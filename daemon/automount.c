@@ -1545,7 +1545,6 @@ static void handle_mounts_cleanup(void *arg)
 		if (!fc.busy)
 			pthread_kill(state_mach_thid, SIGTERM);
 		error(LOGOPT_ANY, "before signal fc.busy %d", fc.busy);
-		fc.busy++;
 		master_mutex_unlock();
 		handle_mounts_finish();
 		error(LOGOPT_ANY, "after wait fc.busy %d", fc.busy);

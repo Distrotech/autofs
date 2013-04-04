@@ -746,6 +746,7 @@ void master_remove_mapent(struct master_mapent *entry)
 	if (!list_empty(&entry->list)) {
 		list_del_init(&entry->list);
 		list_add(&entry->join, &master->completed);
+		fc.busy++;
 	}
 
 	return;
@@ -1410,9 +1411,9 @@ void master_finish(struct master *master)
 		entry = list_entry(p, struct master_mapent, join);
 		p = p->next;
 		list_del(&entry->join);
+		fc.busy--;
 		master_free_mapent_sources(entry, 1);
 		master_free_mapent(entry);
-		fc.busy--;
 	}
 
 	status = pthread_cond_broadcast(&fc.cond);
