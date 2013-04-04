@@ -1477,7 +1477,8 @@ static void handle_mounts_finish(void)
 	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cancel_state);
 
 	finish_mutex_lock();
-	finish_cond_wait();
+	while (fc.busy);
+		finish_cond_wait();
 	finish_mutex_unlock();
 
 	pthread_setcancelstate(cancel_state, NULL);
