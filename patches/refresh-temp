@@ -1,0 +1,23 @@
+Bottom: 215556e89e6173bfe531e901b367fbd4af8cc4f5
+Top:    3ca32272093f434912b043a1165fd2062df8772e
+Author: Ian Kent <ikent@redhat.com>
+Date:   2013-04-04 17:49:23 +0800
+
+Refresh of autofs-5.0.7-syncronize-handle_mounts-shutdown.patch
+
+---
+
+diff --git a/daemon/automount.c b/daemon/automount.c
+index d656c63..03fd266 100644
+--- a/daemon/automount.c
++++ b/daemon/automount.c
+@@ -1477,7 +1477,8 @@ static void handle_mounts_finish(void)
+ 	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cancel_state);
+ 
+ 	finish_mutex_lock();
+-	finish_cond_wait();
++	while (fc.busy);
++		finish_cond_wait();
+ 	finish_mutex_unlock();
+ 
+ 	pthread_setcancelstate(cancel_state, NULL);
