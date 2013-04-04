@@ -1,5 +1,5 @@
 Bottom: f150652ca82a5866f82c590caaa5312f4a3a62bf
-Top:    47142b4a6d42e76c81caf36b1b48b4a38063eaf9
+Top:    77e6f9a64fe21d866c09b5e3cf02a3b39e104bc2
 Author: Ian Kent <ikent@redhat.com>
 Date:   2013-04-04 18:16:28 +0800
 
@@ -21,6 +21,18 @@ request to shutdown and exits.
 
 ---
 
+diff --git a/CHANGELOG b/CHANGELOG
+index 488ad1e..f1ec1e5 100644
+--- a/CHANGELOG
++++ b/CHANGELOG
+@@ -38,6 +38,7 @@
+ - fix systemd unidir in spec file.
+ - document browse option in man page.
+ - fix some automount(8) typos.
++- syncronize handle_mounts() shutdown.
+ 
+ 25/07/2012 autofs-5.0.7
+ =======================
 diff --git a/daemon/automount.c b/daemon/automount.c
 index 4c651cf..3f9337f 100644
 --- a/daemon/automount.c
