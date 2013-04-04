@@ -1356,7 +1356,7 @@ static void *statemachine(void *arg)
 			} else {
 				if (master_done(master_list)) {
 					master_mutex_unlock();
-					break;
+					return NULL;
 				}
 			}
 			master_mutex_unlock();
