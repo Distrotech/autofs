@@ -38,6 +38,7 @@
 - fix systemd unidir in spec file.
 - document browse option in man page.
 - fix some automount(8) typos.
+- syncronize handle_mounts() shutdown.
 
 25/07/2012 autofs-5.0.7
 =======================
