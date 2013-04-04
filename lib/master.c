@@ -1402,7 +1402,7 @@ void master_finish(struct master *master)
 
 	finish_mutex_lock();
 
-	while (sdc.busy) {
+	while (fc.busy) {
 		head = &master->completed;
 		p = head->next;
 		while (p != head) {
@@ -1412,7 +1412,7 @@ void master_finish(struct master *master)
 			pthread_join(entry->thid, NULL);
 			master_free_mapent_sources(entry, 1);
 			master_free_mapent(entry);
-			sdc.busy--;
+			fc.busy--;
 		}
 	}
 
