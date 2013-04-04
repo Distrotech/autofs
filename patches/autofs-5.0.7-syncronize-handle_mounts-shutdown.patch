@@ -1,5 +1,5 @@
 Bottom: f150652ca82a5866f82c590caaa5312f4a3a62bf
-Top:    141dcae5f007e263c800bd32b3a5db995353e51d
+Top:    eb73f4803a40e64f1ec0442038cc09c6c8da9fda
 Author: Ian Kent <ikent@redhat.com>
 Date:   2013-04-04 12:56:54 +0800
 
@@ -9,7 +9,7 @@ autofs-5.0.7 - syncronize handle_mounts() shutdown
 ---
 
 diff --git a/daemon/automount.c b/daemon/automount.c
-index 4c651cf..61d0ce7 100644
+index 4c651cf..cc23393 100644
 --- a/daemon/automount.c
 +++ b/daemon/automount.c
 @@ -85,8 +85,8 @@ pthread_attr_t th_attr_detached;
@@ -23,24 +23,7 @@ index 4c651cf..61d0ce7 100644
  
  pthread_key_t key_thread_stdenv_vars;
  
-@@ -1332,15 +1332,23 @@ static void *statemachine(void *arg)
- 
- 	memcpy(&signalset, &block_sigs, sizeof(signalset));
- 	sigdelset(&signalset, SIGCHLD);
--	sigdelset(&signalset, SIGCONT);
-+	/*sigdelset(&signalset, SIGCONT);*/
- 
- 	while (1) {
- 		sigwait(&signalset, &sig);
- 
- 		switch (sig) {
-+		case SIGCONT:
-+			error(LOGOPT_ANY, "received SIGCONT");
-+			master_mutex_lock();
-+			master_finish(master_list);
-+			master_mutex_unlock();
-+			break;
-+
+@@ -1341,6 +1341,7 @@ static void *statemachine(void *arg)
  		case SIGTERM:
  		case SIGINT:
  		case SIGUSR2:
@@ -48,25 +31,17 @@ index 4c651cf..61d0ce7 100644
  			master_mutex_lock();
  			if (list_empty(&master_list->completed)) {
  				if (list_empty(&master_list->mounts)) {
-@@ -1348,7 +1356,16 @@ static void *statemachine(void *arg)
+@@ -1348,7 +1349,8 @@ static void *statemachine(void *arg)
  					return NULL;
  				}
  			} else {
 -				if (master_done(master_list)) {
-+				master_mutex_unlock();
-+				finish_mutex_lock();
-+				while (fc.busy)
-+					finish_cond_wait();
-+				finish_mutex_unlock();
-+				master_mutex_lock();
-+				/* A thread pending shutdown ? */
-+				if (sigpending(SIGCONT))
-+					master_finish(master_list);
++				master_finish(master_list);
 +				if (list_empty(&master_list->mounts)) {
  					master_mutex_unlock();
  					return NULL;
  				}
-@@ -1443,6 +1460,50 @@ void handle_mounts_startup_cond_destroy(void *arg)
+@@ -1443,6 +1445,50 @@ void handle_mounts_startup_cond_destroy(void *arg)
  	return;
  }
  
@@ -103,7 +78,7 @@ index 4c651cf..61d0ce7 100644
 +
 +	finish_mutex_lock();
 +	/* Poke signal handler */
-+	pthread_kill(state_mach_thid, SIGCONT);
++	pthread_kill(state_mach_thid, SIGTERM);
 +	fc.busy++;
 +	error(LOGOPT_ANY, "before signal fc.busy %d", fc.busy);
 +	finish_cond_wait();
@@ -117,7 +92,7 @@ index 4c651cf..61d0ce7 100644
  static void handle_mounts_cleanup(void *arg)
  {
  	struct autofs_point *ap;
-@@ -1493,15 +1554,15 @@ static void handle_mounts_cleanup(void *arg)
+@@ -1493,15 +1539,15 @@ static void handle_mounts_cleanup(void *arg)
  
  	info(logopt, "shut down path %s", path);
  
