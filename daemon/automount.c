@@ -1350,7 +1350,7 @@ static void *statemachine(void *arg)
 			master_mutex_lock();
 			if (list_empty(&master_list->mounts)) {
 				master_mutex_unlock();
-				return NULL;
+				break;
 			}
 			master_mutex_unlock();
 
