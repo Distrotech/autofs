@@ -1,0 +1,22 @@
+Bottom: 1a0c7a43d7de984bf9789f847d2c014f2fb1c1f4
+Top:    e5d2faf273bb5e241d48185f994338b93c1b1a76
+Author: Ian Kent <ikent@redhat.com>
+Date:   2013-04-04 18:26:10 +0800
+
+Refresh of autofs-5.0.7-syncronize-handle_mounts-shutdown-2.patch
+
+---
+
+diff --git a/daemon/automount.c b/daemon/automount.c
+index e468dcd..96a55b3 100644
+--- a/daemon/automount.c
++++ b/daemon/automount.c
+@@ -1502,7 +1502,7 @@ static void handle_mounts_cleanup(void *arg)
+ 	 * so it can join with any completed handle_mounts() threads and
+ 	 * perform final cleanup.
+ 	 */
+-	if (!submount && !pending) {
++	if (!submount && !pending)
+ 		pthread_kill(state_mach_thid, SIGTERM);
+ 
+ 	master_mutex_unlock();
