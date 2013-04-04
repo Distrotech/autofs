@@ -1354,9 +1354,10 @@ static void *statemachine(void *arg)
 					return NULL;
 				}
 			} else {
-				if (list_empty(&master_list->mounts)) {
+				if (master_done(master_list)) {
 					master_mutex_unlock();
 					break;
+				}
 			}
 			master_mutex_unlock();
 
