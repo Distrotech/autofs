@@ -1,0 +1,21 @@
+Bottom: c0bb31377e4893f58a51a2685232067828159eb8
+Top:    47142b4a6d42e76c81caf36b1b48b4a38063eaf9
+Author: Ian Kent <ikent@redhat.com>
+Date:   2013-04-04 19:12:11 +0800
+
+Refresh of autofs-5.0.7-syncronize-handle_mounts-shutdown-2.patch
+
+---
+
+diff --git a/daemon/automount.c b/daemon/automount.c
+index 6082a8c..3f9337f 100644
+--- a/daemon/automount.c
++++ b/daemon/automount.c
+@@ -1342,7 +1342,6 @@ static void *statemachine(void *arg)
+ 		case SIGTERM:
+ 		case SIGINT:
+ 		case SIGUSR2:
+-			logerr("got signal %d", sig);
+ 			master_mutex_lock();
+ 			if (list_empty(&master_list->completed)) {
+ 				if (list_empty(&master_list->mounts)) {
