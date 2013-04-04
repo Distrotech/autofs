@@ -1,5 +1,5 @@
 Bottom: f150652ca82a5866f82c590caaa5312f4a3a62bf
-Top:    c6d176024c6ceb1ea5cdbc3bcfe222fb61b39e8f
+Top:    d6ac2289056f6725cfb2706b77434acd12704c49
 Author: Ian Kent <ikent@redhat.com>
 Date:   2013-04-04 12:56:54 +0800
 
@@ -9,7 +9,7 @@ autofs-5.0.7 - syncronize handle_mounts() shutdown
 ---
 
 diff --git a/daemon/automount.c b/daemon/automount.c
-index 4c651cf..a88eef3 100644
+index 4c651cf..32862b8 100644
 --- a/daemon/automount.c
 +++ b/daemon/automount.c
 @@ -85,8 +85,8 @@ pthread_attr_t th_attr_detached;
@@ -33,7 +33,7 @@ index 4c651cf..a88eef3 100644
  					master_mutex_unlock();
  					return NULL;
  				}
-@@ -1443,6 +1444,47 @@ void handle_mounts_startup_cond_destroy(void *arg)
+@@ -1443,6 +1444,49 @@ void handle_mounts_startup_cond_destroy(void *arg)
  	return;
  }
  
@@ -70,9 +70,11 @@ index 4c651cf..a88eef3 100644
 +
 +	finish_mutex_lock();
 +	fc.busy++;
++	error(LOGOPT_ANY, "before signal fc.busy %d", fc.busy);
 +	/* Poke signal handler */
 +	pthread_kill(state_mach_thid, SIGTERM);
 +	finish_cond_wait();
++	error(LOGOPT_ANY, "after wait fc.busy %d", fc.busy);
 +	finish_mutex_unlock();
 +
 +	pthread_setcancelstate(cancel_state, NULL);
@@ -81,7 +83,7 @@ index 4c651cf..a88eef3 100644
  static void handle_mounts_cleanup(void *arg)
  {
  	struct autofs_point *ap;
-@@ -1493,15 +1535,15 @@ static void handle_mounts_cleanup(void *arg)
+@@ -1493,15 +1537,15 @@ static void handle_mounts_cleanup(void *arg)
  
  	info(logopt, "shut down path %s", path);
  
@@ -136,10 +138,10 @@ index 824707c..25ce856 100644
  
  #endif
 diff --git a/lib/master.c b/lib/master.c
-index a0e62f2..07b08e3 100644
+index a0e62f2..302668a 100644
 --- a/lib/master.c
 +++ b/lib/master.c
-@@ -1394,26 +1394,33 @@ int master_list_empty(struct master *master)
+@@ -1394,26 +1394,37 @@ int master_list_empty(struct master *master)
  	return res;
  }
  
@@ -162,6 +164,8 @@ index a0e62f2..07b08e3 100644
 -		master_free_mapent(entry);
 +	finish_mutex_lock();
 +
++	error(LOGOPT_ANY, "before fc.busy %d", fc.busy);
++
 +	while (fc.busy) {
 +		head = &master->completed;
 +		p = head->next;
@@ -179,6 +183,8 @@ index a0e62f2..07b08e3 100644
 -		res = 1;
  
 -	return res;
++	error(LOGOPT_ANY, "after fc.busy %d", fc.busy);
++
 +	status = pthread_cond_broadcast(&fc);
 +	if (status)
 +		fatal(status);
