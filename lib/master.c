@@ -899,6 +899,8 @@ int master_notify_submount(struct autofs_point *ap, const char *path, enum state
 
 	mounts_mutex_lock(ap);
 
+	error(LOGOPT_ANY, "ap->path %s", ap->path);
+
 	head = &ap->submounts;
 	p = head->prev;
 	while (p != head) {
@@ -907,7 +909,13 @@ int master_notify_submount(struct autofs_point *ap, const char *path, enum state
 
 		if (!master_submount_list_empty(this)) {
 			mounts_mutex_unlock(ap);
-			return master_notify_submount(this, path, state);
+			error(LOGOPT_ANY, "notify submount %s", this->path);
+			if (!master_notify_submount(this, path, state)) {
+				ret = 0;
+				mounts_mutex_lock(ap);
+				break;
+			}
+			mounts_mutex_lock(ap);
 		}
 
 		/* path not the same */
