@@ -909,7 +909,6 @@ int master_notify_submount(struct autofs_point *ap, const char *path, enum state
 			mounts_mutex_unlock(ap);
 			if (!master_notify_submount(this, path, state)) {
 				ret = 0;
-				mounts_mutex_lock(ap);
 				break;
 			}
 			mounts_mutex_lock(ap);
@@ -926,6 +925,7 @@ int master_notify_submount(struct autofs_point *ap, const char *path, enum state
 		if (this->state == ST_SHUTDOWN) {
 			this = NULL;
 			st_mutex_unlock();
+			mounts_mutex_unlock(ap);
 			break;
 		}
 
@@ -964,10 +964,9 @@ int master_notify_submount(struct autofs_point *ap, const char *path, enum state
 			st_mutex_lock();
 		}
 		st_mutex_unlock();
+		mounts_mutex_unlock(ap);
 		break;
 	}
-
-	mounts_mutex_unlock(ap);
 
 	return ret;
 }
