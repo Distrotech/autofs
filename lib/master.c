@@ -913,10 +913,6 @@ int master_notify_submount(struct autofs_point *ap, const char *path, enum state
 			char *this_path = strdup(this->path);
 			if (this_path) {
 				mounts_mutex_unlock(ap);
-				/*if (!master_notify_submount(this, path, state)) {
-					free(this_path);
-					return 0;
-				}*/
 				master_notify_submount(this, path, state);
 				mounts_mutex_lock(ap);
 				if (!__master_find_submount(ap, this_path)) {
