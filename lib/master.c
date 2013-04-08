@@ -905,6 +905,10 @@ int master_notify_submount(struct autofs_point *ap, const char *path, enum state
 		this = list_entry(p, struct autofs_point, mounts);
 		p = p->prev;
 
+		/* path not the same */
+		if (strcmp(this->path, path))
+			continue;
+
 		if (!master_submount_list_empty(this)) {
 			mounts_mutex_unlock(ap);
 			if (!master_notify_submount(this, path, state)) {
@@ -912,11 +916,8 @@ int master_notify_submount(struct autofs_point *ap, const char *path, enum state
 				break;
 			}
 			mounts_mutex_lock(ap);
-		}
-
-		/* path not the same */
-		if (strcmp(this->path, path))
 			continue;
+		}
 
 		/* Now we have found the submount we want to expire */
 
