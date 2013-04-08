@@ -1,0 +1,41 @@
+Bottom: dceff79797570030e96d73bd468a40892e160e2c
+Top:    8545f343f0092b3cead9c74ae8383f0e28784e55
+Author: Ian Kent <ikent@redhat.com>
+Date:   2013-04-08 14:58:16 +0800
+
+Refresh of autofs-5.0.7-fix-submount-tree-not-all-expiring.patch
+
+---
+
+diff --git a/lib/master.c b/lib/master.c
+index 7755c2a..59356be 100644
+--- a/lib/master.c
++++ b/lib/master.c
+@@ -910,11 +910,23 @@ int master_notify_submount(struct autofs_point *ap, const char *path, enum state
+ 			continue;
+ 
+ 		if (!master_submount_list_empty(this)) {
++			/* char *this_path = strdup(this->path);
++			if (this_path) {
++				mounts_mutex_unlock(ap);
++				if (!master_notify_submount(this, path, state)) {
++					free(this_path);
++					ret = 0;
++					break;
++				}
++				mounts_mutex_lock(ap);
++				if (!__master_find_submount(ap, this_path)) {
++					free(this_path);
++					continue;
++				}
++				free(this_path);
++			} */
+ 			mounts_mutex_unlock(ap);
+-			if (!master_notify_submount(this, path, state)) {
+-				ret = 0;
+-				break;
+-			}
++			master_notify_submount(this, path, state);
+ 			mounts_mutex_lock(ap);
+ 			continue;
+ 		}
