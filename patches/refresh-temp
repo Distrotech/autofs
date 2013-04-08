@@ -1,0 +1,21 @@
+Bottom: c463171b8aee7d9875c5488a53cc37ba635ccf44
+Top:    a8df00e32eb302f25f461a1ad37449e27699a5c5
+Author: Ian Kent <ikent@redhat.com>
+Date:   2013-04-08 10:46:58 +0800
+
+Refresh of debug-2.patch
+
+---
+
+diff --git a/lib/master.c b/lib/master.c
+index 2e0ccdf..e3dc2cf 100644
+--- a/lib/master.c
++++ b/lib/master.c
+@@ -915,6 +915,7 @@ int master_notify_submount(struct autofs_point *ap, const char *path, enum state
+ 				mounts_mutex_lock(ap);
+ 				break;
+ 			}
++			mounts_mutex_lock(ap);
+ 		}
+ 
+ 		/* path not the same */
