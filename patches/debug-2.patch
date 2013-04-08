@@ -1,5 +1,5 @@
 Bottom: 77e6f9a64fe21d866c09b5e3cf02a3b39e104bc2
-Top:    1f9abd819fc97b7317f79364a7e4f3aae95677e0
+Top:    c463171b8aee7d9875c5488a53cc37ba635ccf44
 Author: Ian Kent <ikent@redhat.com>
 Date:   2013-04-08 09:57:09 +0800
 
@@ -8,18 +8,29 @@ Date:   2013-04-08 09:57:09 +0800
 ---
 
 diff --git a/lib/master.c b/lib/master.c
-index a0e62f2..d12e672 100644
+index a0e62f2..2e0ccdf 100644
 --- a/lib/master.c
 +++ b/lib/master.c
-@@ -907,7 +907,10 @@ int master_notify_submount(struct autofs_point *ap, const char *path, enum state
+@@ -899,6 +899,8 @@ int master_notify_submount(struct autofs_point *ap, const char *path, enum state
+ 
+ 	mounts_mutex_lock(ap);
+ 
++	error(LOGOPT_ANY, "ap->path %s", ap->path);
++
+ 	head = &ap->submounts;
+ 	p = head->prev;
+ 	while (p != head) {
+@@ -907,7 +909,12 @@ int master_notify_submount(struct autofs_point *ap, const char *path, enum state
  
  		if (!master_submount_list_empty(this)) {
  			mounts_mutex_unlock(ap);
 -			return master_notify_submount(this, path, state);
 +			error(LOGOPT_ANY, "notify submount %s", this->path);
-+			master_notify_submount(this, path, state);
-+			mounts_mutex_lock(ap);
-+			continue;
++			if (!master_notify_submount(this, path, state)) {
++				ret = 0;
++				mounts_mutex_lock(ap);
++				break;
++			}
  		}
  
  		/* path not the same */
