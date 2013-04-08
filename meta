@@ -1,11 +1,10 @@
 Version: 1
-Previous: 15dbd312293720f1f4b524639b77b1c2deb675c7
-Head: 2971946b8a8198932b6fe8fd32c37c0c3b43ffdf
+Previous: d51daf9ca4b0cc6a0dd875e7ed4f1e94921bb65b
+Head: d1c5f3833155b7bcbaf9b589ef117ca4688fb521
 Applied:
   autofs-5.0.7-fix-some-automount_8-typos.patch: ef7de25145dae29275f2895edd8537c63597df22
   autofs-5.0.7-syncronize-handle_mounts-shutdown.patch: b633742488880b66d54e80c2b8716a0b326ccdcf
-  autofs-5.0.7-fix-submount-tree-not-all-expiring.patch: 6b9b028f6ac67bf23fd943b680f343cdf0828173
-  refresh-temp: 2971946b8a8198932b6fe8fd32c37c0c3b43ffdf
+  autofs-5.0.7-fix-submount-tree-not-all-expiring.patch: d1c5f3833155b7bcbaf9b589ef117ca4688fb521
 Unapplied:
   debug.patch: 53e6cc3c02501913caf1793355248c60a65de37d
   autofs-5.0.5-wait-for-master-map-available-at-start.patch: 4d3bced9874067bd3b6ac8e830f8fc830ad3eee5
