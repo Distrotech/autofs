@@ -915,6 +915,7 @@ int master_notify_submount(struct autofs_point *ap, const char *path, enum state
 				mounts_mutex_lock(ap);
 				break;
 			}
+			mounts_mutex_lock(ap);
 		}
 
 		/* path not the same */
