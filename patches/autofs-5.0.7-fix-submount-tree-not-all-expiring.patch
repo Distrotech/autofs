@@ -1,5 +1,5 @@
 Bottom: 77e6f9a64fe21d866c09b5e3cf02a3b39e104bc2
-Top:    1cd85c568bd3397bcfb0ff8fd7395658af91c95e
+Top:    bef872f8930c6ee58dce8d13714b672f82c91bdf
 Author: Ian Kent <ikent@redhat.com>
 Date:   2013-04-08 09:57:09 +0800
 
@@ -11,10 +11,10 @@ be expired if that submount is busy.
 ---
 
 diff --git a/lib/master.c b/lib/master.c
-index a0e62f2..173066e 100644
+index a0e62f2..64dbcb1 100644
 --- a/lib/master.c
 +++ b/lib/master.c
-@@ -905,15 +905,28 @@ int master_notify_submount(struct autofs_point *ap, const char *path, enum state
+@@ -905,15 +905,24 @@ int master_notify_submount(struct autofs_point *ap, const char *path, enum state
  		this = list_entry(p, struct autofs_point, mounts);
  		p = p->prev;
  
@@ -31,10 +31,6 @@ index a0e62f2..173066e 100644
 +			char *this_path = strdup(this->path);
 +			if (this_path) {
 +				mounts_mutex_unlock(ap);
-+				/*if (!master_notify_submount(this, path, state)) {
-+					free(this_path);
-+					return 0;
-+				}*/
 +				master_notify_submount(this, path, state);
 +				mounts_mutex_lock(ap);
 +				if (!__master_find_submount(ap, this_path)) {
@@ -48,7 +44,7 @@ index a0e62f2..173066e 100644
  		/* Now we have found the submount we want to expire */
  
  		st_mutex_lock();
-@@ -959,10 +972,7 @@ int master_notify_submount(struct autofs_point *ap, const char *path, enum state
+@@ -959,10 +968,7 @@ int master_notify_submount(struct autofs_point *ap, const char *path, enum state
  			st_mutex_lock();
  		}
  		st_mutex_unlock();
