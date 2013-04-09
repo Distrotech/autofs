@@ -39,6 +39,7 @@
 - document browse option in man page.
 - fix some automount(8) typos.
 - syncronize handle_mounts() shutdown.
+- fix submount tree not all expiring.
 
 25/07/2012 autofs-5.0.7
 =======================
