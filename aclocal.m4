@@ -66,7 +66,7 @@ AC_DEFUN(AF_SLOPPY_MOUNT,
 [if test -n "$MOUNT" ; then
   AC_MSG_CHECKING([if mount accepts the -s option])
   if "$MOUNT" -s > /dev/null 2>&1 ; then
-    AC_DEFINE(HAVE_SLOPPY_MOUNT, 1, [define if the mount command supports the -s option])
+    enable_sloppy_mount=yes
     AC_MSG_RESULT(yes)
   else
     AC_MSG_RESULT(no)
