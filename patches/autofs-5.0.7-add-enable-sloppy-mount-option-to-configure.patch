@@ -3,6 +3,8 @@ Top:    21a6ae9b135380ea49849a82e9ff14288c8f5697
 Author: Ian Kent <ikent@redhat.com>
 Date:   2013-04-22 09:15:11 +0800
 
+autofs-5.0.7 - add enable sloppy mount option to configure
+
 Add an option --enable-sloppy-mount or --disable-sloppy-mount to force
 or prevent the use of the -s option to mount, thus avoiding the
 autodetection. This can be useful in setups where executing mount
