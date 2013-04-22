@@ -1,5 +1,5 @@
 Version: 1
-Previous: b981f1af570830282d507ab5faa54fe0f68d8cbb
+Previous: 7f438e0099c74d8387c9bb25e19c2e7eb69137c5
 Head: f0e8c8d42a88aef160b64d02eeafac47a7c1bf17
 Applied:
   autofs-5.0.7-fix-some-automount_8-typos.patch: ef7de25145dae29275f2895edd8537c63597df22
@@ -7,7 +7,6 @@ Applied:
   autofs-5.0.7-fix-submount-tree-not-all-expiring.patch: 5e80cb28ec8fb405a439d9d9ea711f4fb62a5f86
   autofs-5.0.7-add-enable-sloppy-mount-option-to-configure.patch: f0e8c8d42a88aef160b64d02eeafac47a7c1bf17
 Unapplied:
-  debug.patch: 53e6cc3c02501913caf1793355248c60a65de37d
   autofs-5.0.5-wait-for-master-map-available-at-start.patch: 4d3bced9874067bd3b6ac8e830f8fc830ad3eee5
   autofs-5.0.5-add-master-read-wait-option.patch: fb6140416bb3f0cdcd55bfe263cafa86ab5fb209
   autofs-5.0.6-account-for-new-offset-mount-overlap.patch: 58e4b78cc2bd0742cf8ac3856f33448a782348aa
