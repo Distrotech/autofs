@@ -1,11 +1,11 @@
 Version: 1
-Previous: d06bba0434c8d73ace091aaa552c9941d893a704
+Previous: 1d4699e963817d43faf8ba5399668149a0f938ed
 Head: c3fa9de15cedbe7b914072d19c8bf82797370559
 Applied:
   autofs-5.0.7-fix-some-automount_8-typos.patch: ef7de25145dae29275f2895edd8537c63597df22
   autofs-5.0.7-syncronize-handle_mounts-shutdown.patch: b633742488880b66d54e80c2b8716a0b326ccdcf
   autofs-5.0.7-fix-submount-tree-not-all-expiring.patch: 5e80cb28ec8fb405a439d9d9ea711f4fb62a5f86
-  gentoo453778a.patch: c3fa9de15cedbe7b914072d19c8bf82797370559
+  autofs-5.0.7-add-enable-sloppy-mount-option-to-configure.patch: c3fa9de15cedbe7b914072d19c8bf82797370559
 Unapplied:
   debug.patch: 53e6cc3c02501913caf1793355248c60a65de37d
   autofs-5.0.5-wait-for-master-map-available-at-start.patch: 4d3bced9874067bd3b6ac8e830f8fc830ad3eee5
