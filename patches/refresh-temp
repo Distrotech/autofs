@@ -1,0 +1,85 @@
+Bottom: 1b0488fc616f9947c509c0e33a3838e131ee0663
+Top:    3aa560fa2c7ab0f9eb3ae85b95d01ecf9973ce72
+Author: Ian Kent <ikent@redhat.com>
+Date:   2013-04-22 10:32:05 +0800
+
+Refresh of autofs-5.0.5-wait-for-master-map-available-at-start.patch
+
+---
+
+diff --git a/daemon/automount.c b/daemon/automount.c
+index a05e15d..8c497c9 100644
+--- a/daemon/automount.c
++++ b/daemon/automount.c
+@@ -1272,9 +1272,10 @@ static void *do_read_master(void *arg)
+ 	return NULL;
+ }
+ 
+-static int do_hup_signal(struct master *master, time_t age)
++static int do_hup_signal(struct master *master)
+ {
+ 	unsigned int logopt = master->logopt;
++	time_t age = time(NULL);
+ 	pthread_t thid;
+ 	int status;
+ 
+@@ -1363,7 +1364,7 @@ static void *statemachine(void *arg)
+ 			break;
+ 
+ 		case SIGHUP:
+-			do_hup_signal(master_list, time(NULL));
++			do_hup_signal(master_list);
+ 			break;
+ 
+ 		default:
+@@ -1904,13 +1905,15 @@ static void remove_empty_args(char **argv, int *argc)
+ 	*argc = j;
+ }
+ 
+-static int do_master_read_master(struct master *master, time_t age, int wait)
++static int do_master_read_master(struct master *master, int wait)
+ {
+ 	sigset_t signalset;
++	/* Wait must be at least 1 second */
+ 	unsigned int retry_wait = 2;
+ 	unsigned int elapsed = 0;
+ 	int max_wait = wait;
+ 	int ret = 0;
++	time_t age;
+ 
+ 	sigemptyset(&signalset);
+ 	sigaddset(&signalset, SIGTERM);
+@@ -1921,6 +1924,7 @@ static int do_master_read_master(struct master *master, time_t age, int wait)
+ 	while (1) {
+ 		struct timespec t = { retry_wait, 0 };
+ 
++		age = time(NULL);
+ 		if (master_read_master(master, age, 0)) {
+ 			ret = 1;
+ 			break;
+@@ -1952,7 +1956,6 @@ int main(int argc, char *argv[])
+ 	unsigned dumpmaps, foreground, have_global_options;
+ 	unsigned master_read;
+ 	time_t timeout;
+-	time_t age = time(NULL);
+ 	struct rlimit rlim;
+ 	const char *options = "+hp:t:vmdD:fVrO:l:n:CF";
+ 	static const struct option long_options[] = {
+@@ -2284,7 +2287,7 @@ int main(int argc, char *argv[])
+ 		dh_tirpc = dlopen("libtirpc.so.1", RTLD_NOW);
+ #endif
+ 
+-	master_read = master_read_master(master_list, age, 0);
++	master_read = master_read_master(master_list, time(NULL), 0);
+ 	if (!master_read) {
+ 		if (foreground)
+ 			logerr("%s: failed to read master map, "
+@@ -2312,7 +2315,7 @@ int main(int argc, char *argv[])
+ 		 * a signal is received, in which case exit returning an
+ 		 * error.
+ 		 */
+-		if (!do_master_read_master(master_list, age, -1)) {
++		if (!do_master_read_master(master_list, -1)) {
+ 			logerr("%s: failed to read master map!", program);
+ 			master_kill(master_list);
+ 			release_flag_file();
