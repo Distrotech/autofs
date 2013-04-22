@@ -1,5 +1,5 @@
 Bottom: 78b780fa0e103667f225f3067ef774228ef0c56a
-Top:    21a6ae9b135380ea49849a82e9ff14288c8f5697
+Top:    630ab9625b49a4c45f69eb1bf8d7ddd2b6dbafa6
 Author: Ian Kent <ikent@redhat.com>
 Date:   2013-04-22 09:15:11 +0800
 
@@ -18,6 +18,18 @@ References:
 
 ---
 
+diff --git a/CHANGELOG b/CHANGELOG
+index 4106e7f..1e67332 100644
+--- a/CHANGELOG
++++ b/CHANGELOG
+@@ -40,6 +40,7 @@
+ - fix some automount(8) typos.
+ - syncronize handle_mounts() shutdown.
+ - fix submount tree not all expiring.
++- add enable sloppy mount option to configure.
+ 
+ 25/07/2012 autofs-5.0.7
+ =======================
 diff --git a/aclocal.m4 b/aclocal.m4
 index 47bca0c..c5de159 100644
 --- a/aclocal.m4
