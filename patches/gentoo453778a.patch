@@ -1,0 +1,52 @@
+Bottom: 78b780fa0e103667f225f3067ef774228ef0c56a
+Top:    8ae967390a56a28bf7e50b5cda7847386151dba6
+Author: Ian Kent <ikent@redhat.com>
+Date:   2013-04-22 09:15:11 +0800
+
+Add an option --enable-sloppy-mount or --disable-sloppy-mount to force
+or prevent the use of the -s option to mount, thus avoiding the
+autodetection. This can be useful in setups where executing mount
+might be undesirable, particularly in packaging environments.
+
+2013-04-04 Martin von Gagern
+
+References:
+ * https://bugs.gentoo.org/453778
+
+
+---
+
+diff --git a/aclocal.m4 b/aclocal.m4
+index 47bca0c..c5de159 100644
+--- a/aclocal.m4
++++ b/aclocal.m4
+@@ -66,7 +66,7 @@ AC_DEFUN(AF_SLOPPY_MOUNT,
+ [if test -n "$MOUNT" ; then
+   AC_MSG_CHECKING([if mount accepts the -s option])
+   if "$MOUNT" -s > /dev/null 2>&1 ; then
+-    AC_DEFINE(HAVE_SLOPPY_MOUNT, 1, [define if the mount command supports the -s option])
++    enable_sloppy_mount=yes
+     AC_MSG_RESULT(yes)
+   else
+     AC_MSG_RESULT(no)
+diff --git a/configure.in b/configure.in
+index 4029375..559045a 100644
+--- a/configure.in
++++ b/configure.in
+@@ -157,7 +157,15 @@ AC_SUBST(sssldir)
+ # Newer mounts have the -s (sloppy) option to ignore unknown options,
+ # good for portability
+ #
+-AF_SLOPPY_MOUNT()
++AC_ARG_ENABLE(sloppy-mount,
++[  --enable-sloppy-mount   enable the use of the -s option to mount],,
++	enable_sloppy_mount=auto)
++if test x$enable_sloppy_mount = xauto; then
++	AF_SLOPPY_MOUNT()
++fi
++if test x$enable_sloppy_mount = xyes; then
++	AC_DEFINE(HAVE_SLOPPY_MOUNT, 1, [define if the mount command supports the -s option])
++fi
+ 
+ # LDAP SASL auth needs libxml and Kerberos
+ AF_CHECK_LIBXML()
