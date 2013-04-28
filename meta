@@ -1,8 +1,7 @@
 Version: 1
-Previous: 38abf189f4a321a083fa3a1f71fe983e3688c22f
+Previous: 17daafff093f331fc5df293ab67063761f6c15e8
 Head: 5e80cb28ec8fb405a439d9d9ea711f4fb62a5f86
 Applied:
-  autofs-5.0.7-fix-some-automount_8-typos.patch: ef7de25145dae29275f2895edd8537c63597df22
   autofs-5.0.7-syncronize-handle_mounts-shutdown.patch: b633742488880b66d54e80c2b8716a0b326ccdcf
   autofs-5.0.7-fix-submount-tree-not-all-expiring.patch: 5e80cb28ec8fb405a439d9d9ea711f4fb62a5f86
 Unapplied:
