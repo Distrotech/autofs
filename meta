@@ -1,8 +1,7 @@
 Version: 1
-Previous: 03061c2c4080f5b697ebb1afb27a05044b75a0ff
+Previous: e2c236e8978c8fc415ac64741c7662ffcbb5b065
 Head: 5e80cb28ec8fb405a439d9d9ea711f4fb62a5f86
 Applied:
-  autofs-5.0.7-fix-submount-tree-not-all-expiring.patch: 5e80cb28ec8fb405a439d9d9ea711f4fb62a5f86
 Unapplied:
   autofs-5.0.7-add-enable-sloppy-mount-option-to-configure.patch: f0e8c8d42a88aef160b64d02eeafac47a7c1bf17
   autofs-5.0.5-wait-for-master-map-available-at-start.patch: 7d0e09b1eefe44bfc7be4c5bb49558e7f036b861
