@@ -1,8 +1,7 @@
 Version: 1
-Previous: 17daafff093f331fc5df293ab67063761f6c15e8
+Previous: 03061c2c4080f5b697ebb1afb27a05044b75a0ff
 Head: 5e80cb28ec8fb405a439d9d9ea711f4fb62a5f86
 Applied:
-  autofs-5.0.7-syncronize-handle_mounts-shutdown.patch: b633742488880b66d54e80c2b8716a0b326ccdcf
   autofs-5.0.7-fix-submount-tree-not-all-expiring.patch: 5e80cb28ec8fb405a439d9d9ea711f4fb62a5f86
 Unapplied:
   autofs-5.0.7-add-enable-sloppy-mount-option-to-configure.patch: f0e8c8d42a88aef160b64d02eeafac47a7c1bf17
