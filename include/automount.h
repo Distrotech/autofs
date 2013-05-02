@@ -19,6 +19,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <mntent.h>
+#include <sys/mount.h>
 #include "config.h"
 #include "list.h"
 
@@ -74,6 +75,12 @@ int load_autofs4_module(void);
 #define AUTOFS_SUPER_MAGIC 0x00000187L
 #define SMB_SUPER_MAGIC    0x0000517BL
 #define CIFS_MAGIC_NUMBER  0xFF534D42L
+
+#ifndef MS_UNBINDABLE
+#define MS_UNBINDABLE (1 << 17)
+#endif
+
+extern unsigned long mountflags;
 
 /* This sould be enough for at least 20 host aliases */
 #define HOST_ENT_BUF_SIZE	2048
