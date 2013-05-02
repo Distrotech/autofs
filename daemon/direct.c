@@ -26,17 +26,19 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/ioctl.h>
+#include <sys/mount.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/poll.h>
-#include <sys/mount.h>
 #include <sys/vfs.h>
 #include <sched.h>
 
 #define INCLUDE_PENDING_FUNCTIONS
 #include "automount.h"
+
+extern unsigned long mountflags;
 
 /* Attribute to create detached thread */
 extern pthread_attr_t th_attr_detached;
@@ -420,7 +422,7 @@ int do_mount_autofs_direct(struct autofs_point *ap,
 
 	map_name = me->mc->map->argv[0];
 
-	ret = mount(map_name, me->key, "autofs", MS_MGC_VAL, mp->options);
+	ret = mount(map_name, me->key, "autofs", mountflags, mp->options);
 	if (ret) {
 		crit(ap->logopt, "failed to mount autofs path %s", me->key);
 		goto out_err;
@@ -768,7 +770,7 @@ int mount_autofs_offset(struct autofs_point *ap, struct mapent *me, const char *
 	if (!type || strcmp(ap->entry->maps->type, "hosts"))
 		map_name = me->mc->map->argv[0];
 
-	ret = mount(map_name, mountpoint, "autofs", MS_MGC_VAL, mp->options);
+	ret = mount(map_name, mountpoint, "autofs", mountflags, mp->options);
 	if (ret) {
 		crit(ap->logopt,
 		     "failed to mount offset trigger %s at %s",
