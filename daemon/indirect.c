@@ -146,7 +146,7 @@ static int do_mount_autofs_indirect(struct autofs_point *ap, const char *root)
 	if (!type || strcmp(ap->entry->maps->type, "hosts"))
 		map_name = ap->entry->maps->argv[0];
 
-	ret = mount(map_name, root, "autofs", MS_MGC_VAL, options);
+	ret = mount(map_name, root, "autofs", mountflags, options);
 	if (ret) {
 		crit(ap->logopt,
 		     "failed to mount autofs path %s at %s", ap->path, root);
