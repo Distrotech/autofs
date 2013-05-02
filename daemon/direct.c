@@ -31,7 +31,6 @@
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/poll.h>
-#include <sys/mount.h>
 #include <sys/vfs.h>
 #include <sched.h>
 

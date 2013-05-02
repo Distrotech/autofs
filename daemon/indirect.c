@@ -30,7 +30,6 @@
 #include <sys/wait.h>
 #include <sys/stat.h>
 #include <sys/time.h>
-#include <sys/mount.h>
 #include <sys/vfs.h>
 #include <sched.h>
 
