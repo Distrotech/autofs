@@ -1,0 +1,57 @@
+Bottom: ecc9ecc78540c6d88ebe3cf1a28cb6218d094387
+Top:    6c62c310cec99f8c3d4d8f0b1d129fd8772720a5
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-05-02 16:11:05 +0800
+
+Refresh of autofs-5.0.7-use-MS_UNBINDABLE-for-autofs-mounts.patch
+
+---
+
+diff --git a/daemon/direct.c b/daemon/direct.c
+index ffa4580..e004e50 100644
+--- a/daemon/direct.c
++++ b/daemon/direct.c
+@@ -26,6 +26,7 @@
+ #include <stdlib.h>
+ #include <string.h>
+ #include <sys/ioctl.h>
++#include <sys/mount.h>
+ #include <sys/types.h>
+ #include <sys/wait.h>
+ #include <sys/stat.h>
+diff --git a/daemon/indirect.c b/daemon/indirect.c
+index b0ce508..fadb3f5 100644
+--- a/daemon/indirect.c
++++ b/daemon/indirect.c
+@@ -27,6 +27,7 @@
+ #include <string.h>
+ #include <sys/ioctl.h>
+ #include <sys/types.h>
++#include <sys/mount.h>
+ #include <sys/wait.h>
+ #include <sys/stat.h>
+ #include <sys/time.h>
+diff --git a/include/automount.h b/include/automount.h
+index 40481f0..8a78ea0 100644
+--- a/include/automount.h
++++ b/include/automount.h
+@@ -19,7 +19,6 @@
+ #include <unistd.h>
+ #include <fcntl.h>
+ #include <mntent.h>
+-#include <sys/mount.h>
+ #include "config.h"
+ #include "list.h"
+ 
+diff --git a/lib/mounts.c b/lib/mounts.c
+index 27cf08b..9f76623 100644
+--- a/lib/mounts.c
++++ b/lib/mounts.c
+@@ -17,6 +17,7 @@
+ #include <limits.h>
+ #include <sys/types.h>
+ #include <sys/stat.h>
++#include <sys/mount.h>
+ #include <sys/ioctl.h>
+ #include <sys/wait.h>
+ #include <ctype.h>
