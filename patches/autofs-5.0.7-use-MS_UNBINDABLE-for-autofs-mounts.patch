@@ -1,5 +1,5 @@
 Bottom: 57c49bb54c28ffd41da0b641c52c54a95e397ab5
-Top:    6c62c310cec99f8c3d4d8f0b1d129fd8772720a5
+Top:    bd2a39253a0b01f7f213d9bb2e5a4c9dea557e70
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-05-02 14:37:41 +0800
 
@@ -9,23 +9,10 @@ autofs-5.0.7 - use MS_UNBINDABLE
 ---
 
 diff --git a/daemon/direct.c b/daemon/direct.c
-index 228a666..e004e50 100644
+index 228a666..9d8bcc3 100644
 --- a/daemon/direct.c
 +++ b/daemon/direct.c
-@@ -26,18 +26,20 @@
- #include <stdlib.h>
- #include <string.h>
- #include <sys/ioctl.h>
-+#include <sys/mount.h>
- #include <sys/types.h>
- #include <sys/wait.h>
- #include <sys/stat.h>
- #include <sys/time.h>
- #include <sys/poll.h>
--#include <sys/mount.h>
- #include <sys/vfs.h>
- #include <sched.h>
- 
+@@ -38,6 +38,8 @@
  #define INCLUDE_PENDING_FUNCTIONS
  #include "automount.h"
  
