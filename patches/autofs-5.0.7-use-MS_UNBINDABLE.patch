@@ -1,5 +1,5 @@
 Bottom: 57c49bb54c28ffd41da0b641c52c54a95e397ab5
-Top:    2712163046e0efb6e4e82cb93b94127aae088919
+Top:    da0b296334a36dadc4101fc078c3f1d99cf3655d
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-05-02 14:37:41 +0800
 
@@ -31,7 +31,7 @@ index 228a666..b1fd74a 100644
  		crit(ap->logopt,
  		     "failed to mount offset trigger %s at %s",
 diff --git a/daemon/indirect.c b/daemon/indirect.c
-index f4476dc..ad5a82b 100644
+index f4476dc..2b0ea6e 100644
 --- a/daemon/indirect.c
 +++ b/daemon/indirect.c
 @@ -146,7 +146,7 @@ static int do_mount_autofs_indirect(struct autofs_point *ap, const char *root)
@@ -39,7 +39,7 @@ index f4476dc..ad5a82b 100644
  		map_name = ap->entry->maps->argv[0];
  
 -	ret = mount(map_name, root, "autofs", MS_MGC_VAL, options);
-+	ret = mount(map_name, root, "autofs", MS_UNBINDABLE|MGC_VAL, options);
++	ret = mount(map_name, root, "autofs", MS_UNBINDABLE|MS_MGC_VAL, options);
  	if (ret) {
  		crit(ap->logopt,
  		     "failed to mount autofs path %s at %s", ap->path, root);
