@@ -102,11 +102,14 @@ unsigned int query_kproto_ver(void)
 		return 0;
 	}
 
-	if (mount("automount", t_dir, "autofs", MS_MGC_VAL, options)) {
-		close(pipefd[0]);
-		close(pipefd[1]);
-		rmdir(t_dir);
-		return 0;
+	if (mount("automount", t_dir, "autofs", mountflags, options)) {
+		mountflags &= ~MS_UNBINDABLE;
+		if (mount("automount", t_dir, "autofs", mountflags, options)) {
+			close(pipefd[0]);
+			close(pipefd[1]);
+			rmdir(t_dir);
+			return 0;
+		}
 	}
 
 	close(pipefd[1]);
