@@ -1,5 +1,5 @@
 Bottom: 57c49bb54c28ffd41da0b641c52c54a95e397ab5
-Top:    c9a943dcf902b0bbe9c8e99e542b8779d61c38f2
+Top:    ecc9ecc78540c6d88ebe3cf1a28cb6218d094387
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-05-02 14:37:41 +0800
 
@@ -9,10 +9,10 @@ autofs-5.0.7 - use MS_UNBINDABLE
 ---
 
 diff --git a/daemon/direct.c b/daemon/direct.c
-index 228a666..5c1006d 100644
+index 228a666..ffa4580 100644
 --- a/daemon/direct.c
 +++ b/daemon/direct.c
-@@ -31,7 +31,6 @@
+@@ -31,13 +31,14 @@
  #include <sys/stat.h>
  #include <sys/time.h>
  #include <sys/poll.h>
@@ -20,7 +20,15 @@ index 228a666..5c1006d 100644
  #include <sys/vfs.h>
  #include <sched.h>
  
-@@ -420,7 +419,7 @@ int do_mount_autofs_direct(struct autofs_point *ap,
+ #define INCLUDE_PENDING_FUNCTIONS
+ #include "automount.h"
+ 
++extern unsigned long mountflags;
++
+ /* Attribute to create detached thread */
+ extern pthread_attr_t th_attr_detached;
+ 
+@@ -420,7 +421,7 @@ int do_mount_autofs_direct(struct autofs_point *ap,
  
  	map_name = me->mc->map->argv[0];
  
@@ -29,7 +37,7 @@ index 228a666..5c1006d 100644
  	if (ret) {
  		crit(ap->logopt, "failed to mount autofs path %s", me->key);
  		goto out_err;
-@@ -768,7 +767,7 @@ int mount_autofs_offset(struct autofs_point *ap, struct mapent *me, const char *
+@@ -768,7 +769,7 @@ int mount_autofs_offset(struct autofs_point *ap, struct mapent *me, const char *
  	if (!type || strcmp(ap->entry->maps->type, "hosts"))
  		map_name = me->mc->map->argv[0];
  
@@ -39,10 +47,10 @@ index 228a666..5c1006d 100644
  		crit(ap->logopt,
  		     "failed to mount offset trigger %s at %s",
 diff --git a/daemon/indirect.c b/daemon/indirect.c
-index f4476dc..b2b4bce 100644
+index f4476dc..b0ce508 100644
 --- a/daemon/indirect.c
 +++ b/daemon/indirect.c
-@@ -30,7 +30,6 @@
+@@ -30,13 +30,14 @@
  #include <sys/wait.h>
  #include <sys/stat.h>
  #include <sys/time.h>
@@ -50,7 +58,15 @@ index f4476dc..b2b4bce 100644
  #include <sys/vfs.h>
  #include <sched.h>
  
-@@ -146,7 +145,7 @@ static int do_mount_autofs_indirect(struct autofs_point *ap, const char *root)
+ #define INCLUDE_PENDING_FUNCTIONS
+ #include "automount.h"
+ 
++extern unsigned long mountflags;
++
+ /* Attribute to create detached thread */
+ extern pthread_attr_t th_attr_detached;
+ 
+@@ -146,7 +147,7 @@ static int do_mount_autofs_indirect(struct autofs_point *ap, const char *root)
  	if (!type || strcmp(ap->entry->maps->type, "hosts"))
  		map_name = ap->entry->maps->argv[0];
  
@@ -72,7 +88,7 @@ index 3b4a009..0f7d56a 100644
  #include "automount.h"
  
 diff --git a/include/automount.h b/include/automount.h
-index e72fa0d..46e8530 100644
+index e72fa0d..40481f0 100644
 --- a/include/automount.h
 +++ b/include/automount.h
 @@ -19,6 +19,7 @@
@@ -83,15 +99,13 @@ index e72fa0d..46e8530 100644
  #include "config.h"
  #include "list.h"
  
-@@ -75,6 +76,12 @@ int load_autofs4_module(void);
+@@ -75,6 +76,10 @@ int load_autofs4_module(void);
  #define SMB_SUPER_MAGIC    0x0000517BL
  #define CIFS_MAGIC_NUMBER  0xFF534D42L
  
 +#ifndef MS_UNBINDABLE
 +#define MS_UNBINDABLE (1 << 17)
 +#endif
-+
-+extern unsigned long mountflags;
 +
  /* This sould be enough for at least 20 host aliases */
  #define HOST_ENT_BUF_SIZE	2048
