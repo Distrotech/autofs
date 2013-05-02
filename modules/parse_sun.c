@@ -29,7 +29,6 @@
 #include <sys/vfs.h>
 #include <sys/utsname.h>
 #include <netinet/in.h>
-#include <sys/mount.h>
 #include <linux/fs.h>
 
 #define MODULE_PARSE

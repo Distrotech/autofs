@@ -17,8 +17,8 @@
 #include <limits.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <sys/ioctl.h>
 #include <sys/mount.h>
+#include <sys/ioctl.h>
 #include <sys/wait.h>
 #include <ctype.h>
 #include <stdio.h>
@@ -45,6 +45,8 @@ static const char mnt_name_template[]      = "automount(pid%u)";
 
 static struct kernel_mod_version kver = {0, 0};
 static const char kver_options_template[]  = "fd=%d,pgrp=%u,minproto=3,maxproto=5";
+
+unsigned long mountflags = MS_UNBINDABLE|MS_MGC_VAL;
 
 unsigned int linux_version_code(void)
 {
@@ -102,11 +104,14 @@ unsigned int query_kproto_ver(void)
 		return 0;
 	}
 
-	if (mount("automount", t_dir, "autofs", MS_MGC_VAL, options)) {
-		close(pipefd[0]);
-		close(pipefd[1]);
-		rmdir(t_dir);
-		return 0;
+	if (mount("automount", t_dir, "autofs", mountflags, options)) {
+		mountflags &= ~MS_UNBINDABLE;
+		if (mount("automount", t_dir, "autofs", mountflags, options)) {
+			close(pipefd[0]);
+			close(pipefd[1]);
+			rmdir(t_dir);
+			return 0;
+		}
 	}
 
 	close(pipefd[1]);
