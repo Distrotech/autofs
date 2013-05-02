@@ -1,5 +1,5 @@
 Bottom: 57c49bb54c28ffd41da0b641c52c54a95e397ab5
-Top:    3a14d9ab482bda4efe85623436a9ddbb2a9aaad0
+Top:    1f0d7723fc3e565b562fbe373a2a801c85f2278e
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-05-02 14:37:41 +0800
 
@@ -44,10 +44,18 @@ index f4476dc..45758ef 100644
  		crit(ap->logopt,
  		     "failed to mount autofs path %s at %s", ap->path, root);
 diff --git a/include/automount.h b/include/automount.h
-index e72fa0d..6b1af1b 100644
+index e72fa0d..210712d 100644
 --- a/include/automount.h
 +++ b/include/automount.h
-@@ -75,6 +75,12 @@ int load_autofs4_module(void);
+@@ -19,6 +19,7 @@
+ #include <unistd.h>
+ #include <fcntl.h>
+ #include <mntent.h>
++#include <sys/mount.h>
+ #include "config.h"
+ #include "list.h"
+ 
+@@ -75,6 +76,12 @@ int load_autofs4_module(void);
  #define SMB_SUPER_MAGIC    0x0000517BL
  #define CIFS_MAGIC_NUMBER  0xFF534D42L
  
