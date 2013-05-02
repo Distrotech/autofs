@@ -1,5 +1,5 @@
 Bottom: 57c49bb54c28ffd41da0b641c52c54a95e397ab5
-Top:    3656d211d57cd5f9845c3beb77414d2ed3d25ec2
+Top:    2a552ac0cc5f1859f6e05ec0bd0e1673a2c2a8d7
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-05-02 14:37:41 +0800
 
@@ -61,10 +61,10 @@ index e72fa0d..6b1af1b 100644
  #define HOST_ENT_BUF_SIZE	2048
  
 diff --git a/lib/mounts.c b/lib/mounts.c
-index 550445c..d26209b 100644
+index 550445c..6315201 100644
 --- a/lib/mounts.c
 +++ b/lib/mounts.c
-@@ -102,11 +102,13 @@ unsigned int query_kproto_ver(void)
+@@ -102,11 +102,14 @@ unsigned int query_kproto_ver(void)
  		return 0;
  	}
  
@@ -73,8 +73,9 @@ index 550445c..d26209b 100644
 -		close(pipefd[1]);
 -		rmdir(t_dir);
 -		return 0;
-+	if (mount("automount", t_dir, "autofs", MS_UNBINDABLE|MS_MGC_VAL, options)) {
-+		if (mount("automount", t_dir, "autofs", MS_UNBINDABLE|MS_MGC_VAL, options)) {
++	if (mount("automount", t_dir, "autofs", mountflags, options)) {
++		mountflags &= ~MS_UNBINDABLE;
++		if (mount("automount", t_dir, "autofs", mountflags, options)) {
 +			close(pipefd[0]);
 +			close(pipefd[1]);
 +			rmdir(t_dir);
