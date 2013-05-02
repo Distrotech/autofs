@@ -1,0 +1,20 @@
+Bottom: 3a14d9ab482bda4efe85623436a9ddbb2a9aaad0
+Top:    1f0d7723fc3e565b562fbe373a2a801c85f2278e
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-05-02 15:57:08 +0800
+
+Refresh of autofs-5.0.7-use-MS_UNBINDABLE-for-autofs-mounts.patch
+
+---
+
+diff --git a/include/automount.h b/include/automount.h
+index 6b1af1b..210712d 100644
+--- a/include/automount.h
++++ b/include/automount.h
+@@ -19,6 +19,7 @@
+ #include <unistd.h>
+ #include <fcntl.h>
+ #include <mntent.h>
++#include <sys/mount.h>
+ #include "config.h"
+ #include "list.h"
