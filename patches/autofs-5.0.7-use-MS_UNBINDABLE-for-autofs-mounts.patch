@@ -1,5 +1,5 @@
 Bottom: 57c49bb54c28ffd41da0b641c52c54a95e397ab5
-Top:    7dffb5c05030764bf0d830377de3a957d588633d
+Top:    e991bba32df9df582f8f48dea740a07b91e5e9d9
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-05-02 14:37:41 +0800
 
@@ -110,14 +110,16 @@ index 550445c..7a00f23 100644
  
  	close(pipefd[1]);
 diff --git a/modules/parse_sun.c b/modules/parse_sun.c
-index ae1caf7..d75e117 100644
+index ae1caf7..23cc284 100644
 --- a/modules/parse_sun.c
 +++ b/modules/parse_sun.c
-@@ -29,7 +29,6 @@
+@@ -29,8 +29,8 @@
  #include <sys/vfs.h>
  #include <sys/utsname.h>
  #include <netinet/in.h>
 -#include <sys/mount.h>
  #include <linux/fs.h>
++#include <sys/mount.h>
  
  #define MODULE_PARSE
+ #include "automount.h"
