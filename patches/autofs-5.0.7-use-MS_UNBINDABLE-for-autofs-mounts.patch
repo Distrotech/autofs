@@ -1,5 +1,5 @@
 Bottom: 57c49bb54c28ffd41da0b641c52c54a95e397ab5
-Top:    bd2a39253a0b01f7f213d9bb2e5a4c9dea557e70
+Top:    26c065206f7e34ef10ad46ce1654a841a1bf34d9
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-05-02 14:37:41 +0800
 
@@ -40,21 +40,10 @@ index 228a666..9d8bcc3 100644
  		crit(ap->logopt,
  		     "failed to mount offset trigger %s at %s",
 diff --git a/daemon/indirect.c b/daemon/indirect.c
-index f4476dc..fadb3f5 100644
+index f4476dc..2dba9bf 100644
 --- a/daemon/indirect.c
 +++ b/daemon/indirect.c
-@@ -27,16 +27,18 @@
- #include <string.h>
- #include <sys/ioctl.h>
- #include <sys/types.h>
-+#include <sys/mount.h>
- #include <sys/wait.h>
- #include <sys/stat.h>
- #include <sys/time.h>
--#include <sys/mount.h>
- #include <sys/vfs.h>
- #include <sched.h>
- 
+@@ -37,6 +37,8 @@
  #define INCLUDE_PENDING_FUNCTIONS
  #include "automount.h"
  
