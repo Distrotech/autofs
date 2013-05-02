@@ -45,6 +45,8 @@ static const char mnt_name_template[]      = "automount(pid%u)";
 static struct kernel_mod_version kver = {0, 0};
 static const char kver_options_template[]  = "fd=%d,pgrp=%u,minproto=3,maxproto=5";
 
+unsigned long mountflags = MS_UNBINDABLE|MS_MGC_VAL;
+
 unsigned int linux_version_code(void)
 {
 	struct utsname my_utsname;

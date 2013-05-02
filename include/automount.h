@@ -80,7 +80,7 @@ int load_autofs4_module(void);
 #define MS_UNBINDABLE (1 << 17)
 #endif
 
-unsigned long mountflags = MS_UNBINDABLE|MS_MGC_VAL;
+extern unsigned long mountflags;
 
 /* This sould be enough for at least 20 host aliases */
 #define HOST_ENT_BUF_SIZE	2048
