@@ -1,0 +1,25 @@
+Bottom: 3656d211d57cd5f9845c3beb77414d2ed3d25ec2
+Top:    2a552ac0cc5f1859f6e05ec0bd0e1673a2c2a8d7
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-05-02 15:52:38 +0800
+
+Refresh of autofs-5.0.7-use-MS_UNBINDABLE-for-autofs-mounts.patch
+
+---
+
+diff --git a/lib/mounts.c b/lib/mounts.c
+index d26209b..6315201 100644
+--- a/lib/mounts.c
++++ b/lib/mounts.c
+@@ -102,8 +102,9 @@ unsigned int query_kproto_ver(void)
+ 		return 0;
+ 	}
+ 
+-	if (mount("automount", t_dir, "autofs", MS_UNBINDABLE|MS_MGC_VAL, options)) {
+-		if (mount("automount", t_dir, "autofs", MS_UNBINDABLE|MS_MGC_VAL, options)) {
++	if (mount("automount", t_dir, "autofs", mountflags, options)) {
++		mountflags &= ~MS_UNBINDABLE;
++		if (mount("automount", t_dir, "autofs", mountflags, options)) {
+ 			close(pipefd[0]);
+ 			close(pipefd[1]);
+ 			rmdir(t_dir);
