@@ -30,6 +30,7 @@
 #include <sys/utsname.h>
 #include <netinet/in.h>
 #include <linux/fs.h>
+#include <sys/mount.h>
 
 #define MODULE_PARSE
 #include "automount.h"
