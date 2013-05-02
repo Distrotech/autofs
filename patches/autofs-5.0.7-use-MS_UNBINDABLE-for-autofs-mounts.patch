@@ -1,5 +1,5 @@
 Bottom: 57c49bb54c28ffd41da0b641c52c54a95e397ab5
-Top:    171d259731d98d261a2c94259057a57aeeb69854
+Top:    3656d211d57cd5f9845c3beb77414d2ed3d25ec2
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-05-02 14:37:41 +0800
 
@@ -43,16 +43,43 @@ index f4476dc..2b0ea6e 100644
  	if (ret) {
  		crit(ap->logopt,
  		     "failed to mount autofs path %s at %s", ap->path, root);
+diff --git a/include/automount.h b/include/automount.h
+index e72fa0d..6b1af1b 100644
+--- a/include/automount.h
++++ b/include/automount.h
+@@ -75,6 +75,12 @@ int load_autofs4_module(void);
+ #define SMB_SUPER_MAGIC    0x0000517BL
+ #define CIFS_MAGIC_NUMBER  0xFF534D42L
+ 
++#ifndef MS_UNBINDABLE
++#define MS_UNBINDABLE (1 << 17)
++#endif
++
++unsigned long mountflags = MS_UNBINDABLE|MS_MGC_VAL;
++
+ /* This sould be enough for at least 20 host aliases */
+ #define HOST_ENT_BUF_SIZE	2048
+ 
 diff --git a/lib/mounts.c b/lib/mounts.c
-index 550445c..cfd303c 100644
+index 550445c..d26209b 100644
 --- a/lib/mounts.c
 +++ b/lib/mounts.c
-@@ -102,7 +102,7 @@ unsigned int query_kproto_ver(void)
+@@ -102,11 +102,13 @@ unsigned int query_kproto_ver(void)
  		return 0;
  	}
  
 -	if (mount("automount", t_dir, "autofs", MS_MGC_VAL, options)) {
+-		close(pipefd[0]);
+-		close(pipefd[1]);
+-		rmdir(t_dir);
+-		return 0;
 +	if (mount("automount", t_dir, "autofs", MS_UNBINDABLE|MS_MGC_VAL, options)) {
- 		close(pipefd[0]);
- 		close(pipefd[1]);
- 		rmdir(t_dir);
++		if (mount("automount", t_dir, "autofs", MS_UNBINDABLE|MS_MGC_VAL, options)) {
++			close(pipefd[0]);
++			close(pipefd[1]);
++			rmdir(t_dir);
++			return 0;
++		}
+ 	}
+ 
+ 	close(pipefd[1]);
