@@ -1,0 +1,23 @@
+Bottom: 89e3e265c4ea9adfdf0884d87fe0da1e86b27c12
+Top:    7dffb5c05030764bf0d830377de3a957d588633d
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-05-02 16:14:51 +0800
+
+Refresh of autofs-5.0.7-use-MS_UNBINDABLE-for-autofs-mounts.patch
+
+---
+
+diff --git a/lib/mounts.c b/lib/mounts.c
+index 9f76623..7a00f23 100644
+--- a/lib/mounts.c
++++ b/lib/mounts.c
+@@ -17,8 +17,8 @@
+ #include <limits.h>
+ #include <sys/types.h>
+ #include <sys/stat.h>
+-#include <sys/mount.h>
+ #include <sys/ioctl.h>
++#include <sys/mount.h>
+ #include <sys/wait.h>
+ #include <ctype.h>
+ #include <stdio.h>
