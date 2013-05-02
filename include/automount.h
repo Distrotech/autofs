@@ -19,7 +19,6 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <mntent.h>
-#include <sys/mount.h>
 #include "config.h"
 #include "list.h"
 
