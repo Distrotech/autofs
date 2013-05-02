@@ -24,6 +24,7 @@
 #include <poll.h>
 #include <sys/wait.h>
 #include <sys/stat.h>
+#include <sys/mount.h>
 
 #include "automount.h"
 
