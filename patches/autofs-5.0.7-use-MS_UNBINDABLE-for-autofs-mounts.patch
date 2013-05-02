@@ -1,5 +1,5 @@
 Bottom: 57c49bb54c28ffd41da0b641c52c54a95e397ab5
-Top:    1f0d7723fc3e565b562fbe373a2a801c85f2278e
+Top:    4a2a615817b3d249d54a9821bb401af6f136f16d
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-05-02 14:37:41 +0800
 
@@ -9,10 +9,18 @@ autofs-5.0.7 - use MS_UNBINDABLE
 ---
 
 diff --git a/daemon/direct.c b/daemon/direct.c
-index 228a666..38c8543 100644
+index 228a666..5c1006d 100644
 --- a/daemon/direct.c
 +++ b/daemon/direct.c
-@@ -420,7 +420,7 @@ int do_mount_autofs_direct(struct autofs_point *ap,
+@@ -31,7 +31,6 @@
+ #include <sys/stat.h>
+ #include <sys/time.h>
+ #include <sys/poll.h>
+-#include <sys/mount.h>
+ #include <sys/vfs.h>
+ #include <sched.h>
+ 
+@@ -420,7 +419,7 @@ int do_mount_autofs_direct(struct autofs_point *ap,
  
  	map_name = me->mc->map->argv[0];
  
@@ -21,7 +29,7 @@ index 228a666..38c8543 100644
  	if (ret) {
  		crit(ap->logopt, "failed to mount autofs path %s", me->key);
  		goto out_err;
-@@ -768,7 +768,7 @@ int mount_autofs_offset(struct autofs_point *ap, struct mapent *me, const char *
+@@ -768,7 +767,7 @@ int mount_autofs_offset(struct autofs_point *ap, struct mapent *me, const char *
  	if (!type || strcmp(ap->entry->maps->type, "hosts"))
  		map_name = me->mc->map->argv[0];
  
@@ -31,10 +39,18 @@ index 228a666..38c8543 100644
  		crit(ap->logopt,
  		     "failed to mount offset trigger %s at %s",
 diff --git a/daemon/indirect.c b/daemon/indirect.c
-index f4476dc..45758ef 100644
+index f4476dc..b2b4bce 100644
 --- a/daemon/indirect.c
 +++ b/daemon/indirect.c
-@@ -146,7 +146,7 @@ static int do_mount_autofs_indirect(struct autofs_point *ap, const char *root)
+@@ -30,7 +30,6 @@
+ #include <sys/wait.h>
+ #include <sys/stat.h>
+ #include <sys/time.h>
+-#include <sys/mount.h>
+ #include <sys/vfs.h>
+ #include <sched.h>
+ 
+@@ -146,7 +145,7 @@ static int do_mount_autofs_indirect(struct autofs_point *ap, const char *root)
  	if (!type || strcmp(ap->entry->maps->type, "hosts"))
  		map_name = ap->entry->maps->argv[0];
  
@@ -43,6 +59,18 @@ index f4476dc..45758ef 100644
  	if (ret) {
  		crit(ap->logopt,
  		     "failed to mount autofs path %s at %s", ap->path, root);
+diff --git a/daemon/spawn.c b/daemon/spawn.c
+index 3b4a009..0f7d56a 100644
+--- a/daemon/spawn.c
++++ b/daemon/spawn.c
+@@ -24,7 +24,6 @@
+ #include <poll.h>
+ #include <sys/wait.h>
+ #include <sys/stat.h>
+-#include <sys/mount.h>
+ 
+ #include "automount.h"
+ 
 diff --git a/include/automount.h b/include/automount.h
 index e72fa0d..210712d 100644
 --- a/include/automount.h
@@ -69,10 +97,18 @@ index e72fa0d..210712d 100644
  #define HOST_ENT_BUF_SIZE	2048
  
 diff --git a/lib/mounts.c b/lib/mounts.c
-index 550445c..6315201 100644
+index 550445c..d7b1fe7 100644
 --- a/lib/mounts.c
 +++ b/lib/mounts.c
-@@ -102,11 +102,14 @@ unsigned int query_kproto_ver(void)
+@@ -18,7 +18,6 @@
+ #include <sys/types.h>
+ #include <sys/stat.h>
+ #include <sys/ioctl.h>
+-#include <sys/mount.h>
+ #include <sys/wait.h>
+ #include <ctype.h>
+ #include <stdio.h>
+@@ -102,11 +101,14 @@ unsigned int query_kproto_ver(void)
  		return 0;
  	}
  
@@ -92,3 +128,15 @@ index 550445c..6315201 100644
  	}
  
  	close(pipefd[1]);
+diff --git a/modules/parse_sun.c b/modules/parse_sun.c
+index ae1caf7..d75e117 100644
+--- a/modules/parse_sun.c
++++ b/modules/parse_sun.c
+@@ -29,7 +29,6 @@
+ #include <sys/vfs.h>
+ #include <sys/utsname.h>
+ #include <netinet/in.h>
+-#include <sys/mount.h>
+ #include <linux/fs.h>
+ 
+ #define MODULE_PARSE
