@@ -1,0 +1,24 @@
+Bottom: bd2a39253a0b01f7f213d9bb2e5a4c9dea557e70
+Top:    26c065206f7e34ef10ad46ce1654a841a1bf34d9
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-05-02 16:13:50 +0800
+
+Refresh of autofs-5.0.7-use-MS_UNBINDABLE-for-autofs-mounts.patch
+
+---
+
+diff --git a/daemon/indirect.c b/daemon/indirect.c
+index fadb3f5..2dba9bf 100644
+--- a/daemon/indirect.c
++++ b/daemon/indirect.c
+@@ -27,10 +27,10 @@
+ #include <string.h>
+ #include <sys/ioctl.h>
+ #include <sys/types.h>
+-#include <sys/mount.h>
+ #include <sys/wait.h>
+ #include <sys/stat.h>
+ #include <sys/time.h>
++#include <sys/mount.h>
+ #include <sys/vfs.h>
+ #include <sched.h>
