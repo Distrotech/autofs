@@ -1,5 +1,5 @@
 Bottom: 57c49bb54c28ffd41da0b641c52c54a95e397ab5
-Top:    26c065206f7e34ef10ad46ce1654a841a1bf34d9
+Top:    89e3e265c4ea9adfdf0884d87fe0da1e86b27c12
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-05-02 14:37:41 +0800
 
@@ -61,18 +61,6 @@ index f4476dc..2dba9bf 100644
  	if (ret) {
  		crit(ap->logopt,
  		     "failed to mount autofs path %s at %s", ap->path, root);
-diff --git a/daemon/spawn.c b/daemon/spawn.c
-index 3b4a009..0f7d56a 100644
---- a/daemon/spawn.c
-+++ b/daemon/spawn.c
-@@ -24,7 +24,6 @@
- #include <poll.h>
- #include <sys/wait.h>
- #include <sys/stat.h>
--#include <sys/mount.h>
- 
- #include "automount.h"
- 
 diff --git a/include/automount.h b/include/automount.h
 index e72fa0d..8a78ea0 100644
 --- a/include/automount.h
