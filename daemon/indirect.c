@@ -30,12 +30,13 @@
 #include <sys/wait.h>
 #include <sys/stat.h>
 #include <sys/time.h>
-#include <sys/mount.h>
 #include <sys/vfs.h>
 #include <sched.h>
 
 #define INCLUDE_PENDING_FUNCTIONS
 #include "automount.h"
+
+extern unsigned long mountflags;
 
 /* Attribute to create detached thread */
 extern pthread_attr_t th_attr_detached;
@@ -146,7 +147,7 @@ static int do_mount_autofs_indirect(struct autofs_point *ap, const char *root)
 	if (!type || strcmp(ap->entry->maps->type, "hosts"))
 		map_name = ap->entry->maps->argv[0];
 
-	ret = mount(map_name, root, "autofs", MS_MGC_VAL, options);
+	ret = mount(map_name, root, "autofs", mountflags, options);
 	if (ret) {
 		crit(ap->logopt,
 		     "failed to mount autofs path %s at %s", ap->path, root);
