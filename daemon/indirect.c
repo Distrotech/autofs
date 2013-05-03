@@ -37,8 +37,6 @@
 #define INCLUDE_PENDING_FUNCTIONS
 #include "automount.h"
 
-extern unsigned long mountflags;
-
 /* Attribute to create detached thread */
 extern pthread_attr_t th_attr_detached;
 
