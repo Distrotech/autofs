@@ -1,5 +1,5 @@
 Bottom: 57c49bb54c28ffd41da0b641c52c54a95e397ab5
-Top:    7dc5e5bcab773a09880cf99fc2a43a97da9827d4
+Top:    db1c09bf1ee5cf0b3d74ced0894853e55d09bfe2
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-05-02 14:37:41 +0800
 
@@ -40,7 +40,7 @@ index 228a666..9d8bcc3 100644
  		crit(ap->logopt,
  		     "failed to mount offset trigger %s at %s",
 diff --git a/daemon/indirect.c b/daemon/indirect.c
-index f4476dc..2dba9bf 100644
+index f4476dc..61f2601 100644
 --- a/daemon/indirect.c
 +++ b/daemon/indirect.c
 @@ -37,6 +37,8 @@
@@ -52,7 +52,7 @@ index f4476dc..2dba9bf 100644
  /* Attribute to create detached thread */
  extern pthread_attr_t th_attr_detached;
  
-@@ -146,7 +148,7 @@ static int do_mount_autofs_indirect(struct autofs_point *ap, const char *root)
+@@ -146,13 +148,20 @@ static int do_mount_autofs_indirect(struct autofs_point *ap, const char *root)
  	if (!type || strcmp(ap->entry->maps->type, "hosts"))
  		map_name = ap->entry->maps->argv[0];
  
@@ -61,6 +61,19 @@ index f4476dc..2dba9bf 100644
  	if (ret) {
  		crit(ap->logopt,
  		     "failed to mount autofs path %s at %s", ap->path, root);
+ 		goto out_rmdir;
+ 	}
+ 
++	ret = mount(NULL, root, NULL, MS_UNBINDABLE|MS_REC, NULL);
++	if (ret) {
++		warn(ap->logopt,
++		     "failed to set autofs mount unbindable path %s at %s",
++		     ap->path, root);
++	}
++
+ 	free(options);
+ 	options = NULL;
+ 
 diff --git a/include/automount.h b/include/automount.h
 index e72fa0d..8a78ea0 100644
 --- a/include/automount.h
