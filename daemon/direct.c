@@ -422,10 +422,16 @@ int do_mount_autofs_direct(struct autofs_point *ap,
 
 	map_name = me->mc->map->argv[0];
 
-	ret = mount(map_name, me->key, "autofs", mountflags, mp->options);
+	ret = mount(map_name, me->key, "autofs", MS_MGC_VAL, mp->options);
 	if (ret) {
 		crit(ap->logopt, "failed to mount autofs path %s", me->key);
 		goto out_err;
+	}
+
+	ret = mount(NULL, me->key, NULL, MS_UNBINDABLE|MS_REC, NULL);
+	if (ret) {
+		warn(ap->logopt,
+		     "failed to set autofs mount unbindable path %s", me->key);
 	}
 
 	ret = stat(me->key, &st);
@@ -770,12 +776,19 @@ int mount_autofs_offset(struct autofs_point *ap, struct mapent *me, const char *
 	if (!type || strcmp(ap->entry->maps->type, "hosts"))
 		map_name = me->mc->map->argv[0];
 
-	ret = mount(map_name, mountpoint, "autofs", mountflags, mp->options);
+	ret = mount(map_name, mountpoint, "autofs", MS_MGC_VAL, mp->options);
 	if (ret) {
 		crit(ap->logopt,
 		     "failed to mount offset trigger %s at %s",
 		     me->key, mountpoint);
 		goto out_err;
+	}
+
+	ret = mount(NULL, mountpoint, NULL, MS_UNBINDABLE|MS_REC, NULL);
+	if (ret) {
+		warn(ap->logopt,
+		     "failed to set mount trigger %s unbindable at %s",
+		     me->key, mountpoint);
 	}
 
 	ret = stat(mountpoint, &st);
