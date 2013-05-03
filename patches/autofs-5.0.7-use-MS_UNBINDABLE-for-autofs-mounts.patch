@@ -1,5 +1,5 @@
 Bottom: 57c49bb54c28ffd41da0b641c52c54a95e397ab5
-Top:    db1c09bf1ee5cf0b3d74ced0894853e55d09bfe2
+Top:    5c7d80dbd0d76712225e4a849e09ed90273284f1
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-05-02 14:37:41 +0800
 
@@ -90,7 +90,7 @@ index e72fa0d..8a78ea0 100644
  #define HOST_ENT_BUF_SIZE	2048
  
 diff --git a/lib/mounts.c b/lib/mounts.c
-index 550445c..7a00f23 100644
+index 550445c..494fc7b 100644
 --- a/lib/mounts.c
 +++ b/lib/mounts.c
 @@ -46,6 +46,8 @@ static const char mnt_name_template[]      = "automount(pid%u)";
@@ -102,23 +102,3 @@ index 550445c..7a00f23 100644
  unsigned int linux_version_code(void)
  {
  	struct utsname my_utsname;
-@@ -102,11 +104,14 @@ unsigned int query_kproto_ver(void)
- 		return 0;
- 	}
- 
--	if (mount("automount", t_dir, "autofs", MS_MGC_VAL, options)) {
--		close(pipefd[0]);
--		close(pipefd[1]);
--		rmdir(t_dir);
--		return 0;
-+	if (mount("automount", t_dir, "autofs", mountflags, options)) {
-+		mountflags &= ~MS_UNBINDABLE;
-+		if (mount("automount", t_dir, "autofs", mountflags, options)) {
-+			close(pipefd[0]);
-+			close(pipefd[1]);
-+			rmdir(t_dir);
-+			return 0;
-+		}
- 	}
- 
- 	close(pipefd[1]);

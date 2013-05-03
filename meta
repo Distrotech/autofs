@@ -1,12 +1,11 @@
 Version: 1
-Previous: 3313e56a836cf469e76cf9e45838934672f07eb1
-Head: 94bbb2c3bdf823af3f16ee44ac25467e5d671e27
+Previous: ad44c2fda6a629c23e7698244236dc3fefc07bd3
+Head: b43dca0780b1d41c434d294e475055e5a94fbbe6
 Applied:
   autofs-5.0.7-add-enable-sloppy-mount-option-to-configure.patch: f0e8c8d42a88aef160b64d02eeafac47a7c1bf17
   autofs-5.0.5-wait-for-master-map-available-at-start.patch: 7d0e09b1eefe44bfc7be4c5bb49558e7f036b861
   autofs-5.0.5-add-master-read-wait-option.patch: 676d1f2bcc6fac47020abc83d32326caed3fd156
-  autofs-5.0.7-use-MS_UNBINDABLE-for-autofs-mounts.patch: 4ee2c3d22544986fb890525b6a1baa87f8f6bd5f
-  refresh-temp: 94bbb2c3bdf823af3f16ee44ac25467e5d671e27
+  autofs-5.0.7-use-MS_UNBINDABLE-for-autofs-mounts.patch: b43dca0780b1d41c434d294e475055e5a94fbbe6
 Unapplied:
   autofs-5.0.6-account-for-new-offset-mount-overlap.patch: 58e4b78cc2bd0742cf8ac3856f33448a782348aa
   autofs-5.0.5-automount-daemon-getting-killed-by-SIGBUS.patch: 2b09c3c182b2732f576cd9798c0e2d19f925ed6b
