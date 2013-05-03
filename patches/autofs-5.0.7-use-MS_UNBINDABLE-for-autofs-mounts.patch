@@ -1,5 +1,5 @@
 Bottom: 57c49bb54c28ffd41da0b641c52c54a95e397ab5
-Top:    1efd1a63fce0a680ae423da3f98f3397659c6870
+Top:    b9081271368fc3fd8f9a8c571292c9a6b4e2ea1d
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-05-02 14:37:41 +0800
 
@@ -9,19 +9,10 @@ autofs-5.0.7 - use MS_UNBINDABLE
 ---
 
 diff --git a/daemon/direct.c b/daemon/direct.c
-index 228a666..b52f52c 100644
+index 228a666..1f5266c 100644
 --- a/daemon/direct.c
 +++ b/daemon/direct.c
-@@ -38,6 +38,8 @@
- #define INCLUDE_PENDING_FUNCTIONS
- #include "automount.h"
- 
-+extern unsigned long mountflags;
-+
- /* Attribute to create detached thread */
- extern pthread_attr_t th_attr_detached;
- 
-@@ -426,6 +428,12 @@ int do_mount_autofs_direct(struct autofs_point *ap,
+@@ -426,6 +426,12 @@ int do_mount_autofs_direct(struct autofs_point *ap,
  		goto out_err;
  	}
  
@@ -34,7 +25,7 @@ index 228a666..b52f52c 100644
  	ret = stat(me->key, &st);
  	if (ret == -1) {
  		error(ap->logopt,
-@@ -776,6 +784,13 @@ int mount_autofs_offset(struct autofs_point *ap, struct mapent *me, const char *
+@@ -776,6 +782,13 @@ int mount_autofs_offset(struct autofs_point *ap, struct mapent *me, const char *
  		goto out_err;
  	}
  
@@ -49,19 +40,10 @@ index 228a666..b52f52c 100644
  	if (ret == -1) {
  		error(ap->logopt,
 diff --git a/daemon/indirect.c b/daemon/indirect.c
-index f4476dc..131f6f0 100644
+index f4476dc..02a1de6 100644
 --- a/daemon/indirect.c
 +++ b/daemon/indirect.c
-@@ -37,6 +37,8 @@
- #define INCLUDE_PENDING_FUNCTIONS
- #include "automount.h"
- 
-+extern unsigned long mountflags;
-+
- /* Attribute to create detached thread */
- extern pthread_attr_t th_attr_detached;
- 
-@@ -153,6 +155,13 @@ static int do_mount_autofs_indirect(struct autofs_point *ap, const char *root)
+@@ -153,6 +153,13 @@ static int do_mount_autofs_indirect(struct autofs_point *ap, const char *root)
  		goto out_rmdir;
  	}
  
