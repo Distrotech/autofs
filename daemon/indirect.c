@@ -155,6 +155,13 @@ static int do_mount_autofs_indirect(struct autofs_point *ap, const char *root)
 		goto out_rmdir;
 	}
 
+	ret = mount(NULL, root, NULL, MS_UNBINDABLE|MS_REC, NULL);
+	if (ret) {
+		warn(ap->logopt,
+		     "failed to set autofs mount unbindable path %s at %s",
+		     ap->path, root);
+	}
+
 	free(options);
 	options = NULL;
 
