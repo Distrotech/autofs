@@ -1,0 +1,22 @@
+Bottom: 5c7d80dbd0d76712225e4a849e09ed90273284f1
+Top:    3364decc8ef789ea39cb60a8376e3028b6578cf7
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-05-03 14:57:39 +0800
+
+Refresh of autofs-5.0.7-use-MS_UNBINDABLE-for-autofs-mounts.patch
+
+---
+
+diff --git a/daemon/indirect.c b/daemon/indirect.c
+index 61f2601..131f6f0 100644
+--- a/daemon/indirect.c
++++ b/daemon/indirect.c
+@@ -148,7 +148,7 @@ static int do_mount_autofs_indirect(struct autofs_point *ap, const char *root)
+ 	if (!type || strcmp(ap->entry->maps->type, "hosts"))
+ 		map_name = ap->entry->maps->argv[0];
+ 
+-	ret = mount(map_name, root, "autofs", mountflags, options);
++	ret = mount(map_name, root, "autofs", MS_MGC_VAL, options);
+ 	if (ret) {
+ 		crit(ap->logopt,
+ 		     "failed to mount autofs path %s at %s", ap->path, root);
