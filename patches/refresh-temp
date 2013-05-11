@@ -1,0 +1,22 @@
+Bottom: 8a293fd70445c3ee3ad1264409457fd55f9e8897
+Top:    9d0437d7bd3cd2feb8e4b69bfd776f4a6ebae6c7
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-05-11 10:48:31 +0800
+
+Refresh of autofs-5.0.7-document-allowed-map-sources-in-auto_master.patch
+
+---
+
+diff --git a/man/auto.master.5.in b/man/auto.master.5.in
+index 236f84b..80a560d 100644
+--- a/man/auto.master.5.in
++++ b/man/auto.master.5.in
+@@ -61,7 +61,7 @@ present in the master map by including a line of the form:
+ and 
+ .BR automount (8)
+ will process the map according to the specification described below for
+-map entries. Indirect map entries must be unique in the master map and
++map entries. Indirect map entries must be unique in the master map so
+ second and subsequent entries for an indirect mount point are ignored by
+ .BR automount (8).
+ .SH "FORMAT"
