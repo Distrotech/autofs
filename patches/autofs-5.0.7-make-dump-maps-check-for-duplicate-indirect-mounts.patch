@@ -1,5 +1,5 @@
 Bottom: 78b780fa0e103667f225f3067ef774228ef0c56a
-Top:    f5e3dafefda8c3d632a39ac50d7f18122ee34e45
+Top:    e8edb34c654f02c6a09d0720f9203ace916182a0
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-05-11 09:33:30 +0800
 
@@ -13,6 +13,18 @@ be ignored at runtime.
 
 ---
 
+diff --git a/CHANGELOG b/CHANGELOG
+index 4106e7f..4576d47 100644
+--- a/CHANGELOG
++++ b/CHANGELOG
+@@ -40,6 +40,7 @@
+ - fix some automount(8) typos.
+ - syncronize handle_mounts() shutdown.
+ - fix submount tree not all expiring.
++- make dump maps check for duplicate indirect mounts.
+ 
+ 25/07/2012 autofs-5.0.7
+ =======================
 diff --git a/lib/master.c b/lib/master.c
 index 64dbcb1..2bb62fe 100644
 --- a/lib/master.c
