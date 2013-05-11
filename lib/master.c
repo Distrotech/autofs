@@ -1310,6 +1310,7 @@ int master_show_mounts(struct master *master)
 		struct master_mapent *this;
 		struct autofs_point *ap;
 		time_t now = time(NULL);
+		unsigned int count = 0;
 		int i;
 
 		this = list_entry(p, struct master_mapent, list);
@@ -1360,6 +1361,9 @@ int master_show_mounts(struct master *master)
 					printf("  map: %s\n", source->argv[0]);
 					i = 1;
 				}
+				if (count && ap->type == LKP_INDIRECT)
+					printf("  duplicate indirect map entry"
+					       " will be ignored at run time\n");
 				if (source->argc > 1) {
 					printf("  arguments: ");
 					for (; i < source->argc; i++)
@@ -1378,6 +1382,8 @@ int master_show_mounts(struct master *master)
 					printf("  %s | %s\n", me->key, me->mapent);
 				} while ((me = cache_lookup_next(source->mc, me)));
 			}
+
+			count++;
 
 			source = source->next;
 		}
