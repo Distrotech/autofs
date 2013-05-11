@@ -61,7 +61,7 @@ present in the master map by including a line of the form:
 and 
 .BR automount (8)
 will process the map according to the specification described below for
-map entries. Indirect map entries must be unique in the master map and
+map entries. Indirect map entries must be unique in the master map so
 second and subsequent entries for an indirect mount point are ignored by
 .BR automount (8).
 .SH "FORMAT"
