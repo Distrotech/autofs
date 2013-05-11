@@ -1,5 +1,5 @@
-Bottom: 6f96ca83df8184ecfb2b718aed74d040c8e3f2be
-Top:    9d0437d7bd3cd2feb8e4b69bfd776f4a6ebae6c7
+Bottom: f5e3dafefda8c3d632a39ac50d7f18122ee34e45
+Top:    f523fb7952c747ffcb05a3ca5375579f880d2175
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-05-11 10:40:45 +0800
 
@@ -12,7 +12,7 @@ only one map source.
 ---
 
 diff --git a/man/auto.master.5.in b/man/auto.master.5.in
-index 091f517..80a560d 100644
+index c552e56..7907ffa 100644
 --- a/man/auto.master.5.in
 +++ b/man/auto.master.5.in
 @@ -40,7 +40,8 @@ For direct maps the mount point is always specified as:
