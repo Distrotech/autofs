@@ -1,5 +1,5 @@
-Bottom: cc4e77ddbdc524cbd81cbba145c334b1f216517e
-Top:    9011223e7833662c03c9c155fee1580665d9db19
+Bottom: 78463c3919e19175ecd65afb3a3e68ece58d9267
+Top:    d1ca750aed889d2f8e73d5e502c44fed7f40c5a1
 Author: Ian Kent <raven@themaw.net>
 Date:   2011-03-07 13:03:55 +0800
 
@@ -13,12 +13,12 @@ so we can get a startup map.
 ---
 
 diff --git a/CHANGELOG b/CHANGELOG
-index 1e67332..08338b5 100644
+index 66c11de..a0cd4e0 100644
 --- a/CHANGELOG
 +++ b/CHANGELOG
-@@ -41,6 +41,7 @@
- - syncronize handle_mounts() shutdown.
- - fix submount tree not all expiring.
+@@ -43,6 +43,7 @@
+ - make dump maps check for duplicate indirect mounts.
+ - document allowed map sources in auto.master.
  - add enable sloppy mount option to configure.
 +- wait for master map to be available at start.
  
