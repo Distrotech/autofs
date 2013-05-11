@@ -1,5 +1,5 @@
-Bottom: 3aa560fa2c7ab0f9eb3ae85b95d01ecf9973ce72
-Top:    57c49bb54c28ffd41da0b641c52c54a95e397ab5
+Bottom: 9011223e7833662c03c9c155fee1580665d9db19
+Top:    9d0437d7bd3cd2feb8e4b69bfd776f4a6ebae6c7
 Author: Ian Kent <raven@themaw.net>
 Date:   2011-03-07 13:04:01 +0800
 
@@ -125,10 +125,10 @@ index ae1162f..ed521b7 100644
  {
  	long n_timeout;
 diff --git a/man/auto.master.5.in b/man/auto.master.5.in
-index c552e56..091f517 100644
+index 7907ffa..80a560d 100644
 --- a/man/auto.master.5.in
 +++ b/man/auto.master.5.in
-@@ -211,6 +211,11 @@ They are:
+@@ -214,6 +214,11 @@ They are:
  .B TIMEOUT
  sets the default mount timeout (program default 600).
  .TP
