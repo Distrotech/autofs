@@ -1,5 +1,5 @@
 Bottom: 57c49bb54c28ffd41da0b641c52c54a95e397ab5
-Top:    49b405a11672fcbef9ae0c0ecd222f3334912941
+Top:    eb7a9ad0d044f0452e9fd12d745f5dc7fc07dcb1
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-05-11 09:33:30 +0800
 
@@ -9,7 +9,7 @@ autofs-5.0.7 - make dump maps check for duplicate indirect mounts
 ---
 
 diff --git a/lib/master.c b/lib/master.c
-index 0cf9de8..f2a9c0d 100644
+index 0cf9de8..6143a9c 100644
 --- a/lib/master.c
 +++ b/lib/master.c
 @@ -1313,6 +1313,7 @@ int master_show_mounts(struct master *master)
@@ -20,18 +20,19 @@ index 0cf9de8..f2a9c0d 100644
  		int i;
  
  		this = list_entry(p, struct master_mapent, list);
-@@ -1349,6 +1350,10 @@ int master_show_mounts(struct master *master)
+@@ -1349,6 +1350,11 @@ int master_show_mounts(struct master *master)
  		while (source) {
  			struct mapent *me;
  
 +			if (count && ap->type == LKP_INDIRECT)
 +				printf("\n  duplicate indirect map source for"
-+					" %s, will be ignored at run time\n");
++					" %s, will be ignored at run time\n",
++					ap->path);
 +
  			if (source->type)
  				printf("\n  type: %s\n", source->type);
  			else {
-@@ -1382,6 +1387,8 @@ int master_show_mounts(struct master *master)
+@@ -1382,6 +1388,8 @@ int master_show_mounts(struct master *master)
  				} while ((me = cache_lookup_next(source->mc, me)));
  			}
  
