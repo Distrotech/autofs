@@ -1352,7 +1352,8 @@ int master_show_mounts(struct master *master)
 
 			if (count && ap->type == LKP_INDIRECT)
 				printf("\n  duplicate indirect map source for"
-					" %s, will be ignored at run time\n");
+					" %s, will be ignored at run time\n",
+					ap->path);
 
 			if (source->type)
 				printf("\n  type: %s\n", source->type);
