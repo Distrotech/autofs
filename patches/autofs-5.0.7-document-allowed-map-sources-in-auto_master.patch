@@ -1,5 +1,5 @@
 Bottom: e8edb34c654f02c6a09d0720f9203ace916182a0
-Top:    e828777c26f82649a1da8e18d87f0d518bdd1595
+Top:    3bfa752ac206f3d41cab7184bb78c446a7210d3b
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-05-11 10:40:45 +0800
 
@@ -11,6 +11,18 @@ only one map source.
 
 ---
 
+diff --git a/CHANGELOG b/CHANGELOG
+index 4576d47..61edddf 100644
+--- a/CHANGELOG
++++ b/CHANGELOG
+@@ -41,6 +41,7 @@
+ - syncronize handle_mounts() shutdown.
+ - fix submount tree not all expiring.
+ - make dump maps check for duplicate indirect mounts.
++- document allowed map sources in auto.master.
+ 
+ 25/07/2012 autofs-5.0.7
+ =======================
 diff --git a/man/auto.master.5.in b/man/auto.master.5.in
 index c552e56..7907ffa 100644
 --- a/man/auto.master.5.in
