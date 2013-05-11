@@ -1,5 +1,5 @@
 Bottom: 57c49bb54c28ffd41da0b641c52c54a95e397ab5
-Top:    e72a3635922f21ffe2f69bb8f6d0ceef979966e2
+Top:    0f21cceb4d96e4896342947541fd9c5faedbddd2
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-05-11 09:33:30 +0800
 
@@ -14,7 +14,7 @@ be ignored at runtime.
 ---
 
 diff --git a/lib/master.c b/lib/master.c
-index 0cf9de8..36d677c 100644
+index 0cf9de8..97c849f 100644
 --- a/lib/master.c
 +++ b/lib/master.c
 @@ -1313,6 +1313,7 @@ int master_show_mounts(struct master *master)
@@ -30,8 +30,8 @@ index 0cf9de8..36d677c 100644
  					i = 1;
  				}
 +				if (count && ap->type == LKP_INDIRECT)
-+					printf("  duplicate map source will be"
-+					       " ignored at run time\n");
++					printf("  duplicate indirect map source"
++					       " will be ignored at run time\n");
  				if (source->argc > 1) {
  					printf("  arguments: ");
  					for (; i < source->argc; i++)
