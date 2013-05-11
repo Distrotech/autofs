@@ -1,5 +1,5 @@
 Bottom: 57c49bb54c28ffd41da0b641c52c54a95e397ab5
-Top:    46443fdac177f3a6d9a4cd66b4e645ecf3cd501c
+Top:    e72a3635922f21ffe2f69bb8f6d0ceef979966e2
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-05-11 09:33:30 +0800
 
@@ -9,7 +9,7 @@ autofs-5.0.7 - make dump maps check for duplicate indirect mounts
 ---
 
 diff --git a/lib/master.c b/lib/master.c
-index 0cf9de8..9e2ecfb 100644
+index 0cf9de8..36d677c 100644
 --- a/lib/master.c
 +++ b/lib/master.c
 @@ -1313,6 +1313,7 @@ int master_show_mounts(struct master *master)
@@ -26,7 +26,7 @@ index 0cf9de8..9e2ecfb 100644
  				}
 +				if (count && ap->type == LKP_INDIRECT)
 +					printf("  duplicate map source will be"
-+						" ignored at run time\n");
++					       " ignored at run time\n");
  				if (source->argc > 1) {
  					printf("  arguments: ");
  					for (; i < source->argc; i++)
