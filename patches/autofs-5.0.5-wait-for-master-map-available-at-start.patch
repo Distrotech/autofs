@@ -1,5 +1,5 @@
-Bottom: 630ab9625b49a4c45f69eb1bf8d7ddd2b6dbafa6
-Top:    3aa560fa2c7ab0f9eb3ae85b95d01ecf9973ce72
+Bottom: cc4e77ddbdc524cbd81cbba145c334b1f216517e
+Top:    9011223e7833662c03c9c155fee1580665d9db19
 Author: Ian Kent <raven@themaw.net>
 Date:   2011-03-07 13:03:55 +0800
 
@@ -179,7 +179,7 @@ index e3d9536..ee90556 100644
  		      "reading master %s %s", this->source, master->name);
  
 diff --git a/lib/master.c b/lib/master.c
-index 64dbcb1..0cf9de8 100644
+index 2bb62fe..7809d42 100644
 --- a/lib/master.c
 +++ b/lib/master.c
 @@ -865,7 +865,10 @@ int master_read_master(struct master *master, time_t age, int readall)
