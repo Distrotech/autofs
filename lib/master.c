@@ -1350,11 +1350,6 @@ int master_show_mounts(struct master *master)
 		while (source) {
 			struct mapent *me;
 
-			if (count && ap->type == LKP_INDIRECT)
-				printf("\n  duplicate indirect map source for"
-					" %s, will be ignored at run time\n",
-					ap->path);
-
 			if (source->type)
 				printf("\n  type: %s\n", source->type);
 			else {
@@ -1369,6 +1364,9 @@ int master_show_mounts(struct master *master)
 					printf("  map: %s\n", source->argv[0]);
 					i = 1;
 				}
+				if (count && ap->type == LKP_INDIRECT)
+					printf("  duplicate map source will be"
+						" ignored at run time\n");
 				if (source->argc > 1) {
 					printf("  arguments: ");
 					for (; i < source->argc; i++)
