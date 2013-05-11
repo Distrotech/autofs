@@ -1,5 +1,5 @@
-Bottom: 9011223e7833662c03c9c155fee1580665d9db19
-Top:    9d0437d7bd3cd2feb8e4b69bfd776f4a6ebae6c7
+Bottom: d1ca750aed889d2f8e73d5e502c44fed7f40c5a1
+Top:    a9755310c9a1e8cd1c7e77f6ce5b654f7f14c748
 Author: Ian Kent <raven@themaw.net>
 Date:   2011-03-07 13:04:01 +0800
 
@@ -12,11 +12,11 @@ wait for the master map to become available at program start.
 ---
 
 diff --git a/CHANGELOG b/CHANGELOG
-index 08338b5..b43ad57 100644
+index a0cd4e0..f7301f6 100644
 --- a/CHANGELOG
 +++ b/CHANGELOG
-@@ -42,6 +42,7 @@
- - fix submount tree not all expiring.
+@@ -44,6 +44,7 @@
+ - document allowed map sources in auto.master.
  - add enable sloppy mount option to configure.
  - wait for master map to be available at start.
 +- add master read wait option.
