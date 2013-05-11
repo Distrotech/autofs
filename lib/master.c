@@ -1366,7 +1366,7 @@ int master_show_mounts(struct master *master)
 				}
 				if (count && ap->type == LKP_INDIRECT)
 					printf("  duplicate map source will be"
-						" ignored at run time\n");
+					       " ignored at run time\n");
 				if (source->argc > 1) {
 					printf("  arguments: ");
 					for (; i < source->argc; i++)
