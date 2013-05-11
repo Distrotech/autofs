@@ -40,7 +40,8 @@ For direct maps the mount point is always specified as:
 .P
 /-
 .P
-and the key used within the direct map is the full path to the mount point.
+and the key used within the direct map is the full path to the mount point. The direct map
+may have multiple entries in the master map.
 .P
 For indirect maps access is by using the path scheme:
 .P
@@ -60,7 +61,9 @@ present in the master map by including a line of the form:
 and 
 .BR automount (8)
 will process the map according to the specification described below for
-map entries.
+map entries. Indirect map entries must be unique in the master map so
+second and subsequent entries for an indirect mount point are ignored by
+.BR automount (8).
 .SH "FORMAT"
 Master map entries have three fields separated by an arbitrary number
 of spaces or tabs. Lines beginning with # are comments. The first field
