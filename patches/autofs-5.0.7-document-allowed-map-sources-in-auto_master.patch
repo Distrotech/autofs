@@ -1,5 +1,5 @@
 Bottom: 6f96ca83df8184ecfb2b718aed74d040c8e3f2be
-Top:    8a293fd70445c3ee3ad1264409457fd55f9e8897
+Top:    9d0437d7bd3cd2feb8e4b69bfd776f4a6ebae6c7
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-05-11 10:40:45 +0800
 
@@ -12,7 +12,7 @@ only one map source.
 ---
 
 diff --git a/man/auto.master.5.in b/man/auto.master.5.in
-index 091f517..236f84b 100644
+index 091f517..80a560d 100644
 --- a/man/auto.master.5.in
 +++ b/man/auto.master.5.in
 @@ -40,7 +40,8 @@ For direct maps the mount point is always specified as:
@@ -30,7 +30,7 @@ index 091f517..236f84b 100644
  .BR automount (8)
  will process the map according to the specification described below for
 -map entries.
-+map entries. Indirect map entries must be unique in the master map and
++map entries. Indirect map entries must be unique in the master map so
 +second and subsequent entries for an indirect mount point are ignored by
 +.BR automount (8).
  .SH "FORMAT"
