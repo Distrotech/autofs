@@ -1,12 +1,13 @@
 Version: 1
-Previous: 6df9e0533c89845c5a0ce2fb18ded95b39e9ebeb
-Head: 8f208f03f04f4e05e0fb0df85291b5e565302716
+Previous: e02c5e168a2fdab9af29abcfc0086681a21d7c11
+Head: 1f2867413e6a4ea56648617465cc95c50a624a38
 Applied:
   autofs-5.0.7-add-enable-sloppy-mount-option-to-configure.patch: f0e8c8d42a88aef160b64d02eeafac47a7c1bf17
   autofs-5.0.5-wait-for-master-map-available-at-start.patch: 7d0e09b1eefe44bfc7be4c5bb49558e7f036b861
   autofs-5.0.5-add-master-read-wait-option.patch: 676d1f2bcc6fac47020abc83d32326caed3fd156
   autofs-5.0.7-make-dump-maps-check-for-duplicate-indirect-mounts.patch: 49b2c8c702e5527c4a180dbbbb9422c813b8eb3f
   autofs-5.0.7-document-allowed-map-sources-in-auto_master.patch: 8f208f03f04f4e05e0fb0df85291b5e565302716
+  refresh-temp: 1f2867413e6a4ea56648617465cc95c50a624a38
 Unapplied:
   autofs-5.0.7-use-MS_UNBINDABLE-for-autofs-mounts.patch: 1f538797c99b2ce0524c191bc422416962219292
   autofs-5.0.6-account-for-new-offset-mount-overlap.patch: 58e4b78cc2bd0742cf8ac3856f33448a782348aa
