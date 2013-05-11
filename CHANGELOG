@@ -41,6 +41,7 @@
 - syncronize handle_mounts() shutdown.
 - fix submount tree not all expiring.
 - make dump maps check for duplicate indirect mounts.
+- document allowed map sources in auto.master.
 
 25/07/2012 autofs-5.0.7
 =======================
