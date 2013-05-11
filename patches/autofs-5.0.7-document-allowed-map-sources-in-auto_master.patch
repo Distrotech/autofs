@@ -1,0 +1,14 @@
+Bottom: 6f96ca83df8184ecfb2b718aed74d040c8e3f2be
+Top:    6f96ca83df8184ecfb2b718aed74d040c8e3f2be
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-05-11 10:40:45 +0800
+
+autofs-5.0.7 - document allowed map sources in auto.master
+
+Direct map may have multiple map sources but indirect maps may have
+only one map source.
+
+
+---
+
+
