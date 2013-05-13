@@ -7,8 +7,8 @@ autofs-5.0.7 - make dump maps check for duplicate indirect mounts
 
 The dumpmaps function was intended for users to find out how the configured
 mounts would be seen by automount. It does limited amount of checking and in
-particular doesn't report the fact that duplicate indirect map sources will
-be ignored at runtime.
+particular doesn't report that duplicate indirect map sources will be ignored
+at runtime or reprot nulled map entries.
 
 
 ---
