@@ -1,5 +1,5 @@
 Bottom: 78b780fa0e103667f225f3067ef774228ef0c56a
-Top:    71edc184c26d8dc7c2aa9e7e6dade5bb8a318edc
+Top:    9d44dd9fb576540f590e147b23862e08b628e78d
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-05-11 09:33:30 +0800
 
@@ -26,7 +26,7 @@ index 4106e7f..4576d47 100644
  25/07/2012 autofs-5.0.7
  =======================
 diff --git a/lib/master.c b/lib/master.c
-index 64dbcb1..7663d57 100644
+index 64dbcb1..eca3523 100644
 --- a/lib/master.c
 +++ b/lib/master.c
 @@ -1310,6 +1310,7 @@ int master_show_mounts(struct master *master)
@@ -37,21 +37,15 @@ index 64dbcb1..7663d57 100644
  		int i;
  
  		this = list_entry(p, struct master_mapent, list);
-@@ -1318,6 +1319,13 @@ int master_show_mounts(struct master *master)
+@@ -1318,6 +1319,7 @@ int master_show_mounts(struct master *master)
  		ap = this->ap;
  
  		printf("\nMount point: %s\n", ap->path);
 +
-+		/* Report nulled nulled entries */
-+		if (cache_lookup_distinct(master->nc, path)) {
-+			printf("\nmap entry %s nulled by previous entry\n",
-+			       ap->path);
-+		}
-+
  		printf("\nsource(s):\n");
  
  		/*
-@@ -1360,6 +1368,9 @@ int master_show_mounts(struct master *master)
+@@ -1360,6 +1362,9 @@ int master_show_mounts(struct master *master)
  					printf("  map: %s\n", source->argv[0]);
  					i = 1;
  				}
@@ -61,7 +55,7 @@ index 64dbcb1..7663d57 100644
  				if (source->argc > 1) {
  					printf("  arguments: ");
  					for (; i < source->argc; i++)
-@@ -1379,6 +1390,8 @@ int master_show_mounts(struct master *master)
+@@ -1379,6 +1384,8 @@ int master_show_mounts(struct master *master)
  				} while ((me = cache_lookup_next(source->mc, me)));
  			}
  
