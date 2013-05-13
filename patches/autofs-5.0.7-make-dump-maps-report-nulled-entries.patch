@@ -3,7 +3,7 @@ Top:    d8a9b592f0b0d57f1a8a8c67617bf5c0df0664a2
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-05-13 10:06:42 +0800
 
-autofs-5.0.7 - 
+autofs-5.0.7 - make dump maps report nulled entries
 
 
 ---
