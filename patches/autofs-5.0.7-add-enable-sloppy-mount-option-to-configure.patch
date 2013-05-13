@@ -1,5 +1,5 @@
 Bottom: 7adb9e874acaa19a22e0a4b3a351672617f52960
-Top:    b38b8cfc05b832cb00b3591c1521509abcf18839
+Top:    88a0a806d2a7897d56af99a4394e79a88ec94630
 Author: Ian Kent <ikent@redhat.com>
 Date:   2013-04-22 09:15:11 +0800
 
@@ -690,15 +690,19 @@ index 4029375..559045a 100644
  # LDAP SASL auth needs libxml and Kerberos
  AF_CHECK_LIBXML()
 diff --git a/lib/master.c b/lib/master.c
-index 7663d57..836c0fd 100644
+index 7663d57..eca3523 100644
 --- a/lib/master.c
 +++ b/lib/master.c
-@@ -1321,7 +1321,7 @@ int master_show_mounts(struct master *master)
+@@ -1320,12 +1320,6 @@ int master_show_mounts(struct master *master)
+ 
  		printf("\nMount point: %s\n", ap->path);
  
- 		/* Report nulled nulled entries */
+-		/* Report nulled nulled entries */
 -		if (cache_lookup_distinct(master->nc, path)) {
-+		if (cache_lookup_distinct(master->nc, ap->path)) {
- 			printf("\nmap entry %s nulled by previous entry\n",
- 			       ap->path);
- 		}
+-			printf("\nmap entry %s nulled by previous entry\n",
+-			       ap->path);
+-		}
+-
+ 		printf("\nsource(s):\n");
+ 
+ 		/*
