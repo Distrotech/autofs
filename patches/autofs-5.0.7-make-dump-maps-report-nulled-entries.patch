@@ -5,6 +5,11 @@ Date:   2013-05-13 10:06:42 +0800
 
 autofs-5.0.7 - make dump maps report nulled entries
 
+The dumpmaps function was intended for users to find out how the configured
+mounts would be seen by automount. It does limited amount of checking and in
+particular doesn't report the fact that duplicate indirect map sources will
+be ignored at runtime.
+
 
 ---
 
