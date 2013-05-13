@@ -1,0 +1,26 @@
+Bottom: 71edc184c26d8dc7c2aa9e7e6dade5bb8a318edc
+Top:    9d44dd9fb576540f590e147b23862e08b628e78d
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-05-13 13:03:31 +0800
+
+Refresh of autofs-5.0.7-make-dump-maps-check-for-duplicate-indirect-mounts.patch
+
+---
+
+diff --git a/lib/master.c b/lib/master.c
+index 7663d57..eca3523 100644
+--- a/lib/master.c
++++ b/lib/master.c
+@@ -1320,12 +1320,6 @@ int master_show_mounts(struct master *master)
+ 
+ 		printf("\nMount point: %s\n", ap->path);
+ 
+-		/* Report nulled nulled entries */
+-		if (cache_lookup_distinct(master->nc, path)) {
+-			printf("\nmap entry %s nulled by previous entry\n",
+-			       ap->path);
+-		}
+-
+ 		printf("\nsource(s):\n");
+ 
+ 		/*
