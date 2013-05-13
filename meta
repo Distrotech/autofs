@@ -1,10 +1,11 @@
 Version: 1
-Previous: 470c90121692a505dff3d0d5db80cc2c28e605d0
-Head: 2184e84b580381dd62b833334bf76b637fef9e92
+Previous: a991a7b27a421a883579ffe94fe3643ee72d0156
+Head: 0174b24fd2b061de5fc39a568628a0c02610f5e8
 Applied:
   autofs-5.0.7-make-dump-maps-check-for-duplicate-indirect-mounts.patch: f0353444238f377db989140dc382a3f11546d097
   autofs-5.0.7-document-allowed-map-sources-in-auto_master.patch: f8d5b982422642f3ea03b6dd1debcdcc1f1c23ca
   autofs-5.0.7-add-enable-sloppy-mount-option-to-configure.patch: 2184e84b580381dd62b833334bf76b637fef9e92
+  refresh-temp: 0174b24fd2b061de5fc39a568628a0c02610f5e8
 Unapplied:
   autofs-5.0.5-wait-for-master-map-available-at-start.patch: ba39afcec898aa461b3e52cd4640ca40e739c0f8
   autofs-5.0.5-add-master-read-wait-option.patch: cd6ef0f3d02a7e84c69e5f4e98adec3879c4ee46
