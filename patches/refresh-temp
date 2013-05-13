@@ -1,0 +1,27 @@
+Bottom: 3bfa752ac206f3d41cab7184bb78c446a7210d3b
+Top:    d8a9b592f0b0d57f1a8a8c67617bf5c0df0664a2
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-05-13 10:15:29 +0800
+
+Refresh of autofs-5.0.7-null-entry.patch
+
+---
+
+diff --git a/lib/master.c b/lib/master.c
+index 2bb62fe..8277b36 100644
+--- a/lib/master.c
++++ b/lib/master.c
+@@ -1319,6 +1319,13 @@ int master_show_mounts(struct master *master)
+ 		ap = this->ap;
+ 
+ 		printf("\nMount point: %s\n", ap->path);
++
++		/* Ignore all subsequent matching nulled entries */
++		if (cache_lookup_distinct(master->nc, path)) {
++			printf("\nmap entry %s nulled by previous entry\n",
++			       ap->path);
++		}
++
+ 		printf("\nsource(s):\n");
+ 
+ 		/*
