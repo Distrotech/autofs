@@ -1320,12 +1320,6 @@ int master_show_mounts(struct master *master)
 
 		printf("\nMount point: %s\n", ap->path);
 
-		/* Report nulled nulled entries */
-		if (cache_lookup_distinct(master->nc, ap->path)) {
-			printf("\nmap entry %s nulled by previous entry\n",
-			       ap->path);
-		}
-
 		printf("\nsource(s):\n");
 
 		/*
