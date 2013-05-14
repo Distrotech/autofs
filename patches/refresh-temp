@@ -1,0 +1,21 @@
+Bottom: 25939fa81e5189037fcecd2bc996d5e1d13f7b81
+Top:    946b716fc954fca34fa7197567a22429090c7b28
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-05-14 12:20:33 +0800
+
+Refresh of autofs-5.0.7-fix-interface-address-null-check.patch
+
+---
+
+diff --git a/CHANGELOG b/CHANGELOG
+index 66c11de..50e83d7 100644
+--- a/CHANGELOG
++++ b/CHANGELOG
+@@ -43,6 +43,7 @@
+ - make dump maps check for duplicate indirect mounts.
+ - document allowed map sources in auto.master.
+ - add enable sloppy mount option to configure.
++- fix interface address null check.
+ 
+ 25/07/2012 autofs-5.0.7
+ =======================
