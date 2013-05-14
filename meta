@@ -1,9 +1,8 @@
 Version: 1
-Previous: 36e997217605db2426b00dfc4ddca63785d68569
-Head: 038ce32845ca9fc990175f3926a23830afa29bfd
+Previous: 8aff38d743312f031e0f84f416083579af37d3ec
+Head: bd9afa24da336feb15971c8c5062647f673ba760
 Applied:
-  autofs-5.0.7-fix-interface-address-null-check.patch: 10abcdd69f56a55c7b38384cf0b0c08d3dd2073d
-  refresh-temp: 038ce32845ca9fc990175f3926a23830afa29bfd
+  autofs-5.0.7-fix-interface-address-null-check.patch: bd9afa24da336feb15971c8c5062647f673ba760
 Unapplied:
   autofs-5.0.5-wait-for-master-map-available-at-start.patch: ba39afcec898aa461b3e52cd4640ca40e739c0f8
   autofs-5.0.5-add-master-read-wait-option.patch: cd6ef0f3d02a7e84c69e5f4e98adec3879c4ee46
