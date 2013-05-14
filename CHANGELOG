@@ -43,6 +43,7 @@
 - make dump maps check for duplicate indirect mounts.
 - document allowed map sources in auto.master.
 - add enable sloppy mount option to configure.
+- fix interface address null check.
 
 25/07/2012 autofs-5.0.7
 =======================
