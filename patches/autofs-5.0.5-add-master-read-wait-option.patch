@@ -1,5 +1,5 @@
-Bottom: d1ca750aed889d2f8e73d5e502c44fed7f40c5a1
-Top:    a9755310c9a1e8cd1c7e77f6ce5b654f7f14c748
+Bottom: 5de32443b9db5a499aea8d2f8decbc2edf2e7bc1
+Top:    88118a782927a9d7aa81c5c3d7e41455e9592be1
 Author: Ian Kent <raven@themaw.net>
 Date:   2011-03-07 13:04:01 +0800
 
@@ -12,12 +12,12 @@ wait for the master map to become available at program start.
 ---
 
 diff --git a/CHANGELOG b/CHANGELOG
-index a0cd4e0..f7301f6 100644
+index b204dd0..ca880fb 100644
 --- a/CHANGELOG
 +++ b/CHANGELOG
-@@ -44,6 +44,7 @@
- - document allowed map sources in auto.master.
+@@ -45,6 +45,7 @@
  - add enable sloppy mount option to configure.
+ - fix interface address null check.
  - wait for master map to be available at start.
 +- add master read wait option.
  
