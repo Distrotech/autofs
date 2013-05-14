@@ -165,8 +165,9 @@ static unsigned int get_proximity(struct sockaddr *host_addr)
 
 	this = ifa;
 	while (this) {
-		if (this->ifa_flags & IFF_POINTOPOINT ||
-		    this->ifa_addr->sa_data == NULL) {
+		if (!(this->ifa_flags & IFF_UP) ||
+		    this->ifa_flags & IFF_POINTOPOINT ||
+		    this->ifa_addr == NULL) {
 			this = this->ifa_next;
 			continue;
 		}
@@ -202,8 +203,9 @@ static unsigned int get_proximity(struct sockaddr *host_addr)
 
 	this = ifa;
 	while (this) {
-		if (this->ifa_flags & IFF_POINTOPOINT ||
-		    this->ifa_addr->sa_data == NULL) {
+		if (!(this->ifa_flags & IFF_UP) ||
+		    this->ifa_flags & IFF_POINTOPOINT ||
+		    this->ifa_addr == NULL) {
 			this = this->ifa_next;
 			continue;
 		}
