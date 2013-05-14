@@ -1,8 +1,8 @@
 Version: 1
-Previous: 47c484383e2ed86a2381ff7efcce041fc12a7177
+Previous: fae87cfc95957bb6bb6c6c22968568ed04299ad0
 Head: 10abcdd69f56a55c7b38384cf0b0c08d3dd2073d
 Applied:
-  Re-_get_proximity___crashes_on_interfaces_with_no_addresses.patch: 10abcdd69f56a55c7b38384cf0b0c08d3dd2073d
+  autofs-5.0.7-fix-interface-address-null-check.patch: 10abcdd69f56a55c7b38384cf0b0c08d3dd2073d
 Unapplied:
   autofs-5.0.5-wait-for-master-map-available-at-start.patch: ba39afcec898aa461b3e52cd4640ca40e739c0f8
   autofs-5.0.5-add-master-read-wait-option.patch: cd6ef0f3d02a7e84c69e5f4e98adec3879c4ee46
