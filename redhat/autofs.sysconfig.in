@@ -48,6 +48,15 @@ MOUNT_NFS_DEFAULT_PROTOCOL=4
 #
 #LOGGING="none"
 #
+# HOSTS_MAP_RELOAD - try and refresh the exports of the internal
+#                    hosts map when a HUP signal is received. Note
+#                    there can easily be unresolvable dependencies
+#                    when changing the exported mount tree on servers
+#                    so this configuration entry is set to "no" by
+#                    default.
+#
+#HOSTS_MAP_RELOAD="no"
+#
 # Define base dn for map dn lookup.
 #
 # Define server URIs
