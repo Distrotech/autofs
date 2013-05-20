@@ -1,0 +1,100 @@
+Bottom: 88a0a806d2a7897d56af99a4394e79a88ec94630
+Top:    79807f9136b711f1415bacf051148cac6fa28ff2
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-05-20 23:33:27 +0800
+
+Refresh of autofs-5.0.7-add-host-map-reload-option.patch
+
+---
+
+diff --git a/include/defaults.h b/include/defaults.h
+index 871e14b..a541b50 100644
+--- a/include/defaults.h
++++ b/include/defaults.h
+@@ -28,6 +28,7 @@
+ #define DEFAULT_UMOUNT_WAIT		12
+ #define DEFAULT_BROWSE_MODE		1
+ #define DEFAULT_LOGGING			0
++#define DEFAULT_HOSTS_MAP_RELOAD	0
+ 
+ #define DEFAULT_LDAP_TIMEOUT		-1
+ #define DEFAULT_LDAP_NETWORK_TIMEOUT	8
+@@ -62,6 +63,7 @@ unsigned int defaults_get_timeout(void);
+ unsigned int defaults_get_negative_timeout(void);
+ unsigned int defaults_get_browse_mode(void);
+ unsigned int defaults_get_logging(void);
++unsigned int defaults_get_hosts_map_reload(void);
+ const char *defaults_get_ldap_server(void);
+ unsigned int defaults_get_ldap_timeout(void);
+ unsigned int defaults_get_ldap_network_timeout(void);
+diff --git a/lib/defaults.c b/lib/defaults.c
+index ae1162f..3e7ab13 100644
+--- a/lib/defaults.c
++++ b/lib/defaults.c
+@@ -35,6 +35,7 @@
+ #define ENV_NAME_NEGATIVE_TIMEOUT	"NEGATIVE_TIMEOUT"
+ #define ENV_NAME_BROWSE_MODE		"BROWSE_MODE"
+ #define ENV_NAME_LOGGING		"LOGGING"
++#define ENV_HOSTS_MAP_RELOAD		"HOSTS_MAP_RELOAD"
+ 
+ #define LDAP_URI			"LDAP_URI"
+ #define ENV_LDAP_TIMEOUT		"LDAP_TIMEOUT"
+@@ -519,6 +520,7 @@ unsigned int defaults_read_config(unsigned int to_syslog)
+ 		    check_set_config_value(key, ENV_NAME_NEGATIVE_TIMEOUT, value, to_syslog) ||
+ 		    check_set_config_value(key, ENV_NAME_BROWSE_MODE, value, to_syslog) ||
+ 		    check_set_config_value(key, ENV_NAME_LOGGING, value, to_syslog) ||
++		    check_set_config_value(key, ENV_HOSTS_MAP_RELOAD, value, to_syslog) ||
+ 		    check_set_config_value(key, ENV_LDAP_TIMEOUT, value, to_syslog) ||
+ 		    check_set_config_value(key, ENV_LDAP_NETWORK_TIMEOUT, value, to_syslog) ||
+ 		    check_set_config_value(key, ENV_NAME_MAP_OBJ_CLASS, value, to_syslog) ||
+@@ -629,6 +631,17 @@ unsigned int defaults_get_logging(void)
+ 	return logging;
+ }
+ 
++unsigned int defaults_get_hosts_map_reload(void)
++{
++	int res;
++
++	res = get_env_yesno(ENV_HOSTS_MAP_RELOAD);
++	if (res < 0)
++		res = DEFAULT_HOSTS_MAP_RELOAD;
++
++	return res;
++}
++
+ unsigned int defaults_get_ldap_timeout(void)
+ {
+ 	int res;
+diff --git a/modules/lookup_hosts.c b/modules/lookup_hosts.c
+index 8a8a34d..d00867b 100644
+--- a/modules/lookup_hosts.c
++++ b/modules/lookup_hosts.c
+@@ -229,6 +229,7 @@ cont:
+ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
+ {
+ 	struct lookup_context *ctxt = (struct lookup_context *) context;
++	unsigned int hosts_map_reload = defaults_get_hosts_map_reload();
+ 	struct map_source *source;
+ 	struct mapent_cache *mc;
+ 	struct hostent *host;
+@@ -248,6 +249,10 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
+ 	 * direct mounts in order to mount the triggers.
+ 	 */
+ 	if (!(ap->flags & MOUNT_FLAG_GHOST) && ap->type != LKP_DIRECT) {
++		if (!hosts_map_reload) {
++			debug(ap->logopt, "map read not needed, so not done");
++			return NSS_STATUS_SUCCESS;
++		}
+ 		debug(ap->logopt, MODPREFIX
+ 		      "map not browsable, update existing host entries only");
+ 		update_hosts_mounts(ap, source, age, ctxt);
+@@ -275,7 +280,8 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
+ 	if (status)
+ 		error(ap->logopt, MODPREFIX "failed to unlock hostent mutex");
+ 
+-	update_hosts_mounts(ap, source, age, ctxt);
++	if (hosts_map_reload)
++		update_hosts_mounts(ap, source, age, ctxt);
+ 	source->age = age;
+ 
+ 	return NSS_STATUS_SUCCESS;
