@@ -35,6 +35,7 @@
 #define ENV_NAME_NEGATIVE_TIMEOUT	"NEGATIVE_TIMEOUT"
 #define ENV_NAME_BROWSE_MODE		"BROWSE_MODE"
 #define ENV_NAME_LOGGING		"LOGGING"
+#define ENV_HOSTS_MAP_RELOAD		"HOSTS_MAP_RELOAD"
 
 #define LDAP_URI			"LDAP_URI"
 #define ENV_LDAP_TIMEOUT		"LDAP_TIMEOUT"
@@ -519,6 +520,7 @@ unsigned int defaults_read_config(unsigned int to_syslog)
 		    check_set_config_value(key, ENV_NAME_NEGATIVE_TIMEOUT, value, to_syslog) ||
 		    check_set_config_value(key, ENV_NAME_BROWSE_MODE, value, to_syslog) ||
 		    check_set_config_value(key, ENV_NAME_LOGGING, value, to_syslog) ||
+		    check_set_config_value(key, ENV_HOSTS_MAP_RELOAD, value, to_syslog) ||
 		    check_set_config_value(key, ENV_LDAP_TIMEOUT, value, to_syslog) ||
 		    check_set_config_value(key, ENV_LDAP_NETWORK_TIMEOUT, value, to_syslog) ||
 		    check_set_config_value(key, ENV_NAME_MAP_OBJ_CLASS, value, to_syslog) ||
@@ -627,6 +629,17 @@ unsigned int defaults_get_logging(void)
 	free(res);
 
 	return logging;
+}
+
+unsigned int defaults_get_hosts_map_reload(void)
+{
+	int res;
+
+	res = get_env_yesno(ENV_HOSTS_MAP_RELOAD);
+	if (res < 0)
+		res = DEFAULT_HOSTS_MAP_RELOAD;
+
+	return res;
 }
 
 unsigned int defaults_get_ldap_timeout(void)

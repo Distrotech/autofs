@@ -28,6 +28,7 @@
 #define DEFAULT_UMOUNT_WAIT		12
 #define DEFAULT_BROWSE_MODE		1
 #define DEFAULT_LOGGING			0
+#define DEFAULT_HOSTS_MAP_RELOAD	0
 
 #define DEFAULT_LDAP_TIMEOUT		-1
 #define DEFAULT_LDAP_NETWORK_TIMEOUT	8
@@ -62,6 +63,7 @@ unsigned int defaults_get_timeout(void);
 unsigned int defaults_get_negative_timeout(void);
 unsigned int defaults_get_browse_mode(void);
 unsigned int defaults_get_logging(void);
+unsigned int defaults_get_hosts_map_reload(void);
 const char *defaults_get_ldap_server(void);
 unsigned int defaults_get_ldap_timeout(void);
 unsigned int defaults_get_ldap_network_timeout(void);
