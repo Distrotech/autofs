@@ -47,6 +47,15 @@ BROWSE_MODE="no"
 #
 #LOGGING="none"
 #
+# HOSTS_MAP_RELOAD - try and refresh the exports of the internal
+#                    hosts map when a HUP signal is received. Note
+#                    there can easily be unresolvable dependencies
+#                    when changing the exported mount tree on servers
+#                    so this configuration entry is set to "no" by
+#                    default.
+#
+#HOSTS_MAP_RELOAD="no"
+#
 # Define server URIs
 #
 # LDAP_URI - space seperated list of server uris of the form

@@ -253,7 +253,10 @@ which corresponds to a hostname will allow access to the exports of that
 host. The hosts map cannot be dynamically updated and requires a HUP signal
 to be sent to the daemon for it to check hosts for an update. Due to possible
 hierarchic dependencies within a mount tree, it might not be completely
-updated during the HUP signal processing.
+updated during the HUP signal processing. It is also possible that dependencies
+can cause the hosts map to become inoperable so a configuration entry,
+HOSTS_MAP_RELOAD, determines whether to the map is refreshed upon receiving the
+signal. The default is, "no".
 .P
 For example, with an entry in the master map of
 .nh
