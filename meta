@@ -1,8 +1,9 @@
 Version: 1
-Previous: 25ae979dd43651b50481bc8e653ac0b54533c6c6
-Head: a45da95d488689950d496111dd416c0fffbbe72c
+Previous: ee87e9348c9ff5d5e94c7483d573b81037c3e530
+Head: 495f37d0b0a9cbead1a516768925e8cf43284a81
 Applied:
   autofs-5.0.7-add-host-map-reload-option.patch: a45da95d488689950d496111dd416c0fffbbe72c
+  refresh-temp: 495f37d0b0a9cbead1a516768925e8cf43284a81
 Unapplied:
   autofs-5.0.7-fix-interface-address-null-check.patch: bd9afa24da336feb15971c8c5062647f673ba760
   autofs-5.0.5-wait-for-master-map-available-at-start.patch: f583e5773d111ab8c2e8ad6e7a04c6f7249ba50a
