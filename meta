@@ -1,8 +1,8 @@
 Version: 1
-Previous: 016743bb3723454b9127476b0d76e5a6c10f895a
-Head: b64f0291afbcaa99705eb2b8a87a38990acdd33b
+Previous: a08f37b53b1377c50f2f2eee7fdd7def4781007e
+Head: 3247f7cb7e779d2340bd673324045f7617e74ce4
 Applied:
-  autofs-5.0.7-fix-spelling-in-last-commit.patch: b64f0291afbcaa99705eb2b8a87a38990acdd33b
+  autofs-5.0.7-fix-spelling-in-last-commit.patch: 3247f7cb7e779d2340bd673324045f7617e74ce4
 Unapplied:
   autofs-5.0.5-wait-for-master-map-available-at-start.patch: 4f26bda14fd453521f2ea4c8b17fc4ff7f548b28
   autofs-5.0.5-add-master-read-wait-option.patch: d9182f80955e6f44bb43b407a07c4ec0509749bf
