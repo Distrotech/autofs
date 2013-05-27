@@ -12,7 +12,8 @@ mounting from servers that aren't responding.
 This caused mounts requesting the rdma protocol to fail if udp or tcp was also
 not available from the server.
 
-Since The only way to work around
+Since, AFAICT the rmda protocol can't be used with RPC fromn userspace, the only
+way to work around it is to not probe servers when rdma is requested.
 
 
 
