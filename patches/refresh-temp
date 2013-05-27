@@ -1,0 +1,36 @@
+Bottom: d28e13fedbcbab8b6de4e9313a32c483a52bdccd
+Top:    33a90000c9ebee9ca9ac3177177feb81f6941f6a
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-05-27 13:55:51 +0800
+
+Refresh of autofs-5.0.7-dont-prode-rdma-mounts.patch
+
+---
+
+diff --git a/CHANGELOG b/CHANGELOG
+index 50e83d7..f9bc987 100644
+--- a/CHANGELOG
++++ b/CHANGELOG
+@@ -44,6 +44,7 @@
+ - document allowed map sources in auto.master.
+ - add enable sloppy mount option to configure.
+ - fix interface address null check.
++- dont prode rdma mounts.
+ 
+ 25/07/2012 autofs-5.0.7
+ =======================
+diff --git a/modules/mount_nfs.c b/modules/mount_nfs.c
+index f3718d5..b644071 100644
+--- a/modules/mount_nfs.c
++++ b/modules/mount_nfs.c
+@@ -175,8 +175,8 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
+ 		return 1;
+ 	}
+ 	/*
+-	 * We can't probe protocol rdma so leave it to mount and
+-	 * and suffer the delay if a server isn't available.
++	 * We can't probe protocol rdma so leave it to mount.nfs(8)
++	 * and and suffer the delay if a server isn't available.
+ 	 */
+ 	if (!rdma)
+ 		prune_host_list(ap->logopt, &hosts, vers, port);
