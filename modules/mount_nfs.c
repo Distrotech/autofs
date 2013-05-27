@@ -137,8 +137,8 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 				flags &= ~MOUNT_FLAG_USE_WEIGHT_ONLY;
 			} else if (strncmp("use-weight-only", cp, o_len) == 0) {
 				flags |= MOUNT_FLAG_USE_WEIGHT_ONLY;
-			} else if (strcmp("proto=rdma", cp, o_len) == 0 ||
-				   strcmp("rdma", cp, o_len) == 0) {
+			} else if (strncmp("proto=rdma", cp, o_len) == 0 ||
+				   strncmp("rdma", cp, o_len) == 0) {
 				rdma = 1;
 			} else {
 				if (strncmp("vers=4", cp, o_len) == 0 ||
