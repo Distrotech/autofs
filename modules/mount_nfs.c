@@ -175,8 +175,8 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 		return 1;
 	}
 	/*
-	 * We can't probe protocol rdma so leave it to mount and
-	 * and suffer the delay if a server isn't available.
+	 * We can't probe protocol rdma so leave it to mount.nfs(8)
+	 * and and suffer the delay if a server isn't available.
 	 */
 	if (!rdma)
 		prune_host_list(ap->logopt, &hosts, vers, port);
