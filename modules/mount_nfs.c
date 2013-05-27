@@ -71,6 +71,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 	int nosymlink = 0;
 	int port = -1;
 	int ro = 0;            /* Set if mount bind should be read-only */
+	int rdma = 0;
 
 	if (ap->flags & MOUNT_FLAG_REMOUNT)
 		return 0;
@@ -136,6 +137,9 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 				flags &= ~MOUNT_FLAG_USE_WEIGHT_ONLY;
 			} else if (strncmp("use-weight-only", cp, o_len) == 0) {
 				flags |= MOUNT_FLAG_USE_WEIGHT_ONLY;
+			} else if (strcmp("proto=rdma", cp, o_len) == 0 ||
+				   strcmp("rdma", cp, o_len) == 0) {
+				rdma = 1;
 			} else {
 				if (strncmp("vers=4", cp, o_len) == 0 ||
 				    strncmp("nfsvers=4", cp, o_len) == 0)
@@ -170,7 +174,12 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 		info(ap->logopt, MODPREFIX "no hosts available");
 		return 1;
 	}
-	prune_host_list(ap->logopt, &hosts, vers, port);
+	/*
+	 * We can't probe protocol rdma so leave it to mount and
+	 * and suffer the delay if a server isn't available.
+	 */
+	if (!rdma)
+		prune_host_list(ap->logopt, &hosts, vers, port);
 
 	if (!hosts) {
 		info(ap->logopt, MODPREFIX "no hosts available");
