@@ -1,5 +1,5 @@
 Bottom: 946b716fc954fca34fa7197567a22429090c7b28
-Top:    d28e13fedbcbab8b6de4e9313a32c483a52bdccd
+Top:    33a90000c9ebee9ca9ac3177177feb81f6941f6a
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-05-27 12:49:49 +0800
 
@@ -19,8 +19,20 @@ way to work around it is to not probe servers when rdma is requested.
 
 ---
 
+diff --git a/CHANGELOG b/CHANGELOG
+index 50e83d7..f9bc987 100644
+--- a/CHANGELOG
++++ b/CHANGELOG
+@@ -44,6 +44,7 @@
+ - document allowed map sources in auto.master.
+ - add enable sloppy mount option to configure.
+ - fix interface address null check.
++- dont prode rdma mounts.
+ 
+ 25/07/2012 autofs-5.0.7
+ =======================
 diff --git a/modules/mount_nfs.c b/modules/mount_nfs.c
-index e61320b..f3718d5 100644
+index e61320b..b644071 100644
 --- a/modules/mount_nfs.c
 +++ b/modules/mount_nfs.c
 @@ -71,6 +71,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
@@ -47,8 +59,8 @@ index e61320b..f3718d5 100644
  	}
 -	prune_host_list(ap->logopt, &hosts, vers, port);
 +	/*
-+	 * We can't probe protocol rdma so leave it to mount and
-+	 * and suffer the delay if a server isn't available.
++	 * We can't probe protocol rdma so leave it to mount.nfs(8)
++	 * and and suffer the delay if a server isn't available.
 +	 */
 +	if (!rdma)
 +		prune_host_list(ap->logopt, &hosts, vers, port);
