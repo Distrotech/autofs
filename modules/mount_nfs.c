@@ -125,6 +125,11 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 				end--;
 
 			o_len = end - cp + 1;
+
+			if (strncmp("proto=rdma", cp, o_len) == 0 ||
+				   strncmp("rdma", cp, o_len) == 0)
+				rdma = 1;
+
 			if (strncmp("nosymlink", cp, o_len) == 0) {
 				warn(ap->logopt, MODPREFIX
 				     "the \"nosymlink\" option is depricated "
@@ -137,9 +142,6 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 				flags &= ~MOUNT_FLAG_USE_WEIGHT_ONLY;
 			} else if (strncmp("use-weight-only", cp, o_len) == 0) {
 				flags |= MOUNT_FLAG_USE_WEIGHT_ONLY;
-			} else if (strncmp("proto=rdma", cp, o_len) == 0 ||
-				   strncmp("rdma", cp, o_len) == 0) {
-				rdma = 1;
 			} else {
 				if (strncmp("vers=4", cp, o_len) == 0 ||
 				    strncmp("nfsvers=4", cp, o_len) == 0)
