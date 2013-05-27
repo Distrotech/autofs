@@ -5,6 +5,16 @@ Date:   2013-05-27 12:49:49 +0800
 
 autofs-5.0.7 - dont prode rdma mounts
 
+Since the change to pass text nfs mount options drectly to the kernel all autofs
+mount requests now probe server availability. This was because of long delays
+mounting from servers that aren't responding.
+
+This caused mounts requesting the rdma protocol to fail if udp or tcp was also
+not available from the server.
+
+Since The only way to work around
+
+
 
 ---
 
