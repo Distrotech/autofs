@@ -1,11 +1,11 @@
 Version: 1
-Previous: 36e0586c048a0fdaa27ef5140a5fcae19ab868f8
-Head: d9182f80955e6f44bb43b407a07c4ec0509749bf
+Previous: 6236c1875270631f98ac65a485368d62efa5395f
+Head: 4f26bda14fd453521f2ea4c8b17fc4ff7f548b28
 Applied:
   autofs-5.0.7-dont-prode-rdma-mounts.patch: 7cb171a3ffaa8050da65b7d02e652de68188ddac
   autofs-5.0.5-wait-for-master-map-available-at-start.patch: 4f26bda14fd453521f2ea4c8b17fc4ff7f548b28
-  autofs-5.0.5-add-master-read-wait-option.patch: d9182f80955e6f44bb43b407a07c4ec0509749bf
 Unapplied:
+  autofs-5.0.5-add-master-read-wait-option.patch: d9182f80955e6f44bb43b407a07c4ec0509749bf
   autofs-5.0.7-add-host-map-reload-option.patch: 11d23f7a74b2f33e5011ba29f64ae1b4956acb09
   autofs-5.0.7-use-MS_UNBINDABLE-for-autofs-mounts.patch: 1f538797c99b2ce0524c191bc422416962219292
   autofs-5.0.6-account-for-new-offset-mount-overlap.patch: 58e4b78cc2bd0742cf8ac3856f33448a782348aa
