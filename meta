@@ -1,8 +1,9 @@
 Version: 1
-Previous: af52095c8f56ce66c161249c489c9d09739218d6
-Head: 6c0496e5036109153ee0c528331e04350ddb394a
+Previous: 470c242526db0ea2c16abd62bbb8cfedd31b6ef9
+Head: d2feb23d742a5789c307007e7d6cf43604ac7e0c
 Applied:
   autofs-5.0.7-dont-prode-rdma-mounts.patch: 6c0496e5036109153ee0c528331e04350ddb394a
+  refresh-temp: d2feb23d742a5789c307007e7d6cf43604ac7e0c
 Unapplied:
   autofs-5.0.5-wait-for-master-map-available-at-start.patch: b22787449d6d7b690a5914ec660078d09f490e7c
   autofs-5.0.5-add-master-read-wait-option.patch: d60b7de643213a8f08cba14817588a092bfc5de0
