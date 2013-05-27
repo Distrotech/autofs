@@ -45,6 +45,7 @@
 - add enable sloppy mount option to configure.
 - fix interface address null check.
 - dont prode rdma mounts.
+- wait for master map to be available at start.
 
 25/07/2012 autofs-5.0.7
 =======================
