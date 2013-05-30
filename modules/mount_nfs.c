@@ -180,9 +180,42 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 	 * We can't probe protocol rdma so leave it to mount.nfs(8)
 	 * and and suffer the delay if a server isn't available.
 	 */
-	if (!rdma)
-		prune_host_list(ap->logopt, &hosts, vers, port);
+	if (rdma)
+		goto dont_probe;
 
+	/*
+	 * If this is a singleton mount, and NFSv4 only hasn't been asked
+	 * for, and the default NFS protocol is set to v4 in the autofs
+	 * configuration only probe NFSv4 and let mount.nfs(8) do fallback
+	 * to NFSv3 (if it can). If the NFSv4 probe fails then probe as
+	 * normal.
+	 */
+	if (!this->next &&
+	    mount_default_proto == 4 &&
+	    vers & NFS_VERS_MASK != 0 &&
+	    vers & NFS4_VERS_MASK != 0) {
+		unsigned int v4_probe_ok = 0;
+		struct host *tmp = new_host(hosts->name,
+					    hosts->addr, hosts->addr_len,
+					    hosts->proximity,
+					    hosts->weight, hosts->options);
+		if (tmp) {
+			tmp->rr = hosts->rr;
+			prune_host_list(ap->logopt, &tmp,
+					NFS4_VERS_MASK|TCP_SUPPORTED, port);
+			/* If probe succeeds just try the mount with host in hosts */
+			if (tmp) {
+				v4_probe_ok = 1;
+				free_host_list(&tmp);
+			}
+		}
+		if (!v4_probe_ok)
+			prune_host_list(ap->logopt, &hosts, vers, port);
+	} else {
+		prune_host_list(ap->logopt, &hosts, vers, port);
+	}
+
+dont_probe:
 	if (!hosts) {
 		info(ap->logopt, MODPREFIX "no hosts available");
 		return 1;
