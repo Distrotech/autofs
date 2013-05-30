@@ -280,10 +280,10 @@ static unsigned int get_proximity(struct sockaddr *host_addr)
 	return PROXIMITY_OTHER;
 }
 
-static struct host *new_host(const char *name,
-			     struct sockaddr *addr, size_t addr_len,
-			     unsigned int proximity, unsigned int weight,
-			     unsigned int options)
+struct host *new_host(const char *name,
+		      struct sockaddr *addr, size_t addr_len,
+		      unsigned int proximity, unsigned int weight,
+		      unsigned int options)
 {
 	struct host *new;
 	struct sockaddr *tmp2;
