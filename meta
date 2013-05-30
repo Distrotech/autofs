@@ -1,6 +1,6 @@
 Version: 1
-Previous: d4fba6cc058b9c7bd24ea03e2bf52f63a60c8d91
-Head: 3247f7cb7e779d2340bd673324045f7617e74ce4
+Previous: b3e78fc7543543afddbdffd9d519f51c715b2aa6
+Head: 3d1be6076508e9b872de09cbeb29f29fc983451f
 Applied:
 Unapplied:
   autofs-5.0.7-probe-each-nfs-version-in-turn-for-singleton-mounts.patch: 56b6d252e2b9b7d9f60a4677363abbbbc602832f
