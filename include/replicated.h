@@ -68,6 +68,8 @@ struct host {
 };
 
 void seed_random(void);
+struct host *new_host(const char *, struct sockaddr *, size_t,
+		      unsigned int, unsigned int, unsigned int);
 void free_host_list(struct host **);
 int parse_location(unsigned, struct host **, const char *, unsigned int);
 int prune_host_list(unsigned, struct host **, unsigned int, int);
