@@ -180,10 +180,8 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 	 * We can't probe protocol rdma so leave it to mount.nfs(8)
 	 * and and suffer the delay if a server isn't available.
 	 */
-	if (rdma) {
-		singleton = 0;
+	if (rdma)
 		goto dont_probe;
-	}
 
 	/*
 	 * If this is a singleton mount, and NFSv4 only hasn't been asked
