@@ -1,8 +1,9 @@
 Version: 1
-Previous: 97a1ebb6dcafcd8e0cd9e16b7828d90d0a84e15a
-Head: d2167e9c07dafd9b61b5e5ff9f184ab4af68267b
+Previous: 4a5bb4e140ab1cb9f3e0b41d5fb6ac49e6114c6b
+Head: a41e0aa7a1a50d9143a9ba70ff63c20200639831
 Applied:
   autofs-5.0.7-probe-each-nfs-version-in-turn-for-singleton-mounts.patch: d2167e9c07dafd9b61b5e5ff9f184ab4af68267b
+  refresh-temp: a41e0aa7a1a50d9143a9ba70ff63c20200639831
 Unapplied:
   autofs-5.0.5-wait-for-master-map-available-at-start.patch: 4f26bda14fd453521f2ea4c8b17fc4ff7f548b28
   autofs-5.0.5-add-master-read-wait-option.patch: d9182f80955e6f44bb43b407a07c4ec0509749bf
