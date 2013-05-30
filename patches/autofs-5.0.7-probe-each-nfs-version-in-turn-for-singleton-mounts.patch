@@ -1,4 +1,4 @@
-Bottom: b104780a3f91a0df48d2744293ef1d673562b8d0
+Bottom: 4cf992487e79c44c2e5a28e2356679ac90dcd097
 Top:    87328a64845ac5a419478eaf79ed92b1d05a2bca
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-05-30 10:18:19 +0800
@@ -8,19 +8,6 @@ autofs-5.0.7 - probe each nfs version in turn for singleton mounts
 
 ---
 
-diff --git a/CHANGELOG b/CHANGELOG
-index f9bc987..1156cc9 100644
---- a/CHANGELOG
-+++ b/CHANGELOG
-@@ -44,7 +44,7 @@
- - document allowed map sources in auto.master.
- - add enable sloppy mount option to configure.
- - fix interface address null check.
--- dont prode rdma mounts.
-+- dont probe rdma mounts.
- 
- 25/07/2012 autofs-5.0.7
- =======================
 diff --git a/include/replicated.h b/include/replicated.h
 index ff0e7b9..728f131 100644
 --- a/include/replicated.h
