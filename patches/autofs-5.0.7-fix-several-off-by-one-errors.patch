@@ -1,0 +1,11 @@
+Bottom: 54d7b59e8ce899f539f62158e668a346376c07ce
+Top:    54d7b59e8ce899f539f62158e668a346376c07ce
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-06-05 18:20:45 +0800
+
+autofs-5.0.7 - fix several off by one errors
+
+
+---
+
+
