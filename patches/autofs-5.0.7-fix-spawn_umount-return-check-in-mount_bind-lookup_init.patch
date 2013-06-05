@@ -3,7 +3,7 @@ Top:    84e07f3f382c38a60814363295840ab51ab28420
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-06-05 13:58:16 +0800
 
-autofs-5.0.7 - fix spawn_umount() return check
+autofs-5.0.7 - fix spawn_umount() return check in mount_bind.c:lookup_init()
 
 
 ---
