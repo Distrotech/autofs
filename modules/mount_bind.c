@@ -57,7 +57,8 @@ int mount_init(void **context)
 		bind_works = 1;
 	}
 
-	spawn_umount(LOGOPT_NONE, "-n", t2_dir, NULL);
+	if (spawn_umount(LOGOPT_NONE, "-n", t2_dir, NULL) != 0)
+		debug(LOGOPT_ANY, MODPREFIX "umount failed for %s", t2_dir);
 
 out:
 	rmdir(t1_dir);
