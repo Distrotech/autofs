@@ -117,7 +117,7 @@ static int parse_nfs(struct autofs_point *ap,
 		p++;
 
 	/* Isolate the remote mountpoint for this NFS fs. */
-	for (i = 0; (!isspace(p[i]) && i < (int) sizeof(mount)); i++) {
+	for (i = 0; (!isspace(p[i]) && i < ((int) sizeof(mount) - 1)); i++) {
 		if (!p[i]) {
 			error(ap->logopt, MODPREFIX
 			      "unexpeced end of input looking for NFS "
