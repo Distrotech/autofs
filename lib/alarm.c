@@ -40,22 +40,6 @@ do { \
 		fatal(_alm_unlock); \
 } while (0)
 
-void dump_alarms(void)
-{
-	struct list_head *head;
-	struct list_head *p;
-
-	pthread_mutex_lock(&mutex);
-	head = &alarms;
-	list_for_each(p, head) {
-		struct alarm *this;
-
-		this = list_entry(p, struct alarm, list);
-		logmsg("alarm time = %d", this->time);
-	}
-	pthread_mutex_unlock(&mutex);
-}
-
 /* Insert alarm entry on ordered list. */
 int alarm_add(struct autofs_point *ap, time_t seconds)
 {
