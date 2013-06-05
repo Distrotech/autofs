@@ -5,7 +5,7 @@ Date:   2013-06-05 15:28:14 +0800
 
 autofs-5.0.7 - fix incorrect var name in test
 
-Fix incorrect variable name in 
+Fix incorrect variable name used for test of buffer size for getgrgid_r.
 
 
 ---
