@@ -1222,7 +1222,7 @@ void set_tsd_user_vars(unsigned int logopt, uid_t uid, gid_t gid)
 	/* Try to get group info */
 
 	grplen = sysconf(_SC_GETGR_R_SIZE_MAX);
-	if (tmplen < 0) {
+	if (grplen < 0) {
 		error(logopt, "failed to get buffer size for getgrgid_r");
 		goto free_tsv_home;
 	}
