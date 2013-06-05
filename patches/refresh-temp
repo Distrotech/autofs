@@ -1,0 +1,23 @@
+Bottom: 84e07f3f382c38a60814363295840ab51ab28420
+Top:    1037b9d0c090449af809cdf94a0325faec2181a8
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-06-05 14:02:39 +0800
+
+Refresh of autofs-5.0.7-fix-spawn_umount-return-check-in-mount_bind-lookup_init.patch
+
+---
+
+diff --git a/modules/mount_bind.c b/modules/mount_bind.c
+index 4975294..d6c6fe7 100644
+--- a/modules/mount_bind.c
++++ b/modules/mount_bind.c
+@@ -57,7 +57,8 @@ int mount_init(void **context)
+ 		bind_works = 1;
+ 	}
+ 
+-	spawn_umount(LOGOPT_NONE, "-n", t2_dir, NULL);
++	if (spawn_umount(LOGOPT_NONE, "-n", t2_dir, NULL) != 0)
++		debug(LOGOPT_ANY, MODPREFIX "umount failed for %s", t2_dir);
+ 
+ out:
+ 	rmdir(t1_dir);
