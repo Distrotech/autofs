@@ -5,7 +5,9 @@ Date:   2013-06-05 11:38:15 +0800
 
 autofs-5.0.7 - fix fcntl return check
 
-When checking for 
+When checking for FD_CLOEXEC support the return of the fcntl(2) call to
+get the file descriptor flags is not checked which could result in an
+incorrect result.
 
 
 ---
