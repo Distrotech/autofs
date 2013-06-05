@@ -1,0 +1,31 @@
+Bottom: 6e07eb37478e7da93c44df396a1ebbff08e7133d
+Top:    f79eba2aa01d069f8f10bbfe30fe7fc28360448f
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-06-05 18:40:18 +0800
+
+Refresh of autofs-5.0.7-fix-several-off-by-one-errors.patch
+
+---
+
+diff --git a/daemon/spawn.c b/daemon/spawn.c
+index 04d0599..9b8d5a2 100644
+--- a/daemon/spawn.c
++++ b/daemon/spawn.c
+@@ -448,7 +448,7 @@ int spawn_bind_mount(unsigned logopt, ...)
+ 	unsigned int options;
+ 	unsigned int retries = MTAB_LOCK_RETRIES;
+ 	int update_mtab = 1, ret, printed = 0;
+-	char buf[PATH_MAX];
++	char buf[PATH_MAX + 1];
+ 
+ 	/* If we use mount locking we can't validate the location */
+ #ifdef ENABLE_MOUNT_LOCKING
+@@ -477,7 +477,7 @@ int spawn_bind_mount(unsigned logopt, ...)
+ 		}
+ 	}
+ 
+-	if (!(argv = alloca(sizeof(char *) * argc + 2)))
++	if (!(argv = alloca(sizeof(char *) * (argc + 2))))
+ 		return -1;
+ 
+ 	argv[0] = arg0;
