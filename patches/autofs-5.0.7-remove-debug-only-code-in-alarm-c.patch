@@ -5,6 +5,8 @@ Date:   2013-06-05 15:33:02 +0800
 
 autofs-5.0.7 - remove debug only code in alarm.c
 
+This code is only ever used for "on-the-fly" debugging so just remove it.
+
 
 ---
 
