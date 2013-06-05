@@ -1,0 +1,36 @@
+Bottom: ea03a9114f6cccedf25155c35b435e4dd077748b
+Top:    041f6e505062cac33a0b3bd52b38185ce70a19c4
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-06-05 15:33:25 +0800
+
+Refresh of autofs-5.0.7-remove-debug-only-code-in-alarm-c.patch
+
+---
+
+diff --git a/lib/alarm.c b/lib/alarm.c
+index d5cdc05..0f04ef8 100755
+--- a/lib/alarm.c
++++ b/lib/alarm.c
+@@ -40,22 +40,6 @@ do { \
+ 		fatal(_alm_unlock); \
+ } while (0)
+ 
+-void dump_alarms(void)
+-{
+-	struct list_head *head;
+-	struct list_head *p;
+-
+-	pthread_mutex_lock(&mutex);
+-	head = &alarms;
+-	list_for_each(p, head) {
+-		struct alarm *this;
+-
+-		this = list_entry(p, struct alarm, list);
+-		logmsg("alarm time = %d", this->time);
+-	}
+-	pthread_mutex_unlock(&mutex);
+-}
+-
+ /* Insert alarm entry on ordered list. */
+ int alarm_add(struct autofs_point *ap, time_t seconds)
+ {
