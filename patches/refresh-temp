@@ -1,0 +1,10 @@
+Bottom: eb4d566b8f4adf36af4c24d26c6725ab8a656462
+Top:    eb4d566b8f4adf36af4c24d26c6725ab8a656462
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-06-05 18:53:04 +0800
+
+Refresh of autofs-5.0.7-fix-memory-leak-in-get_dc_list.patch
+
+---
+
+
