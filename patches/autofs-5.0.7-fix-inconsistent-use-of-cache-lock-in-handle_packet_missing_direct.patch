@@ -1,5 +1,5 @@
 Bottom: 041f6e505062cac33a0b3bd52b38185ce70a19c4
-Top:    041f6e505062cac33a0b3bd52b38185ce70a19c4
+Top:    54d7b59e8ce899f539f62158e668a346376c07ce
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-06-05 16:41:58 +0800
 
@@ -8,4 +8,16 @@ autofs-5.0.7 - fix inconsistent use of cache lock in handle_packet_missing_direc
 
 ---
 
-
+diff --git a/daemon/direct.c b/daemon/direct.c
+index 228a666..399ad0a 100644
+--- a/daemon/direct.c
++++ b/daemon/direct.c
+@@ -1392,7 +1392,7 @@ int handle_packet_missing_direct(struct autofs_point *ap, autofs_packet_missing_
+ 		ops->send_fail(ap->logopt,
+ 			       ioctlfd, pkt->wait_queue_token, -ENOENT);
+ 		ops->close(ap->logopt, ioctlfd);
+-		cache_unlock(me->mc);
++		cache_unlock(mc);
+ 		master_source_unlock(ap->entry);
+ 		master_mutex_unlock();
+ 		pthread_setcancelstate(state, NULL);
