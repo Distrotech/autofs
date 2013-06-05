@@ -3,7 +3,7 @@ Top:    1037b9d0c090449af809cdf94a0325faec2181a8
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-06-05 15:10:35 +0800
 
-autofs-5.0.7 - fix check mkdir_path() in mount_bind.c:mount_bind()
+autofs-5.0.7 - fix check mkdir_path() in mount_bind.c:mount_mount()
 
 
 ---
