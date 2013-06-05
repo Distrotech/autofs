@@ -1,0 +1,10 @@
+Bottom: f79eba2aa01d069f8f10bbfe30fe7fc28360448f
+Top:    f79eba2aa01d069f8f10bbfe30fe7fc28360448f
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-06-05 18:41:29 +0800
+
+Refresh of autofs-5.0.7-fix-several-off-by-one-errors.patch
+
+---
+
+
