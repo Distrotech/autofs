@@ -547,7 +547,8 @@ static inline void check_cloexec(int fd)
 {
 	if (cloexec_works == 0) {
 		int fl = fcntl(fd, F_GETFD);
-		cloexec_works = (fl & FD_CLOEXEC) ? 1 : -1;
+		if (fl != -1)
+			cloexec_works = (fl & FD_CLOEXEC) ? 1 : -1;
 	}
 	if (cloexec_works > 0)
 		return;
