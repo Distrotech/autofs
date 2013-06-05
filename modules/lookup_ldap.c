@@ -2234,8 +2234,8 @@ static int do_get_entries(struct ldap_search_params *sp, struct map_source *sour
 					mapent = new_me;
 					strcat(mapent, " ");
 					strncat(mapent, v_val, v_len);
-					mapent[new_size] = '\0';
-					mapent_len = new_size;
+					mapent[new_size - 1] = '\0';
+					mapent_len = new_size - 1;
 				} else {
 					char *estr;
 					estr = strerror_r(errno, buf, sizeof(buf));
@@ -2723,8 +2723,8 @@ static int lookup_one(struct autofs_point *ap,
 					mapent = new_me;
 					strcat(mapent, " ");
 					strncat(mapent, v_val, v_len);
-					mapent[new_size] = '\0';
-					mapent_len = new_size;
+					mapent[new_size - 1] = '\0';
+					mapent_len = new_size - 1;
 				} else {
 					char *estr;
 					estr = strerror_r(errno, buf, sizeof(buf));
