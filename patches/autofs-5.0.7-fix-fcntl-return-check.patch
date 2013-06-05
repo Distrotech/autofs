@@ -1,5 +1,5 @@
 Bottom: 184aac38cd8ef619183dcb3764d078ef599773db
-Top:    184aac38cd8ef619183dcb3764d078ef599773db
+Top:    49dcc2fc2bd6588df3b54744bcc283fa216ede9f
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-06-05 11:38:15 +0800
 
@@ -12,4 +12,17 @@ incorrect result.
 
 ---
 
-
+diff --git a/include/automount.h b/include/automount.h
+index e72fa0d..6ced842 100644
+--- a/include/automount.h
++++ b/include/automount.h
+@@ -547,7 +547,8 @@ static inline void check_cloexec(int fd)
+ {
+ 	if (cloexec_works == 0) {
+ 		int fl = fcntl(fd, F_GETFD);
+-		cloexec_works = (fl & FD_CLOEXEC) ? 1 : -1;
++		if (fl != -1)
++			cloexec_works = (fl & FD_CLOEXEC) ? 1 : -1;
+ 	}
+ 	if (cloexec_works > 0)
+ 		return;
