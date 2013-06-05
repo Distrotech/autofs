@@ -320,7 +320,7 @@ int spawn_mount(unsigned logopt, ...)
 	unsigned int retries = MTAB_LOCK_RETRIES;
 	int update_mtab = 1, ret, printed = 0;
 	unsigned int wait = defaults_get_mount_wait();
-	char buf[PATH_MAX];
+	char buf[PATH_MAX + 1];
 
 	/* If we use mount locking we can't validate the location */
 #ifdef ENABLE_MOUNT_LOCKING
@@ -346,7 +346,7 @@ int spawn_mount(unsigned logopt, ...)
 	}
 
 	/* Alloc 1 extra slot in case we need to use the "-f" option */
-	if (!(argv = alloca(sizeof(char *) * argc + 2)))
+	if (!(argv = alloca(sizeof(char *) * (argc + 2))))
 		return -1;
 
 	argv[0] = arg0;
@@ -556,7 +556,7 @@ int spawn_umount(unsigned logopt, ...)
 	unsigned int retries = MTAB_LOCK_RETRIES;
 	int update_mtab = 1, ret, printed = 0;
 	unsigned int wait = defaults_get_umount_wait();
-	char buf[PATH_MAX];
+	char buf[PATH_MAX + 1];
 
 #ifdef ENABLE_MOUNT_LOCKING
 	options = SPAWN_OPT_LOCK;

@@ -227,7 +227,7 @@ void defaults_free_uris(struct list_head *list)
 static unsigned int add_uris(char *value, struct list_head *list)
 {
 	char *str, *tok, *ptr = NULL;
-	size_t len = strlen(value);
+	size_t len = strlen(value) + 1;
 
 	str = alloca(len);
 	if (!str)
