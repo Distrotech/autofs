@@ -1135,7 +1135,7 @@ static int mount_subtree(struct autofs_point *ap, struct mapent *me,
 			}
 			ro_len = strlen(ro_loc);
 
-			tmp = alloca(mnt_root_len + 1);
+			tmp = alloca(mnt_root_len + 2);
 			strcpy(tmp, mnt_root);
 			tmp[mnt_root_len] = '/';
 			tmp[mnt_root_len + 1] = '\0';
