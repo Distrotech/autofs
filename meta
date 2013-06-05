@@ -1,10 +1,10 @@
 Version: 1
-Previous: 5b5ce3a4df4c7d0958628de726ffb18cb60e38e2
-Head: 3d1be6076508e9b872de09cbeb29f29fc983451f
+Previous: 9ee808683f2a5d35d7e99b130dc73787596a9065
+Head: a98dd662c24031515c5fb45fc8a4ecbe206c0f69
 Applied:
+  autofs-5.0.7-fix-fcntl-return-check.patch: a98dd662c24031515c5fb45fc8a4ecbe206c0f69
 Unapplied:
   autofs-5.0.7-probe-each-nfs-version-in-turn-for-singleton-mounts.patch: dd4e42512f724d603f78a7922c66c70eeec2e420
-  autofs-5.0.7-fix-fcntl-return-check.patch: 633b2c37d1d9c9902ad8cd5c13c691a30b998305
   autofs-5.0.5-wait-for-master-map-available-at-start.patch: 4f26bda14fd453521f2ea4c8b17fc4ff7f548b28
   autofs-5.0.5-add-master-read-wait-option.patch: d9182f80955e6f44bb43b407a07c4ec0509749bf
   autofs-5.0.7-add-host-map-reload-option.patch: 11d23f7a74b2f33e5011ba29f64ae1b4956acb09
