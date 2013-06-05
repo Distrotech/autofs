@@ -448,7 +448,7 @@ int spawn_bind_mount(unsigned logopt, ...)
 	unsigned int options;
 	unsigned int retries = MTAB_LOCK_RETRIES;
 	int update_mtab = 1, ret, printed = 0;
-	char buf[PATH_MAX];
+	char buf[PATH_MAX + 1];
 
 	/* If we use mount locking we can't validate the location */
 #ifdef ENABLE_MOUNT_LOCKING
@@ -477,7 +477,7 @@ int spawn_bind_mount(unsigned logopt, ...)
 		}
 	}
 
-	if (!(argv = alloca(sizeof(char *) * argc + 2)))
+	if (!(argv = alloca(sizeof(char *) * (argc + 2))))
 		return -1;
 
 	argv[0] = arg0;
