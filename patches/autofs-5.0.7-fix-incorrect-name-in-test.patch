@@ -1,0 +1,13 @@
+Bottom: fbf94fc295d5d2fb0947a819c4d045cedf9643fc
+Top:    fbf94fc295d5d2fb0947a819c4d045cedf9643fc
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-06-05 15:28:14 +0800
+
+autofs-5.0.7 - fix incorrect var name in test
+
+Fix incorrect variable name in 
+
+
+---
+
+
