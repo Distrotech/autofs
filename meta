@@ -1,9 +1,9 @@
 Version: 1
-Previous: 31b8bef8f42c4c8e3e54be627a56d3a0a8f283a2
-Head: 575d9ed439215483d4a1f712e76b9f7c29182ae2
+Previous: a739275f6eae1fc64fb8e05dd0f790954c69691a
+Head: 5716b984c78f0c080f6e08d54063b82f36c45ad7
 Applied:
   autofs-5.0.7-fix-fcntl-return-check.patch: a98dd662c24031515c5fb45fc8a4ecbe206c0f69
-  autofs-5.0.7-fix-spawn_umount-return-check-in-mount_bind-lookup_init.patch: 575d9ed439215483d4a1f712e76b9f7c29182ae2
+  autofs-5.0.7-fix-spawn_umount-return-check-in-mount_bind-lookup_init.patch: 5716b984c78f0c080f6e08d54063b82f36c45ad7
 Unapplied:
   autofs-5.0.7-probe-each-nfs-version-in-turn-for-singleton-mounts.patch: dd4e42512f724d603f78a7922c66c70eeec2e420
   autofs-5.0.5-wait-for-master-map-available-at-start.patch: 4f26bda14fd453521f2ea4c8b17fc4ff7f548b28

@@ -5,6 +5,8 @@ Date:   2013-06-05 13:58:16 +0800
 
 autofs-5.0.7 - fix spawn_umount() return check in mount_bind.c:lookup_init()
 
+Check return of spawn_umount() and report it if it fails.
+
 
 ---
 
