@@ -1,0 +1,13 @@
+Bottom: 184aac38cd8ef619183dcb3764d078ef599773db
+Top:    184aac38cd8ef619183dcb3764d078ef599773db
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-06-05 11:38:15 +0800
+
+autofs-5.0.7 - fix fcntl return check
+
+When checking for 
+
+
+---
+
+
