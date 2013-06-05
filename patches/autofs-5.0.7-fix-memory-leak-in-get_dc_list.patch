@@ -3,7 +3,9 @@ Top:    f79eba2aa01d069f8f10bbfe30fe7fc28360448f
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-06-05 18:49:24 +0800
 
-autofs-5.0.7 - fix memory leak in dclist-c
+autofs-5.0.7 - fix memory leak in get_dc_list()
+
+On
 
 
 ---
