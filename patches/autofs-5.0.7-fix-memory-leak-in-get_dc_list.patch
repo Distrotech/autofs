@@ -5,7 +5,8 @@ Date:   2013-06-05 18:49:24 +0800
 
 autofs-5.0.7 - fix memory leak in get_dc_list()
 
-On
+In get_dc_list() if an invalid port is found the allocated list storage
+isn't freed on the error exit.
 
 
 ---
