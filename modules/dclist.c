@@ -549,6 +549,8 @@ struct dclist *get_dc_list(unsigned int logopt, const char *uri)
 					error(logopt,
 					      "invalid port: %u", dcs[i].port);
 					free_srv_rrs(dcs, numdcs);
+					/* Ensure realloced list is freed */
+					list = tmp;
 					goto out_error;
 				}
 				strcat(tmp, port);
