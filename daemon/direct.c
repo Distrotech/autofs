@@ -1392,7 +1392,7 @@ int handle_packet_missing_direct(struct autofs_point *ap, autofs_packet_missing_
 		ops->send_fail(ap->logopt,
 			       ioctlfd, pkt->wait_queue_token, -ENOENT);
 		ops->close(ap->logopt, ioctlfd);
-		cache_unlock(me->mc);
+		cache_unlock(mc);
 		master_source_unlock(ap->entry);
 		master_mutex_unlock();
 		pthread_setcancelstate(state, NULL);
