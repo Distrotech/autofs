@@ -91,7 +91,7 @@ OPTWS		[[:blank:]]*
 NL		\r?\n
 CONT		\\\n{OPTWS}
 
-OPTIONSTR      ([\-]?([[:alpha:]_]([[:alnum:]_\-])*(=(\"?([[:alnum:]_\-\:])+\"?))?)+)
+OPTIONSTR	([\-]?([[:alpha:]_]([[:alnum:]_\-])*(=(\"?([[:alnum:]_\-\:])+\"?))?)+)
 MACROSTR	(-D{OPTWS}([[:alpha:]_]([[:alnum:]_\-\.])*)=([[:alnum:]_\-\.])+)
 SLASHIFYSTR	(--(no-)?slashify-colons)
 NUMBER		[0-9]+
