@@ -75,7 +75,7 @@ static unsigned int debug;
 
 static int lineno;
 
-#define YYDEBUG 1
+#define YYDEBUG 0
 
 #ifndef YYENABLE_NLS
 #define YYENABLE_NLS 0
