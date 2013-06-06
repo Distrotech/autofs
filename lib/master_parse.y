@@ -534,8 +534,8 @@ dnattr: DNATTR EQUAL DNNAME
 	;
 
 options: option {}
-	| options option {}
 	| options COMMA option {}
+	| options option {}
 	| options COMMA COMMA option
 	{
 		master_notify($1);
@@ -550,7 +550,6 @@ options: option {}
 
 option: daemon_option
 	| mount_option {}
-	| mount_option EQUAL mount_option {}
 	| error
 	{
 		master_notify("bogus option");
