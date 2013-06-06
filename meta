@@ -1,18 +1,18 @@
 Version: 1
-Previous: a9da6889063a480bbc23d65ecfb154afecd2db25
-Head: d71c5ecd852d7b4d06deae69105af86e42229bbb
+Previous: 4f8744045927dd2bd0f7028055eba0b4d668cdf7
+Head: 2d6cf2da1dfd5ec67d35e96ebc26f48c7a698064
 Applied:
   autofs-5.0.7-fix-master-map-mount-options-matching.patch: c01166ee31bebd06c1ee18ebde3e2c06a8c13434
-  autofs-5.0.7-fix-master-map-bogus-keywork-match.patch: 84202faf973c5c8f90eb16ec20e433442f37e995
-  autofs-5.0.7-fix-fcntl-return-check.patch: c0b5b7f10f8aeccb8793a620b082d6cbef5da551
-  autofs-5.0.7-fix-spawn_umount-return-check-in-mount_bind-lookup_init.patch: 0a4ea6519368acfb56e93c7465484325819bfa8b
-  autofs-5.0.7-fix-check-mkdir_path-in-mount_bind-mount_mount.patch: 58bb9bcc7c0b6adb4e3636fd023370cfd1d5a414
-  autofs-5.0.7-fix-incorrect-name-in-test.patch: 8523c71faf76304dd8d4bf90d8f327673e4bd8ee
-  autofs-5.0.7-remove-debug-only-code-in-alarm-c.patch: 0c02db9d021aeb2807ff997ae2c25626684bd0ff
-  autofs-5.0.7-fix-inconsistent-use-of-cache-lock-in-handle_packet_missing_direct.patch: f5f9cc2faa92ce784011be65766229bfe69783fb
-  autofs-5.0.7-fix-several-off-by-one-errors.patch: fd0cd0ae72c43c6bd851f15d088953d882e4011b
-  autofs-5.0.7-fix-memory-leak-in-get_dc_list.patch: 8e1023765cb3d9909caef392cbcab6ec8c029350
-  autofs-5.0.7-probe-each-nfs-version-in-turn-for-singleton-mounts.patch: d71c5ecd852d7b4d06deae69105af86e42229bbb
+  autofs-5.0.7-fix-master-map-bogus-keywork-match.patch: c6174c924be1bffe2c52185abf9da8e180183fc2
+  autofs-5.0.7-fix-fcntl-return-check.patch: 5d6956daed086182e49a13f61e113c781c8621b5
+  autofs-5.0.7-fix-spawn_umount-return-check-in-mount_bind-lookup_init.patch: 0970175eebd21d4da2cc405e4a3d8e7d8e4f99c6
+  autofs-5.0.7-fix-check-mkdir_path-in-mount_bind-mount_mount.patch: c8b4f7f8261025cff665fe467cfe6e605772dc91
+  autofs-5.0.7-fix-incorrect-name-in-test.patch: 4a52eb728aca8a7fa1162a9168efbcd5c24aeeae
+  autofs-5.0.7-remove-debug-only-code-in-alarm-c.patch: a7d7a67963a39dd705634bb0e0782e0504d2db8f
+  autofs-5.0.7-fix-inconsistent-use-of-cache-lock-in-handle_packet_missing_direct.patch: b150fe21f88955961b227f23fa7b6a2211aee07d
+  autofs-5.0.7-fix-several-off-by-one-errors.patch: 8beff23af170c7934c3bc6fa303dfa667e1269b1
+  autofs-5.0.7-fix-memory-leak-in-get_dc_list.patch: 705d315295c05f8c0171a6312ec5c3375794ac3a
+  autofs-5.0.7-probe-each-nfs-version-in-turn-for-singleton-mounts.patch: 2d6cf2da1dfd5ec67d35e96ebc26f48c7a698064
 Unapplied:
   autofs-5.0.5-wait-for-master-map-available-at-start.patch: 4f26bda14fd453521f2ea4c8b17fc4ff7f548b28
   autofs-5.0.5-add-master-read-wait-option.patch: d9182f80955e6f44bb43b407a07c4ec0509749bf
