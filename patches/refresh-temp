@@ -1,0 +1,24 @@
+Bottom: 93fef295cf8fb70363dcaf4393919208be51b0c5
+Top:    034811e9d70bf4fca1ef025a9e266940f41826cb
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-06-06 12:19:10 +0800
+
+Refresh of autofs-5.0.5-fix-master-map-bogus-keywork-match.patch
+
+---
+
+diff --git a/lib/master_tok.l b/lib/master_tok.l
+index 059c62c..aec857e 100644
+--- a/lib/master_tok.l
++++ b/lib/master_tok.l
+@@ -410,10 +410,6 @@ OPTNTOUT	(-n{OPTWS}|-n{OPTWS}={OPTWS}|--negative-timeout{OPTWS}|--negative-timeo
+ 		return(EQUAL);
+ 	}
+ 
+-	\"	{
+-		strcpy(master_lval.strtype, master_text);
+-		return(QUOTE);
+-	}
+ 	{WS}	{}
+ 	{NL} |
+ 	\x00 { BEGIN(INITIAL); }
