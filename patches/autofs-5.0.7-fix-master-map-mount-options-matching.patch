@@ -5,7 +5,16 @@ Date:   2013-06-06 14:17:21 +0800
 
 autofs-5.0.7 - fix master map mount options matching
 
-The pattern 
+The master map options pattern matching is fairly primitive since it
+doesn't need to be very sophisticated. The current mount option pattern
+matching can't match mount options with quotes or embedded colons and so
+it can't pass these options through as a global options string.
+
+But it must be able to match a fairly large class of strings, including
+the above case, so they can be passed through as global options. Of
+course it can't try and validate them since it can't know what mount type
+they may be used with.
+
 
 
 ---
