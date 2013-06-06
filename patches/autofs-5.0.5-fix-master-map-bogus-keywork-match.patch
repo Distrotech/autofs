@@ -1,5 +1,5 @@
 Bottom: eb4d566b8f4adf36af4c24d26c6725ab8a656462
-Top:    aed932240623fe68d64cafd934bce354a91d1031
+Top:    aad0eb0a160fdf4a6b51a39cab2586aa355a5a0a
 Author: Ian Kent <raven@themaw.net>
 Date:   2010-02-16 10:02:27 +0800
 
@@ -50,18 +50,19 @@ index 11caf5b..680f116 100644
  #ifndef YYENABLE_NLS
  #define YYENABLE_NLS 0
 diff --git a/lib/master_tok.l b/lib/master_tok.l
-index f9b4e55..dfdcb14 100644
+index f9b4e55..6ff18c0 100644
 --- a/lib/master_tok.l
 +++ b/lib/master_tok.l
-@@ -92,6 +92,7 @@ NL		\r?\n
+@@ -91,7 +91,7 @@ OPTWS		[[:blank:]]*
+ NL		\r?\n
  CONT		\\\n{OPTWS}
  
- OPTIONSTR	([\-]?([[:alpha:]_]([[:alnum:]_\-])*(=([[:alnum:]_\-])+)*)+)
-+QVOPTIONSTR	([[:alpha:]_]([[:alnum:]_\-])*="([[:alnum:]_\-\:])+")
+-OPTIONSTR	([\-]?([[:alpha:]_]([[:alnum:]_\-])*(=([[:alnum:]_\-])+)*)+)
++OPTIONSTR	([\-]?([[:alpha:]_]([[:alnum:]_\-])*(="?([[:alnum:]_\-\:])+\"?)*)+)
  MACROSTR	(-D{OPTWS}([[:alpha:]_]([[:alnum:]_\-\.])*)=([[:alnum:]_\-\.])+)
  SLASHIFYSTR	(--(no-)?slashify-colons)
  NUMBER		[0-9]+
-@@ -202,6 +203,14 @@ OPTNTOUT	(-n{OPTWS}|-n{OPTWS}={OPTWS}|--negative-timeout{OPTWS}|--negative-timeo
+@@ -202,6 +202,14 @@ OPTNTOUT	(-n{OPTWS}|-n{OPTWS}={OPTWS}|--negative-timeout{OPTWS}|--negative-timeo
  	{MULTI} {
  		tlen = master_leng - 1;
  		if (bptr != buff && isblank(master_text[tlen])) {
@@ -76,7 +77,7 @@ index f9b4e55..dfdcb14 100644
  			strncat(buff, master_text, tlen);
  			bptr += tlen;
  			yyless(tlen);
-@@ -216,6 +225,14 @@ OPTNTOUT	(-n{OPTWS}|-n{OPTWS}={OPTWS}|--negative-timeout{OPTWS}|--negative-timeo
+@@ -216,6 +224,14 @@ OPTNTOUT	(-n{OPTWS}|-n{OPTWS}={OPTWS}|--negative-timeout{OPTWS}|--negative-timeo
  	{MTYPE}/{DNATTRSTR}= {
  		tlen = master_leng - 1;
  		if (bptr != buff && isblank(master_text[tlen])) {
@@ -91,15 +92,3 @@ index f9b4e55..dfdcb14 100644
  			strncat(buff, master_text, tlen);
  			bptr += tlen;
  			yyless(tlen);
-@@ -384,6 +401,11 @@ OPTNTOUT	(-n{OPTWS}|-n{OPTWS}={OPTWS}|--negative-timeout{OPTWS}|--negative-timeo
- 		return(OPTION);
- 	}
- 
-+	{QVOPTIONSTR} {
-+		strcpy(master_lval.strtype, master_text);
-+		return(OPTION);
-+	}
-+
- 	{OPTIONSTR} {
- 		strcpy(master_lval.strtype, master_text);
- 		return(OPTION);
