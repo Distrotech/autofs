@@ -410,10 +410,6 @@ OPTNTOUT	(-n{OPTWS}|-n{OPTWS}={OPTWS}|--negative-timeout{OPTWS}|--negative-timeo
 		return(EQUAL);
 	}
 
-	\"	{
-		strcpy(master_lval.strtype, master_text);
-		return(QUOTE);
-	}
 	{WS}	{}
 	{NL} |
 	\x00 { BEGIN(INITIAL); }
