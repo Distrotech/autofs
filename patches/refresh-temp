@@ -1,0 +1,64 @@
+Bottom: 422cdbaea073db0d1f25be89030ce769aa614511
+Top:    98237f9d95b4d38c80e0774a989e4000ae4f3fef
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-06-06 12:17:28 +0800
+
+Refresh of autofs-5.0.5-fix-master-map-bogus-keywork-match.patch
+
+---
+
+diff --git a/lib/master_parse.y b/lib/master_parse.y
+index 59f2b8a..93be0cf 100644
+--- a/lib/master_parse.y
++++ b/lib/master_parse.y
+@@ -534,8 +534,8 @@ dnattr: DNATTR EQUAL DNNAME
+ 	;
+ 
+ options: option {}
+-	| options COMMA option {}
+ 	| options option {}
++	| options COMMA option {}
+ 	| options COMMA COMMA option
+ 	{
+ 		master_notify($1);
+@@ -550,6 +550,7 @@ options: option {}
+ 
+ option: daemon_option
+ 	| mount_option {}
++	| mount_option EQUAL mount_option {}
+ 	| error
+ 	{
+ 		master_notify("bogus option");
+@@ -579,33 +580,6 @@ mount_option: OPTION
+ 			YYABORT;
+ 		}
+ 	}
+-	| OPTION EQUAL OPTION
+-	{
+-		strcpy($$, $1);
+-		strcat($$, "=");
+-		strcat($$, $3);
+-		tmp_argc++;
+-		tmp_argv = add_argv(tmp_argc, tmp_argv, $$);
+-		if (!tmp_argv) {
+-			master_error("memory allocation error");
+-			local_free_vars();
+-			YYABORT;
+-		}
+-	}
+-	| OPTION EQUAL QUOTE OPTION QUOTE
+-	{
+-		strcpy($$, $1);
+-		strcat($$, "=\"");
+-		strcat($$, $3);
+-		strcat($$, "\"");
+-		tmp_argc++;
+-		tmp_argv = add_argv(tmp_argc, tmp_argv, $$);
+-		if (!tmp_argv) {
+-			master_error("memory allocation error");
+-			local_free_vars();
+-			YYABORT;
+-		}
+-	}
+ 	;
+ %%
