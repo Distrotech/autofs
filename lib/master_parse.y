@@ -541,11 +541,11 @@ options: option {}
 		master_notify($1);
 		YYABORT;
 	}
-	/*| options EQUAL
+	| options EQUAL
 	{
 		master_notify($1);
 		YYABORT;
-	}*/
+	}
 	;
 
 option: daemon_option
