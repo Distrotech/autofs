@@ -1,5 +1,5 @@
 Bottom: eb4d566b8f4adf36af4c24d26c6725ab8a656462
-Top:    98237f9d95b4d38c80e0774a989e4000ae4f3fef
+Top:    93fef295cf8fb70363dcaf4393919208be51b0c5
 Author: Ian Kent <raven@themaw.net>
 Date:   2010-02-16 10:02:27 +0800
 
@@ -37,7 +37,7 @@ index 1156cc9..2e255a5 100644
  03/09/2009 autofs-5.0.5
  -----------------------
 diff --git a/lib/master_parse.y b/lib/master_parse.y
-index 11caf5b..93be0cf 100644
+index 11caf5b..00b7935 100644
 --- a/lib/master_parse.y
 +++ b/lib/master_parse.y
 @@ -75,7 +75,7 @@ static unsigned int debug;
@@ -49,15 +49,7 @@ index 11caf5b..93be0cf 100644
  
  #ifndef YYENABLE_NLS
  #define YYENABLE_NLS 0
-@@ -534,22 +534,23 @@ dnattr: DNATTR EQUAL DNNAME
- 	;
- 
- options: option {}
--	| options COMMA option {}
- 	| options option {}
-+	| options COMMA option {}
- 	| options COMMA COMMA option
- 	{
+@@ -541,11 +541,11 @@ options: option {}
  		master_notify($1);
  		YYABORT;
  	}
@@ -71,11 +63,6 @@ index 11caf5b..93be0cf 100644
  	;
  
  option: daemon_option
- 	| mount_option {}
-+	| mount_option EQUAL mount_option {}
- 	| error
- 	{
- 		master_notify("bogus option");
 diff --git a/lib/master_tok.l b/lib/master_tok.l
 index f9b4e55..059c62c 100644
 --- a/lib/master_tok.l
