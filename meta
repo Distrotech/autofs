@@ -1,9 +1,8 @@
 Version: 1
-Previous: 9a6a7eb0d521b0dcd1606ecd2db1bfcfc897269b
-Head: 78f881e6c7ff90538311d5bae1718d551070ab67
+Previous: 3c5c848e7333a4fe844c1b6dee748d69197cea93
+Head: c01166ee31bebd06c1ee18ebde3e2c06a8c13434
 Applied:
-  autofs-5.0.7-fix-master-map-mount-options-matching.patch: cc13604919eaf2e1dde05f2502f154c3fb03b8d3
-  refresh-temp: 78f881e6c7ff90538311d5bae1718d551070ab67
+  autofs-5.0.7-fix-master-map-mount-options-matching.patch: c01166ee31bebd06c1ee18ebde3e2c06a8c13434
 Unapplied:
   autofs-5.0.5-fix-master-map-bogus-keywork-match.patch: 15b304a8b9bcd0b833781dfaba5dc5d71656ca82
   autofs-5.0.7-fix-fcntl-return-check.patch: a98dd662c24031515c5fb45fc8a4ecbe206c0f69

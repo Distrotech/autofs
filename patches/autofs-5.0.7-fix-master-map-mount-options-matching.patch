@@ -1,5 +1,5 @@
 Bottom: 4cf992487e79c44c2e5a28e2356679ac90dcd097
-Top:    cc12a1b7d1fab0beae73df470afa0676b0f58723
+Top:    ef180055e9732d8db5b6a19e0577324a7b3c85b3
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-06-06 14:17:21 +0800
 
@@ -32,7 +32,7 @@ index 1156cc9..00eaff2 100644
  25/07/2012 autofs-5.0.7
  =======================
 diff --git a/lib/master_tok.l b/lib/master_tok.l
-index f9b4e55..4c0cc1a 100644
+index f9b4e55..8d1f1a2 100644
 --- a/lib/master_tok.l
 +++ b/lib/master_tok.l
 @@ -91,7 +91,7 @@ OPTWS		[[:blank:]]*
@@ -40,7 +40,7 @@ index f9b4e55..4c0cc1a 100644
  CONT		\\\n{OPTWS}
  
 -OPTIONSTR	([\-]?([[:alpha:]_]([[:alnum:]_\-])*(=([[:alnum:]_\-])+)*)+)
-+OPTIONSTR      ([\-]?([[:alpha:]_]([[:alnum:]_\-])*(=(\"?([[:alnum:]_\-\:])+\"?))?)+)
++OPTIONSTR	([\-]?([[:alpha:]_]([[:alnum:]_\-])*(=(\"?([[:alnum:]_\-\:])+\"?))?)+)
  MACROSTR	(-D{OPTWS}([[:alpha:]_]([[:alnum:]_\-\.])*)=([[:alnum:]_\-\.])+)
  SLASHIFYSTR	(--(no-)?slashify-colons)
  NUMBER		[0-9]+
