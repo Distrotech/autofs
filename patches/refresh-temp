@@ -1,0 +1,21 @@
+Bottom: f15cdd1e5f70de5fa57faff85529a7a65f1edc78
+Top:    d2aaf784e70941b0809788125f8f17bdc5c97bdb
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-06-06 14:32:05 +0800
+
+Refresh of autofs-5.0.7-fix-master-map-mount-options-matching.patch
+
+---
+
+diff --git a/CHANGELOG b/CHANGELOG
+index 1156cc9..00eaff2 100644
+--- a/CHANGELOG
++++ b/CHANGELOG
+@@ -45,6 +45,7 @@
+ - add enable sloppy mount option to configure.
+ - fix interface address null check.
+ - dont probe rdma mounts.
++- fix master map mount options matching.
+ 
+ 25/07/2012 autofs-5.0.7
+ =======================
