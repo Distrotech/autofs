@@ -1,5 +1,5 @@
-Bottom: eb4d566b8f4adf36af4c24d26c6725ab8a656462
-Top:    a9ceb6f0325263a7274430c99626e697f7b49c56
+Bottom: cc12a1b7d1fab0beae73df470afa0676b0f58723
+Top:    cc12a1b7d1fab0beae73df470afa0676b0f58723
 Author: Ian Kent <raven@themaw.net>
 Date:   2010-02-16 10:02:27 +0800
 
@@ -16,66 +16,4 @@ tokenizer.
 
 ---
 
-diff --git a/CHANGELOG b/CHANGELOG
-index 1156cc9..2e255a5 100644
---- a/CHANGELOG
-+++ b/CHANGELOG
-@@ -118,6 +118,7 @@
- - mount_nfs.so to honor explicit NFSv4 requests.
- - mount_nfs.so fix port=0 option behavior v3.
- - documentation fix some typos and misleading comments.
-+- fix master map bogus keywork match.
- 
- 28/06/2011 autofs-5.0.6
- -----------------------
-@@ -202,6 +203,7 @@
- - add base64 password encode.
- - fix ipv6 name for lookup.
- - fix libtirpc ipv6 check.
-+- fix non multi-mount recursive mounts.
- 
- 03/09/2009 autofs-5.0.5
- -----------------------
-diff --git a/lib/master_tok.l b/lib/master_tok.l
-index f9b4e55..a55cc76 100644
---- a/lib/master_tok.l
-+++ b/lib/master_tok.l
-@@ -91,7 +91,7 @@ OPTWS		[[:blank:]]*
- NL		\r?\n
- CONT		\\\n{OPTWS}
- 
--OPTIONSTR	([\-]?([[:alpha:]_]([[:alnum:]_\-])*(=([[:alnum:]_\-])+)*)+)
-+OPTIONSTR	([\-]?([[:alpha:]_]([[:alnum:]_\-])*(=(\"?([[:alnum:]_\-\:])+\"?))?)+)
- MACROSTR	(-D{OPTWS}([[:alpha:]_]([[:alnum:]_\-\.])*)=([[:alnum:]_\-\.])+)
- SLASHIFYSTR	(--(no-)?slashify-colons)
- NUMBER		[0-9]+
-@@ -202,6 +202,14 @@ OPTNTOUT	(-n{OPTWS}|-n{OPTWS}={OPTWS}|--negative-timeout{OPTWS}|--negative-timeo
- 	{MULTI} {
- 		tlen = master_leng - 1;
- 		if (bptr != buff && isblank(master_text[tlen])) {
-+			/*
-+			 * We can't handle unescaped white space in map names
-+			 * so just eat the white space. We always have the
-+			 * "multi" at the beginning of the string so the while
-+			 * will not fall off the end.
-+			 */
-+			while (isblank(master_text[tlen - 1]))
-+				tlen--;
- 			strncat(buff, master_text, tlen);
- 			bptr += tlen;
- 			yyless(tlen);
-@@ -216,6 +224,14 @@ OPTNTOUT	(-n{OPTWS}|-n{OPTWS}={OPTWS}|--negative-timeout{OPTWS}|--negative-timeo
- 	{MTYPE}/{DNATTRSTR}= {
- 		tlen = master_leng - 1;
- 		if (bptr != buff && isblank(master_text[tlen])) {
-+			/*
-+			 * We can't handle unescaped white space in map names
-+			 * so just eat the white space. We always have the
-+			 * maptype keyword at the beginning of the string so
-+			 * the while will not fall off the end.
-+			 */
-+			while (isblank(master_text[tlen - 1]))
-+				tlen--;
- 			strncat(buff, master_text, tlen);
- 			bptr += tlen;
- 			yyless(tlen);
+
