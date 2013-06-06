@@ -1,5 +1,5 @@
 Bottom: eb4d566b8f4adf36af4c24d26c6725ab8a656462
-Top:    eb4d566b8f4adf36af4c24d26c6725ab8a656462
+Top:    422cdbaea073db0d1f25be89030ce769aa614511
 Author: Ian Kent <raven@themaw.net>
 Date:   2010-02-16 10:02:27 +0800
 
@@ -16,4 +16,129 @@ tokenizer.
 
 ---
 
-
+diff --git a/CHANGELOG b/CHANGELOG
+index 1156cc9..2e255a5 100644
+--- a/CHANGELOG
++++ b/CHANGELOG
+@@ -118,6 +118,7 @@
+ - mount_nfs.so to honor explicit NFSv4 requests.
+ - mount_nfs.so fix port=0 option behavior v3.
+ - documentation fix some typos and misleading comments.
++- fix master map bogus keywork match.
+ 
+ 28/06/2011 autofs-5.0.6
+ -----------------------
+@@ -202,6 +203,7 @@
+ - add base64 password encode.
+ - fix ipv6 name for lookup.
+ - fix libtirpc ipv6 check.
++- fix non multi-mount recursive mounts.
+ 
+ 03/09/2009 autofs-5.0.5
+ -----------------------
+diff --git a/lib/master_parse.y b/lib/master_parse.y
+index 11caf5b..59f2b8a 100644
+--- a/lib/master_parse.y
++++ b/lib/master_parse.y
+@@ -75,7 +75,7 @@ static unsigned int debug;
+ 
+ static int lineno;
+ 
+-#define YYDEBUG 0
++#define YYDEBUG 1
+ 
+ #ifndef YYENABLE_NLS
+ #define YYENABLE_NLS 0
+@@ -541,11 +541,11 @@ options: option {}
+ 		master_notify($1);
+ 		YYABORT;
+ 	}
+-	| options EQUAL
++	/*| options EQUAL
+ 	{
+ 		master_notify($1);
+ 		YYABORT;
+-	}
++	}*/
+ 	;
+ 
+ option: daemon_option
+@@ -579,6 +579,33 @@ mount_option: OPTION
+ 			YYABORT;
+ 		}
+ 	}
++	| OPTION EQUAL OPTION
++	{
++		strcpy($$, $1);
++		strcat($$, "=");
++		strcat($$, $3);
++		tmp_argc++;
++		tmp_argv = add_argv(tmp_argc, tmp_argv, $$);
++		if (!tmp_argv) {
++			master_error("memory allocation error");
++			local_free_vars();
++			YYABORT;
++		}
++	}
++	| OPTION EQUAL QUOTE OPTION QUOTE
++	{
++		strcpy($$, $1);
++		strcat($$, "=\"");
++		strcat($$, $3);
++		strcat($$, "\"");
++		tmp_argc++;
++		tmp_argv = add_argv(tmp_argc, tmp_argv, $$);
++		if (!tmp_argv) {
++			master_error("memory allocation error");
++			local_free_vars();
++			YYABORT;
++		}
++	}
+ 	;
+ %%
+ 
+diff --git a/lib/master_tok.l b/lib/master_tok.l
+index f9b4e55..059c62c 100644
+--- a/lib/master_tok.l
++++ b/lib/master_tok.l
+@@ -202,6 +202,14 @@ OPTNTOUT	(-n{OPTWS}|-n{OPTWS}={OPTWS}|--negative-timeout{OPTWS}|--negative-timeo
+ 	{MULTI} {
+ 		tlen = master_leng - 1;
+ 		if (bptr != buff && isblank(master_text[tlen])) {
++			/*
++			 * We can't handle unescaped white space in map names
++			 * so just eat the white space. We always have the
++			 * "multi" at the beginning of the string so the while
++			 * will not fall off the end.
++			 */
++			while (isblank(master_text[tlen - 1]))
++				tlen--;
+ 			strncat(buff, master_text, tlen);
+ 			bptr += tlen;
+ 			yyless(tlen);
+@@ -216,6 +224,14 @@ OPTNTOUT	(-n{OPTWS}|-n{OPTWS}={OPTWS}|--negative-timeout{OPTWS}|--negative-timeo
+ 	{MTYPE}/{DNATTRSTR}= {
+ 		tlen = master_leng - 1;
+ 		if (bptr != buff && isblank(master_text[tlen])) {
++			/*
++			 * We can't handle unescaped white space in map names
++			 * so just eat the white space. We always have the
++			 * maptype keyword at the beginning of the string so
++			 * the while will not fall off the end.
++			 */
++			while (isblank(master_text[tlen - 1]))
++				tlen--;
+ 			strncat(buff, master_text, tlen);
+ 			bptr += tlen;
+ 			yyless(tlen);
+@@ -394,6 +410,10 @@ OPTNTOUT	(-n{OPTWS}|-n{OPTWS}={OPTWS}|--negative-timeout{OPTWS}|--negative-timeo
+ 		return(EQUAL);
+ 	}
+ 
++	\"	{
++		strcpy(master_lval.strtype, master_text);
++		return(QUOTE);
++	}
+ 	{WS}	{}
+ 	{NL} |
+ 	\x00 { BEGIN(INITIAL); }
