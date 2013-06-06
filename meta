@@ -1,13 +1,13 @@
 Version: 1
-Previous: 4d0c46a1351ab0e2b04a817f3ae11f4f13d0d39f
-Head: 0a4ea6519368acfb56e93c7465484325819bfa8b
+Previous: 61f877a652a98e733ab15c6a79360c274ecdf583
+Head: 58bb9bcc7c0b6adb4e3636fd023370cfd1d5a414
 Applied:
   autofs-5.0.7-fix-master-map-mount-options-matching.patch: c01166ee31bebd06c1ee18ebde3e2c06a8c13434
   autofs-5.0.5-fix-master-map-bogus-keywork-match.patch: 84202faf973c5c8f90eb16ec20e433442f37e995
   autofs-5.0.7-fix-fcntl-return-check.patch: c0b5b7f10f8aeccb8793a620b082d6cbef5da551
   autofs-5.0.7-fix-spawn_umount-return-check-in-mount_bind-lookup_init.patch: 0a4ea6519368acfb56e93c7465484325819bfa8b
+  autofs-5.0.7-fix-check-mkdir_path-in-mount_bind-mount_mount.patch: 58bb9bcc7c0b6adb4e3636fd023370cfd1d5a414
 Unapplied:
-  autofs-5.0.7-fix-check-mkdir_path-in-mount_bind-mount_mount.patch: 47750476557f0182b9cc141176e2d0ffe3de0aa4
   autofs-5.0.7-fix-incorrect-name-in-test.patch: 01d782b21fab3b02e0008b69383cda95133c1eee
   autofs-5.0.7-remove-debug-only-code-in-alarm-c.patch: 809e58dff5335838f5e5eb7bb8b0468c4656106c
   autofs-5.0.7-fix-inconsistent-use-of-cache-lock-in-handle_packet_missing_direct.patch: bbeb0ef89993a55c617604582d61b9d681ab0c02
