@@ -92,6 +92,7 @@ NL		\r?\n
 CONT		\\\n{OPTWS}
 
 OPTIONSTR	([\-]?([[:alpha:]_]([[:alnum:]_\-])*(=([[:alnum:]_\-])+)*)+)
+QVOPTIONSTR	([\-]?([[:alpha:]_]([[:alnum:]_\-])*(="([[:alnum:]_\-\:])+")))
 MACROSTR	(-D{OPTWS}([[:alpha:]_]([[:alnum:]_\-\.])*)=([[:alnum:]_\-\.])+)
 SLASHIFYSTR	(--(no-)?slashify-colons)
 NUMBER		[0-9]+
@@ -396,6 +397,11 @@ OPTNTOUT	(-n{OPTWS}|-n{OPTWS}={OPTWS}|--negative-timeout{OPTWS}|--negative-timeo
 	}
 
 	{MACROSTR} {
+		strcpy(master_lval.strtype, master_text);
+		return(OPTION);
+	}
+
+	{QVOPTIONSTR} {
 		strcpy(master_lval.strtype, master_text);
 		return(OPTION);
 	}
