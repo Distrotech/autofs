@@ -75,7 +75,7 @@ static unsigned int debug;
 
 static int lineno;
 
-#define YYDEBUG 0
+#define YYDEBUG 1
 
 #ifndef YYENABLE_NLS
 #define YYENABLE_NLS 0
@@ -541,11 +541,11 @@ options: option {}
 		master_notify($1);
 		YYABORT;
 	}
-	| options EQUAL
+	/*| options EQUAL
 	{
 		master_notify($1);
 		YYABORT;
-	}
+	}*/
 	;
 
 option: daemon_option
@@ -573,6 +573,33 @@ mount_option: OPTION
 	{
 		tmp_argc++;
 		tmp_argv = add_argv(tmp_argc, tmp_argv, $1);
+		if (!tmp_argv) {
+			master_error("memory allocation error");
+			local_free_vars();
+			YYABORT;
+		}
+	}
+	| OPTION EQUAL OPTION
+	{
+		strcpy($$, $1);
+		strcat($$, "=");
+		strcat($$, $3);
+		tmp_argc++;
+		tmp_argv = add_argv(tmp_argc, tmp_argv, $$);
+		if (!tmp_argv) {
+			master_error("memory allocation error");
+			local_free_vars();
+			YYABORT;
+		}
+	}
+	| OPTION EQUAL QUOTE OPTION QUOTE
+	{
+		strcpy($$, $1);
+		strcat($$, "=\"");
+		strcat($$, $3);
+		strcat($$, "\"");
+		tmp_argc++;
+		tmp_argv = add_argv(tmp_argc, tmp_argv, $$);
 		if (!tmp_argv) {
 			master_error("memory allocation error");
 			local_free_vars();
