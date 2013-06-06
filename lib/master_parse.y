@@ -534,8 +534,8 @@ dnattr: DNATTR EQUAL DNNAME
 	;
 
 options: option {}
-	| options COMMA option {}
 	| options option {}
+	| options COMMA option {}
 	| options COMMA COMMA option
 	{
 		master_notify($1);
@@ -550,6 +550,7 @@ options: option {}
 
 option: daemon_option
 	| mount_option {}
+	| mount_option EQUAL mount_option {}
 	| error
 	{
 		master_notify("bogus option");
@@ -573,33 +574,6 @@ mount_option: OPTION
 	{
 		tmp_argc++;
 		tmp_argv = add_argv(tmp_argc, tmp_argv, $1);
-		if (!tmp_argv) {
-			master_error("memory allocation error");
-			local_free_vars();
-			YYABORT;
-		}
-	}
-	| OPTION EQUAL OPTION
-	{
-		strcpy($$, $1);
-		strcat($$, "=");
-		strcat($$, $3);
-		tmp_argc++;
-		tmp_argv = add_argv(tmp_argc, tmp_argv, $$);
-		if (!tmp_argv) {
-			master_error("memory allocation error");
-			local_free_vars();
-			YYABORT;
-		}
-	}
-	| OPTION EQUAL QUOTE OPTION QUOTE
-	{
-		strcpy($$, $1);
-		strcat($$, "=\"");
-		strcat($$, $3);
-		strcat($$, "\"");
-		tmp_argc++;
-		tmp_argv = add_argv(tmp_argc, tmp_argv, $$);
 		if (!tmp_argv) {
 			master_error("memory allocation error");
 			local_free_vars();
