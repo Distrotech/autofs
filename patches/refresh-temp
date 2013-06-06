@@ -1,0 +1,31 @@
+Bottom: 98237f9d95b4d38c80e0774a989e4000ae4f3fef
+Top:    93fef295cf8fb70363dcaf4393919208be51b0c5
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-06-06 12:18:16 +0800
+
+Refresh of autofs-5.0.5-fix-master-map-bogus-keywork-match.patch
+
+---
+
+diff --git a/lib/master_parse.y b/lib/master_parse.y
+index 93be0cf..00b7935 100644
+--- a/lib/master_parse.y
++++ b/lib/master_parse.y
+@@ -534,8 +534,8 @@ dnattr: DNATTR EQUAL DNNAME
+ 	;
+ 
+ options: option {}
+-	| options option {}
+ 	| options COMMA option {}
++	| options option {}
+ 	| options COMMA COMMA option
+ 	{
+ 		master_notify($1);
+@@ -550,7 +550,6 @@ options: option {}
+ 
+ option: daemon_option
+ 	| mount_option {}
+-	| mount_option EQUAL mount_option {}
+ 	| error
+ 	{
+ 		master_notify("bogus option");
