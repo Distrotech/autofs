@@ -1,0 +1,22 @@
+Bottom: df7551c6c1673d4c4e70cf09f45f41a8ca31a737
+Top:    b38c29f729898a265456ffeea3f4bb8435a98316
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-06-06 13:48:50 +0800
+
+Refresh of autofs-5.0.5-fix-master-map-bogus-keywork-match.patch
+
+---
+
+diff --git a/lib/master_tok.l b/lib/master_tok.l
+index 8159245..620a7c1 100644
+--- a/lib/master_tok.l
++++ b/lib/master_tok.l
+@@ -91,7 +91,7 @@ OPTWS		[[:blank:]]*
+ NL		\r?\n
+ CONT		\\\n{OPTWS}
+ 
+-OPTIONSTR	([\-]?([[:alpha:]_]([[:alnum:]_\-])*(=(["]?([[:alnum:]_\-\:])+["]?)))+)
++OPTIONSTR	([\-]?([[:alpha:]_]([[:alnum:]_\-])*(=("?([[:alnum:]_\-\:])+"?)))+)
+ MACROSTR	(-D{OPTWS}([[:alpha:]_]([[:alnum:]_\-\.])*)=([[:alnum:]_\-\.])+)
+ SLASHIFYSTR	(--(no-)?slashify-colons)
+ NUMBER		[0-9]+
