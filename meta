@@ -1,6 +1,6 @@
 Version: 1
-Previous: 866cc92c349d350bd5273c80b9f5e438fe0252d5
-Head: 2b4aac86aa17377ed8ba7bafc85b0302c1e0fb8b
+Previous: 83547509e205174c264fcc53101bd0794f99f99b
+Head: 4bf9b37233a1422e13d0f7711ee98f6ad5e867e6
 Applied:
   autofs-5.0.7-fix-fcntl-return-check.patch: a98dd662c24031515c5fb45fc8a4ecbe206c0f69
   autofs-5.0.7-fix-spawn_umount-return-check-in-mount_bind-lookup_init.patch: 5716b984c78f0c080f6e08d54063b82f36c45ad7
@@ -10,6 +10,7 @@ Applied:
   autofs-5.0.7-fix-inconsistent-use-of-cache-lock-in-handle_packet_missing_direct.patch: bbeb0ef89993a55c617604582d61b9d681ab0c02
   autofs-5.0.7-fix-several-off-by-one-errors.patch: c9178a4981ccc313afa72d0fb7875cc373deb224
   autofs-5.0.7-fix-memory-leak-in-get_dc_list.patch: 2b4aac86aa17377ed8ba7bafc85b0302c1e0fb8b
+  autofs-5.0.5-fix-master-map-bogus-keywork-match.patch: 4bf9b37233a1422e13d0f7711ee98f6ad5e867e6
 Unapplied:
   autofs-5.0.7-probe-each-nfs-version-in-turn-for-singleton-mounts.patch: dd4e42512f724d603f78a7922c66c70eeec2e420
   autofs-5.0.5-wait-for-master-map-available-at-start.patch: 4f26bda14fd453521f2ea4c8b17fc4ff7f548b28
@@ -30,7 +31,6 @@ Unapplied:
   autofs-5.0.5-fix-cache_delete-is-to-aggressive.patch: cc92de22bbc1b5b835d57094b3faa21e7ef3a153
   autofs-5.0.5-improve-shutdown-wait.patch: 9298c7896bb3b586e4fa06af1c42f6606ada713d
   autofs-5.0.5-add-map-description-to-auto-master-5.patch: 2e099509e194da343730ebb5368d59dc32c38b92
-  autofs-5.0.5-fix-master-map-bogus-keywork-match.patch: d00865ba14995ca57dc955ceb3a6494a3ee26eac
   autofs-5.0.5-use-access-for-fsck.patch: 26543ca5839021363b28120a907f4e2b170a6eb0
   autofs-5.0.5-fix-lock-ordering-in-mount-request-handling.patch: bc9d6c874f66bd7f368af7294783dfb09092742e
   autofs-5.0.5-dont-fetch-yporder-at-module-init.patch: 452bc37de447522563dd5af636bb76e4c60f85f0

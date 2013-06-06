@@ -1,5 +1,5 @@
-Bottom: a0932fdd944f9b13425228d818f624a8990e4948
-Top:    34c351bf18d36b5201ba7d5584454def7807cb5d
+Bottom: eb4d566b8f4adf36af4c24d26c6725ab8a656462
+Top:    eb4d566b8f4adf36af4c24d26c6725ab8a656462
 Author: Ian Kent <raven@themaw.net>
 Date:   2010-02-16 10:02:27 +0800
 
@@ -16,49 +16,4 @@ tokenizer.
 
 ---
 
-diff --git a/CHANGELOG b/CHANGELOG
-index 5ab419e..b825a20 100644
---- a/CHANGELOG
-+++ b/CHANGELOG
-@@ -25,6 +25,7 @@
- - fix reconnect get base dn.
- - fix mapent becomes negative during lookup.
- - fix non multi-mount recursive mounts.
-+- fix master map bogus keywork match.
- 
- 03/09/2009 autofs-5.0.5
- -----------------------
-diff --git a/lib/master_tok.l b/lib/master_tok.l
-index be2ce10..ef4f140 100644
---- a/lib/master_tok.l
-+++ b/lib/master_tok.l
-@@ -199,6 +199,14 @@ OPTNTOUT	(-n{OPTWS}|-n{OPTWS}={OPTWS}|--negative-timeout{OPTWS}|--negative-timeo
- 	{MULTI} {
- 		tlen = master_leng - 1;
- 		if (bptr != buff && isblank(master_text[tlen])) {
-+			/*
-+			 * We can't handle unescaped white space in map names
-+			 * so just eat the white space. We always have the
-+			 * "multi" at the beginning of the string so the while
-+			 * will not fall off the end.
-+			 */
-+			while (isblank(master_text[tlen - 1]))
-+				tlen--;
- 			strncat(buff, master_text, tlen);
- 			bptr += tlen;
- 			yyless(tlen);
-@@ -213,6 +221,14 @@ OPTNTOUT	(-n{OPTWS}|-n{OPTWS}={OPTWS}|--negative-timeout{OPTWS}|--negative-timeo
- 	{MTYPE}/{DNATTRSTR}= {
- 		tlen = master_leng - 1;
- 		if (bptr != buff && isblank(master_text[tlen])) {
-+			/*
-+			 * We can't handle unescaped white space in map names
-+			 * so just eat the white space. We always have the
-+			 * maptype keyword at the beginning of the string so
-+			 * the while will not fall off the end.
-+			 */
-+			while (isblank(master_text[tlen - 1]))
-+				tlen--;
- 			strncat(buff, master_text, tlen);
- 			bptr += tlen;
- 			yyless(tlen);
+
