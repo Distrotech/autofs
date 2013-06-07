@@ -1,5 +1,5 @@
 Bottom: 9d86aec7ff9f8f13f6382cfa622ad0da0e40e392
-Top:    9d86aec7ff9f8f13f6382cfa622ad0da0e40e392
+Top:    da6f37ba9edb478bec0c8090cb1770b25be1e657
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-06-07 15:00:57 +0800
 
@@ -11,4 +11,23 @@ so fix it in case it gets used sometime in the future.
 
 ---
 
-
+diff --git a/daemon/flag.c b/daemon/flag.c
+index f8fe163..db9a4bd 100644
+--- a/daemon/flag.c
++++ b/daemon/flag.c
+@@ -66,12 +66,11 @@ static int flag_is_owned(int fd)
+ 
+ 			continue;
+ 		}
+-
+-		/* Stale flagfile */
+-		if (!tries)
+-			return 0;
+ 	}
+ 
++	/* Stale flagfile */
++	if (!tries)
++		return 0;
+ 
+ 	if (pid) {
+ 		int ret;
