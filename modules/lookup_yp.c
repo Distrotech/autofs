@@ -699,7 +699,7 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 					       mapent, ctxt->parse->context);
 		if (ret) {
 			time_t now = time(NULL);
-			int rv = CHE_OK;
+			int rv = CHE_FAIL;
 
 			cache_writelock(mc);
 			me = cache_lookup_distinct(mc, key);
