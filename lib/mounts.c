@@ -168,6 +168,8 @@ unsigned int get_kver_minor(void)
 static int extract_version(char *start, struct nfs_mount_vers *vers)
 {
 	char *s_ver = strchr(start, ' ');
+	if (!s_ver)
+		return 0;
 	while (*s_ver && !isdigit(*s_ver)) {
 		s_ver++;
 		if (!*s_ver)
