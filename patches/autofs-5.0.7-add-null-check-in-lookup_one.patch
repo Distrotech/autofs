@@ -1,0 +1,11 @@
+Bottom: ec7098b60d0ad64ce572a73381432a3bd1bc162d
+Top:    ec7098b60d0ad64ce572a73381432a3bd1bc162d
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-06-07 12:23:11 +0800
+
+autofs-5.0.7-add-null-check-in-lookup_one(
+
+
+---
+
+
