@@ -1,5 +1,5 @@
 Bottom: a4d63da39044ba22a9f221d0f68c3c14b395471f
-Top:    faa1317e1251b40eab14c2d4bd0b8c739c26e6da
+Top:    b3626f9279513682eaea584997a80902d06e513f
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-06-07 17:16:46 +0800
 
@@ -9,17 +9,14 @@ debug.patch
 ---
 
 diff --git a/lib/cache.c b/lib/cache.c
-index 1e05a99..23462a2 100644
+index 1e05a99..ecace4a 100644
 --- a/lib/cache.c
 +++ b/lib/cache.c
-@@ -658,8 +658,10 @@ int cache_update_offset(struct mapent_cache *mc, const char *mkey, const char *k
- 		return CHE_FAIL;
+@@ -659,7 +659,7 @@ int cache_update_offset(struct mapent_cache *mc, const char *mkey, const char *k
  
  	me = cache_lookup_distinct(mc, key);
-+	if (me)
-+		error(LOGOPT_ANY, "owner %p owner->key %s me %p me->key %s", owner,owner->key,me,me->key);
  	if (me && me->age == age) {
 -		if (me->multi == owner)
-+		if (me == owner)
++		if (me == owner || strcmp(me->key, key) == 0)
  			return CHE_DUPLICATE;
  	}
