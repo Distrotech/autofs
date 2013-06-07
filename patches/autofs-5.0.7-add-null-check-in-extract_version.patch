@@ -5,7 +5,8 @@ Date:   2013-06-07 12:57:51 +0800
 
 autofs-5.0.7 - add null check in extract_version()
 
-A space should always be found
+A space should always be found in the passed in string but a check
+should be done in case it isn't.
 
 
 ---
