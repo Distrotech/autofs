@@ -670,13 +670,11 @@ int rpc_ping_proto(struct conn_info *info)
 	return 1;
 }
 
-static unsigned int __rpc_ping(const char *host,
-				unsigned long version,
-				int proto,
-				long seconds, long micros,
-				unsigned int option)
+static int __rpc_ping(const char *host,
+		      unsigned long version, int proto,
+		      long seconds, long micros, unsigned int option)
 {
-	unsigned int status;
+	int status;
 	struct conn_info info;
 	struct pmap parms;
 
@@ -713,7 +711,7 @@ int rpc_ping(const char *host, long seconds, long micros, unsigned int option)
 {
 	unsigned long vers3 = NFS3_VERSION;
 	unsigned long vers2 = NFS2_VERSION;
-	unsigned int status;
+	int status;
 
 	status = __rpc_ping(host, vers2, IPPROTO_UDP, seconds, micros, option);
 	if (status > 0)
