@@ -1,0 +1,11 @@
+Bottom: 9d86aec7ff9f8f13f6382cfa622ad0da0e40e392
+Top:    9d86aec7ff9f8f13f6382cfa622ad0da0e40e392
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-06-07 15:00:57 +0800
+
+autofs-5.0.7 - fix incorrect check in flag_is_owned()
+
+
+---
+
+
