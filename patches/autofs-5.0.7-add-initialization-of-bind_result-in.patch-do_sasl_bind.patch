@@ -5,6 +5,9 @@ Date:   2013-06-07 14:54:50 +0800
 
 autofs-5.0.7 - add initialization of bind_result in-do_sasl_bind().patch
 
+There is an unlikley code path where bind_result could be used uninitialized
+so initialize it
+
 
 ---
 
