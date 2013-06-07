@@ -1030,28 +1030,19 @@ static int add_new_host(struct host **list,
 	unsigned int prx;
 	int addr_len;
 
+	prx = get_proximity(host_addr->ai_addr);
+
 	/*
-	 * If we are using random selection we pretend all hosts are at
-	 * the same proximity so hosts further away don't get excluded.
-	 * We can't use PROXIMITY_LOCAL or we won't perform an RPC ping
-	 * to remove hosts that may be down.
+	 * If we want the weight to be the determining factor
+	 * when selecting a host, or we are using random selection,
+	 * then all hosts must have the same proximity. However,
+	 * if this is the local machine it should always be used
+	 * since it is certainly available.
 	 */
-	if (!host_addr)
+	if (prx != PROXIMITY_LOCAL &&
+	   (options & (MOUNT_FLAG_USE_WEIGHT_ONLY |
+		       MOUNT_FLAG_RANDOM_SELECT)))
 		prx = PROXIMITY_SUBNET;
-	else {
-		prx = get_proximity(host_addr->ai_addr);
-		/*
-		 * If we want the weight to be the determining factor
-		 * when selecting a host, or we are using random selection,
-		 * then all hosts must have the same proximity. However,
-		 * if this is the local machine it should always be used
-		 * since it is certainly available.
-		 */
-		if (prx != PROXIMITY_LOCAL &&
-		   (options & (MOUNT_FLAG_USE_WEIGHT_ONLY |
-			       MOUNT_FLAG_RANDOM_SELECT)))
-			prx = PROXIMITY_SUBNET;
-	}
 
 	/*
 	 * If we tried to add an IPv6 address and we don't have IPv6
