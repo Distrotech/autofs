@@ -210,7 +210,7 @@ int
 do_sasl_bind(unsigned logopt, LDAP *ld, sasl_conn_t *conn, const char **clientout,
 	     unsigned int *clientoutlen, const char *auth_mech, int sasl_result)
 {
-	int ret, msgid, bind_result;
+	int ret, msgid, bind_result = LDAP_OTHER;
 	struct berval client_cred, *server_cred, temp_cred;
 	LDAPMessage *results;
 	int have_data, expected_data;
