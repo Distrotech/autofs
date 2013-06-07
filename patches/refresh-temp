@@ -1,0 +1,23 @@
+Bottom: d46f5f61a4313ceb7a344e6c1bab72d1873d6b8d
+Top:    553642cd2bced14c2f29e728eb81949c73949d2a
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-06-07 14:51:23 +0800
+
+Refresh of autofs-5.0.7-add-debug-alert-for-waitpid-in-check_nfs_mount_version.patch
+
+---
+
+diff --git a/lib/mounts.c b/lib/mounts.c
+index 687339c..a6f560e 100644
+--- a/lib/mounts.c
++++ b/lib/mounts.c
+@@ -288,8 +288,7 @@ int check_nfs_mount_version(struct nfs_mount_vers *vers,
+ 	}
+ 
+ 	if (waitpid(f, &status, 0) != f)
+-		debug(ap->logopt,
+-		      "error waiting for process %ld", (long) f);
++		debug(LOGOPT_NONE, "no process found to wait for");
+ 
+ 	pthread_sigmask(SIG_SETMASK, &oldsig, NULL);
+ 	pthread_setcancelstate(cancel_state, NULL);
