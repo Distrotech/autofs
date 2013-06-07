@@ -1,5 +1,5 @@
 Bottom: 918e518d647bb1027d8eb8d86ef78b9c002727b2
-Top:    918e518d647bb1027d8eb8d86ef78b9c002727b2
+Top:    a2f6d1906c24f6ae0d715cc9800cbfdcb0fab66f
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-06-07 14:37:02 +0800
 
@@ -10,4 +10,16 @@ This chack should clearly be on the contents of key not the pointer value.
 
 ---
 
-
+diff --git a/lib/defaults.c b/lib/defaults.c
+index 1e89509..7c65387 100644
+--- a/lib/defaults.c
++++ b/lib/defaults.c
+@@ -167,7 +167,7 @@ static int parse_line(char *line, char **res, char **value)
+ 	while (*key && *key == ' ')
+ 		key++;
+ 
+-	if (!key)
++	if (!*key)
+ 		return 0;
+ 
+ 	if (!(val = strchr(key, '=')))
