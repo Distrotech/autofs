@@ -190,7 +190,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 	 * to NFSv3 (if it can). If the NFSv4 probe fails then probe as
 	 * normal.
 	 */
-	if (!this->next &&
+	if (!hosts->next &&
 	    mount_default_proto == 4 &&
 	    vers & NFS_VERS_MASK != 0 &&
 	    vers & NFS4_VERS_MASK != 0) {
@@ -225,6 +225,7 @@ dont_probe:
 
 	/* Root offset of multi-mount */
 	len = strlen(root);
+	error(LOGOPT_ANY, "len = %d root %s name %s root[len-1] %c", len, root, name, root[len-1]);
 	if (root[len - 1] == '/') {
 		len = snprintf(fullpath, len, "%s", root);
 	} else if (*name == '/') {
