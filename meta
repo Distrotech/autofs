@@ -1,6 +1,6 @@
 Version: 1
-Previous: 46efd406f03b4707234a33ea0c03a9247a1fa3e7
-Head: e844e85262bf39b8e02fbdaabdeecf25d5a44b67
+Previous: f24700c5f8fe0a46353bed1a50aa5448d21db6d5
+Head: 49e9aad75eebdfcb4091321c4c84307e79b485a5
 Applied:
   autofs-5.0.7-fix-master-map-mount-options-matching.patch: c01166ee31bebd06c1ee18ebde3e2c06a8c13434
   autofs-5.0.7-fix-master-map-bogus-keywork-match.patch: c6174c924be1bffe2c52185abf9da8e180183fc2
@@ -9,7 +9,7 @@ Applied:
   autofs-5.0.7-fix-check-mkdir_path-in-mount_bind-mount_mount.patch: c8b4f7f8261025cff665fe467cfe6e605772dc91
   autofs-5.0.7-fix-incorrect-name-in-test.patch: 4a52eb728aca8a7fa1162a9168efbcd5c24aeeae
   autofs-5.0.7-remove-debug-only-code-in-alarm-c.patch: a7d7a67963a39dd705634bb0e0782e0504d2db8f
-  autofs-5.0.7-fix-inconsistent-use-of-cache-lock-in-handle_packet_missing_direct.patch: e844e85262bf39b8e02fbdaabdeecf25d5a44b67
+  autofs-5.0.7-fix-inconsistent-use-of-cache-lock-in-handle_packet_missing_direct.patch: 49e9aad75eebdfcb4091321c4c84307e79b485a5
 Unapplied:
   autofs-5.0.7-fix-several-off-by-one-errors.patch: f692e4d828d87cddcaa1efdf50598ad82204b7be
   autofs-5.0.7-fix-memory-leak-in-get_dc_list.patch: d7258950ba3332988c4e7eddffe114021be47672
