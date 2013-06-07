@@ -2525,6 +2525,7 @@ static int lookup_one(struct autofs_point *ap,
 		if (enc_len1 != 0) {
 			enc_len2 = encode_percent_hack(qKey, &enc_key2, 1);
 			if (enc_len2 < 0) {
+				free(enc_key1);
 				crit(ap->logopt,
 				     "could not use percent hack encode key %s",
 				     qKey);
