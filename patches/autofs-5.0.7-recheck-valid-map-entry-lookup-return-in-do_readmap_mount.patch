@@ -1,5 +1,5 @@
 Bottom: 421dcb8b2218f3102f41a13ae3138203a2ead777
-Top:    421dcb8b2218f3102f41a13ae3138203a2ead777
+Top:    905f1f329cc7a24214ee58d10f47af8491604cf6
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-06-07 13:05:48 +0800
 
@@ -13,4 +13,20 @@ If in fact it isn't found the only thing that can be done in return.
 
 ---
 
-
+diff --git a/daemon/state.c b/daemon/state.c
+index 6e23022..ddc5556 100644
+--- a/daemon/state.c
++++ b/daemon/state.c
+@@ -405,6 +405,12 @@ static void do_readmap_mount(struct autofs_point *ap, struct mnt_list *mnts,
+ 			     me->key);
+ 			cache_writelock(vmc);
+ 			valid = cache_lookup_distinct(vmc, me->key);
++			if (!valid) {
++				cache_unlock(vmc);
++				error(ap->logopt,
++				     "failed to find expected existing valid map entry");
++				return;
++			}
+ 			/* Take over the mount if there is one */
+ 			valid->ioctlfd = me->ioctlfd;
+ 			me->ioctlfd = -1;
