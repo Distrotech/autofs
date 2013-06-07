@@ -1,0 +1,23 @@
+Bottom: f7d1f3963bac397b556437eb91cc16a0ad826f2b
+Top:    adf6e1db12a2c0d2d284dda25aa6bcd859db7073
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-06-07 13:34:48 +0800
+
+Refresh of autofs-5.0.7-add-map-entry-null-check-in-do_expire_direct.patch
+
+---
+
+diff --git a/daemon/direct.c b/daemon/direct.c
+index 399ad0a..f85e1b5 100644
+--- a/daemon/direct.c
++++ b/daemon/direct.c
+@@ -1019,7 +1019,8 @@ static void *do_expire_direct(void *arg)
+ 		struct mapent *me;
+ 		cache_writelock(mt.mc);
+ 		me = cache_lookup_distinct(mt.mc, mt.name);
+-		me->ioctlfd = -1;
++		if (me)
++			me->ioctlfd = -1;
+ 		cache_unlock(mt.mc);
+ 		ops->send_ready(ap->logopt, mt.ioctlfd, mt.wait_queue_token);
+ 		ops->close(ap->logopt, mt.ioctlfd);
