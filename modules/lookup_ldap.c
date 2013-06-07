@@ -1212,6 +1212,11 @@ static int parse_server_string(unsigned logopt, const char *url, struct lookup_c
 		/* Isolate the server. Include the port spec */
 		if (*ptr != '[')
 			q = strchr(ptr, ':');
+			if (!q) {
+				crit(logopt, MODPREFIX
+				     "LDAP server name not found in %s", ptr);
+				return 0;
+			}
 		else {
 			q = ++ptr;
 			while (*q == ':' || isxdigit(*q))
