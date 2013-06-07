@@ -3,10 +3,10 @@ Top:    6c9fcd47e3c084ff437cc57bf9c6bae824f606fc
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-06-07 13:54:07 +0800
 
-autofs-5.0.7 - fix potential null dereference in lookup_ldap.c:lookup_mount()
+autofs-5.0.7 - fix potential null dereference in lookup_mount()
 
 Setting rv to CHE_OK by default could allow a null map entry dereference in
-lookup_mount().
+lookup_mount() in several modules.
 
 
 ---
