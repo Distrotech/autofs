@@ -1,5 +1,5 @@
 Bottom: 590d78abca6568895476bf489103bd40362432d6
-Top:    6c9fcd47e3c084ff437cc57bf9c6bae824f606fc
+Top:    e6e6dcf3dd8b39aba6d6a1fde1ad455b3cba177d
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-06-07 13:54:07 +0800
 
@@ -37,3 +37,16 @@ index 5c2ed0a..013d3b4 100644
  
  		/* Record the the mount fail in the cache */
  		cache_writelock(mc);
+diff --git a/modules/lookup_yp.c b/modules/lookup_yp.c
+index a716e1f..72a8baa 100644
+--- a/modules/lookup_yp.c
++++ b/modules/lookup_yp.c
+@@ -699,7 +699,7 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
+ 					       mapent, ctxt->parse->context);
+ 		if (ret) {
+ 			time_t now = time(NULL);
+-			int rv = CHE_OK;
++			int rv = CHE_FAIL;
+ 
+ 			cache_writelock(mc);
+ 			me = cache_lookup_distinct(mc, key);
