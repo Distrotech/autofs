@@ -8,7 +8,8 @@ autofs-5.0.7 - recheck valid map entry lookup return in do_readmap_mount()
 After looking for an expected existing valid map entry in do_readmap_mount()
 add a check in case it isn't found.
 
-If in fact it isn't found the only thing that can be done in return.
+If in fact it isn't found (although it always should be) the only thing that
+can be done is log an error return.
 
 
 ---
