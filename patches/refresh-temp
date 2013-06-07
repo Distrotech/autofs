@@ -1,0 +1,21 @@
+Bottom: da6f37ba9edb478bec0c8090cb1770b25be1e657
+Top:    b7f3e7d92e203a80d7fc6baf1c148fe544cca311
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-06-07 15:09:46 +0800
+
+Refresh of autofs-5.0.7-fix-possible-use-after-free-in-lookup_dir-lookup_init.patch
+
+---
+
+diff --git a/modules/lookup_dir.c b/modules/lookup_dir.c
+index 07471b7..cbeda1f 100644
+--- a/modules/lookup_dir.c
++++ b/modules/lookup_dir.c
+@@ -98,6 +98,7 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
+ 		free(ctxt);
+ 		warn(LOGOPT_NONE, MODPREFIX
+ 		     "dir map %s, is not a directory", argv[0]);
++		return 1;
+ 	}
+ 
+ 	*context = ctxt;
