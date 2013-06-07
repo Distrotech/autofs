@@ -5,7 +5,9 @@ Date:   2013-06-07 13:30:45 +0800
 
 autofs-5.0.7 - add map entry null check in do_expire_direct()
 
-Just in case the unlikley case occurs ...
+Since we've seen a mount failure for this map entry it should exist
+but in case it's been removed while we waited on the lock add a null
+check.
 
 
 ---
