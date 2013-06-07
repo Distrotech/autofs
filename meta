@@ -1,6 +1,6 @@
 Version: 1
-Previous: 2055cbde9f93a523880cbb5388f66626d938632f
-Head: 8faef3f85b233e48c66884e2431659a378d70dba
+Previous: e6172a6c76f0e574e9e21f7906875abe04047eb3
+Head: 9f40b236daaec8a144137c6bb529b7fa1b4516bb
 Applied:
   autofs-5.0.7-fix-master-map-mount-options-matching.patch: c01166ee31bebd06c1ee18ebde3e2c06a8c13434
   autofs-5.0.7-fix-master-map-bogus-keywork-match.patch: c6174c924be1bffe2c52185abf9da8e180183fc2
@@ -23,6 +23,7 @@ Applied:
   autofs-5.0.7-add-mapent-null-check-in-lookup-nisplus-lookup_mount.patch: 7443c73cc7f66800d2baa735055c8decd5598ef0
   autofs-5.0.7-fix-potential-null-dereference-in-lookup-ldap-lookup_mount.patch: 81ccffa0918417143bb0da1f0493a707594fe6ff
   autofs-5.0.7-fix-potential-null-dereference-in-lookup-sss-lookup_mount.patch: 8faef3f85b233e48c66884e2431659a378d70dba
+  refresh-temp: 9f40b236daaec8a144137c6bb529b7fa1b4516bb
 Unapplied:
   autofs-5.0.7-probe-each-nfs-version-in-turn-for-singleton-mounts.patch: 2d6cf2da1dfd5ec67d35e96ebc26f48c7a698064
   autofs-5.0.5-wait-for-master-map-available-at-start.patch: 4f26bda14fd453521f2ea4c8b17fc4ff7f548b28

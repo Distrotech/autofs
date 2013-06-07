@@ -1,0 +1,22 @@
+Bottom: 1a95d699dc4aadf0300d45e016e22739712affbe
+Top:    6c9fcd47e3c084ff437cc57bf9c6bae824f606fc
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-06-07 13:56:40 +0800
+
+Refresh of autofs-5.0.7-fix-potential-null-dereference-in-lookup-sss-lookup_mount.patch
+
+---
+
+diff --git a/modules/lookup_sss.c b/modules/lookup_sss.c
+index 5c2ed0a..013d3b4 100644
+--- a/modules/lookup_sss.c
++++ b/modules/lookup_sss.c
+@@ -673,7 +673,7 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
+ 				       mapent, ctxt->parse->context);
+ 	if (ret) {
+ 		time_t now = time(NULL);
+-		int rv = CHE_OK;
++		int rv = CHE_FAIL;
+ 
+ 		/* Record the the mount fail in the cache */
+ 		cache_writelock(mc);
