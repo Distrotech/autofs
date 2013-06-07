@@ -1,5 +1,5 @@
 Bottom: e095de5d3ae86aa69b264ca781aa956a9adc1d42
-Top:    c03bd1ac907421a7f693fbeb2bb277dab6c9c707
+Top:    ddc5c818e666a8da92851a698568d5a0e9d1b06a
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-06-05 18:49:24 +0800
 
@@ -12,15 +12,22 @@ isn't freed on the error exit.
 ---
 
 diff --git a/modules/dclist.c b/modules/dclist.c
-index d16b913..bd4d5e6 100644
+index d16b913..af21ce0 100644
 --- a/modules/dclist.c
 +++ b/modules/dclist.c
-@@ -549,6 +549,8 @@ struct dclist *get_dc_list(unsigned int logopt, const char *uri)
+@@ -536,6 +536,7 @@ struct dclist *get_dc_list(unsigned int logopt, const char *uri)
+ 		else
+ 			strcat(tmp, " ");
+ 
++		list = NULL;
+ 		for (i = 0; i < numdcs; i++) {
+ 			if (i > 0)
+ 				strcat(tmp, " ");
+@@ -549,6 +550,7 @@ struct dclist *get_dc_list(unsigned int logopt, const char *uri)
  					error(logopt,
  					      "invalid port: %u", dcs[i].port);
  					free_srv_rrs(dcs, numdcs);
-+					/* Ensure realloced list is freed */
-+					list = tmp;
++					free(tmp);
  					goto out_error;
  				}
  				strcat(tmp, port);
