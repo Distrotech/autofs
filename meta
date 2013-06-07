@@ -1,6 +1,6 @@
 Version: 1
-Previous: 9b1c1e7ce28bdf4242fef7741272c993c5922d53
-Head: 149ac49a1f11e644ef515c0612988b83c98d41af
+Previous: 1474a583bae6f80452f2e5b4cc7efcd8b49d6a8e
+Head: 837e71d6fbeba124978808d64fb0e5074e803c25
 Applied:
   autofs-5.0.7-fix-master-map-mount-options-matching.patch: c01166ee31bebd06c1ee18ebde3e2c06a8c13434
   autofs-5.0.7-fix-master-map-bogus-keywork-match.patch: c6174c924be1bffe2c52185abf9da8e180183fc2
@@ -25,7 +25,7 @@ Applied:
   autofs-5.0.7-fix-leaked-ldap-percent-hack-allocation-in-lookup_one.patch: 146629284bb6bbb47b5d802f2df8a1e49fee5c63
   autofs-5.0.7-fix-incorrect-value-reference-in-parse_line.patch: f6fc1079bc8a165f2dd8ae9d0ac657f76aa8600f
   autofs-5.0.7-add-debug-alert-for-waitpid-in-check_nfs_mount_version.patch: 75065702400722fd09e1a06d77101f2ceb5c80f6
-  autofs-5.0.7-add-initialization-of-bind_result-in.patch-do_sasl_bind.patch: 149ac49a1f11e644ef515c0612988b83c98d41af
+  autofs-5.0.7-add-initialization-of-bind_result-in.patch-do_sasl_bind.patch: 837e71d6fbeba124978808d64fb0e5074e803c25
 Unapplied:
   autofs-5.0.7-probe-each-nfs-version-in-turn-for-singleton-mounts.patch: 85cb54735c52b60d573731f182aeeb20135f970d
   autofs-5.0.5-wait-for-master-map-available-at-start.patch: 4f26bda14fd453521f2ea4c8b17fc4ff7f548b28

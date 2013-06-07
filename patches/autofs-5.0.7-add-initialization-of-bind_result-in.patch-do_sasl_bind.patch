@@ -3,7 +3,7 @@ Top:    553642cd2bced14c2f29e728eb81949c73949d2a
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-06-07 14:54:50 +0800
 
-a
+autofs-5.0.7 - add initialization of bind_result in-do_sasl_bind().patch
 
 
 ---
