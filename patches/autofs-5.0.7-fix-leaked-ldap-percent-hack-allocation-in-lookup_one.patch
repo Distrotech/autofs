@@ -3,9 +3,9 @@ Top:    918e518d647bb1027d8eb8d86ef78b9c002727b2
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-06-07 14:20:54 +0800
 
-autofs-5.0.7 - fix leaked ldap percent hack allocation
+autofs-5.0.7 - fix leaked ldap percent hack allocation in lookup_one()
 
-Fix a resource leak
+Fix a resource leak when calling the percent hack transforms in lookup_one().
 
 
 ---
