@@ -6,7 +6,7 @@ Date:   2013-06-05 16:41:58 +0800
 autofs-5.0.7 - fix inconsistent use of cache lock in handle_packet_missing_direct()
 
 All references here except this one refer to the same variable.
-Change the odd one out.
+Change the odd one out for consistency.
 
 
 ---
