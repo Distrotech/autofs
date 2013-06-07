@@ -584,7 +584,8 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 		if (me && (me->source == source || *me->key == '/')) {
 			mapent_len = strlen(me->mapent);
 			mapent = malloc(mapent_len + 1);
-			strcpy(mapent, me->mapent);
+			if (mapent)
+				strcpy(mapent, me->mapent);
 		}
 	}
 	cache_unlock(mc);
