@@ -225,6 +225,7 @@ dont_probe:
 
 	/* Root offset of multi-mount */
 	len = strlen(root);
+	error(LOGOPT_ANY, "len = %d root %s name %s root[len-1] %c", len, root, name, root[len-1]);
 	if (root[len - 1] == '/') {
 		len = snprintf(fullpath, len, "%s", root);
 	} else if (*name == '/') {

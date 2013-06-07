@@ -838,6 +838,8 @@ update_offset_entry(struct autofs_point *ap, const char *name,
 	} else
 		strcpy(m_mapent, loc);
 
+	error(LOGOPT_ANY, "name %s m_key %s m_mapent %s", name, m_key, m_mapent);
+
 	ret = cache_update_offset(mc, name, m_key, m_mapent, age);
 	if (ret == CHE_DUPLICATE)
 		warn(ap->logopt, MODPREFIX
