@@ -3,7 +3,9 @@ Top:    918e518d647bb1027d8eb8d86ef78b9c002727b2
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-06-07 14:37:02 +0800
 
-autofs-5.0.7-fix-incorrect-value-reference-in-parse_line()
+autofs-5.0.7 - fix incorrect value reference in parse_line()
+
+This chack should clearly be on the contents of
 
 
 ---
