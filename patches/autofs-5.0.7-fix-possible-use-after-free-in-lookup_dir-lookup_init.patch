@@ -5,7 +5,7 @@ Date:   2013-06-07 15:09:01 +0800
 
 autofs-5.0.7 - fix possible use after free in lookup_dir.c:lookup_init()
 
-Fix a possible use after free in lookup_dir.c:lookup_init().
+Add a missing error return in lookup_dir.c:lookup_init().
 
 
 ---
