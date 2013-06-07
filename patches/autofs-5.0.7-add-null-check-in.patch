@@ -1,0 +1,11 @@
+Bottom: 96c82548efcc268b338f9c6ba44cd4566ef9a562
+Top:    96c82548efcc268b338f9c6ba44cd4566ef9a562
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-06-07 12:57:51 +0800
+
+autofs-5.0.7 - add null check in
+
+
+---
+
+
