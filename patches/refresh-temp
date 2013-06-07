@@ -1,0 +1,22 @@
+Bottom: e6e6dcf3dd8b39aba6d6a1fde1ad455b3cba177d
+Top:    24f89871fe8fd09e2aabddde3f385388d49b442c
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-06-07 14:01:51 +0800
+
+Refresh of autofs-5.0.7-fix-potential-null-dereference-in-lookup_mount.patch
+
+---
+
+diff --git a/modules/lookup_file.c b/modules/lookup_file.c
+index 2836996..58663c6 100644
+--- a/modules/lookup_file.c
++++ b/modules/lookup_file.c
+@@ -1131,7 +1131,7 @@ do_cache_lookup:
+ 				       mapent, ctxt->parse->context);
+ 	if (ret) {
+ 		time_t now = time(NULL);
+-		int rv = CHE_OK;
++		int rv = CHE_FAIL;
+ 
+ 		cache_writelock(mc);
+ 		me = cache_lookup_distinct(mc, key);
