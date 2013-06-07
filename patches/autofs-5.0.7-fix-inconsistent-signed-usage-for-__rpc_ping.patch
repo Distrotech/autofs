@@ -5,6 +5,9 @@ Date:   2013-06-07 12:46:28 +0800
 
 autofs-5.0.7 - fix inconsistent signed usage for __rpc_ping()
 
+There is some incosistent usage of unsigned int variables with the usage
+of __rpc_ping().
+
 
 ---
 
