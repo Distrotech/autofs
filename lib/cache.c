@@ -658,6 +658,8 @@ int cache_update_offset(struct mapent_cache *mc, const char *mkey, const char *k
 		return CHE_FAIL;
 
 	me = cache_lookup_distinct(mc, key);
+	if (me)
+		error(LOGOPT_ANY, "owner %p owner->key %s me %p me->key %s", owner,owner->key,me,me->key);
 	if (me && me->age == age) {
 		if (me == owner)
 			return CHE_DUPLICATE;
