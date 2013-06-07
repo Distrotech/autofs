@@ -66,12 +66,11 @@ static int flag_is_owned(int fd)
 
 			continue;
 		}
-
-		/* Stale flagfile */
-		if (!tries)
-			return 0;
 	}
 
+	/* Stale flagfile */
+	if (!tries)
+		return 0;
 
 	if (pid) {
 		int ret;
