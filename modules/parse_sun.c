@@ -838,6 +838,8 @@ update_offset_entry(struct autofs_point *ap, const char *name,
 	} else
 		strcpy(m_mapent, loc);
 
+	error(LOGOPT_ANY, "name %s m_key %s m_mapent %s", name, m_key, m_mapent);
+
 	ret = cache_update_offset(mc, name, m_key, m_mapent, age);
 	if (ret == CHE_DUPLICATE)
 		warn(ap->logopt, MODPREFIX
@@ -1135,10 +1137,10 @@ static int mount_subtree(struct autofs_point *ap, struct mapent *me,
 			}
 			ro_len = strlen(ro_loc);
 
-			tmp = alloca(mnt_root_len + 1);
+			tmp = alloca(mnt_root_len + 2);
 			strcpy(tmp, mnt_root);
-			tmp[mnt_root_len - 1] = '/';
-			tmp[mnt_root_len] = '\0';
+			tmp[mnt_root_len] = '/';
+			tmp[mnt_root_len + 1] = '\0';
 			root = tmp;
 
 			rv = sun_mount(ap, root, name, namelen, ro_loc, ro_len, myoptions, ctxt);
