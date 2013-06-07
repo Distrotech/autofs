@@ -287,7 +287,9 @@ int check_nfs_mount_version(struct nfs_mount_vers *vers,
 			ret = 0;
 	}
 
-	if (waitpid(f, &status, 0) != f) ;
+	if (waitpid(f, &status, 0) != f)
+		debug(ap->logopt,
+		      "error waiting for process %ld", (long) f);
 
 	pthread_sigmask(SIG_SETMASK, &oldsig, NULL);
 	pthread_setcancelstate(cancel_state, NULL);
