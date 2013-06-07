@@ -302,8 +302,10 @@ static int read_one(unsigned logopt, FILE *f, char *key, unsigned int *k_len, ch
 				if (gotten == got_real || gotten == getting)
 					goto got_it;
 			} else if (mapent_len < MAPENT_MAX_LEN) {
-				mapent_len++;
-				*(p++) = ch;
+				if (p) {
+					mapent_len++;
+					*(p++) = ch;
+				}
 				nch = getc(f);
 				if (nch == EOF &&
 				   (gotten == got_real || gotten == getting))
