@@ -5,7 +5,7 @@ Date:   2013-06-07 14:37:02 +0800
 
 autofs-5.0.7 - fix incorrect value reference in parse_line()
 
-This chack should clearly be on the contents of
+This chack should clearly be on the contents of key not the pointer value.
 
 
 ---
