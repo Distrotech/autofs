@@ -1,5 +1,5 @@
 Bottom: b7f3e7d92e203a80d7fc6baf1c148fe544cca311
-Top:    97ece09240c2985316f562a7cf690e9cb3850de7
+Top:    0e46772ffb23b394460b1fcab3d1fc2c50332bb9
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-05-30 10:18:19 +0800
 
@@ -22,7 +22,7 @@ index ff0e7b9..728f131 100644
  int parse_location(unsigned, struct host **, const char *, unsigned int);
  int prune_host_list(unsigned, struct host **, unsigned int, int);
 diff --git a/modules/mount_nfs.c b/modules/mount_nfs.c
-index 5424d74..c6400f0 100644
+index 5424d74..81ba3ca 100644
 --- a/modules/mount_nfs.c
 +++ b/modules/mount_nfs.c
 @@ -180,9 +180,42 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
@@ -40,7 +40,7 @@ index 5424d74..c6400f0 100644
 +	 * to NFSv3 (if it can). If the NFSv4 probe fails then probe as
 +	 * normal.
 +	 */
-+	if (!this->next &&
++	if (!hosts->next &&
 +	    mount_default_proto == 4 &&
 +	    vers & NFS_VERS_MASK != 0 &&
 +	    vers & NFS4_VERS_MASK != 0) {
