@@ -190,7 +190,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 	 * to NFSv3 (if it can). If the NFSv4 probe fails then probe as
 	 * normal.
 	 */
-	if (!this->next &&
+	if (!hosts->next &&
 	    mount_default_proto == 4 &&
 	    vers & NFS_VERS_MASK != 0 &&
 	    vers & NFS4_VERS_MASK != 0) {
