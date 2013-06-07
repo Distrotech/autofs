@@ -3,7 +3,11 @@ Top:    1a95d699dc4aadf0300d45e016e22739712affbe
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-06-07 13:55:41 +0800
 
-utofs-5.0.7-fix-potential-null-dereference-in-lookup-sss-lookup_mount.patch
+    autofs-5.0.7 - fix potential null dereference in lookup_sss.c:lookup_mount()
+
+    Setting rv to CHE_OK by default could allow a null map entry dereference in
+    lookup_mount().
+
 
 
 ---
