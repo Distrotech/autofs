@@ -98,6 +98,7 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 		free(ctxt);
 		warn(LOGOPT_NONE, MODPREFIX
 		     "dir map %s, is not a directory", argv[0]);
+		return 1;
 	}
 
 	*context = ctxt;
