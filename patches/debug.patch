@@ -1,4 +1,4 @@
-Bottom: 97ece09240c2985316f562a7cf690e9cb3850de7
+Bottom: a4d63da39044ba22a9f221d0f68c3c14b395471f
 Top:    6562aca2d162c0ad35853f8c4843fc5d90f988b3
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-06-07 17:16:46 +0800
@@ -25,18 +25,9 @@ index 1e05a99..a074f23 100644
  	}
  
 diff --git a/modules/mount_nfs.c b/modules/mount_nfs.c
-index c6400f0..0f3711d 100644
+index 81ba3ca..0f3711d 100644
 --- a/modules/mount_nfs.c
 +++ b/modules/mount_nfs.c
-@@ -190,7 +190,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
- 	 * to NFSv3 (if it can). If the NFSv4 probe fails then probe as
- 	 * normal.
- 	 */
--	if (!this->next &&
-+	if (!hosts->next &&
- 	    mount_default_proto == 4 &&
- 	    vers & NFS_VERS_MASK != 0 &&
- 	    vers & NFS4_VERS_MASK != 0) {
 @@ -225,6 +225,7 @@ dont_probe:
  
  	/* Root offset of multi-mount */
@@ -46,7 +37,7 @@ index c6400f0..0f3711d 100644
  		len = snprintf(fullpath, len, "%s", root);
  	} else if (*name == '/') {
 diff --git a/modules/parse_sun.c b/modules/parse_sun.c
-index 67ea525..edbfeb0 100644
+index c1fc528..edbfeb0 100644
 --- a/modules/parse_sun.c
 +++ b/modules/parse_sun.c
 @@ -838,6 +838,8 @@ update_offset_entry(struct autofs_point *ap, const char *name,
@@ -58,17 +49,3 @@ index 67ea525..edbfeb0 100644
  	ret = cache_update_offset(mc, name, m_key, m_mapent, age);
  	if (ret == CHE_DUPLICATE)
  		warn(ap->logopt, MODPREFIX
-@@ -1135,10 +1137,10 @@ static int mount_subtree(struct autofs_point *ap, struct mapent *me,
- 			}
- 			ro_len = strlen(ro_loc);
- 
--			tmp = alloca(mnt_root_len + 1);
-+			tmp = alloca(mnt_root_len + 2);
- 			strcpy(tmp, mnt_root);
--			tmp[mnt_root_len - 1] = '/';
--			tmp[mnt_root_len] = '\0';
-+			tmp[mnt_root_len] = '/';
-+			tmp[mnt_root_len + 1] = '\0';
- 			root = tmp;
- 
- 			rv = sun_mount(ap, root, name, namelen, ro_loc, ro_len, myoptions, ctxt);
