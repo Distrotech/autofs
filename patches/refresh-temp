@@ -1,0 +1,40 @@
+Bottom: 94c330d035f3a8b015955420b24857ae9e4b4457
+Top:    96c82548efcc268b338f9c6ba44cd4566ef9a562
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-06-07 12:46:55 +0800
+
+Refresh of autofs-5.0.7-fix-inconsistent-signed-usage-for-__rpc_ping.patch
+
+---
+
+diff --git a/lib/rpc_subs.c b/lib/rpc_subs.c
+index 718caf9..f5742e8 100644
+--- a/lib/rpc_subs.c
++++ b/lib/rpc_subs.c
+@@ -670,13 +670,11 @@ int rpc_ping_proto(struct conn_info *info)
+ 	return 1;
+ }
+ 
+-static unsigned int __rpc_ping(const char *host,
+-				unsigned long version,
+-				int proto,
+-				long seconds, long micros,
+-				unsigned int option)
++static int __rpc_ping(const char *host,
++		      unsigned long version, int proto,
++		      long seconds, long micros, unsigned int option)
+ {
+-	unsigned int status;
++	int status;
+ 	struct conn_info info;
+ 	struct pmap parms;
+ 
+@@ -713,7 +711,7 @@ int rpc_ping(const char *host, long seconds, long micros, unsigned int option)
+ {
+ 	unsigned long vers3 = NFS3_VERSION;
+ 	unsigned long vers2 = NFS2_VERSION;
+-	unsigned int status;
++	int status;
+ 
+ 	status = __rpc_ping(host, vers2, IPPROTO_UDP, seconds, micros, option);
+ 	if (status > 0)
