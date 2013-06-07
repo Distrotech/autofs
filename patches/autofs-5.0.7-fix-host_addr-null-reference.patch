@@ -1,0 +1,11 @@
+Bottom: ddc5c818e666a8da92851a698568d5a0e9d1b06a
+Top:    ddc5c818e666a8da92851a698568d5a0e9d1b06a
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-06-07 12:10:56 +0800
+
+autofs-5.0.7 - fix host_addr null reference in add_new_host()
+
+
+---
+
+
