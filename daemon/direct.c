@@ -1019,7 +1019,8 @@ static void *do_expire_direct(void *arg)
 		struct mapent *me;
 		cache_writelock(mt.mc);
 		me = cache_lookup_distinct(mt.mc, mt.name);
-		me->ioctlfd = -1;
+		if (me)
+			me->ioctlfd = -1;
 		cache_unlock(mt.mc);
 		ops->send_ready(ap->logopt, mt.ioctlfd, mt.wait_queue_token);
 		ops->close(ap->logopt, mt.ioctlfd);
