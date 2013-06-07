@@ -201,7 +201,8 @@ static int do_spawn(unsigned logopt, unsigned int wait,
 
 			seteuid(0);
 			setegid(0);
-			setpgid(0, pgrp);
+			if (pgrp >= 0)
+				setpgid(0, pgrp);
 		}
 
 		execv(prog, (char *const *) argv);
