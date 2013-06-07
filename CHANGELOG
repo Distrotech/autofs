@@ -47,6 +47,7 @@
 - dont probe rdma mounts.
 - fix master map mount options matching.
 - fix master map bogus keywork match.
+- fix fix map entry duplicate offset detection.
 
 25/07/2012 autofs-5.0.7
 =======================
