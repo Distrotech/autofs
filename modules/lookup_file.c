@@ -1130,18 +1130,7 @@ do_cache_lookup:
 	ret = ctxt->parse->parse_mount(ap, key, key_len,
 				       mapent, ctxt->parse->context);
 	if (ret) {
-		time_t now = time(NULL);
-		int rv = CHE_OK;
-
-		cache_writelock(mc);
-		me = cache_lookup_distinct(mc, key);
-		if (!me)
-			rv = cache_update(mc, source, key, NULL, now);
-		if (rv != CHE_FAIL) {
-			me = cache_lookup_distinct(mc, key);
-			me->status = now + ap->negative_timeout;
-		}
-		cache_unlock(mc);
+		cache_update_negative(mc, source, key, ap->negative_timeout);
 		return NSS_STATUS_TRYAGAIN;
 	}
 
