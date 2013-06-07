@@ -659,7 +659,7 @@ int cache_update_offset(struct mapent_cache *mc, const char *mkey, const char *k
 
 	me = cache_lookup_distinct(mc, key);
 	if (me && me->age == age) {
-		if (me->multi == owner)
+		if (me == owner || strcmp(me->key, key) == 0)
 			return CHE_DUPLICATE;
 	}
 
