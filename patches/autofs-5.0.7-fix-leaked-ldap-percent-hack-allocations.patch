@@ -1,5 +1,5 @@
 Bottom: 24f89871fe8fd09e2aabddde3f385388d49b442c
-Top:    24f89871fe8fd09e2aabddde3f385388d49b442c
+Top:    918e518d647bb1027d8eb8d86ef78b9c002727b2
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-06-07 14:20:54 +0800
 
@@ -8,4 +8,15 @@ autofs-5.0.7 - fix leaked ldap percent hack allocations
 
 ---
 
-
+diff --git a/modules/lookup_ldap.c b/modules/lookup_ldap.c
+index 3371b3f..f8feed5 100644
+--- a/modules/lookup_ldap.c
++++ b/modules/lookup_ldap.c
+@@ -2525,6 +2525,7 @@ static int lookup_one(struct autofs_point *ap,
+ 		if (enc_len1 != 0) {
+ 			enc_len2 = encode_percent_hack(qKey, &enc_key2, 1);
+ 			if (enc_len2 < 0) {
++				free(enc_key1);
+ 				crit(ap->logopt,
+ 				     "could not use percent hack encode key %s",
+ 				     qKey);
