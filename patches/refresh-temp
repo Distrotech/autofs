@@ -1,0 +1,25 @@
+Bottom: 905f1f329cc7a24214ee58d10f47af8491604cf6
+Top:    f7d1f3963bac397b556437eb91cc16a0ad826f2b
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-06-07 13:29:01 +0800
+
+Refresh of autofs-5.0.7-add-null-check-in-parse_server_string.patch
+
+---
+
+diff --git a/modules/lookup_ldap.c b/modules/lookup_ldap.c
+index 17cbe9a..6e06e02 100644
+--- a/modules/lookup_ldap.c
++++ b/modules/lookup_ldap.c
+@@ -1212,6 +1212,11 @@ static int parse_server_string(unsigned logopt, const char *url, struct lookup_c
+ 		/* Isolate the server. Include the port spec */
+ 		if (*ptr != '[')
+ 			q = strchr(ptr, ':');
++			if (!q) {
++				crit(logopt, MODPREFIX
++				     "LDAP server name inot found in %s", ptr);
++				return 0;
++			}
+ 		else {
+ 			q = ++ptr;
+ 			while (*q == ':' || isxdigit(*q))
