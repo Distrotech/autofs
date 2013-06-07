@@ -1,5 +1,5 @@
 Version: 1
-Previous: 7a5971068d78caba64eebcf46a91c405346bec83
+Previous: e0988c17b204b9545ee03b81a47d8bfa3ee5b976
 Head: 5637793969a43ad76144cce6d175c22ca2ecd24f
 Applied:
   autofs-5.0.7-fix-master-map-mount-options-matching.patch: c01166ee31bebd06c1ee18ebde3e2c06a8c13434
@@ -24,7 +24,7 @@ Applied:
   autofs-5.0.7-fix-potential-null-dereference-in-lookup_mount.patch: b404a818cf8707a75443e8c32c56bb331e942ee1
   autofs-5.0.7-fix-leaked-ldap-percent-hack-allocation-in-lookup_one.patch: 146629284bb6bbb47b5d802f2df8a1e49fee5c63
   autofs-5.0.7-fix-incorrect-value-reference-in-parse_line.patch: f6fc1079bc8a165f2dd8ae9d0ac657f76aa8600f
-  autofs-5.0.7-add-debug-alert-for-waitpib-in.patch: 5637793969a43ad76144cce6d175c22ca2ecd24f
+  autofs-5.0.7-add-debug-alert-for-waitpib-in-check_nfs_mount_version.patch: 5637793969a43ad76144cce6d175c22ca2ecd24f
 Unapplied:
   autofs-5.0.7-probe-each-nfs-version-in-turn-for-singleton-mounts.patch: 85cb54735c52b60d573731f182aeeb20135f970d
   autofs-5.0.5-wait-for-master-map-available-at-start.patch: 4f26bda14fd453521f2ea4c8b17fc4ff7f548b28
