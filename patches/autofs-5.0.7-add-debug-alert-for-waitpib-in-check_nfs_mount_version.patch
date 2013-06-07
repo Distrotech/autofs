@@ -3,7 +3,10 @@ Top:    a2f6d1906c24f6ae0d715cc9800cbfdcb0fab66f
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-06-07 14:42:37 +0800
 
-autofs-5.0.7 - dont use if with waitpid() since it isnt used
+autofs-5.0.7 - add debug alert for waitpid in check_nfs_mount_version()
+
+We don't really case if there's no process to wait for but add a debug
+log alert for information.
 
 
 ---
