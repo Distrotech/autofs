@@ -1,5 +1,5 @@
 Bottom: ec7098b60d0ad64ce572a73381432a3bd1bc162d
-Top:    ec7098b60d0ad64ce572a73381432a3bd1bc162d
+Top:    6944f9d613c7aeb15bd34e968c05b34d3dfb26d7
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-06-07 12:23:11 +0800
 
@@ -10,4 +10,20 @@ The pointter p shouldn't be null here but add a chack anyway.
 
 ---
 
-
+diff --git a/modules/lookup_file.c b/modules/lookup_file.c
+index 65e5ee6..2836996 100644
+--- a/modules/lookup_file.c
++++ b/modules/lookup_file.c
+@@ -302,8 +302,10 @@ static int read_one(unsigned logopt, FILE *f, char *key, unsigned int *k_len, ch
+ 				if (gotten == got_real || gotten == getting)
+ 					goto got_it;
+ 			} else if (mapent_len < MAPENT_MAX_LEN) {
+-				mapent_len++;
+-				*(p++) = ch;
++				if (p) {
++					mapent_len++;
++					*(p++) = ch;
++				}
+ 				nch = getc(f);
+ 				if (nch == EOF &&
+ 				   (gotten == got_real || gotten == getting))
