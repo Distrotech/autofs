@@ -5,7 +5,10 @@ Date:   2013-06-07 12:10:56 +0800
 
 autofs-5.0.7 - fix host_addr null reference in add_new_host()
 
-The function add_new_host() is always called from a loop
+The function add_new_host() is always called from a loop that depends
+on host_addr being non-null.
+
+Remove the redundant check.
 
 
 ---
