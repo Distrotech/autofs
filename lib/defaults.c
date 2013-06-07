@@ -167,7 +167,7 @@ static int parse_line(char *line, char **res, char **value)
 	while (*key && *key == ' ')
 		key++;
 
-	if (!key)
+	if (!*key)
 		return 0;
 
 	if (!(val = strchr(key, '=')))
