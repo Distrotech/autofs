@@ -405,6 +405,12 @@ static void do_readmap_mount(struct autofs_point *ap, struct mnt_list *mnts,
 			     me->key);
 			cache_writelock(vmc);
 			valid = cache_lookup_distinct(vmc, me->key);
+			if (!valid) {
+				cache_unlock(vmc);
+				error(ap->logopt,
+				     "failed to find expected existing valid map entry");
+				return;
+			}
 			/* Take over the mount if there is one */
 			valid->ioctlfd = me->ioctlfd;
 			me->ioctlfd = -1;
