@@ -5,6 +5,9 @@ Date:   2013-06-07 15:00:57 +0800
 
 autofs-5.0.7 - fix incorrect check in flag_is_owned()
 
+The flag file code isn't used any more but this is clearly incorrect
+so fix it in case it gets used sometime in the future.
+
 
 ---
 
