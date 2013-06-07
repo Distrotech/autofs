@@ -1,6 +1,6 @@
 Version: 1
-Previous: cf323f2421c1deff90e4152f7a72b3acc9695478
-Head: 0bd567c701428ec9dafde0eb801d449d3c08d74f
+Previous: d96186e056b3a50b197a4e9e73dc03f67fa443d4
+Head: 32aa5eccff09d4d6e6c1517ea0c10758023211a8
 Applied:
   autofs-5.0.7-fix-master-map-mount-options-matching.patch: c01166ee31bebd06c1ee18ebde3e2c06a8c13434
   autofs-5.0.7-fix-master-map-bogus-keywork-match.patch: c6174c924be1bffe2c52185abf9da8e180183fc2
@@ -16,7 +16,7 @@ Applied:
   autofs-5.0.7-add-null-check-in-read_one.patch: c3b004817210a74211bc22007c94ca7a7844a8b1
   autofs-5.0.7-add-pgrp-check-in-do_spawn.patch: 275c072b5955f0e5e859c5afedc0103eade61534
   autofs-5.0.7-fix-inconsistent-signed-usage-for-__rpc_ping.patch: d9ad4770cb6278e478aa587ebeec42094f135337
-  autofs-5.0.7-add-map-entry-null-check-in-update_negative_cache.patch: 0bd567c701428ec9dafde0eb801d449d3c08d74f
+  autofs-5.0.7-add-map-entry-null-check-in-update_negative_cache.patch: 32aa5eccff09d4d6e6c1517ea0c10758023211a8
 Unapplied:
   autofs-5.0.7-probe-each-nfs-version-in-turn-for-singleton-mounts.patch: 2d6cf2da1dfd5ec67d35e96ebc26f48c7a698064
   autofs-5.0.5-wait-for-master-map-available-at-start.patch: 4f26bda14fd453521f2ea4c8b17fc4ff7f548b28

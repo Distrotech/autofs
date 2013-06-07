@@ -3,7 +3,10 @@ Top:    96c82548efcc268b338f9c6ba44cd4566ef9a562
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-06-07 12:51:05 +0800
 
-uto
+autofs-5.0.7 - add map entry null check in update_negative_cache()
+
+The map entry lookup might be null under low memory condifions.
+All we can really do here is not set the negative cache timeout.
 
 
 ---
