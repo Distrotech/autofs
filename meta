@@ -1,6 +1,6 @@
 Version: 1
-Previous: 6ae6675d1eb6f1bb2277ec8347ae727d6a7aab33
-Head: 4e9f06ac80d3399e020ca0e92bb530f865d480e1
+Previous: b4f857198ee955a6f17330145c0e61527d9f3c81
+Head: fb9ad418900b42a2bef046efacf58c98213050a4
 Applied:
   autofs-5.0.7-fix-master-map-mount-options-matching.patch: c01166ee31bebd06c1ee18ebde3e2c06a8c13434
   autofs-5.0.7-fix-master-map-bogus-keywork-match.patch: c6174c924be1bffe2c52185abf9da8e180183fc2
@@ -14,7 +14,7 @@ Applied:
   autofs-5.0.7-fix-memory-leak-in-get_dc_list.patch: 5ad428527e2ba02b70d0b6d3dcae5330a6bebac3
   autofs-5.0.7-fix-host_addr-null-reference-in-add_new_host.patch: 2ebaa43117eb16aa161263053a6761f5ec3bb480
   autofs-5.0.7-add-null-check-in-read_one.patch: c3b004817210a74211bc22007c94ca7a7844a8b1
-  autofs-5.0.7-add-pgrp-check-in-do_spawn.patch: 4e9f06ac80d3399e020ca0e92bb530f865d480e1
+  autofs-5.0.7-add-pgrp-check-in-do_spawn.patch: fb9ad418900b42a2bef046efacf58c98213050a4
 Unapplied:
   autofs-5.0.7-probe-each-nfs-version-in-turn-for-singleton-mounts.patch: 2d6cf2da1dfd5ec67d35e96ebc26f48c7a698064
   autofs-5.0.5-wait-for-master-map-available-at-start.patch: 4f26bda14fd453521f2ea4c8b17fc4ff7f548b28
