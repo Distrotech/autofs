@@ -1,5 +1,5 @@
 Bottom: 590d78abca6568895476bf489103bd40362432d6
-Top:    e6e6dcf3dd8b39aba6d6a1fde1ad455b3cba177d
+Top:    24f89871fe8fd09e2aabddde3f385388d49b442c
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-06-07 13:54:07 +0800
 
@@ -11,6 +11,19 @@ lookup_mount() in several modules.
 
 ---
 
+diff --git a/modules/lookup_file.c b/modules/lookup_file.c
+index 2836996..58663c6 100644
+--- a/modules/lookup_file.c
++++ b/modules/lookup_file.c
+@@ -1131,7 +1131,7 @@ do_cache_lookup:
+ 				       mapent, ctxt->parse->context);
+ 	if (ret) {
+ 		time_t now = time(NULL);
+-		int rv = CHE_OK;
++		int rv = CHE_FAIL;
+ 
+ 		cache_writelock(mc);
+ 		me = cache_lookup_distinct(mc, key);
 diff --git a/modules/lookup_ldap.c b/modules/lookup_ldap.c
 index 6e06e02..3371b3f 100644
 --- a/modules/lookup_ldap.c
