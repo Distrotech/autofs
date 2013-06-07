@@ -1,5 +1,5 @@
 Bottom: a2f6d1906c24f6ae0d715cc9800cbfdcb0fab66f
-Top:    a2f6d1906c24f6ae0d715cc9800cbfdcb0fab66f
+Top:    d46f5f61a4313ceb7a344e6c1bab72d1873d6b8d
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-06-07 14:42:37 +0800
 
@@ -11,4 +11,18 @@ log alert for information.
 
 ---
 
-
+diff --git a/lib/mounts.c b/lib/mounts.c
+index 7b959b8..687339c 100644
+--- a/lib/mounts.c
++++ b/lib/mounts.c
+@@ -287,7 +287,9 @@ int check_nfs_mount_version(struct nfs_mount_vers *vers,
+ 			ret = 0;
+ 	}
+ 
+-	if (waitpid(f, &status, 0) != f) ;
++	if (waitpid(f, &status, 0) != f)
++		debug(ap->logopt,
++		      "error waiting for process %ld", (long) f);
+ 
+ 	pthread_sigmask(SIG_SETMASK, &oldsig, NULL);
+ 	pthread_setcancelstate(cancel_state, NULL);
