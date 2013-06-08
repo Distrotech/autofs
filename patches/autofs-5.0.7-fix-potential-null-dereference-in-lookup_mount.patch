@@ -1,5 +1,5 @@
 Bottom: 676a245422a93f850b73eb5f53bedcbf869be122
-Top:    00b49578e6c89b36d490a5c4cae7a71b9e84d88f
+Top:    8592353aa73e9e23381ffa345c6a2f3baecec963
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-06-07 13:54:07 +0800
 
@@ -26,18 +26,19 @@ index 2836996..48f5789 100644
  		cache_unlock(mc);
  		return NSS_STATUS_TRYAGAIN;
 diff --git a/modules/lookup_ldap.c b/modules/lookup_ldap.c
-index a59de92..d89c295 100644
+index a59de92..92f955e 100644
 --- a/modules/lookup_ldap.c
 +++ b/modules/lookup_ldap.c
-@@ -3012,7 +3012,7 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
- 				       mapent, ctxt->parse->context);
- 	if (ret) {
- 		time_t now = time(NULL);
--		int rv = CHE_OK;
-+		int rv = CHE_FAIL;
- 
- 		/* Record the the mount fail in the cache */
- 		cache_writelock(mc);
+@@ -3021,7 +3021,8 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
+ 			rv = cache_update(mc, source, key, NULL, now);
+ 		if (rv != CHE_FAIL) {
+ 			me = cache_lookup_distinct(mc, key);
+-			me->status = now + ap->negative_timeout;
++			if (me)
++				me->status = now + ap->negative_timeout;
+ 		}
+ 		cache_unlock(mc);
+ 		return NSS_STATUS_TRYAGAIN;
 diff --git a/modules/lookup_sss.c b/modules/lookup_sss.c
 index 5c2ed0a..013d3b4 100644
 --- a/modules/lookup_sss.c
