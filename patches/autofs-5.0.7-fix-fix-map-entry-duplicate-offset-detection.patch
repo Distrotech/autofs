@@ -3,7 +3,7 @@ Top:    562464f4cda183dbde0842adf2f01cbd57a2b9a4
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-06-07 17:16:46 +0800
 
-debug.patch
+autofs-5.0.7 - fix fix map entry duplicate offset detection
 
 
 ---
