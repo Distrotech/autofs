@@ -701,6 +701,7 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 			cache_writelock(mc);
 			cache_update_negative(mc, source, key, ap->negative_timeout);
 			cache_unlock(mc);
+			return NSS_STATUS_TRYAGAIN;
 		}
 	 }
 
