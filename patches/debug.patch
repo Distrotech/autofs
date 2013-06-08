@@ -1,5 +1,5 @@
-Bottom: a4d63da39044ba22a9f221d0f68c3c14b395471f
-Top:    b3626f9279513682eaea584997a80902d06e513f
+Bottom: 84308fcabb5e5944ea5104dc2f1eb9f8f149c370
+Top:    562464f4cda183dbde0842adf2f01cbd57a2b9a4
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-06-07 17:16:46 +0800
 
@@ -9,7 +9,7 @@ debug.patch
 ---
 
 diff --git a/lib/cache.c b/lib/cache.c
-index 1e05a99..ecace4a 100644
+index 1300130..2d1c2da 100644
 --- a/lib/cache.c
 +++ b/lib/cache.c
 @@ -659,7 +659,7 @@ int cache_update_offset(struct mapent_cache *mc, const char *mkey, const char *k
