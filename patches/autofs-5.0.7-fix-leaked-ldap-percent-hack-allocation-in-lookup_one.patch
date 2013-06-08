@@ -1,5 +1,5 @@
-Bottom: 78eb63a4fa09ed466e93642794e9423c4278f523
-Top:    8a0bc35ec2704699ed4b1466444ed762e1a37f78
+Bottom: de7eefc2d104178a3f161fc03631a12e8adc1c85
+Top:    90349400e7979291de16eadc38525f629093d67c
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-06-07 14:20:54 +0800
 
@@ -11,7 +11,7 @@ Fix a resource leak when calling the percent hack transforms in lookup_one().
 ---
 
 diff --git a/modules/lookup_ldap.c b/modules/lookup_ldap.c
-index 3371b3f..f8feed5 100644
+index 26481a8..35ea6ea 100644
 --- a/modules/lookup_ldap.c
 +++ b/modules/lookup_ldap.c
 @@ -2525,6 +2525,7 @@ static int lookup_one(struct autofs_point *ap,
