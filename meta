@@ -1,6 +1,6 @@
 Version: 1
-Previous: b2b7326c4868c8ecb1bea655685e020801b17fe0
-Head: 67debab1a5d68da5e1deb856ab7f4db311ec47d5
+Previous: 6efda754cebea9e6a7eff986bf7a050eb37a0092
+Head: fb7ecb8d0333d8e6e3fe380833d33942cba7f88d
 Applied:
   autofs-5.0.7-fix-master-map-mount-options-matching.patch: c01166ee31bebd06c1ee18ebde3e2c06a8c13434
   autofs-5.0.7-fix-master-map-bogus-keywork-match.patch: c6174c924be1bffe2c52185abf9da8e180183fc2
@@ -18,8 +18,8 @@ Applied:
   autofs-5.0.7-fix-inconsistent-signed-usage-for-__rpc_ping.patch: 842e2b2df7ce0a4e03ec122694a9e5e3e223af2d
   autofs-5.0.7-add-null-check-in-extract_version.patch: 55572df75f316c6925f1d92a6beefa99ccc07df1
   autofs-5.0.7-recheck-valid-map-entry-lookup-return-in-do_readmap_mount.patch: 67debab1a5d68da5e1deb856ab7f4db311ec47d5
+  autofs-5.0.7-add-null-check-in-parse_server_string.patch: fb7ecb8d0333d8e6e3fe380833d33942cba7f88d
 Unapplied:
-  autofs-5.0.7-add-null-check-in-parse_server_string.patch: 1a2e61e32c4ec88f835556ee7df0b957865116d1
   autofs-5.0.7-add-map-entry-null-check-in-do_expire_direct.patch: c728d380ce83f4328baf2c4d834432a66427e66e
   autofs-5.0.7-add-mapent-null-check-in-lookup-nisplus-lookup_mount.patch: 0c818aa327a5f555704eac3900d6ac1515e685b9
   autofs-5.0.7-fix-potential-null-dereference-in-lookup_mount.patch: 34fe847f3842ef7b27b87df55801390450e2e9a4
