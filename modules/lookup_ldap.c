@@ -1214,7 +1214,7 @@ static int parse_server_string(unsigned logopt, const char *url, struct lookup_c
 			q = strchr(ptr, ':');
 			if (!q) {
 				crit(logopt, MODPREFIX
-				     "LDAP server name inot found in %s", ptr);
+				     "LDAP server name not found in %s", ptr);
 				return 0;
 			}
 		else {
