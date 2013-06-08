@@ -8,6 +8,9 @@ autofs-5.0.7 - fix potential null dereference in lookup_mount()
 Updating a negative cache entry should always find an entry but the entry
 lookup return isn't checked and probably should be.
 
+Since this code is duplicated in several modules add it as a function to
+the cache handling code.
+
 
 ---
 
