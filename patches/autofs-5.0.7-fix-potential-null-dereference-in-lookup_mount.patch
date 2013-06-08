@@ -1,5 +1,5 @@
-Bottom: b45379b77c4c0fda544fd803eb6a28c0957adde2
-Top:    78eb63a4fa09ed466e93642794e9423c4278f523
+Bottom: 676a245422a93f850b73eb5f53bedcbf869be122
+Top:    7143593195ffe7e2f53621bfff39bc2b40b3376f
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-06-07 13:54:07 +0800
 
@@ -25,7 +25,7 @@ index 2836996..58663c6 100644
  		cache_writelock(mc);
  		me = cache_lookup_distinct(mc, key);
 diff --git a/modules/lookup_ldap.c b/modules/lookup_ldap.c
-index 6e06e02..3371b3f 100644
+index a59de92..d89c295 100644
 --- a/modules/lookup_ldap.c
 +++ b/modules/lookup_ldap.c
 @@ -3012,7 +3012,7 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
