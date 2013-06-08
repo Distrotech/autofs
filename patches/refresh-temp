@@ -1,0 +1,48 @@
+Bottom: 3901e8ecd7605c5aec71b1ebb5b7362358193923
+Top:    ae89cbceb6c9e38ea49b04db0b83f9a351b75eb8
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-06-08 09:33:20 +0800
+
+Refresh of autofs-5.0.7-fix-potential-null-dereference-in-lookup_mount.patch
+
+---
+
+diff --git a/modules/lookup_ldap.c b/modules/lookup_ldap.c
+index 68aa450..26481a8 100644
+--- a/modules/lookup_ldap.c
++++ b/modules/lookup_ldap.c
+@@ -3011,7 +3011,9 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
+ 	ret = ctxt->parse->parse_mount(ap, key, key_len,
+ 				       mapent, ctxt->parse->context);
+ 	if (ret) {
++		cache_writelock(mc);
+ 		cache_update_negative(mc, source, key, ap->negative_timeout);
++		cache_unlock(mc);
+ 		return NSS_STATUS_TRYAGAIN;
+ 	}
+ 
+diff --git a/modules/lookup_sss.c b/modules/lookup_sss.c
+index 003ec1f..1fe740b 100644
+--- a/modules/lookup_sss.c
++++ b/modules/lookup_sss.c
+@@ -672,19 +672,8 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
+ 	ret = ctxt->parse->parse_mount(ap, key, key_len,
+ 				       mapent, ctxt->parse->context);
+ 	if (ret) {
+-		time_t now = time(NULL);
+-		int rv = CHE_OK;
+-
+-		/* Record the the mount fail in the cache */
+ 		cache_writelock(mc);
+-		me = cache_lookup_distinct(mc, key);
+-		if (!me)
+-			rv = cache_update(mc, source, key, NULL, now);
+-		if (rv != CHE_FAIL) {
+-			me = cache_lookup_distinct(mc, key);
+-			if (me)
+-				me->status = now + ap->negative_timeout;
+-		}
++		cache_update_negative(mc, source, key, ap->negative_timeout);
+ 		cache_unlock(mc);
+ 		return NSS_STATUS_TRYAGAIN;
+ 	}
