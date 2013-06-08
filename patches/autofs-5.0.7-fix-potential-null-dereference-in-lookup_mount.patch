@@ -1,5 +1,5 @@
 Bottom: 676a245422a93f850b73eb5f53bedcbf869be122
-Top:    7e5877605deb58980ac0a92458f9aa2e0b3d45e5
+Top:    1ed7ec1e930018cd3e982543623d32b348d4a15d
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-06-07 13:54:07 +0800
 
@@ -54,15 +54,16 @@ index 5c2ed0a..003ec1f 100644
  		cache_unlock(mc);
  		return NSS_STATUS_TRYAGAIN;
 diff --git a/modules/lookup_yp.c b/modules/lookup_yp.c
-index a716e1f..72a8baa 100644
+index a716e1f..f6095ad 100644
 --- a/modules/lookup_yp.c
 +++ b/modules/lookup_yp.c
-@@ -699,7 +699,7 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
- 					       mapent, ctxt->parse->context);
- 		if (ret) {
- 			time_t now = time(NULL);
--			int rv = CHE_OK;
-+			int rv = CHE_FAIL;
- 
- 			cache_writelock(mc);
- 			me = cache_lookup_distinct(mc, key);
+@@ -707,7 +707,8 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
+ 				rv = cache_update(mc, source, key, NULL, now);
+ 			if (rv != CHE_FAIL) {
+ 				me = cache_lookup_distinct(mc, key);
+-				me->status = now + ap->negative_timeout;
++				if (me)
++					me->status = now + ap->negative_timeout;
+ 			}
+ 			cache_unlock(mc);
+ 		}
