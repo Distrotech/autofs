@@ -1,5 +1,5 @@
 Bottom: 4809cbe88afb1813e1fec6dec440d97999a07f6f
-Top:    292df42c0b65ed83443d11add1861b668bd63635
+Top:    f5f193004d0e86eeb90acf61145b7fe193f1a9eb
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-06-07 13:24:09 +0800
 
@@ -12,7 +12,7 @@ parse_server_string().
 ---
 
 diff --git a/modules/lookup_ldap.c b/modules/lookup_ldap.c
-index 17cbe9a..6e06e02 100644
+index 17cbe9a..a59de92 100644
 --- a/modules/lookup_ldap.c
 +++ b/modules/lookup_ldap.c
 @@ -1212,6 +1212,11 @@ static int parse_server_string(unsigned logopt, const char *url, struct lookup_c
@@ -21,7 +21,7 @@ index 17cbe9a..6e06e02 100644
  			q = strchr(ptr, ':');
 +			if (!q) {
 +				crit(logopt, MODPREFIX
-+				     "LDAP server name inot found in %s", ptr);
++				     "LDAP server name not found in %s", ptr);
 +				return 0;
 +			}
  		else {
