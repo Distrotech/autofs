@@ -1,5 +1,5 @@
 Bottom: 676a245422a93f850b73eb5f53bedcbf869be122
-Top:    ae89cbceb6c9e38ea49b04db0b83f9a351b75eb8
+Top:    66522de14c2912c83e6499db689a35f398c43a9c
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-06-07 13:54:07 +0800
 
@@ -57,17 +57,17 @@ index 1e05a99..1300130 100644
  {
  	struct list_head *next;
 diff --git a/modules/lookup_file.c b/modules/lookup_file.c
-index 2836996..eb6e9dc 100644
+index 2836996..4b4ee89 100644
 --- a/modules/lookup_file.c
 +++ b/modules/lookup_file.c
-@@ -1130,18 +1130,7 @@ do_cache_lookup:
+@@ -1130,17 +1130,8 @@ do_cache_lookup:
  	ret = ctxt->parse->parse_mount(ap, key, key_len,
  				       mapent, ctxt->parse->context);
  	if (ret) {
 -		time_t now = time(NULL);
 -		int rv = CHE_OK;
 -
--		cache_writelock(mc);
+ 		cache_writelock(mc);
 -		me = cache_lookup_distinct(mc, key);
 -		if (!me)
 -			rv = cache_update(mc, source, key, NULL, now);
@@ -75,11 +75,10 @@ index 2836996..eb6e9dc 100644
 -			me = cache_lookup_distinct(mc, key);
 -			me->status = now + ap->negative_timeout;
 -		}
--		cache_unlock(mc);
 +		cache_update_negative(mc, source, key, ap->negative_timeout);
+ 		cache_unlock(mc);
  		return NSS_STATUS_TRYAGAIN;
  	}
- 
 diff --git a/modules/lookup_ldap.c b/modules/lookup_ldap.c
 index a59de92..26481a8 100644
 --- a/modules/lookup_ldap.c
