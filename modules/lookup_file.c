@@ -1131,7 +1131,7 @@ do_cache_lookup:
 				       mapent, ctxt->parse->context);
 	if (ret) {
 		time_t now = time(NULL);
-		int rv = CHE_FAIL;
+		int rv = CHE_OK;
 
 		cache_writelock(mc);
 		me = cache_lookup_distinct(mc, key);
@@ -1139,7 +1139,8 @@ do_cache_lookup:
 			rv = cache_update(mc, source, key, NULL, now);
 		if (rv != CHE_FAIL) {
 			me = cache_lookup_distinct(mc, key);
-			me->status = now + ap->negative_timeout;
+			if (me)
+				me->status = now + ap->negative_timeout;
 		}
 		cache_unlock(mc);
 		return NSS_STATUS_TRYAGAIN;
