@@ -1,5 +1,5 @@
 Bottom: 676a245422a93f850b73eb5f53bedcbf869be122
-Top:    3901e8ecd7605c5aec71b1ebb5b7362358193923
+Top:    ae89cbceb6c9e38ea49b04db0b83f9a351b75eb8
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-06-07 13:54:07 +0800
 
@@ -81,10 +81,10 @@ index 2836996..eb6e9dc 100644
  	}
  
 diff --git a/modules/lookup_ldap.c b/modules/lookup_ldap.c
-index a59de92..68aa450 100644
+index a59de92..26481a8 100644
 --- a/modules/lookup_ldap.c
 +++ b/modules/lookup_ldap.c
-@@ -3011,19 +3011,7 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
+@@ -3011,18 +3011,8 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
  	ret = ctxt->parse->parse_mount(ap, key, key_len,
  				       mapent, ctxt->parse->context);
  	if (ret) {
@@ -92,7 +92,7 @@ index a59de92..68aa450 100644
 -		int rv = CHE_OK;
 -
 -		/* Record the the mount fail in the cache */
--		cache_writelock(mc);
+ 		cache_writelock(mc);
 -		me = cache_lookup_distinct(mc, key);
 -		if (!me)
 -			rv = cache_update(mc, source, key, NULL, now);
@@ -100,25 +100,34 @@ index a59de92..68aa450 100644
 -			me = cache_lookup_distinct(mc, key);
 -			me->status = now + ap->negative_timeout;
 -		}
--		cache_unlock(mc);
 +		cache_update_negative(mc, source, key, ap->negative_timeout);
- 		return NSS_STATUS_TRYAGAIN;
- 	}
- 
-diff --git a/modules/lookup_sss.c b/modules/lookup_sss.c
-index 5c2ed0a..003ec1f 100644
---- a/modules/lookup_sss.c
-+++ b/modules/lookup_sss.c
-@@ -682,7 +682,8 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
- 			rv = cache_update(mc, source, key, NULL, now);
- 		if (rv != CHE_FAIL) {
- 			me = cache_lookup_distinct(mc, key);
--			me->status = now + ap->negative_timeout;
-+			if (me)
-+				me->status = now + ap->negative_timeout;
- 		}
  		cache_unlock(mc);
  		return NSS_STATUS_TRYAGAIN;
+ 	}
+diff --git a/modules/lookup_sss.c b/modules/lookup_sss.c
+index 5c2ed0a..1fe740b 100644
+--- a/modules/lookup_sss.c
++++ b/modules/lookup_sss.c
+@@ -672,18 +672,8 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
+ 	ret = ctxt->parse->parse_mount(ap, key, key_len,
+ 				       mapent, ctxt->parse->context);
+ 	if (ret) {
+-		time_t now = time(NULL);
+-		int rv = CHE_OK;
+-
+-		/* Record the the mount fail in the cache */
+ 		cache_writelock(mc);
+-		me = cache_lookup_distinct(mc, key);
+-		if (!me)
+-			rv = cache_update(mc, source, key, NULL, now);
+-		if (rv != CHE_FAIL) {
+-			me = cache_lookup_distinct(mc, key);
+-			me->status = now + ap->negative_timeout;
+-		}
++		cache_update_negative(mc, source, key, ap->negative_timeout);
+ 		cache_unlock(mc);
+ 		return NSS_STATUS_TRYAGAIN;
+ 	}
 diff --git a/modules/lookup_yp.c b/modules/lookup_yp.c
 index a716e1f..f6095ad 100644
 --- a/modules/lookup_yp.c
