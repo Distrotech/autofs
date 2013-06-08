@@ -1,5 +1,5 @@
 Bottom: 676a245422a93f850b73eb5f53bedcbf869be122
-Top:    a00a46543c9c1a37bb586b19c01a0d8ab1d80891
+Top:    de7eefc2d104178a3f161fc03631a12e8adc1c85
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-06-07 13:54:07 +0800
 
@@ -128,10 +128,10 @@ index 5c2ed0a..1fe740b 100644
  		return NSS_STATUS_TRYAGAIN;
  	}
 diff --git a/modules/lookup_yp.c b/modules/lookup_yp.c
-index a716e1f..d70605a 100644
+index a716e1f..e99e3c0 100644
 --- a/modules/lookup_yp.c
 +++ b/modules/lookup_yp.c
-@@ -698,17 +698,8 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
+@@ -698,18 +698,10 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
  		ret = ctxt->parse->parse_mount(ap, key, key_len,
  					       mapent, ctxt->parse->context);
  		if (ret) {
@@ -148,5 +148,6 @@ index a716e1f..d70605a 100644
 -			}
 +			cache_update_negative(mc, source, key, ap->negative_timeout);
  			cache_unlock(mc);
++			return NSS_STATUS_TRYAGAIN;
  		}
  	 }
