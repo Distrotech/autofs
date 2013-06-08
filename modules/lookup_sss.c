@@ -673,7 +673,7 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 				       mapent, ctxt->parse->context);
 	if (ret) {
 		time_t now = time(NULL);
-		int rv = CHE_FAIL;
+		int rv = CHE_OK;
 
 		/* Record the the mount fail in the cache */
 		cache_writelock(mc);
@@ -682,7 +682,8 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 			rv = cache_update(mc, source, key, NULL, now);
 		if (rv != CHE_FAIL) {
 			me = cache_lookup_distinct(mc, key);
-			me->status = now + ap->negative_timeout;
+			if (me)
+				me->status = now + ap->negative_timeout;
 		}
 		cache_unlock(mc);
 		return NSS_STATUS_TRYAGAIN;
