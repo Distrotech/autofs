@@ -1,5 +1,5 @@
 Bottom: 676a245422a93f850b73eb5f53bedcbf869be122
-Top:    1ed7ec1e930018cd3e982543623d32b348d4a15d
+Top:    e99be4fe31a6aab090e5cff2e33258e1b9e3c0a4
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-06-07 13:54:07 +0800
 
@@ -11,6 +11,48 @@ lookup return isn't checked and probably should be.
 
 ---
 
+diff --git a/include/automount.h b/include/automount.h
+index 6ced842..71787a5 100644
+--- a/include/automount.h
++++ b/include/automount.h
+@@ -189,6 +189,7 @@ struct mapent *cache_lookup_offset(const char *prefix, const char *offset, int s
+ struct mapent *cache_partial_match(struct mapent_cache *mc, const char *prefix);
+ int cache_add(struct mapent_cache *mc, struct map_source *ms, const char *key, const char *mapent, time_t age);
+ int cache_update_offset(struct mapent_cache *mc, const char *mkey, const char *key, const char *mapent, time_t age);
++void cache_update_negative(struct mapent_cache *mc, struct map_source *ms, const char *key, time_t timeout);
+ int cache_set_parents(struct mapent *mm);
+ int cache_update(struct mapent_cache *mc, struct map_source *ms, const char *key, const char *mapent, time_t age);
+ int cache_delete(struct mapent_cache *mc, const char *key);
+diff --git a/lib/cache.c b/lib/cache.c
+index 1e05a99..1300130 100644
+--- a/lib/cache.c
++++ b/lib/cache.c
+@@ -680,6 +680,25 @@ done:
+ 	return ret; 
+ }
+ 
++void cache_update_negative(struct mapent_cache *mc,
++			   struct map_source *ms, const char *key,
++			   time_t timeout)
++{
++	time_t now = time(NULL);
++	int rv = CHE_OK;
++
++	me = cache_lookup_distinct(mc, key);
++	if (!me)
++		rv = cache_update(mc, ms, key, NULL, now);
++	if (rv != CHE_FAIL) {
++		me = cache_lookup_distinct(mc, key);
++		if (me)
++			me->status = now + timeout;
++	}
++	return;
++}
++
++
+ static struct mapent *get_parent(const char *key, struct list_head *head, struct list_head **pos)
+ {
+ 	struct list_head *next;
 diff --git a/modules/lookup_file.c b/modules/lookup_file.c
 index 2836996..48f5789 100644
 --- a/modules/lookup_file.c
