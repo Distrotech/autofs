@@ -1,5 +1,5 @@
-Bottom: 84308fcabb5e5944ea5104dc2f1eb9f8f149c370
-Top:    562464f4cda183dbde0842adf2f01cbd57a2b9a4
+Bottom: 2806e54b81615a443bc785d5ebd435a6ba66c82b
+Top:    f510b7d3a1caaff319b2471b1481c9e2186e1646
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-06-07 17:16:46 +0800
 
@@ -13,7 +13,7 @@ tests pass now.
 ---
 
 diff --git a/lib/cache.c b/lib/cache.c
-index 1300130..2d1c2da 100644
+index 1e05a99..ecace4a 100644
 --- a/lib/cache.c
 +++ b/lib/cache.c
 @@ -659,7 +659,7 @@ int cache_update_offset(struct mapent_cache *mc, const char *mkey, const char *k
