@@ -1,6 +1,6 @@
 Version: 1
-Previous: 8952333dc4b585a578c31cdcb0ed2f5beff81c42
-Head: 447a7aa1b8dca5965c5d30a0ab9f01c928ea0107
+Previous: d2eb2feeac80a46fcfb8f88a3c384cd9102fa5fc
+Head: 2ed14e676d24bbabdedcd1b96b57f796b5d49acc
 Applied:
   autofs-5.0.7-fix-master-map-mount-options-matching.patch: c01166ee31bebd06c1ee18ebde3e2c06a8c13434
   autofs-5.0.7-fix-master-map-bogus-keywork-match.patch: c6174c924be1bffe2c52185abf9da8e180183fc2
@@ -27,10 +27,10 @@ Applied:
   autofs-5.0.7-fix-leaked-ldap-percent-hack-allocation-in-lookup_one.patch: 18a4143b6aa3f5a2799e89875294f162312d1e70
   autofs-5.0.7-fix-incorrect-value-reference-in-parse_line.patch: 8ca6d06195c8d7caf9bca8e2af37199ba8137a9b
   autofs-5.0.7-add-debug-alert-for-waitpid-in-check_nfs_mount_version.patch: e818867560d60c8bbf32dc59c70896bbde7771df
-  autofs-5.0.7-add-initialization-of-bind_result-in.patch-do_sasl_bind.patch: 853892739d559e62d5982e6c2ee10cd1f635cac8
-  autofs-5.0.7-fix-incorrect-check-in-flag_is_owned.patch: a33d3189588d4b56fba42acbf410ce74398df690
-  autofs-5.0.7-fix-possible-use-after-free-in-lookup_dir-lookup_init.patch: dac96074ab3610e6f6fb0116fee84d4a9183366f
-  autofs-5.0.7-add-changlog-entry-for-coverity-fixes.patch: 447a7aa1b8dca5965c5d30a0ab9f01c928ea0107
+  autofs-5.0.7-add-initialization-of-bind_result-in.patch-do_sasl_bind.patch: e40887cf63f3a5a09674569c563aa86aca2f2f64
+  autofs-5.0.7-fix-incorrect-check-in-flag_is_owned.patch: c629436667d19c8884feabe36b77849d6fc518e9
+  autofs-5.0.7-fix-possible-use-after-free-in-lookup_dir-lookup_init.patch: 92cb3a395422a8d7599df5fa6c833704042d818e
+  autofs-5.0.7-add-changlog-entry-for-coverity-fixes.patch: 2ed14e676d24bbabdedcd1b96b57f796b5d49acc
 Unapplied:
   autofs-5.0.5-wait-for-master-map-available-at-start.patch: 521b792b7f2ebc8ce8494235c7ca4d20aba3e0ee
   autofs-5.0.5-add-master-read-wait-option.patch: 4673bddae0846a2f2486d65590f804773876df74
