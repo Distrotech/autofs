@@ -1,5 +1,5 @@
 Bottom: 1d64c0ad0821d2fbf215518388675ce707d2e01a
-Top:    6b0a5f7c4a9973e6f3e9ea683e49a256833cf9bb
+Top:    95f948d3797196d87b2dbd9801f08876d3108570
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-06-11 13:57:14 +0800
 
@@ -22,15 +22,14 @@ Changes are:
 ---
 
 diff --git a/CHANGELOG b/CHANGELOG
-index 48e9806..4ad1e43 100644
+index 48e9806..25179b1 100644
 --- a/CHANGELOG
 +++ b/CHANGELOG
-@@ -49,6 +49,8 @@
+@@ -49,6 +49,7 @@
  - fix master map bogus keywork match.
  - fix fix map entry duplicate offset detection.
  - probe each nfs version in turn for singleton mounts.
 +- add changlog entry for coverity fixes.
-+
  
  25/07/2012 autofs-5.0.7
  =======================
