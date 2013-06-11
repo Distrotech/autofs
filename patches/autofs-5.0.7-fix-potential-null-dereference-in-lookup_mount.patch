@@ -1,5 +1,5 @@
-Bottom: 676a245422a93f850b73eb5f53bedcbf869be122
-Top:    de7eefc2d104178a3f161fc03631a12e8adc1c85
+Bottom: 993cb731f1592e09e5a6595d9eb1137a0c3e79a9
+Top:    145b0f4a407c809946839034e437fb8f220bb7b8
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-06-07 13:54:07 +0800
 
@@ -27,7 +27,7 @@ index 6ced842..71787a5 100644
  int cache_update(struct mapent_cache *mc, struct map_source *ms, const char *key, const char *mapent, time_t age);
  int cache_delete(struct mapent_cache *mc, const char *key);
 diff --git a/lib/cache.c b/lib/cache.c
-index 1e05a99..1300130 100644
+index ecace4a..2d1c2da 100644
 --- a/lib/cache.c
 +++ b/lib/cache.c
 @@ -680,6 +680,25 @@ done:
