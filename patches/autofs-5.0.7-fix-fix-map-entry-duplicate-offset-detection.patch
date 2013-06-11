@@ -1,5 +1,5 @@
 Bottom: 2806e54b81615a443bc785d5ebd435a6ba66c82b
-Top:    f510b7d3a1caaff319b2471b1481c9e2186e1646
+Top:    3acfdcc701d1b89b4c9005f3a661b98ae380f441
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-06-07 17:16:46 +0800
 
@@ -12,6 +12,18 @@ tests pass now.
 
 ---
 
+diff --git a/CHANGELOG b/CHANGELOG
+index e15aa1f..39d7889 100644
+--- a/CHANGELOG
++++ b/CHANGELOG
+@@ -47,6 +47,7 @@
+ - dont probe rdma mounts.
+ - fix master map mount options matching.
+ - fix master map bogus keywork match.
++- fix fix map entry duplicate offset detection.
+ 
+ 25/07/2012 autofs-5.0.7
+ =======================
 diff --git a/lib/cache.c b/lib/cache.c
 index 1e05a99..ecace4a 100644
 --- a/lib/cache.c
