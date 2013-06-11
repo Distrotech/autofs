@@ -51,7 +51,6 @@
 - probe each nfs version in turn for singleton mounts.
 - add changlog entry for coverity fixes.
 
-
 25/07/2012 autofs-5.0.7
 =======================
 - fix ipv6 name for lookup fix.
