@@ -22,6 +22,7 @@ Changes are:
 - add pgrp check in do_spawn().
 - fix inconsistent signed usage for __rpc_ping().
 - add null check in extract_version().
+- recheck valid map entry lookup return in do_readmap_mount().
 
 
 ---
