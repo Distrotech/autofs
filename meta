@@ -1,35 +1,7 @@
 Version: 1
-Previous: 96280d996d5934211d3e25ec6aaf116e59ec4017
+Previous: 0e9d9935af4e76808b07e14e3f1b3fe96a018048
 Head: 9fe1c67dce6201fa8213eab96c6ef6043904d38b
 Applied:
-  autofs-5.0.7-fix-master-map-bogus-keywork-match.patch: c6174c924be1bffe2c52185abf9da8e180183fc2
-  autofs-5.0.7-fix-fix-map-entry-duplicate-offset-detection.patch: 66d0738ca2afc9384fb93ad5dc37adb275d149de
-  autofs-5.0.7-probe-each-nfs-version-in-turn-for-singleton-mounts.patch: ed8161a9fd423cdb42c1a5ffc0af721d5a15f6d9
-  autofs-5.0.7-fix-fcntl-return-check.patch: 13c65bec96c8f266459d6c25427693de539ddde3
-  autofs-5.0.7-fix-spawn_umount-return-check-in-mount_bind-lookup_init.patch: f735d9c79f28ea1caf26344a0ecffe656effb1b5
-  autofs-5.0.7-fix-check-mkdir_path-in-mount_bind-mount_mount.patch: 3ffdd3bd2d6a2796aedb20d866b9572b84f01e99
-  autofs-5.0.7-fix-incorrect-name-in-test.patch: c74e5b9f304df14170ed32ca02f8accd6f93e261
-  autofs-5.0.7-remove-debug-only-code-in-alarm-c.patch: 434be1f535e49e0ea56f304c03ff140f3450477a
-  autofs-5.0.7-fix-inconsistent-use-of-cache-lock-in-handle_packet_missing_direct.patch: abe3145f87f624774d9226b2269c3c1bade8196e
-  autofs-5.0.7-fix-several-off-by-one-errors.patch: e059a3980e34cc5c456ce43a303ac90ac5c45f35
-  autofs-5.0.7-fix-memory-leak-in-get_dc_list.patch: 266b600bad3ca06c88aff7ff06760a80dad6e144
-  autofs-5.0.7-fix-host_addr-null-reference-in-add_new_host.patch: ed9905e4d0026c32d212c95099a9711da4da7f8e
-  autofs-5.0.7-add-null-check-in-read_one.patch: 8e62ce0655277d3675ad21f4f0a83068b6fa43de
-  autofs-5.0.7-add-pgrp-check-in-do_spawn.patch: 603a1a50061cb347e4c14b0e8d0b013ed584dbc5
-  autofs-5.0.7-fix-inconsistent-signed-usage-for-__rpc_ping.patch: 3c8fb3c58625f4c68b1bb33c2e6ef00fcc90e781
-  autofs-5.0.7-add-null-check-in-extract_version.patch: bd9d5497aeb98dd147ede3f5798ddf66353a5977
-  autofs-5.0.7-recheck-valid-map-entry-lookup-return-in-do_readmap_mount.patch: d907b11e5f47625c0069a612febc257f55f0f299
-  autofs-5.0.7-add-null-check-in-parse_server_string.patch: e3350a53f194c5ee7ee920a7debf18b98dc2462c
-  autofs-5.0.7-add-map-entry-null-check-in-do_expire_direct.patch: c3cf3a9eb2395fd361328ebb9f554c98ddda057d
-  autofs-5.0.7-add-mapent-null-check-in-lookup-nisplus-lookup_mount.patch: 6919d0a1c8b4b07789acb96d48f62509ad063c47
-  autofs-5.0.7-fix-potential-null-dereference-in-lookup_mount.patch: d73e97f188babcdf636f146ba8fdb40bcb246e27
-  autofs-5.0.7-fix-leaked-ldap-percent-hack-allocation-in-lookup_one.patch: 9188ab699acdc04693488a34ffd21467c79f990e
-  autofs-5.0.7-fix-incorrect-value-reference-in-parse_line.patch: 9780a686e48f56eac292384f163067e42eda25cc
-  autofs-5.0.7-add-debug-alert-for-waitpid-in-check_nfs_mount_version.patch: acbe9821d08c3991697990e03826588e3d553f27
-  autofs-5.0.7-add-initialization-of-bind_result-in.patch-do_sasl_bind.patch: 80e52d691f759487b170d1fb330581e8ce0a8361
-  autofs-5.0.7-fix-incorrect-check-in-flag_is_owned.patch: e4452b96bb46a07c7abf712da0df53821f6483a9
-  autofs-5.0.7-fix-possible-use-after-free-in-lookup_dir-lookup_init.patch: 205fbc3d46daabd4b2f9c3747b3c3324ec6e2e4a
-  autofs-5.0.7-add-changlog-entry-for-coverity-fixes.patch: 9fe1c67dce6201fa8213eab96c6ef6043904d38b
 Unapplied:
   autofs-5.0.5-wait-for-master-map-available-at-start.patch: 521b792b7f2ebc8ce8494235c7ca4d20aba3e0ee
   autofs-5.0.5-add-master-read-wait-option.patch: 4673bddae0846a2f2486d65590f804773876df74
