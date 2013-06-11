@@ -13,6 +13,7 @@ Changes are:
 - fix spawn_umount() return check in mount_bind.c:lookup_init().
 - fix check mkdir_path() in mount_bind.c:mount_mount().
 - fix incorrect var name in test.
+- remove debug only code in alarm.c.
 
 
 ---
