@@ -25,6 +25,7 @@ Changes are:
 - recheck valid map entry lookup return in do_readmap_mount().
 - add null check in parse_server_string().
 - add map entry null check in do_expire_direct().
+- add mapent null check in lookup_nisplus.c:lookup_mount().
 
 
 ---
