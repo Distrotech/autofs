@@ -1,6 +1,6 @@
 Version: 1
-Previous: c1c59668d3351a04fc4a233fc86035890e1427c8
-Head: 301e0806155c1b8b2cb8500579d856fc9698d68d
+Previous: 24142bb54871dec299dc2e42d0cca5623c28a86c
+Head: aa3334bf71db57cbbb6bfbe32cc801938d45ec6f
 Applied:
   autofs-5.0.7-fix-master-map-mount-options-matching.patch: c01166ee31bebd06c1ee18ebde3e2c06a8c13434
   autofs-5.0.7-fix-master-map-bogus-keywork-match.patch: c6174c924be1bffe2c52185abf9da8e180183fc2
@@ -12,8 +12,8 @@ Applied:
   autofs-5.0.7-remove-debug-only-code-in-alarm-c.patch: 8f2d3fb4d7c9dc972520234cc001e40c47609ccd
   autofs-5.0.7-fix-inconsistent-use-of-cache-lock-in-handle_packet_missing_direct.patch: be837f13103c9a6d484140fb0e7b056e314dac70
   autofs-5.0.7-fix-several-off-by-one-errors.patch: 301e0806155c1b8b2cb8500579d856fc9698d68d
+  autofs-5.0.7-fix-memory-leak-in-get_dc_list.patch: aa3334bf71db57cbbb6bfbe32cc801938d45ec6f
 Unapplied:
-  autofs-5.0.7-fix-memory-leak-in-get_dc_list.patch: c772b8b5d08b2996caa5a47bb3e7191feab10f9f
   autofs-5.0.7-fix-host_addr-null-reference-in-add_new_host.patch: 6c5d73285877c1011c270f6e62bc3efcfc9019b5
   autofs-5.0.7-add-null-check-in-read_one.patch: c1b80cffa002d436d36e5adc98acd3404b422727
   autofs-5.0.7-add-pgrp-check-in-do_spawn.patch: 291ef350fe5b086a4a1b3ee1ec56470fb611b80a
