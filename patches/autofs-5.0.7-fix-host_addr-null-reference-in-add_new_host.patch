@@ -1,5 +1,5 @@
-Bottom: a3a637e86833c720d0d1bf2c609bfd6cf0aa3575
-Top:    3f4c719f319851520a5fd9288b197003c46f1031
+Bottom: 49d3473ef9dbc2fcec830e519ccea1cead3a15fd
+Top:    0d3d1e96c0cd34224c06749ff029ff9df2414e54
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-06-07 12:10:56 +0800
 
@@ -14,7 +14,7 @@ Remove the redundant check.
 ---
 
 diff --git a/modules/replicated.c b/modules/replicated.c
-index 6dbdade..bf97c41 100644
+index 0a044b9..e793ca4 100644
 --- a/modules/replicated.c
 +++ b/modules/replicated.c
 @@ -1030,28 +1030,19 @@ static int add_new_host(struct host **list,
