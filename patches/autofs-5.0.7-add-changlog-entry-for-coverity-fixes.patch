@@ -10,7 +10,7 @@ Mostly I pust the changes into seperate patches so they can be kept simple.
 
 Changes are:
 - fix fcntl return check.
-
+- fix spawn_umount() return check in mount_bind.c:lookup_init().
 
 
 ---
