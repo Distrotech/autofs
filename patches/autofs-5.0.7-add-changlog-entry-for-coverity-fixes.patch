@@ -27,6 +27,7 @@ Changes are:
 - add map entry null check in do_expire_direct().
 - add mapent null check in lookup_nisplus.c:lookup_mount().
 - fix potential null dereference in lookup_mount().
+- fix leaked ldap percent hack allocation in lookup_one().
 
 
 ---
