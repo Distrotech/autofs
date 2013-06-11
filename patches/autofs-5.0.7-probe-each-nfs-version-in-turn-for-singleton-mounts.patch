@@ -1,5 +1,5 @@
-Bottom: 25e2e5f00643ab8b0aca894c67ed4f92eaed6348
-Top:    84308fcabb5e5944ea5104dc2f1eb9f8f149c370
+Bottom: 3acfdcc701d1b89b4c9005f3a661b98ae380f441
+Top:    1d6583921c5643f83bfba565b9afa8352556cd08
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-05-30 10:18:19 +0800
 
@@ -70,7 +70,7 @@ index 5424d74..81ba3ca 100644
  		info(ap->logopt, MODPREFIX "no hosts available");
  		return 1;
 diff --git a/modules/replicated.c b/modules/replicated.c
-index bf97c41..e793ca4 100644
+index 6dbdade..0a044b9 100644
 --- a/modules/replicated.c
 +++ b/modules/replicated.c
 @@ -280,10 +280,10 @@ static unsigned int get_proximity(struct sockaddr *host_addr)
