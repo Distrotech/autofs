@@ -9,6 +9,7 @@ A bunch of changes have been made based on a Covarity report.
 Mostly I pust the changes into seperate patches so they can be kept simple.
 
 Changes are:
+- fix fcntl return check.
 
 
 
