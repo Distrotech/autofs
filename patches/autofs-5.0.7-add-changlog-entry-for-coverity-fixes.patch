@@ -23,6 +23,7 @@ Changes are:
 - fix inconsistent signed usage for __rpc_ping().
 - add null check in extract_version().
 - recheck valid map entry lookup return in do_readmap_mount().
+- add null check in parse_server_string().
 
 
 ---
