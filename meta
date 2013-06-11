@@ -1,6 +1,6 @@
 Version: 1
-Previous: bd6d9b5afebd81b89bd7b25b7081c3bf4825154b
-Head: 4ce738babbd7b73f42ad5dd22c96d9c36846a9a1
+Previous: 02b9f28f5ea014a3480b67ce00cc9092b88dfc96
+Head: 18a4143b6aa3f5a2799e89875294f162312d1e70
 Applied:
   autofs-5.0.7-fix-master-map-mount-options-matching.patch: c01166ee31bebd06c1ee18ebde3e2c06a8c13434
   autofs-5.0.7-fix-master-map-bogus-keywork-match.patch: c6174c924be1bffe2c52185abf9da8e180183fc2
@@ -24,8 +24,8 @@ Applied:
   autofs-5.0.7-add-map-entry-null-check-in-do_expire_direct.patch: c3cf3a9eb2395fd361328ebb9f554c98ddda057d
   autofs-5.0.7-add-mapent-null-check-in-lookup-nisplus-lookup_mount.patch: 6919d0a1c8b4b07789acb96d48f62509ad063c47
   autofs-5.0.7-fix-potential-null-dereference-in-lookup_mount.patch: 4ce738babbd7b73f42ad5dd22c96d9c36846a9a1
+  autofs-5.0.7-fix-leaked-ldap-percent-hack-allocation-in-lookup_one.patch: 18a4143b6aa3f5a2799e89875294f162312d1e70
 Unapplied:
-  autofs-5.0.7-fix-leaked-ldap-percent-hack-allocation-in-lookup_one.patch: bd71dd987779ce1d9b35014a428a71d942f0107f
   autofs-5.0.7-fix-incorrect-value-reference-in-parse_line.patch: 2bcfaf05132600fbf5ca998cb47f524469bd237a
   autofs-5.0.7-add-debug-alert-for-waitpid-in-check_nfs_mount_version.patch: 8979be4c9cb450aba4209aab6ac40aae9b984e7c
   autofs-5.0.7-add-initialization-of-bind_result-in.patch-do_sasl_bind.patch: aa112d955f0ff0b4cd31fe94794787d48fdf512a
