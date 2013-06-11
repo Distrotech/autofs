@@ -214,9 +214,9 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 	char *mapname;
 	int err;
 
-	mapname = alloca(strlen(ctxt->mapname) + 1);
+	mapname = malloc(strlen(ctxt->mapname) + 1);
 	if (!mapname)
-		return 0;
+		return NSS_STATUS_UNKNOWN;
 
 	strcpy(mapname, ctxt->mapname);
 
@@ -240,19 +240,24 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 			err = yp_all((char *) ctxt->domainname, mapname, &ypcb);
 		}
 
-		if (err == YPERR_SUCCESS)
+		if (err == YPERR_SUCCESS) {
+			free(mapname);
 			return NSS_STATUS_SUCCESS;
+		}
 
 		info(logopt,
 		     MODPREFIX "read of master map %s failed: %s",
 		     mapname, yperr_string(err));
 
-		if (err == YPERR_PMAP || err == YPERR_YPSERV)
+		free(mapname);
+
+		if (err == YPERR_YPSERV || err == YPERR_DOMAIN)
 			return NSS_STATUS_UNAVAIL;
 
 		return NSS_STATUS_NOTFOUND;
 	}
 
+	free(mapname);
 	return NSS_STATUS_SUCCESS;
 }
 
