@@ -31,6 +31,7 @@ Changes:
 - fix incorrect value reference in parse_line().
 - add debug alert for waitpid in check_nfs_mount_version().
 - add initialization of bind_result in-do_sasl_bind().
+- fix incorrect check in flag_is_owned().
 
 
 ---
