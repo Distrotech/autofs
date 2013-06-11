@@ -21,6 +21,7 @@ Changes are:
 - add null check in read_one().
 - add pgrp check in do_spawn().
 - fix inconsistent signed usage for __rpc_ping().
+- add null check in extract_version().
 
 
 ---
