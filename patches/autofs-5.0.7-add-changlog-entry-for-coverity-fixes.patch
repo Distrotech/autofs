@@ -8,7 +8,7 @@ autofs-5.0.7 - add changlog entry for coverity fixes
 A bunch of changes have been made based on a Covarity report.
 Mostly I pust the changes into seperate patches so they can be kept simple.
 
-Changes are:
+Changes:
 - fix fcntl return check.
 - fix spawn_umount() return check in mount_bind.c:lookup_init().
 - fix check mkdir_path() in mount_bind.c:mount_mount().
@@ -28,6 +28,7 @@ Changes are:
 - add mapent null check in lookup_nisplus.c:lookup_mount().
 - fix potential null dereference in lookup_mount().
 - fix leaked ldap percent hack allocation in lookup_one().
+- fix incorrect value reference in parse_line().
 
 
 ---
