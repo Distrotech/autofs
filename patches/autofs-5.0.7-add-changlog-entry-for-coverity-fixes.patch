@@ -24,6 +24,7 @@ Changes are:
 - add null check in extract_version().
 - recheck valid map entry lookup return in do_readmap_mount().
 - add null check in parse_server_string().
+- add map entry null check in do_expire_direct().
 
 
 ---
