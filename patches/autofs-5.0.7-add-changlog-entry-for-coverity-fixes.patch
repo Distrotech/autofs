@@ -20,6 +20,7 @@ Changes are:
 - fix host_addr null reference in add_new_host().
 - add null check in read_one().
 - add pgrp check in do_spawn().
+- fix inconsistent signed usage for __rpc_ping().
 
 
 ---
