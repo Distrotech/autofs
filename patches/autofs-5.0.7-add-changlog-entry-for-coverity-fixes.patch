@@ -29,6 +29,7 @@ Changes:
 - fix potential null dereference in lookup_mount().
 - fix leaked ldap percent hack allocation in lookup_one().
 - fix incorrect value reference in parse_line().
+- add debug alert for waitpid in check_nfs_mount_version().
 
 
 ---
