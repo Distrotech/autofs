@@ -1,6 +1,6 @@
 Version: 1
-Previous: 4ea1acdc15e405c10e8830baf7dd1b17f68004fa
-Head: 521b792b7f2ebc8ce8494235c7ca4d20aba3e0ee
+Previous: 7609c797aa482e8b4f75cec26920728bcf6734ab
+Head: 6e860fd9566e743f17cc0f8d194165d126e2a588
 Applied:
   autofs-5.0.7-fix-master-map-mount-options-matching.patch: c01166ee31bebd06c1ee18ebde3e2c06a8c13434
   autofs-5.0.7-fix-master-map-bogus-keywork-match.patch: c6174c924be1bffe2c52185abf9da8e180183fc2
@@ -31,8 +31,8 @@ Applied:
   autofs-5.0.7-fix-incorrect-check-in-flag_is_owned.patch: a33d3189588d4b56fba42acbf410ce74398df690
   autofs-5.0.7-fix-possible-use-after-free-in-lookup_dir-lookup_init.patch: dac96074ab3610e6f6fb0116fee84d4a9183366f
   autofs-5.0.5-wait-for-master-map-available-at-start.patch: 521b792b7f2ebc8ce8494235c7ca4d20aba3e0ee
-Unapplied:
   autofs-5.0.5-add-master-read-wait-option.patch: 6e860fd9566e743f17cc0f8d194165d126e2a588
+Unapplied:
   autofs-5.0.7-add-host-map-reload-option.patch: 11d23f7a74b2f33e5011ba29f64ae1b4956acb09
   autofs-5.0.7-use-MS_UNBINDABLE-for-autofs-mounts.patch: 1f538797c99b2ce0524c191bc422416962219292
   autofs-5.0.6-account-for-new-offset-mount-overlap.patch: 58e4b78cc2bd0742cf8ac3856f33448a782348aa
