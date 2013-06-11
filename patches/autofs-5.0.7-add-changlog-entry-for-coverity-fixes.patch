@@ -1,0 +1,17 @@
+Bottom: 1d64c0ad0821d2fbf215518388675ce707d2e01a
+Top:    1d64c0ad0821d2fbf215518388675ce707d2e01a
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-06-11 13:57:14 +0800
+
+autofs-5.0.7 - add changlog entry for coverity fixes
+
+A bunch of changes have been made based on a Covarity report.
+Mostly I pust the changes into seperate patches so they can be kept simple.
+
+Changes are:
+
+
+
+---
+
+
