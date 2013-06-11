@@ -1,5 +1,5 @@
 Bottom: c6d87b2a93bd1d32eee819a9933b2ba368d70ba3
-Top:    c4d4417c97a11a02356f775d26c5e59e71c39e8a
+Top:    5a00bf75136d28388605c06379e300b737af7818
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-06-07 13:54:07 +0800
 
@@ -27,10 +27,10 @@ index 6ced842..71787a5 100644
  int cache_update(struct mapent_cache *mc, struct map_source *ms, const char *key, const char *mapent, time_t age);
  int cache_delete(struct mapent_cache *mc, const char *key);
 diff --git a/lib/cache.c b/lib/cache.c
-index ecace4a..2d1c2da 100644
+index ecace4a..be4917b 100644
 --- a/lib/cache.c
 +++ b/lib/cache.c
-@@ -680,6 +680,25 @@ done:
+@@ -680,6 +680,26 @@ done:
  	return ret; 
  }
  
@@ -39,6 +39,7 @@ index ecace4a..2d1c2da 100644
 +			   time_t timeout)
 +{
 +	time_t now = time(NULL);
++	struct mapent *me;
 +	int rv = CHE_OK;
 +
 +	me = cache_lookup_distinct(mc, key);
