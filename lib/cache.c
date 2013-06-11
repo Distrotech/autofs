@@ -685,6 +685,7 @@ void cache_update_negative(struct mapent_cache *mc,
 			   time_t timeout)
 {
 	time_t now = time(NULL);
+	struct mapent *me;
 	int rv = CHE_OK;
 
 	me = cache_lookup_distinct(mc, key);
