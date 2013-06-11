@@ -1,5 +1,5 @@
 Bottom: 1d64c0ad0821d2fbf215518388675ce707d2e01a
-Top:    3f2c9d27893a929b86b3161c6c88850092aee94e
+Top:    8a46f0fc056b1350d828e278d9f34a52e1bc2ebf
 Author: Ian Kent <raven@themaw.net>
 Date:   2011-03-07 13:03:55 +0800
 
@@ -12,6 +12,18 @@ so we can get a startup map.
 
 ---
 
+diff --git a/CHANGELOG b/CHANGELOG
+index 48e9806..f8a8ceb 100644
+--- a/CHANGELOG
++++ b/CHANGELOG
+@@ -49,6 +49,7 @@
+ - fix master map bogus keywork match.
+ - fix fix map entry duplicate offset detection.
+ - probe each nfs version in turn for singleton mounts.
++- wait for master map available at start.
+ 
+ 25/07/2012 autofs-5.0.7
+ =======================
 diff --git a/daemon/automount.c b/daemon/automount.c
 index 3f9337f..8c497c9 100644
 --- a/daemon/automount.c
