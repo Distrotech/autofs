@@ -1,6 +1,6 @@
 Version: 1
-Previous: dc7c8896232d16855f68178180c108194d27a66c
-Head: e2290f19c26c9163ce8532722f8a0a3b55e99b65
+Previous: 3898415d9c860328b18e8b4aa1b74a2a9c0e3bc1
+Head: c033166c0bce08d594f669b60d35c87f0c250cbd
 Applied:
   autofs-5.0.7-fix-master-map-mount-options-matching.patch: c01166ee31bebd06c1ee18ebde3e2c06a8c13434
   autofs-5.0.7-fix-master-map-bogus-keywork-match.patch: c6174c924be1bffe2c52185abf9da8e180183fc2
@@ -31,8 +31,7 @@ Applied:
   autofs-5.0.7-fix-incorrect-check-in-flag_is_owned.patch: a33d3189588d4b56fba42acbf410ce74398df690
   autofs-5.0.7-fix-possible-use-after-free-in-lookup_dir-lookup_init.patch: dac96074ab3610e6f6fb0116fee84d4a9183366f
   autofs-5.0.5-wait-for-master-map-available-at-start.patch: afbdf16abbfca4d9fcf01a1a67f817c86c4f32c7
-  autofs-5.0.5-add-master-read-wait-option.patch: 61289226e420f1c894f7e5a733567b1d848acddf
-  refresh-temp: e2290f19c26c9163ce8532722f8a0a3b55e99b65
+  autofs-5.0.5-add-master-read-wait-option.patch: c033166c0bce08d594f669b60d35c87f0c250cbd
 Unapplied:
   autofs-5.0.7-add-host-map-reload-option.patch: 11d23f7a74b2f33e5011ba29f64ae1b4956acb09
   autofs-5.0.7-use-MS_UNBINDABLE-for-autofs-mounts.patch: 1f538797c99b2ce0524c191bc422416962219292
