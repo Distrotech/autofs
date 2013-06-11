@@ -1,0 +1,21 @@
+Bottom: 6b0a5f7c4a9973e6f3e9ea683e49a256833cf9bb
+Top:    95f948d3797196d87b2dbd9801f08876d3108570
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-06-11 14:03:16 +0800
+
+Refresh of autofs-5.0.7-add-changlog-entry-for-coverity-fixes.patch
+
+---
+
+diff --git a/CHANGELOG b/CHANGELOG
+index 4ad1e43..25179b1 100644
+--- a/CHANGELOG
++++ b/CHANGELOG
+@@ -51,7 +51,6 @@
+ - probe each nfs version in turn for singleton mounts.
+ - add changlog entry for coverity fixes.
+ 
+-
+ 25/07/2012 autofs-5.0.7
+ =======================
+ - fix ipv6 name for lookup fix.
