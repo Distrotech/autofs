@@ -1,6 +1,6 @@
 Version: 1
-Previous: 687d978f09163e1b5f1721349ba0aee47dfeacf7
-Head: a33d3189588d4b56fba42acbf410ce74398df690
+Previous: e0b953e279607aa0773f85501cb8b39ed9d78ed0
+Head: dac96074ab3610e6f6fb0116fee84d4a9183366f
 Applied:
   autofs-5.0.7-fix-master-map-mount-options-matching.patch: c01166ee31bebd06c1ee18ebde3e2c06a8c13434
   autofs-5.0.7-fix-master-map-bogus-keywork-match.patch: c6174c924be1bffe2c52185abf9da8e180183fc2
@@ -29,8 +29,8 @@ Applied:
   autofs-5.0.7-add-debug-alert-for-waitpid-in-check_nfs_mount_version.patch: e818867560d60c8bbf32dc59c70896bbde7771df
   autofs-5.0.7-add-initialization-of-bind_result-in.patch-do_sasl_bind.patch: 853892739d559e62d5982e6c2ee10cd1f635cac8
   autofs-5.0.7-fix-incorrect-check-in-flag_is_owned.patch: a33d3189588d4b56fba42acbf410ce74398df690
+  autofs-5.0.7-fix-possible-use-after-free-in-lookup_dir-lookup_init.patch: dac96074ab3610e6f6fb0116fee84d4a9183366f
 Unapplied:
-  autofs-5.0.7-fix-possible-use-after-free-in-lookup_dir-lookup_init.patch: 99ab3a7e23decced12aca67cff64e26481c66aee
   autofs-5.0.5-wait-for-master-map-available-at-start.patch: 4f26bda14fd453521f2ea4c8b17fc4ff7f548b28
   autofs-5.0.5-add-master-read-wait-option.patch: d9182f80955e6f44bb43b407a07c4ec0509749bf
   autofs-5.0.7-add-host-map-reload-option.patch: 11d23f7a74b2f33e5011ba29f64ae1b4956acb09
