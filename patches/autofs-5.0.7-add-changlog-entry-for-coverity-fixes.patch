@@ -14,6 +14,7 @@ Changes are:
 - fix check mkdir_path() in mount_bind.c:mount_mount().
 - fix incorrect var name in test.
 - remove debug only code in alarm.c.
+- fix inconsistent use of cache lock in handle_packet_missing_direct().
 
 
 ---
