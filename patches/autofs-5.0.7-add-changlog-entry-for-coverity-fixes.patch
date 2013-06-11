@@ -16,6 +16,7 @@ Changes are:
 - remove debug only code in alarm.c.
 - fix inconsistent use of cache lock in handle_packet_missing_direct().
 - fix several off by one errors.
+- fix memory leak in get_dc_list().
 
 
 ---
