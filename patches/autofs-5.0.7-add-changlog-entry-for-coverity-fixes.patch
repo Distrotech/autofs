@@ -30,6 +30,7 @@ Changes:
 - fix leaked ldap percent hack allocation in lookup_one().
 - fix incorrect value reference in parse_line().
 - add debug alert for waitpid in check_nfs_mount_version().
+- add initialization of bind_result in-do_sasl_bind().
 
 
 ---
