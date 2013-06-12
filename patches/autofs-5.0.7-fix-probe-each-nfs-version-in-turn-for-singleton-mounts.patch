@@ -1,5 +1,5 @@
 Bottom: c326e353647f879be6ccf2f210b537d6aeee3580
-Top:    52070af12d011fdc659b828cb5c7689796a3e1a9
+Top:    f49b46ce265a0adae2faf1f0f1b90c51f752861e
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-06-12 17:08:39 +0800
 
@@ -11,6 +11,18 @@ the probe checks are skipped.
 
 ---
 
+diff --git a/CHANGELOG b/CHANGELOG
+index 25179b1..0242c11 100644
+--- a/CHANGELOG
++++ b/CHANGELOG
+@@ -50,6 +50,7 @@
+ - fix fix map entry duplicate offset detection.
+ - probe each nfs version in turn for singleton mounts.
+ - add changlog entry for coverity fixes.
++- fix probe each nfs version in turn for singleton mounts.
+ 
+ 25/07/2012 autofs-5.0.7
+ =======================
 diff --git a/modules/mount_nfs.c b/modules/mount_nfs.c
 index 81ba3ca..9de8a73 100644
 --- a/modules/mount_nfs.c
