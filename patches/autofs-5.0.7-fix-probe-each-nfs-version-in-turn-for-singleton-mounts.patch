@@ -5,7 +5,7 @@ Date:   2013-06-12 17:08:39 +0800
 
 autofs-5.0.7 - fix probe each nfs version in turn for singleton mounts
 
-If there aren't any hosts 
+If there aren't any hosts in the list returned from
 
 
 ---
