@@ -50,6 +50,7 @@
 - fix fix map entry duplicate offset detection.
 - probe each nfs version in turn for singleton mounts.
 - add changlog entry for coverity fixes.
+- fix probe each nfs version in turn for singleton mounts.
 
 25/07/2012 autofs-5.0.7
 =======================
