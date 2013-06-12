@@ -1,0 +1,13 @@
+Bottom: c326e353647f879be6ccf2f210b537d6aeee3580
+Top:    c326e353647f879be6ccf2f210b537d6aeee3580
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-06-12 17:08:39 +0800
+
+autofs-5.0.7 - fix probe each nfs version in turn for singleton mounts
+
+If there aren't any hosts 
+
+
+---
+
+
