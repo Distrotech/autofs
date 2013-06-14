@@ -156,6 +156,12 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 					if (port < 0)
 						port = 0;
 					port_opt = cp;
+				} else if (strncmp("proto=udp", cp, o_len) == 0 ||
+					   strncmp("udp", cp, o_len) == 0) {
+					vers &= ~TCP_SUPPORTED;
+				} else if (strncmp("proto=tcp", cp, o_len) == 0 ||
+					   strncmp("tcp", cp, o_len) == 0) {
+					vers &= ~UDP_SUPPORTED;
 				}
 				/* Check for options that also make sense
 				   with bind mounts */
@@ -166,6 +172,10 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 				nfsp += comma - cp + 1;
 			}
 		}
+
+		/* In case both tcp and udp options were given */
+		if ((vers & NFS_PROTO_MASK) == 0)
+			vers |= NFS_PROTO_MASK;
 
 		debug(ap->logopt, MODPREFIX
 		      "nfs options=\"%s\", nobind=%d, nosymlink=%d, ro=%d",
