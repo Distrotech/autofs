@@ -1,0 +1,14 @@
+Bottom: f49b46ce265a0adae2faf1f0f1b90c51f752861e
+Top:    f49b46ce265a0adae2faf1f0f1b90c51f752861e
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-06-14 15:43:57 +0800
+
+autofs-5.0.7 - check for protocol option
+
+When a specific protocol is requested in the mount options only
+that protocol should be probed for.
+
+
+---
+
+
