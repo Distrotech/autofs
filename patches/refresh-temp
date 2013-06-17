@@ -1,0 +1,27 @@
+Bottom: bdd79cf0331634ab1059166f6ab1dacf10e6f822
+Top:    0a8223ef8800adfa73beebe3f5f56863ed9143c4
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-06-17 12:41:56 +0800
+
+Refresh of autofs-5.0.7-use-ulimit-max-open-files-if-greater-than-internal-maximum.patch
+
+---
+
+diff --git a/daemon/automount.c b/daemon/automount.c
+index 3f9337f..5a48d1d 100644
+--- a/daemon/automount.c
++++ b/daemon/automount.c
+@@ -2105,8 +2105,11 @@ int main(int argc, char *argv[])
+ 		exit(1);
+ 	}
+ 
+-	rlim.rlim_cur = MAX_OPEN_FILES;
+-	rlim.rlim_max = MAX_OPEN_FILES;
++	res = getrlimit(RLIMIT_NOFILE, &rlim);
++	if (res == -1 || rlim.rlim_max <= MAX_OPEN_FILES)  {
++		rlim.rlim_cur = MAX_OPEN_FILES;
++		rlim.rlim_max = MAX_OPEN_FILES;
++	}	
+ 	res = setrlimit(RLIMIT_NOFILE, &rlim);
+ 	if (res)
+ 		printf("%s: can't increase open file limit - continuing",
