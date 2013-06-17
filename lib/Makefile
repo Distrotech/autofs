@@ -41,14 +41,12 @@ mount_clnt.c: mount.h
 
 mount_clnt.o: mount_clnt.c
 	$(CC) $(CFLAGS) -o mount_clnt.o -c mount_clnt.c
-	$(STRIP) mount_clnt.o
 
 mount_xdr.c: mount.h
 	$(RPCGEN) -c -o mount_xdr.c mount.x
 
 mount_xdr.o: mount_xdr.c
 	$(CC) $(CFLAGS) -Wno-unused-variable -o mount_xdr.o -c mount_xdr.c
-	$(STRIP) mount_xdr.o
 
 master_tok.c: master_tok.l
 	$(LEX) -o$@ -Pmaster_ $?

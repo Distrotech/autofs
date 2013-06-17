@@ -31,7 +31,6 @@ all: automount
 
 automount: $(OBJS) $(AUTOFS_LIB)
 	$(CC) $(LDFLAGS) $(DAEMON_LDFLAGS) -o automount $(OBJS) $(AUTOFS_LIB) $(LIBS)
-	$(STRIP) automount
 
 clean:
 	rm -f *.o *.s *~ automount
