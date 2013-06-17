@@ -2109,7 +2109,7 @@ int main(int argc, char *argv[])
 	if (res == -1 || rlim.rlim_max <= MAX_OPEN_FILES)  {
 		rlim.rlim_cur = MAX_OPEN_FILES;
 		rlim.rlim_max = MAX_OPEN_FILES;
-	}	
+	}
 	res = setrlimit(RLIMIT_NOFILE, &rlim);
 	if (res)
 		printf("%s: can't increase open file limit - continuing",
