@@ -5,6 +5,11 @@ Date:   2013-06-17 12:35:20 +0800
 
 autofs-5.0.7 - use ulimit max open files if greater than internal maximum
 
+When setting the maximum number of allowed file handles the current setting
+should be checked before setting it. If the ulimit command has been used to
+increase the maximum to larger than what automount would ask for then honour
+it.
+
 
 ---
 
