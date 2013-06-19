@@ -1,0 +1,22 @@
+Bottom: e9cde75c01604a0ed5900bc42f0ef98321c73fcf
+Top:    d106c62f30a4e950908a2056e41513d5d93eedce
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-06-19 11:28:20 +0800
+
+Refresh of autofs-5.0.7-misc-man-page-fixes.patch
+
+---
+
+diff --git a/daemon/automount.c b/daemon/automount.c
+index 997fd50..019637f 100644
+--- a/daemon/automount.c
++++ b/daemon/automount.c
+@@ -1734,7 +1734,7 @@ static void usage(void)
+ 		"			set daemon log verbosity\n"
+ 		"	-C --dont-check-daemon\n"
+ 		"			don't check if daemon is already running\n"
+-		"	-F --force	forceably clean up all automounts at start\n"
++		"	-F --force	forceably clean up known automounts at start\n"
+ 		"	-V --version	print version, build config and exit\n"
+ 		, program);
+ }
