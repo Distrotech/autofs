@@ -1,0 +1,31 @@
+Bottom: f3d7fccb4308d6fca5dc5fdf4303030eac92a7d9
+Top:    0e54e133e108dc70734d354f620c0e50fbcd59ee
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-06-19 11:17:26 +0800
+
+Refresh of autofs-5.0.7-misc-man-page-fixes.patch
+
+---
+
+diff --git a/man/autofs.8.in b/man/autofs.8.in
+index ac0670d..fae0b00 100644
+--- a/man/autofs.8.in
++++ b/man/autofs.8.in
+@@ -6,7 +6,7 @@
+ .I start|stop|restart|reload|status
+ .SH "DESCRIPTION"
+ .B autofs
+-control the operation of the
++controls the operation of the
+ .BR automount (8)
+ daemons running on the Linux system. Usually
+ .B autofs
+@@ -16,7 +16,7 @@ parameter and at shutdown time with the
+ .I stop
+ parameter. The
+ .B autofs
+-script can also manually be invoked by the system administrator to shut
++script can also be manually invoked by the system administrator to shut
+ down, restart or reload the automounters.
+ .P
+ .SH "OPERATION"
