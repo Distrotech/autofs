@@ -1734,7 +1734,7 @@ static void usage(void)
 		"			set daemon log verbosity\n"
 		"	-C --dont-check-daemon\n"
 		"			don't check if daemon is already running\n"
-		"	-F --force	forceably clean up all automounts at start\n"
+		"	-F --force	forceably clean up known automounts at start\n"
 		"	-V --version	print version, build config and exit\n"
 		, program);
 }
