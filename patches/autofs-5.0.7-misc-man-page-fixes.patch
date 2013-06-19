@@ -5,6 +5,8 @@ Date:   2013-06-19 11:12:24 +0800
 
 autofs-5.0.7 - misc man page fixes
 
+- add missing long option for for macro define.
+
 
 ---
 
