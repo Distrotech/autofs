@@ -1,5 +1,5 @@
 Bottom: f49b46ce265a0adae2faf1f0f1b90c51f752861e
-Top:    f49b46ce265a0adae2faf1f0f1b90c51f752861e
+Top:    f3d7fccb4308d6fca5dc5fdf4303030eac92a7d9
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-06-19 11:12:24 +0800
 
@@ -8,4 +8,16 @@ autofs-5.0.7 - misc man page fixes
 
 ---
 
-
+diff --git a/man/automount.8 b/man/automount.8
+index 7cc32c5..844b876 100644
+--- a/man/automount.8
++++ b/man/automount.8
+@@ -45,7 +45,7 @@ autofs managed mounts.
+ Enables logging of general status and progress messages as well as
+ debugging messages for all autofs managed mounts.
+ .TP
+-.I "\-Dvariable=value"
++.I "\-Dvariable=value, --define variable=value"
+ Define a global macro substitution variable. Global definitions
+ are over-ridden macro definitions of the same name specified in
+ mount entries.
