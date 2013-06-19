@@ -1,5 +1,5 @@
-Bottom: bdd79cf0331634ab1059166f6ab1dacf10e6f822
-Top:    5a7662d466053913a4bfe767f8aeb41e48e282dd
+Bottom: 3a41e425b3b018adb2b37ddaf3ad518089a80c26
+Top:    f8f17b82c419faecd9b22becb86ff382f8f8f4a8
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-06-17 12:35:20 +0800
 
@@ -14,10 +14,10 @@ it.
 ---
 
 diff --git a/daemon/automount.c b/daemon/automount.c
-index 3f9337f..2bbffb0 100644
+index 019637f..1d0b64e 100644
 --- a/daemon/automount.c
 +++ b/daemon/automount.c
-@@ -2105,8 +2105,11 @@ int main(int argc, char *argv[])
+@@ -2106,8 +2106,11 @@ int main(int argc, char *argv[])
  		exit(1);
  	}
  
