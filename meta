@@ -1,9 +1,8 @@
 Version: 1
-Previous: f88bfc3a167223661eac01dc2ebbc14ba241b29a
-Head: cc41dc6732b3886b8627667fd121340b22972ce3
+Previous: 29b5fbe91277e9bf9c81428302566542a098797e
+Head: afe3adaf4d77db7a77434b671de6f3ac589410f1
 Applied:
-  autofs-5.0.7-misc-man-page-fixes.patch: 69f1d573997111952e70ff70b28342197f8e697e
-  refresh-temp: cc41dc6732b3886b8627667fd121340b22972ce3
+  autofs-5.0.7-misc-man-page-fixes.patch: afe3adaf4d77db7a77434b671de6f3ac589410f1
 Unapplied:
   autofs-5.0.7-check-for-protocol-option.patch: 3de26d8f2fc6c335e05fcc93de20180a9f9dd26d
   autofs-5.0.7-use-ulimit-max-open-files-if-greater-than-internal-maximum.patch: bfa3798ded9b5b7caa4a9540ac88482518f5b085
