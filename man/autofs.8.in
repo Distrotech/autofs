@@ -6,7 +6,7 @@
 .I start|stop|restart|reload|status
 .SH "DESCRIPTION"
 .B autofs
-control the operation of the
+controls the operation of the
 .BR automount (8)
 daemons running on the Linux system. Usually
 .B autofs
@@ -16,7 +16,7 @@ parameter and at shutdown time with the
 .I stop
 parameter. The
 .B autofs
-script can also manually be invoked by the system administrator to shut
+script can also be manually invoked by the system administrator to shut
 down, restart or reload the automounters.
 .P
 .SH "OPERATION"
