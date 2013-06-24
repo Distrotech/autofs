@@ -1,0 +1,21 @@
+Bottom: f8f17b82c419faecd9b22becb86ff382f8f8f4a8
+Top:    0199e27e644692ae14cae0e7d49411add70813a1
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-06-24 15:35:21 +0800
+
+Refresh of autofs-5.0.7-fix-master-map-mount-options-matching.patch
+
+---
+
+diff --git a/CHANGELOG b/CHANGELOG
+index 503a21e..7a6d52d 100644
+--- a/CHANGELOG
++++ b/CHANGELOG
+@@ -52,6 +52,7 @@
+ - add changlog entry for coverity fixes.
+ - fix probe each nfs version in turn for singleton mounts.
+ - misc man page fixes.
++- fix master map mount options matching.
+ 
+ 25/07/2012 autofs-5.0.7
+ =======================
