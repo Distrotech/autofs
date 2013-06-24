@@ -1,11 +1,10 @@
 Version: 1
-Previous: df984ae217919f72e10df058ed7d65b4a7bc713c
-Head: e9a6728d8e51e87f9e891ba50479f296a5ea99ed
+Previous: f23e0b2d1ef8fca125edcfd19a6c9539580c994f
+Head: ef9b01665ae7c902ec67a2fd77febf08baa09ca3
 Applied:
   autofs-5.0.7-check-for-protocol-option.patch: c925e135f1505d6d1083e931848284c0fc903809
   autofs-5.0.7-use-ulimit-max-open-files-if-greater-than-internal-maximum.patch: 049dda744637d5ff8bcf1062e2d87dd3451ee17a
-  autofs-5.0.7-fix-master-map-mount-options-matching.patch: ed2021b27f0f7e69b90edaad8ab81064bcc93fd3
-  refresh-temp: e9a6728d8e51e87f9e891ba50479f296a5ea99ed
+  autofs-5.0.7-fix-master-map-mount-options-matching.patch: ef9b01665ae7c902ec67a2fd77febf08baa09ca3
 Unapplied:
   autofs-5.0.5-wait-for-master-map-available-at-start.patch: 521b792b7f2ebc8ce8494235c7ca4d20aba3e0ee
   autofs-5.0.5-add-master-read-wait-option.patch: 4673bddae0846a2f2486d65590f804773876df74
