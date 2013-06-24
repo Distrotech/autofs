@@ -52,6 +52,7 @@
 - add changlog entry for coverity fixes.
 - fix probe each nfs version in turn for singleton mounts.
 - misc man page fixes.
+- fix master map mount options matching.
 
 25/07/2012 autofs-5.0.7
 =======================
