@@ -1,0 +1,21 @@
+Bottom: 05beeff07df521fbc3f29dea7ffda4b6895cc25a
+Top:    3c303c07057bfc9d79d875b451d2026f3a671c8d
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-06-28 13:27:03 +0800
+
+Refresh of autofs-5.0.7-fix-add-null-check-in-parse_server_string.patch
+
+---
+
+diff --git a/CHANGELOG b/CHANGELOG
+index 503a21e..5d90139 100644
+--- a/CHANGELOG
++++ b/CHANGELOG
+@@ -52,6 +52,7 @@
+ - add changlog entry for coverity fixes.
+ - fix probe each nfs version in turn for singleton mounts.
+ - misc man page fixes.
++- fix add null check in parse_server_string().
+ 
+ 25/07/2012 autofs-5.0.7
+ =======================
