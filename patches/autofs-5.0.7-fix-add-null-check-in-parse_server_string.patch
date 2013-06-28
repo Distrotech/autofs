@@ -1,5 +1,5 @@
 Bottom: f8f17b82c419faecd9b22becb86ff382f8f8f4a8
-Top:    f8f17b82c419faecd9b22becb86ff382f8f8f4a8
+Top:    20e766d651eef2e93d5d4bc26e38f826f7d15699
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-06-28 13:22:06 +0800
 
@@ -12,4 +12,24 @@ incorrect parse error.
 
 ---
 
-
+diff --git a/modules/lookup_ldap.c b/modules/lookup_ldap.c
+index 35ea6ea..a2bfafd 100644
+--- a/modules/lookup_ldap.c
++++ b/modules/lookup_ldap.c
+@@ -1210,14 +1210,14 @@ static int parse_server_string(unsigned logopt, const char *url, struct lookup_c
+ 		const char *q = NULL;
+ 
+ 		/* Isolate the server. Include the port spec */
+-		if (*ptr != '[')
++		if (*ptr != '[') {
+ 			q = strchr(ptr, ':');
+ 			if (!q) {
+ 				crit(logopt, MODPREFIX
+ 				     "LDAP server name not found in %s", ptr);
+ 				return 0;
+ 			}
+-		else {
++		} else {
+ 			q = ++ptr;
+ 			while (*q == ':' || isxdigit(*q))
+ 				q++;
