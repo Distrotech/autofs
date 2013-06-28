@@ -1,9 +1,8 @@
 Version: 1
-Previous: eb9d70de1ff4aa428a5f377da092b690ec55814e
-Head: 534e437da285c6f4b4b4d7140d208fd868109e52
+Previous: 7cf6524d64a0fa8f210b07a5a8cc178bd48b591a
+Head: 02ffcfbbf15abd58489d7840f71f91b825307abc
 Applied:
-  autofs-5.0.7-fix-add-null-check-in-parse_server_string.patch: 78c52dd670aa93a8fdd39b2ff054315312a3709d
-  refresh-temp: 534e437da285c6f4b4b4d7140d208fd868109e52
+  autofs-5.0.7-fix-add-null-check-in-parse_server_string.patch: 02ffcfbbf15abd58489d7840f71f91b825307abc
 Unapplied:
   autofs-5.0.7-check-for-protocol-option.patch: c925e135f1505d6d1083e931848284c0fc903809
   autofs-5.0.7-use-ulimit-max-open-files-if-greater-than-internal-maximum.patch: 049dda744637d5ff8bcf1062e2d87dd3451ee17a
