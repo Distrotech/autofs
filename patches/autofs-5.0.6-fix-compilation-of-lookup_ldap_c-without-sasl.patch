@@ -1,5 +1,5 @@
 Bottom: d6b40597f00065e006dae77c3c48ce27fa6047b7
-Top:    f43c6cebc504ae1a926f2fdaf5e0b48d452a34db
+Top:    a26e66482bdf75f77d3034f2d5813960b6b04cc8
 Author: Dustin Polke <DuPol@gmx.de>
 Date:   2012-05-15 11:28:27 +0800
 
@@ -17,15 +17,13 @@ Edited by: Ian Kent <raven@themaw.net>
 ---
 
 diff --git a/CHANGELOG b/CHANGELOG
-index 5d90139..325ed15 100644
+index 5d90139..f6acea2 100644
 --- a/CHANGELOG
 +++ b/CHANGELOG
-@@ -53,6 +53,9 @@
+@@ -53,6 +53,7 @@
  - fix probe each nfs version in turn for singleton mounts.
  - misc man page fixes.
  - fix add null check in parse_server_string().
-+- fix getautomntbyname_r() declaration.
-+- fix compilation of defaults.c without openldap.
 +- fix compilation of lookup_ldap.c without sasl.
  
  25/07/2012 autofs-5.0.7
