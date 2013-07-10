@@ -53,8 +53,6 @@
 - fix probe each nfs version in turn for singleton mounts.
 - misc man page fixes.
 - fix add null check in parse_server_string().
-- fix getautomntbyname_r() declaration.
-- fix compilation of defaults.c without openldap.
 - fix compilation of lookup_ldap.c without sasl.
 
 25/07/2012 autofs-5.0.7
