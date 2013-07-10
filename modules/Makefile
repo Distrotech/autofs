@@ -49,7 +49,7 @@ ifeq ($(LDAP), 1)
   LIBLDAP += $(XML_LIBS)
   ifeq ($(SASL), 1)
     SASL_OBJ = cyrus-sasl.o cyrus-sasl-extern.o
-    LDAP_FLAGS += $(SASL_FLAGS) $(KRB5_FLAGS) -DLDAP_THREAD_SAFE
+    LDAP_FLAGS += $(SASL_FLAGS) $(KRB5_FLAGS)
     LIBLDAP += $(LIBSASL) $(KRB5_LIBS)
   endif
 endif
