@@ -1,5 +1,5 @@
 Bottom: d962533f7c6d3b512f0804189e62772a1f841a63
-Top:    9d4c5d8f580b87be2ed470a5115a4d4f6d956bc6
+Top:    9dd2e8333309c3245ae1e8b79fa429c2a0d3fd5f
 Author: Dustin Polke <DuPol@gmx.de>
 Date:   2012-05-15 11:28:27 +0800
 
@@ -73,7 +73,7 @@ index 5418009..4a5b712 100644
  
  all: autofs.a
 diff --git a/modules/Makefile b/modules/Makefile
-index c5deb24..36e31e1 100644
+index c5deb24..2589ae0 100644
 --- a/modules/Makefile
 +++ b/modules/Makefile
 @@ -45,10 +45,12 @@ endif
@@ -86,7 +86,7 @@ index c5deb24..36e31e1 100644
      SASL_OBJ = cyrus-sasl.o cyrus-sasl-extern.o
 -    LDAP_FLAGS += $(SASL_FLAGS) $(XML_FLAGS) $(KRB5_FLAGS) -DLDAP_THREAD_SAFE
 -    LIBLDAP += $(LIBSASL) $(XML_LIBS) $(KRB5_LIBS)
-+    LDAP_FLAGS += $(SASL_FLAGS) $(KRB5_FLAGS) -DLDAP_THREAD_SAFE
++    LDAP_FLAGS += $(SASL_FLAGS) $(KRB5_FLAGS)
 +    LIBLDAP += $(LIBSASL) $(KRB5_LIBS)
    endif
  endif
