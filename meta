@@ -1,9 +1,10 @@
 Version: 1
-Previous: 469b3d28e52dfbafb7b0866c60e71cb8665765f6
-Head: a3882a81706b99033ef777314224098cf470267c
+Previous: 15542f4acf5f5d6529e7fe9c844824d167548724
+Head: 6fe40faacf931a8e93646095393d515d96c7dc5e
 Applied:
   autofs-5.0.6-dont-kick-state-machine-unless-ready.patch: 05effb9764c614c103cf3ce71c3747a4845ceb53
   autofs-5.0.6-fix-compilation-of-lookup_ldap_c-without-sasl.patch: a3882a81706b99033ef777314224098cf470267c
+  refresh-temp: 6fe40faacf931a8e93646095393d515d96c7dc5e
 Unapplied:
   autofs-5.0.5-wait-for-master-map-available-at-start.patch: 521b792b7f2ebc8ce8494235c7ca4d20aba3e0ee
   autofs-5.0.5-add-master-read-wait-option.patch: 4673bddae0846a2f2486d65590f804773876df74
