@@ -1,8 +1,9 @@
 Version: 1
-Previous: 4dc930ccf739e34baa23c393fa210c3f46fc05de
-Head: 05effb9764c614c103cf3ce71c3747a4845ceb53
+Previous: ad27266938eea56aa05d9a7bbfd01dc90a3ab348
+Head: 1105c8fd7483f7d959391db2a1db329fd9cec5d8
 Applied:
   autofs-5.0.6-dont-kick-state-machine-unless-ready.patch: 05effb9764c614c103cf3ce71c3747a4845ceb53
+  autofs-5.0.6-fix-compilation-of-lookup_ldap_c-without-sasl.patch: 1105c8fd7483f7d959391db2a1db329fd9cec5d8
 Unapplied:
   autofs-5.0.5-wait-for-master-map-available-at-start.patch: 521b792b7f2ebc8ce8494235c7ca4d20aba3e0ee
   autofs-5.0.5-add-master-read-wait-option.patch: 4673bddae0846a2f2486d65590f804773876df74
@@ -11,7 +12,6 @@ Unapplied:
   autofs-5.0.6-account-for-new-offset-mount-overlap.patch: 58e4b78cc2bd0742cf8ac3856f33448a782348aa
   autofs-5.0.5-automount-daemon-getting-killed-by-SIGBUS.patch: 2b09c3c182b2732f576cd9798c0e2d19f925ed6b
   autofs-5.0.6-fix-getautomntbyname_r-declaration.patch: b0507b79e1f90e3670e1a56ba21fab32eb305d5d
-  autofs-5.0.6-fix-compilation-of-lookup_ldap_c-without-sasl.patch: 1b8db291bb3af8c9b1d7d5f114110802c85e836d
   autofs-5.0.6-use-name-only.patch: 40b435ec898f54fe1fa0f76de59d937aaabf1d25
   autofs-5.0.6-always-add-entry-for-direct-maps.patch: b0e91c26fade445d9c36e88e2eab60e62bbb1ccb
   autofs-5.0.6-reduce-master-source-mutex-scope-for-expire.patch: 70b8fb1ad1c3df240e386550f1f9fdfd7df3559f
