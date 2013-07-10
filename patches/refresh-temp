@@ -1,0 +1,21 @@
+Bottom: d6b40597f00065e006dae77c3c48ce27fa6047b7
+Top:    d962533f7c6d3b512f0804189e62772a1f841a63
+Author: Ian Kent <ikent@redhat.com>
+Date:   2013-07-10 09:39:23 +0800
+
+Refresh of autofs-5.0.6-dont-kick-state-machine-unless-ready.patch
+
+---
+
+diff --git a/CHANGELOG b/CHANGELOG
+index 5d90139..5b60def 100644
+--- a/CHANGELOG
++++ b/CHANGELOG
+@@ -53,6 +53,7 @@
+ - fix probe each nfs version in turn for singleton mounts.
+ - misc man page fixes.
+ - fix add null check in parse_server_string().
++- dont start readmap unless ready.
+ 
+ 25/07/2012 autofs-5.0.7
+ =======================
