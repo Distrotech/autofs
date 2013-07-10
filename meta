@@ -1,7 +1,8 @@
 Version: 1
-Previous: 7000c23bbafb0ff215dbd3f20747f1e1a8fd44c7
-Head: a49525590d778d8f77ed2c0d4f2ce59f04d9f1a2
+Previous: a76aa46a304ad52eb651c2fd41d7c4705a7a00b5
+Head: 05effb9764c614c103cf3ce71c3747a4845ceb53
 Applied:
+  autofs-5.0.6-dont-kick-state-machine-unless-ready.patch: 05effb9764c614c103cf3ce71c3747a4845ceb53
 Unapplied:
   autofs-5.0.5-wait-for-master-map-available-at-start.patch: 521b792b7f2ebc8ce8494235c7ca4d20aba3e0ee
   autofs-5.0.5-add-master-read-wait-option.patch: 4673bddae0846a2f2486d65590f804773876df74
@@ -9,7 +10,6 @@ Unapplied:
   autofs-5.0.7-use-MS_UNBINDABLE-for-autofs-mounts.patch: 1f538797c99b2ce0524c191bc422416962219292
   autofs-5.0.6-account-for-new-offset-mount-overlap.patch: 58e4b78cc2bd0742cf8ac3856f33448a782348aa
   autofs-5.0.5-automount-daemon-getting-killed-by-SIGBUS.patch: 2b09c3c182b2732f576cd9798c0e2d19f925ed6b
-  autofs-5.0.6-dont-kick-state-machine-unless-ready.patch: d1bb33ddce5b00eebcd4763fa59f00f89a2abb51
   autofs-5.0.6-fix-getautomntbyname_r-declaration.patch: b0507b79e1f90e3670e1a56ba21fab32eb305d5d
   autofs-5.0.6-fix-compilation-of-defaults_c-without-openldap.patch: 878abd9e237da7631b3b3bd87b218ee66485aa99
   autofs-5.0.6-fix-compilation-of-lookup_ldap_c-without-sasl.patch: 1b8db291bb3af8c9b1d7d5f114110802c85e836d

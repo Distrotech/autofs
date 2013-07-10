@@ -1,5 +1,5 @@
-Bottom: 34c82ea48d9c77b760f36f379648c0a3a627ff83
-Top:    2c7b12df4164653463aa74aaed6cd68b9a690b88
+Bottom: 9cea3990b723d805583c621d3b0ae1a1f7d4263c
+Top:    d6b40597f00065e006dae77c3c48ce27fa6047b7
 Author: Ian Kent <ikent@redhat.com>
 Date:   2012-05-15 11:24:25 +0800
 
@@ -13,10 +13,10 @@ queue.
 ---
 
 diff --git a/daemon/state.c b/daemon/state.c
-index 3c88335..f9bc240 100644
+index ddc5556..8d81788 100644
 --- a/daemon/state.c
 +++ b/daemon/state.c
-@@ -816,14 +816,13 @@ done:
+@@ -818,14 +818,13 @@ done:
  		new = st_alloc_task(ap, state);
  		if (new)
  			list_add(&new->list, head);
@@ -36,7 +36,7 @@ index 3c88335..f9bc240 100644
  	return 1;
  }
  
-@@ -1129,6 +1128,10 @@ static void *st_queue_handler(void *arg)
+@@ -1131,6 +1130,10 @@ static void *st_queue_handler(void *arg)
  				task = list_entry(p, struct state_queue, list);
  				p = p->next;
  
