@@ -1,11 +1,11 @@
 Version: 1
-Previous: c6450f69936420ff3dd5ed2a669309d28d10b2e5
-Head: ab765a61d8d914738932e9fdd946fcfca3d839f1
+Previous: ab9849e1e60a5cc8e7673d73b2b741e01aa841fe
+Head: a49525590d778d8f77ed2c0d4f2ce59f04d9f1a2
 Applied:
   autofs-5.0.7-fix-add-null-check-in-parse_server_string.patch: 02ffcfbbf15abd58489d7840f71f91b825307abc
   autofs-5.0.7-check-for-protocol-option.patch: ab765a61d8d914738932e9fdd946fcfca3d839f1
-Unapplied:
   autofs-5.0.7-use-ulimit-max-open-files-if-greater-than-internal-maximum.patch: a49525590d778d8f77ed2c0d4f2ce59f04d9f1a2
+Unapplied:
   autofs-5.0.5-wait-for-master-map-available-at-start.patch: 521b792b7f2ebc8ce8494235c7ca4d20aba3e0ee
   autofs-5.0.5-add-master-read-wait-option.patch: 4673bddae0846a2f2486d65590f804773876df74
   autofs-5.0.7-add-host-map-reload-option.patch: 11d23f7a74b2f33e5011ba29f64ae1b4956acb09
