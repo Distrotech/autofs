@@ -85,6 +85,7 @@ echo %{version}-%{release} > .version
 
 %build
 CFLAGS="$RPM_OPT_FLAGS -Wall" \
+LDFLAGS="-Wl,-z,now" \
 ./configure --libdir=%{_libdir} \
 	--disable-mount-locking \
 	--enable-ignore-busy \
