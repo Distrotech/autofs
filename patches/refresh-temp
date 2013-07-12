@@ -1,0 +1,21 @@
+Bottom: 6de3e83943a23276cab8af1e6e168e504b58c76f
+Top:    c2dd5b7a07ba2b432c958b3ddcd7bc00ac94e99a
+Author: Ian Kent <ikent@redhat.com>
+Date:   2013-07-12 12:49:34 +0800
+
+Refresh of autofs-5.0.7-dont-override-LDFLAGS-in-make-rules.patch
+
+---
+
+diff --git a/CHANGELOG b/CHANGELOG
+index 5d90139..37eac72 100644
+--- a/CHANGELOG
++++ b/CHANGELOG
+@@ -53,6 +53,7 @@
+ - fix probe each nfs version in turn for singleton mounts.
+ - misc man page fixes.
+ - fix add null check in parse_server_string().
++- don't override LDFLAGS in make rules.
+ 
+ 25/07/2012 autofs-5.0.7
+ =======================
