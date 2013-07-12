@@ -1,10 +1,10 @@
 Version: 1
-Previous: c6cf80b57c538c5d9bb349e2163d052869337c61
-Head: 1c799f27371f80fad31eeac2ba04a21fd9607d7b
+Previous: 0368dc2e5d4c935b6d0a1313e8f2c5bb09bb8660
+Head: 14d7ef6e493cf7a6a3abd1093a5f98ef9cf02410
 Applied:
   autofs-5.0.7-dont-override-LDFLAGS-in-make-rules.patch: 1c799f27371f80fad31eeac2ba04a21fd9607d7b
+  autofs-5.0.6-dont-kick-state-machine-unless-ready.patch: 14d7ef6e493cf7a6a3abd1093a5f98ef9cf02410
 Unapplied:
-  autofs-5.0.6-dont-kick-state-machine-unless-ready.patch: 14c16e0aa49ebdaa332f735142df6d3df06e750a
   autofs-5.0.6-fix-compilation-of-lookup_ldap_c-without-sasl.patch: b78c0f2009af6c412c03b4ad27969f1b2dd59de0
   autofs-5.0.5-wait-for-master-map-available-at-start.patch: 521b792b7f2ebc8ce8494235c7ca4d20aba3e0ee
   autofs-5.0.5-add-master-read-wait-option.patch: 4673bddae0846a2f2486d65590f804773876df74
