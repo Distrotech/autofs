@@ -3,7 +3,7 @@ Top:    af488cf40c30360c9fa295d889f02dfcfe5ff2eb
 Author: Dustin Polke <DuPol@gmx.de>
 Date:   2012-05-15 11:28:27 +0800
 
-autofs-5.0.6 - fix compilation of lookup_ldap.c without sasl
+autofs-5.0.7 - fix compilation of lookup_ldap.c without sasl
 
 See https://bugs.gentoo.org/show_bug.cgi?id=361899 for more info.
 
