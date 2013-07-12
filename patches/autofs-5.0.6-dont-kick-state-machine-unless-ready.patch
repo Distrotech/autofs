@@ -3,7 +3,7 @@ Top:    f1c991c97c48fbaeab053d12b49e60a451737b29
 Author: Ian Kent <ikent@redhat.com>
 Date:   2012-05-15 11:24:25 +0800
 
-autofs-5.0.5 - dont start readmap unless ready
+autofs-5.0.7 - dont start readmap unless ready
 
 State transitions should only be made when an autofs point goes
 to state ST_READY or when a new task is added to an empty task
