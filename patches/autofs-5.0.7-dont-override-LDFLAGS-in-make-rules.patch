@@ -1,5 +1,5 @@
 Bottom: 9cea3990b723d805583c621d3b0ae1a1f7d4263c
-Top:    6de3e83943a23276cab8af1e6e168e504b58c76f
+Top:    c2dd5b7a07ba2b432c958b3ddcd7bc00ac94e99a
 Author: Ian Kent <ikent@redhat.com>
 Date:   2013-07-12 12:14:33 +0800
 
@@ -10,6 +10,18 @@ Ensure that externally defined LDFLAGS is not overridden.
 
 ---
 
+diff --git a/CHANGELOG b/CHANGELOG
+index 5d90139..37eac72 100644
+--- a/CHANGELOG
++++ b/CHANGELOG
+@@ -53,6 +53,7 @@
+ - fix probe each nfs version in turn for singleton mounts.
+ - misc man page fixes.
+ - fix add null check in parse_server_string().
++- don't override LDFLAGS in make rules.
+ 
+ 25/07/2012 autofs-5.0.7
+ =======================
 diff --git a/Makefile.rules b/Makefile.rules
 index f2ba386..6b5b2bd 100644
 --- a/Makefile.rules
