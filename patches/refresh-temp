@@ -1,0 +1,33 @@
+Bottom: 9dd2e8333309c3245ae1e8b79fa429c2a0d3fd5f
+Top:    b30323312bc81b41d8b1beee4b58cc46efd9b0d4
+Author: Ian Kent <ikent@redhat.com>
+Date:   2013-07-12 12:15:51 +0800
+
+Refresh of autofs-5.0.7-dont-override-LDFLAGS-in-make-rules.patch
+
+---
+
+diff --git a/Makefile.rules b/Makefile.rules
+index f2ba386..6b5b2bd 100644
+--- a/Makefile.rules
++++ b/Makefile.rules
+@@ -24,16 +24,16 @@ endif
+ 
+ ifdef DEBUG
+ CFLAGS    ?= -g -Wall -DDEBUG
+-LDFLAGS   = -g
++LDFLAGS   ?= -g
+ STRIP     = :
+ else
+ ifdef DONTSTRIP
+ CFLAGS    ?= -O2 -g
+-LDFLAGS   = -g
++LDFLAGS   ?= -g
+ STRIP     = :
+ else
+ CFLAGS    ?= -O2 -Wall
+-LDFLAGS   = -s
++LDFLAGS   ?= -s
+ STRIP     = strip --strip-debug
+ endif
+ endif
