@@ -76,7 +76,7 @@ inkludera nätfilsystem, CD-ROM, floppydiskar, och så vidare.
 %setup -q
 echo %{version}-%{release} > .version
 %if %{with_systemd}
-  %define unitdir %{?_unitdir:/lib/systemd/system}
+  %define unitdir %{?_unitdir:/usr/lib/systemd/system}
   %define systemd_configure_arg --with-systemd
 %endif
 %if %{with_libtirpc}
@@ -85,6 +85,7 @@ echo %{version}-%{release} > .version
 
 %build
 CFLAGS="$RPM_OPT_FLAGS -Wall" \
+LDFLAGS="-Wl,-z,now" \
 ./configure --libdir=%{_libdir} \
 	--disable-mount-locking \
 	--enable-ignore-busy \
