@@ -3,7 +3,7 @@ Top:    9dd2e8333309c3245ae1e8b79fa429c2a0d3fd5f
 Author: Ian Kent <ikent@redhat.com>
 Date:   2013-07-12 12:14:33 +0800
 
-au
+autofs-5.0.7 - don't override LDFLAGS in make rules
 
 
 ---
