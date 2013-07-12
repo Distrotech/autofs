@@ -85,12 +85,13 @@ echo %{version}-%{release} > .version
 
 %build
 CFLAGS="$RPM_OPT_FLAGS -Wall" \
+LDFLAGS="-Wl,-z,now" \
 ./configure --libdir=%{_libdir} \
 	--disable-mount-locking \
 	--enable-ignore-busy \
 	%{?systemd_configure_arg:} \
 	%{?libtirpc_configure_arg:}
-CFLAGS="$RPM_OPT_FLAGS -Wall" make initdir=/etc/rc.d/init.d DONTSTRIP=1
+CFLAGS="$RPM_OPT_FLAGS -Wall" LDFLAGS="-Wl,-z,now" make initdir=/etc/rc.d/init.d DONTSTRIP=1
 
 %install
 rm -rf $RPM_BUILD_ROOT
