@@ -1,5 +1,5 @@
-Bottom: 4ceb9854c7dd1ff2f34fbe6a8be3ddf4c7bcf605
-Top:    b30323312bc81b41d8b1beee4b58cc46efd9b0d4
+Bottom: f1c991c97c48fbaeab053d12b49e60a451737b29
+Top:    af488cf40c30360c9fa295d889f02dfcfe5ff2eb
 Author: Dustin Polke <DuPol@gmx.de>
 Date:   2012-05-15 11:28:27 +0800
 
@@ -17,12 +17,12 @@ Edited by: Ian Kent <raven@themaw.net>
 ---
 
 diff --git a/CHANGELOG b/CHANGELOG
-index 5b60def..e257ff5 100644
+index a9d2c47..c4d8311 100644
 --- a/CHANGELOG
 +++ b/CHANGELOG
-@@ -54,6 +54,7 @@
- - misc man page fixes.
+@@ -55,6 +55,7 @@
  - fix add null check in parse_server_string().
+ - don't override LDFLAGS in make rules.
  - dont start readmap unless ready.
 +- fix compilation of lookup_ldap.c without sasl.
  
