@@ -202,8 +202,8 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 	 */
 	if ((hosts && !hosts->next) &&
 	    mount_default_proto == 4 &&
-	    vers & NFS_VERS_MASK != 0 &&
-	    vers & NFS4_VERS_MASK != 0) {
+	    (vers & NFS_VERS_MASK) != 0 &&
+	    (vers & NFS4_VERS_MASK) != 0) {
 		unsigned int v4_probe_ok = 0;
 		struct host *tmp = new_host(hosts->name,
 					    hosts->addr, hosts->addr_len,
