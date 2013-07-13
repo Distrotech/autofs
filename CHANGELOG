@@ -54,6 +54,7 @@
 - misc man page fixes.
 - fix add null check in parse_server_string().
 - don't override LDFLAGS in make rules.
+- fix a couple of compiler warnings.
 
 25/07/2012 autofs-5.0.7
 =======================
