@@ -1,9 +1,10 @@
 Version: 1
-Previous: 94dc8af2210d0a1bc8408461cde5c0752385927d
-Head: fa144267d53611716b4356cb5de357a3b192ce6f
+Previous: b7ccd11bd7e59cb595c1bf741cce5505d82a21b5
+Head: c7c2e051c4d16e9222885e0228fa02b3f8ee4e6e
 Applied:
   autofs-5.0.7-dont-override-LDFLAGS-in-make-rules.patch: 259842ea95993d06d8343411a1a848881a79c82e
   autofs-5.0.7-fix-a-couple-of-compiler-warnings.patch: fa144267d53611716b4356cb5de357a3b192ce6f
+  refresh-temp: c7c2e051c4d16e9222885e0228fa02b3f8ee4e6e
 Unapplied:
   autofs-5.0.7-dont-kick-state-machine-unless-ready.patch: 4af3957dbb1bf629bf465c4bccff04591ca4e825
   autofs-5.0.7-fix-compilation-of-lookup_ldap_c-without-sasl.patch: 04bca4c9f2e2d2e7eac69a89a723a03c8970e4ed
