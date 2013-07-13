@@ -1,6 +1,6 @@
 [Unit]
 Description=Automounts filesystems on demand
-After=network.target ypbind.service
+After=network.target ypbind.service sssd.service
 
 [Service]
 Type=forking
