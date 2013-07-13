@@ -1,9 +1,9 @@
 Version: 1
-Previous: b967cc6f55f064d7a976b469677816955d81f93b
+Previous: 82bcc487a4e7109b92f1e25c303b06000e2f2ffe
 Head: 2db1af4cb7e9405a2176516ce7799680c2d7b8ee
 Applied:
   autofs-5.0.7-dont-override-LDFLAGS-in-make-rules.patch: 259842ea95993d06d8343411a1a848881a79c82e
-  autofs-5.0.7-fix-probe-each-nfs-version-in-turn-for-singleton-mounts.patch: 2db1af4cb7e9405a2176516ce7799680c2d7b8ee
+  autofs-5.0.7-fix-a-couple-of-compiler-warnings.patch: 2db1af4cb7e9405a2176516ce7799680c2d7b8ee
 Unapplied:
   autofs-5.0.7-dont-kick-state-machine-unless-ready.patch: 4af3957dbb1bf629bf465c4bccff04591ca4e825
   autofs-5.0.7-fix-compilation-of-lookup_ldap_c-without-sasl.patch: 04bca4c9f2e2d2e7eac69a89a723a03c8970e4ed
