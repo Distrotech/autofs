@@ -208,7 +208,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 			      MODPREFIX
 			      "failed to create local mount %s -> %s",
 			      fullpath, what);
-			if (ap->flags & MOUNT_FLAG_GHOST && !status)
+			if ((ap->flags & MOUNT_FLAG_GHOST) && !status)
 				if (mkdir_path(fullpath, 0555) && errno != EEXIST) {
 					char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
 					error(ap->logopt,
