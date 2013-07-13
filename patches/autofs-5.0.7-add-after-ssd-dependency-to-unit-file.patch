@@ -1,0 +1,14 @@
+Bottom: e3f99d9e2a4ed93d8cdf0045c871754c0139d950
+Top:    e3f99d9e2a4ed93d8cdf0045c871754c0139d950
+Author: Ian Kent <ikent@redhat.com>
+Date:   2013-07-13 14:14:41 +0800
+
+autofs-5.0.7 - add after ssd dependency to unit file
+
+When using sss as a map source autofs can sometimes start before
+sssd is ready.
+
+
+---
+
+

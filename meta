@@ -1,9 +1,10 @@
 Version: 1
-Previous: b20c2c6a4a6055629aead7dd7a9fc26e80cbc8e2
-Head: 768b8637fa12aa1e005de6999c845f06f48de0fd
+Previous: 37ad8ccfe6c89476fd79736cbf51ae3ade91c926
+Head: 46ccd36091dd43c34e3f7230faba7d24335e08f9
 Applied:
   autofs-5.0.7-dont-override-LDFLAGS-in-make-rules.patch: 259842ea95993d06d8343411a1a848881a79c82e
   autofs-5.0.7-fix-a-couple-of-compiler-warnings.patch: 768b8637fa12aa1e005de6999c845f06f48de0fd
+  autofs-5.0.7-add-after-ssd-dependency-to-unit-file.patch: 46ccd36091dd43c34e3f7230faba7d24335e08f9
 Unapplied:
   autofs-5.0.7-dont-kick-state-machine-unless-ready.patch: 4af3957dbb1bf629bf465c4bccff04591ca4e825
   autofs-5.0.7-fix-compilation-of-lookup_ldap_c-without-sasl.patch: 04bca4c9f2e2d2e7eac69a89a723a03c8970e4ed
