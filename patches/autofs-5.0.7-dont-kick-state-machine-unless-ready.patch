@@ -1,5 +1,5 @@
 Bottom: 3d5acd01b190a9a227e50dfd3209e25287591137
-Top:    3d5acd01b190a9a227e50dfd3209e25287591137
+Top:    ed2e561d826cb0500295bc97e12f6d07ff988ba5
 Author: Ian Kent <ikent@redhat.com>
 Date:   2012-05-15 11:24:25 +0800
 
@@ -12,4 +12,50 @@ queue.
 
 ---
 
-
+diff --git a/CHANGELOG b/CHANGELOG
+index 2734fe3..3228d6b 100644
+--- a/CHANGELOG
++++ b/CHANGELOG
+@@ -56,6 +56,7 @@
+ - don't override LDFLAGS in make rules.
+ - fix a couple of compiler warnings.
+ - add after sssd dependency to unit file.
++- dont start readmap unless ready.
+ 
+ 25/07/2012 autofs-5.0.7
+ =======================
+diff --git a/daemon/state.c b/daemon/state.c
+index ddc5556..8d81788 100644
+--- a/daemon/state.c
++++ b/daemon/state.c
+@@ -818,14 +818,13 @@ done:
+ 		new = st_alloc_task(ap, state);
+ 		if (new)
+ 			list_add(&new->list, head);
++		/* Added to empty state queue, kick state machine */
++		signaled = 1;
++		status = pthread_cond_signal(&cond);
++		if (status)
++			fatal(status);
+ 	}
+ 
+-	/* Added task, encourage state machine */
+-	signaled = 1;
+-	status = pthread_cond_signal(&cond);
+-	if (status)
+-		fatal(status);
+-
+ 	return 1;
+ }
+ 
+@@ -1131,6 +1130,10 @@ static void *st_queue_handler(void *arg)
+ 				task = list_entry(p, struct state_queue, list);
+ 				p = p->next;
+ 
++				/* Task may have been canceled before it started */
++				if (!task->thid && task->cancel)
++					goto remove;
++
+ 				if (!task->busy) {
+ 					/* Start a new task */
+ 					task->busy = 1;

@@ -1,12 +1,11 @@
 Version: 1
-Previous: 6a5c77c8c27a9451db11d741c868628ea125254f
-Head: 499a5d0d594e67e828ca0ecf1b640b1fbb63075d
+Previous: 6ab9d6a2518761820a3e0d3a00bec03ab3d0a510
+Head: 65e90275b5b48d0813f7be9cfbb342828a0359ff
 Applied:
   autofs-5.0.7-dont-override-LDFLAGS-in-make-rules.patch: 259842ea95993d06d8343411a1a848881a79c82e
   autofs-5.0.7-fix-a-couple-of-compiler-warnings.patch: 768b8637fa12aa1e005de6999c845f06f48de0fd
   autofs-5.0.7-add-after-sssd-dependency-to-unit-file.patch: 90f7bb7bd6f284067a386359d5bffa35aba21ee4
-  autofs-5.0.7-dont-kick-state-machine-unless-ready.patch: 2b1d89e976ecc3f2fda223d3032ea3e14b8fc41d
-  refresh-temp: 499a5d0d594e67e828ca0ecf1b640b1fbb63075d
+  autofs-5.0.7-dont-kick-state-machine-unless-ready.patch: 65e90275b5b48d0813f7be9cfbb342828a0359ff
 Unapplied:
   autofs-5.0.7-fix-dead-LDAP-symbolic-link-when-LDAP-support-is-disabled.patch: f0965cecc37c52964929be89b090a9a86a64abf2
   autofs-5.0.7-fix-compilation-of-lookup_ldap_c-without-sasl.patch: 04bca4c9f2e2d2e7eac69a89a723a03c8970e4ed
