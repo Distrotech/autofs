@@ -1,5 +1,5 @@
-Bottom: c2dd5b7a07ba2b432c958b3ddcd7bc00ac94e99a
-Top:    f1c991c97c48fbaeab053d12b49e60a451737b29
+Bottom: 3d5acd01b190a9a227e50dfd3209e25287591137
+Top:    3d5acd01b190a9a227e50dfd3209e25287591137
 Author: Ian Kent <ikent@redhat.com>
 Date:   2012-05-15 11:24:25 +0800
 
@@ -12,50 +12,4 @@ queue.
 
 ---
 
-diff --git a/CHANGELOG b/CHANGELOG
-index 37eac72..a9d2c47 100644
---- a/CHANGELOG
-+++ b/CHANGELOG
-@@ -54,6 +54,7 @@
- - misc man page fixes.
- - fix add null check in parse_server_string().
- - don't override LDFLAGS in make rules.
-+- dont start readmap unless ready.
- 
- 25/07/2012 autofs-5.0.7
- =======================
-diff --git a/daemon/state.c b/daemon/state.c
-index ddc5556..8d81788 100644
---- a/daemon/state.c
-+++ b/daemon/state.c
-@@ -818,14 +818,13 @@ done:
- 		new = st_alloc_task(ap, state);
- 		if (new)
- 			list_add(&new->list, head);
-+		/* Added to empty state queue, kick state machine */
-+		signaled = 1;
-+		status = pthread_cond_signal(&cond);
-+		if (status)
-+			fatal(status);
- 	}
- 
--	/* Added task, encourage state machine */
--	signaled = 1;
--	status = pthread_cond_signal(&cond);
--	if (status)
--		fatal(status);
--
- 	return 1;
- }
- 
-@@ -1131,6 +1130,10 @@ static void *st_queue_handler(void *arg)
- 				task = list_entry(p, struct state_queue, list);
- 				p = p->next;
- 
-+				/* Task may have been canceled before it started */
-+				if (!task->thid && task->cancel)
-+					goto remove;
-+
- 				if (!task->busy) {
- 					/* Start a new task */
- 					task->busy = 1;
+
