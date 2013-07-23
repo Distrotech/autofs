@@ -1,0 +1,21 @@
+Bottom: d5cdd718f401612f76efaee51f13f28ca3fd9a3a
+Top:    eefdcb3eb81f8d02faa90fdf07ad6bd8bfd41a6e
+Author: Ian Kent <ikent@redhat.com>
+Date:   2013-07-23 17:49:27 +0800
+
+Refresh of autofs-5.0.7-fix-dead-LDAP-symbolic-link-when-LDAP-support-is-disabled.patch
+
+---
+
+diff --git a/CHANGELOG b/CHANGELOG
+index 2734fe3..b255819 100644
+--- a/CHANGELOG
++++ b/CHANGELOG
+@@ -56,6 +56,7 @@
+ - don't override LDFLAGS in make rules.
+ - fix a couple of compiler warnings.
+ - add after sssd dependency to unit file.
++- fix dead LDAP symbolic link when LDAP support is disabled.
+ 
+ 25/07/2012 autofs-5.0.7
+ =======================
