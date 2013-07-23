@@ -1,5 +1,5 @@
-Bottom: f1c991c97c48fbaeab053d12b49e60a451737b29
-Top:    af488cf40c30360c9fa295d889f02dfcfe5ff2eb
+Bottom: ed2e561d826cb0500295bc97e12f6d07ff988ba5
+Top:    61e055bd223ebcf4c4257e9eb8e5ae5bb58a1cf3
 Author: Dustin Polke <DuPol@gmx.de>
 Date:   2012-05-15 11:28:27 +0800
 
@@ -17,12 +17,12 @@ Edited by: Ian Kent <raven@themaw.net>
 ---
 
 diff --git a/CHANGELOG b/CHANGELOG
-index a9d2c47..c4d8311 100644
+index 3228d6b..69fd1e7 100644
 --- a/CHANGELOG
 +++ b/CHANGELOG
-@@ -55,6 +55,7 @@
- - fix add null check in parse_server_string().
- - don't override LDFLAGS in make rules.
+@@ -57,6 +57,7 @@
+ - fix a couple of compiler warnings.
+ - add after sssd dependency to unit file.
  - dont start readmap unless ready.
 +- fix compilation of lookup_ldap.c without sasl.
  
