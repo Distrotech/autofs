@@ -56,6 +56,7 @@
 - don't override LDFLAGS in make rules.
 - fix a couple of compiler warnings.
 - add after sssd dependency to unit file.
+- fix dead LDAP symbolic link when LDAP support is disabled.
 
 25/07/2012 autofs-5.0.7
 =======================
