@@ -1,5 +1,5 @@
 Bottom: 289d8bd380a87990cd1cc50667e6d395495c6d7e
-Top:    0172c89cad773f0ffa018794dc93425c51f82f23
+Top:    87d8e1e280225dc51509235a1991d5d5dbc1ada9
 Author: Ian Kent <ikent@redhat.com>
 Date:   2013-07-24 14:22:57 +0800
 
@@ -18,10 +18,10 @@ Signed-off-by: Lan Yixun (dlan) <dennis.yxun@gmail.com>
 ---
 
 diff --git a/Makefile.rules b/Makefile.rules
-index d00ba3c..b4fab4c 100644
+index d00ba3c..c431eca 100644
 --- a/Makefile.rules
 +++ b/Makefile.rules
-@@ -45,7 +45,7 @@ LD        ?= ld
+@@ -45,17 +45,19 @@ LD        ?= ld
  SOLDFLAGS = -shared
  
  CFLAGS += -D_REENTRANT -D_FILE_OFFSET_BITS=64
@@ -30,3 +30,24 @@ index d00ba3c..b4fab4c 100644
  
  ifdef TIRPCLIB
  CFLAGS += -I/usr/include/tirpc
+-LDFLAGS += $(TIRPCLIB)
++LIBS += $(TIRPCLIB)
+ endif
+ 
+ ifdef DMALLOCLIB
+-LDFLAGS += $(DMALLOCLIB)
++LIBS += $(DMALLOCLIB)
+ endif
+ 
++LIBS += $(LIBNSL)
++
+ # Standard rules
+ 
+ .SUFFIXES: .c .o .s .so
+@@ -67,5 +69,5 @@ endif
+ 	$(CC) $(CFLAGS) -S $<
+ 
+ .c.so:
+-	$(CC) $(SOLDFLAGS) $(CFLAGS) -o $*.so $< $(AUTOFS_LIB) $(DMALLOCLIB) $(LIBNSL)
++	$(CC) $(SOLDFLAGS) $(CFLAGS) -o $*.so $< $(AUTOFS_LIB) $(LIBS)
+ 	$(STRIP) $*.so
