@@ -1,9 +1,8 @@
 Version: 1
-Previous: f90f8c6e921a15b248091fb218a44fb0e7697bb1
-Head: 253b722f153e9d89a24ae25cd4806d09a10ab0d6
+Previous: 43046e0458b0bc8f0fe88106a78839f02f47caab
+Head: 2e8251865c0ed6d91a97c107973a7eb75d3e131b
 Applied:
-  autofs-5.0.7-dont-override-LDFLAGS-in-make-rules.patch: 548d989d6fcfc7bf26ff1ab82797d3c588dca615
-  refresh-temp: 253b722f153e9d89a24ae25cd4806d09a10ab0d6
+  autofs-5.0.7-dont-override-LDFLAGS-in-make-rules.patch: 2e8251865c0ed6d91a97c107973a7eb75d3e131b
 Unapplied:
   autofs-5.0.7-fix-a-couple-of-compiler-warnings.patch: 56cd972b0e6e676abe0cf1f79f24594779f7841f
   autofs-5.0.7-add-after-sssd-dependency-to-unit-file.patch: d38d7147db7b038a4b52e0f7d31470b66e6f7a31
