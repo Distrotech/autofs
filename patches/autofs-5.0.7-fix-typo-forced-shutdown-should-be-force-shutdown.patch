@@ -8,9 +8,8 @@ autofs-5.0.7 - fix typo forced-shutdown should be force-shutdown
 This will confuse people when they find what shows with "./configure --help"
 is different from what is actually used.
 
-edit: imk
-Description edited by me.
-end: imk
+Edited by: Ian Kent <raven@themaw.net>
+- make description a little more readable.
 
 Signed-off-by: Lan Yixun (dlan) <dennis.yxun@gmail.com>
 
