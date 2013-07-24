@@ -1,0 +1,11 @@
+Bottom: 289d8bd380a87990cd1cc50667e6d395495c6d7e
+Top:    289d8bd380a87990cd1cc50667e6d395495c6d7e
+Author: Ian Kent <ikent@redhat.com>
+Date:   2013-07-24 14:22:57 +0800
+
+autofs-5.0.7 - use LIBS for link libraries
+
+
+---
+
+
