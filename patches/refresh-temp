@@ -1,0 +1,10 @@
+Bottom: d2f0d735f5ecda33fc0ecda155bb8f5130057038
+Top:    d2f0d735f5ecda33fc0ecda155bb8f5130057038
+Author: Ian Kent <ikent@redhat.com>
+Date:   2013-07-24 14:52:14 +0800
+
+Refresh of autofs-5.0.7-allow-user-to-pass-LDFLAGS-via-configure.patch
+
+---
+
+
