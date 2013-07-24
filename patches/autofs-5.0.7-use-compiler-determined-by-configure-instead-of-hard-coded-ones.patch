@@ -1,0 +1,48 @@
+Bottom: 3cc6d10cac54fd0ef44cba45038cfe5df8870372
+Top:    32322089b569cc61f22b2e08ffd7998c19e29e6e
+Author: Lan Yixun (dlan) <dennis.yxun@gmail.com>
+Date:   2013-07-24 13:55:03 +0800
+
+autofs-5.0.7 - use compiler determined by configure instead of hard-coded ones
+
+the logic here is:
+ if user pass compiler variable, then use it, otherwise fallback to default value
+
+this will provide most flexibility, so user can set this variable
+it would be even useful for cross-compile environment.
+
+Signed-off-by: Lan Yixun (dlan) <dennis.yxun@gmail.com>
+
+
+---
+
+diff --git a/Makefile.conf.in b/Makefile.conf.in
+index 3766d45..cb53e66 100644
+--- a/Makefile.conf.in
++++ b/Makefile.conf.in
+@@ -109,3 +109,6 @@ initdir = @initdir@
+ 
+ # Location of systemd unit files
+ systemddir = @systemddir@
++
++# Use the compiler determined by configure instead of hard-coded ones
++CC := @CC@
+diff --git a/Makefile.rules b/Makefile.rules
+index 6b5b2bd..9aebd19 100644
+--- a/Makefile.rules
++++ b/Makefile.rules
+@@ -38,10 +38,10 @@ STRIP     = strip --strip-debug
+ endif
+ endif
+ 
+-CC        = gcc
+-CXX       = g++
+-CXXFLAGS  = $(CFLAGS)
+-LD        = ld
++CC        ?= gcc
++CXX       ?= g++
++CXXFLAGS  ?= $(CFLAGS)
++LD        ?= ld
+ SOLDFLAGS = -shared
+ 
+ CFLAGS += -D_REENTRANT -D_FILE_OFFSET_BITS=64
