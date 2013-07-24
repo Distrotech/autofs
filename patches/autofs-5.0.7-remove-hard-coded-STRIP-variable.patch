@@ -16,7 +16,8 @@ Here, I slightly modify the code so that we can still fallback to the default on
 
 Edited by: Ian Kent <raven@themaw.net>
 - allow for previous LDFLAGS patch.
-- rename patch to reflect what was actually done.
+- rename patch to reflect what's actually done but leave description
+  in place as a reminder.
 
 Signed-off-by: Lan Yixun (dlan) <dennis.yxun@gmail.com>
 
