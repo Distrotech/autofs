@@ -3,7 +3,7 @@ Top:    289d8bd380a87990cd1cc50667e6d395495c6d7e
 Author: Lan Yixun (dlan) <dennis.yxun@gmail.com>
 Date:   2013-07-24 13:56:47 +0800
 
-autofs-5.0.7 - remove hard-coded CFLAGS and LDFLAGS
+autofs-5.0.7 - remove hard-coded STRIP variable
 
 according to autoconf manual[1], build script should allow user override the CFLAGS, LDFLAGS
 varible (passed via ./configure). And actually, we should not directly use CFLAGS,
@@ -16,6 +16,7 @@ Here, I slightly modify the code so that we can still fallback to the default on
 
 Edited by: Ian Kent <raven@themaw.net>
 - allow for previous LDFLAGS patch.
+- rename patch to reflect what was actually done.
 
 Signed-off-by: Lan Yixun (dlan) <dennis.yxun@gmail.com>
 
