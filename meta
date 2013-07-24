@@ -1,6 +1,6 @@
 Version: 1
-Previous: 37e02b31e2993a424ff6c2192f3174fc5a2b0629
-Head: bbdac71a21231fe01e193e545c2e348d05a6383a
+Previous: d353ef697997e902a90166e1e6ac074b332fc861
+Head: a57776e0e1ab31366c7969f2e2d5933f4cfc1fed
 Applied:
   autofs-5.0.7-dont-override-LDFLAGS-in-make-rules.patch: 259842ea95993d06d8343411a1a848881a79c82e
   autofs-5.0.7-fix-a-couple-of-compiler-warnings.patch: 768b8637fa12aa1e005de6999c845f06f48de0fd
@@ -15,6 +15,7 @@ Applied:
   autofs-5.0.7-use-LIBS-for-link-libraries.patch: 79a8adbebf829ee51792b49eb906ce2f64026060
   autofs-5.0.7-pthread-link-library-should-be-put-into-LIBS-not-LDFLAGS.patch: f8bafdc576eb5d4403fcd66c1021d695a1e10a20
   autofs-5.0.7-library-should-be-passed-via-variable-LIBS-not-LDFLAGS.patch: bbdac71a21231fe01e193e545c2e348d05a6383a
+  refresh-temp: a57776e0e1ab31366c7969f2e2d5933f4cfc1fed
 Unapplied:
   autofs-5.0.7-accumulate-LIBS-variable-changes-otherwise-we-may-lose-early-settings.patch: 418d8d8805f70498571e492cea82d18a6e9ab15a
   autofs-5.0.7-allow-user-to-pass-LDFLAGS-via-configure.patch: 6cd4c19bb344d12f70683ac24ba00db574d37b96
