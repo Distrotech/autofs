@@ -1,5 +1,5 @@
-Bottom: bda5812ec90fc053c47bdc013b9c23c17b3ea89f
-Top:    3a598a8e2610af776a8db73dd6675bc1526ff756
+Bottom: 246f9816208f782da32d1331d4e385690dd9bae9
+Top:    24bf23d6d4a91bb13700c7edad45dc3d72577c63
 Author: Dustin Polke <DuPol@gmx.de>
 Date:   2012-05-15 11:28:27 +0800
 
@@ -73,7 +73,7 @@ index 5418009..4a5b712 100644
  
  all: autofs.a
 diff --git a/modules/Makefile b/modules/Makefile
-index 8c0df18..43c8a8d 100644
+index de01ebd..8610783 100644
 --- a/modules/Makefile
 +++ b/modules/Makefile
 @@ -45,10 +45,12 @@ endif
