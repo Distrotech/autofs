@@ -5,6 +5,15 @@ Date:   2013-07-24 14:22:57 +0800
 
 autofs-5.0.7 - use LIBS for link libraries
 
+quote:
+ "Don't use this variable to pass library names (-l) to the linker; use LIBS instead."
+
+see the section "Variable: LDFLAGS"
+
+[1] http://www.gnu.org/savannah-checkouts/gnu/autoconf/manual/autoconf-2.69/html_node/Prese
+
+Signed-off-by: Lan Yixun (dlan) <dennis.yxun@gmail.com>
+
 
 ---
 
