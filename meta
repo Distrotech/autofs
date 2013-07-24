@@ -1,6 +1,6 @@
 Version: 1
-Previous: 92a6285ccd00a6cca398b7a6e6cd0a1cb0979e66
-Head: 9348fe6ea52bb42aa000580de9f5a9a24dfb2689
+Previous: 437edf8699010dfd295676a239bc640839f861f7
+Head: ebfa9e678e6b54637e7373c0bf28fcd279125e29
 Applied:
   autofs-5.0.7-dont-override-LDFLAGS-in-make-rules.patch: 259842ea95993d06d8343411a1a848881a79c82e
   autofs-5.0.7-fix-a-couple-of-compiler-warnings.patch: 768b8637fa12aa1e005de6999c845f06f48de0fd
@@ -13,6 +13,7 @@ Applied:
   autofs-5.0.7-use-compiler-determined-by-configure-instead-of-hard-coded-ones.patch: 124442d8778e85cf5f620904a798310040082cbf
   autofs-5.0.7-remove-hard-coded-STRIP-variable.patch: 019fd02b478cd389cda6c80b3fdbadcd6496a970
   autofs-5.0.7-use-LIBS-for-link-libraries.patch: 9348fe6ea52bb42aa000580de9f5a9a24dfb2689
+  refresh-temp: ebfa9e678e6b54637e7373c0bf28fcd279125e29
 Unapplied:
   autofs-5.0.7-pthread-link-library-should-be-put-into-LIBS-not-LDFLAGS.patch: de55740bfc84a94bb8e73925fd33105c2a18ceb5
   autofs-5.0.7-library-should-be-passed-via-variable-LIBS-not-LDFLAGS.patch: e8e3b9f0f2438dfd850916692cec10c8846de7f4
