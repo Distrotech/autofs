@@ -59,6 +59,7 @@
 - dont start readmap unless ready.
 - fix compile error with heimdal support enabled.
 - fix typo forced-shutdown should be force-shutdown.
+- fix hesiod check error and use correct $(LIBS) setting.
 
 25/07/2012 autofs-5.0.7
 =======================
