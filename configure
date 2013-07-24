@@ -4221,9 +4221,9 @@ then
 	{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for libhesiod" >&5
 $as_echo_n "checking for libhesiod... " >&6; }
 
-# save current ldflags
-af_check_hesiod_save_ldflags="$LDFLAGS"
-LDFLAGS="$LDFLAGS -lhesiod -lresolv"
+# save current libs
+af_check_hesiod_save_libs="$LIBS"
+LIBS="$LIBS -lhesiod -lresolv"
 
 cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
@@ -4231,7 +4231,7 @@ cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 int
 main ()
 {
- char *c; hesiod_init(&c);
+ void *c; hesiod_init(&c);
   ;
   return 0;
 }
@@ -4248,8 +4248,8 @@ fi
 rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
 
-# restore ldflags
-LDFLAGS="$af_check_hesiod_save_ldflags"
+# restore libs
+LIBS="$af_check_hesiod_save_libs"
 
 	if test "$HAVE_HESIOD" == "1"; then
 
