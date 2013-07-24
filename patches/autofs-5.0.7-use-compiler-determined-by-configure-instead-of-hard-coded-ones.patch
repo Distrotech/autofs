@@ -1,5 +1,5 @@
 Bottom: 54043291b57ab1cba8f17578c9e7d842d93dd363
-Top:    ee439139fdbda633ae1d68dd6e1e1190025244e1
+Top:    d309b091ae30a588b53264797770609c97c799d7
 Author: Lan Yixun (dlan) <dennis.yxun@gmail.com>
 Date:   2013-07-24 13:55:03 +0800
 
@@ -16,6 +16,18 @@ Signed-off-by: Lan Yixun (dlan) <dennis.yxun@gmail.com>
 
 ---
 
+diff --git a/CHANGELOG b/CHANGELOG
+index 72d9135..ebabf21 100644
+--- a/CHANGELOG
++++ b/CHANGELOG
+@@ -61,6 +61,7 @@
+ - fix hesiod check error and use correct $(LIBS) setting.
+ - fix dead LDAP symbolic link when LDAP support is disabled.
+ - add missing libtirpc lib to mount_nfs.so when TIRPC enabled.
++- use compiler determined by configure instead of hard-coded ones.
+ 
+ 25/07/2012 autofs-5.0.7
+ =======================
 diff --git a/Makefile.conf.in b/Makefile.conf.in
 index 3766d45..cb53e66 100644
 --- a/Makefile.conf.in
