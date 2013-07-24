@@ -1,6 +1,6 @@
 Bottom: c06680b847f36e5954499739429d16537eddf479
 Top:    3e7088e9158e2f36697baabc87e6f737a2ce40d9
-Author: Ian Kent <ikent@redhat.com>
+Author: Lan Yixun (dlan) <dennis.yxun@gmail.com>
 Date:   2013-07-24 14:22:57 +0800
 
 autofs-5.0.7 - use LIBS for link libraries
