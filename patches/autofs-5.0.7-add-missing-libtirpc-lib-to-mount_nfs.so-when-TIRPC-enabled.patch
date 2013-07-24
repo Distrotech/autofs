@@ -3,7 +3,7 @@ Top:    b74ab0c7f66e17b1e2eb42cbefefd163ef480592
 Author: Lan Yixun (dlan) <dennis.yxun@gmail.com>
 Date:   2013-07-24 11:35:39 +0800
 
-autofs-5.0.7 add missing libtirpc lib to mount_nfs.so when TIRPC enabled
+autofs-5.0.7 - add missing libtirpc lib to mount_nfs.so when TIRPC enabled
 
 this is need when libtirpc is enabled, otherwise autofs fail to start
 due to it can't find symbol clnt_dg_create (which is provided by libtirpc)
