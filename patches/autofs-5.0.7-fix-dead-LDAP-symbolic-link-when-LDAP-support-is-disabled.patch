@@ -9,6 +9,10 @@ autofs will create symbol link mandatory no matter ldap support
 is enabled or not. so, without this patch, lookup_ldaps.so will become
 a dead link.
 
+Edited by: Ian Kent <raven@themaw.net>
+- change check from SASL to LDAP since the ldaps lookup module may
+  still be used ldaps:// as long as LDAP support is built.
+
 
 ---
 
