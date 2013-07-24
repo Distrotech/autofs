@@ -1,6 +1,6 @@
 Version: 1
-Previous: 2ce261f85df16304bd13c3f201b4fc4d100e0d3c
-Head: 3c5dd6203d7da5848caad3d02b3f632601eb0ab2
+Previous: 9c2fa6985e36705bdda7220141cbe35ef293e038
+Head: d2ea38d635cfeabe851fc951804308eeecef43b9
 Applied:
   autofs-5.0.7-dont-override-LDFLAGS-in-make-rules.patch: 259842ea95993d06d8343411a1a848881a79c82e
   autofs-5.0.7-fix-a-couple-of-compiler-warnings.patch: 768b8637fa12aa1e005de6999c845f06f48de0fd
@@ -11,7 +11,7 @@ Applied:
   autofs-5.0.7-fix-dead-LDAP-symbolic-link-when-LDAP-support-is-disabled.patch: cd60db3f95f4d6dbdf557db5be6656e18ef30d15
   autofs-5.0.7-add-missing-libtirpc-lib-to-mount_nfs.so-when-TIRPC-enabled.patch: 6468d668fa5263da750de21189df7fd86943d389
   autofs-5.0.7-use-compiler-determined-by-configure-instead-of-hard-coded-ones.patch: 124442d8778e85cf5f620904a798310040082cbf
-  autofs-5.0.7-remove-hard-coded-CFLAGS-and-LDFLAGS.patch: 3c5dd6203d7da5848caad3d02b3f632601eb0ab2
+  autofs-5.0.7-remove-hard-coded-CFLAGS-and-LDFLAGS.patch: d2ea38d635cfeabe851fc951804308eeecef43b9
 Unapplied:
   autofs-5.0.7-fix-compilation-of-lookup_ldap_c-without-sasl.patch: c57e87cc80adedea9fad33da31b08a71315f341a
   autofs-5.0.5-wait-for-master-map-available-at-start.patch: 521b792b7f2ebc8ce8494235c7ca4d20aba3e0ee

@@ -14,6 +14,9 @@ Here, I slightly modify the code so that we can still fallback to the default on
 
 [1] http://www.gnu.org/savannah-checkouts/gnu/autoconf/manual/autoconf-2.69/html_node/Preset-Output-Variables.html#Preset-Output-Variables
 
+Edited by: Ian Kent <raven@themaw.net>
+- allow for previous LDFLAGS patch.
+
 Signed-off-by: Lan Yixun (dlan) <dennis.yxun@gmail.com>
 
 
