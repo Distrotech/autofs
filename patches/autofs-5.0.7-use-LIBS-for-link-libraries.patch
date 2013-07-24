@@ -1,5 +1,5 @@
-Bottom: c2f0b33e716df1d1538c81c79073d667f47bc019
-Top:    544e91ad493fc15064ab02bf22607115752feb9a
+Bottom: c06680b847f36e5954499739429d16537eddf479
+Top:    3e7088e9158e2f36697baabc87e6f737a2ce40d9
 Author: Lan Yixun (dlan) <dennis.yxun@gmail.com>
 Date:   2013-07-24 14:22:57 +0800
 
@@ -77,10 +77,10 @@ index 9e9d635..6604c9a 100644
  ifeq ($(LDAP), 1)
      CFLAGS += $(XML_FLAGS)
 diff --git a/modules/Makefile b/modules/Makefile
-index 69ecddb..8610783 100644
+index e61e338..de01ebd 100644
 --- a/modules/Makefile
 +++ b/modules/Makefile
-@@ -100,8 +100,8 @@ endif
+@@ -98,8 +98,8 @@ endif
  # Ad hoc compilation rules for modules which need auxilliary libraries
  #
  lookup_hesiod.so: lookup_hesiod.c
@@ -91,7 +91,7 @@ index 69ecddb..8610783 100644
  	$(STRIP) lookup_hesiod.so
  
  cyrus-sasl.o: cyrus-sasl.c
-@@ -111,13 +111,13 @@ cyrus-sasl-extern.o: cyrus-sasl-extern.c
+@@ -109,13 +109,13 @@ cyrus-sasl-extern.o: cyrus-sasl-extern.c
  	$(CC) $(CFLAGS) $(LDAP_FLAGS) -c $<
  
  lookup_ldap.so: lookup_ldap.c dclist.o base64.o $(SASL_OBJ)
