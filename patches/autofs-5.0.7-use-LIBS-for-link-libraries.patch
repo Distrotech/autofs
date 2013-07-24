@@ -8,9 +8,10 @@ autofs-5.0.7 - use LIBS for link libraries
 quote:
  "Don't use this variable to pass library names (-l) to the linker; use LIBS instead."
 
-see the section "Variable: LDFLAGS"
+see the section "Variable: LDFLAGS" in:
+http://www.gnu.org/savannah-checkouts/gnu/autoconf/manual/autoconf-2.69/html_node/PreseOutput-Variables.html#Preset-Output-Variables
 
-[1] http://www.gnu.org/savannah-checkouts/gnu/autoconf/manual/autoconf-2.69/html_node/Prese
+
 
 Signed-off-by: Lan Yixun (dlan) <dennis.yxun@gmail.com>
 
