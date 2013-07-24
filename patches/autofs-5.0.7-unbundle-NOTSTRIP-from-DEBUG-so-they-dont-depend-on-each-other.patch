@@ -3,7 +3,7 @@ Top:    c74f2156bf1e9d5ddff05afc138cb73ffbdf5a3b
 Author: Lan Yixun (dlan) <dennis.yxun@gmail.com>
 Date:   2013-07-24 14:10:52 +0800
 
-autofs-5.0.7 - unbundle NOTSTRIP from DEBUG so they wont depend on each other
+autofs-5.0.7 - unbundle NOTSTRIP from DEBUG so they dont depend on each other
 
 Gentoo build system expects unstripped elf image from the build system,
 seperate this, will allow us to better control the strip operation.
