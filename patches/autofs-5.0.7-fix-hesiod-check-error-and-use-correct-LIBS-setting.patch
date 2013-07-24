@@ -3,8 +3,6 @@ Top:    5e3a807ed9cc54274559227c5451cba2092940f2
 Author: Lan Yixun (dlan) <dennis.yxun@gmail.com>
 Date:   2013-07-24 09:58:20 +0800
 
-From "Lan Yixun (dlan)" <dennis.yxun@gmail.com>
-
 autofs-5.0.7 - fix hesiod check error and use correct $(LIBS) setting
 
 the problem here is that hesiod checking always fail due to wrong $(LDFLAGS),
