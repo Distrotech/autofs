@@ -11,7 +11,7 @@ a dead link.
 
 Edited by: Ian Kent <raven@themaw.net>
 - change check from SASL to LDAP since the ldaps lookup module may
-  still be used ldaps:// as long as LDAP support is built.
+  still be used by ldaps:// as long as LDAP support is built.
 
 
 ---
