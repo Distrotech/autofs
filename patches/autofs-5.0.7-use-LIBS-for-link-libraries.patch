@@ -1,5 +1,5 @@
 Bottom: 289d8bd380a87990cd1cc50667e6d395495c6d7e
-Top:    1d5023fb12a30490622c6c8c31e30ae8d05c3bd0
+Top:    d2f0d735f5ecda33fc0ecda155bb8f5130057038
 Author: Ian Kent <ikent@redhat.com>
 Date:   2013-07-24 14:22:57 +0800
 
@@ -28,7 +28,7 @@ Signed-off-by: Lan Yixun (dlan) <dennis.yxun@gmail.com>
 ---
 
 diff --git a/Makefile.rules b/Makefile.rules
-index d00ba3c..c431eca 100644
+index d00ba3c..fa53459 100644
 --- a/Makefile.rules
 +++ b/Makefile.rules
 @@ -45,17 +45,19 @@ LD        ?= ld
@@ -59,7 +59,7 @@ index d00ba3c..c431eca 100644
  
  .c.so:
 -	$(CC) $(SOLDFLAGS) $(CFLAGS) -o $*.so $< $(AUTOFS_LIB) $(DMALLOCLIB) $(LIBNSL)
-+	$(CC) $(SOLDFLAGS) $(CFLAGS) -o $*.so $< $(AUTOFS_LIB) $(LIBS)
++	$(CC) $(LDFLAGS) $(SOLDFLAGS) $(CFLAGS) -o $*.so $< $(AUTOFS_LIB) $(LIBS)
  	$(STRIP) $*.so
 diff --git a/daemon/Makefile b/daemon/Makefile
 index 9e9d635..6604c9a 100644
@@ -75,28 +75,34 @@ index 9e9d635..6604c9a 100644
  ifeq ($(LDAP), 1)
      CFLAGS += $(XML_FLAGS)
 diff --git a/modules/Makefile b/modules/Makefile
-index e61e338..452a16c 100644
+index e61e338..de01ebd 100644
 --- a/modules/Makefile
 +++ b/modules/Makefile
-@@ -99,7 +99,7 @@ endif
+@@ -98,8 +98,8 @@ endif
+ # Ad hoc compilation rules for modules which need auxilliary libraries
  #
  lookup_hesiod.so: lookup_hesiod.c
- 	$(CC) $(SOLDFLAGS) $(CFLAGS) $(HESIOD_FLAGS) -o lookup_hesiod.so \
+-	$(CC) $(SOLDFLAGS) $(CFLAGS) $(HESIOD_FLAGS) -o lookup_hesiod.so \
 -		lookup_hesiod.c $(AUTOFS_LIB) $(LIBHESIOD) $(LIBRESOLV)
++	$(CC) $(LDFLAGS) $(SOLDFLAGS) $(CFLAGS) $(HESIOD_FLAGS) -o lookup_hesiod.so \
 +		lookup_hesiod.c $(AUTOFS_LIB) $(LIBHESIOD) $(LIBRESOLV) $(LIBS)
  	$(STRIP) lookup_hesiod.so
  
  cyrus-sasl.o: cyrus-sasl.c
-@@ -111,11 +111,11 @@ cyrus-sasl-extern.o: cyrus-sasl-extern.c
+@@ -109,13 +109,13 @@ cyrus-sasl-extern.o: cyrus-sasl-extern.c
+ 	$(CC) $(CFLAGS) $(LDAP_FLAGS) -c $<
+ 
  lookup_ldap.so: lookup_ldap.c dclist.o base64.o $(SASL_OBJ)
- 	$(CC) $(SOLDFLAGS) $(CFLAGS) $(LDAP_FLAGS) -o lookup_ldap.so \
+-	$(CC) $(SOLDFLAGS) $(CFLAGS) $(LDAP_FLAGS) -o lookup_ldap.so \
++	$(CC) $(LDFLAGS) $(SOLDFLAGS) $(CFLAGS) $(LDAP_FLAGS) -o lookup_ldap.so \
  		lookup_ldap.c dclist.o base64.o $(SASL_OBJ) \
 -		$(AUTOFS_LIB) $(LIBLDAP) $(LIBRESOLV)
 +		$(AUTOFS_LIB) $(LIBLDAP) $(LIBRESOLV) $(LIBS)
  	$(STRIP) lookup_ldap.so
  
  mount_nfs.so: mount_nfs.c replicated.o
- 	$(CC) $(SOLDFLAGS) $(CFLAGS) -o mount_nfs.so \
+-	$(CC) $(SOLDFLAGS) $(CFLAGS) -o mount_nfs.so \
 -		mount_nfs.c replicated.o $(AUTOFS_LIB) $(LIBNSL) $(TIRPCLIB)
++	$(CC) $(LDFLAGS) $(SOLDFLAGS) $(CFLAGS) -o mount_nfs.so \
 +		mount_nfs.c replicated.o $(AUTOFS_LIB) $(LIBS)
  	$(STRIP) mount_nfs.so
