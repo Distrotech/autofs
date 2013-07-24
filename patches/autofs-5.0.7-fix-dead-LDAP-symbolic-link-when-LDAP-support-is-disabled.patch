@@ -3,8 +3,6 @@ Top:    c1e3b0e7284978875258cdf2470d8ce9d9de1828
 Author: Lan Yixun (dlan) <dennis.yxun@gmail.com>
 Date:   2013-07-23 17:49:02 +0800
 
-From "Lan Yixun (dlan)" <dennis.yxun@gmail.com>
-
 autofs-5.0.7 - fix dead LDAP symbolic link when LDAP support is disabled
 
 autofs will create symbol link mandatory no matter ldap support
