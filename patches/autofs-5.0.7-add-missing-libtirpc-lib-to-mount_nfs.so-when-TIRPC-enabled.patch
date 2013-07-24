@@ -8,6 +8,21 @@ autofs-5.0.7 add missing libtirpc lib to mount_nfs.so when TIRPC enabled
 this is need when libtirpc is enabled, otherwise autofs fail to start
 due to it can't find symbol clnt_dg_create (which is provided by libtirpc)
 
+autofs error log from /var/log/message:
+
+Jul 23 12:11:58 ofire automount[25699]: open_mount:244: parse(sun): cannot open mount module
+nfs (/usr/lib64/autofs/mount_nfs.so: undefined symbol: clnt_dg_create)
+Jul 23 12:11:58 ofire automount[25699]: lookup(file): failed to open parse context
+
+without this patch, mount_nfs.so fail link to libtirpc.so
+ # ldd /usr/lib64/autofs/mount_nfs.so |grep tirpc
+
+with this patch applied:
+ # ldd /usr/lib64/autofs/mount_nfs.so |grep tirpc
+        libtirpc.so.1 => /lib64/libtirpc.so.1 (0x00007f7d94920000)
+
+Signed-off-by: Lan Yixun (dlan) <dennis.yxun@gmail.com>
+
 
 ---
 
