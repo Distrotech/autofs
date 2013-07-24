@@ -1,6 +1,6 @@
 Version: 1
-Previous: 914295f0e75979e08622aeff43c046dddd2ef8a9
-Head: cd60db3f95f4d6dbdf557db5be6656e18ef30d15
+Previous: 62e8f27aca9e4b8dfd5180a29b0d94717bce2edb
+Head: 45db1b975a6dc7f482e0f0b380320626acda0e23
 Applied:
   autofs-5.0.7-dont-override-LDFLAGS-in-make-rules.patch: 259842ea95993d06d8343411a1a848881a79c82e
   autofs-5.0.7-fix-a-couple-of-compiler-warnings.patch: 768b8637fa12aa1e005de6999c845f06f48de0fd
@@ -9,6 +9,7 @@ Applied:
   autofs-5.0.7-fix-typo-forced-shutdown-should-be-force-shutdown.patch: 0d73b245c822e06b2c6bd4fac9bcd1eb0a1c5e31
   autofs-5.0.7-fix-hesiod-check-error-and-use-correct-LIBS-setting.patch: 1b1d41128ed24920b95eb395d3f5f44e108e2200
   autofs-5.0.7-fix-dead-LDAP-symbolic-link-when-LDAP-support-is-disabled.patch: cd60db3f95f4d6dbdf557db5be6656e18ef30d15
+  autofs-5.0.7-add-missing-libtirpc-lib-to-mount_nfs.so-when-TIRPC-enabled.patch: 45db1b975a6dc7f482e0f0b380320626acda0e23
 Unapplied:
   autofs-5.0.7-fix-compilation-of-lookup_ldap_c-without-sasl.patch: c57e87cc80adedea9fad33da31b08a71315f341a
   autofs-5.0.5-wait-for-master-map-available-at-start.patch: 521b792b7f2ebc8ce8494235c7ca4d20aba3e0ee
