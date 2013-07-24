@@ -1,5 +1,5 @@
 Bottom: d9b582cc1e1bdbef59cc92c157df066add486c60
-Top:    d9b582cc1e1bdbef59cc92c157df066add486c60
+Top:    d0f3cb5a768ebd9549e3e7b1a142cf332c8c06d7
 Author: Lan Yixun (dlan) <dennis.yxun@gmail.com>
 Date:   2013-07-23 17:49:02 +0800
 
@@ -12,4 +12,29 @@ a dead link.
 
 ---
 
-
+diff --git a/CHANGELOG b/CHANGELOG
+index 3c829cf..9755e25 100644
+--- a/CHANGELOG
++++ b/CHANGELOG
+@@ -59,6 +59,7 @@
+ - dont start readmap unless ready.
+ - fix typo forced-shutdown should be force-shutdown.
+ - fix hesiod check error and use correct $(LIBS) setting.
++- fix dead LDAP symbolic link when LDAP support is disabled.
+ 
+ 25/07/2012 autofs-5.0.7
+ =======================
+diff --git a/modules/Makefile b/modules/Makefile
+index c5deb24..8c0df18 100644
+--- a/modules/Makefile
++++ b/modules/Makefile
+@@ -74,7 +74,9 @@ install: all
+ 	-rm -f $(INSTALLROOT)$(autofslibdir)/mount_smbfs.so
+ 	ln -fs lookup_file.so $(INSTALLROOT)$(autofslibdir)/lookup_files.so
+ 	ln -fs lookup_yp.so $(INSTALLROOT)$(autofslibdir)/lookup_nis.so
++ifeq ($(LDAP), 1)
+ 	ln -fs lookup_ldap.so $(INSTALLROOT)$(autofslibdir)/lookup_ldaps.so
++endif
+ 	ln -fs mount_nfs.so $(INSTALLROOT)$(autofslibdir)/mount_nfs4.so
+ ifeq ($(EXT2FS), 1)
+  ifeq ($(EXT3FS), 1)
