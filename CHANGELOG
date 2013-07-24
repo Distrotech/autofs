@@ -62,6 +62,7 @@
 - fix hesiod check error and use correct $(LIBS) setting.
 - fix dead LDAP symbolic link when LDAP support is disabled.
 - add missing libtirpc lib to mount_nfs.so when TIRPC enabled.
+- use compiler determined by configure instead of hard-coded ones.
 
 25/07/2012 autofs-5.0.7
 =======================
