@@ -1,6 +1,6 @@
 Version: 1
-Previous: 5bd95e67ef0f1b30e6b5dac07e1486afd04f0915
-Head: b062a58cf05caedc0be70a665e627c4e85286049
+Previous: 7b6c28c688e5652267e97a105ff55f770e2905f3
+Head: c9e6b415191b7f4be8a19b4fec42220fec8912b5
 Applied:
   autofs-5.0.7-dont-override-LDFLAGS-in-make-rules.patch: 2e8251865c0ed6d91a97c107973a7eb75d3e131b
   autofs-5.0.7-fix-a-couple-of-compiler-warnings.patch: b8bdae4bfe855786de918c78eee228e4aabdab45
@@ -11,8 +11,7 @@ Applied:
   autofs-5.0.7-fix-dead-LDAP-symbolic-link-when-LDAP-support-is-disabled.patch: f0df765f4d4d73ec87df0b395c9c25a707933275
   autofs-5.0.7-add-missing-libtirpc-lib-to-mount_nfs.so-when-TIRPC-enabled.patch: 8ba0de92751ea375d5965b1d09f304cbf83ea543
   autofs-5.0.7-use-compiler-determined-by-configure-instead-of-hard-coded-ones.patch: 498369277a6bb8ed42f41078bdad68dba56a397e
-  autofs-5.0.7-remove-hard-coded-STRIP-variable.patch: 3c42fa1d63991997f43bdc6b312a5c7ea068c84d
-  refresh-temp: b062a58cf05caedc0be70a665e627c4e85286049
+  autofs-5.0.7-remove-hard-coded-STRIP-variable.patch: c9e6b415191b7f4be8a19b4fec42220fec8912b5
 Unapplied:
   autofs-5.0.7-use-LIBS-for-link-libraries.patch: fae1731169a20349d0e1b36856e98b5666cfd117
   autofs-5.0.7-unbundle-NOTSTRIP-from-DEBUG-so-they-wont-depend-on-each-other.patch: 72b3b6cc5a291cc7d5681b512ab1712e2f1d2262
