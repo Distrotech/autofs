@@ -309,20 +309,20 @@ dnl --------------------------------------------------------------------------
 AC_DEFUN([AF_CHECK_LIBHESIOD],
 [AC_MSG_CHECKING(for libhesiod)
 
-# save current ldflags
-af_check_hesiod_save_ldflags="$LDFLAGS"
-LDFLAGS="$LDFLAGS -lhesiod -lresolv"
+# save current libs
+af_check_hesiod_save_libs="$LIBS"
+LIBS="$LIBS -lhesiod -lresolv"
 
 AC_TRY_LINK(
   [ #include <hesiod.h> ],
-  [ char *c; hesiod_init(&c); ],
+  [ void *c; hesiod_init(&c); ],
   [ HAVE_HESIOD=1
     LIBHESIOD="$LIBHESIOD -lhesiod -lresolv"
     AC_MSG_RESULT(yes) ],
   [ AC_MSG_RESULT(no) ])
 
-# restore ldflags
-LDFLAGS="$af_check_hesiod_save_ldflags"
+# restore libs
+LIBS="$af_check_hesiod_save_libs"
 ])
 
 dnl --------------------------------------------------------------------------
