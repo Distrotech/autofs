@@ -1,5 +1,5 @@
 Bottom: 8eff07ef1d1588bcbfc276704d7617ed9d643db6
-Top:    98bec02c4b6200b4005457840e95e074c280ca55
+Top:    7ccafe8ab211fe0f57fe489d6d3d8f7a455d3a58
 Author: Lan Yixun (dlan) <dennis.yxun@gmail.com>
 Date:   2013-07-23 17:49:02 +0800
 
@@ -25,14 +25,14 @@ index 60af0fa..19768fb 100644
  25/07/2012 autofs-5.0.7
  =======================
 diff --git a/modules/Makefile b/modules/Makefile
-index 2589ae0..6e791cc 100644
+index 2589ae0..43c8a8d 100644
 --- a/modules/Makefile
 +++ b/modules/Makefile
 @@ -76,7 +76,9 @@ install: all
  	-rm -f $(INSTALLROOT)$(autofslibdir)/mount_smbfs.so
  	ln -fs lookup_file.so $(INSTALLROOT)$(autofslibdir)/lookup_files.so
  	ln -fs lookup_yp.so $(INSTALLROOT)$(autofslibdir)/lookup_nis.so
-+ifeq ($(SASL), 1)
++ifeq ($(LDAP), 1)
  	ln -fs lookup_ldap.so $(INSTALLROOT)$(autofslibdir)/lookup_ldaps.so
 +endif
  	ln -fs mount_nfs.so $(INSTALLROOT)$(autofslibdir)/mount_nfs4.so
