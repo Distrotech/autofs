@@ -1,6 +1,6 @@
 Version: 1
-Previous: 566a0b3f622e4c1e6aeb7671170582bb0bcb5ac3
-Head: ed3c4d9c94b6f5ad6b018a59655ecc065c7ec2e2
+Previous: 8c0bf86e4ac00989f2101b01589c19c4fc8fc719
+Head: 79a8adbebf829ee51792b49eb906ce2f64026060
 Applied:
   autofs-5.0.7-dont-override-LDFLAGS-in-make-rules.patch: 259842ea95993d06d8343411a1a848881a79c82e
   autofs-5.0.7-fix-a-couple-of-compiler-warnings.patch: 768b8637fa12aa1e005de6999c845f06f48de0fd
@@ -13,10 +13,6 @@ Applied:
   autofs-5.0.7-use-compiler-determined-by-configure-instead-of-hard-coded-ones.patch: 124442d8778e85cf5f620904a798310040082cbf
   autofs-5.0.7-remove-hard-coded-STRIP-variable.patch: 019fd02b478cd389cda6c80b3fdbadcd6496a970
   autofs-5.0.7-use-LIBS-for-link-libraries.patch: 79a8adbebf829ee51792b49eb906ce2f64026060
-  autofs-5.0.7-pthread-link-library-should-be-put-into-LIBS-not-LDFLAGS.patch: f8bafdc576eb5d4403fcd66c1021d695a1e10a20
-  autofs-5.0.7-library-should-be-passed-via-variable-LIBS-not-LDFLAGS.patch: bbdac71a21231fe01e193e545c2e348d05a6383a
-  autofs-5.0.7-accumulate-LIBS-variable-changes-otherwise-we-may-lose-early-settings.patch: b451c5952989a3a3f5cbac7f2eb164b73176dacf
-  autofs-5.0.7-allow-user-to-pass-LDFLAGS-via-configure.patch: ed3c4d9c94b6f5ad6b018a59655ecc065c7ec2e2
 Unapplied:
   autofs-5.0.7-unbundle-NOTSTRIP-from-DEBUG-so-they-wont-depend-on-each-other.patch: 8d301ff8576ed131ee28baceb082e91f0a2ce998
   autofs-5.0.7-fix-compilation-of-lookup_ldap_c-without-sasl.patch: c57e87cc80adedea9fad33da31b08a71315f341a
