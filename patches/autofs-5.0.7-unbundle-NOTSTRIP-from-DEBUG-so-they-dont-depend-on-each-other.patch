@@ -1,5 +1,5 @@
 Bottom: e4b970cda4d669fb32c1691a9e5dd0699369cf9d
-Top:    c74f2156bf1e9d5ddff05afc138cb73ffbdf5a3b
+Top:    5608b28f262ba99d4ef9c543871d2ebb66e36144
 Author: Lan Yixun (dlan) <dennis.yxun@gmail.com>
 Date:   2013-07-24 14:10:52 +0800
 
@@ -13,6 +13,18 @@ Signed-off-by: Lan Yixun (dlan) <dennis.yxun@gmail.com>
 
 ---
 
+diff --git a/CHANGELOG b/CHANGELOG
+index 897a2b4..42ea627 100644
+--- a/CHANGELOG
++++ b/CHANGELOG
+@@ -64,6 +64,7 @@
+ - use compiler determined by configure instead of hard-coded ones.
+ - remove hard-coded STRIP variable.
+ - use LIBS for link libraries.
++- unbundle NOTSTRIP from DEBUG so they dont depend on each other.
+ 
+ 25/07/2012 autofs-5.0.7
+ =======================
 diff --git a/Makefile.rules b/Makefile.rules
 index fa53459..0754a00 100644
 --- a/Makefile.rules
