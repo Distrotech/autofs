@@ -1,6 +1,6 @@
 Version: 1
-Previous: 7851e2261a64e74e211b4a0eb86d4568cc9d8eb7
-Head: 2dd7596b53ce2162e1d8d8588957c50b06205b7b
+Previous: e8fc29d96cbaae7de63118d7eaae3ac06a8ed075
+Head: 3db4960ba51a59cdf6f682a8b9389228f12cc3d6
 Applied:
   autofs-5.0.7-dont-override-LDFLAGS-in-make-rules.patch: 259842ea95993d06d8343411a1a848881a79c82e
   autofs-5.0.7-fix-a-couple-of-compiler-warnings.patch: 768b8637fa12aa1e005de6999c845f06f48de0fd
@@ -12,8 +12,7 @@ Applied:
   autofs-5.0.7-add-missing-libtirpc-lib-to-mount_nfs.so-when-TIRPC-enabled.patch: 6468d668fa5263da750de21189df7fd86943d389
   autofs-5.0.7-use-compiler-determined-by-configure-instead-of-hard-coded-ones.patch: 124442d8778e85cf5f620904a798310040082cbf
   autofs-5.0.7-remove-hard-coded-STRIP-variable.patch: 019fd02b478cd389cda6c80b3fdbadcd6496a970
-  autofs-5.0.7-use-LIBS-for-link-libraries.patch: bb0aad11f96bcde2a8d78bbe7a6b8eb6321c62d4
-  refresh-temp: 2dd7596b53ce2162e1d8d8588957c50b06205b7b
+  autofs-5.0.7-use-LIBS-for-link-libraries.patch: 3db4960ba51a59cdf6f682a8b9389228f12cc3d6
 Unapplied:
   autofs-5.0.7-pthread-link-library-should-be-put-into-LIBS-not-LDFLAGS.patch: de55740bfc84a94bb8e73925fd33105c2a18ceb5
   autofs-5.0.7-library-should-be-passed-via-variable-LIBS-not-LDFLAGS.patch: e8e3b9f0f2438dfd850916692cec10c8846de7f4

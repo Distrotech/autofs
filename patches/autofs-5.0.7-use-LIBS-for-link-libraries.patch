@@ -1,5 +1,5 @@
 Bottom: 289d8bd380a87990cd1cc50667e6d395495c6d7e
-Top:    cd9261e8539de696ade81e58210f2e862c55d25c
+Top:    1d5023fb12a30490622c6c8c31e30ae8d05c3bd0
 Author: Ian Kent <ikent@redhat.com>
 Date:   2013-07-24 14:22:57 +0800
 
@@ -64,3 +64,29 @@ index 9e9d635..6604c9a 100644
  
  ifeq ($(LDAP), 1)
      CFLAGS += $(XML_FLAGS)
+diff --git a/modules/Makefile b/modules/Makefile
+index e61e338..452a16c 100644
+--- a/modules/Makefile
++++ b/modules/Makefile
+@@ -99,7 +99,7 @@ endif
+ #
+ lookup_hesiod.so: lookup_hesiod.c
+ 	$(CC) $(SOLDFLAGS) $(CFLAGS) $(HESIOD_FLAGS) -o lookup_hesiod.so \
+-		lookup_hesiod.c $(AUTOFS_LIB) $(LIBHESIOD) $(LIBRESOLV)
++		lookup_hesiod.c $(AUTOFS_LIB) $(LIBHESIOD) $(LIBRESOLV) $(LIBS)
+ 	$(STRIP) lookup_hesiod.so
+ 
+ cyrus-sasl.o: cyrus-sasl.c
+@@ -111,11 +111,11 @@ cyrus-sasl-extern.o: cyrus-sasl-extern.c
+ lookup_ldap.so: lookup_ldap.c dclist.o base64.o $(SASL_OBJ)
+ 	$(CC) $(SOLDFLAGS) $(CFLAGS) $(LDAP_FLAGS) -o lookup_ldap.so \
+ 		lookup_ldap.c dclist.o base64.o $(SASL_OBJ) \
+-		$(AUTOFS_LIB) $(LIBLDAP) $(LIBRESOLV)
++		$(AUTOFS_LIB) $(LIBLDAP) $(LIBRESOLV) $(LIBS)
+ 	$(STRIP) lookup_ldap.so
+ 
+ mount_nfs.so: mount_nfs.c replicated.o
+ 	$(CC) $(SOLDFLAGS) $(CFLAGS) -o mount_nfs.so \
+-		mount_nfs.c replicated.o $(AUTOFS_LIB) $(LIBNSL) $(TIRPCLIB)
++		mount_nfs.c replicated.o $(AUTOFS_LIB) $(LIBS)
+ 	$(STRIP) mount_nfs.so
