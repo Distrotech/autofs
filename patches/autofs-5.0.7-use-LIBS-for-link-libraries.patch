@@ -20,6 +20,8 @@ imported them but they should be easily recognisable.
   - pthread-link-library-should-be-put-into-LIBS-not-LDFLAGS
   - library-should-be-passed-via-variable-LIBS-not-LDFLAGS
   - accumulate-LIBS-variable-changes-otherwise-we-may-lose-early-settings
+  - allow-user-to-pass-LDFLAGS-via-configure
+- add LIBS to build rules, might fix DMALLOC build problem
 
 
 Signed-off-by: Lan Yixun (dlan) <dennis.yxun@gmail.com>
