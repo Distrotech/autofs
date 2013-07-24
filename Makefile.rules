@@ -49,12 +49,14 @@ LIBS += -lpthread
 
 ifdef TIRPCLIB
 CFLAGS += -I/usr/include/tirpc
-LDFLAGS += $(TIRPCLIB)
+LIBS += $(TIRPCLIB)
 endif
 
 ifdef DMALLOCLIB
-LDFLAGS += $(DMALLOCLIB)
+LIBS += $(DMALLOCLIB)
 endif
+
+LIBS += $(LIBNSL)
 
 # Standard rules
 
@@ -67,5 +69,5 @@ endif
 	$(CC) $(CFLAGS) -S $<
 
 .c.so:
-	$(CC) $(SOLDFLAGS) $(CFLAGS) -o $*.so $< $(AUTOFS_LIB) $(DMALLOCLIB) $(LIBNSL)
+	$(CC) $(SOLDFLAGS) $(CFLAGS) -o $*.so $< $(AUTOFS_LIB) $(LIBS)
 	$(STRIP) $*.so
