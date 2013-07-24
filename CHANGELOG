@@ -60,6 +60,7 @@
 - fix typo forced-shutdown should be force-shutdown.
 - fix hesiod check error and use correct $(LIBS) setting.
 - fix dead LDAP symbolic link when LDAP support is disabled.
+- add missing libtirpc lib to mount_nfs.so when TIRPC enabled.
 
 25/07/2012 autofs-5.0.7
 =======================
