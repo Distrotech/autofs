@@ -99,7 +99,7 @@ endif
 #
 lookup_hesiod.so: lookup_hesiod.c
 	$(CC) $(SOLDFLAGS) $(CFLAGS) $(HESIOD_FLAGS) -o lookup_hesiod.so \
-		lookup_hesiod.c $(AUTOFS_LIB) $(LIBHESIOD) $(LIBRESOLV)
+		lookup_hesiod.c $(AUTOFS_LIB) $(LIBHESIOD) $(LIBRESOLV) $(LIBS)
 	$(STRIP) lookup_hesiod.so
 
 cyrus-sasl.o: cyrus-sasl.c
@@ -111,11 +111,11 @@ cyrus-sasl-extern.o: cyrus-sasl-extern.c
 lookup_ldap.so: lookup_ldap.c dclist.o base64.o $(SASL_OBJ)
 	$(CC) $(SOLDFLAGS) $(CFLAGS) $(LDAP_FLAGS) -o lookup_ldap.so \
 		lookup_ldap.c dclist.o base64.o $(SASL_OBJ) \
-		$(AUTOFS_LIB) $(LIBLDAP) $(LIBRESOLV)
+		$(AUTOFS_LIB) $(LIBLDAP) $(LIBRESOLV) $(LIBS)
 	$(STRIP) lookup_ldap.so
 
 mount_nfs.so: mount_nfs.c replicated.o
 	$(CC) $(SOLDFLAGS) $(CFLAGS) -o mount_nfs.so \
-		mount_nfs.c replicated.o $(AUTOFS_LIB) $(LIBNSL) $(TIRPCLIB)
+		mount_nfs.c replicated.o $(AUTOFS_LIB) $(LIBS)
 	$(STRIP) mount_nfs.so
 
