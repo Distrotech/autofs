@@ -1,12 +1,12 @@
 Version: 1
-Previous: 2d3606925365e693b8c8ab600ad79b37aaec5a77
-Head: 48853f114d295b6d0b2eaf95ab49c35784b19610
+Previous: 3494079c88990ad6b5917f721baf40c57ec31174
+Head: dd177381bfd18fd2388c924419efd20262b0c426
 Applied:
   autofs-5.0.7-dont-override-LDFLAGS-in-make-rules.patch: 259842ea95993d06d8343411a1a848881a79c82e
   autofs-5.0.7-fix-a-couple-of-compiler-warnings.patch: 768b8637fa12aa1e005de6999c845f06f48de0fd
   autofs-5.0.7-add-after-sssd-dependency-to-unit-file.patch: 90f7bb7bd6f284067a386359d5bffa35aba21ee4
   autofs-5.0.7-dont-kick-state-machine-unless-ready.patch: 65e90275b5b48d0813f7be9cfbb342828a0359ff
-  autofs-5.0.7-fix-typo-forced-shutdown-should-be-force-shutdown.patch: 48853f114d295b6d0b2eaf95ab49c35784b19610
+  autofs-5.0.7-fix-typo-forced-shutdown-should-be-force-shutdown.patch: dd177381bfd18fd2388c924419efd20262b0c426
 Unapplied:
   autofs-5.0.7-fix-compilation-of-lookup_ldap_c-without-sasl.patch: 04ec4955cb77ff6c8064691a0118c7471a282c6b
   autofs-5.0.7-fix-dead-LDAP-symbolic-link-when-LDAP-support-is-disabled.patch: 48b18b4b9ed44594513499043735830a27820da4
