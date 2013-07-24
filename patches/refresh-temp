@@ -1,0 +1,22 @@
+Bottom: e0f28c08a9754b69cf6dd93747822a6e23ee20e7
+Top:    797b1fd2aad227cfa8e32dd2681791e8d7d53be1
+Author: Ian Kent <ikent@redhat.com>
+Date:   2013-07-24 15:43:35 +0800
+
+Refresh of autofs-5.0.7-dont-override-LDFLAGS-in-make-rules.patch
+
+---
+
+diff --git a/autofs.spec b/autofs.spec
+index b7c4904..bcc3831 100644
+--- a/autofs.spec
++++ b/autofs.spec
+@@ -76,7 +76,7 @@ inkludera n
+ %setup -q
+ echo %{version}-%{release} > .version
+ %if %{with_systemd}
+-  %define unitdir %{?_unitdir:/lib/systemd/system}
++  %define unitdir %{?_unitdir:/usr/lib/systemd/system}
+   %define systemd_configure_arg --with-systemd
+ %endif
+ %if %{with_libtirpc}
