@@ -1,6 +1,6 @@
 Version: 1
-Previous: 8c4569ddccd70e0da49c86e389757b94c553ce8b
-Head: f2ad088bc2b736187b12bb663f0311ce10745170
+Previous: 078c02035f810dcf0487099915d837060bc66354
+Head: b2b85d18f0ccdf41a8c3e9a2f95ff0fbfa8504be
 Applied:
   autofs-5.0.7-dont-override-LDFLAGS-in-make-rules.patch: 2e8251865c0ed6d91a97c107973a7eb75d3e131b
   autofs-5.0.7-fix-a-couple-of-compiler-warnings.patch: b8bdae4bfe855786de918c78eee228e4aabdab45
@@ -10,8 +10,8 @@ Applied:
   autofs-5.0.7-fix-hesiod-check-error-and-use-correct-LIBS-setting.patch: 2d03cc154b948ef70c856d2ea83ed416ac957c86
   autofs-5.0.7-fix-dead-LDAP-symbolic-link-when-LDAP-support-is-disabled.patch: f0df765f4d4d73ec87df0b395c9c25a707933275
   autofs-5.0.7-add-missing-libtirpc-lib-to-mount_nfs.so-when-TIRPC-enabled.patch: b2b85d18f0ccdf41a8c3e9a2f95ff0fbfa8504be
-  autofs-5.0.7-use-compiler-determined-by-configure-instead-of-hard-coded-ones.patch: f2ad088bc2b736187b12bb663f0311ce10745170
 Unapplied:
+  autofs-5.0.7-use-compiler-determined-by-configure-instead-of-hard-coded-ones.patch: f2ad088bc2b736187b12bb663f0311ce10745170
   autofs-5.0.7-remove-hard-coded-STRIP-variable.patch: 16848de3ed0b2aea71c5a84a0bfd0d8c5a4f7cd5
   autofs-5.0.7-use-LIBS-for-link-libraries.patch: f40a551062bc1ba57e8b0578dec4d7a44024fd0a
   autofs-5.0.7-unbundle-NOTSTRIP-from-DEBUG-so-they-wont-depend-on-each-other.patch: 26d8ad3a5262af206f29e467919009ecb0ddfcf7
