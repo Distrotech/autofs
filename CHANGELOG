@@ -61,6 +61,7 @@
 - fix hesiod check error and use correct $(LIBS) setting.
 - fix dead LDAP symbolic link when LDAP support is disabled.
 - fix compilation of lookup_ldap.c without sasl.
+- wait for master map available at start.
 
 25/07/2012 autofs-5.0.7
 =======================
