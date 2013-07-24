@@ -1,6 +1,6 @@
 Version: 1
-Previous: b5529121ac649d3221e22cbe0230eac9604f52ed
-Head: c1fc4a4c92082dcc0477104d518dbd1c4e59d776
+Previous: 0718ef63d3246207f6df31b973dd81b913cd106d
+Head: 9b58c9bb5b1940c6562bede6ddea7e28171b340a
 Applied:
   autofs-5.0.7-dont-override-LDFLAGS-in-make-rules.patch: 259842ea95993d06d8343411a1a848881a79c82e
   autofs-5.0.7-fix-a-couple-of-compiler-warnings.patch: 768b8637fa12aa1e005de6999c845f06f48de0fd
@@ -9,6 +9,7 @@ Applied:
   autofs-5.0.7-fix-typo-forced-shutdown-should-be-force-shutdown.patch: 882ffdbc656c24215919dedceea4944e3e8e2086
   autofs-5.0.7-fix-hesiod-check-error-and-use-correct-LIBS-setting.patch: eb2f4627b54f17020c5b2da57d1832f6bac5fb8a
   autofs-5.0.7-fix-dead-LDAP-symbolic-link-when-LDAP-support-is-disabled.patch: c1fc4a4c92082dcc0477104d518dbd1c4e59d776
+  refresh-temp: 9b58c9bb5b1940c6562bede6ddea7e28171b340a
 Unapplied:
   autofs-5.0.7-fix-compilation-of-lookup_ldap_c-without-sasl.patch: b107644f111c224ef22d101db9506b5504d94229
   autofs-5.0.5-wait-for-master-map-available-at-start.patch: 521b792b7f2ebc8ce8494235c7ca4d20aba3e0ee
