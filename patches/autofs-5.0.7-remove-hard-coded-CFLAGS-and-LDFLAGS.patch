@@ -1,0 +1,22 @@
+Bottom: 32322089b569cc61f22b2e08ffd7998c19e29e6e
+Top:    32322089b569cc61f22b2e08ffd7998c19e29e6e
+Author: Lan Yixun (dlan) <dennis.yxun@gmail.com>
+Date:   2013-07-24 13:56:47 +0800
+
+autofs-5.0.7 - remove hard-coded CFLAGS and LDFLAGS
+
+according to autoconf manual[1], build script should allow user override the CFLAGS, LDFLAGS
+varible (passed via ./configure). And actually, we should not directly use CFLAGS,
+LDFLAGS, but have to create another one (eg. AUTOFS_CFLAGS). FYI, see section "Variable: CFLAGS",
+the last paragraph.
+
+Here, I slightly modify the code so that we can still fallback to the default one.
+
+[1] http://www.gnu.org/savannah-checkouts/gnu/autoconf/manual/autoconf-2.69/html_node/Preset-Output-Variables.html#Preset-Output-Variables
+
+Signed-off-by: Lan Yixun (dlan) <dennis.yxun@gmail.com>
+
+
+---
+
+
