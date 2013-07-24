@@ -13,6 +13,7 @@ http://www.gnu.org/savannah-checkouts/gnu/autoconf/manual/autoconf-2.69/html_nod
 
 Edited by: Ian Kent <raven@themaw.net>
 - merge patches
+  - pthread-link-library-should-be-put-into-LIBS-not-LDFLAGS
 
 
 
