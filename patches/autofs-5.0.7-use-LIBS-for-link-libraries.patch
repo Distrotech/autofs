@@ -12,8 +12,12 @@ see the section "Variable: LDFLAGS" in:
 http://www.gnu.org/savannah-checkouts/gnu/autoconf/manual/autoconf-2.69/html_node/PreseOutput-Variables.html#Preset-Output-Variables
 
 Edited by: Ian Kent <raven@themaw.net>
+The variable usage changes for LDFLAGS and LIBS appear to be dependent
+on each other so merge them to try and ensure breakage if not all are
+used by someone.
 - merge patches
   - pthread-link-library-should-be-put-into-LIBS-not-LDFLAGS
+  - library-should-be-passed-via-variable-LIBS-not-LDFLAGS
 
 
 
