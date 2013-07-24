@@ -1,5 +1,5 @@
-Bottom: 87d8e1e280225dc51509235a1991d5d5dbc1ada9
-Top:    cd9261e8539de696ade81e58210f2e862c55d25c
+Bottom: d2f0d735f5ecda33fc0ecda155bb8f5130057038
+Top:    d2f0d735f5ecda33fc0ecda155bb8f5130057038
 Author: Lan Yixun (dlan) <dennis.yxun@gmail.com>
 Date:   2013-07-24 14:06:31 +0800
 
@@ -10,16 +10,4 @@ Signed-off-by: Lan Yixun (dlan) <dennis.yxun@gmail.com>
 
 ---
 
-diff --git a/daemon/Makefile b/daemon/Makefile
-index 9e9d635..6604c9a 100644
---- a/daemon/Makefile
-+++ b/daemon/Makefile
-@@ -20,7 +20,7 @@ CFLAGS += -DAUTOFS_FIFO_DIR=\"$(autofsfifodir)\"
- CFLAGS += -DAUTOFS_FLAG_DIR=\"$(autofsflagdir)\"
- CFLAGS += -DVERSION_STRING=\"$(version)\"
- LDFLAGS += -rdynamic
--LIBS = -ldl
-+LIBS += -ldl
- 
- ifeq ($(LDAP), 1)
-     CFLAGS += $(XML_FLAGS)
+
