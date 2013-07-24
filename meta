@@ -1,6 +1,6 @@
 Version: 1
-Previous: c973d95e9d9e209ca5e30e3d3113d080acbd4fc6
-Head: 322fd81e6c5794c9874c50128ac2af1fa2ccdae8
+Previous: 28a62026a1fa4c33af649b3b88ef066eaa92f70a
+Head: 45db1b975a6dc7f482e0f0b380320626acda0e23
 Applied:
   autofs-5.0.7-dont-override-LDFLAGS-in-make-rules.patch: 259842ea95993d06d8343411a1a848881a79c82e
   autofs-5.0.7-fix-a-couple-of-compiler-warnings.patch: 768b8637fa12aa1e005de6999c845f06f48de0fd
@@ -10,7 +10,6 @@ Applied:
   autofs-5.0.7-fix-hesiod-check-error-and-use-correct-LIBS-setting.patch: 1b1d41128ed24920b95eb395d3f5f44e108e2200
   autofs-5.0.7-fix-dead-LDAP-symbolic-link-when-LDAP-support-is-disabled.patch: cd60db3f95f4d6dbdf557db5be6656e18ef30d15
   autofs-5.0.7-add-missing-libtirpc-lib-to-mount_nfs.so-when-TIRPC-enabled.patch: 45db1b975a6dc7f482e0f0b380320626acda0e23
-  refresh-temp: 322fd81e6c5794c9874c50128ac2af1fa2ccdae8
 Unapplied:
   autofs-5.0.7-fix-compilation-of-lookup_ldap_c-without-sasl.patch: c57e87cc80adedea9fad33da31b08a71315f341a
   autofs-5.0.5-wait-for-master-map-available-at-start.patch: 521b792b7f2ebc8ce8494235c7ca4d20aba3e0ee
