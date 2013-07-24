@@ -1,6 +1,6 @@
 Version: 1
-Previous: 1dda0c6e636e0c657a1450d6816208b8e2a83443
-Head: 28e191c68fc95cd90815f398deff088bd1d65d0a
+Previous: 9184610f89aa19e5d86852da1c531ee00dac8602
+Head: f7d34f40753eb9ab14b0087b6d8c958c389bdb79
 Applied:
   autofs-5.0.7-dont-override-LDFLAGS-in-make-rules.patch: 2e8251865c0ed6d91a97c107973a7eb75d3e131b
   autofs-5.0.7-fix-a-couple-of-compiler-warnings.patch: b8bdae4bfe855786de918c78eee228e4aabdab45
@@ -15,8 +15,8 @@ Applied:
   autofs-5.0.7-remove-hard-coded-STRIP-variable.patch: 665bc33c70f1b9000c231ba2774fb1ffc6a3d8b4
   autofs-5.0.7-use-LIBS-for-link-libraries.patch: 3617ee681851cd761f72eff349634d11be5f899f
   autofs-5.0.7-unbundle-NOTSTRIP-from-DEBUG-so-they-wont-depend-on-each-other.patch: f7d34f40753eb9ab14b0087b6d8c958c389bdb79
-  autofs-5.0.5-wait-for-master-map-available-at-start.patch: 28e191c68fc95cd90815f398deff088bd1d65d0a
 Unapplied:
+  autofs-5.0.5-wait-for-master-map-available-at-start.patch: 28e191c68fc95cd90815f398deff088bd1d65d0a
   autofs-5.0.5-add-master-read-wait-option.patch: 05d9eb17fb1ec9418f236468875ad04b09b0546b
   autofs-5.0.7-add-host-map-reload-option.patch: 11d23f7a74b2f33e5011ba29f64ae1b4956acb09
   autofs-5.0.7-use-MS_UNBINDABLE-for-autofs-mounts.patch: 1f538797c99b2ce0524c191bc422416962219292
