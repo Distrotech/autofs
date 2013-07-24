@@ -1,5 +1,5 @@
 Bottom: 9cea3990b723d805583c621d3b0ae1a1f7d4263c
-Top:    c2dd5b7a07ba2b432c958b3ddcd7bc00ac94e99a
+Top:    e0f28c08a9754b69cf6dd93747822a6e23ee20e7
 Author: Ian Kent <ikent@redhat.com>
 Date:   2013-07-12 12:14:33 +0800
 
@@ -46,3 +46,15 @@ index f2ba386..6b5b2bd 100644
  STRIP     = strip --strip-debug
  endif
  endif
+diff --git a/autofs.spec b/autofs.spec
+index a768e44..b7c4904 100644
+--- a/autofs.spec
++++ b/autofs.spec
+@@ -85,6 +85,7 @@ echo %{version}-%{release} > .version
+ 
+ %build
+ CFLAGS="$RPM_OPT_FLAGS -Wall" \
++LDFLAGS="-Wl,-z,now" \
+ ./configure --libdir=%{_libdir} \
+ 	--disable-mount-locking \
+ 	--enable-ignore-busy \
