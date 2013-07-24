@@ -363,7 +363,7 @@ fi
 #
 # Enable forced shutdown on USR1 signal (unlink umounts all mounts).
 #
-AC_ARG_ENABLE(forced-shutdown,
+AC_ARG_ENABLE(force-shutdown,
 [  --enable-force-shutdown enable USR1 signal to force unlink umount of any
 			  busy mounts during shutdown],,
 	enableval=no)
