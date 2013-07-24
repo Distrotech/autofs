@@ -1,5 +1,5 @@
-Bottom: 3d5acd01b190a9a227e50dfd3209e25287591137
-Top:    eefdcb3eb81f8d02faa90fdf07ad6bd8bfd41a6e
+Bottom: aa49ac5bbe853bbc7d02c6bd6f11f4ca37041752
+Top:    aa49ac5bbe853bbc7d02c6bd6f11f4ca37041752
 Author: Ian Kent <ikent@redhat.com>
 Date:   2013-07-23 17:49:02 +0800
 
@@ -14,29 +14,4 @@ a dead link.
 
 ---
 
-diff --git a/CHANGELOG b/CHANGELOG
-index 2734fe3..b255819 100644
---- a/CHANGELOG
-+++ b/CHANGELOG
-@@ -56,6 +56,7 @@
- - don't override LDFLAGS in make rules.
- - fix a couple of compiler warnings.
- - add after sssd dependency to unit file.
-+- fix dead LDAP symbolic link when LDAP support is disabled.
- 
- 25/07/2012 autofs-5.0.7
- =======================
-diff --git a/modules/Makefile b/modules/Makefile
-index c5deb24..4bb1096 100644
---- a/modules/Makefile
-+++ b/modules/Makefile
-@@ -74,7 +74,9 @@ install: all
- 	-rm -f $(INSTALLROOT)$(autofslibdir)/mount_smbfs.so
- 	ln -fs lookup_file.so $(INSTALLROOT)$(autofslibdir)/lookup_files.so
- 	ln -fs lookup_yp.so $(INSTALLROOT)$(autofslibdir)/lookup_nis.so
-+ifeq ($(SASL), 1)
- 	ln -fs lookup_ldap.so $(INSTALLROOT)$(autofslibdir)/lookup_ldaps.so
-+endif
- 	ln -fs mount_nfs.so $(INSTALLROOT)$(autofslibdir)/mount_nfs4.so
- ifeq ($(EXT2FS), 1)
-  ifeq ($(EXT3FS), 1)
+
