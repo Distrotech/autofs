@@ -1,5 +1,5 @@
 Bottom: 17d1b6948ed775ed50eb9a5b603ab617e9d0aa90
-Top:    42c07b00640f3d7eac1bec28680111bdd911d89a
+Top:    e4b970cda4d669fb32c1691a9e5dd0699369cf9d
 Author: Lan Yixun (dlan) <dennis.yxun@gmail.com>
 Date:   2013-07-24 14:22:57 +0800
 
@@ -29,6 +29,18 @@ Signed-off-by: Lan Yixun (dlan) <dennis.yxun@gmail.com>
 
 ---
 
+diff --git a/CHANGELOG b/CHANGELOG
+index a0af868..897a2b4 100644
+--- a/CHANGELOG
++++ b/CHANGELOG
+@@ -63,6 +63,7 @@
+ - add missing libtirpc lib to mount_nfs.so when TIRPC enabled.
+ - use compiler determined by configure instead of hard-coded ones.
+ - remove hard-coded STRIP variable.
++- use LIBS for link libraries.
+ 
+ 25/07/2012 autofs-5.0.7
+ =======================
 diff --git a/Makefile.rules b/Makefile.rules
 index d00ba3c..fa53459 100644
 --- a/Makefile.rules
