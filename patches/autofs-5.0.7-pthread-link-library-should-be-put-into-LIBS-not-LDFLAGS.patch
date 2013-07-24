@@ -1,5 +1,5 @@
-Bottom: 289d8bd380a87990cd1cc50667e6d395495c6d7e
-Top:    0172c89cad773f0ffa018794dc93425c51f82f23
+Bottom: d2f0d735f5ecda33fc0ecda155bb8f5130057038
+Top:    d2f0d735f5ecda33fc0ecda155bb8f5130057038
 Author: Lan Yixun (dlan) <dennis.yxun@gmail.com>
 Date:   2013-07-24 14:01:43 +0800
 
@@ -17,16 +17,4 @@ Signed-off-by: Lan Yixun (dlan) <dennis.yxun@gmail.com>
 
 ---
 
-diff --git a/Makefile.rules b/Makefile.rules
-index d00ba3c..b4fab4c 100644
---- a/Makefile.rules
-+++ b/Makefile.rules
-@@ -45,7 +45,7 @@ LD        ?= ld
- SOLDFLAGS = -shared
- 
- CFLAGS += -D_REENTRANT -D_FILE_OFFSET_BITS=64
--LDFLAGS += -lpthread
-+LIBS += -lpthread
- 
- ifdef TIRPCLIB
- CFLAGS += -I/usr/include/tirpc
+
