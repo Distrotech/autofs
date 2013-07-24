@@ -65,6 +65,7 @@
 - add missing libtirpc lib to mount_nfs.so when TIRPC enabled.
 - use compiler determined by configure instead of hard-coded ones.
 - remove hard-coded STRIP variable.
+- use LIBS for link libraries.
 
 25/07/2012 autofs-5.0.7
 =======================
