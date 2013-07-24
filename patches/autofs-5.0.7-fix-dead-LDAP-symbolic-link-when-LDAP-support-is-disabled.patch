@@ -1,5 +1,5 @@
-Bottom: 8eff07ef1d1588bcbfc276704d7617ed9d643db6
-Top:    7ccafe8ab211fe0f57fe489d6d3d8f7a455d3a58
+Bottom: 28c8382e4cb651966a554884d99582318f0d4173
+Top:    27df1135de7bcc9472c9047db6513e1d8daf4676
 Author: Lan Yixun (dlan) <dennis.yxun@gmail.com>
 Date:   2013-07-23 17:49:02 +0800
 
@@ -13,12 +13,12 @@ a dead link.
 ---
 
 diff --git a/CHANGELOG b/CHANGELOG
-index 60af0fa..19768fb 100644
+index c328cce..f471f58 100644
 --- a/CHANGELOG
 +++ b/CHANGELOG
-@@ -59,6 +59,7 @@
- - dont start readmap unless ready.
+@@ -60,6 +60,7 @@
  - fix typo forced-shutdown should be force-shutdown.
+ - fix hesiod check error and use correct $(LIBS) setting.
  - fix compilation of lookup_ldap.c without sasl.
 +- fix dead LDAP symbolic link when LDAP support is disabled.
  
