@@ -1,5 +1,5 @@
 Bottom: 24a56ae533292305bd5cbfc8ec538375b8872565
-Top:    3ec352561a8dad6e458ba05cbeb2504d510368d1
+Top:    d9b582cc1e1bdbef59cc92c157df066add486c60
 Author: Lan Yixun (dlan) <dennis.yxun@gmail.com>
 Date:   2013-07-24 09:58:20 +0800
 
@@ -15,6 +15,18 @@ $(LIBS) solve this problem.
 
 ---
 
+diff --git a/CHANGELOG b/CHANGELOG
+index 5751805..3c829cf 100644
+--- a/CHANGELOG
++++ b/CHANGELOG
+@@ -58,6 +58,7 @@
+ - add after sssd dependency to unit file.
+ - dont start readmap unless ready.
+ - fix typo forced-shutdown should be force-shutdown.
++- fix hesiod check error and use correct $(LIBS) setting.
+ 
+ 25/07/2012 autofs-5.0.7
+ =======================
 diff --git a/aclocal.m4 b/aclocal.m4
 index c5de159..110d106 100644
 --- a/aclocal.m4
