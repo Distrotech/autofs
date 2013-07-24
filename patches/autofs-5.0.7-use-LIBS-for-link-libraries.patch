@@ -11,6 +11,9 @@ quote:
 see the section "Variable: LDFLAGS" in:
 http://www.gnu.org/savannah-checkouts/gnu/autoconf/manual/autoconf-2.69/html_node/PreseOutput-Variables.html#Preset-Output-Variables
 
+Edited by: Ian Kent <raven@themaw.net>
+- merge patches
+
 
 
 Signed-off-by: Lan Yixun (dlan) <dennis.yxun@gmail.com>
