@@ -1,0 +1,42 @@
+Bottom: 88a51f3a0e9b57c21d9136d6f6041cc5e0b895b9
+Top:    c768b1bc6425020e296719eb82f13d1bd757ecac
+Author: Lan Yixun (dlan) <dennis.yxun@gmail.com>
+Date:   2013-07-24 14:10:52 +0800
+
+autofs-5.0.7 - unbundle NOTSTRIP from DEBUG so they wont depend on each other
+
+Gentoo build system expects unstripped elf image from the build system,
+seperate this, will allow us to better control the strip operation.
+
+Signed-off-by: Lan Yixun (dlan) <dennis.yxun@gmail.com>
+
+
+---
+
+diff --git a/Makefile.rules b/Makefile.rules
+index fa53459..0754a00 100644
+--- a/Makefile.rules
++++ b/Makefile.rules
+@@ -25,18 +25,16 @@ endif
+ ifdef DEBUG
+ CFLAGS    ?= -g -Wall -DDEBUG
+ LDFLAGS   ?= -g
+-STRIP     ?= :
+ else
++CFLAGS    ?= -O2 -Wall
++LDFLAGS   ?= -s
++endif
++
+ ifdef DONTSTRIP
+-CFLAGS    ?= -O2 -g
+-LDFLAGS   ?= -g
+ STRIP     ?= :
+ else
+-CFLAGS    ?= -O2 -Wall
+-LDFLAGS   ?= -s
+ STRIP     ?= strip --strip-debug
+ endif
+-endif
+ 
+ CC        ?= gcc
+ CXX       ?= g++
