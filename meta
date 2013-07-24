@@ -1,6 +1,6 @@
 Version: 1
-Previous: 2b02efcc1099b1041bb866ad99f4b4fcfa6d7e44
-Head: b7760ab351a8643525d9bcab63572ef1af625a16
+Previous: c700eee75982df18e111cca93ab7068f54181fe1
+Head: 23c20cefdb164b581424b5fe6ba5037ef7e7d9e8
 Applied:
   autofs-5.0.7-dont-override-LDFLAGS-in-make-rules.patch: 2e8251865c0ed6d91a97c107973a7eb75d3e131b
   autofs-5.0.7-fix-a-couple-of-compiler-warnings.patch: b8bdae4bfe855786de918c78eee228e4aabdab45
@@ -13,6 +13,7 @@ Applied:
   autofs-5.0.7-use-compiler-determined-by-configure-instead-of-hard-coded-ones.patch: 498369277a6bb8ed42f41078bdad68dba56a397e
   autofs-5.0.7-remove-hard-coded-STRIP-variable.patch: c9e6b415191b7f4be8a19b4fec42220fec8912b5
   autofs-5.0.7-use-LIBS-for-link-libraries.patch: b7760ab351a8643525d9bcab63572ef1af625a16
+  refresh-temp: 23c20cefdb164b581424b5fe6ba5037ef7e7d9e8
 Unapplied:
   autofs-5.0.7-unbundle-NOTSTRIP-from-DEBUG-so-they-wont-depend-on-each-other.patch: 72b3b6cc5a291cc7d5681b512ab1712e2f1d2262
   autofs-5.0.7-fix-compilation-of-lookup_ldap_c-without-sasl.patch: 4074970c0794651a192e4153e9a43afb0e8dc682
