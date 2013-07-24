@@ -1,0 +1,21 @@
+Bottom: b29030ff74d84a7b1fd7cc49645784e7c838791f
+Top:    17d1b6948ed775ed50eb9a5b603ab617e9d0aa90
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-07-24 16:25:13 +0800
+
+Refresh of autofs-5.0.7-remove-hard-coded-STRIP-variable.patch
+
+---
+
+diff --git a/CHANGELOG b/CHANGELOG
+index ebabf21..a0af868 100644
+--- a/CHANGELOG
++++ b/CHANGELOG
+@@ -62,6 +62,7 @@
+ - fix dead LDAP symbolic link when LDAP support is disabled.
+ - add missing libtirpc lib to mount_nfs.so when TIRPC enabled.
+ - use compiler determined by configure instead of hard-coded ones.
++- remove hard-coded STRIP variable.
+ 
+ 25/07/2012 autofs-5.0.7
+ =======================
