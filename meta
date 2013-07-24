@@ -1,6 +1,6 @@
 Version: 1
-Previous: 561d965248457b98008ed8b08f954b5b1fe50ee6
-Head: b7c544dd7978f97da81a9410b50169bbdb234918
+Previous: ea77ef09d98b0a47d95e48f2e74bcd2eaeca0a91
+Head: 4edb1a058c46cbd767c7b7a676d7f4287194549d
 Applied:
   autofs-5.0.7-dont-override-LDFLAGS-in-make-rules.patch: 259842ea95993d06d8343411a1a848881a79c82e
   autofs-5.0.7-fix-a-couple-of-compiler-warnings.patch: 768b8637fa12aa1e005de6999c845f06f48de0fd
@@ -9,6 +9,7 @@ Applied:
   autofs-5.0.7-fix-typo-forced-shutdown-should-be-force-shutdown.patch: 48853f114d295b6d0b2eaf95ab49c35784b19610
   autofs-5.0.7-fix-compilation-of-lookup_ldap_c-without-sasl.patch: 04ec4955cb77ff6c8064691a0118c7471a282c6b
   autofs-5.0.7-fix-dead-LDAP-symbolic-link-when-LDAP-support-is-disabled.patch: b7c544dd7978f97da81a9410b50169bbdb234918
+  refresh-temp: 4edb1a058c46cbd767c7b7a676d7f4287194549d
 Unapplied:
   autofs-5.0.5-wait-for-master-map-available-at-start.patch: 521b792b7f2ebc8ce8494235c7ca4d20aba3e0ee
   autofs-5.0.5-add-master-read-wait-option.patch: 4673bddae0846a2f2486d65590f804773876df74
