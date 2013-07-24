@@ -12,6 +12,9 @@ $(LIBS) solve this problem.
 1) convert "char *" -> "void *" to fix the compile warning
 2) put "-lhesiod -lresolv" into $(LIBS), not into $(LDFLAGS), otherwise we got link error
 
+Edited by: Ian Kent <raven@themaw.net>
+-
+
 
 ---
 
