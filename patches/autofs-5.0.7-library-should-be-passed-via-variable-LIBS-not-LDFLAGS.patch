@@ -1,5 +1,5 @@
-Bottom: 0172c89cad773f0ffa018794dc93425c51f82f23
-Top:    87d8e1e280225dc51509235a1991d5d5dbc1ada9
+Bottom: d2f0d735f5ecda33fc0ecda155bb8f5130057038
+Top:    d2f0d735f5ecda33fc0ecda155bb8f5130057038
 Author: Lan Yixun (dlan) <dennis.yxun@gmail.com>
 Date:   2013-07-24 14:02:57 +0800
 
@@ -10,32 +10,4 @@ Signed-off-by: Lan Yixun (dlan) <dennis.yxun@gmail.com>
 
 ---
 
-diff --git a/Makefile.rules b/Makefile.rules
-index b4fab4c..c431eca 100644
---- a/Makefile.rules
-+++ b/Makefile.rules
-@@ -49,13 +49,15 @@ LIBS += -lpthread
- 
- ifdef TIRPCLIB
- CFLAGS += -I/usr/include/tirpc
--LDFLAGS += $(TIRPCLIB)
-+LIBS += $(TIRPCLIB)
- endif
- 
- ifdef DMALLOCLIB
--LDFLAGS += $(DMALLOCLIB)
-+LIBS += $(DMALLOCLIB)
- endif
- 
-+LIBS += $(LIBNSL)
-+
- # Standard rules
- 
- .SUFFIXES: .c .o .s .so
-@@ -67,5 +69,5 @@ endif
- 	$(CC) $(CFLAGS) -S $<
- 
- .c.so:
--	$(CC) $(SOLDFLAGS) $(CFLAGS) -o $*.so $< $(AUTOFS_LIB) $(DMALLOCLIB) $(LIBNSL)
-+	$(CC) $(SOLDFLAGS) $(CFLAGS) -o $*.so $< $(AUTOFS_LIB) $(LIBS)
- 	$(STRIP) $*.so
+
