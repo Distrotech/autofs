@@ -1,5 +1,5 @@
 Bottom: 289d8bd380a87990cd1cc50667e6d395495c6d7e
-Top:    87d8e1e280225dc51509235a1991d5d5dbc1ada9
+Top:    cd9261e8539de696ade81e58210f2e862c55d25c
 Author: Ian Kent <ikent@redhat.com>
 Date:   2013-07-24 14:22:57 +0800
 
@@ -51,3 +51,16 @@ index d00ba3c..c431eca 100644
 -	$(CC) $(SOLDFLAGS) $(CFLAGS) -o $*.so $< $(AUTOFS_LIB) $(DMALLOCLIB) $(LIBNSL)
 +	$(CC) $(SOLDFLAGS) $(CFLAGS) -o $*.so $< $(AUTOFS_LIB) $(LIBS)
  	$(STRIP) $*.so
+diff --git a/daemon/Makefile b/daemon/Makefile
+index 9e9d635..6604c9a 100644
+--- a/daemon/Makefile
++++ b/daemon/Makefile
+@@ -20,7 +20,7 @@ CFLAGS += -DAUTOFS_FIFO_DIR=\"$(autofsfifodir)\"
+ CFLAGS += -DAUTOFS_FLAG_DIR=\"$(autofsflagdir)\"
+ CFLAGS += -DVERSION_STRING=\"$(version)\"
+ LDFLAGS += -rdynamic
+-LIBS = -ldl
++LIBS += -ldl
+ 
+ ifeq ($(LDAP), 1)
+     CFLAGS += $(XML_FLAGS)
