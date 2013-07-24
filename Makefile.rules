@@ -38,10 +38,10 @@ STRIP     = strip --strip-debug
 endif
 endif
 
-CC        = gcc
-CXX       = g++
-CXXFLAGS  = $(CFLAGS)
-LD        = ld
+CC        ?= gcc
+CXX       ?= g++
+CXXFLAGS  ?= $(CFLAGS)
+LD        ?= ld
 SOLDFLAGS = -shared
 
 CFLAGS += -D_REENTRANT -D_FILE_OFFSET_BITS=64
