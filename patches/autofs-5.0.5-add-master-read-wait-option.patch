@@ -1,5 +1,5 @@
-Bottom: 8a46f0fc056b1350d828e278d9f34a52e1bc2ebf
-Top:    4a4ef7bc44a35c32d7baddbed961d401730fe7ac
+Bottom: 371dba85f084e1e8629adb578c0125e8282aed4f
+Top:    f7e911150f9498bea8e75332f8e2399ae2148bf1
 Author: Ian Kent <raven@themaw.net>
 Date:   2011-03-07 13:04:01 +0800
 
@@ -12,22 +12,22 @@ wait for the master map to become available at program start.
 ---
 
 diff --git a/CHANGELOG b/CHANGELOG
-index f8a8ceb..f5aa287 100644
+index 5b5296c..65b41c9 100644
 --- a/CHANGELOG
 +++ b/CHANGELOG
-@@ -50,6 +50,7 @@
- - fix fix map entry duplicate offset detection.
- - probe each nfs version in turn for singleton mounts.
+@@ -62,6 +62,7 @@
+ - fix dead LDAP symbolic link when LDAP support is disabled.
+ - fix compilation of lookup_ldap.c without sasl.
  - wait for master map available at start.
 +- add master read wait option.
  
  25/07/2012 autofs-5.0.7
  =======================
 diff --git a/daemon/automount.c b/daemon/automount.c
-index 8c497c9..e8a3984 100644
+index 502608c..cce6e3f 100644
 --- a/daemon/automount.c
 +++ b/daemon/automount.c
-@@ -1955,9 +1955,10 @@ int main(int argc, char *argv[])
+@@ -1956,9 +1956,10 @@ int main(int argc, char *argv[])
  	unsigned ghost, logging, daemon_check;
  	unsigned dumpmaps, foreground, have_global_options;
  	unsigned master_read;
@@ -39,7 +39,7 @@ index 8c497c9..e8a3984 100644
  	static const struct option long_options[] = {
  		{"help", 0, 0, 'h'},
  		{"pid-file", 1, 0, 'p'},
-@@ -1974,6 +1975,7 @@ int main(int argc, char *argv[])
+@@ -1975,6 +1976,7 @@ int main(int argc, char *argv[])
  		{"set-log-priority", 1, 0, 'l'},
  		{"dont-check-daemon", 0, 0, 'C'},
  		{"force", 0, 0, 'F'},
@@ -47,7 +47,7 @@ index 8c497c9..e8a3984 100644
  		{0, 0, 0, 0}
  	};
  
-@@ -1994,6 +1996,7 @@ int main(int argc, char *argv[])
+@@ -1995,6 +1997,7 @@ int main(int argc, char *argv[])
  	nfs_mount_uses_string_options = check_nfs_mount_version(&vers, &check);
  
  	kpkt_len = get_kpkt_len();
@@ -55,7 +55,7 @@ index 8c497c9..e8a3984 100644
  	timeout = defaults_get_timeout();
  	ghost = defaults_get_browse_mode();
  	logging = defaults_get_logging();
-@@ -2053,6 +2056,10 @@ int main(int argc, char *argv[])
+@@ -2054,6 +2057,10 @@ int main(int argc, char *argv[])
  			dumpmaps = 1;
  			break;
  
@@ -141,7 +141,7 @@ index 7907ffa..80a560d 100644
  Set the default timeout for caching failed key lookups (program default
  60). If the equivalent command line option is given it will override this
 diff --git a/man/automount.8 b/man/automount.8
-index 7cc32c5..fec2905 100644
+index 844b876..e6d610b 100644
 --- a/man/automount.8
 +++ b/man/automount.8
 @@ -34,6 +34,10 @@ Set the global minimum timeout, in seconds, until directories
