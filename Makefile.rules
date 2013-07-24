@@ -25,16 +25,16 @@ endif
 ifdef DEBUG
 CFLAGS    ?= -g -Wall -DDEBUG
 LDFLAGS   ?= -g
-STRIP     = :
+STRIP     ?= :
 else
 ifdef DONTSTRIP
 CFLAGS    ?= -O2 -g
 LDFLAGS   ?= -g
-STRIP     = :
+STRIP     ?= :
 else
 CFLAGS    ?= -O2 -Wall
 LDFLAGS   ?= -s
-STRIP     = strip --strip-debug
+STRIP     ?= strip --strip-debug
 endif
 endif
 
