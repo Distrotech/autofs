@@ -5,7 +5,8 @@ Date:   2013-07-12 12:14:33 +0800
 
 autofs-5.0.7 - don't override LDFLAGS in make rules
 
-Ensure that externally defined LDFLAGS is not overridden.
+Ensure that externally defined LDFLAGS is not overridden and ensure
+binary is linked as RELRO in tar spec file.
 
 
 ---
