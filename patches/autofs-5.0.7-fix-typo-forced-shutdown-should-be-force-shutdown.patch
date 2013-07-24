@@ -1,0 +1,34 @@
+Bottom: 61e055bd223ebcf4c4257e9eb8e5ae5bb58a1cf3
+Top:    aa49ac5bbe853bbc7d02c6bd6f11f4ca37041752
+Author: Ian Kent <ikent@redhat.com>
+Date:   2013-07-24 09:35:26 +0800
+
+From "Lan Yixun (dlan)" <dennis.yxun@gmail.com>
+
+autofs-5.0.7 - fix typo forced-shutdown should be force-shutdown
+
+This will confuse people when they find what shows with "./configure --help"
+is different from what is actually used.
+
+edit: imk
+Description edited by me.
+end: imk
+
+Signed-off-by: Lan Yixun (dlan) <dennis.yxun@gmail.com>
+
+
+---
+
+diff --git a/configure.in b/configure.in
+index 559045a..0013a39 100644
+--- a/configure.in
++++ b/configure.in
+@@ -363,7 +363,7 @@ fi
+ #
+ # Enable forced shutdown on USR1 signal (unlink umounts all mounts).
+ #
+-AC_ARG_ENABLE(forced-shutdown,
++AC_ARG_ENABLE(force-shutdown,
+ [  --enable-force-shutdown enable USR1 signal to force unlink umount of any
+ 			  busy mounts during shutdown],,
+ 	enableval=no)
