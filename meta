@@ -1,12 +1,13 @@
 Version: 1
-Previous: c5e86857bf3b21e42bab215951462a201a3a2c3a
-Head: 882ffdbc656c24215919dedceea4944e3e8e2086
+Previous: f266aa205deaa487031451932c4e7638148f7342
+Head: d5447f78876ae3d11a427072a4e8805e543cbd5f
 Applied:
   autofs-5.0.7-dont-override-LDFLAGS-in-make-rules.patch: 259842ea95993d06d8343411a1a848881a79c82e
   autofs-5.0.7-fix-a-couple-of-compiler-warnings.patch: 768b8637fa12aa1e005de6999c845f06f48de0fd
   autofs-5.0.7-add-after-sssd-dependency-to-unit-file.patch: 90f7bb7bd6f284067a386359d5bffa35aba21ee4
   autofs-5.0.7-dont-kick-state-machine-unless-ready.patch: 65e90275b5b48d0813f7be9cfbb342828a0359ff
   autofs-5.0.7-fix-typo-forced-shutdown-should-be-force-shutdown.patch: 882ffdbc656c24215919dedceea4944e3e8e2086
+  refresh-temp: d5447f78876ae3d11a427072a4e8805e543cbd5f
 Unapplied:
   autofs-5.0.7-fix-hesiod-check-error-and-use-correct-LIBS-setting.patch: 275a84ed3e19b76d1265ee0bfb3e1246bac2c438
   autofs-5.0.7-fix-dead-LDAP-symbolic-link-when-LDAP-support-is-disabled.patch: 1fae58be8dbe80d92362401a1640519f49ab9e9d
