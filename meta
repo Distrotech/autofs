@@ -1,6 +1,6 @@
 Version: 1
-Previous: 8c0bf86e4ac00989f2101b01589c19c4fc8fc719
-Head: 79a8adbebf829ee51792b49eb906ce2f64026060
+Previous: 3ed0b3f4ddf45d780c4adb38691ce4fd42c78987
+Head: c907ccbe934537708d9d329e8bd5c320add391e7
 Applied:
   autofs-5.0.7-dont-override-LDFLAGS-in-make-rules.patch: 259842ea95993d06d8343411a1a848881a79c82e
   autofs-5.0.7-fix-a-couple-of-compiler-warnings.patch: 768b8637fa12aa1e005de6999c845f06f48de0fd
@@ -12,7 +12,7 @@ Applied:
   autofs-5.0.7-add-missing-libtirpc-lib-to-mount_nfs.so-when-TIRPC-enabled.patch: 6468d668fa5263da750de21189df7fd86943d389
   autofs-5.0.7-use-compiler-determined-by-configure-instead-of-hard-coded-ones.patch: 124442d8778e85cf5f620904a798310040082cbf
   autofs-5.0.7-remove-hard-coded-STRIP-variable.patch: 019fd02b478cd389cda6c80b3fdbadcd6496a970
-  autofs-5.0.7-use-LIBS-for-link-libraries.patch: 79a8adbebf829ee51792b49eb906ce2f64026060
+  autofs-5.0.7-use-LIBS-for-link-libraries.patch: c907ccbe934537708d9d329e8bd5c320add391e7
 Unapplied:
   autofs-5.0.7-unbundle-NOTSTRIP-from-DEBUG-so-they-wont-depend-on-each-other.patch: 8d301ff8576ed131ee28baceb082e91f0a2ce998
   autofs-5.0.7-fix-compilation-of-lookup_ldap_c-without-sasl.patch: c57e87cc80adedea9fad33da31b08a71315f341a
