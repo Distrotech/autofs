@@ -1,0 +1,40 @@
+Bottom: ae0de6e8b6c6c80010feaf805c4af11cf36f8552
+Top:    6b5bfecd8370c4c95788b3fd7c4ab7f00f9e0902
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-07-25 10:13:01 +0800
+
+Refresh of autofs-5.0.7-fix-compilation-of-lookup_ldap_c-without-sasl.patch
+
+---
+
+diff --git a/modules/lookup_ldap.c b/modules/lookup_ldap.c
+index 7648a56..2eafa52 100644
+--- a/modules/lookup_ldap.c
++++ b/modules/lookup_ldap.c
+@@ -185,9 +185,9 @@ int unbind_ldap_connection(unsigned logopt, LDAP *ldap, struct lookup_context *c
+ {
+ 	int rv;
+ 
+-#ifdef WITH_SASL
+ 	if (ctxt->use_tls == LDAP_TLS_RELEASE)
+ 		ctxt->use_tls = LDAP_TLS_INIT;
++#ifdef WITH_SASL
+ 	autofs_sasl_unbind(ctxt);
+ #endif
+ 
+@@ -245,7 +245,6 @@ LDAP *init_ldap_connection(unsigned logopt, const char *uri, struct lookup_conte
+ 		info(logopt, MODPREFIX "failed to set connection timeout to %d",
+ 		     net_timeout.tv_sec);
+ 
+-#ifdef WITH_SASL
+ 	if (ctxt->use_tls) {
+ 		if (ctxt->version == 2) {
+ 			if (ctxt->tls_required) {
+@@ -274,7 +273,6 @@ LDAP *init_ldap_connection(unsigned logopt, const char *uri, struct lookup_conte
+ 		}
+ 		ctxt->use_tls = LDAP_TLS_RELEASE;
+ 	}
+-#endif
+ 
+ 	return ldap;
+ }
