@@ -1,5 +1,5 @@
-Bottom: ea7cfef0608da39aabadcb60ce303e9d3119c738
-Top:    6b5bfecd8370c4c95788b3fd7c4ab7f00f9e0902
+Bottom: bead196f666fdbeffffd436af56d14d344d83f80
+Top:    e9731220dc88a3d073f7178c9a08e98986b6cadd
 Author: Dustin Polke <DuPol@gmx.de>
 Date:   2012-05-15 11:28:27 +0800
 
@@ -58,7 +58,7 @@ index 9a4ce73..f34c029 100644
  #define LDAP_AUTH_USESIMPLE	0x0008
  
 diff --git a/lib/Makefile b/lib/Makefile
-index 5418009..4a5b712 100644
+index 314779b..518b483 100644
 --- a/lib/Makefile
 +++ b/lib/Makefile
 @@ -24,6 +24,10 @@ CFLAGS += -I../include -fPIC -D_GNU_SOURCE
