@@ -1,5 +1,5 @@
 Bottom: ea7cfef0608da39aabadcb60ce303e9d3119c738
-Top:    ae0de6e8b6c6c80010feaf805c4af11cf36f8552
+Top:    6b5bfecd8370c4c95788b3fd7c4ab7f00f9e0902
 Author: Dustin Polke <DuPol@gmx.de>
 Date:   2012-05-15 11:28:27 +0800
 
@@ -92,7 +92,7 @@ index de01ebd..8610783 100644
  endif
  
 diff --git a/modules/lookup_ldap.c b/modules/lookup_ldap.c
-index a2bfafd..7648a56 100644
+index a2bfafd..2eafa52 100644
 --- a/modules/lookup_ldap.c
 +++ b/modules/lookup_ldap.c
 @@ -66,6 +66,7 @@ struct ldap_search_params {
@@ -111,7 +111,34 @@ index a2bfafd..7648a56 100644
  
  #ifndef HAVE_LDAP_CREATE_PAGE_CONTROL
  int ldap_create_page_control(LDAP *ldap, ber_int_t pagesize,
-@@ -585,10 +587,12 @@ static LDAP *do_connect(unsigned logopt, const char *uri, struct lookup_context
+@@ -183,9 +185,9 @@ int unbind_ldap_connection(unsigned logopt, LDAP *ldap, struct lookup_context *c
+ {
+ 	int rv;
+ 
+-#ifdef WITH_SASL
+ 	if (ctxt->use_tls == LDAP_TLS_RELEASE)
+ 		ctxt->use_tls = LDAP_TLS_INIT;
++#ifdef WITH_SASL
+ 	autofs_sasl_unbind(ctxt);
+ #endif
+ 
+@@ -243,7 +245,6 @@ LDAP *init_ldap_connection(unsigned logopt, const char *uri, struct lookup_conte
+ 		info(logopt, MODPREFIX "failed to set connection timeout to %d",
+ 		     net_timeout.tv_sec);
+ 
+-#ifdef WITH_SASL
+ 	if (ctxt->use_tls) {
+ 		if (ctxt->version == 2) {
+ 			if (ctxt->tls_required) {
+@@ -272,7 +273,6 @@ LDAP *init_ldap_connection(unsigned logopt, const char *uri, struct lookup_conte
+ 		}
+ 		ctxt->use_tls = LDAP_TLS_RELEASE;
+ 	}
+-#endif
+ 
+ 	return ldap;
+ }
+@@ -585,10 +585,12 @@ static LDAP *do_connect(unsigned logopt, const char *uri, struct lookup_context
  {
  	LDAP *ldap;
  
@@ -124,7 +151,7 @@ index a2bfafd..7648a56 100644
  
  	ldap = init_ldap_connection(logopt, uri, ctxt);
  	if (ldap) {
-@@ -791,7 +795,6 @@ find_server:
+@@ -791,7 +793,6 @@ find_server:
  	return ldap;
  }
  
@@ -132,7 +159,7 @@ index a2bfafd..7648a56 100644
  int get_property(unsigned logopt, xmlNodePtr node, const char *prop, char **value)
  {
  	xmlChar *ret;
-@@ -812,6 +815,7 @@ int get_property(unsigned logopt, xmlNodePtr node, const char *prop, char **valu
+@@ -812,6 +813,7 @@ int get_property(unsigned logopt, xmlNodePtr node, const char *prop, char **valu
  	return 0;
  }
  
@@ -140,7 +167,7 @@ index a2bfafd..7648a56 100644
  /*
   *  For plain text, login and digest-md5 authentication types, we need
   *  user and password credentials.
-@@ -824,6 +828,7 @@ int authtype_requires_creds(const char *authtype)
+@@ -824,6 +826,7 @@ int authtype_requires_creds(const char *authtype)
  		return 1;
  	return 0;
  }
@@ -148,7 +175,7 @@ index a2bfafd..7648a56 100644
  
  /*
   *  Returns:
-@@ -1056,6 +1061,7 @@ auth_fail:
+@@ -1056,6 +1059,7 @@ auth_fail:
  		}
  	} else if (auth_required == LDAP_AUTH_REQUIRED &&
  		  (authtype && !strncmp(authtype, "EXTERNAL", 8))) {
@@ -156,7 +183,7 @@ index a2bfafd..7648a56 100644
  		ret = get_property(logopt, root, "external_cert",  &extern_cert);
  		ret |= get_property(logopt, root, "external_key",  &extern_key);
  		/*
-@@ -1074,6 +1080,7 @@ auth_fail:
+@@ -1074,6 +1078,7 @@ auth_fail:
  			if (extern_key)
  				free(extern_key);
  		}
@@ -164,7 +191,7 @@ index a2bfafd..7648a56 100644
  	}
  
  	/*
-@@ -1094,8 +1101,10 @@ auth_fail:
+@@ -1094,8 +1099,10 @@ auth_fail:
  	ctxt->secret = secret;
  	ctxt->client_princ = client_princ;
  	ctxt->client_cc = client_cc;
@@ -175,7 +202,7 @@ index a2bfafd..7648a56 100644
  
  	debug(logopt, MODPREFIX
  	      "ldap authentication configured with the following options:");
-@@ -1127,7 +1136,6 @@ out:
+@@ -1127,7 +1134,6 @@ out:
  
  	return ret;
  }
@@ -183,7 +210,7 @@ index a2bfafd..7648a56 100644
  
  /*
   *  Take an input string as specified in the master map, and break it
-@@ -1390,10 +1398,12 @@ static void free_context(struct lookup_context *ctxt)
+@@ -1390,10 +1396,12 @@ static void free_context(struct lookup_context *ctxt)
  		defaults_free_searchdns(ctxt->sdns);
  	if (ctxt->dclist)
  		free_dclist(ctxt->dclist);
