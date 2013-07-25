@@ -1,5 +1,5 @@
-Bottom: d9402c166b2ed9f298ad3e072036c1f846cb9f79
-Top:    a31e8a0e346417f9fd1deb061fb9ea990fdb76a0
+Bottom: 9784abde0fd2d01125b412e72b2ada301cef8839
+Top:    165c55f552e051c13708d0a12f07a87179207cfd
 Author: Lan Yixun (dlan) <dennis.yxun@gmail.com>
 Date:   2013-07-24 09:35:26 +0800
 
@@ -30,7 +30,7 @@ index 3228d6b..5751805 100644
  25/07/2012 autofs-5.0.7
  =======================
 diff --git a/configure b/configure
-index 08b7ccc..e412734 100755
+index 1086eba..b8e74b7 100755
 --- a/configure
 +++ b/configure
 @@ -741,7 +741,7 @@ with_openldap
@@ -42,7 +42,7 @@ index 08b7ccc..e412734 100755
  enable_ignore_busy
  '
        ac_precious_vars='build_alias
-@@ -5553,9 +5553,9 @@ fi
+@@ -5637,9 +5637,9 @@ fi
  #
  # Enable forced shutdown on USR1 signal (unlink umounts all mounts).
  #
