@@ -185,9 +185,9 @@ int unbind_ldap_connection(unsigned logopt, LDAP *ldap, struct lookup_context *c
 {
 	int rv;
 
-#ifdef WITH_SASL
 	if (ctxt->use_tls == LDAP_TLS_RELEASE)
 		ctxt->use_tls = LDAP_TLS_INIT;
+#ifdef WITH_SASL
 	autofs_sasl_unbind(ctxt);
 #endif
 
@@ -245,7 +245,6 @@ LDAP *init_ldap_connection(unsigned logopt, const char *uri, struct lookup_conte
 		info(logopt, MODPREFIX "failed to set connection timeout to %d",
 		     net_timeout.tv_sec);
 
-#ifdef WITH_SASL
 	if (ctxt->use_tls) {
 		if (ctxt->version == 2) {
 			if (ctxt->tls_required) {
@@ -274,7 +273,6 @@ LDAP *init_ldap_connection(unsigned logopt, const char *uri, struct lookup_conte
 		}
 		ctxt->use_tls = LDAP_TLS_RELEASE;
 	}
-#endif
 
 	return ldap;
 }
