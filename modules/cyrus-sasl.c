@@ -68,23 +68,27 @@
 void _krb5_princ_realm(krb5_context context, krb5_const_principal princ,
                           const char **realm, int *len)
 {
-    *realm = krb5_principal_get_realm(context, princ);
-    *len = strlen(*realm);
-}
+	*realm = krb5_principal_get_realm(context, princ);
+	if (*realm)
+		*len = strlen(*realm);
+	else
+		*len = 0;
+	return;
 #else
 void _krb5_princ_realm(krb5_context context, krb5_const_principal princ,
                           const char **realm, int *len)
 {
-    const krb5_data *data;
+	const krb5_data *data;
 
-    data = krb5_princ_realm(context, princ);
-    if (data) {
-        *realm = data->data;
-        *len = data->length;
-    } else {
-        *realm = NULL;
-        *len = 0;
-    }
+	data = krb5_princ_realm(context, princ);
+	if (data) {
+		*realm = data->data;
+		*len = data->length;
+	} else {
+		*realm = NULL;
+		*len = 0;
+	}
+	return;
 }
 #endif
 
