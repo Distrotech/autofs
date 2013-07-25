@@ -70,6 +70,8 @@ nss_tok.o: nss_tok.c nss_parse.tab.h
 
 nss_parse.tab.o: nss_parse.tab.c nss_parse.tab.h
 
+rpc_subs.o: mount.h
+
 install: all
 
 clean:
