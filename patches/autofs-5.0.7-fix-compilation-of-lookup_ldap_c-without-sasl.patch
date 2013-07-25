@@ -1,5 +1,5 @@
 Bottom: ea7cfef0608da39aabadcb60ce303e9d3119c738
-Top:    ed41a92560f35ddff4df8f0496f6023b77aa14da
+Top:    ae0de6e8b6c6c80010feaf805c4af11cf36f8552
 Author: Dustin Polke <DuPol@gmx.de>
 Date:   2012-05-15 11:28:27 +0800
 
@@ -92,14 +92,14 @@ index de01ebd..8610783 100644
  endif
  
 diff --git a/modules/lookup_ldap.c b/modules/lookup_ldap.c
-index a2bfafd..904cc21 100644
+index a2bfafd..7648a56 100644
 --- a/modules/lookup_ldap.c
 +++ b/modules/lookup_ldap.c
 @@ -66,6 +66,7 @@ struct ldap_search_params {
  
  static int decode_percent_hack(const char *, char **);
  
-+#ifdef HAVE_SASL
++#ifdef WITH_SASL
  static int set_env(unsigned logopt, const char *name, const char *val)
  {
  	int ret = setenv(name, val, 1);
@@ -115,7 +115,7 @@ index a2bfafd..904cc21 100644
  {
  	LDAP *ldap;
  
-+#ifdef HAVE_SASL
++#ifdef WITH_SASL
  	if (ctxt->extern_cert && ctxt->extern_key) {
  		set_env(logopt, ENV_LDAPTLS_CERT, ctxt->extern_cert);
  		set_env(logopt, ENV_LDAPTLS_KEY, ctxt->extern_key);
@@ -187,7 +187,7 @@ index a2bfafd..904cc21 100644
  		defaults_free_searchdns(ctxt->sdns);
  	if (ctxt->dclist)
  		free_dclist(ctxt->dclist);
-+#ifdef HAVE_SASL
++#ifdef WITH_SASL
  	if (ctxt->extern_cert)
  		free(ctxt->extern_cert);
  	if (ctxt->extern_key)
