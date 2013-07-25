@@ -14,6 +14,9 @@ Upstream Discussion:
 Gentoo Bugs:
   https://bugs.gentoo.org/show_bug.cgi?id=210762
 
+Edited by: Ian Kent <raven@themaw.net>
+- fix code indentation.
+
 Signed-off-by: Lan Yixun (dlan) <dennis.yxun@gmail.com>
 
 
