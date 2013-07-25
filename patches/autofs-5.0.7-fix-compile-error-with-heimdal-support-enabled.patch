@@ -1,0 +1,101 @@
+Bottom: d9402c166b2ed9f298ad3e072036c1f846cb9f79
+Top:    8dfb3bf67cb3f979aad56ab1a78c3a8033ac92e8
+Author: Lan Yixun (dlan) <dennis.yxun@gmail.com>
+Date:   2013-07-25 09:05:41 +0800
+
+autofs-5.0.7 - fix compile error with heimdal support enabled
+
+this patch instroduce a compatible layer between Heimdal and MTT Krb5.
+And I slightly rework the original patch to make it more readable.
+
+Upstream Discussion:
+  http://thread.gmane.org/gmane.linux.kernel.autofs/4203
+
+Gentoo Bugs:
+  https://bugs.gentoo.org/show_bug.cgi?id=210762
+
+Signed-off-by: Lan Yixun (dlan) <dennis.yxun@gmail.com>
+
+
+---
+
+diff --git a/aclocal.m4 b/aclocal.m4
+index c5de159..7a8b03c 100644
+--- a/aclocal.m4
++++ b/aclocal.m4
+@@ -299,6 +299,13 @@ else
+   HAVE_KRB5=1
+   KRB5_LIBS=`$KRB5_CONFIG --libs`
+   KRB5_FLAGS=`$KRB5_CONFIG --cflags`
++
++  SAVE_CFLAGS=$CFLAGS
++  SAVE_LIBS=$LIBS
++  CFLAGS="$CFLAGS $KRB5_FLAGS"
++  LIBS="$LIBS $KRB5_LIBS"
++
++  AC_CHECK_FUNCS([krb5_principal_get_realm])
+ fi])
+ 
+ dnl --------------------------------------------------------------------------
+diff --git a/modules/cyrus-sasl.c b/modules/cyrus-sasl.c
+index 68f9242..6115f90 100644
+--- a/modules/cyrus-sasl.c
++++ b/modules/cyrus-sasl.c
+@@ -64,6 +64,31 @@
+ #endif
+ #endif
+ 
++#ifdef HAVE_KRB5_PRINCIPAL_GET_REALM
++void _krb5_princ_realm(krb5_context context, krb5_const_principal princ,
++                          const char **realm, int *len)
++{
++    *realm = krb5_principal_get_realm(context, princ);
++    *len = strlen(*realm);
++}
++#else
++void _krb5_princ_realm(krb5_context context, krb5_const_principal princ,
++                          const char **realm, int *len)
++{
++    const krb5_data *data;
++
++    data = krb5_princ_realm(context, princ);
++    if (data) {
++        *realm = data->data;
++        *len = data->length;
++    } else {
++        *realm = NULL;
++        *len = 0;
++    }
++}
++#endif
++
++
+ /*
+  *  Once a krb5 credentials cache is setup, we need to set the KRB5CCNAME
+  *  environment variable so that the library knows where to find it.
+@@ -379,7 +404,8 @@ sasl_do_kinit(unsigned logopt, struct lookup_context *ctxt)
+ 	krb5_principal tgs_princ, krb5_client_princ;
+ 	krb5_creds my_creds;
+ 	char *tgs_name;
+-	int status;
++	const char *realm_name;
++	int status, realm_length;
+ 
+ 	if (ctxt->kinit_done)
+ 		return 0;
+@@ -450,12 +476,11 @@ sasl_do_kinit(unsigned logopt, struct lookup_context *ctxt)
+ 	}
+ 
+ 	/* setup a principal for the ticket granting service */
++	_krb5_princ_realm(ctxt->krb5ctxt, krb5_client_princ, &realm_name, &realm_length);
+ 	ret = krb5_build_principal_ext(ctxt->krb5ctxt, &tgs_princ,
+-		krb5_princ_realm(ctxt->krb5ctxt, krb5_client_princ)->length,
+-		krb5_princ_realm(ctxt->krb5ctxt, krb5_client_princ)->data,
++		realm_length, realm_name,
+ 		strlen(KRB5_TGS_NAME), KRB5_TGS_NAME,
+-		krb5_princ_realm(ctxt->krb5ctxt, krb5_client_princ)->length,
+-		krb5_princ_realm(ctxt->krb5ctxt, krb5_client_princ)->data,
++		realm_length, realm_name,
+ 		0);
+ 	if (ret) {
+ 		error(logopt,
