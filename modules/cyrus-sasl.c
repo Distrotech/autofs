@@ -64,6 +64,36 @@
 #endif
 #endif
 
+#ifdef HAVE_KRB5_PRINCIPAL_GET_REALM
+void _krb5_princ_realm(krb5_context context, krb5_const_principal princ,
+                          const char **realm, int *len)
+{
+	*realm = krb5_principal_get_realm(context, princ);
+	if (*realm)
+		*len = strlen(*realm);
+	else
+		*len = 0;
+	return;
+}
+#else
+void _krb5_princ_realm(krb5_context context, krb5_const_principal princ,
+                          const char **realm, int *len)
+{
+	const krb5_data *data;
+
+	data = krb5_princ_realm(context, princ);
+	if (data) {
+		*realm = data->data;
+		*len = data->length;
+	} else {
+		*realm = NULL;
+		*len = 0;
+	}
+	return;
+}
+#endif
+
+
 /*
  *  Once a krb5 credentials cache is setup, we need to set the KRB5CCNAME
  *  environment variable so that the library knows where to find it.
@@ -379,7 +409,8 @@ sasl_do_kinit(unsigned logopt, struct lookup_context *ctxt)
 	krb5_principal tgs_princ, krb5_client_princ;
 	krb5_creds my_creds;
 	char *tgs_name;
-	int status;
+	const char *realm_name;
+	int status, realm_length;
 
 	if (ctxt->kinit_done)
 		return 0;
@@ -450,12 +481,11 @@ sasl_do_kinit(unsigned logopt, struct lookup_context *ctxt)
 	}
 
 	/* setup a principal for the ticket granting service */
+	_krb5_princ_realm(ctxt->krb5ctxt, krb5_client_princ, &realm_name, &realm_length);
 	ret = krb5_build_principal_ext(ctxt->krb5ctxt, &tgs_princ,
-		krb5_princ_realm(ctxt->krb5ctxt, krb5_client_princ)->length,
-		krb5_princ_realm(ctxt->krb5ctxt, krb5_client_princ)->data,
+		realm_length, realm_name,
 		strlen(KRB5_TGS_NAME), KRB5_TGS_NAME,
-		krb5_princ_realm(ctxt->krb5ctxt, krb5_client_princ)->length,
-		krb5_princ_realm(ctxt->krb5ctxt, krb5_client_princ)->data,
+		realm_length, realm_name,
 		0);
 	if (ret) {
 		error(logopt,
