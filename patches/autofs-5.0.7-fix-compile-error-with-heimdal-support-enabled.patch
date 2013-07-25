@@ -16,6 +16,7 @@ Gentoo Bugs:
 
 Edited by: Ian Kent <raven@themaw.net>
 - fix code indentation.
+- update configure to include change.
 
 Signed-off-by: Lan Yixun (dlan) <dennis.yxun@gmail.com>
 

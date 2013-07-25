@@ -1,12 +1,12 @@
 Version: 1
-Previous: 673a7ebd0dd03c4c75bb1066fb8e70f219b81e6f
-Head: 99936d2dfa8d62d76d1c8e9d33ab25923addd5ec
+Previous: aa71284c8eaf7e608f8fd28fb602610d4824b401
+Head: f9cfdb8501a535a25525c4f367aba116ca45f212
 Applied:
   autofs-5.0.7-dont-override-LDFLAGS-in-make-rules.patch: 2e8251865c0ed6d91a97c107973a7eb75d3e131b
   autofs-5.0.7-fix-a-couple-of-compiler-warnings.patch: b8bdae4bfe855786de918c78eee228e4aabdab45
   autofs-5.0.7-add-after-sssd-dependency-to-unit-file.patch: 128ed44d3a899837e86f710b4b98523c11e7fe0d
   autofs-5.0.7-dont-kick-state-machine-unless-ready.patch: 2ce7972970d8617f82004c5636099020a23f03af
-  autofs-5.0.7-fix-compile-error-with-heimdal-support-enabled.patch: 99936d2dfa8d62d76d1c8e9d33ab25923addd5ec
+  autofs-5.0.7-fix-compile-error-with-heimdal-support-enabled.patch: f9cfdb8501a535a25525c4f367aba116ca45f212
 Unapplied:
   autofs-5.0.7-fix-typo-forced-shutdown-should-be-force-shutdown.patch: 7f237eb042220ca4bd9de1dd2152fdf6ee1032df
   autofs-5.0.7-fix-hesiod-check-error-and-use-correct-LIBS-setting.patch: 2d03cc154b948ef70c856d2ea83ed416ac957c86
