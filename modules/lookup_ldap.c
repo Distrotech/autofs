@@ -66,7 +66,7 @@ struct ldap_search_params {
 
 static int decode_percent_hack(const char *, char **);
 
-#ifdef HAVE_SASL
+#ifdef WITH_SASL
 static int set_env(unsigned logopt, const char *name, const char *val)
 {
 	int ret = setenv(name, val, 1);
@@ -587,7 +587,7 @@ static LDAP *do_connect(unsigned logopt, const char *uri, struct lookup_context 
 {
 	LDAP *ldap;
 
-#ifdef HAVE_SASL
+#ifdef WITH_SASL
 	if (ctxt->extern_cert && ctxt->extern_key) {
 		set_env(logopt, ENV_LDAPTLS_CERT, ctxt->extern_cert);
 		set_env(logopt, ENV_LDAPTLS_KEY, ctxt->extern_key);
@@ -1398,7 +1398,7 @@ static void free_context(struct lookup_context *ctxt)
 		defaults_free_searchdns(ctxt->sdns);
 	if (ctxt->dclist)
 		free_dclist(ctxt->dclist);
-#ifdef HAVE_SASL
+#ifdef WITH_SASL
 	if (ctxt->extern_cert)
 		free(ctxt->extern_cert);
 	if (ctxt->extern_key)
