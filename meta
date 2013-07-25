@@ -1,12 +1,13 @@
 Version: 1
-Previous: 6f864acb33e7f22d4595860f8096ab414a329ea0
-Head: e099a9cd38cfad440fe1e47888ffcb44c6fff87d
+Previous: 539ae7ecb110b4e1986341ed286287a7873c41ea
+Head: a53267e3ad5f6a099fc278d860a12510c2bad761
 Applied:
   autofs-5.0.7-dont-override-LDFLAGS-in-make-rules.patch: 2e8251865c0ed6d91a97c107973a7eb75d3e131b
   autofs-5.0.7-fix-a-couple-of-compiler-warnings.patch: b8bdae4bfe855786de918c78eee228e4aabdab45
   autofs-5.0.7-add-after-sssd-dependency-to-unit-file.patch: 128ed44d3a899837e86f710b4b98523c11e7fe0d
   autofs-5.0.7-dont-kick-state-machine-unless-ready.patch: 2ce7972970d8617f82004c5636099020a23f03af
   autofs-5.0.7-fix-compile-error-with-heimdal-support-enabled.patch: e099a9cd38cfad440fe1e47888ffcb44c6fff87d
+  refresh-temp: a53267e3ad5f6a099fc278d860a12510c2bad761
 Unapplied:
   autofs-5.0.7-fix-typo-forced-shutdown-should-be-force-shutdown.patch: 7f237eb042220ca4bd9de1dd2152fdf6ee1032df
   autofs-5.0.7-fix-hesiod-check-error-and-use-correct-LIBS-setting.patch: 2d03cc154b948ef70c856d2ea83ed416ac957c86
