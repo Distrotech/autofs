@@ -299,6 +299,13 @@ else
   HAVE_KRB5=1
   KRB5_LIBS=`$KRB5_CONFIG --libs`
   KRB5_FLAGS=`$KRB5_CONFIG --cflags`
+
+  SAVE_CFLAGS=$CFLAGS
+  SAVE_LIBS=$LIBS
+  CFLAGS="$CFLAGS $KRB5_FLAGS"
+  LIBS="$LIBS $KRB5_LIBS"
+
+  AC_CHECK_FUNCS([krb5_principal_get_realm])
 fi])
 
 dnl --------------------------------------------------------------------------
