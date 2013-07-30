@@ -2031,7 +2031,7 @@ int main(int argc, char *argv[])
 
 		case 'm':
 			dumpmaps = 1;
-			if (optstring)
+			if (optarg)
 				dump = getstropt(optarg, opt);
 			break;
 
@@ -2178,7 +2178,7 @@ int main(int argc, char *argv[])
 		lookup_nss_read_master(master_list, 0);
 		master_show_mounts(master_list, dump);
 		if (dump)
-			free(dump);
+			free((void *) dump);
 		exit(0);
 	}
 
