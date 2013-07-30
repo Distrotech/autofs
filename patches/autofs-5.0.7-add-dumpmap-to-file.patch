@@ -1,5 +1,5 @@
 Bottom: e9731220dc88a3d073f7178c9a08e98986b6cadd
-Top:    6c68d208273b143e17de8aff5ebfff6c80a36e25
+Top:    4c0969ea3613d27f8003d68146ec6c3796156c21
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-07-30 10:03:58 +0800
 
@@ -93,7 +93,7 @@ index 1d0b64e..be5e7f7 100644
  	}
  
 diff --git a/include/automount.h b/include/automount.h
-index 71787a5..c2d39f9 100644
+index 71787a5..15b1128 100644
 --- a/include/automount.h
 +++ b/include/automount.h
 @@ -643,6 +643,26 @@ static inline FILE *open_fopen_r(const char *path)
@@ -106,7 +106,7 @@ index 71787a5..c2d39f9 100644
 +
 +#if defined(O_CLOEXEC) && defined(SOCK_CLOEXEC)
 +	if (cloexec_works != -1) {
-+		f = fopen(fd, "wxe");
++		f = fopen(path, "wxe");
 +		if (f != NULL) {
 +			check_cloexec(fileno(f));
 +			return f;
