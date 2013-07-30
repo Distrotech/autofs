@@ -1442,11 +1442,16 @@ int master_show_mounts(struct master *master, const char *maps)
 			if (!me)
 				printf("  no keys found in map\n");
 			else {
+				if (map_name) {
+					write_map(map_name, me);
+					goto next;
+				}
+
 				do {
 					printf("  %s | %s\n", me->key, me->mapent);
 				} while ((me = cache_lookup_next(source->mc, me)));
 			}
-
+next:
 			count++;
 
 			source = source->next;
