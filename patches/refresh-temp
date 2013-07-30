@@ -1,0 +1,34 @@
+Bottom: 55cb084f4b751c390b0b8e1b445463fecd349168
+Top:    1ef4dab5ed00c7c176235807ae7ce75570d1c630
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-07-30 18:10:46 +0800
+
+Refresh of autofs-5.0.7-add-dumpmap-to-file.patch
+
+---
+
+diff --git a/daemon/automount.c b/daemon/automount.c
+index d53235a..1970edc 100644
+--- a/daemon/automount.c
++++ b/daemon/automount.c
+@@ -2177,7 +2177,6 @@ int main(int argc, char *argv[])
+ 
+ 		lookup_nss_read_master(master_list, 0);
+ 		master_show_mounts(master_list, dump);
+-		master_kill(master_list);
+ 		if (dump)
+ 			free((void *) dump);
+ 		exit(0);
+diff --git a/lib/master.c b/lib/master.c
+index 6d4b098..e105e63 100644
+--- a/lib/master.c
++++ b/lib/master.c
+@@ -1552,6 +1552,8 @@ next:
+ 			count++;
+ 
+ 			source = source->next;
++
++			lookup_close_lookup(ap);
+ 		}
+ 
+ 		printf("\n");
