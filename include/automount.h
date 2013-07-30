@@ -643,6 +643,26 @@ static inline FILE *open_fopen_r(const char *path)
 	return f;
 }
 
+static inline FILE *open_fopen_wx(const char *path)
+{
+	FILE *f;
+
+#if defined(O_CLOEXEC) && defined(SOCK_CLOEXEC)
+	if (cloexec_works != -1) {
+		f = fopen(path, "wxe");
+		if (f != NULL) {
+			check_cloexec(fileno(f));
+			return f;
+		}
+	}
+#endif
+	f = fopen(path, "wx");
+	if (f == NULL)
+		return NULL;
+	check_cloexec(fileno(f));
+	return f;
+}
+
 static inline FILE *open_setmntent_r(const char *table)
 {
 	FILE *tab;
