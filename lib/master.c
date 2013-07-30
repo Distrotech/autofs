@@ -1423,11 +1423,15 @@ int master_show_mounts(struct master *master, const char *maps)
 			lookup_prune_cache(ap, now);
 		else {
 			printf("  failed to read map\n\n");
+			if (map_name)
+				free(map_name);
 			continue;
 		}
 
 		if (!this->maps) {
 			printf("  no map sources found\n\n");
+			if (map_name)
+				free(map_name);
 			continue;
 		}
 
@@ -1476,6 +1480,9 @@ int master_show_mounts(struct master *master, const char *maps)
 				} while ((me = cache_lookup_next(source->mc, me)));
 			}
 next:
+			if (map_name)
+				free(map_name);
+
 			count++;
 
 			source = source->next;
