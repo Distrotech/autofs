@@ -1,5 +1,5 @@
 Bottom: e9731220dc88a3d073f7178c9a08e98986b6cadd
-Top:    c6f4c2828412102a8ec5cf6fdc4be0df2beadd4f
+Top:    4d9be6e67916049f264b6ad240bc8c800c5bfa1d
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-07-30 10:03:58 +0800
 
@@ -21,7 +21,7 @@ a file of the name of the map already exists then the map is ignored.
 ---
 
 diff --git a/daemon/automount.c b/daemon/automount.c
-index 1d0b64e..4a488e7 100644
+index 1d0b64e..4aaeac3 100644
 --- a/daemon/automount.c
 +++ b/daemon/automount.c
 @@ -1145,6 +1145,28 @@ static unsigned long getnumopt(char *str, char option)
@@ -84,13 +84,14 @@ index 1d0b64e..4a488e7 100644
  			break;
  
  		case 'O':
-@@ -2151,7 +2176,8 @@ int main(int argc, char *argv[])
+@@ -2151,7 +2176,9 @@ int main(int argc, char *argv[])
  		master_list->nc = nc;
  
  		lookup_nss_read_master(master_list, 0);
 -		master_show_mounts(master_list);
 +		master_show_mounts(master_list, dump);
-+		free(dump);
++		if (dump)
++			free(dump);
  		exit(0);
  	}
  
