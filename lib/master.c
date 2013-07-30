@@ -1281,6 +1281,25 @@ static void list_source_instances(struct map_source *source, struct map_source *
 	return;
 }
 
+static void print_map_info(struct map_source *source)
+{
+	int i = 0;
+
+	if (source->argv[0] && *source->argv[0] != '-') {
+		printf("  map: %s\n", source->argv[0]);
+		i = 1;
+	}
+
+	if (source->argc > 1) {
+		printf("  arguments: ");
+		for (; i < source->argc; i++)
+			printf("%s ", source->argv[i]);
+		printf("\n");
+	}
+
+	return;
+}
+
 int master_show_mounts(struct master *master)
 {
 	struct list_head *p, *head;
@@ -1357,20 +1376,10 @@ int master_show_mounts(struct master *master)
 			}
 
 			if (source->argc >= 1) {
-				i = 0;
-				if (source->argv[0] && *source->argv[0] != '-') {
-					printf("  map: %s\n", source->argv[0]);
-					i = 1;
-				}
+				output_map_info(source);
 				if (count && ap->type == LKP_INDIRECT)
 					printf("  duplicate indirect map entry"
 					       " will be ignored at run time\n");
-				if (source->argc > 1) {
-					printf("  arguments: ");
-					for (; i < source->argc; i++)
-						printf("%s ", source->argv[i]);
-					printf("\n");
-				}
 			}
 
 			printf("\n");
