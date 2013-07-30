@@ -1,0 +1,47 @@
+Bottom: c7d39c932d4b299f353108f2416954322ff8e7bc
+Top:    792742960272f8ffa4fe3aef105f7dd780be12e8
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-07-30 17:13:03 +0800
+
+Refresh of autofs-5.0.7-fix-dumpmaps-multi-output.patch
+
+---
+
+diff --git a/lib/master.c b/lib/master.c
+index 2830f8d..bbf4b4e 100644
+--- a/lib/master.c
++++ b/lib/master.c
+@@ -1292,10 +1292,8 @@ static void print_map_info(struct map_source *source)
+ 		if (source->argv[i] && *source->argv[i] != '-') {
+ 			if (!multi)
+ 				printf("  map: %s\n", source->argv[i]);
+-			else {
++			else
+ 				printf("  map[%i]: %s\n", map_num, source->argv[i]);
+-				map_num++;
+-			}
+ 			i++;
+ 		}
+ 
+@@ -1309,7 +1307,11 @@ static void print_map_info(struct map_source *source)
+ 			int need_newline = 0;
+ 			int j;
+ 
+-			printf("  arguments:");
++			if (!multi)
++				printf("  arguments:");
++			else
++				printf("  arguments[%i]:", map_num);
++
+ 			for (j = i; j < source->argc; j++) {
+ 				if (!strcmp(source->argv[j], "--"))
+ 					break;
+@@ -1320,6 +1322,8 @@ static void print_map_info(struct map_source *source)
+ 			if (need_newline)
+ 				printf("\n");
+ 		}
++		if (multi)
++			map_num++;
+ 	}
+ 
+ 	return;
