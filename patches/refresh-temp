@@ -1,0 +1,20 @@
+Bottom: e043087d07e83c0f8ff38c65d9855a279d10ac7f
+Top:    f70074932eb6324590761620a53b9137a39ff08e
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-07-30 17:15:07 +0800
+
+Refresh of autofs-5.0.7-add-dumpmap-to-file.patch
+
+---
+
+diff --git a/lib/master.c b/lib/master.c
+index 279f6de..fabaecf 100644
+--- a/lib/master.c
++++ b/lib/master.c
+@@ -1411,7 +1411,6 @@ static void write_map(const char *map, struct mapent *first)
+ }
+ 
+ int master_show_mounts(struct master *master, const char *maps)
+->>>>>>> patched
+ {
+ 	struct list_head *p, *head;
