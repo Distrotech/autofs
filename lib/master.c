@@ -1431,8 +1431,6 @@ int master_show_mounts(struct master *master, const char *maps)
 
 		if (!this->maps) {
 			printf("  no map sources found\n\n");
-			if (map_path)
-				free(map_path);
 			continue;
 		}
 
