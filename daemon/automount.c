@@ -1147,17 +1147,17 @@ static unsigned long getnumopt(char *str, char option)
 
 static const char *getstropt(char *str, char option)
 {
-	char *names = str;
-	char *val = NULL;
-	char *end;
+	char *names;
+	char *val;
 
 	if (!str || !*str)
 		return NULL;
 
-	if (*str == '=')
-		str++;
+	names = str;
+	if (*names == '=')
+		names++;
 
-	val = strdup(str);
+	val = strdup(names);
 	if (!val) {
 		fprintf(stderr,
 			"%s: option -%c, couldn't allocate storage for argument\n",
