@@ -1,0 +1,106 @@
+Bottom: e9731220dc88a3d073f7178c9a08e98986b6cadd
+Top:    9b231f80c679d7973d2f6badb697fa0087eb6156
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-07-30 11:01:20 +0800
+
+Refresh of autofs-5.0.7-add-dumpmap-to-stdout.patch
+
+---
+
+diff --git a/daemon/automount.c b/daemon/automount.c
+index 1d0b64e..be5e7f7 100644
+--- a/daemon/automount.c
++++ b/daemon/automount.c
+@@ -1145,6 +1145,28 @@ static unsigned long getnumopt(char *str, char option)
+ 	return val;
+ }
+ 
++static const char *getstropt(char *str, char option)
++{
++	char *names = str;
++	char *val = NULL;
++	char *end;
++
++	if (!str || !*str)
++		return NULL;
++
++	if (*str == '=')
++		str++;
++
++	val = strdup(str);
++	if (!val) {
++		fprintf(stderr,
++			"%s: option -%c, couldn't allocate storage for argument\n",
++			program, option);
++		exit(1);
++	}
++	return (const char *) val;
++}
++
+ static void do_master_cleanup_unlock(void *arg)
+ {
+ 	int status;
+@@ -1911,10 +1933,11 @@ int main(int argc, char *argv[])
+ 	int logpri = -1;
+ 	unsigned ghost, logging, daemon_check;
+ 	unsigned dumpmaps, foreground, have_global_options;
++	const char *dumpnames;
+ 	time_t timeout;
+ 	time_t age = time(NULL);
+ 	struct rlimit rlim;
+-	const char *options = "+hp:t:vmdD:fVrO:l:n:CF";
++	const char *options = "+hp:t:vm::dD:fVrO:l:n:CF";
+ 	static const struct option long_options[] = {
+ 		{"help", 0, 0, 'h'},
+ 		{"pid-file", 1, 0, 'p'},
+@@ -1925,7 +1948,7 @@ int main(int argc, char *argv[])
+ 		{"foreground", 0, 0, 'f'},
+ 		{"random-multimount-selection", 0, 0, 'r'},
+ 		{"negative-timeout", 1, 0, 'n'},
+-		{"dumpmaps", 0, 0, 'm'},
++		{"dumpmaps", 1, 0, 'm'},
+ 		{"global-options", 1, 0, 'O'},
+ 		{"version", 0, 0, 'V'},
+ 		{"set-log-priority", 1, 0, 'l'},
+@@ -2008,6 +2031,7 @@ int main(int argc, char *argv[])
+ 
+ 		case 'm':
+ 			dumpmaps = 1;
++			dumpnames = getstropt(optarg, opt);
+ 			break;
+ 
+ 		case 'O':
+@@ -2151,7 +2175,7 @@ int main(int argc, char *argv[])
+ 		master_list->nc = nc;
+ 
+ 		lookup_nss_read_master(master_list, 0);
+-		master_show_mounts(master_list);
++		master_show_mounts(master_list, dumpnames);
+ 		exit(0);
+ 	}
+ 
+diff --git a/include/master.h b/include/master.h
+index 824707c..6166976 100644
+--- a/include/master.h
++++ b/include/master.h
+@@ -112,7 +112,7 @@ int master_submount_list_empty(struct autofs_point *ap);
+ int master_notify_submount(struct autofs_point *, const char *path, enum states);
+ void master_notify_state_change(struct master *, int);
+ int master_mount_mounts(struct master *, time_t, int);
+-int master_show_mounts(struct master *);
++int master_show_mounts(struct master *, const char *);
+ extern inline unsigned int master_get_logopt(void);
+ int master_list_empty(struct master *);
+ int master_done(struct master *);
+diff --git a/lib/master.c b/lib/master.c
+index eca3523..ec50b4c 100644
+--- a/lib/master.c
++++ b/lib/master.c
+@@ -1281,7 +1281,7 @@ static void list_source_instances(struct map_source *source, struct map_source *
+ 	return;
+ }
+ 
+-int master_show_mounts(struct master *master)
++int master_show_mounts(struct master *master, const char *maps)
+ {
+ 	struct list_head *p, *head;
