@@ -1,5 +1,5 @@
 Bottom: 792742960272f8ffa4fe3aef105f7dd780be12e8
-Top:    c17daefb8a46323dc21b7dca16319da53993b83e
+Top:    04e5031e8764b2eb4a5f7bceb248d99ffe1caa01
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-07-30 10:03:58 +0800
 
@@ -140,7 +140,7 @@ index 824707c..6166976 100644
  int master_list_empty(struct master *);
  int master_done(struct master *);
 diff --git a/lib/master.c b/lib/master.c
-index bbf4b4e..4bec1ef 100644
+index bbf4b4e..175ecad 100644
 --- a/lib/master.c
 +++ b/lib/master.c
 @@ -1329,7 +1329,92 @@ static void print_map_info(struct map_source *source)
@@ -184,7 +184,7 @@ index bbf4b4e..4bec1ef 100644
 +	return 1;
 +}
 +
-+static void write_map(struct source *source, struct mapent *first)
++static void write_map(struct map_source *source, struct mapent *first)
 +{
 +	struct mapent *me = first;
 +	const char *map = source->argv[0];
