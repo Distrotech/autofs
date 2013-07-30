@@ -2136,6 +2136,8 @@ int main(int argc, char *argv[])
 	}
 
 	if (dumpmaps) {
+		struct master_mapent *entry;
+		struct list_head *head, *p;
 		struct mapent_cache *nc;
 
 		open_log();
