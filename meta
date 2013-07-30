@@ -1,13 +1,12 @@
 Version: 1
-Previous: 841b7a08c6e1bae58e9165c90df30d775409de67
-Head: 271e5af544e3f7c7e4b7b4dde5e6c67cd8634a20
+Previous: c6859b2f6b1b8dd48dcf5dafd739df6ba8bb8a54
+Head: 9aa29980e11a64fc247366224c4bc85540cced7c
 Applied:
   autofs-5.0.7-dont-override-LDFLAGS-in-make-rules.patch: 2e8251865c0ed6d91a97c107973a7eb75d3e131b
   autofs-5.0.7-fix-a-couple-of-compiler-warnings.patch: b8bdae4bfe855786de918c78eee228e4aabdab45
   autofs-5.0.7-add-after-sssd-dependency-to-unit-file.patch: 128ed44d3a899837e86f710b4b98523c11e7fe0d
   autofs-5.0.7-dont-kick-state-machine-unless-ready.patch: 2ce7972970d8617f82004c5636099020a23f03af
-  autofs-5.0.7-fix-dumpmaps-multi-output.patch: 04a363891e790e89a93b7bcd95ed0290487a60d6
-  refresh-temp: 271e5af544e3f7c7e4b7b4dde5e6c67cd8634a20
+  autofs-5.0.7-fix-dumpmaps-multi-output.patch: 9aa29980e11a64fc247366224c4bc85540cced7c
 Unapplied:
   autofs-5.0.7-try-and-cleanup-after-dumpmaps.patch: 2a8dda8b636d8941cfa7a91485fc44b453ce2070
   autofs-5.0.7-teach-dumpmaps-to-output-map-files.patch: 16a766f9c708edda4444290afa549754e4cbff52

@@ -1,5 +1,5 @@
 Bottom: d9402c166b2ed9f298ad3e072036c1f846cb9f79
-Top:    7965280e7a0d94ecc58461cc1547e45c714a45f9
+Top:    c62cb8957d75c6cd3208a365c197e2853e05e158
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-07-30 16:11:57 +0800
 
@@ -11,6 +11,18 @@ isn't right.
 
 ---
 
+diff --git a/CHANGELOG b/CHANGELOG
+index 3228d6b..cadf5d2 100644
+--- a/CHANGELOG
++++ b/CHANGELOG
+@@ -57,6 +57,7 @@
+ - fix a couple of compiler warnings.
+ - add after sssd dependency to unit file.
+ - dont start readmap unless ready.
++- fix dumpmaps multi output.
+ 
+ 25/07/2012 autofs-5.0.7
+ =======================
 diff --git a/lib/master.c b/lib/master.c
 index eca3523..bbf4b4e 100644
 --- a/lib/master.c
