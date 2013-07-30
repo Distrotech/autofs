@@ -1145,6 +1145,28 @@ static unsigned long getnumopt(char *str, char option)
 	return val;
 }
 
+static const char *getstropt(char *str, char option)
+{
+	char *names;
+	char *val;
+
+	if (!str || !*str)
+		return NULL;
+
+	names = str;
+	if (*names == '=')
+		names++;
+
+	val = strdup(names);
+	if (!val) {
+		fprintf(stderr,
+			"%s: option -%c, couldn't allocate storage for argument\n",
+			program, option);
+		exit(1);
+	}
+	return (const char *) val;
+}
+
 static void do_master_cleanup_unlock(void *arg)
 {
 	int status;
@@ -1911,10 +1933,11 @@ int main(int argc, char *argv[])
 	int logpri = -1;
 	unsigned ghost, logging, daemon_check;
 	unsigned dumpmaps, foreground, have_global_options;
+	const char *dumpnames = NULL;
 	time_t timeout;
 	time_t age = time(NULL);
 	struct rlimit rlim;
-	const char *options = "+hp:t:vmdD:fVrO:l:n:CF";
+	const char *options = "+hp:t:vm::dD:fVrO:l:n:CF";
 	static const struct option long_options[] = {
 		{"help", 0, 0, 'h'},
 		{"pid-file", 1, 0, 'p'},
@@ -2008,6 +2031,7 @@ int main(int argc, char *argv[])
 
 		case 'm':
 			dumpmaps = 1;
+			dumpnames = getstropt(optarg, opt);
 			break;
 
 		case 'O':
@@ -2151,7 +2175,7 @@ int main(int argc, char *argv[])
 		master_list->nc = nc;
 
 		lookup_nss_read_master(master_list, 0);
-		master_show_mounts(master_list);
+		master_show_mounts(master_list, dumpnames);
 		exit(0);
 	}
 
