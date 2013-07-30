@@ -1,5 +1,5 @@
 Bottom: 792742960272f8ffa4fe3aef105f7dd780be12e8
-Top:    92172e6ae3e3dc25e86139a1074cb5551a2c27db
+Top:    c17daefb8a46323dc21b7dca16319da53993b83e
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-07-30 10:03:58 +0800
 
@@ -140,10 +140,10 @@ index 824707c..6166976 100644
  int master_list_empty(struct master *);
  int master_done(struct master *);
 diff --git a/lib/master.c b/lib/master.c
-index bbf4b4e..fabaecf 100644
+index bbf4b4e..4bec1ef 100644
 --- a/lib/master.c
 +++ b/lib/master.c
-@@ -1329,7 +1329,88 @@ static void print_map_info(struct map_source *source)
+@@ -1329,7 +1329,92 @@ static void print_map_info(struct map_source *source)
  	return;
  }
  
@@ -184,9 +184,10 @@ index bbf4b4e..fabaecf 100644
 +	return 1;
 +}
 +
-+static void write_map(const char *map, struct mapent *first)
++static void write_map(struct source *source, struct mapent *first)
 +{
 +	struct mapent *me = first;
++	const char *map = source->argv[0];
 +	char *name, *out;
 +	FILE *f;
 +
@@ -221,7 +222,10 @@ index bbf4b4e..fabaecf 100644
 +		fprintf(f, "%s\t%s\n", me->key, me->mapent);
 +	} while ((me = cache_lookup_next(first->mc, me)));
 +
-+	printf("  output map %s\n", out);
++	if (source->type && !strcmp(source->type, "multi"))
++		printf("  output merged multi map to %s\n", out);
++	else
++		printf("  output map %s\n", out);
 +
 +	fclose(f);
 +	free(name);
@@ -233,7 +237,7 @@ index bbf4b4e..fabaecf 100644
  {
  	struct list_head *p, *head;
  
-@@ -1359,6 +1440,7 @@ int master_show_mounts(struct master *master)
+@@ -1359,6 +1444,7 @@ int master_show_mounts(struct master *master)
  		struct autofs_point *ap;
  		time_t now = time(NULL);
  		unsigned int count = 0;
@@ -241,7 +245,7 @@ index bbf4b4e..fabaecf 100644
  		int i;
  
  		this = list_entry(p, struct master_mapent, list);
-@@ -1368,6 +1450,14 @@ int master_show_mounts(struct master *master)
+@@ -1368,6 +1454,14 @@ int master_show_mounts(struct master *master)
  
  		printf("\nMount point: %s\n", ap->path);
  
@@ -256,7 +260,7 @@ index bbf4b4e..fabaecf 100644
  		printf("\nsource(s):\n");
  
  		/*
-@@ -1411,17 +1501,22 @@ int master_show_mounts(struct master *master)
+@@ -1411,17 +1505,22 @@ int master_show_mounts(struct master *master)
  					       " will be ignored at run time\n");
  			}
  
@@ -267,7 +271,7 @@ index bbf4b4e..fabaecf 100644
  				printf("  no keys found in map\n");
  			else {
 +				if (matched) {
-+					write_map(source->argv[0], me);
++					write_map(source, me);
 +					goto next;
 +				}
 +
