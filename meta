@@ -1,6 +1,6 @@
 Version: 1
-Previous: 1b26d8b7e0b379ee5942de8ae298d9c282d5c910
-Head: b0f2e327d0876fd9f1403a451e316ace9073fdcf
+Previous: 510b72c89f9f321063874241075fc34070410489
+Head: 6038e878ba9aa2a48fe42f39b990b09a614630a9
 Applied:
   autofs-5.0.7-dont-override-LDFLAGS-in-make-rules.patch: 2e8251865c0ed6d91a97c107973a7eb75d3e131b
   autofs-5.0.7-fix-a-couple-of-compiler-warnings.patch: b8bdae4bfe855786de918c78eee228e4aabdab45
@@ -8,6 +8,7 @@ Applied:
   autofs-5.0.7-dont-kick-state-machine-unless-ready.patch: 2ce7972970d8617f82004c5636099020a23f03af
   autofs-5.0.7-fix-dumpmaps-multi-output.patch: 9aa29980e11a64fc247366224c4bc85540cced7c
   autofs-5.0.7-try-and-cleanup-after-dumpmaps.patch: b0f2e327d0876fd9f1403a451e316ace9073fdcf
+  refresh-temp: 6038e878ba9aa2a48fe42f39b990b09a614630a9
 Unapplied:
   autofs-5.0.7-teach-dumpmaps-to-output-map-files.patch: 16a766f9c708edda4444290afa549754e4cbff52
   autofs-5.0.7-fix-compile-error-with-heimdal-support-enabled.patch: 64bff9fb9e8da7a9ed20cb409278b3a0c6159c56
