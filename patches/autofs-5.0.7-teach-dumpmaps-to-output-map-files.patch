@@ -1,5 +1,5 @@
 Bottom: 194417d3d2ec3f8bcecd3e9c7dbbfe8e4ede3642
-Top:    d7f0b0640a646b6d6861b6702a94b4c657b7c20b
+Top:    0f12ec8c0a2b3048a8a0413e8183e9cfcbbcad59
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-07-30 10:03:58 +0800
 
@@ -323,3 +323,22 @@ index c560496..a2657af 100644
  			count++;
  
  			source = source->next;
+diff --git a/man/automount.8 b/man/automount.8
+index 844b876..b763928 100644
+--- a/man/automount.8
++++ b/man/automount.8
+@@ -57,8 +57,13 @@ Run the daemon in the foreground and log to stderr instead of syslog."
+ Enables the use of ramdom selection when choosing a host from a
+ list of replicated servers.
+ .TP
+-.I "\-m, \-\-dumpmaps"
++.I "\-m, \-\-dumpmaps[=path[,path,path...]]"
+ Dump configured automounter maps, then exit.
++An argument specifying one or more mount point paths may be given. If so
++then automount(8) will attempt to write the map contents, in <key, value>
++pairs (suitable for use as a file map), to a file to the current directory
++with the name used in the map entry. If the map file exists it will not be
++overwritten.
+ .TP
+ .I "\-O, \-\-global-options"
+ Allows the specification of global mount options used for all master
