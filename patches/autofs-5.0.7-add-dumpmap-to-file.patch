@@ -1,5 +1,5 @@
 Bottom: 792742960272f8ffa4fe3aef105f7dd780be12e8
-Top:    3426785981f865dc95be8e9f12d58b09d1b1a5f2
+Top:    042d8cf1bc87b95102528916350e92b145e8328b
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-07-30 10:03:58 +0800
 
@@ -140,15 +140,15 @@ index 824707c..6166976 100644
  int master_list_empty(struct master *);
  int master_done(struct master *);
 diff --git a/lib/master.c b/lib/master.c
-index bbf4b4e..4b26a6f 100644
+index bbf4b4e..6d4b098 100644
 --- a/lib/master.c
 +++ b/lib/master.c
-@@ -1329,7 +1329,119 @@ static void print_map_info(struct map_source *source)
+@@ -1329,7 +1329,121 @@ static void print_map_info(struct map_source *source)
  	return;
  }
  
 -int master_show_mounts(struct master *master)
-+static char *match_map_path(const char *match, const char *maps)
++static unsigned int match_map_path(const char *match, const char *maps)
 +{
 +	char *names;
 +	char *tok, *ptr;
@@ -249,6 +249,8 @@ index bbf4b4e..4b26a6f 100644
 +
 +		/* Skip over arguments */
 +		if (source->argv[i]) {
++			int j;
++
 +			for (j = i; j < source->argc; j++) {
 +				if (!strcmp(source->argv[j], "--"))
 +					break;
@@ -264,15 +266,16 @@ index bbf4b4e..4b26a6f 100644
  {
  	struct list_head *p, *head;
  
-@@ -1359,6 +1471,7 @@ int master_show_mounts(struct master *master)
+@@ -1359,7 +1473,7 @@ int master_show_mounts(struct master *master)
  		struct autofs_point *ap;
  		time_t now = time(NULL);
  		unsigned int count = 0;
+-		int i;
 +		unsigned int matched = 0;
- 		int i;
  
  		this = list_entry(p, struct master_mapent, list);
-@@ -1368,6 +1481,14 @@ int master_show_mounts(struct master *master)
+ 		p = p->next;
+@@ -1368,6 +1482,14 @@ int master_show_mounts(struct master *master)
  
  		printf("\nMount point: %s\n", ap->path);
  
@@ -287,7 +290,7 @@ index bbf4b4e..4b26a6f 100644
  		printf("\nsource(s):\n");
  
  		/*
-@@ -1411,17 +1532,22 @@ int master_show_mounts(struct master *master)
+@@ -1411,17 +1533,22 @@ int master_show_mounts(struct master *master)
  					       " will be ignored at run time\n");
  			}
  
