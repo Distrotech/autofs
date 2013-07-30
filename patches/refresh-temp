@@ -1,0 +1,30 @@
+Bottom: 4c0969ea3613d27f8003d68146ec6c3796156c21
+Top:    65b0a986e9d5662639c6348e9366b6a97f84f628
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-07-30 13:36:26 +0800
+
+Refresh of autofs-5.0.7-add-dumpmap-to-file.patch
+
+---
+
+diff --git a/lib/master.c b/lib/master.c
+index 32cadf2..00c8a66 100644
+--- a/lib/master.c
++++ b/lib/master.c
+@@ -1308,7 +1308,7 @@ static char *match_map_name(const char *match, const char *maps)
+ 	ptr = NULL;
+ 	tok = strtok_r(names, ",", &ptr);
+ 	while (tok) {
+-		if (strcmp(tmp, tok)) {
++		if (strcmp(map_name, tok)) {
+ 			tok = strtok_r(NULL, ",", &ptr);
+ 			continue;
+ 		}
+@@ -1346,7 +1346,7 @@ static void write_map(char *name, struct mapent *first)
+ 	if (!f) {
+ 		printf("  failed to open output file %s: %s\n",
+ 			name, strerror(errno));
+-		printf("  map file not created.\n")
++		printf("  map file not created.\n");
+ 		return;
+ 	}
