@@ -3,7 +3,7 @@ Top:    9b231f80c679d7973d2f6badb697fa0087eb6156
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-07-30 10:03:58 +0800
 
-autofs-5.0.7 - add dumpmap to stdout
+autofs-5.0.7 - add dumpmap to file
 
 The dumpmaps option doesn't allow maps to be output in <key, value>
 pairs suitable for use as a file map.
@@ -11,9 +11,11 @@ pairs suitable for use as a file map.
 This could be useful to save current maps as a backup for emergency
 use.
 
-If the dumpmaps option is given and there is one or more arguments
-then consider them map names and output the map in file map format
-to stdout.
+If the dumpmaps option is given and there is an argument it is taken
+as a comma seperated list of map names to be output. The given names
+must match a existing map name and if so, and the map is available, it
+is output to a file of that name unless such a file already exists. If
+a file of the name of the map already exists then the map is ignored.
 
 
 ---
