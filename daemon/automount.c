@@ -1933,7 +1933,7 @@ int main(int argc, char *argv[])
 	int logpri = -1;
 	unsigned ghost, logging, daemon_check;
 	unsigned dumpmaps, foreground, have_global_options;
-	const char *dumpnames = NULL;
+	const char *dump = NULL;
 	time_t timeout;
 	time_t age = time(NULL);
 	struct rlimit rlim;
@@ -2031,8 +2031,8 @@ int main(int argc, char *argv[])
 
 		case 'm':
 			dumpmaps = 1;
-			printf("optarg %s\n", optarg);
-			dumpnames = getstropt(optarg, opt);
+			if (optstring)
+				dump = getstropt(optarg, opt);
 			break;
 
 		case 'O':
@@ -2176,7 +2176,7 @@ int main(int argc, char *argv[])
 		master_list->nc = nc;
 
 		lookup_nss_read_master(master_list, 0);
-		master_show_mounts(master_list, dumpnames);
+		master_show_mounts(master_list, dump);
 		exit(0);
 	}
 
