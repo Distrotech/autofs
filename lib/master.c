@@ -1349,7 +1349,7 @@ static void write_map(char *name, struct mapent *first)
 		printf("  map file not created.\n")
 		return;
 	}
- 
+
 	do {
 		fprintf(f, "%s\t%s\n", me->key, me->mapent);
 	} while ((me = cache_lookup_next(first->mc, me)));
