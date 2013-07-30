@@ -1,0 +1,21 @@
+Bottom: e9731220dc88a3d073f7178c9a08e98986b6cadd
+Top:    e9731220dc88a3d073f7178c9a08e98986b6cadd
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-07-30 10:03:58 +0800
+
+autofs-5.0.7 - add dumpmap to stdout
+
+The dumpmaps option doesn't allow maps to be output in <key, value>
+pairs suitable for use as a file map.
+
+This could be useful to save current maps as a backup for emergency
+use.
+
+If the dumpmaps option is given and there is one or more arguments
+then consider them map names and output the map in file map format
+to stdout.
+
+
+---
+
+
