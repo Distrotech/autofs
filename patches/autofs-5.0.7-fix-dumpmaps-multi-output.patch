@@ -1,0 +1,14 @@
+Bottom: e9731220dc88a3d073f7178c9a08e98986b6cadd
+Top:    e9731220dc88a3d073f7178c9a08e98986b6cadd
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-07-30 16:11:57 +0800
+
+autofs-5.0.7 - fix dumpmaps multi output
+
+If the maps contain the old style "multi" type the dumped map information
+isn't right.
+
+
+---
+
+
