@@ -1,5 +1,5 @@
 Bottom: 792742960272f8ffa4fe3aef105f7dd780be12e8
-Top:    fbc52d2dc6808279c05eeb6c58c5bc566a843627
+Top:    194417d3d2ec3f8bcecd3e9c7dbbfe8e4ede3642
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-07-30 18:34:51 +0800
 
@@ -13,10 +13,19 @@ from valgrind when checking code.
 ---
 
 diff --git a/daemon/automount.c b/daemon/automount.c
-index 1d0b64e..595d93e 100644
+index 1d0b64e..6849272 100644
 --- a/daemon/automount.c
 +++ b/daemon/automount.c
-@@ -2152,6 +2152,17 @@ int main(int argc, char *argv[])
+@@ -2136,6 +2136,8 @@ int main(int argc, char *argv[])
+ 	}
+ 
+ 	if (dumpmaps) {
++		struct master_mapent *entry;
++		struct list_head *head, *p;
+ 		struct mapent_cache *nc;
+ 
+ 		open_log();
+@@ -2152,6 +2154,17 @@ int main(int argc, char *argv[])
  
  		lookup_nss_read_master(master_list, 0);
  		master_show_mounts(master_list);
