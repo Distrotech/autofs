@@ -1328,7 +1328,7 @@ static char *match_map_path(const char *match, const char *maps)
 
 fail:
 	if (!found)
-		printf("map \"%s\" not found in \"%s\", ignored\n",
+		printf("map \"%s\" not found in \"%s\", not output\n",
 			match, maps);
 	else {
 		printf("failed to allocate working storage,\n");
@@ -1344,17 +1344,23 @@ static void write_map(const char *map, struct mapent *first)
 	char *name, *out;
 	FILE *f;
 
+	/* map has no name (eg. hosts) */
+	if (!map) {
+		printf("  map has no name, not output\n");
+		return;
+	}
+
 	name = strdup(map);
 	if (!name) {
-		printf("failed to allocate working storage, "
-			"map %s not output\n", map);
+		printf("  failed to allocate working storage, "
+		       "map %s not output\n", map);
 		return;
 	}
 
 	if (strchr(name, '/'))
-		out = name;
-	else
 		out = basename(name);
+	else
+		out = name;
 
 	f = open_fopen_wx(out);
 	if (!f) {
@@ -1368,6 +1374,8 @@ static void write_map(const char *map, struct mapent *first)
 	do {
 		fprintf(f, "%s\t%s\n", me->key, me->mapent);
 	} while ((me = cache_lookup_next(first->mc, me)));
+
+	printf("  output map %s\n", out);
 
 	fclose(f);
 	free(name);
@@ -1480,17 +1488,16 @@ int master_show_mounts(struct master *master, const char *maps)
 				}
 			}
 
-			printf("\n");
-
 			me = cache_lookup_first(source->mc);
 			if (!me)
 				printf("  no keys found in map\n");
 			else {
 				if (map_path) {
 					write_map(source->argv[0], me);
-					free(name);
 					goto next;
 				}
+
+				printf("\n");
 
 				do {
 					printf("  %s | %s\n", me->key, me->mapent);

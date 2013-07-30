@@ -1948,7 +1948,7 @@ int main(int argc, char *argv[])
 		{"foreground", 0, 0, 'f'},
 		{"random-multimount-selection", 0, 0, 'r'},
 		{"negative-timeout", 1, 0, 'n'},
-		{"dumpmaps", 1, 0, 'm'},
+		{"dumpmaps", 2, 0, 'm'},
 		{"global-options", 1, 0, 'O'},
 		{"version", 0, 0, 'V'},
 		{"set-log-priority", 1, 0, 'l'},
