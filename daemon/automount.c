@@ -1933,7 +1933,7 @@ int main(int argc, char *argv[])
 	int logpri = -1;
 	unsigned ghost, logging, daemon_check;
 	unsigned dumpmaps, foreground, have_global_options;
-	const char *dumpnames;
+	const char *dumpnames = NULL;
 	time_t timeout;
 	time_t age = time(NULL);
 	struct rlimit rlim;
