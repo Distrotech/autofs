@@ -1292,10 +1292,8 @@ static void print_map_info(struct map_source *source)
 		if (source->argv[i] && *source->argv[i] != '-') {
 			if (!multi)
 				printf("  map: %s\n", source->argv[i]);
-			else {
+			else
 				printf("  map[%i]: %s\n", map_num, source->argv[i]);
-				map_num++;
-			}
 			i++;
 		}
 
@@ -1309,7 +1307,11 @@ static void print_map_info(struct map_source *source)
 			int need_newline = 0;
 			int j;
 
-			printf("  arguments:");
+			if (!multi)
+				printf("  arguments:");
+			else
+				printf("  arguments[%i]:", map_num);
+
 			for (j = i; j < source->argc; j++) {
 				if (!strcmp(source->argv[j], "--"))
 					break;
@@ -1320,6 +1322,8 @@ static void print_map_info(struct map_source *source)
 			if (need_newline)
 				printf("\n");
 		}
+		if (multi)
+			map_num++;
 	}
 
 	return;
