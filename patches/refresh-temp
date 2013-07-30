@@ -1,0 +1,21 @@
+Bottom: 8ce3727d9d51a1b22cf95ed00bb407f9fea6514a
+Top:    1ced3a9f220fdf407b23aec49ccc32df78590dd3
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-07-30 19:16:24 +0800
+
+Refresh of autofs-5.0.7-teach-dumpmaps-to-output-map-files.patch
+
+---
+
+diff --git a/CHANGELOG b/CHANGELOG
+index 1cf79be..faa2e69 100644
+--- a/CHANGELOG
++++ b/CHANGELOG
+@@ -59,6 +59,7 @@
+ - dont start readmap unless ready.
+ - fix dumpmaps multi output.
+ - try and cleanup after dumpmaps.
++- teach dumpmaps to output map files.
+ 
+ 25/07/2012 autofs-5.0.7
+ =======================
