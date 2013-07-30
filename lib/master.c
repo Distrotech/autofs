@@ -1287,7 +1287,7 @@ static char *match_map_name(const char *match, const char *maps)
 	char *map_name;
 	char *this;
 	char *tok, *ptr, *tmp;
-	unsigned int found;
+	unsigned int found = 0;
 
 	tmp = strdup(match);
 	if (tmp)
@@ -1295,6 +1295,8 @@ static char *match_map_name(const char *match, const char *maps)
 	if (!tmp || !names) {
 		if (tmp)
 			free(tmp);
+		/* Don't print "not found" message since we haven't looked */
+		found = 1;
 		goto fail;
 	}
 
@@ -1303,7 +1305,6 @@ static char *match_map_name(const char *match, const char *maps)
 	else
 		map_name = tmp;
 
-	found = 0;
 	this = NULL;
 	ptr = NULL;
 	tok = strtok_r(names, ",", &ptr);
