@@ -1,5 +1,5 @@
 Bottom: 04d7d212fc9dd6d826f22b38b67f9fe37f01e923
-Top:    8764d7dc86ee7507babfe8b386b066b22c61c945
+Top:    60c313e57909d1dfac2bf78c08456c848e6b4346
 Author: Lan Yixun (dlan) <dennis.yxun@gmail.com>
 Date:   2013-07-25 09:05:41 +0800
 
@@ -23,6 +23,18 @@ Signed-off-by: Lan Yixun (dlan) <dennis.yxun@gmail.com>
 
 ---
 
+diff --git a/CHANGELOG b/CHANGELOG
+index 3228d6b..17241c0 100644
+--- a/CHANGELOG
++++ b/CHANGELOG
+@@ -57,6 +57,7 @@
+ - fix a couple of compiler warnings.
+ - add after sssd dependency to unit file.
+ - dont start readmap unless ready.
++- fix compile error with heimdal support enabled.
+ 
+ 25/07/2012 autofs-5.0.7
+ =======================
 diff --git a/aclocal.m4 b/aclocal.m4
 index c5de159..7a8b03c 100644
 --- a/aclocal.m4
