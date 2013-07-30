@@ -1,6 +1,6 @@
 Version: 1
-Previous: df2234cd669a6c44107f5d8b8bbac30a995cb464
-Head: a764a811ae3632839bfc340d84d50331e1d0d465
+Previous: 3fb0574b05e0246c9c24e300f0dd25e0e650e25c
+Head: 68e5eed1a5b47b28d60a71cf2f394efcd6de1db3
 Applied:
   autofs-5.0.7-dont-override-LDFLAGS-in-make-rules.patch: 2e8251865c0ed6d91a97c107973a7eb75d3e131b
   autofs-5.0.7-fix-a-couple-of-compiler-warnings.patch: b8bdae4bfe855786de918c78eee228e4aabdab45
@@ -10,6 +10,7 @@ Applied:
   autofs-5.0.7-try-and-cleanup-after-dumpmaps.patch: b59a69aedfc001eced29b94cd2eb613f790d4c0c
   autofs-5.0.7-teach-dumpmaps-to-output-maps-to-files.patch: e8d5a92be27f95ddf409d9dbaebfa4bfc58d3f65
   autofs-5.0.7-fix-compile-error-with-heimdal-support-enabled.patch: a764a811ae3632839bfc340d84d50331e1d0d465
+  refresh-temp: 68e5eed1a5b47b28d60a71cf2f394efcd6de1db3
 Unapplied:
   autofs-5.0.7-fix-typo-forced-shutdown-should-be-force-shutdown.patch: 1d54f00728ccbc67a122e2f12d2811cb21384d4e
   autofs-5.0.7-fix-hesiod-check-error-and-use-correct-LIBS-setting.patch: 30baf67eaf795155b57cf1c2387a5347989afaf0
