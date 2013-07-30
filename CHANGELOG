@@ -68,6 +68,7 @@
 - unbundle NOTSTRIP from DEBUG so they dont depend on each other.
 - fix compilation of lookup_ldap.c without sasl.
 - fix dumpmaps multi output.
+- try and cleanup after dumpmaps.
 
 25/07/2012 autofs-5.0.7
 =======================
