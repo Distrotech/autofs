@@ -112,7 +112,7 @@ int master_submount_list_empty(struct autofs_point *ap);
 int master_notify_submount(struct autofs_point *, const char *path, enum states);
 void master_notify_state_change(struct master *, int);
 int master_mount_mounts(struct master *, time_t, int);
-int master_show_mounts(struct master *);
+int master_show_mounts(struct master *, const char *);
 extern inline unsigned int master_get_logopt(void);
 int master_list_empty(struct master *);
 int master_done(struct master *);
