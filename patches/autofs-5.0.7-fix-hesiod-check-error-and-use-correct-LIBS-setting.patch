@@ -1,5 +1,5 @@
-Bottom: d21ad019a1da23b4ac6ce5021a0d8474040e73bf
-Top:    31493d60032ff78040abac6d16fe5480dce35a90
+Bottom: 8ae9ad262afe7a73052d5cb9f78a0be48b4cfb7a
+Top:    01243c14099007881cfa4e53674a84c1fbf76383
 Author: Lan Yixun (dlan) <dennis.yxun@gmail.com>
 Date:   2013-07-24 09:58:20 +0800
 
@@ -20,22 +20,22 @@ Edited by: Ian Kent <raven@themaw.net>
 ---
 
 diff --git a/CHANGELOG b/CHANGELOG
-index 5751805..3c829cf 100644
+index 7ce6619..aaff5c2 100644
 --- a/CHANGELOG
 +++ b/CHANGELOG
-@@ -58,6 +58,7 @@
- - add after sssd dependency to unit file.
+@@ -59,6 +59,7 @@
  - dont start readmap unless ready.
+ - fix compile error with heimdal support enabled.
  - fix typo forced-shutdown should be force-shutdown.
 +- fix hesiod check error and use correct $(LIBS) setting.
  
  25/07/2012 autofs-5.0.7
  =======================
 diff --git a/aclocal.m4 b/aclocal.m4
-index c5de159..110d106 100644
+index 7a8b03c..637a775 100644
 --- a/aclocal.m4
 +++ b/aclocal.m4
-@@ -309,20 +309,20 @@ dnl --------------------------------------------------------------------------
+@@ -316,20 +316,20 @@ dnl --------------------------------------------------------------------------
  AC_DEFUN([AF_CHECK_LIBHESIOD],
  [AC_MSG_CHECKING(for libhesiod)
  
@@ -63,10 +63,10 @@ index c5de159..110d106 100644
  
  dnl --------------------------------------------------------------------------
 diff --git a/configure b/configure
-index e412734..3801e9d 100755
+index b8e74b7..e6d5d4a 100755
 --- a/configure
 +++ b/configure
-@@ -4221,9 +4221,9 @@ then
+@@ -4305,9 +4305,9 @@ then
  	{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for libhesiod" >&5
  $as_echo_n "checking for libhesiod... " >&6; }
  
@@ -79,7 +79,7 @@ index e412734..3801e9d 100755
  
  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
  /* end confdefs.h.  */
-@@ -4231,7 +4231,7 @@ cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+@@ -4315,7 +4315,7 @@ cat confdefs.h - <<_ACEOF >conftest.$ac_ext
  int
  main ()
  {
@@ -88,7 +88,7 @@ index e412734..3801e9d 100755
    ;
    return 0;
  }
-@@ -4248,8 +4248,8 @@ fi
+@@ -4332,8 +4332,8 @@ fi
  rm -f core conftest.err conftest.$ac_objext \
      conftest$ac_exeext conftest.$ac_ext
  
