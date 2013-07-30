@@ -1,5 +1,5 @@
 Bottom: e9731220dc88a3d073f7178c9a08e98986b6cadd
-Top:    d015f6ec028734c73e0849ae78907b6598975ec6
+Top:    c7d39c932d4b299f353108f2416954322ff8e7bc
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-07-30 16:11:57 +0800
 
@@ -12,7 +12,7 @@ isn't right.
 ---
 
 diff --git a/lib/master.c b/lib/master.c
-index eca3523..efed3ba 100644
+index eca3523..2830f8d 100644
 --- a/lib/master.c
 +++ b/lib/master.c
 @@ -1281,6 +1281,50 @@ static void list_source_instances(struct map_source *source, struct map_source *
@@ -24,7 +24,7 @@ index eca3523..efed3ba 100644
 +	int argc = source->argc;
 +	int i, multi, map_num;
 +
-+	multi = (source->type && strcmp(source->type, "multi"));
++	multi = (source->type && !strcmp(source->type, "multi"));
 +	map_num = 1;
 +	for (i = 0; i < argc; i++) {
 +		if (source->argv[i] && *source->argv[i] != '-') {
@@ -40,7 +40,7 @@ index eca3523..efed3ba 100644
 +		if (i >= argc)
 +			return;
 +
-+		if (strcmp(source->argv[i], "--"))
++		if (!strcmp(source->argv[i], "--"))
 +			continue;
 +
 +		if (source->argv[i]) {
