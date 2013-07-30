@@ -1281,7 +1281,7 @@ static void list_source_instances(struct map_source *source, struct map_source *
 	return;
 }
 
-static char *match_map_name(const char *match, const char *maps)
+static char *match_map_path(const char *match, const char *maps)
 {
 	char *names;
 	char *map_name;
@@ -1300,9 +1300,9 @@ static char *match_map_name(const char *match, const char *maps)
 		goto fail;
 	}
 
-	if (strchr(tmp, '/'))
+	/*if (strchr(tmp, '/'))
 		map_name = basename(tmp);
-	else
+	else */
 		map_name = tmp;
 
 	this = NULL;
@@ -1390,7 +1390,7 @@ int master_show_mounts(struct master *master, const char *maps)
 		struct autofs_point *ap;
 		time_t now = time(NULL);
 		unsigned int count = 0;
-		char *map_name = NULL;
+		char *map_path = NULL;
 		int i;
 
 		this = list_entry(p, struct master_mapent, list);
@@ -1401,8 +1401,8 @@ int master_show_mounts(struct master *master, const char *maps)
 		printf("\nMount point: %s\n", ap->path);
 
 		if (maps) {
-			map_name = match_map_name(ap->path, maps);
-			if (!map_name) {
+			map_path = match_map_path(ap->path, maps);
+			if (!map_path) {
 				printf("\n");
 				continue;
 			}
@@ -1472,7 +1472,7 @@ int master_show_mounts(struct master *master, const char *maps)
 				printf("  no keys found in map\n");
 			else {
 				if (map_name) {
-					write_map(map_name, me);
+					write_map(source->argv[0], me);
 					goto next;
 				}
 
@@ -1482,7 +1482,7 @@ int master_show_mounts(struct master *master, const char *maps)
 			}
 next:
 			if (map_name)
-				free(map_name);
+				free(map_path);
 
 			count++;
 
