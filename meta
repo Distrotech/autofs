@@ -1,6 +1,6 @@
 Version: 1
-Previous: ad9f488496e5f6a46650fe6029511992eaebad6e
-Head: 8d174ac6dcb92841a90657e19de80df230d1d833
+Previous: 598be0a41eaa08dba1d3ef5e1bb6b31070690a49
+Head: 4376404d56b21148b297f933c4d8f5d1d52e26f8
 Applied:
   autofs-5.0.7-dont-override-LDFLAGS-in-make-rules.patch: 2e8251865c0ed6d91a97c107973a7eb75d3e131b
   autofs-5.0.7-fix-a-couple-of-compiler-warnings.patch: b8bdae4bfe855786de918c78eee228e4aabdab45
@@ -17,8 +17,8 @@ Applied:
   autofs-5.0.7-remove-hard-coded-STRIP-variable.patch: 89020358eab42c8f22b16a1678a6d7a6089a6bb5
   autofs-5.0.7-use-LIBS-for-link-libraries.patch: ba976a9c543f82df8fe2cb5d300dc33b486c27ee
   autofs-5.0.7-unbundle-NOTSTRIP-from-DEBUG-so-they-dont-depend-on-each-other.patch: 4376404d56b21148b297f933c4d8f5d1d52e26f8
-  autofs-5.0.7-fix-occasional-build-error-when-enable-parallel-compiling.patch: 8d174ac6dcb92841a90657e19de80df230d1d833
 Unapplied:
+  autofs-5.0.7-fix-occasional-build-error-when-enable-parallel-compiling.patch: 8d174ac6dcb92841a90657e19de80df230d1d833
   autofs-5.0.7-fix-compilation-of-lookup_ldap_c-without-sasl.patch: 542a1798b36bbc95f131a11745e8dfa5c9006f73
   autofs-5.0.7-fix-compile-error-with-heimdal-support-enabled.patch: b8920d63128f27ec553189440b1b4fc6d3df81c0
   autofs-5.0.5-wait-for-master-map-available-at-start.patch: 28e191c68fc95cd90815f398deff088bd1d65d0a
