@@ -1,5 +1,5 @@
 Bottom: e9731220dc88a3d073f7178c9a08e98986b6cadd
-Top:    4c0969ea3613d27f8003d68146ec6c3796156c21
+Top:    65b0a986e9d5662639c6348e9366b6a97f84f628
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-07-30 10:03:58 +0800
 
@@ -137,7 +137,7 @@ index 824707c..6166976 100644
  int master_list_empty(struct master *);
  int master_done(struct master *);
 diff --git a/lib/master.c b/lib/master.c
-index eca3523..32cadf2 100644
+index eca3523..00c8a66 100644
 --- a/lib/master.c
 +++ b/lib/master.c
 @@ -1281,7 +1281,85 @@ static void list_source_instances(struct map_source *source, struct map_source *
@@ -172,7 +172,7 @@ index eca3523..32cadf2 100644
 +	ptr = NULL;
 +	tok = strtok_r(names, ",", &ptr);
 +	while (tok) {
-+		if (strcmp(tmp, tok)) {
++		if (strcmp(map_name, tok)) {
 +			tok = strtok_r(NULL, ",", &ptr);
 +			continue;
 +		}
@@ -210,7 +210,7 @@ index eca3523..32cadf2 100644
 +	if (!f) {
 +		printf("  failed to open output file %s: %s\n",
 +			name, strerror(errno));
-+		printf("  map file not created.\n")
++		printf("  map file not created.\n");
 +		return;
 +	}
 +
