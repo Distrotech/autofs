@@ -1,0 +1,21 @@
+Bottom: 7965280e7a0d94ecc58461cc1547e45c714a45f9
+Top:    c62cb8957d75c6cd3208a365c197e2853e05e158
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-07-30 19:15:24 +0800
+
+Refresh of autofs-5.0.7-fix-dumpmaps-multi-output.patch
+
+---
+
+diff --git a/CHANGELOG b/CHANGELOG
+index 3228d6b..cadf5d2 100644
+--- a/CHANGELOG
++++ b/CHANGELOG
+@@ -57,6 +57,7 @@
+ - fix a couple of compiler warnings.
+ - add after sssd dependency to unit file.
+ - dont start readmap unless ready.
++- fix dumpmaps multi output.
+ 
+ 25/07/2012 autofs-5.0.7
+ =======================
