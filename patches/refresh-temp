@@ -1,0 +1,125 @@
+Bottom: 8929b138560c2289e7c798a43fb94c56b1602156
+Top:    7b47c02544f2531a547bed3ca22a72ae5b35e57d
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-07-30 14:55:13 +0800
+
+Refresh of autofs-5.0.7-add-dumpmap-to-file.patch
+
+---
+
+diff --git a/daemon/automount.c b/daemon/automount.c
+index bbde805..0aec6e1 100644
+--- a/daemon/automount.c
++++ b/daemon/automount.c
+@@ -1937,7 +1937,7 @@ int main(int argc, char *argv[])
+ 	time_t timeout;
+ 	time_t age = time(NULL);
+ 	struct rlimit rlim;
+-	const char *options = "+hp:t:vm::dD:fVrO:l:n:CF";
++	const char *options = "+hp:t:vm:dD:fVrO:l:n:CF";
+ 	static const struct option long_options[] = {
+ 		{"help", 0, 0, 'h'},
+ 		{"pid-file", 1, 0, 'p'},
+@@ -1948,7 +1948,7 @@ int main(int argc, char *argv[])
+ 		{"foreground", 0, 0, 'f'},
+ 		{"random-multimount-selection", 0, 0, 'r'},
+ 		{"negative-timeout", 1, 0, 'n'},
+-		{"dumpmaps", 0, 0, 'm'},
++		{"dumpmaps", 1, 0, 'm'},
+ 		{"global-options", 1, 0, 'O'},
+ 		{"version", 0, 0, 'V'},
+ 		{"set-log-priority", 1, 0, 'l'},
+@@ -2031,6 +2031,7 @@ int main(int argc, char *argv[])
+ 
+ 		case 'm':
+ 			dumpmaps = 1;
++			printf("optarg %s\n", optarg);
+ 			dumpnames = getstropt(optarg, opt);
+ 			break;
+ 
+diff --git a/lib/master.c b/lib/master.c
+index 95af1b8..da01e7f 100644
+--- a/lib/master.c
++++ b/lib/master.c
+@@ -1338,16 +1338,30 @@ fail:
+ 	return NULL;
+ }
+ 
+-static void write_map(char *name, struct mapent *first)
++static void write_map(const char *map, struct mapent *first)
+ {
+ 	struct mapent *me = first;
++	char *name, *out;
+ 	FILE *f;
+ 
+-	f = open_fopen_wx(name);
++	name = strdup(map);
++	if (!name) {
++		printf("failed to allocate working storage, "
++			"map %s not output\n", map);
++		return;
++	}
++
++	if (strchr(name, '/'))
++		out = name;
++	else
++		out = basename(name);
++
++	f = open_fopen_wx(out);
+ 	if (!f) {
+ 		printf("  failed to open output file %s: %s\n",
+-			name, strerror(errno));
++			out, strerror(errno));
+ 		printf("  map file not created.\n");
++		free(name);
+ 		return;
+ 	}
+ 
+@@ -1356,6 +1370,7 @@ static void write_map(char *name, struct mapent *first)
+ 	} while ((me = cache_lookup_next(first->mc, me)));
+ 
+ 	fclose(f);
++	free(name);
+ 
+ 	return;
+ }
+@@ -1424,15 +1439,15 @@ int master_show_mounts(struct master *master, const char *maps)
+ 			lookup_prune_cache(ap, now);
+ 		else {
+ 			printf("  failed to read map\n\n");
+-			if (map_name)
+-				free(map_name);
++			if (map_path)
++				free(map_path);
+ 			continue;
+ 		}
+ 
+ 		if (!this->maps) {
+ 			printf("  no map sources found\n\n");
+-			if (map_name)
+-				free(map_name);
++			if (map_path)
++				free(map_path);
+ 			continue;
+ 		}
+ 
+@@ -1471,8 +1486,9 @@ int master_show_mounts(struct master *master, const char *maps)
+ 			if (!me)
+ 				printf("  no keys found in map\n");
+ 			else {
+-				if (map_name) {
++				if (map_path) {
+ 					write_map(source->argv[0], me);
++					free(name);
+ 					goto next;
+ 				}
+ 
+@@ -1481,7 +1497,7 @@ int master_show_mounts(struct master *master, const char *maps)
+ 				} while ((me = cache_lookup_next(source->mc, me)));
+ 			}
+ next:
+-			if (map_name)
++			if (map_path)
+ 				free(map_path);
+ 
+ 			count++;
