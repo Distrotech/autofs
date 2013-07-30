@@ -1,0 +1,21 @@
+Bottom: 549d79f13bafe1e21e24c41644adddbf02e76cf0
+Top:    ca7ac582839846950ecc2b8cb0c1cacf644c3354
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-07-30 18:31:45 +0800
+
+Refresh of autofs-5.0.7-add-dumpmap-to-file.patch
+
+---
+
+diff --git a/lib/master.c b/lib/master.c
+index 3f79f61..bbf7cb0 100644
+--- a/lib/master.c
++++ b/lib/master.c
+@@ -1554,7 +1554,7 @@ next:
+ 			source = source->next;
+ 		}
+ 
+-		lookup_close_lookup(ap);
++		/*lookup_close_lookup(ap);*/
+ 		printf("\n");
+ 	}
