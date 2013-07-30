@@ -1,5 +1,5 @@
 Bottom: e9731220dc88a3d073f7178c9a08e98986b6cadd
-Top:    c7d39c932d4b299f353108f2416954322ff8e7bc
+Top:    792742960272f8ffa4fe3aef105f7dd780be12e8
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-07-30 16:11:57 +0800
 
@@ -12,10 +12,10 @@ isn't right.
 ---
 
 diff --git a/lib/master.c b/lib/master.c
-index eca3523..2830f8d 100644
+index eca3523..bbf4b4e 100644
 --- a/lib/master.c
 +++ b/lib/master.c
-@@ -1281,6 +1281,50 @@ static void list_source_instances(struct map_source *source, struct map_source *
+@@ -1281,6 +1281,54 @@ static void list_source_instances(struct map_source *source, struct map_source *
  	return;
  }
  
@@ -30,10 +30,8 @@ index eca3523..2830f8d 100644
 +		if (source->argv[i] && *source->argv[i] != '-') {
 +			if (!multi)
 +				printf("  map: %s\n", source->argv[i]);
-+			else {
++			else
 +				printf("  map[%i]: %s\n", map_num, source->argv[i]);
-+				map_num++;
-+			}
 +			i++;
 +		}
 +
@@ -47,7 +45,11 @@ index eca3523..2830f8d 100644
 +			int need_newline = 0;
 +			int j;
 +
-+			printf("  arguments:");
++			if (!multi)
++				printf("  arguments:");
++			else
++				printf("  arguments[%i]:", map_num);
++
 +			for (j = i; j < source->argc; j++) {
 +				if (!strcmp(source->argv[j], "--"))
 +					break;
@@ -58,6 +60,8 @@ index eca3523..2830f8d 100644
 +			if (need_newline)
 +				printf("\n");
 +		}
++		if (multi)
++			map_num++;
 +	}
 +
 +	return;
@@ -66,7 +70,7 @@ index eca3523..2830f8d 100644
  int master_show_mounts(struct master *master)
  {
  	struct list_head *p, *head;
-@@ -1357,20 +1401,10 @@ int master_show_mounts(struct master *master)
+@@ -1357,20 +1405,10 @@ int master_show_mounts(struct master *master)
  			}
  
  			if (source->argc >= 1) {
