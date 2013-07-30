@@ -1365,7 +1365,7 @@ static char *match_map_path(const char *match, const char *maps)
 	return 1;
 }
 
-static void write_map(struct source *source, struct mapent *first)
+static void write_map(struct map_source *source, struct mapent *first)
 {
 	struct mapent *me = first;
 	const char *map = source->argv[0];
