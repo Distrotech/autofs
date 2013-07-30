@@ -1,0 +1,39 @@
+Bottom: 3426785981f865dc95be8e9f12d58b09d1b1a5f2
+Top:    042d8cf1bc87b95102528916350e92b145e8328b
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-07-30 17:57:39 +0800
+
+Refresh of autofs-5.0.7-add-dumpmap-to-file.patch
+
+---
+
+diff --git a/lib/master.c b/lib/master.c
+index 4b26a6f..6d4b098 100644
+--- a/lib/master.c
++++ b/lib/master.c
+@@ -1329,7 +1329,7 @@ static void print_map_info(struct map_source *source)
+ 	return;
+ }
+ 
+-static char *match_map_path(const char *match, const char *maps)
++static unsigned int match_map_path(const char *match, const char *maps)
+ {
+ 	char *names;
+ 	char *tok, *ptr;
+@@ -1430,6 +1430,8 @@ static void write_maps(struct map_source *source, struct mapent *first)
+ 
+ 		/* Skip over arguments */
+ 		if (source->argv[i]) {
++			int j;
++
+ 			for (j = i; j < source->argc; j++) {
+ 				if (!strcmp(source->argv[j], "--"))
+ 					break;
+@@ -1472,7 +1474,6 @@ int master_show_mounts(struct master *master, const char *maps)
+ 		time_t now = time(NULL);
+ 		unsigned int count = 0;
+ 		unsigned int matched = 0;
+-		int i;
+ 
+ 		this = list_entry(p, struct master_mapent, list);
+ 		p = p->next;
