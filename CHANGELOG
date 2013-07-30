@@ -59,6 +59,7 @@
 - dont start readmap unless ready.
 - fix dumpmaps multi output.
 - try and cleanup after dumpmaps.
+- teach dumpmaps to output maps to files.
 
 25/07/2012 autofs-5.0.7
 =======================
