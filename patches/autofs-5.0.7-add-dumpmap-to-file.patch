@@ -1,5 +1,5 @@
 Bottom: 792742960272f8ffa4fe3aef105f7dd780be12e8
-Top:    549d79f13bafe1e21e24c41644adddbf02e76cf0
+Top:    ca7ac582839846950ecc2b8cb0c1cacf644c3354
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-07-30 10:03:58 +0800
 
@@ -159,7 +159,7 @@ index 824707c..6166976 100644
  int master_list_empty(struct master *);
  int master_done(struct master *);
 diff --git a/lib/master.c b/lib/master.c
-index bbf4b4e..3f79f61 100644
+index bbf4b4e..bbf7cb0 100644
 --- a/lib/master.c
 +++ b/lib/master.c
 @@ -1329,7 +1329,121 @@ static void print_map_info(struct map_source *source)
@@ -337,6 +337,6 @@ index bbf4b4e..3f79f61 100644
  			source = source->next;
  		}
  
-+		lookup_close_lookup(ap);
++		/*lookup_close_lookup(ap);*/
  		printf("\n");
  	}
