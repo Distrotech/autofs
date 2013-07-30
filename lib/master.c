@@ -1411,7 +1411,6 @@ static void write_map(const char *map, struct mapent *first)
 }
 
 int master_show_mounts(struct master *master, const char *maps)
->>>>>>> patched
 {
 	struct list_head *p, *head;
 
