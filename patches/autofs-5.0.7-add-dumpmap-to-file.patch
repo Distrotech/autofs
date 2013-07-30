@@ -1,5 +1,5 @@
 Bottom: e9731220dc88a3d073f7178c9a08e98986b6cadd
-Top:    a08a632ce6615c6d2be270fe605a203c5167da4f
+Top:    840a02768ac75223df2878a40be1de19e9b0b568
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-07-30 10:03:58 +0800
 
@@ -140,7 +140,7 @@ index 824707c..6166976 100644
  int master_list_empty(struct master *);
  int master_done(struct master *);
 diff --git a/lib/master.c b/lib/master.c
-index eca3523..7d92bb1 100644
+index eca3523..269ea10 100644
 --- a/lib/master.c
 +++ b/lib/master.c
 @@ -1281,7 +1281,88 @@ static void list_source_instances(struct map_source *source, struct map_source *
@@ -256,16 +256,7 @@ index eca3523..7d92bb1 100644
  		printf("\nsource(s):\n");
  
  		/*
-@@ -1341,6 +1431,8 @@ int master_show_mounts(struct master *master)
- 
- 		if (!this->maps) {
- 			printf("  no map sources found\n\n");
-+			if (map_path)
-+				free(map_path);
- 			continue;
- 		}
- 
-@@ -1373,17 +1465,22 @@ int master_show_mounts(struct master *master)
+@@ -1373,17 +1463,22 @@ int master_show_mounts(struct master *master)
  				}
  			}
  
