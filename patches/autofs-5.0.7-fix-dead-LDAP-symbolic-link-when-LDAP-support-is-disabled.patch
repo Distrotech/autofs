@@ -1,5 +1,5 @@
-Bottom: 31493d60032ff78040abac6d16fe5480dce35a90
-Top:    5fd4e64a2f03ba380547e6794f9059621c19a6c9
+Bottom: 01243c14099007881cfa4e53674a84c1fbf76383
+Top:    6d470a6926a741da87069bada49b6de8c4271962
 Author: Lan Yixun (dlan) <dennis.yxun@gmail.com>
 Date:   2013-07-23 17:49:02 +0800
 
@@ -17,11 +17,11 @@ Edited by: Ian Kent <raven@themaw.net>
 ---
 
 diff --git a/CHANGELOG b/CHANGELOG
-index 3c829cf..9755e25 100644
+index aaff5c2..f1e118e 100644
 --- a/CHANGELOG
 +++ b/CHANGELOG
-@@ -59,6 +59,7 @@
- - dont start readmap unless ready.
+@@ -60,6 +60,7 @@
+ - fix compile error with heimdal support enabled.
  - fix typo forced-shutdown should be force-shutdown.
  - fix hesiod check error and use correct $(LIBS) setting.
 +- fix dead LDAP symbolic link when LDAP support is disabled.
