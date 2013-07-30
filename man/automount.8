@@ -57,8 +57,13 @@ Run the daemon in the foreground and log to stderr instead of syslog."
 Enables the use of ramdom selection when choosing a host from a
 list of replicated servers.
 .TP
-.I "\-m, \-\-dumpmaps"
+.I "\-m, \-\-dumpmaps[=path[,path,path...]]"
 Dump configured automounter maps, then exit.
+An argument specifying one or more mount point paths may be given. If so
+then automount(8) will attempt to write the map contents, in <key, value>
+pairs (suitable for use as a file map), to a file to the current directory
+with the name used in the map entry. If the map file exists it will not be
+overwritten.
 .TP
 .I "\-O, \-\-global-options"
 Allows the specification of global mount options used for all master
