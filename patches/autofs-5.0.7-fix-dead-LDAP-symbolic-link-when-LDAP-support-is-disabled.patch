@@ -1,5 +1,5 @@
-Bottom: da0c1f9923a0bf985b6269b95221ed36b6244e27
-Top:    ee24ccbc7ac1744176a60ece14d16ad447ec1454
+Bottom: fc8a1dc06edde6d97ece6baba42635ee91bdd141
+Top:    1d6f2d7a421dcf01518e1cf4fab4b4d9c53a1983
 Author: Lan Yixun (dlan) <dennis.yxun@gmail.com>
 Date:   2013-07-23 17:49:02 +0800
 
@@ -17,7 +17,7 @@ Edited by: Ian Kent <raven@themaw.net>
 ---
 
 diff --git a/CHANGELOG b/CHANGELOG
-index 24824ce..4edcfb0 100644
+index a7b67d4..dce4cd3 100644
 --- a/CHANGELOG
 +++ b/CHANGELOG
 @@ -63,6 +63,7 @@

@@ -1,5 +1,5 @@
-Bottom: 6f9fef2ebdfe29754d20e443c77f9f5fcaa67d1f
-Top:    631ecb535b9f2790a2dc3a42f9987c44cc29d931
+Bottom: 2ff5d610fce02202413ec1f12500161a023984be
+Top:    59aa3bffbbb7e44910613e205f3740098038a752
 Author: Lan Yixun (dlan) <dennis.yxun@gmail.com>
 Date:   2013-07-24 14:10:52 +0800
 
@@ -14,7 +14,7 @@ Signed-off-by: Lan Yixun (dlan) <dennis.yxun@gmail.com>
 ---
 
 diff --git a/CHANGELOG b/CHANGELOG
-index d85600a..c556692 100644
+index 8f2b194..06a503f 100644
 --- a/CHANGELOG
 +++ b/CHANGELOG
 @@ -68,6 +68,7 @@

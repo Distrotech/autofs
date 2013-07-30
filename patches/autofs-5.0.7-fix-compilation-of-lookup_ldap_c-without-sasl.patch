@@ -1,5 +1,5 @@
-Bottom: be609daf2b3f3afd177f4b91c05c2d354d0d7650
-Top:    d8731402d68a71de082c08b5def188cd615a8a99
+Bottom: c57fc6430db845b5e4c57424f5c1e1b478aeaccb
+Top:    f384801ad1e4dc2093391506a7c4eaad59353431
 Author: Dustin Polke <DuPol@gmx.de>
 Date:   2012-05-15 11:28:27 +0800
 
@@ -17,7 +17,7 @@ Edited by: Ian Kent <raven@themaw.net>
 ---
 
 diff --git a/CHANGELOG b/CHANGELOG
-index c556692..58cd224 100644
+index 06a503f..29134dd 100644
 --- a/CHANGELOG
 +++ b/CHANGELOG
 @@ -69,6 +69,7 @@
