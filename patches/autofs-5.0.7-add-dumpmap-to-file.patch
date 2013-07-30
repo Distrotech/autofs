@@ -1,5 +1,5 @@
 Bottom: e9731220dc88a3d073f7178c9a08e98986b6cadd
-Top:    4afe09502daedbc902029e91a3483862b2e4d24b
+Top:    8929b138560c2289e7c798a43fb94c56b1602156
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-07-30 10:03:58 +0800
 
@@ -128,7 +128,7 @@ index 824707c..6166976 100644
  int master_list_empty(struct master *);
  int master_done(struct master *);
 diff --git a/lib/master.c b/lib/master.c
-index eca3523..7f4d52e 100644
+index eca3523..95af1b8 100644
 --- a/lib/master.c
 +++ b/lib/master.c
 @@ -1281,7 +1281,86 @@ static void list_source_instances(struct map_source *source, struct map_source *
@@ -136,7 +136,7 @@ index eca3523..7f4d52e 100644
  }
  
 -int master_show_mounts(struct master *master)
-+static char *match_map_name(const char *match, const char *maps)
++static char *match_map_path(const char *match, const char *maps)
 +{
 +	char *names;
 +	char *map_name;
@@ -155,9 +155,9 @@ index eca3523..7f4d52e 100644
 +		goto fail;
 +	}
 +
-+	if (strchr(tmp, '/'))
++	/*if (strchr(tmp, '/'))
 +		map_name = basename(tmp);
-+	else
++	else */
 +		map_name = tmp;
 +
 +	this = NULL;
@@ -223,7 +223,7 @@ index eca3523..7f4d52e 100644
  		struct autofs_point *ap;
  		time_t now = time(NULL);
  		unsigned int count = 0;
-+		char *map_name = NULL;
++		char *map_path = NULL;
  		int i;
  
  		this = list_entry(p, struct master_mapent, list);
@@ -232,8 +232,8 @@ index eca3523..7f4d52e 100644
  		printf("\nMount point: %s\n", ap->path);
  
 +		if (maps) {
-+			map_name = match_map_name(ap->path, maps);
-+			if (!map_name) {
++			map_path = match_map_path(ap->path, maps);
++			if (!map_path) {
 +				printf("\n");
 +				continue;
 +			}
@@ -263,7 +263,7 @@ index eca3523..7f4d52e 100644
  				printf("  no keys found in map\n");
  			else {
 +				if (map_name) {
-+					write_map(map_name, me);
++					write_map(source->argv[0], me);
 +					goto next;
 +				}
 +
@@ -273,6 +273,6 @@ index eca3523..7f4d52e 100644
  			}
 +next:
 +			if (map_name)
-+				free(map_name);
++				free(map_path);
  
  			count++;
