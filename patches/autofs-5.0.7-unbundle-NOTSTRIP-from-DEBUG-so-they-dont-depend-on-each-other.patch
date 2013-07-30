@@ -1,5 +1,5 @@
-Bottom: cf75536578840ac468ef8604989a29a01b52a621
-Top:    47b85894b9b08cb8437e735e7980d66851e5594e
+Bottom: 9e0536047082a65ef60edd859233f78ff06abb29
+Top:    3e257d794467710a70c2cbdfe9b21490ee3328ff
 Author: Lan Yixun (dlan) <dennis.yxun@gmail.com>
 Date:   2013-07-24 14:10:52 +0800
 
@@ -14,10 +14,10 @@ Signed-off-by: Lan Yixun (dlan) <dennis.yxun@gmail.com>
 ---
 
 diff --git a/CHANGELOG b/CHANGELOG
-index 897a2b4..42ea627 100644
+index 96242f4..9ed6abd 100644
 --- a/CHANGELOG
 +++ b/CHANGELOG
-@@ -64,6 +64,7 @@
+@@ -65,6 +65,7 @@
  - use compiler determined by configure instead of hard-coded ones.
  - remove hard-coded STRIP variable.
  - use LIBS for link libraries.

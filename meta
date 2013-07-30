@@ -1,6 +1,6 @@
 Version: 1
-Previous: dcf466f6ba2a14cf126bd6a617432651ede97e46
-Head: 722d8a16e31c56b1c020b5b31d7e88c69eec8c07
+Previous: 5401c7aa08bc194a7aa52ef0494a22ebfbd1d19a
+Head: 0479be7537edb51f950dd7534b0ef132c938581b
 Applied:
   autofs-5.0.7-dont-override-LDFLAGS-in-make-rules.patch: 2e8251865c0ed6d91a97c107973a7eb75d3e131b
   autofs-5.0.7-fix-a-couple-of-compiler-warnings.patch: b8bdae4bfe855786de918c78eee228e4aabdab45
@@ -13,14 +13,14 @@ Applied:
   autofs-5.0.7-fix-typo-forced-shutdown-should-be-force-shutdown.patch: 0565b95b32ff0fefe6501da36c3d09ac9d6491ce
   autofs-5.0.7-fix-hesiod-check-error-and-use-correct-LIBS-setting.patch: 672ef11774099c9b5c9e4da9ea5d53fe7fd57b30
   autofs-5.0.7-fix-dead-LDAP-symbolic-link-when-LDAP-support-is-disabled.patch: 722d8a16e31c56b1c020b5b31d7e88c69eec8c07
+  autofs-5.0.7-add-missing-libtirpc-lib-to-mount_nfs.so-when-TIRPC-enabled.patch: 25d3a55251e5007879142c1bcf6a3dea0f989710
+  autofs-5.0.7-use-compiler-determined-by-configure-instead-of-hard-coded-ones.patch: de95eaf58a2e8dca9b5570a6ef11ce3e53908f16
+  autofs-5.0.7-remove-hard-coded-STRIP-variable.patch: 111b02c8c85fb16ced3edca473832933eab34e46
+  autofs-5.0.7-use-LIBS-for-link-libraries.patch: 8b135689d0b961364681abb8186d21e9258515a0
+  autofs-5.0.7-unbundle-NOTSTRIP-from-DEBUG-so-they-dont-depend-on-each-other.patch: 32b835d7ceadcfe72cf1ffd1e8d6ec56418b57a7
+  autofs-5.0.7-fix-occasional-build-error-when-enable-parallel-compiling.patch: 4b34f3e2c654ea6c3dca695a284c1b76bcafe31a
+  autofs-5.0.7-fix-compilation-of-lookup_ldap_c-without-sasl.patch: 0479be7537edb51f950dd7534b0ef132c938581b
 Unapplied:
-  autofs-5.0.7-add-missing-libtirpc-lib-to-mount_nfs.so-when-TIRPC-enabled.patch: e79f7781198a4369b1c45cce8a5ea64cf2a5b6a7
-  autofs-5.0.7-use-compiler-determined-by-configure-instead-of-hard-coded-ones.patch: 1911a08eb1fa5f9bee9a88355266b3f7560cf1ec
-  autofs-5.0.7-remove-hard-coded-STRIP-variable.patch: 89020358eab42c8f22b16a1678a6d7a6089a6bb5
-  autofs-5.0.7-use-LIBS-for-link-libraries.patch: ba976a9c543f82df8fe2cb5d300dc33b486c27ee
-  autofs-5.0.7-unbundle-NOTSTRIP-from-DEBUG-so-they-dont-depend-on-each-other.patch: 4376404d56b21148b297f933c4d8f5d1d52e26f8
-  autofs-5.0.7-fix-occasional-build-error-when-enable-parallel-compiling.patch: 8d174ac6dcb92841a90657e19de80df230d1d833
-  autofs-5.0.7-fix-compilation-of-lookup_ldap_c-without-sasl.patch: 542a1798b36bbc95f131a11745e8dfa5c9006f73
   autofs-5.0.5-wait-for-master-map-available-at-start.patch: 28e191c68fc95cd90815f398deff088bd1d65d0a
   autofs-5.0.5-add-master-read-wait-option.patch: 05d9eb17fb1ec9418f236468875ad04b09b0546b
   autofs-5.0.7-add-host-map-reload-option.patch: 11d23f7a74b2f33e5011ba29f64ae1b4956acb09

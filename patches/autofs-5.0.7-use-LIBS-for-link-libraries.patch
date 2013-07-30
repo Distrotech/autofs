@@ -1,5 +1,5 @@
-Bottom: efd8c6c4f276d7d3d55025a989e23f333f52c15c
-Top:    cf75536578840ac468ef8604989a29a01b52a621
+Bottom: 906f05603d47865da6b745876c602c6cec24bd46
+Top:    9e0536047082a65ef60edd859233f78ff06abb29
 Author: Lan Yixun (dlan) <dennis.yxun@gmail.com>
 Date:   2013-07-24 14:22:57 +0800
 
@@ -30,10 +30,10 @@ Signed-off-by: Lan Yixun (dlan) <dennis.yxun@gmail.com>
 ---
 
 diff --git a/CHANGELOG b/CHANGELOG
-index a0af868..897a2b4 100644
+index 8e4e9e7..96242f4 100644
 --- a/CHANGELOG
 +++ b/CHANGELOG
-@@ -63,6 +63,7 @@
+@@ -64,6 +64,7 @@
  - add missing libtirpc lib to mount_nfs.so when TIRPC enabled.
  - use compiler determined by configure instead of hard-coded ones.
  - remove hard-coded STRIP variable.
