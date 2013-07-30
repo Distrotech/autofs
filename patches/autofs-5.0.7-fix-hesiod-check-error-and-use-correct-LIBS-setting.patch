@@ -1,5 +1,5 @@
-Bottom: 1cf192f31158a0150bfff688314e8c3e18ab4d01
-Top:    abd3e79bba0db9d704d4efd6b9298f83f0a03312
+Bottom: d21ad019a1da23b4ac6ce5021a0d8474040e73bf
+Top:    31493d60032ff78040abac6d16fe5480dce35a90
 Author: Lan Yixun (dlan) <dennis.yxun@gmail.com>
 Date:   2013-07-24 09:58:20 +0800
 
@@ -32,10 +32,10 @@ index 5751805..3c829cf 100644
  25/07/2012 autofs-5.0.7
  =======================
 diff --git a/aclocal.m4 b/aclocal.m4
-index 7a8b03c..637a775 100644
+index c5de159..110d106 100644
 --- a/aclocal.m4
 +++ b/aclocal.m4
-@@ -316,20 +316,20 @@ dnl --------------------------------------------------------------------------
+@@ -309,20 +309,20 @@ dnl --------------------------------------------------------------------------
  AC_DEFUN([AF_CHECK_LIBHESIOD],
  [AC_MSG_CHECKING(for libhesiod)
  
@@ -63,10 +63,10 @@ index 7a8b03c..637a775 100644
  
  dnl --------------------------------------------------------------------------
 diff --git a/configure b/configure
-index b8e74b7..e6d5d4a 100755
+index e412734..3801e9d 100755
 --- a/configure
 +++ b/configure
-@@ -4305,9 +4305,9 @@ then
+@@ -4221,9 +4221,9 @@ then
  	{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for libhesiod" >&5
  $as_echo_n "checking for libhesiod... " >&6; }
  
@@ -79,7 +79,7 @@ index b8e74b7..e6d5d4a 100755
  
  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
  /* end confdefs.h.  */
-@@ -4315,7 +4315,7 @@ cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+@@ -4231,7 +4231,7 @@ cat confdefs.h - <<_ACEOF >conftest.$ac_ext
  int
  main ()
  {
@@ -88,7 +88,7 @@ index b8e74b7..e6d5d4a 100755
    ;
    return 0;
  }
-@@ -4332,8 +4332,8 @@ fi
+@@ -4248,8 +4248,8 @@ fi
  rm -f core conftest.err conftest.$ac_objext \
      conftest$ac_exeext conftest.$ac_ext
  
