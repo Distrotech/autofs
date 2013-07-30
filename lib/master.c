@@ -1338,16 +1338,30 @@ fail:
 	return NULL;
 }
 
-static void write_map(char *name, struct mapent *first)
+static void write_map(const char *map, struct mapent *first)
 {
 	struct mapent *me = first;
+	char *name, *out;
 	FILE *f;
 
-	f = open_fopen_wx(name);
+	name = strdup(map);
+	if (!name) {
+		printf("failed to allocate working storage, "
+			"map %s not output\n", map);
+		return;
+	}
+
+	if (strchr(name, '/'))
+		out = name;
+	else
+		out = basename(name);
+
+	f = open_fopen_wx(out);
 	if (!f) {
 		printf("  failed to open output file %s: %s\n",
-			name, strerror(errno));
+			out, strerror(errno));
 		printf("  map file not created.\n");
+		free(name);
 		return;
 	}
 
@@ -1356,6 +1370,7 @@ static void write_map(char *name, struct mapent *first)
 	} while ((me = cache_lookup_next(first->mc, me)));
 
 	fclose(f);
+	free(name);
 
 	return;
 }
@@ -1424,15 +1439,15 @@ int master_show_mounts(struct master *master, const char *maps)
 			lookup_prune_cache(ap, now);
 		else {
 			printf("  failed to read map\n\n");
-			if (map_name)
-				free(map_name);
+			if (map_path)
+				free(map_path);
 			continue;
 		}
 
 		if (!this->maps) {
 			printf("  no map sources found\n\n");
-			if (map_name)
-				free(map_name);
+			if (map_path)
+				free(map_path);
 			continue;
 		}
 
@@ -1471,8 +1486,9 @@ int master_show_mounts(struct master *master, const char *maps)
 			if (!me)
 				printf("  no keys found in map\n");
 			else {
-				if (map_name) {
+				if (map_path) {
 					write_map(source->argv[0], me);
+					free(name);
 					goto next;
 				}
 
@@ -1481,7 +1497,7 @@ int master_show_mounts(struct master *master, const char *maps)
 				} while ((me = cache_lookup_next(source->mc, me)));
 			}
 next:
-			if (map_name)
+			if (map_path)
 				free(map_path);
 
 			count++;

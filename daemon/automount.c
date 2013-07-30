@@ -1937,7 +1937,7 @@ int main(int argc, char *argv[])
 	time_t timeout;
 	time_t age = time(NULL);
 	struct rlimit rlim;
-	const char *options = "+hp:t:vm::dD:fVrO:l:n:CF";
+	const char *options = "+hp:t:vm:dD:fVrO:l:n:CF";
 	static const struct option long_options[] = {
 		{"help", 0, 0, 'h'},
 		{"pid-file", 1, 0, 'p'},
@@ -1948,7 +1948,7 @@ int main(int argc, char *argv[])
 		{"foreground", 0, 0, 'f'},
 		{"random-multimount-selection", 0, 0, 'r'},
 		{"negative-timeout", 1, 0, 'n'},
-		{"dumpmaps", 0, 0, 'm'},
+		{"dumpmaps", 1, 0, 'm'},
 		{"global-options", 1, 0, 'O'},
 		{"version", 0, 0, 'V'},
 		{"set-log-priority", 1, 0, 'l'},
@@ -2031,6 +2031,7 @@ int main(int argc, char *argv[])
 
 		case 'm':
 			dumpmaps = 1;
+			printf("optarg %s\n", optarg);
 			dumpnames = getstropt(optarg, opt);
 			break;
 
