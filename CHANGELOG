@@ -60,6 +60,7 @@
 - fix dumpmaps multi output.
 - try and cleanup after dumpmaps.
 - teach dumpmaps to output map files.
+- fix compile error with heimdal support enabled.
 
 25/07/2012 autofs-5.0.7
 =======================
