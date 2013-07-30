@@ -3,7 +3,7 @@ Top:    1ced3a9f220fdf407b23aec49ccc32df78590dd3
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-07-30 10:03:58 +0800
 
-autofs-5.0.7 - teach dumpmaps to output map files
+autofs-5.0.7 - teach dumpmaps to output maps files
 
 The dumpmaps option doesn't allow maps to be output in <key, value>
 pairs suitable for use as a file map.
