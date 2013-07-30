@@ -1554,7 +1554,7 @@ next:
 			source = source->next;
 		}
 
-		/*lookup_close_lookup(ap);*/
+		lookup_close_lookup(ap);
 		printf("\n");
 	}
 
