@@ -1,5 +1,5 @@
 Bottom: 792742960272f8ffa4fe3aef105f7dd780be12e8
-Top:    ca7ac582839846950ecc2b8cb0c1cacf644c3354
+Top:    c74d8c510fd0183f786db1cde46a11e3ed454908
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-07-30 10:03:58 +0800
 
@@ -21,7 +21,7 @@ a file of the name of the map already exists then the map is ignored.
 ---
 
 diff --git a/daemon/automount.c b/daemon/automount.c
-index 1d0b64e..2864898 100644
+index 1d0b64e..cf592a3 100644
 --- a/daemon/automount.c
 +++ b/daemon/automount.c
 @@ -1145,6 +1145,28 @@ static unsigned long getnumopt(char *str, char option)
@@ -100,7 +100,7 @@ index 1d0b64e..2864898 100644
 -		master_show_mounts(master_list);
 +		master_show_mounts(master_list, dump);
 +
-+		/*head = &master_list->mounts;
++		head = &master_list->mounts;
 +		p = head->next;
 +		while (p != head) {
 +			entry = list_entry(p, struct master_mapent, list);
@@ -108,7 +108,7 @@ index 1d0b64e..2864898 100644
 +			master_free_mapent_sources(entry, 1);
 +			master_free_mapent(entry);
 +		}
-+		master_kill(master_list);*/
++		master_kill(master_list);
 +		if (dump)
 +			free((void *) dump);
  		exit(0);
@@ -159,7 +159,7 @@ index 824707c..6166976 100644
  int master_list_empty(struct master *);
  int master_done(struct master *);
 diff --git a/lib/master.c b/lib/master.c
-index bbf4b4e..bbf7cb0 100644
+index bbf4b4e..3f79f61 100644
 --- a/lib/master.c
 +++ b/lib/master.c
 @@ -1329,7 +1329,121 @@ static void print_map_info(struct map_source *source)
@@ -337,6 +337,6 @@ index bbf4b4e..bbf7cb0 100644
  			source = source->next;
  		}
  
-+		/*lookup_close_lookup(ap);*/
++		lookup_close_lookup(ap);
  		printf("\n");
  	}
