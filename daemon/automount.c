@@ -2152,6 +2152,17 @@ int main(int argc, char *argv[])
 
 		lookup_nss_read_master(master_list, 0);
 		master_show_mounts(master_list);
+
+		head = &master_list->mounts;
+		p = head->next;
+		while (p != head) {
+			entry = list_entry(p, struct master_mapent, list);
+			p = p->next;
+			master_free_mapent_sources(entry, 1);
+			master_free_mapent(entry);
+		}
+		master_kill(master_list);
+
 		exit(0);
 	}
 
