@@ -1,5 +1,5 @@
-Bottom: d1909320ad42b544e8f241c46987f99a8ba3b8a6
-Top:    5df7f187323909bf1d79e4650a3164b8b0f681d0
+Bottom: 1a1eb6d0624ae3dc857a73a73db51bdd266eae43
+Top:    180edd65359afb87f7af0710868bc165ee64c65c
 Author: Lan Yixun (dlan) <dennis.yxun@gmail.com>
 Date:   2013-07-24 09:35:26 +0800
 
@@ -18,12 +18,12 @@ Signed-off-by: Lan Yixun (dlan) <dennis.yxun@gmail.com>
 ---
 
 diff --git a/CHANGELOG b/CHANGELOG
-index bf51dc9..8f92a07 100644
+index aa2beda..f0ea146 100644
 --- a/CHANGELOG
 +++ b/CHANGELOG
 @@ -61,6 +61,7 @@
  - try and cleanup after dumpmaps.
- - teach dumpmaps to output map files.
+ - teach dumpmaps to output maps to files.
  - fix compile error with heimdal support enabled.
 +- fix typo forced-shutdown should be force-shutdown.
  
