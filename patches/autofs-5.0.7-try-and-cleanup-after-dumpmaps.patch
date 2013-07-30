@@ -1,5 +1,5 @@
 Bottom: 792742960272f8ffa4fe3aef105f7dd780be12e8
-Top:    792742960272f8ffa4fe3aef105f7dd780be12e8
+Top:    96d79d8d84de60f49499ddf9e4b9e505c85a52e0
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-07-30 18:34:51 +0800
 
@@ -8,4 +8,15 @@ autofs-5.0.7 - try and cleanup after dumpmaps
 
 ---
 
-
+diff --git a/lib/master.c b/lib/master.c
+index bbf4b4e..c560496 100644
+--- a/lib/master.c
++++ b/lib/master.c
+@@ -1427,6 +1427,8 @@ int master_show_mounts(struct master *master)
+ 			source = source->next;
+ 		}
+ 
++		lookup_close_lookup(ap);
++
+ 		printf("\n");
+ 	}
