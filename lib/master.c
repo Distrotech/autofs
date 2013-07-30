@@ -1281,7 +1281,7 @@ static void list_source_instances(struct map_source *source, struct map_source *
 	return;
 }
 
-int master_show_mounts(struct master *master)
+int master_show_mounts(struct master *master, const char *maps)
 {
 	struct list_head *p, *head;
 
