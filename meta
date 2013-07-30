@@ -1,6 +1,6 @@
 Version: 1
-Previous: 3582801d3170c4cd552e959af8896e28db61a8c9
-Head: 16a766f9c708edda4444290afa549754e4cbff52
+Previous: 3ad8989de980cd333b60a15a621e069d85519249
+Head: b8920d63128f27ec553189440b1b4fc6d3df81c0
 Applied:
   autofs-5.0.7-dont-override-LDFLAGS-in-make-rules.patch: 2e8251865c0ed6d91a97c107973a7eb75d3e131b
   autofs-5.0.7-fix-a-couple-of-compiler-warnings.patch: b8bdae4bfe855786de918c78eee228e4aabdab45
@@ -9,6 +9,7 @@ Applied:
   autofs-5.0.7-fix-dumpmaps-multi-output.patch: 04a363891e790e89a93b7bcd95ed0290487a60d6
   autofs-5.0.7-try-and-cleanup-after-dumpmaps.patch: 2a8dda8b636d8941cfa7a91485fc44b453ce2070
   autofs-5.0.7-teach-dumpmaps-to-output-map-files.patch: 16a766f9c708edda4444290afa549754e4cbff52
+  autofs-5.0.7-fix-compile-error-with-heimdal-support-enabled.patch: b8920d63128f27ec553189440b1b4fc6d3df81c0
 Unapplied:
   autofs-5.0.7-fix-typo-forced-shutdown-should-be-force-shutdown.patch: fdec7f7f49d71e0aed114725ea77c10c07b54927
   autofs-5.0.7-fix-hesiod-check-error-and-use-correct-LIBS-setting.patch: daecbf5caa2c09b2cf03d7ddfd646a4f39a6d938
@@ -20,7 +21,6 @@ Unapplied:
   autofs-5.0.7-unbundle-NOTSTRIP-from-DEBUG-so-they-dont-depend-on-each-other.patch: 4376404d56b21148b297f933c4d8f5d1d52e26f8
   autofs-5.0.7-fix-occasional-build-error-when-enable-parallel-compiling.patch: 8d174ac6dcb92841a90657e19de80df230d1d833
   autofs-5.0.7-fix-compilation-of-lookup_ldap_c-without-sasl.patch: 542a1798b36bbc95f131a11745e8dfa5c9006f73
-  autofs-5.0.7-fix-compile-error-with-heimdal-support-enabled.patch: b8920d63128f27ec553189440b1b4fc6d3df81c0
   autofs-5.0.5-wait-for-master-map-available-at-start.patch: 28e191c68fc95cd90815f398deff088bd1d65d0a
   autofs-5.0.5-add-master-read-wait-option.patch: 05d9eb17fb1ec9418f236468875ad04b09b0546b
   autofs-5.0.7-add-host-map-reload-option.patch: 11d23f7a74b2f33e5011ba29f64ae1b4956acb09
