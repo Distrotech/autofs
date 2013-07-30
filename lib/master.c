@@ -1389,7 +1389,7 @@ int master_show_mounts(struct master *master, const char *maps)
 		struct autofs_point *ap;
 		time_t now = time(NULL);
 		unsigned int count = 0;
-		char *match_name = NULL;
+		char *map_name = NULL;
 		int i;
 
 		this = list_entry(p, struct master_mapent, list);
@@ -1400,8 +1400,8 @@ int master_show_mounts(struct master *master, const char *maps)
 		printf("\nMount point: %s\n", ap->path);
 
 		if (maps) {
-			match_name = match_map_name(ap->path, maps);
-			if (!match_name) {
+			map_name = match_map_name(ap->path, maps);
+			if (!map_name) {
 				printf("\n");
 				continue;
 			}
