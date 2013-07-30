@@ -1,5 +1,5 @@
 Bottom: e9731220dc88a3d073f7178c9a08e98986b6cadd
-Top:    012a6ebc68d401fb1deb19be2ca59a106affadcd
+Top:    47b2a93e911b6e017fa8e0683c7ffbd2dcf8510c
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-07-30 10:03:58 +0800
 
@@ -21,7 +21,7 @@ a file of the name of the map already exists then the map is ignored.
 ---
 
 diff --git a/daemon/automount.c b/daemon/automount.c
-index 1d0b64e..52a7956 100644
+index 1d0b64e..e724ca3 100644
 --- a/daemon/automount.c
 +++ b/daemon/automount.c
 @@ -1145,6 +1145,28 @@ static unsigned long getnumopt(char *str, char option)
@@ -57,7 +57,7 @@ index 1d0b64e..52a7956 100644
  	int logpri = -1;
  	unsigned ghost, logging, daemon_check;
  	unsigned dumpmaps, foreground, have_global_options;
-+	const char *dumpnames = NULL;
++	const char *dump = NULL;
  	time_t timeout;
  	time_t age = time(NULL);
  	struct rlimit rlim;
@@ -79,8 +79,8 @@ index 1d0b64e..52a7956 100644
  
  		case 'm':
  			dumpmaps = 1;
-+			printf("optarg %s\n", optarg);
-+			dumpnames = getstropt(optarg, opt);
++			if (optstring)
++				dump = getstropt(optarg, opt);
  			break;
  
  		case 'O':
@@ -89,7 +89,7 @@ index 1d0b64e..52a7956 100644
  
  		lookup_nss_read_master(master_list, 0);
 -		master_show_mounts(master_list);
-+		master_show_mounts(master_list, dumpnames);
++		master_show_mounts(master_list, dump);
  		exit(0);
  	}
  
