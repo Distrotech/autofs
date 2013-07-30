@@ -1,5 +1,5 @@
-Bottom: 01243c14099007881cfa4e53674a84c1fbf76383
-Top:    6d470a6926a741da87069bada49b6de8c4271962
+Bottom: da0c1f9923a0bf985b6269b95221ed36b6244e27
+Top:    ee24ccbc7ac1744176a60ece14d16ad447ec1454
 Author: Lan Yixun (dlan) <dennis.yxun@gmail.com>
 Date:   2013-07-23 17:49:02 +0800
 
@@ -17,10 +17,10 @@ Edited by: Ian Kent <raven@themaw.net>
 ---
 
 diff --git a/CHANGELOG b/CHANGELOG
-index aaff5c2..f1e118e 100644
+index 24824ce..4edcfb0 100644
 --- a/CHANGELOG
 +++ b/CHANGELOG
-@@ -60,6 +60,7 @@
+@@ -63,6 +63,7 @@
  - fix compile error with heimdal support enabled.
  - fix typo forced-shutdown should be force-shutdown.
  - fix hesiod check error and use correct $(LIBS) setting.

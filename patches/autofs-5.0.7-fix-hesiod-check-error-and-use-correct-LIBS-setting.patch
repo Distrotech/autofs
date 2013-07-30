@@ -1,5 +1,5 @@
-Bottom: 8ae9ad262afe7a73052d5cb9f78a0be48b4cfb7a
-Top:    01243c14099007881cfa4e53674a84c1fbf76383
+Bottom: 5df7f187323909bf1d79e4650a3164b8b0f681d0
+Top:    da0c1f9923a0bf985b6269b95221ed36b6244e27
 Author: Lan Yixun (dlan) <dennis.yxun@gmail.com>
 Date:   2013-07-24 09:58:20 +0800
 
@@ -20,11 +20,11 @@ Edited by: Ian Kent <raven@themaw.net>
 ---
 
 diff --git a/CHANGELOG b/CHANGELOG
-index 7ce6619..aaff5c2 100644
+index 8f92a07..24824ce 100644
 --- a/CHANGELOG
 +++ b/CHANGELOG
-@@ -59,6 +59,7 @@
- - dont start readmap unless ready.
+@@ -62,6 +62,7 @@
+ - teach dumpmaps to output map files.
  - fix compile error with heimdal support enabled.
  - fix typo forced-shutdown should be force-shutdown.
 +- fix hesiod check error and use correct $(LIBS) setting.

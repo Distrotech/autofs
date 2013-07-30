@@ -1,5 +1,5 @@
-Bottom: 28407fa3c73105de8e730b5434b0f97b9b9b8c8a
-Top:    93c83193a94205eb9968ea4fef79180675e8d91d
+Bottom: 10f8e791bf9d27eefe3266747e5d8064c46daf19
+Top:    5ef42a9acd7c5c9fabe09c9345fd3a588bd9af62
 Author: Lan Yixun (dlan) <dennis.yxun@gmail.com>
 Date:   2013-07-24 13:55:03 +0800
 
@@ -17,10 +17,10 @@ Signed-off-by: Lan Yixun (dlan) <dennis.yxun@gmail.com>
 ---
 
 diff --git a/CHANGELOG b/CHANGELOG
-index 5ed07c0..8a546e7 100644
+index e0f4aa5..d3fada6 100644
 --- a/CHANGELOG
 +++ b/CHANGELOG
-@@ -62,6 +62,7 @@
+@@ -65,6 +65,7 @@
  - fix hesiod check error and use correct $(LIBS) setting.
  - fix dead LDAP symbolic link when LDAP support is disabled.
  - add missing libtirpc lib to mount_nfs.so when TIRPC enabled.
