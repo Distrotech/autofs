@@ -1,5 +1,5 @@
 Bottom: e9731220dc88a3d073f7178c9a08e98986b6cadd
-Top:    65b0a986e9d5662639c6348e9366b6a97f84f628
+Top:    7f027129a6843723f7b385c217f35c825c082c3c
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-07-30 10:03:58 +0800
 
@@ -137,7 +137,7 @@ index 824707c..6166976 100644
  int master_list_empty(struct master *);
  int master_done(struct master *);
 diff --git a/lib/master.c b/lib/master.c
-index eca3523..00c8a66 100644
+index eca3523..37046a3 100644
 --- a/lib/master.c
 +++ b/lib/master.c
 @@ -1281,7 +1281,85 @@ static void list_source_instances(struct map_source *source, struct map_source *
@@ -231,7 +231,7 @@ index eca3523..00c8a66 100644
  		struct autofs_point *ap;
  		time_t now = time(NULL);
  		unsigned int count = 0;
-+		char *match_name = NULL;
++		char *map_name = NULL;
  		int i;
  
  		this = list_entry(p, struct master_mapent, list);
@@ -240,8 +240,8 @@ index eca3523..00c8a66 100644
  		printf("\nMount point: %s\n", ap->path);
  
 +		if (maps) {
-+			match_name = match_map_name(ap->path, maps);
-+			if (!match_name) {
++			map_name = match_map_name(ap->path, maps);
++			if (!map_name) {
 +				printf("\n");
 +				continue;
 +			}
