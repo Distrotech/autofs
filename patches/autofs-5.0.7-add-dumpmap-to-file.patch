@@ -1,5 +1,5 @@
 Bottom: 792742960272f8ffa4fe3aef105f7dd780be12e8
-Top:    e043087d07e83c0f8ff38c65d9855a279d10ac7f
+Top:    f70074932eb6324590761620a53b9137a39ff08e
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-07-30 10:03:58 +0800
 
@@ -140,10 +140,10 @@ index 824707c..6166976 100644
  int master_list_empty(struct master *);
  int master_done(struct master *);
 diff --git a/lib/master.c b/lib/master.c
-index bbf4b4e..279f6de 100644
+index bbf4b4e..fabaecf 100644
 --- a/lib/master.c
 +++ b/lib/master.c
-@@ -1329,7 +1329,89 @@ static void print_map_info(struct map_source *source)
+@@ -1329,7 +1329,88 @@ static void print_map_info(struct map_source *source)
  	return;
  }
  
@@ -230,11 +230,10 @@ index bbf4b4e..279f6de 100644
 +}
 +
 +int master_show_mounts(struct master *master, const char *maps)
-+>>>>>>> patched
  {
  	struct list_head *p, *head;
  
-@@ -1359,6 +1441,7 @@ int master_show_mounts(struct master *master)
+@@ -1359,6 +1440,7 @@ int master_show_mounts(struct master *master)
  		struct autofs_point *ap;
  		time_t now = time(NULL);
  		unsigned int count = 0;
@@ -242,7 +241,7 @@ index bbf4b4e..279f6de 100644
  		int i;
  
  		this = list_entry(p, struct master_mapent, list);
-@@ -1368,6 +1451,14 @@ int master_show_mounts(struct master *master)
+@@ -1368,6 +1450,14 @@ int master_show_mounts(struct master *master)
  
  		printf("\nMount point: %s\n", ap->path);
  
@@ -257,7 +256,7 @@ index bbf4b4e..279f6de 100644
  		printf("\nsource(s):\n");
  
  		/*
-@@ -1411,17 +1502,22 @@ int master_show_mounts(struct master *master)
+@@ -1411,17 +1501,22 @@ int master_show_mounts(struct master *master)
  					       " will be ignored at run time\n");
  			}
  
