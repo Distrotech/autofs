@@ -1337,6 +1337,28 @@ fail:
 	return NULL;
 }
 
+static void write_map(char *name, struct mapent *first)
+{
+	struct mapent *me = first;
+	FILE *f;
+
+	f = open_fopen_wx(name);
+	if (!f) {
+		printf("  failed to open output file %s: %s\n",
+			name, strerror(errno));
+		printf("  map file not created.\n")
+		return;
+	}
+ 
+	do {
+		fprintf(f, "%s\t%s\n", me->key, me->mapent);
+	} while ((me = cache_lookup_next(first->mc, me)));
+
+	fclose(f);
+
+	return;
+}
+
 int master_show_mounts(struct master *master, const char *maps)
 {
 	struct list_head *p, *head;
@@ -1379,8 +1401,10 @@ int master_show_mounts(struct master *master, const char *maps)
 
 		if (maps) {
 			match_name = match_map_name(ap->path, maps);
-			if (!match_name)
+			if (!match_name) {
+				printf("\n");
 				continue;
+			}
 		}
 
 		printf("\nsource(s):\n");
