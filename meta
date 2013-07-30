@@ -1,5 +1,5 @@
 Version: 1
-Previous: bea8237005f815281fd7ed378bb78f7cace1ffeb
+Previous: 3de4ac81d55f31cb0017b139701d0b23321cf9e5
 Head: 56cf5d33417d7a76bf26531ef7b0a1142fe1ae98
 Applied:
   autofs-5.0.7-dont-override-LDFLAGS-in-make-rules.patch: 2e8251865c0ed6d91a97c107973a7eb75d3e131b
@@ -8,7 +8,7 @@ Applied:
   autofs-5.0.7-dont-kick-state-machine-unless-ready.patch: 2ce7972970d8617f82004c5636099020a23f03af
   autofs-5.0.7-fix-dumpmaps-multi-output.patch: 9aa29980e11a64fc247366224c4bc85540cced7c
   autofs-5.0.7-try-and-cleanup-after-dumpmaps.patch: b59a69aedfc001eced29b94cd2eb613f790d4c0c
-  autofs-5.0.7-teach-dumpmaps-to-output-maps-files.patch: 56cf5d33417d7a76bf26531ef7b0a1142fe1ae98
+  autofs-5.0.7-teach-dumpmaps-to-output-maps-to-files.patch: 56cf5d33417d7a76bf26531ef7b0a1142fe1ae98
 Unapplied:
   autofs-5.0.7-fix-compile-error-with-heimdal-support-enabled.patch: 67565bf91f24c20a9a94019314ae149d68e2f24b
   autofs-5.0.7-fix-typo-forced-shutdown-should-be-force-shutdown.patch: 1d54f00728ccbc67a122e2f12d2811cb21384d4e
