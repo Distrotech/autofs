@@ -1286,7 +1286,7 @@ static void print_map_info(struct map_source *source)
 	int argc = source->argc;
 	int i, multi, map_num;
 
-	multi = (source->type && strcmp(source->type, "multi"));
+	multi = (source->type && !strcmp(source->type, "multi"));
 	map_num = 1;
 	for (i = 0; i < argc; i++) {
 		if (source->argv[i] && *source->argv[i] != '-') {
@@ -1302,7 +1302,7 @@ static void print_map_info(struct map_source *source)
 		if (i >= argc)
 			return;
 
-		if (strcmp(source->argv[i], "--"))
+		if (!strcmp(source->argv[i], "--"))
 			continue;
 
 		if (source->argv[i]) {
