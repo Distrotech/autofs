@@ -2177,7 +2177,6 @@ int main(int argc, char *argv[])
 
 		lookup_nss_read_master(master_list, 0);
 		master_show_mounts(master_list, dump);
-		master_kill(master_list);
 		if (dump)
 			free((void *) dump);
 		exit(0);

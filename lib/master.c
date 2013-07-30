@@ -1552,6 +1552,8 @@ next:
 			count++;
 
 			source = source->next;
+
+			lookup_close_lookup(ap);
 		}
 
 		printf("\n");
