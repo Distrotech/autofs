@@ -1,5 +1,5 @@
 Bottom: e9731220dc88a3d073f7178c9a08e98986b6cadd
-Top:    4d9be6e67916049f264b6ad240bc8c800c5bfa1d
+Top:    a08a632ce6615c6d2be270fe605a203c5167da4f
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-07-30 10:03:58 +0800
 
@@ -140,10 +140,10 @@ index 824707c..6166976 100644
  int master_list_empty(struct master *);
  int master_done(struct master *);
 diff --git a/lib/master.c b/lib/master.c
-index eca3523..75dbca0 100644
+index eca3523..7d92bb1 100644
 --- a/lib/master.c
 +++ b/lib/master.c
-@@ -1281,7 +1281,109 @@ static void list_source_instances(struct map_source *source, struct map_source *
+@@ -1281,7 +1281,88 @@ static void list_source_instances(struct map_source *source, struct map_source *
  	return;
  }
  
@@ -151,58 +151,37 @@ index eca3523..75dbca0 100644
 +static char *match_map_path(const char *match, const char *maps)
 +{
 +	char *names;
-+	char *map_name;
-+	char *this;
-+	char *tok, *ptr, *tmp;
-+	unsigned int found = 0;
++	char *tok, *ptr;
++	unsigned int found;
 +
-+	tmp = strdup(match);
-+	if (tmp)
-+		names = strdup(maps);
-+	if (!tmp || !names) {
-+		if (tmp)
-+			free(tmp);
-+		/* Don't print "not found" message since we haven't looked */
-+		found = 1;
-+		goto fail;
++	names = strdup(maps);
++	if (!names) {
++		printf("failed to allocate working storage,\n");
++		printf("map %s ignored\n", match);
++		return 0;
 +	}
 +
-+	/*if (strchr(tmp, '/'))
-+		map_name = basename(tmp);
-+	else */
-+		map_name = tmp;
-+
-+	this = NULL;
++	found = 0;
 +	ptr = NULL;
 +	tok = strtok_r(names, ",", &ptr);
 +	while (tok) {
-+		if (strcmp(map_name, tok)) {
++		if (strcmp(match, tok)) {
 +			tok = strtok_r(NULL, ",", &ptr);
 +			continue;
 +		}
 +		found = 1;
-+		this = strdup(tok);
 +		break;
 +	}
 +
-+	free(tmp);
 +	free(names);
 +
-+	if (!this)
-+		goto fail;
-+
-+	return this;
-+
-+fail:
-+	if (!found)
++	if (!found) {
 +		printf("map \"%s\" not found in \"%s\", not output\n",
 +			match, maps);
-+	else {
-+		printf("failed to allocate working storage,\n");
-+		printf("map %s ignored\n", match);
++		return 0;
 +	}
 +
-+	return NULL;
++	return 1;
 +}
 +
 +static void write_map(const char *map, struct mapent *first)
@@ -254,21 +233,21 @@ index eca3523..75dbca0 100644
  {
  	struct list_head *p, *head;
  
-@@ -1311,6 +1413,7 @@ int master_show_mounts(struct master *master)
+@@ -1311,6 +1392,7 @@ int master_show_mounts(struct master *master)
  		struct autofs_point *ap;
  		time_t now = time(NULL);
  		unsigned int count = 0;
-+		char *map_path = NULL;
++		unsigned int matched = 0;
  		int i;
  
  		this = list_entry(p, struct master_mapent, list);
-@@ -1320,6 +1423,14 @@ int master_show_mounts(struct master *master)
+@@ -1320,6 +1402,14 @@ int master_show_mounts(struct master *master)
  
  		printf("\nMount point: %s\n", ap->path);
  
 +		if (maps) {
-+			map_path = match_map_path(ap->path, maps);
-+			if (!map_path) {
++			matched = match_map_path(ap->path, maps);
++			if (!matched) {
 +				printf("\n");
 +				continue;
 +			}
@@ -277,14 +256,7 @@ index eca3523..75dbca0 100644
  		printf("\nsource(s):\n");
  
  		/*
-@@ -1336,11 +1447,15 @@ int master_show_mounts(struct master *master)
- 			lookup_prune_cache(ap, now);
- 		else {
- 			printf("  failed to read map\n\n");
-+			if (map_path)
-+				free(map_path);
- 			continue;
- 		}
+@@ -1341,6 +1431,8 @@ int master_show_mounts(struct master *master)
  
  		if (!this->maps) {
  			printf("  no map sources found\n\n");
@@ -293,7 +265,7 @@ index eca3523..75dbca0 100644
  			continue;
  		}
  
-@@ -1373,16 +1488,24 @@ int master_show_mounts(struct master *master)
+@@ -1373,17 +1465,22 @@ int master_show_mounts(struct master *master)
  				}
  			}
  
@@ -303,7 +275,7 @@ index eca3523..75dbca0 100644
  			if (!me)
  				printf("  no keys found in map\n");
  			else {
-+				if (map_path) {
++				if (matched) {
 +					write_map(source->argv[0], me);
 +					goto next;
 +				}
@@ -314,8 +286,8 @@ index eca3523..75dbca0 100644
  					printf("  %s | %s\n", me->key, me->mapent);
  				} while ((me = cache_lookup_next(source->mc, me)));
  			}
+-
 +next:
-+			if (map_path)
-+				free(map_path);
- 
  			count++;
+ 
+ 			source = source->next;
