@@ -1,6 +1,6 @@
 Version: 1
-Previous: d04a2c783eea21ffcfba123dc6ca0cce35325a39
-Head: 03a415b1424e59d780a9a96f6d5ecb71240a8a8c
+Previous: 6213cc055e67266dee23552c137d74adaa3905d0
+Head: c9f6647c1c810a387418408e577eff7f8b16bf68
 Applied:
   autofs-5.0.7-dont-override-LDFLAGS-in-make-rules.patch: 2e8251865c0ed6d91a97c107973a7eb75d3e131b
   autofs-5.0.7-fix-a-couple-of-compiler-warnings.patch: b8bdae4bfe855786de918c78eee228e4aabdab45
@@ -17,8 +17,7 @@ Applied:
   autofs-5.0.7-unbundle-NOTSTRIP-from-DEBUG-so-they-dont-depend-on-each-other.patch: e2bfe1662dfcacbb5abfce5471b7f1ab0595eeec
   autofs-5.0.7-fix-occasional-build-error-when-enable-parallel-compiling.patch: f6c385a33b6e08aa48dd97ccb009d0b48e9ba9fa
   autofs-5.0.7-fix-compilation-of-lookup_ldap_c-without-sasl.patch: 58fa54cecbbaee544a40bc6e30a65a4f3a0989fa
-  autofs-5.0.7-fix-dumpmaps-multi-output.patch: d24afe7bc57d3a35a50bf05108635f2a8e4ef762
-  refresh-temp: 03a415b1424e59d780a9a96f6d5ecb71240a8a8c
+  autofs-5.0.7-fix-dumpmaps-multi-output.patch: c9f6647c1c810a387418408e577eff7f8b16bf68
 Unapplied:
   autofs-5.0.7-add-dumpmap-to-file.patch: abce8e0ae5f2377dd88b16b34659319481aa7dc9
   autofs-5.0.5-wait-for-master-map-available-at-start.patch: 28e191c68fc95cd90815f398deff088bd1d65d0a
