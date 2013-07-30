@@ -1,5 +1,5 @@
 Bottom: e9731220dc88a3d073f7178c9a08e98986b6cadd
-Top:    93a37342f9ffc0c764c93e4e06dd84960dfe45c7
+Top:    6c68d208273b143e17de8aff5ebfff6c80a36e25
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-07-30 10:03:58 +0800
 
@@ -137,7 +137,7 @@ index 824707c..6166976 100644
  int master_list_empty(struct master *);
  int master_done(struct master *);
 diff --git a/lib/master.c b/lib/master.c
-index eca3523..96f2681 100644
+index eca3523..32cadf2 100644
 --- a/lib/master.c
 +++ b/lib/master.c
 @@ -1281,7 +1281,85 @@ static void list_source_instances(struct map_source *source, struct map_source *
@@ -213,7 +213,7 @@ index eca3523..96f2681 100644
 +		printf("  map file not created.\n")
 +		return;
 +	}
-+ 
++
 +	do {
 +		fprintf(f, "%s\t%s\n", me->key, me->mapent);
 +	} while ((me = cache_lookup_next(first->mc, me)));
