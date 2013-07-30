@@ -1,0 +1,133 @@
+Bottom: 4d9be6e67916049f264b6ad240bc8c800c5bfa1d
+Top:    a08a632ce6615c6d2be270fe605a203c5167da4f
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-07-30 15:51:34 +0800
+
+Refresh of autofs-5.0.7-add-dumpmap-to-file.patch
+
+---
+
+diff --git a/lib/master.c b/lib/master.c
+index 75dbca0..7d92bb1 100644
+--- a/lib/master.c
++++ b/lib/master.c
+@@ -1284,58 +1284,37 @@ static void list_source_instances(struct map_source *source, struct map_source *
+ static char *match_map_path(const char *match, const char *maps)
+ {
+ 	char *names;
+-	char *map_name;
+-	char *this;
+-	char *tok, *ptr, *tmp;
+-	unsigned int found = 0;
+-
+-	tmp = strdup(match);
+-	if (tmp)
+-		names = strdup(maps);
+-	if (!tmp || !names) {
+-		if (tmp)
+-			free(tmp);
+-		/* Don't print "not found" message since we haven't looked */
+-		found = 1;
+-		goto fail;
+-	}
++	char *tok, *ptr;
++	unsigned int found;
+ 
+-	/*if (strchr(tmp, '/'))
+-		map_name = basename(tmp);
+-	else */
+-		map_name = tmp;
++	names = strdup(maps);
++	if (!names) {
++		printf("failed to allocate working storage,\n");
++		printf("map %s ignored\n", match);
++		return 0;
++	}
+ 
+-	this = NULL;
++	found = 0;
+ 	ptr = NULL;
+ 	tok = strtok_r(names, ",", &ptr);
+ 	while (tok) {
+-		if (strcmp(map_name, tok)) {
++		if (strcmp(match, tok)) {
+ 			tok = strtok_r(NULL, ",", &ptr);
+ 			continue;
+ 		}
+ 		found = 1;
+-		this = strdup(tok);
+ 		break;
+ 	}
+ 
+-	free(tmp);
+ 	free(names);
+ 
+-	if (!this)
+-		goto fail;
+-
+-	return this;
+-
+-fail:
+-	if (!found)
++	if (!found) {
+ 		printf("map \"%s\" not found in \"%s\", not output\n",
+ 			match, maps);
+-	else {
+-		printf("failed to allocate working storage,\n");
+-		printf("map %s ignored\n", match);
++		return 0;
+ 	}
+ 
+-	return NULL;
++	return 1;
+ }
+ 
+ static void write_map(const char *map, struct mapent *first)
+@@ -1413,7 +1392,7 @@ int master_show_mounts(struct master *master, const char *maps)
+ 		struct autofs_point *ap;
+ 		time_t now = time(NULL);
+ 		unsigned int count = 0;
+-		char *map_path = NULL;
++		unsigned int matched = 0;
+ 		int i;
+ 
+ 		this = list_entry(p, struct master_mapent, list);
+@@ -1424,8 +1403,8 @@ int master_show_mounts(struct master *master, const char *maps)
+ 		printf("\nMount point: %s\n", ap->path);
+ 
+ 		if (maps) {
+-			map_path = match_map_path(ap->path, maps);
+-			if (!map_path) {
++			matched = match_map_path(ap->path, maps);
++			if (!matched) {
+ 				printf("\n");
+ 				continue;
+ 			}
+@@ -1447,8 +1426,6 @@ int master_show_mounts(struct master *master, const char *maps)
+ 			lookup_prune_cache(ap, now);
+ 		else {
+ 			printf("  failed to read map\n\n");
+-			if (map_path)
+-				free(map_path);
+ 			continue;
+ 		}
+ 
+@@ -1492,7 +1469,7 @@ int master_show_mounts(struct master *master, const char *maps)
+ 			if (!me)
+ 				printf("  no keys found in map\n");
+ 			else {
+-				if (map_path) {
++				if (matched) {
+ 					write_map(source->argv[0], me);
+ 					goto next;
+ 				}
+@@ -1504,9 +1481,6 @@ int master_show_mounts(struct master *master, const char *maps)
+ 				} while ((me = cache_lookup_next(source->mc, me)));
+ 			}
+ next:
+-			if (map_path)
+-				free(map_path);
+-
+ 			count++;
+ 
+ 			source = source->next;
