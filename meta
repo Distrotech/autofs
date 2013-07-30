@@ -1,6 +1,6 @@
 Version: 1
-Previous: 46fe6d894c8a323014da056cf8726f7ad138b8c9
-Head: 0ad6846c2c9a97b04ad4bd5b4e29cef43657a58a
+Previous: 5563b6060aa528fdb413b231d0b07e04af68d9b0
+Head: 40ba56474f4d184eba3cdf920c3eac780b7b7b78
 Applied:
   autofs-5.0.7-dont-override-LDFLAGS-in-make-rules.patch: 2e8251865c0ed6d91a97c107973a7eb75d3e131b
   autofs-5.0.7-fix-a-couple-of-compiler-warnings.patch: b8bdae4bfe855786de918c78eee228e4aabdab45
@@ -8,8 +8,8 @@ Applied:
   autofs-5.0.7-dont-kick-state-machine-unless-ready.patch: 2ce7972970d8617f82004c5636099020a23f03af
   autofs-5.0.7-fix-compile-error-with-heimdal-support-enabled.patch: f9cfdb8501a535a25525c4f367aba116ca45f212
   autofs-5.0.7-fix-typo-forced-shutdown-should-be-force-shutdown.patch: 40ba56474f4d184eba3cdf920c3eac780b7b7b78
-  autofs-5.0.7-fix-hesiod-check-error-and-use-correct-LIBS-setting.patch: 0ad6846c2c9a97b04ad4bd5b4e29cef43657a58a
 Unapplied:
+  autofs-5.0.7-fix-hesiod-check-error-and-use-correct-LIBS-setting.patch: 0ad6846c2c9a97b04ad4bd5b4e29cef43657a58a
   autofs-5.0.7-fix-dead-LDAP-symbolic-link-when-LDAP-support-is-disabled.patch: 51b981f2e7116e4046b36d6af6b968146a1c23f8
   autofs-5.0.7-add-missing-libtirpc-lib-to-mount_nfs.so-when-TIRPC-enabled.patch: a1f0a858c08b9a4e4f2f16650dfe0b804ad48eb6
   autofs-5.0.7-use-compiler-determined-by-configure-instead-of-hard-coded-ones.patch: eff401522c649afc0ea359086b7b3cbf5e717eb8
