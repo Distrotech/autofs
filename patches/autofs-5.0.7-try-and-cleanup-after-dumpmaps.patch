@@ -1,5 +1,5 @@
 Bottom: c62cb8957d75c6cd3208a365c197e2853e05e158
-Top:    ecbdf33b90501888889a6197fafe1ed9db9455f3
+Top:    9b5bcaad5b09650901f3a3c17bd97f7d1fd204c7
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-07-30 18:34:51 +0800
 
@@ -12,6 +12,18 @@ from valgrind when checking code.
 
 ---
 
+diff --git a/CHANGELOG b/CHANGELOG
+index cadf5d2..1cf79be 100644
+--- a/CHANGELOG
++++ b/CHANGELOG
+@@ -58,6 +58,7 @@
+ - add after sssd dependency to unit file.
+ - dont start readmap unless ready.
+ - fix dumpmaps multi output.
++- try and cleanup after dumpmaps.
+ 
+ 25/07/2012 autofs-5.0.7
+ =======================
 diff --git a/daemon/automount.c b/daemon/automount.c
 index 1d0b64e..6849272 100644
 --- a/daemon/automount.c
