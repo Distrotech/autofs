@@ -1,5 +1,5 @@
 Bottom: e9731220dc88a3d073f7178c9a08e98986b6cadd
-Top:    43549522befa451661f22b1496073e501345f44b
+Top:    fbb689bc3e5fc4dc670b312a486301677a0617aa
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-07-30 10:03:58 +0800
 
@@ -21,7 +21,7 @@ a file of the name of the map already exists then the map is ignored.
 ---
 
 diff --git a/daemon/automount.c b/daemon/automount.c
-index 1d0b64e..be5e7f7 100644
+index 1d0b64e..a78428a 100644
 --- a/daemon/automount.c
 +++ b/daemon/automount.c
 @@ -1145,6 +1145,28 @@ static unsigned long getnumopt(char *str, char option)
@@ -30,17 +30,17 @@ index 1d0b64e..be5e7f7 100644
  
 +static const char *getstropt(char *str, char option)
 +{
-+	char *names = str;
-+	char *val = NULL;
-+	char *end;
++	char *names;
++	char *val;
 +
 +	if (!str || !*str)
 +		return NULL;
 +
-+	if (*str == '=')
-+		str++;
++	names = str;
++	if (*names == '=')
++		names++;
 +
-+	val = strdup(str);
++	val = strdup(names);
 +	if (!val) {
 +		fprintf(stderr,
 +			"%s: option -%c, couldn't allocate storage for argument\n",
