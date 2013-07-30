@@ -1365,9 +1365,10 @@ static char *match_map_path(const char *match, const char *maps)
 	return 1;
 }
 
-static void write_map(const char *map, struct mapent *first)
+static void write_map(struct source *source, struct mapent *first)
 {
 	struct mapent *me = first;
+	const char *map = source->argv[0];
 	char *name, *out;
 	FILE *f;
 
@@ -1402,7 +1403,10 @@ static void write_map(const char *map, struct mapent *first)
 		fprintf(f, "%s\t%s\n", me->key, me->mapent);
 	} while ((me = cache_lookup_next(first->mc, me)));
 
-	printf("  output map %s\n", out);
+	if (source->type && !strcmp(source->type, "multi"))
+		printf("  output merged multi map to %s\n", out);
+	else
+		printf("  output map %s\n", out);
 
 	fclose(f);
 	free(name);
@@ -1506,7 +1510,7 @@ int master_show_mounts(struct master *master, const char *maps)
 				printf("  no keys found in map\n");
 			else {
 				if (matched) {
-					write_map(source->argv[0], me);
+					write_map(source, me);
 					goto next;
 				}
 
