@@ -1329,7 +1329,7 @@ static void print_map_info(struct map_source *source)
 	return;
 }
 
-static char *match_map_path(const char *match, const char *maps)
+static unsigned int match_map_path(const char *match, const char *maps)
 {
 	char *names;
 	char *tok, *ptr;
@@ -1430,6 +1430,8 @@ static void write_maps(struct map_source *source, struct mapent *first)
 
 		/* Skip over arguments */
 		if (source->argv[i]) {
+			int j;
+
 			for (j = i; j < source->argc; j++) {
 				if (!strcmp(source->argv[j], "--"))
 					break;
@@ -1472,7 +1474,6 @@ int master_show_mounts(struct master *master, const char *maps)
 		time_t now = time(NULL);
 		unsigned int count = 0;
 		unsigned int matched = 0;
-		int i;
 
 		this = list_entry(p, struct master_mapent, list);
 		p = p->next;
