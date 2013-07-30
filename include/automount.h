@@ -649,7 +649,7 @@ static inline FILE *open_fopen_wx(const char *path)
 
 #if defined(O_CLOEXEC) && defined(SOCK_CLOEXEC)
 	if (cloexec_works != -1) {
-		f = fopen(fd, "wxe");
+		f = fopen(path, "wxe");
 		if (f != NULL) {
 			check_cloexec(fileno(f));
 			return f;
