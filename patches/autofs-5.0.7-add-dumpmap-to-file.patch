@@ -1,4 +1,4 @@
-Bottom: fbc52d2dc6808279c05eeb6c58c5bc566a843627
+Bottom: 194417d3d2ec3f8bcecd3e9c7dbbfe8e4ede3642
 Top:    d7f0b0640a646b6d6861b6702a94b4c657b7c20b
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-07-30 10:03:58 +0800
@@ -21,7 +21,7 @@ a file of the name of the map already exists then the map is ignored.
 ---
 
 diff --git a/daemon/automount.c b/daemon/automount.c
-index 595d93e..4f0cf08 100644
+index 6849272..4f0cf08 100644
 --- a/daemon/automount.c
 +++ b/daemon/automount.c
 @@ -1145,6 +1145,28 @@ static unsigned long getnumopt(char *str, char option)
@@ -84,16 +84,7 @@ index 595d93e..4f0cf08 100644
  			break;
  
  		case 'O':
-@@ -2136,6 +2161,8 @@ int main(int argc, char *argv[])
- 	}
- 
- 	if (dumpmaps) {
-+		struct master_mapent *entry;
-+		struct list_head *head, *p;
- 		struct mapent_cache *nc;
- 
- 		open_log();
-@@ -2151,7 +2178,7 @@ int main(int argc, char *argv[])
+@@ -2153,7 +2178,7 @@ int main(int argc, char *argv[])
  		master_list->nc = nc;
  
  		lookup_nss_read_master(master_list, 0);
@@ -102,7 +93,7 @@ index 595d93e..4f0cf08 100644
  
  		head = &master_list->mounts;
  		p = head->next;
-@@ -2162,6 +2189,8 @@ int main(int argc, char *argv[])
+@@ -2164,6 +2189,8 @@ int main(int argc, char *argv[])
  			master_free_mapent(entry);
  		}
  		master_kill(master_list);
