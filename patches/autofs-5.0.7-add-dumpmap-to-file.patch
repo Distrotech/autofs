@@ -1,5 +1,5 @@
 Bottom: 792742960272f8ffa4fe3aef105f7dd780be12e8
-Top:    f70074932eb6324590761620a53b9137a39ff08e
+Top:    92172e6ae3e3dc25e86139a1074cb5551a2c27db
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-07-30 10:03:58 +0800
 
@@ -21,7 +21,7 @@ a file of the name of the map already exists then the map is ignored.
 ---
 
 diff --git a/daemon/automount.c b/daemon/automount.c
-index 1d0b64e..4aaeac3 100644
+index 1d0b64e..1970edc 100644
 --- a/daemon/automount.c
 +++ b/daemon/automount.c
 @@ -1145,6 +1145,28 @@ static unsigned long getnumopt(char *str, char option)
@@ -79,7 +79,7 @@ index 1d0b64e..4aaeac3 100644
  
  		case 'm':
  			dumpmaps = 1;
-+			if (optstring)
++			if (optarg)
 +				dump = getstropt(optarg, opt);
  			break;
  
@@ -91,7 +91,7 @@ index 1d0b64e..4aaeac3 100644
 -		master_show_mounts(master_list);
 +		master_show_mounts(master_list, dump);
 +		if (dump)
-+			free(dump);
++			free((void *) dump);
  		exit(0);
  	}
  
