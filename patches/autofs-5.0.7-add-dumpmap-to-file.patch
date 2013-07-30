@@ -1,5 +1,5 @@
 Bottom: e9731220dc88a3d073f7178c9a08e98986b6cadd
-Top:    66702d5a96597802b71c185c76857f89d0ac0c82
+Top:    4afe09502daedbc902029e91a3483862b2e4d24b
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-07-30 10:03:58 +0800
 
@@ -21,7 +21,7 @@ a file of the name of the map already exists then the map is ignored.
 ---
 
 diff --git a/daemon/automount.c b/daemon/automount.c
-index 1d0b64e..9704ceb 100644
+index 1d0b64e..bbde805 100644
 --- a/daemon/automount.c
 +++ b/daemon/automount.c
 @@ -1145,6 +1145,28 @@ static unsigned long getnumopt(char *str, char option)
@@ -66,15 +66,6 @@ index 1d0b64e..9704ceb 100644
  	static const struct option long_options[] = {
  		{"help", 0, 0, 'h'},
  		{"pid-file", 1, 0, 'p'},
-@@ -1925,7 +1948,7 @@ int main(int argc, char *argv[])
- 		{"foreground", 0, 0, 'f'},
- 		{"random-multimount-selection", 0, 0, 'r'},
- 		{"negative-timeout", 1, 0, 'n'},
--		{"dumpmaps", 0, 0, 'm'},
-+		{"dumpmaps", 1, 0, 'm'},
- 		{"global-options", 1, 0, 'O'},
- 		{"version", 0, 0, 'V'},
- 		{"set-log-priority", 1, 0, 'l'},
 @@ -2008,6 +2031,7 @@ int main(int argc, char *argv[])
  
  		case 'm':
@@ -137,10 +128,10 @@ index 824707c..6166976 100644
  int master_list_empty(struct master *);
  int master_done(struct master *);
 diff --git a/lib/master.c b/lib/master.c
-index eca3523..22a289e 100644
+index eca3523..7f4d52e 100644
 --- a/lib/master.c
 +++ b/lib/master.c
-@@ -1281,7 +1281,85 @@ static void list_source_instances(struct map_source *source, struct map_source *
+@@ -1281,7 +1281,86 @@ static void list_source_instances(struct map_source *source, struct map_source *
  	return;
  }
  
@@ -151,7 +142,7 @@ index eca3523..22a289e 100644
 +	char *map_name;
 +	char *this;
 +	char *tok, *ptr, *tmp;
-+	unsigned int found;
++	unsigned int found = 0;
 +
 +	tmp = strdup(match);
 +	if (tmp)
@@ -159,6 +150,8 @@ index eca3523..22a289e 100644
 +	if (!tmp || !names) {
 +		if (tmp)
 +			free(tmp);
++		/* Don't print "not found" message since we haven't looked */
++		found = 1;
 +		goto fail;
 +	}
 +
@@ -167,7 +160,6 @@ index eca3523..22a289e 100644
 +	else
 +		map_name = tmp;
 +
-+	found = 0;
 +	this = NULL;
 +	ptr = NULL;
 +	tok = strtok_r(names, ",", &ptr);
@@ -227,7 +219,7 @@ index eca3523..22a289e 100644
  {
  	struct list_head *p, *head;
  
-@@ -1311,6 +1389,7 @@ int master_show_mounts(struct master *master)
+@@ -1311,6 +1390,7 @@ int master_show_mounts(struct master *master)
  		struct autofs_point *ap;
  		time_t now = time(NULL);
  		unsigned int count = 0;
@@ -235,7 +227,7 @@ index eca3523..22a289e 100644
  		int i;
  
  		this = list_entry(p, struct master_mapent, list);
-@@ -1320,6 +1399,14 @@ int master_show_mounts(struct master *master)
+@@ -1320,6 +1400,14 @@ int master_show_mounts(struct master *master)
  
  		printf("\nMount point: %s\n", ap->path);
  
@@ -250,7 +242,7 @@ index eca3523..22a289e 100644
  		printf("\nsource(s):\n");
  
  		/*
-@@ -1336,11 +1423,15 @@ int master_show_mounts(struct master *master)
+@@ -1336,11 +1424,15 @@ int master_show_mounts(struct master *master)
  			lookup_prune_cache(ap, now);
  		else {
  			printf("  failed to read map\n\n");
@@ -266,7 +258,7 @@ index eca3523..22a289e 100644
  			continue;
  		}
  
-@@ -1379,10 +1470,18 @@ int master_show_mounts(struct master *master)
+@@ -1379,10 +1471,18 @@ int master_show_mounts(struct master *master)
  			if (!me)
  				printf("  no keys found in map\n");
  			else {
