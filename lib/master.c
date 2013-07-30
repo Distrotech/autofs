@@ -1308,7 +1308,7 @@ static char *match_map_name(const char *match, const char *maps)
 	ptr = NULL;
 	tok = strtok_r(names, ",", &ptr);
 	while (tok) {
-		if (strcmp(tmp, tok)) {
+		if (strcmp(map_name, tok)) {
 			tok = strtok_r(NULL, ",", &ptr);
 			continue;
 		}
@@ -1346,7 +1346,7 @@ static void write_map(char *name, struct mapent *first)
 	if (!f) {
 		printf("  failed to open output file %s: %s\n",
 			name, strerror(errno));
-		printf("  map file not created.\n")
+		printf("  map file not created.\n");
 		return;
 	}
 
