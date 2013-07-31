@@ -1333,6 +1333,14 @@ static int match_map_name(struct map_source *source, const char *name)
 {
 	int argc = source->argc;
 	int i;
+	int ret = 0;
+
+	if (!map) {
+		printf("failed to allocate working storage: %s\n", strerror(errno));
+		return 0;
+	}
+
+	match = basename(map);
 
 	/*
 	 * This can't work for old style "multi" type sources since
@@ -1342,39 +1350,34 @@ static int match_map_name(struct map_source *source, const char *name)
 	 * multi map if one of its map names matches.
 	 */
 	for (i = 0; i < argc; i++) {
+		printf("i %d source->argv[%d] %s\n", i, i, source->argv[i]);
 		if (i == 0 || !strcmp(source->argv[i], "--")) {
 			if (i != 0) {
 				i++;
 				if (i >= argc)
-					return 0;
+					break;
 			}
 
+			printf("source->argv[%d] %s name %s\n", i, source->argv[i], name);
 			if (source->argv[i] && *source->argv[i] != '-') {
-				if (!strcmp(source->argv[i], name))
-					return 1;
+				char *map = strdup(source->argv[i]);
+				if (!map) {
+					printf("error: allocation failure: %s\n",
+						strerror(errno));
+					break;
+				}
+				if (!strcmp(basename(map), name)) {
+					printf("match\n");
+					ret = 1;
+					free(map);
+					break;
+				}
+				free(map);
 			}
 		}
 	}
 
-	return 0;
-}
-
-static int compare_source_type(struct map_source *map, const char *type)
-{
-	int res = 0;
-
-	if (type) {
-		if (!map->type)
-			goto done;
-
-		if (strcmp(map->type, type))
-			goto done;
-	} else if (map->type)
-		goto done;
-
-	res = 1;
-done:
-	return res;
+	return ret;
 }
 
 int dump_map(struct master *master, const char *type, const char *name)
@@ -1398,6 +1401,8 @@ int dump_map(struct master *master, const char *type, const char *name)
 		p = p->next;
 
 		ap = this->ap;
+
+		printf("ap->path %s\n", ap->path);
 
 		/*
 		 * Ensure we actually read indirect map entries so we can
@@ -1430,9 +1435,8 @@ int dump_map(struct master *master, const char *type, const char *name)
 
 			instance = NULL;
 			if (source->type) {
-				if ((!strcmp(type, "file") &&
-				     strcmp(source->type, "files")) ||
-				     strcmp(source->type, type)) {
+				printf("source->type %s\n", source->type);
+				if (strcmp(source->type, type)) {
 					source = source->next;
 					continue;
 				}
@@ -1449,18 +1453,23 @@ int dump_map(struct master *master, const char *type, const char *name)
 
 				map = source->instance;
 				while (map) {
-					res = compare_source_type(map, type);
-					if (res) {
-						if (!match_map_name(map, name)) {
-							map = map->next;
-							continue;
-						}
-						instance = map;
-						break;
+					printf("map->type %s\n", map->type);
+					if (strcmp(map->type, type)) {
+						map = map->next;
+						continue;
 					}
-					map = map->next;
+
+					if (!match_map_name(map, name)) {
+						map = map->next;
+						continue;
+					}
+
+					instance = map;
+					break;
 				}
 			}
+
+			printf("instance %p\n", instance);
 
 			if (!instance) {
 				source = source->next;

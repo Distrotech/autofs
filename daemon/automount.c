@@ -2142,6 +2142,8 @@ int main(int argc, char *argv[])
 				master = argv[2];
 		}
 
+		printf("type %s name %s master %s\n", type, name, master);
+
 		if (master)
 			master_list = master_new(NULL, timeout, ghost);
 		else
@@ -2151,7 +2153,7 @@ int main(int argc, char *argv[])
 			exit(1);
 		}
 
-		open_log();
+		log_to_stderr();
 
 		master_init_scan();
 
@@ -2164,9 +2166,10 @@ int main(int argc, char *argv[])
 		master_list->nc = nc;
 
 		lookup_nss_read_master(master_list, 0);
-		if (type)
+		if (type) {
+			printf("call dump_map");
 			dump_map(master_list, type, name);
-		else
+		} else
 			master_show_mounts(master_list);
 
 		head = &master_list->mounts;
