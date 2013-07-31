@@ -1,5 +1,5 @@
 Bottom: 706447a3776cafcfa8c1b32c3a2f2b89cbe7a1c7
-Top:    26559693e0612a98507be5460c42fe776b9fcdaf
+Top:    3fa3a21441913ce290cefcd09c1cf035af0c7a95
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-07-31 14:54:39 +0800
 
@@ -99,7 +99,7 @@ index 824707c..e77d5ba 100644
  extern inline unsigned int master_get_logopt(void);
  int master_list_empty(struct master *);
 diff --git a/lib/master.c b/lib/master.c
-index 734485e..bf5296c 100644
+index 734485e..9f53440 100644
 --- a/lib/master.c
 +++ b/lib/master.c
 @@ -1329,6 +1329,157 @@ static void print_map_info(struct map_source *source)
@@ -152,7 +152,7 @@ index 734485e..bf5296c 100644
 +	struct list_head *p, *head;
 +
 +	if (list_empty(&master->mounts)) {
-+		printf("no master map entries found\n\n");
++		printf("no master map entries found\n");
 +		return 1;
 +	}
 +
@@ -182,7 +182,7 @@ index 734485e..bf5296c 100644
 +		if (lookup_nss_read_map(ap, NULL, now))
 +			lookup_prune_cache(ap, now);
 +		else {
-+			printf("failed to read map\n\n");
++			printf("failed to read map\n");
 +			lookup_close_lookup(ap);
 +			continue;
 +		}
