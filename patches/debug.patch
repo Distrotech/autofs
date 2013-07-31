@@ -1,5 +1,5 @@
 Bottom: ff8c8cd69d7c8182f3be6b4bd874f5c7c33c60de
-Top:    75933a18c447264e8bc01d988a3868e4878b594a
+Top:    198601b1f069cb91cb813b25b102616d84ecf546
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-07-31 18:03:43 +0800
 
@@ -44,10 +44,25 @@ index 2008905..20db8af 100644
  
  		head = &master_list->mounts;
 diff --git a/lib/master.c b/lib/master.c
-index abc7306..f2f0dbe 100644
+index abc7306..81d8e50 100644
 --- a/lib/master.c
 +++ b/lib/master.c
-@@ -1342,6 +1342,7 @@ static int match_map_name(struct map_source *source, const char *name)
+@@ -1333,6 +1333,14 @@ static int match_map_name(struct map_source *source, const char *name)
+ {
+ 	int argc = source->argc;
+ 	int i;
++	int ret = 0;
++
++	if (!map) {
++		printf("failed to allocate working storage: %s\n", strerror(errno));
++		return 0;
++	}
++
++	match = basename(map);
+ 
+ 	/*
+ 	 * This can't work for old style "multi" type sources since
+@@ -1342,39 +1350,34 @@ static int match_map_name(struct map_source *source, const char *name)
  	 * multi map if one of its map names matches.
  	 */
  	for (i = 0; i < argc; i++) {
@@ -55,18 +70,35 @@ index abc7306..f2f0dbe 100644
  		if (i == 0 || !strcmp(source->argv[i], "--")) {
  			if (i != 0) {
  				i++;
-@@ -1349,6 +1350,7 @@ static int match_map_name(struct map_source *source, const char *name)
- 					return 0;
+ 				if (i >= argc)
+-					return 0;
++					break;
  			}
  
 +			printf("source->argv[%d] %s name %s\n", i, source->argv[i], name);
  			if (source->argv[i] && *source->argv[i] != '-') {
- 				if (!strcmp(source->argv[i], name))
- 					return 1;
-@@ -1359,24 +1361,6 @@ static int match_map_name(struct map_source *source, const char *name)
- 	return 0;
- }
+-				if (!strcmp(source->argv[i], name))
+-					return 1;
++				char *map = strdup(source->argv[i]);
++				if (!map) {
++					printf("error: allocation failure: %s\n",
++						strerror(errno));
++					break;
++				}
++				if (!strcmp(basename(map), name)) {
++					printf("match\n");
++					ret = 1;
++					free(map);
++					break;
++				}
++				free(map);
+ 			}
+ 		}
+ 	}
  
+-	return 0;
+-}
+-
 -static int compare_source_type(struct map_source *map, const char *type)
 -{
 -	int res = 0;
@@ -83,12 +115,11 @@ index abc7306..f2f0dbe 100644
 -	res = 1;
 -done:
 -	return res;
--}
--
++	return ret;
+ }
+ 
  int dump_map(struct master *master, const char *type, const char *name)
- {
- 	struct list_head *p, *head;
-@@ -1399,6 +1383,8 @@ int dump_map(struct master *master, const char *type, const char *name)
+@@ -1399,6 +1402,8 @@ int dump_map(struct master *master, const char *type, const char *name)
  
  		ap = this->ap;
  
@@ -97,7 +128,7 @@ index abc7306..f2f0dbe 100644
  		/*
  		 * Ensure we actually read indirect map entries so we can
  		 * list them. The map reads won't read any indirect map
-@@ -1430,9 +1416,8 @@ int dump_map(struct master *master, const char *type, const char *name)
+@@ -1430,9 +1435,8 @@ int dump_map(struct master *master, const char *type, const char *name)
  
  			instance = NULL;
  			if (source->type) {
@@ -109,7 +140,7 @@ index abc7306..f2f0dbe 100644
  					source = source->next;
  					continue;
  				}
-@@ -1449,19 +1434,24 @@ int dump_map(struct master *master, const char *type, const char *name)
+@@ -1449,19 +1453,24 @@ int dump_map(struct master *master, const char *type, const char *name)
  
  				map = source->instance;
  				while (map) {
@@ -125,13 +156,13 @@ index abc7306..f2f0dbe 100644
 +					if (strcmp(map->type, type)) {
 +						map = map->next;
 +						continue;
- 					}
--					map = map->next;
++					}
 +
 +					if (!match_map_name(map, name)) {
 +						map = map->next;
 +						continue;
-+					}
+ 					}
+-					map = map->next;
 +
 +					instance = map;
 +					break;
