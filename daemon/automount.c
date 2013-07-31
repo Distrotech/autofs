@@ -2125,20 +2125,22 @@ int main(int argc, char *argv[])
 			program);
 #endif
 
-	if (argc == 0)
-		master_list = master_new(NULL, timeout, ghost);
-	else
-		master_list = master_new(argv[0], timeout, ghost);
-
-	if (!master_list) {
-		printf("%s: can't create master map %s", program, argv[0]);
-		exit(1);
-	}
-
 	if (dumpmaps) {
 		struct master_mapent *entry;
 		struct list_head *head, *p;
 		struct mapent_cache *nc;
+
+		/*
+		 * We can't specify a master map on the command line
+		 * when listing one or more maps for display so the
+		 * only way to alter it from the ddefault name is to
+		 * set ti in the configuration.
+		 */
+		master_list = master_new(NULL, timeout, ghost);
+		if (!master_list) {
+			printf("%s: can't create master map", program);
+			exit(1);
+		}
 
 		open_log();
 
@@ -2166,6 +2168,16 @@ int main(int argc, char *argv[])
 		master_kill(master_list);
 
 		exit(0);
+	}
+
+	if (argc == 0)
+		master_list = master_new(NULL, timeout, ghost);
+	else
+		master_list = master_new(argv[0], timeout, ghost);
+
+	if (!master_list) {
+		printf("%s: can't create master map %s", program, argv[0]);
+		exit(1);
 	}
 
 	become_daemon(foreground, daemon_check);
