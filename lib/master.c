@@ -1333,7 +1333,8 @@ static int match_type(const char *source, const char *type)
 {
 	if (!strcmp(source, type))
 		return 1;
-	if (!strcmp(type, "file") && !strcmp(source, "files"))
+	/* Source file and files are synonymous */
+	if (!strncmp(source, type, 4) && strlen(source) <= 5)
 		return 1;
 	return 0;
 }
