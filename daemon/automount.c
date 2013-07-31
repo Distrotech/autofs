@@ -2151,7 +2151,7 @@ int main(int argc, char *argv[])
 			exit(1);
 		}
 
-		open_log();
+		log_to_stderr();
 
 		master_init_scan();
 

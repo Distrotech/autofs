@@ -1332,6 +1332,7 @@ static void print_map_info(struct map_source *source)
 static int match_map_name(struct map_source *source, const char *name)
 {
 	int argc = source->argc;
+	int ret = 0;
 	int i;
 
 	/*
@@ -1346,35 +1347,27 @@ static int match_map_name(struct map_source *source, const char *name)
 			if (i != 0) {
 				i++;
 				if (i >= argc)
-					return 0;
+					break;
 			}
 
 			if (source->argv[i] && *source->argv[i] != '-') {
-				if (!strcmp(source->argv[i], name))
-					return 1;
+				char *map = strdup(source->argv[i]);
+				if (!map) {
+					printf("error: allocation failure: %s\n",
+						strerror(errno));
+					break;
+				}
+				if (!strcmp(basename(map), name)) {
+					ret = 1;
+					free(map);
+					break;
+				}
+				free(map);
 			}
 		}
 	}
 
-	return 0;
-}
-
-static int compare_source_type(struct map_source *map, const char *type)
-{
-	int res = 0;
-
-	if (type) {
-		if (!map->type)
-			goto done;
-
-		if (strcmp(map->type, type))
-			goto done;
-	} else if (map->type)
-		goto done;
-
-	res = 1;
-done:
-	return res;
+	return ret;
 }
 
 int dump_map(struct master *master, const char *type, const char *name)
@@ -1430,9 +1423,7 @@ int dump_map(struct master *master, const char *type, const char *name)
 
 			instance = NULL;
 			if (source->type) {
-				if ((!strcmp(type, "file") &&
-				     strcmp(source->type, "files")) ||
-				     strcmp(source->type, type)) {
+				if (strcmp(source->type, type)) {
 					source = source->next;
 					continue;
 				}
@@ -1449,16 +1440,18 @@ int dump_map(struct master *master, const char *type, const char *name)
 
 				map = source->instance;
 				while (map) {
-					res = compare_source_type(map, type);
-					if (res) {
-						if (!match_map_name(map, name)) {
-							map = map->next;
-							continue;
-						}
-						instance = map;
-						break;
+					if (strcmp(map->type, type)) {
+						map = map->next;
+						continue;
 					}
-					map = map->next;
+
+					if (!match_map_name(map, name)) {
+						map = map->next;
+						continue;
+					}
+
+					instance = map;
+					break;
 				}
 			}
 
