@@ -1,0 +1,21 @@
+Bottom: 1047f349fab7f4637b1fd72e651d3d8736f0a8de
+Top:    29a7f421e81d225cfad6d4e35f3cd5fe998236f5
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-07-31 17:57:35 +0800
+
+Refresh of autofs-5.0.7-fix-dumpmaps-multi-output.patch
+
+---
+
+diff --git a/lib/master.c b/lib/master.c
+index bbf4b4e..df6c141 100644
+--- a/lib/master.c
++++ b/lib/master.c
+@@ -1359,7 +1359,6 @@ int master_show_mounts(struct master *master)
+ 		struct autofs_point *ap;
+ 		time_t now = time(NULL);
+ 		unsigned int count = 0;
+-		int i;
+ 
+ 		this = list_entry(p, struct master_mapent, list);
+ 		p = p->next;
