@@ -3,7 +3,7 @@ Top:    93817ddd0da248a3f75d366a922078d15d0fec09
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-07-31 14:54:39 +0800
 
-autofs-5.0.7 - teach dumpmaps to output simpe key value pairs
+autofs-5.0.7 - teach dumpmaps to output simple key value pairs
 
 
 ---
