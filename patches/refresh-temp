@@ -1,0 +1,92 @@
+Bottom: f256cf4caf47041dcde69ed0cc72dc99def26723
+Top:    75933a18c447264e8bc01d988a3868e4878b594a
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-07-31 18:27:13 +0800
+
+Refresh of debug.patch
+
+---
+
+diff --git a/lib/master.c b/lib/master.c
+index adadec2..f2f0dbe 100644
+--- a/lib/master.c
++++ b/lib/master.c
+@@ -1342,6 +1342,7 @@ static int match_map_name(struct map_source *source, const char *name)
+ 	 * multi map if one of its map names matches.
+ 	 */
+ 	for (i = 0; i < argc; i++) {
++		printf("i %d source->argv[%d] %s\n", i, i, source->argv[i]);
+ 		if (i == 0 || !strcmp(source->argv[i], "--")) {
+ 			if (i != 0) {
+ 				i++;
+@@ -1349,6 +1350,7 @@ static int match_map_name(struct map_source *source, const char *name)
+ 					return 0;
+ 			}
+ 
++			printf("source->argv[%d] %s name %s\n", i, source->argv[i], name);
+ 			if (source->argv[i] && *source->argv[i] != '-') {
+ 				if (!strcmp(source->argv[i], name))
+ 					return 1;
+@@ -1359,24 +1361,6 @@ static int match_map_name(struct map_source *source, const char *name)
+ 	return 0;
+ }
+ 
+-static int compare_source_type(struct map_source *map, const char *type)
+-{
+-	int res = 0;
+-
+-	if (type) {
+-		if (!map->type)
+-			goto done;
+-
+-		if (strcmp(map->type, type))
+-			goto done;
+-	} else if (map->type)
+-		goto done;
+-
+-	res = 1;
+-done:
+-	return res;
+-}
+-
+ int dump_map(struct master *master, const char *type, const char *name)
+ {
+ 	struct list_head *p, *head;
+@@ -1433,9 +1417,7 @@ int dump_map(struct master *master, const char *type, const char *name)
+ 			instance = NULL;
+ 			if (source->type) {
+ 				printf("source->type %s\n", source->type);
+-				if ((!strcmp(type, "file") &&
+-				     strcmp(source->type, "files")) ||
+-				     strcmp(source->type, type)) {
++				if (strcmp(source->type, type)) {
+ 					source = source->next;
+ 					continue;
+ 				}
+@@ -1453,16 +1435,18 @@ int dump_map(struct master *master, const char *type, const char *name)
+ 				map = source->instance;
+ 				while (map) {
+ 					printf("map->type %s\n", map->type);
+-					res = compare_source_type(map, type);
+-					if (res) {
+-						if (!match_map_name(map, name)) {
+-							map = map->next;
+-							continue;
+-						}
+-						instance = map;
+-						break;
++					if (strcmp(map->type, type)) {
++						map = map->next;
++						continue;
++					}
++
++					if (!match_map_name(map, name)) {
++						map = map->next;
++						continue;
+ 					}
+-					map = map->next;
++
++					instance = map;
++					break;
+ 				}
+ 			}
