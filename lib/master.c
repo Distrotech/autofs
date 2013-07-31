@@ -1329,8 +1329,34 @@ static void print_map_info(struct map_source *source)
 	return;
 }
 
-static char *match_map_name(const char *match, const char *maps)
+static int match_map_name(struct map_source *source, const char *name)
 {
+	int argc = source->argc;
+	int i;
+
+	/*
+	 * This can't work for old style "multi" type sources since
+	 * there's no way to know from which map the cache entry came
+	 * from and duplicate entries are ignored at map read time.
+	 * All we can really do is list all the entries for the given
+	 * multi map if one of its map names matches.
+	 */
+	for (i = 0; i < argc; i++) {
+		if (i == 0 || !strcmp(source->argv[i], "--")) {
+			if (i != 0) {
+				i++;
+				if (i >= argc)
+					return 0;
+			}
+
+			if (source->argv[i] && *source->argv[i] != '-') {
+				if (!strcmp(source->argv[i], name))
+					return 1;
+			}
+		}
+	}
+
+	return;
 }
 
 static int compare_source_type(struct map_source *map, const char *type)
@@ -1351,7 +1377,7 @@ done:
 	return res;
 }
 
-int dump_map(struct master *master, const char *type, const char *names)
+int dump_map(struct master *master, const char *type, const char *name)
 {
 	struct list_head *p, *head;
 
@@ -1367,7 +1393,6 @@ int dump_map(struct master *master, const char *type, const char *names)
 		struct master_mapent *this;
 		struct autofs_point *ap;
 		time_t now = time(NULL);
-		unsigned int count = 0;
 		int i;
 
 		this = list_entry(p, struct master_mapent, list);
@@ -1388,12 +1413,14 @@ int dump_map(struct master *master, const char *type, const char *names)
 		if (lookup_nss_read_map(ap, NULL, now))
 			lookup_prune_cache(ap, now);
 		else {
-			printf("  failed to read map\n\n");
+			printf("failed to read map\n\n");
+			lookup_close_lookup(ap);
 			continue;
 		}
 
 		if (!this->maps) {
-			printf("  no map sources found\n\n");
+			printf("no map sources found for %s\n", ap->path);
+			lookup_close_lookup(ap);
 			continue;
 		}
 
@@ -1410,6 +1437,12 @@ int dump_map(struct master *master, const char *type, const char *names)
 					source = source->next;
 					continue;
 				}
+
+				if (!match_map_name(source, name)) {
+					source = source->next;
+					continue;
+				}
+
 				instance = source;
 			} else {
 				struct map_source *map;
@@ -1419,20 +1452,26 @@ int dump_map(struct master *master, const char *type, const char *names)
 				while (map) {
 					res = compare_source_type(map, type);
 					if (res) {
+						if (!match_map_name(map, name)) {
+							map = map->next;
+							continue;
+						}
 						instance = map;
 						break;
 					}
 					map = map->next;
 				}
-				if (!instance) {
-					source = source->next;
-					continue;
-				}
+			}
+
+			if (!instance) {
+				source = source->next;
+				lookup_close_lookup(ap);
+				continue;
 			}
 
 			me = cache_lookup_first(source->mc);
 			if (!me)
-				printf("  no keys found in map\n");
+				printf("no keys found in map\n");
 			else {
 				do {
 					if (me->source == instance)
@@ -1440,15 +1479,13 @@ int dump_map(struct master *master, const char *type, const char *names)
 				} while ((me = cache_lookup_next(source->mc, me)));
 			}
 
-			source = source->next;
+			lookup_close_lookup(ap);
+			return 1;
 		}
-
 		lookup_close_lookup(ap);
 	}
 
-	return 1;
-}
-
+	return 0;
 }
 
 int master_show_mounts(struct master *master)
