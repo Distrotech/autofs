@@ -1,6 +1,6 @@
 Version: 1
-Previous: d6eefcec77d74f1dba86bcb9f34e22b04a24c892
-Head: d5ef95939a20af4d7322a730ce91a4bfd01cb368
+Previous: 82602c2100c2e07d87cda03283b72c24697ed754
+Head: 951d5913c0b5f969585265567dd85a40ae3857a9
 Applied:
   autofs-5.0.7-dont-override-LDFLAGS-in-make-rules.patch: 2e8251865c0ed6d91a97c107973a7eb75d3e131b
   autofs-5.0.7-fix-a-couple-of-compiler-warnings.patch: b8bdae4bfe855786de918c78eee228e4aabdab45
@@ -20,8 +20,8 @@ Applied:
   autofs-5.0.7-fix-dumpmaps-multi-output.patch: 2bf393dbd40e952fd76752e8ed130f7f873783b2
   autofs-5.0.7-try-and-cleanup-after-dumpmaps.patch: fa6079ad2c5828a322a7e5c7328190292b40e918
   autofs-5.0.7-teach-dumpmaps-to-output-simple-key-value-pairs.patch: d5ef95939a20af4d7322a730ce91a4bfd01cb368
+  debug.patch: 951d5913c0b5f969585265567dd85a40ae3857a9
 Unapplied:
-  debug.patch: 75418869a318ff8d742b55c3c6487068227ac542
   autofs-5.0.5-wait-for-master-map-available-at-start.patch: 28e191c68fc95cd90815f398deff088bd1d65d0a
   autofs-5.0.5-add-master-read-wait-option.patch: 05d9eb17fb1ec9418f236468875ad04b09b0546b
   autofs-5.0.7-add-host-map-reload-option.patch: 11d23f7a74b2f33e5011ba29f64ae1b4956acb09
