@@ -1375,7 +1375,7 @@ int dump_map(struct master *master, const char *type, const char *name)
 	struct list_head *p, *head;
 
 	if (list_empty(&master->mounts)) {
-		printf("no master map entries found\n\n");
+		printf("no master map entries found\n");
 		return 1;
 	}
 
@@ -1405,7 +1405,7 @@ int dump_map(struct master *master, const char *type, const char *name)
 		if (lookup_nss_read_map(ap, NULL, now))
 			lookup_prune_cache(ap, now);
 		else {
-			printf("failed to read map\n\n");
+			printf("failed to read map\n");
 			lookup_close_lookup(ap);
 			continue;
 		}
