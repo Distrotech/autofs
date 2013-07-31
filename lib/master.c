@@ -1436,7 +1436,6 @@ int dump_map(struct master *master, const char *type, const char *name)
 				instance = source;
 			} else {
 				struct map_source *map;
-				int res;
 
 				map = source->instance;
 				while (map) {
