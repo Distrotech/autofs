@@ -1,5 +1,5 @@
 Bottom: 706447a3776cafcfa8c1b32c3a2f2b89cbe7a1c7
-Top:    ff8c8cd69d7c8182f3be6b4bd874f5c7c33c60de
+Top:    26559693e0612a98507be5460c42fe776b9fcdaf
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-07-31 14:54:39 +0800
 
@@ -9,10 +9,10 @@ autofs-5.0.7 - teach dumpmaps to output simple key value pairs
 ---
 
 diff --git a/daemon/automount.c b/daemon/automount.c
-index 6849272..2008905 100644
+index 6849272..8bcc81e 100644
 --- a/daemon/automount.c
 +++ b/daemon/automount.c
-@@ -2125,20 +2125,31 @@ int main(int argc, char *argv[])
+@@ -2125,22 +2125,33 @@ int main(int argc, char *argv[])
  			program);
  #endif
  
@@ -52,7 +52,10 @@ index 6849272..2008905 100644
 +			exit(1);
 +		}
  
- 		open_log();
+-		open_log();
++		log_to_stderr();
+ 
+ 		master_init_scan();
  
 @@ -2153,7 +2164,10 @@ int main(int argc, char *argv[])
  		master_list->nc = nc;
@@ -96,16 +99,17 @@ index 824707c..e77d5ba 100644
  extern inline unsigned int master_get_logopt(void);
  int master_list_empty(struct master *);
 diff --git a/lib/master.c b/lib/master.c
-index 734485e..abc7306 100644
+index 734485e..bf5296c 100644
 --- a/lib/master.c
 +++ b/lib/master.c
-@@ -1329,6 +1329,164 @@ static void print_map_info(struct map_source *source)
+@@ -1329,6 +1329,157 @@ static void print_map_info(struct map_source *source)
  	return;
  }
  
 +static int match_map_name(struct map_source *source, const char *name)
 +{
 +	int argc = source->argc;
++	int ret = 0;
 +	int i;
 +
 +	/*
@@ -120,35 +124,27 @@ index 734485e..abc7306 100644
 +			if (i != 0) {
 +				i++;
 +				if (i >= argc)
-+					return 0;
++					break;
 +			}
 +
 +			if (source->argv[i] && *source->argv[i] != '-') {
-+				if (!strcmp(source->argv[i], name))
-+					return 1;
++				char *map = strdup(source->argv[i]);
++				if (!map) {
++					printf("error: allocation failure: %s\n",
++						strerror(errno));
++					break;
++				}
++				if (!strcmp(basename(map), name)) {
++					ret = 1;
++					free(map);
++					break;
++				}
++				free(map);
 +			}
 +		}
 +	}
 +
-+	return 0;
-+}
-+
-+static int compare_source_type(struct map_source *map, const char *type)
-+{
-+	int res = 0;
-+
-+	if (type) {
-+		if (!map->type)
-+			goto done;
-+
-+		if (strcmp(map->type, type))
-+			goto done;
-+	} else if (map->type)
-+		goto done;
-+
-+	res = 1;
-+done:
-+	return res;
++	return ret;
 +}
 +
 +int dump_map(struct master *master, const char *type, const char *name)
@@ -204,9 +200,7 @@ index 734485e..abc7306 100644
 +
 +			instance = NULL;
 +			if (source->type) {
-+				if ((!strcmp(type, "file") &&
-+				     strcmp(source->type, "files")) ||
-+				     strcmp(source->type, type)) {
++				if (strcmp(source->type, type)) {
 +					source = source->next;
 +					continue;
 +				}
@@ -223,16 +217,18 @@ index 734485e..abc7306 100644
 +
 +				map = source->instance;
 +				while (map) {
-+					res = compare_source_type(map, type);
-+					if (res) {
-+						if (!match_map_name(map, name)) {
-+							map = map->next;
-+							continue;
-+						}
-+						instance = map;
-+						break;
++					if (strcmp(map->type, type)) {
++						map = map->next;
++						continue;
 +					}
-+					map = map->next;
++
++					if (!match_map_name(map, name)) {
++						map = map->next;
++						continue;
++					}
++
++					instance = map;
++					break;
 +				}
 +			}
 +
