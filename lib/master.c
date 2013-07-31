@@ -1332,15 +1332,8 @@ static void print_map_info(struct map_source *source)
 static int match_map_name(struct map_source *source, const char *name)
 {
 	int argc = source->argc;
-	int i;
 	int ret = 0;
-
-	if (!map) {
-		printf("failed to allocate working storage: %s\n", strerror(errno));
-		return 0;
-	}
-
-	match = basename(map);
+	int i;
 
 	/*
 	 * This can't work for old style "multi" type sources since
@@ -1350,7 +1343,6 @@ static int match_map_name(struct map_source *source, const char *name)
 	 * multi map if one of its map names matches.
 	 */
 	for (i = 0; i < argc; i++) {
-		printf("i %d source->argv[%d] %s\n", i, i, source->argv[i]);
 		if (i == 0 || !strcmp(source->argv[i], "--")) {
 			if (i != 0) {
 				i++;
@@ -1358,7 +1350,6 @@ static int match_map_name(struct map_source *source, const char *name)
 					break;
 			}
 
-			printf("source->argv[%d] %s name %s\n", i, source->argv[i], name);
 			if (source->argv[i] && *source->argv[i] != '-') {
 				char *map = strdup(source->argv[i]);
 				if (!map) {
@@ -1367,7 +1358,6 @@ static int match_map_name(struct map_source *source, const char *name)
 					break;
 				}
 				if (!strcmp(basename(map), name)) {
-					printf("match\n");
 					ret = 1;
 					free(map);
 					break;
@@ -1402,8 +1392,6 @@ int dump_map(struct master *master, const char *type, const char *name)
 
 		ap = this->ap;
 
-		printf("ap->path %s\n", ap->path);
-
 		/*
 		 * Ensure we actually read indirect map entries so we can
 		 * list them. The map reads won't read any indirect map
@@ -1435,7 +1423,6 @@ int dump_map(struct master *master, const char *type, const char *name)
 
 			instance = NULL;
 			if (source->type) {
-				printf("source->type %s\n", source->type);
 				if (strcmp(source->type, type)) {
 					source = source->next;
 					continue;
@@ -1453,7 +1440,6 @@ int dump_map(struct master *master, const char *type, const char *name)
 
 				map = source->instance;
 				while (map) {
-					printf("map->type %s\n", map->type);
 					if (strcmp(map->type, type)) {
 						map = map->next;
 						continue;
@@ -1468,8 +1454,6 @@ int dump_map(struct master *master, const char *type, const char *name)
 					break;
 				}
 			}
-
-			printf("instance %p\n", instance);
 
 			if (!instance) {
 				source = source->next;
