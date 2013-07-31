@@ -1329,6 +1329,15 @@ static void print_map_info(struct map_source *source)
 	return;
 }
 
+static int match_type(const char *source, const char *type)
+{
+	if (!strcmp(source, type))
+		return 1;
+	if (!strcmp(type, "file") && !strcmp(source, "files"))
+		return 1;
+	return 0;
+}
+
 static int match_map_name(struct map_source *source, const char *name)
 {
 	int argc = source->argc;
@@ -1423,7 +1432,7 @@ int dump_map(struct master *master, const char *type, const char *name)
 
 			instance = NULL;
 			if (source->type) {
-				if (strcmp(source->type, type)) {
+				if (match_type(source->type, type)) {
 					source = source->next;
 					continue;
 				}
@@ -1439,7 +1448,7 @@ int dump_map(struct master *master, const char *type, const char *name)
 
 				map = source->instance;
 				while (map) {
-					if (strcmp(map->type, type)) {
+					if (match_type(map->type, type)) {
 						map = map->next;
 						continue;
 					}
