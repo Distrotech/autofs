@@ -1,5 +1,5 @@
 Bottom: ff8c8cd69d7c8182f3be6b4bd874f5c7c33c60de
-Top:    198601b1f069cb91cb813b25b102616d84ecf546
+Top:    26559693e0612a98507be5460c42fe776b9fcdaf
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-07-31 18:03:43 +0800
 
@@ -9,19 +9,10 @@ debug.patch
 ---
 
 diff --git a/daemon/automount.c b/daemon/automount.c
-index 2008905..20db8af 100644
+index 2008905..8bcc81e 100644
 --- a/daemon/automount.c
 +++ b/daemon/automount.c
-@@ -2142,6 +2142,8 @@ int main(int argc, char *argv[])
- 				master = argv[2];
- 		}
- 
-+		printf("type %s name %s master %s\n", type, name, master);
-+
- 		if (master)
- 			master_list = master_new(NULL, timeout, ghost);
- 		else
-@@ -2151,7 +2153,7 @@ int main(int argc, char *argv[])
+@@ -2151,7 +2151,7 @@ int main(int argc, char *argv[])
  			exit(1);
  		}
  
@@ -30,44 +21,19 @@ index 2008905..20db8af 100644
  
  		master_init_scan();
  
-@@ -2164,9 +2166,10 @@ int main(int argc, char *argv[])
- 		master_list->nc = nc;
- 
- 		lookup_nss_read_master(master_list, 0);
--		if (type)
-+		if (type) {
-+			printf("call dump_map");
- 			dump_map(master_list, type, name);
--		else
-+		} else
- 			master_show_mounts(master_list);
- 
- 		head = &master_list->mounts;
 diff --git a/lib/master.c b/lib/master.c
-index abc7306..81d8e50 100644
+index abc7306..bf5296c 100644
 --- a/lib/master.c
 +++ b/lib/master.c
-@@ -1333,6 +1333,14 @@ static int match_map_name(struct map_source *source, const char *name)
+@@ -1332,6 +1332,7 @@ static void print_map_info(struct map_source *source)
+ static int match_map_name(struct map_source *source, const char *name)
  {
  	int argc = source->argc;
- 	int i;
 +	int ret = 0;
-+
-+	if (!map) {
-+		printf("failed to allocate working storage: %s\n", strerror(errno));
-+		return 0;
-+	}
-+
-+	match = basename(map);
+ 	int i;
  
  	/*
- 	 * This can't work for old style "multi" type sources since
-@@ -1342,39 +1350,34 @@ static int match_map_name(struct map_source *source, const char *name)
- 	 * multi map if one of its map names matches.
- 	 */
- 	for (i = 0; i < argc; i++) {
-+		printf("i %d source->argv[%d] %s\n", i, i, source->argv[i]);
- 		if (i == 0 || !strcmp(source->argv[i], "--")) {
+@@ -1346,35 +1347,27 @@ static int match_map_name(struct map_source *source, const char *name)
  			if (i != 0) {
  				i++;
  				if (i >= argc)
@@ -75,7 +41,6 @@ index abc7306..81d8e50 100644
 +					break;
  			}
  
-+			printf("source->argv[%d] %s name %s\n", i, source->argv[i], name);
  			if (source->argv[i] && *source->argv[i] != '-') {
 -				if (!strcmp(source->argv[i], name))
 -					return 1;
@@ -86,7 +51,6 @@ index abc7306..81d8e50 100644
 +					break;
 +				}
 +				if (!strcmp(basename(map), name)) {
-+					printf("match\n");
 +					ret = 1;
 +					free(map);
 +					break;
@@ -119,28 +83,18 @@ index abc7306..81d8e50 100644
  }
  
  int dump_map(struct master *master, const char *type, const char *name)
-@@ -1399,6 +1402,8 @@ int dump_map(struct master *master, const char *type, const char *name)
- 
- 		ap = this->ap;
- 
-+		printf("ap->path %s\n", ap->path);
-+
- 		/*
- 		 * Ensure we actually read indirect map entries so we can
- 		 * list them. The map reads won't read any indirect map
-@@ -1430,9 +1435,8 @@ int dump_map(struct master *master, const char *type, const char *name)
+@@ -1430,9 +1423,7 @@ int dump_map(struct master *master, const char *type, const char *name)
  
  			instance = NULL;
  			if (source->type) {
 -				if ((!strcmp(type, "file") &&
 -				     strcmp(source->type, "files")) ||
 -				     strcmp(source->type, type)) {
-+				printf("source->type %s\n", source->type);
 +				if (strcmp(source->type, type)) {
  					source = source->next;
  					continue;
  				}
-@@ -1449,19 +1453,24 @@ int dump_map(struct master *master, const char *type, const char *name)
+@@ -1449,16 +1440,18 @@ int dump_map(struct master *master, const char *type, const char *name)
  
  				map = source->instance;
  				while (map) {
@@ -152,25 +106,18 @@ index abc7306..81d8e50 100644
 -						}
 -						instance = map;
 -						break;
-+					printf("map->type %s\n", map->type);
 +					if (strcmp(map->type, type)) {
-+						map = map->next;
-+						continue;
-+					}
-+
-+					if (!match_map_name(map, name)) {
 +						map = map->next;
 +						continue;
  					}
 -					map = map->next;
 +
++					if (!match_map_name(map, name)) {
++						map = map->next;
++						continue;
++					}
++
 +					instance = map;
 +					break;
  				}
  			}
- 
-+			printf("instance %p\n", instance);
-+
- 			if (!instance) {
- 				source = source->next;
- 				lookup_close_lookup(ap);
