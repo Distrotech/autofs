@@ -1,5 +1,5 @@
-Bottom: 9b5bcaad5b09650901f3a3c17bd97f7d1fd204c7
-Top:    eb6746be1d3ee5ea492f24a09e25d5ab0601a3d5
+Bottom: b10774af614d756988a15191dee45e98d24552c1
+Top:    9f7d637e01eba8e46cecec3d1d6ac05fe66496ae
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-07-30 10:03:58 +0800
 
@@ -21,11 +21,11 @@ a file of the name of the map already exists then the map is ignored.
 ---
 
 diff --git a/CHANGELOG b/CHANGELOG
-index 1cf79be..6d08749 100644
+index 2d94dd0..34ee784 100644
 --- a/CHANGELOG
 +++ b/CHANGELOG
-@@ -59,6 +59,7 @@
- - dont start readmap unless ready.
+@@ -69,6 +69,7 @@
+ - fix compilation of lookup_ldap.c without sasl.
  - fix dumpmaps multi output.
  - try and cleanup after dumpmaps.
 +- teach dumpmaps to output maps to files.
