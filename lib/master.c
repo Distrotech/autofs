@@ -1356,7 +1356,7 @@ static int match_map_name(struct map_source *source, const char *name)
 		}
 	}
 
-	return;
+	return 0;
 }
 
 static int compare_source_type(struct map_source *map, const char *type)
@@ -1393,7 +1393,6 @@ int dump_map(struct master *master, const char *type, const char *name)
 		struct master_mapent *this;
 		struct autofs_point *ap;
 		time_t now = time(NULL);
-		int i;
 
 		this = list_entry(p, struct master_mapent, list);
 		p = p->next;
