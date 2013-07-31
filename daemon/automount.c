@@ -2129,14 +2129,23 @@ int main(int argc, char *argv[])
 		struct master_mapent *entry;
 		struct list_head *head, *p;
 		struct mapent_cache *nc;
+		const char *type = NULL;
+		const char *name = NULL;
+		const char *master = NULL;
 
-		/*
-		 * We can't specify a master map on the command line
-		 * when listing one or more maps for display so the
-		 * only way to alter it from the ddefault name is to
-		 * set ti in the configuration.
-		 */
-		master_list = master_new(NULL, timeout, ghost);
+		if (argc > 0) {
+			if (argc >= 2) {
+				type = argv[0];
+				name = argv[1];
+			}
+			if (argc == 3)
+				master = argv[2];
+		}
+
+		if (master)
+			master_list = master_new(NULL, timeout, ghost);
+		else
+			master_list = master_new(master, timeout, ghost);
 		if (!master_list) {
 			printf("%s: can't create master map", program);
 			exit(1);
@@ -2155,7 +2164,10 @@ int main(int argc, char *argv[])
 		master_list->nc = nc;
 
 		lookup_nss_read_master(master_list, 0);
-		master_show_mounts(master_list);
+		if (type)
+			dump_map(master_list, type, name);
+		else
+			master_show_mounts(master_list);
 
 		head = &master_list->mounts;
 		p = head->next;
