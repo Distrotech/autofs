@@ -1331,16 +1331,11 @@ static void print_map_info(struct map_source *source)
 
 static int match_type(const char *source, const char *type)
 {
-	printf("match_type source %s type %s\n", source, type);
-	if (!strcmp(source, type)) {
-		printf("match\n");
+	if (!strcmp(source, type))
 		return 1;
-	}
-	/* Source file and files are synonymous */
-	if (!strncmp(source, type, 4) && (strlen(source) <= 5)) {
-		printf("match\n");
+	/* Sources file and files are synonymous */
+	if (!strncmp(source, type, 4) && (strlen(source) <= 5))
 		return 1;
-	}
 	return 0;
 }
 
@@ -1468,8 +1463,6 @@ int dump_map(struct master *master, const char *type, const char *name)
 					break;
 				}
 			}
-
-			printf("instance %p\n", instance);
 
 			if (!instance) {
 				source = source->next;
