@@ -1333,6 +1333,14 @@ static int match_map_name(struct map_source *source, const char *name)
 {
 	int argc = source->argc;
 	int i;
+	int ret = 0;
+
+	if (!map) {
+		printf("failed to allocate working storage: %s\n", strerror(errno));
+		return 0;
+	}
+
+	match = basename(map);
 
 	/*
 	 * This can't work for old style "multi" type sources since
@@ -1347,18 +1355,29 @@ static int match_map_name(struct map_source *source, const char *name)
 			if (i != 0) {
 				i++;
 				if (i >= argc)
-					return 0;
+					break;
 			}
 
 			printf("source->argv[%d] %s name %s\n", i, source->argv[i], name);
 			if (source->argv[i] && *source->argv[i] != '-') {
-				if (!strcmp(source->argv[i], name))
-					return 1;
+				char *map = strdup(source->argv[i]);
+				if (!map) {
+					printf("error: allocation failure: %s\n",
+						strerror(errno));
+					break;
+				}
+				if (!strcmp(basename(map), name)) {
+					printf("match\n");
+					ret = 1;
+					free(map);
+					break;
+				}
+				free(map);
 			}
 		}
 	}
 
-	return 0;
+	return ret;
 }
 
 int dump_map(struct master *master, const char *type, const char *name)
