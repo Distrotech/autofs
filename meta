@@ -1,6 +1,6 @@
 Version: 1
-Previous: 19b0df07a80809963d957aaafd8b2b442fa771c5
-Head: cc835cfde031c1d85e87ac1217198744e0cdea60
+Previous: ec6fe7e5336f27bb93bfd6cc5d412f50befb3fc4
+Head: 7b353333d2e23b081ab8c3abc1fa2653469912c8
 Applied:
   autofs-5.0.7-dont-override-LDFLAGS-in-make-rules.patch: 2e8251865c0ed6d91a97c107973a7eb75d3e131b
   autofs-5.0.7-fix-a-couple-of-compiler-warnings.patch: b8bdae4bfe855786de918c78eee228e4aabdab45
@@ -19,8 +19,7 @@ Applied:
   autofs-5.0.7-fix-compilation-of-lookup_ldap_c-without-sasl.patch: b39f1f3a4ae43c46986796211ddc7eb997e9a22b
   autofs-5.0.7-fix-dumpmaps-multi-output.patch: 2bf393dbd40e952fd76752e8ed130f7f873783b2
   autofs-5.0.7-try-and-cleanup-after-dumpmaps.patch: fa6079ad2c5828a322a7e5c7328190292b40e918
-  autofs-5.0.7-teach-dumpmaps-to-output-simple-key-value-pairs.patch: 6f8a6699fcceb44ed025d028197817a3c5c56c15
-  refresh-temp: cc835cfde031c1d85e87ac1217198744e0cdea60
+  autofs-5.0.7-teach-dumpmaps-to-output-simple-key-value-pairs.patch: 7b353333d2e23b081ab8c3abc1fa2653469912c8
 Unapplied:
   autofs-5.0.5-wait-for-master-map-available-at-start.patch: 28e191c68fc95cd90815f398deff088bd1d65d0a
   autofs-5.0.5-add-master-read-wait-option.patch: 05d9eb17fb1ec9418f236468875ad04b09b0546b

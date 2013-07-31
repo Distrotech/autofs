@@ -1,5 +1,5 @@
 Bottom: 706447a3776cafcfa8c1b32c3a2f2b89cbe7a1c7
-Top:    cc6ec242599f3a6dffbf20daee75fe9a22578094
+Top:    5be316aefd55b80968fa5988fe99e63d9c8a20fa
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-07-31 14:54:39 +0800
 
@@ -99,24 +99,29 @@ index 824707c..e77d5ba 100644
  extern inline unsigned int master_get_logopt(void);
  int master_list_empty(struct master *);
 diff --git a/lib/master.c b/lib/master.c
-index 734485e..b059ccc 100644
+index 734485e..bba959d 100644
 --- a/lib/master.c
 +++ b/lib/master.c
-@@ -1329,6 +1329,166 @@ static void print_map_info(struct map_source *source)
+@@ -1329,6 +1329,173 @@ static void print_map_info(struct map_source *source)
  	return;
  }
  
 +static int match_type(const char *source, const char *type)
 +{
-+	if (!strcmp(source, type))
++	printf("match_type source %s type %s\n", source, type);
++	if (!strcmp(source, type)) {
++		printf("match\n");
 +		return 1;
++	}
 +	/* Source file and files are synonymous */
-+	if (!strncmp(source, type, 4) && (strlen(source) <= 5))
++	if (!strncmp(source, type, 4) && (strlen(source) <= 5)) {
++		printf("match\n");
 +		return 1;
++	}
 +	return 0;
 +}
 +
-+static int match_map_name(struct map_source *source, const char *name)
++static int match_name(struct map_source *source, const char *name)
 +{
 +	int argc = source->argc;
 +	int ret = 0;
@@ -210,12 +215,12 @@ index 734485e..b059ccc 100644
 +
 +			instance = NULL;
 +			if (source->type) {
-+				if (match_type(source->type, type)) {
++				if (!match_type(source->type, type)) {
 +					source = source->next;
 +					continue;
 +				}
 +
-+				if (!match_map_name(source, name)) {
++				if (!match_name(source, name)) {
 +					source = source->next;
 +					continue;
 +				}
@@ -226,12 +231,12 @@ index 734485e..b059ccc 100644
 +
 +				map = source->instance;
 +				while (map) {
-+					if (match_type(map->type, type)) {
++					if (!match_type(map->type, type)) {
 +						map = map->next;
 +						continue;
 +					}
 +
-+					if (!match_map_name(map, name)) {
++					if (!match_name(map, name)) {
 +						map = map->next;
 +						continue;
 +					}
@@ -240,6 +245,8 @@ index 734485e..b059ccc 100644
 +					break;
 +				}
 +			}
++
++			printf("instance %p\n", instance);
 +
 +			if (!instance) {
 +				source = source->next;
