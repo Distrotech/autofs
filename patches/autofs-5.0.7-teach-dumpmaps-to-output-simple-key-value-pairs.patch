@@ -1,5 +1,5 @@
-Bottom: b10774af614d756988a15191dee45e98d24552c1
-Top:    345b9581adf34f87452e92f0f220c152cca00c6d
+Bottom: 706447a3776cafcfa8c1b32c3a2f2b89cbe7a1c7
+Top:    ff8c8cd69d7c8182f3be6b4bd874f5c7c33c60de
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-07-31 14:54:39 +0800
 
@@ -96,7 +96,7 @@ index 824707c..e77d5ba 100644
  extern inline unsigned int master_get_logopt(void);
  int master_list_empty(struct master *);
 diff --git a/lib/master.c b/lib/master.c
-index c560496..3f2597b 100644
+index 734485e..abc7306 100644
 --- a/lib/master.c
 +++ b/lib/master.c
 @@ -1329,6 +1329,164 @@ static void print_map_info(struct map_source *source)
