@@ -1,5 +1,5 @@
 Bottom: 706447a3776cafcfa8c1b32c3a2f2b89cbe7a1c7
-Top:    ac5a5037171dc55c3f05160c852146ea3b1dd131
+Top:    a986affdbf41c0e1a5ba4d3673019b6be31321f3
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-07-31 14:54:39 +0800
 
@@ -99,10 +99,10 @@ index 824707c..e77d5ba 100644
  extern inline unsigned int master_get_logopt(void);
  int master_list_empty(struct master *);
 diff --git a/lib/master.c b/lib/master.c
-index 734485e..92bcd56 100644
+index 734485e..0c55f21 100644
 --- a/lib/master.c
 +++ b/lib/master.c
-@@ -1329,6 +1329,165 @@ static void print_map_info(struct map_source *source)
+@@ -1329,6 +1329,166 @@ static void print_map_info(struct map_source *source)
  	return;
  }
  
@@ -110,7 +110,8 @@ index 734485e..92bcd56 100644
 +{
 +	if (!strcmp(source, type))
 +		return 1;
-+	if (!strcmp(type, "file") && !strcmp(source, "files"))
++	/* Source file and files are synonymous */
++	if (!strncmp(source, type, 4) && strlen(source) <= 5)
 +		return 1;
 +	return 0;
 +}
