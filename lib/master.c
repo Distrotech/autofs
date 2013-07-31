@@ -1331,15 +1331,20 @@ static void print_map_info(struct map_source *source)
 
 static int match_type(const char *source, const char *type)
 {
-	if (!strcmp(source, type))
+	printf("match_type source %s type %s\n", source, type);
+	if (!strcmp(source, type)) {
+		printf("match\n");
 		return 1;
+	}
 	/* Source file and files are synonymous */
-	if (!strncmp(source, type, 4) && (strlen(source) <= 5))
+	if (!strncmp(source, type, 4) && (strlen(source) <= 5)) {
+		printf("match\n");
 		return 1;
+	}
 	return 0;
 }
 
-static int match_map_name(struct map_source *source, const char *name)
+static int match_name(struct map_source *source, const char *name)
 {
 	int argc = source->argc;
 	int ret = 0;
@@ -1433,12 +1438,12 @@ int dump_map(struct master *master, const char *type, const char *name)
 
 			instance = NULL;
 			if (source->type) {
-				if (match_type(source->type, type)) {
+				if (!match_type(source->type, type)) {
 					source = source->next;
 					continue;
 				}
 
-				if (!match_map_name(source, name)) {
+				if (!match_name(source, name)) {
 					source = source->next;
 					continue;
 				}
@@ -1449,12 +1454,12 @@ int dump_map(struct master *master, const char *type, const char *name)
 
 				map = source->instance;
 				while (map) {
-					if (match_type(map->type, type)) {
+					if (!match_type(map->type, type)) {
 						map = map->next;
 						continue;
 					}
 
-					if (!match_map_name(map, name)) {
+					if (!match_name(map, name)) {
 						map = map->next;
 						continue;
 					}
@@ -1463,6 +1468,8 @@ int dump_map(struct master *master, const char *type, const char *name)
 					break;
 				}
 			}
+
+			printf("instance %p\n", instance);
 
 			if (!instance) {
 				source = source->next;
