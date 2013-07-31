@@ -1399,6 +1399,8 @@ int dump_map(struct master *master, const char *type, const char *name)
 
 		ap = this->ap;
 
+		printf("ap->path %s\n", ap->path);
+
 		/*
 		 * Ensure we actually read indirect map entries so we can
 		 * list them. The map reads won't read any indirect map
@@ -1430,6 +1432,7 @@ int dump_map(struct master *master, const char *type, const char *name)
 
 			instance = NULL;
 			if (source->type) {
+				printf("source->type %s\n", source->type);
 				if ((!strcmp(type, "file") &&
 				     strcmp(source->type, "files")) ||
 				     strcmp(source->type, type)) {
@@ -1449,6 +1452,7 @@ int dump_map(struct master *master, const char *type, const char *name)
 
 				map = source->instance;
 				while (map) {
+					printf("map->type %s\n", map->type);
 					res = compare_source_type(map, type);
 					if (res) {
 						if (!match_map_name(map, name)) {
@@ -1461,6 +1465,8 @@ int dump_map(struct master *master, const char *type, const char *name)
 					map = map->next;
 				}
 			}
+
+			printf("instance %p\n", instance);
 
 			if (!instance) {
 				source = source->next;
