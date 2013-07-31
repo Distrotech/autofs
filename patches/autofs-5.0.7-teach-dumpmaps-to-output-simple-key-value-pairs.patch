@@ -1,5 +1,5 @@
 Bottom: 706447a3776cafcfa8c1b32c3a2f2b89cbe7a1c7
-Top:    5be316aefd55b80968fa5988fe99e63d9c8a20fa
+Top:    83d90fae30ca5bed3cbce06c8271e1af308e5742
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-07-31 14:54:39 +0800
 
@@ -99,25 +99,20 @@ index 824707c..e77d5ba 100644
  extern inline unsigned int master_get_logopt(void);
  int master_list_empty(struct master *);
 diff --git a/lib/master.c b/lib/master.c
-index 734485e..bba959d 100644
+index 734485e..87cfc2f 100644
 --- a/lib/master.c
 +++ b/lib/master.c
-@@ -1329,6 +1329,173 @@ static void print_map_info(struct map_source *source)
+@@ -1329,6 +1329,166 @@ static void print_map_info(struct map_source *source)
  	return;
  }
  
 +static int match_type(const char *source, const char *type)
 +{
-+	printf("match_type source %s type %s\n", source, type);
-+	if (!strcmp(source, type)) {
-+		printf("match\n");
++	if (!strcmp(source, type))
 +		return 1;
-+	}
-+	/* Source file and files are synonymous */
-+	if (!strncmp(source, type, 4) && (strlen(source) <= 5)) {
-+		printf("match\n");
++	/* Sources file and files are synonymous */
++	if (!strncmp(source, type, 4) && (strlen(source) <= 5))
 +		return 1;
-+	}
 +	return 0;
 +}
 +
@@ -245,8 +240,6 @@ index 734485e..bba959d 100644
 +					break;
 +				}
 +			}
-+
-+			printf("instance %p\n", instance);
 +
 +			if (!instance) {
 +				source = source->next;
