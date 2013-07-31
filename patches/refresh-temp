@@ -1,0 +1,31 @@
+Bottom: 26559693e0612a98507be5460c42fe776b9fcdaf
+Top:    3fa3a21441913ce290cefcd09c1cf035af0c7a95
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-07-31 18:51:38 +0800
+
+Refresh of autofs-5.0.7-teach-dumpmaps-to-output-simple-key-value-pairs.patch
+
+---
+
+diff --git a/lib/master.c b/lib/master.c
+index bf5296c..9f53440 100644
+--- a/lib/master.c
++++ b/lib/master.c
+@@ -1375,7 +1375,7 @@ int dump_map(struct master *master, const char *type, const char *name)
+ 	struct list_head *p, *head;
+ 
+ 	if (list_empty(&master->mounts)) {
+-		printf("no master map entries found\n\n");
++		printf("no master map entries found\n");
+ 		return 1;
+ 	}
+ 
+@@ -1405,7 +1405,7 @@ int dump_map(struct master *master, const char *type, const char *name)
+ 		if (lookup_nss_read_map(ap, NULL, now))
+ 			lookup_prune_cache(ap, now);
+ 		else {
+-			printf("failed to read map\n\n");
++			printf("failed to read map\n");
+ 			lookup_close_lookup(ap);
+ 			continue;
+ 		}
