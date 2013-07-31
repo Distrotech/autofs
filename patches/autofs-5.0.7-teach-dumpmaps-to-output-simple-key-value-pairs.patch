@@ -1,5 +1,5 @@
 Bottom: b10774af614d756988a15191dee45e98d24552c1
-Top:    67cb2178bf4e1485d153c9a1fff869539f59fd4a
+Top:    dd0f19b489b15dbd505ad834e48add1490964c53
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-07-31 14:54:39 +0800
 
@@ -83,6 +83,18 @@ index 6849272..2008905 100644
  	become_daemon(foreground, daemon_check);
  
  	if (pthread_attr_init(&th_attr)) {
+diff --git a/include/master.h b/include/master.h
+index 824707c..e77d5ba 100644
+--- a/include/master.h
++++ b/include/master.h
+@@ -112,6 +112,7 @@ int master_submount_list_empty(struct autofs_point *ap);
+ int master_notify_submount(struct autofs_point *, const char *path, enum states);
+ void master_notify_state_change(struct master *, int);
+ int master_mount_mounts(struct master *, time_t, int);
++int dump_map(struct master *, const char *, const char *);
+ int master_show_mounts(struct master *);
+ extern inline unsigned int master_get_logopt(void);
+ int master_list_empty(struct master *);
 diff --git a/lib/master.c b/lib/master.c
 index c560496..3131a2e 100644
 --- a/lib/master.c
