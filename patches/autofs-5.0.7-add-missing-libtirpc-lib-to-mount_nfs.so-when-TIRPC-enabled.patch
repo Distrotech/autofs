@@ -1,5 +1,5 @@
-Bottom: 1d6f2d7a421dcf01518e1cf4fab4b4d9c53a1983
-Top:    21df5e53d2129aed59f37ccffd5b1a66282a0c0e
+Bottom: 930c49ce85474cd0cf05e794268816f1098f1c3c
+Top:    b6ca576c9bedcc0ac60827324158801dbbecd01e
 Author: Lan Yixun (dlan) <dennis.yxun@gmail.com>
 Date:   2013-07-24 11:35:39 +0800
 
@@ -27,10 +27,10 @@ Signed-off-by: Lan Yixun (dlan) <dennis.yxun@gmail.com>
 ---
 
 diff --git a/CHANGELOG b/CHANGELOG
-index dce4cd3..104ce3a 100644
+index f1e118e..5ed07c0 100644
 --- a/CHANGELOG
 +++ b/CHANGELOG
-@@ -64,6 +64,7 @@
+@@ -61,6 +61,7 @@
  - fix typo forced-shutdown should be force-shutdown.
  - fix hesiod check error and use correct $(LIBS) setting.
  - fix dead LDAP symbolic link when LDAP support is disabled.

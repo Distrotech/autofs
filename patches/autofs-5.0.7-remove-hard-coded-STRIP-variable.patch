@@ -1,5 +1,5 @@
-Bottom: 001df0770897b5d47ff854574cd28cac22e1334e
-Top:    79b071cb09ecd328e34946b9a3ba47d4b087150c
+Bottom: b3a4cc129f918d73044e84c8ef519c0089fd5bc5
+Top:    05d7e64e87ac556af364116c337ae535bdc6bbbf
 Author: Lan Yixun (dlan) <dennis.yxun@gmail.com>
 Date:   2013-07-24 13:56:47 +0800
 
@@ -25,10 +25,10 @@ Signed-off-by: Lan Yixun (dlan) <dennis.yxun@gmail.com>
 ---
 
 diff --git a/CHANGELOG b/CHANGELOG
-index 805bb07..a809465 100644
+index 8a546e7..8e4e9e7 100644
 --- a/CHANGELOG
 +++ b/CHANGELOG
-@@ -66,6 +66,7 @@
+@@ -63,6 +63,7 @@
  - fix dead LDAP symbolic link when LDAP support is disabled.
  - add missing libtirpc lib to mount_nfs.so when TIRPC enabled.
  - use compiler determined by configure instead of hard-coded ones.

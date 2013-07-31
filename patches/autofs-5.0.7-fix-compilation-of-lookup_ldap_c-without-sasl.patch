@@ -1,5 +1,5 @@
-Bottom: c57fc6430db845b5e4c57424f5c1e1b478aeaccb
-Top:    f384801ad1e4dc2093391506a7c4eaad59353431
+Bottom: 5b93f3a2620cbcf9754abd094efad51a529f68c8
+Top:    e5c6a2348024b02b74635ec6b434433754fbce84
 Author: Dustin Polke <DuPol@gmx.de>
 Date:   2012-05-15 11:28:27 +0800
 
@@ -17,10 +17,10 @@ Edited by: Ian Kent <raven@themaw.net>
 ---
 
 diff --git a/CHANGELOG b/CHANGELOG
-index 06a503f..29134dd 100644
+index 9ed6abd..067dd26 100644
 --- a/CHANGELOG
 +++ b/CHANGELOG
-@@ -69,6 +69,7 @@
+@@ -66,6 +66,7 @@
  - remove hard-coded STRIP variable.
  - use LIBS for link libraries.
  - unbundle NOTSTRIP from DEBUG so they dont depend on each other.
