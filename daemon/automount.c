@@ -1725,7 +1725,8 @@ static void usage(void)
 		"	-f --foreground do not fork into background\n"
 		"	-r --random-multimount-selection\n"
 		"			use ramdom replicated server selection\n"
-		"	-m --dumpmaps	dump automounter maps and exit\n"
+		"	-m --dumpmaps [<map type> <map name]"
+		"			dump automounter maps and exit\n"
 		"	-n --negative-timeout n\n"
 		"			set the timeout for failed key lookups.\n"
 		"	-O --global-options\n"
@@ -2125,22 +2126,33 @@ int main(int argc, char *argv[])
 			program);
 #endif
 
-	if (argc == 0)
-		master_list = master_new(NULL, timeout, ghost);
-	else
-		master_list = master_new(argv[0], timeout, ghost);
-
-	if (!master_list) {
-		printf("%s: can't create master map %s", program, argv[0]);
-		exit(1);
-	}
-
 	if (dumpmaps) {
 		struct master_mapent *entry;
 		struct list_head *head, *p;
 		struct mapent_cache *nc;
+		const char *type = NULL;
+		const char *name = NULL;
+		const char *master = NULL;
 
-		open_log();
+		if (argc > 0) {
+			if (argc >= 2) {
+				type = argv[0];
+				name = argv[1];
+			}
+			if (argc == 3)
+				master = argv[2];
+		}
+
+		if (master)
+			master_list = master_new(NULL, timeout, ghost);
+		else
+			master_list = master_new(master, timeout, ghost);
+		if (!master_list) {
+			printf("%s: can't create master map", program);
+			exit(1);
+		}
+
+		log_to_stderr();
 
 		master_init_scan();
 
@@ -2153,7 +2165,10 @@ int main(int argc, char *argv[])
 		master_list->nc = nc;
 
 		lookup_nss_read_master(master_list, 0);
-		master_show_mounts(master_list);
+		if (type)
+			dump_map(master_list, type, name);
+		else
+			master_show_mounts(master_list);
 
 		head = &master_list->mounts;
 		p = head->next;
@@ -2166,6 +2181,16 @@ int main(int argc, char *argv[])
 		master_kill(master_list);
 
 		exit(0);
+	}
+
+	if (argc == 0)
+		master_list = master_new(NULL, timeout, ghost);
+	else
+		master_list = master_new(argv[0], timeout, ghost);
+
+	if (!master_list) {
+		printf("%s: can't create master map %s", program, argv[0]);
+		exit(1);
 	}
 
 	become_daemon(foreground, daemon_check);
