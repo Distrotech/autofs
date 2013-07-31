@@ -1359,7 +1359,6 @@ int master_show_mounts(struct master *master)
 		struct autofs_point *ap;
 		time_t now = time(NULL);
 		unsigned int count = 0;
-		int i;
 
 		this = list_entry(p, struct master_mapent, list);
 		p = p->next;
