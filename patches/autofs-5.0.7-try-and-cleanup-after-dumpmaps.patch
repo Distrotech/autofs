@@ -1,5 +1,5 @@
-Bottom: c62cb8957d75c6cd3208a365c197e2853e05e158
-Top:    9b5bcaad5b09650901f3a3c17bd97f7d1fd204c7
+Bottom: 1047f349fab7f4637b1fd72e651d3d8736f0a8de
+Top:    b10774af614d756988a15191dee45e98d24552c1
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-07-30 18:34:51 +0800
 
@@ -13,12 +13,12 @@ from valgrind when checking code.
 ---
 
 diff --git a/CHANGELOG b/CHANGELOG
-index cadf5d2..1cf79be 100644
+index 5506a8b..2d94dd0 100644
 --- a/CHANGELOG
 +++ b/CHANGELOG
-@@ -58,6 +58,7 @@
- - add after sssd dependency to unit file.
- - dont start readmap unless ready.
+@@ -68,6 +68,7 @@
+ - unbundle NOTSTRIP from DEBUG so they dont depend on each other.
+ - fix compilation of lookup_ldap.c without sasl.
  - fix dumpmaps multi output.
 +- try and cleanup after dumpmaps.
  
