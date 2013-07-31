@@ -1,5 +1,5 @@
 Version: 1
-Previous: 341379286175b51ffd3753969d7172a643f2795e
+Previous: a60d258805d20fd51766043b562bb4c9f569759f
 Head: de256ccc3d88f595c49b7ba39152cd136e224c20
 Applied:
   autofs-5.0.7-dont-override-LDFLAGS-in-make-rules.patch: 2e8251865c0ed6d91a97c107973a7eb75d3e131b
@@ -21,7 +21,6 @@ Applied:
   autofs-5.0.7-try-and-cleanup-after-dumpmaps.patch: e244d6eddef4fe49917611cb4dce08052e1fa8dc
   autofs-5.0.7-teach-dumpmaps-to-output-simple-key-value-pairs.patch: de256ccc3d88f595c49b7ba39152cd136e224c20
 Unapplied:
-  autofs-5.0.7-teach-dumpmaps-to-output-maps-to-files.patch: 945979abeba03f23b7ee130a3cc4f30c9bf667ff
   autofs-5.0.5-wait-for-master-map-available-at-start.patch: 28e191c68fc95cd90815f398deff088bd1d65d0a
   autofs-5.0.5-add-master-read-wait-option.patch: 05d9eb17fb1ec9418f236468875ad04b09b0546b
   autofs-5.0.7-add-host-map-reload-option.patch: 11d23f7a74b2f33e5011ba29f64ae1b4956acb09
@@ -44,6 +43,7 @@ Unapplied:
   autofs-5.0.5-use-null-cache-to-mask-invalid-map-keys.patch: e2807d7aa6fb1b7b9308a6293b57dc099ba66c1b
   autofs-5.0.6-add-ability-to-force-umount.patch: 06071701c5298ecb57beeaf1d1525125bd91e585
 Hidden:
+  autofs-5.0.7-teach-dumpmaps-to-output-maps-to-files.patch: 945979abeba03f23b7ee130a3cc4f30c9bf667ff
   autofs-5.0.6-update-allow-for-kernel-packet-size-change.patch: 4a1b778ec4c6b61f0c90d7f3448eae9142168a9f
   autofs-5.0.7-disable-hosts-map-HUP-signal-update.patch: 18a8bc06fcb08d3e9b9f8c4dad83c26e1f472142
   autofs-5.0.5-use-null-cache-to-mask-invalid-map-keys.patch: e2807d7aa6fb1b7b9308a6293b57dc099ba66c1b
