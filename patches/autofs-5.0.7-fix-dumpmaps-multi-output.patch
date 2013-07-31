@@ -1,5 +1,5 @@
 Bottom: e5c6a2348024b02b74635ec6b434433754fbce84
-Top:    1047f349fab7f4637b1fd72e651d3d8736f0a8de
+Top:    29a7f421e81d225cfad6d4e35f3cd5fe998236f5
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-07-30 16:11:57 +0800
 
@@ -24,7 +24,7 @@ index 067dd26..5506a8b 100644
  25/07/2012 autofs-5.0.7
  =======================
 diff --git a/lib/master.c b/lib/master.c
-index eca3523..bbf4b4e 100644
+index eca3523..df6c141 100644
 --- a/lib/master.c
 +++ b/lib/master.c
 @@ -1281,6 +1281,54 @@ static void list_source_instances(struct map_source *source, struct map_source *
@@ -82,7 +82,15 @@ index eca3523..bbf4b4e 100644
  int master_show_mounts(struct master *master)
  {
  	struct list_head *p, *head;
-@@ -1357,20 +1405,10 @@ int master_show_mounts(struct master *master)
+@@ -1311,7 +1359,6 @@ int master_show_mounts(struct master *master)
+ 		struct autofs_point *ap;
+ 		time_t now = time(NULL);
+ 		unsigned int count = 0;
+-		int i;
+ 
+ 		this = list_entry(p, struct master_mapent, list);
+ 		p = p->next;
+@@ -1357,20 +1404,10 @@ int master_show_mounts(struct master *master)
  			}
  
  			if (source->argc >= 1) {
