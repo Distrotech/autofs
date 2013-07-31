@@ -1,5 +1,5 @@
-Bottom: 1047f349fab7f4637b1fd72e651d3d8736f0a8de
-Top:    b10774af614d756988a15191dee45e98d24552c1
+Bottom: 29a7f421e81d225cfad6d4e35f3cd5fe998236f5
+Top:    706447a3776cafcfa8c1b32c3a2f2b89cbe7a1c7
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-07-30 18:34:51 +0800
 
@@ -56,10 +56,10 @@ index 1d0b64e..6849272 100644
  	}
  
 diff --git a/lib/master.c b/lib/master.c
-index bbf4b4e..c560496 100644
+index df6c141..734485e 100644
 --- a/lib/master.c
 +++ b/lib/master.c
-@@ -1427,6 +1427,8 @@ int master_show_mounts(struct master *master)
+@@ -1426,6 +1426,8 @@ int master_show_mounts(struct master *master)
  			source = source->next;
  		}
  
