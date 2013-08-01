@@ -52,6 +52,12 @@ static struct ldap_schema common_schema[] = {
 };
 static unsigned int common_schema_count = sizeof(common_schema)/sizeof(struct ldap_schema);
 
+/*
+ * Initialization of LDAP and OpenSSL must be always serialized to
+ * avoid corruption of context structures inside these libraries.
+ */
+pthread_mutex_t ldapinit_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 struct ldap_search_params {
 	struct autofs_point *ap;
 	LDAP *ldap;
@@ -138,6 +144,22 @@ int ldap_parse_page_control(LDAP *ldap, LDAPControl **controls,
 }
 #endif /* HAVE_LDAP_PARSE_PAGE_CONTROL */
 
+static void ldapinit_mutex_lock(void)
+{
+	int status = pthread_mutex_lock(&ldapinit_mutex);
+	if (status)
+		fatal(status);
+	return;
+}
+
+static void ldapinit_mutex_unlock(void)
+{
+	int status = pthread_mutex_unlock(&ldapinit_mutex);
+	if (status)
+		fatal(status);
+	return;
+}
+
 static void uris_mutex_lock(struct lookup_context *ctxt)
 {
 	int status = pthread_mutex_lock(&ctxt->uris_mutex);
@@ -198,7 +220,7 @@ int unbind_ldap_connection(unsigned logopt, LDAP *ldap, struct lookup_context *c
 	return rv;
 }
 
-LDAP *init_ldap_connection(unsigned logopt, const char *uri, struct lookup_context *ctxt)
+LDAP *__init_ldap_connection(unsigned logopt, const char *uri, struct lookup_context *ctxt)
 {
 	LDAP *ldap = NULL;
 	struct timeval timeout     = { ctxt->timeout, 0 };
@@ -273,6 +295,17 @@ LDAP *init_ldap_connection(unsigned logopt, const char *uri, struct lookup_conte
 		}
 		ctxt->use_tls = LDAP_TLS_RELEASE;
 	}
+
+	return ldap;
+}
+
+LDAP *init_ldap_connection(unsigned logopt, const char *uri, struct lookup_context *ctxt)
+{
+	LDAP *ldap;
+
+	ldapinit_mutex_lock();
+	ldap = __init_ldap_connection(logopt, uri, ctxt);
+	ldapinit_mutex_unlock();
 
 	return ldap;
 }
