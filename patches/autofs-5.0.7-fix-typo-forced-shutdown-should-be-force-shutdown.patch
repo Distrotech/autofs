@@ -1,5 +1,5 @@
-Bottom: 2bcb7b0ca6852745019ee4dea7773339ff4da298
-Top:    424860ba8e685a0ed89cea81bd3e55c5d6d95657
+Bottom: d5b2c10cbcd3cd9257f971d44ce48fc4f9166bf9
+Top:    ce9dced8ad5ceca330fe7c440cb5d33315dc83cb
 Author: Lan Yixun (dlan) <dennis.yxun@gmail.com>
 Date:   2013-07-24 09:35:26 +0800
 
@@ -18,12 +18,12 @@ Signed-off-by: Lan Yixun (dlan) <dennis.yxun@gmail.com>
 ---
 
 diff --git a/CHANGELOG b/CHANGELOG
-index 17241c0..7ce6619 100644
+index c77be18..5265f6c 100644
 --- a/CHANGELOG
 +++ b/CHANGELOG
-@@ -58,6 +58,7 @@
- - add after sssd dependency to unit file.
+@@ -59,6 +59,7 @@
  - dont start readmap unless ready.
+ - fix crash due to thread unsafe use of libldap.
  - fix compile error with heimdal support enabled.
 +- fix typo forced-shutdown should be force-shutdown.
  
