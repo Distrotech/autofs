@@ -1,5 +1,5 @@
 Bottom: d9402c166b2ed9f298ad3e072036c1f846cb9f79
-Top:    770fbea3cfb1867c9a1f021602ac9673e1728873
+Top:    e329f8f995bd3eb80afa2c69876263cfa9023478
 Author: Leonardo Chiquitto <leonardo.lists@gmail.com>
 Date:   2013-08-01 10:42:50 +0800
 
@@ -42,6 +42,18 @@ or ldap_start_tls_s() at the same time.
 
 ---
 
+diff --git a/CHANGELOG b/CHANGELOG
+index 3228d6b..fe232f4 100644
+--- a/CHANGELOG
++++ b/CHANGELOG
+@@ -57,6 +57,7 @@
+ - fix a couple of compiler warnings.
+ - add after sssd dependency to unit file.
+ - dont start readmap unless ready.
++- fix crash due to thread unsafe use of libldap.
+ 
+ 25/07/2012 autofs-5.0.7
+ =======================
 diff --git a/modules/lookup_ldap.c b/modules/lookup_ldap.c
 index a2bfafd..655e9fa 100644
 --- a/modules/lookup_ldap.c
