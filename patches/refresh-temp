@@ -1,0 +1,221 @@
+Bottom: e329f8f995bd3eb80afa2c69876263cfa9023478
+Top:    d5b2c10cbcd3cd9257f971d44ce48fc4f9166bf9
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-08-01 10:50:47 +0800
+
+Refresh of autofs-5.0.7-fix-compile-error-with-heimdal-support-enabled.patch
+
+---
+
+diff --git a/CHANGELOG b/CHANGELOG
+index fe232f4..c77be18 100644
+--- a/CHANGELOG
++++ b/CHANGELOG
+@@ -58,6 +58,7 @@
+ - add after sssd dependency to unit file.
+ - dont start readmap unless ready.
+ - fix crash due to thread unsafe use of libldap.
++- fix compile error with heimdal support enabled.
+ 
+ 25/07/2012 autofs-5.0.7
+ =======================
+diff --git a/aclocal.m4 b/aclocal.m4
+index c5de159..7a8b03c 100644
+--- a/aclocal.m4
++++ b/aclocal.m4
+@@ -299,6 +299,13 @@ else
+   HAVE_KRB5=1
+   KRB5_LIBS=`$KRB5_CONFIG --libs`
+   KRB5_FLAGS=`$KRB5_CONFIG --cflags`
++
++  SAVE_CFLAGS=$CFLAGS
++  SAVE_LIBS=$LIBS
++  CFLAGS="$CFLAGS $KRB5_FLAGS"
++  LIBS="$LIBS $KRB5_LIBS"
++
++  AC_CHECK_FUNCS([krb5_principal_get_realm])
+ fi])
+ 
+ dnl --------------------------------------------------------------------------
+diff --git a/configure b/configure
+index 08b7ccc..1086eba 100755
+--- a/configure
++++ b/configure
+@@ -1559,6 +1559,73 @@ fi
+ 
+ } # ac_fn_c_try_link
+ 
++# ac_fn_c_check_func LINENO FUNC VAR
++# ----------------------------------
++# Tests whether FUNC exists, setting the cache variable VAR accordingly
++ac_fn_c_check_func ()
++{
++  as_lineno=${as_lineno-"$1"} as_lineno_stack=as_lineno_stack=$as_lineno_stack
++  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for $2" >&5
++$as_echo_n "checking for $2... " >&6; }
++if eval \${$3+:} false; then :
++  $as_echo_n "(cached) " >&6
++else
++  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
++/* end confdefs.h.  */
++/* Define $2 to an innocuous variant, in case <limits.h> declares $2.
++   For example, HP-UX 11i <limits.h> declares gettimeofday.  */
++#define $2 innocuous_$2
++
++/* System header to define __stub macros and hopefully few prototypes,
++    which can conflict with char $2 (); below.
++    Prefer <limits.h> to <assert.h> if __STDC__ is defined, since
++    <limits.h> exists even on freestanding compilers.  */
++
++#ifdef __STDC__
++# include <limits.h>
++#else
++# include <assert.h>
++#endif
++
++#undef $2
++
++/* Override any GCC internal prototype to avoid an error.
++   Use char because int might match the return type of a GCC
++   builtin and then its argument prototype would still apply.  */
++#ifdef __cplusplus
++extern "C"
++#endif
++char $2 ();
++/* The GNU C library defines this for functions which it implements
++    to always fail with ENOSYS.  Some functions are actually named
++    something starting with __ and the normal name is an alias.  */
++#if defined __stub_$2 || defined __stub___$2
++choke me
++#endif
++
++int
++main ()
++{
++return $2 ();
++  ;
++  return 0;
++}
++_ACEOF
++if ac_fn_c_try_link "$LINENO"; then :
++  eval "$3=yes"
++else
++  eval "$3=no"
++fi
++rm -f core conftest.err conftest.$ac_objext \
++    conftest$ac_exeext conftest.$ac_ext
++fi
++eval ac_res=\$$3
++	       { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_res" >&5
++$as_echo "$ac_res" >&6; }
++  eval $as_lineno_stack; ${as_lineno_stack:+:} unset as_lineno
++
++} # ac_fn_c_check_func
++
+ # ac_fn_c_try_cpp LINENO
+ # ----------------------
+ # Try to preprocess conftest.$ac_ext, and return whether this succeeded.
+@@ -4039,6 +4106,23 @@ $as_echo "yes" >&6; }
+   HAVE_KRB5=1
+   KRB5_LIBS=`$KRB5_CONFIG --libs`
+   KRB5_FLAGS=`$KRB5_CONFIG --cflags`
++
++  SAVE_CFLAGS=$CFLAGS
++  SAVE_LIBS=$LIBS
++  CFLAGS="$CFLAGS $KRB5_FLAGS"
++  LIBS="$LIBS $KRB5_LIBS"
++
++  for ac_func in krb5_principal_get_realm
++do :
++  ac_fn_c_check_func "$LINENO" "krb5_principal_get_realm" "ac_cv_func_krb5_principal_get_realm"
++if test "x$ac_cv_func_krb5_principal_get_realm" = xyes; then :
++  cat >>confdefs.h <<_ACEOF
++#define HAVE_KRB5_PRINCIPAL_GET_REALM 1
++_ACEOF
++
++fi
++done
++
+ fi
+ 
+ { $as_echo "$as_me:${as_lineno-$LINENO}: checking for library containing versionsort" >&5
+diff --git a/include/config.h.in b/include/config.h.in
+index a2a05a8..8a52080 100644
+--- a/include/config.h.in
++++ b/include/config.h.in
+@@ -24,6 +24,9 @@
+ /* Define to 1 if you have the <inttypes.h> header file. */
+ #undef HAVE_INTTYPES_H
+ 
++/* Define to 1 if you have the `krb5_principal_get_realm' function. */
++#undef HAVE_KRB5_PRINCIPAL_GET_REALM
++
+ /* Define to 1 if you have the `ldap_create_page_control' function. */
+ #undef HAVE_LDAP_CREATE_PAGE_CONTROL
+ 
+diff --git a/modules/cyrus-sasl.c b/modules/cyrus-sasl.c
+index 68f9242..b9c16f3 100644
+--- a/modules/cyrus-sasl.c
++++ b/modules/cyrus-sasl.c
+@@ -64,6 +64,35 @@
+ #endif
+ #endif
+ 
++#ifdef HAVE_KRB5_PRINCIPAL_GET_REALM
++void _krb5_princ_realm(krb5_context context, krb5_const_principal princ,
++                          const char **realm, int *len)
++{
++	*realm = krb5_principal_get_realm(context, princ);
++	if (*realm)
++		*len = strlen(*realm);
++	else
++		*len = 0;
++	return;
++#else
++void _krb5_princ_realm(krb5_context context, krb5_const_principal princ,
++                          const char **realm, int *len)
++{
++	const krb5_data *data;
++
++	data = krb5_princ_realm(context, princ);
++	if (data) {
++		*realm = data->data;
++		*len = data->length;
++	} else {
++		*realm = NULL;
++		*len = 0;
++	}
++	return;
++}
++#endif
++
++
+ /*
+  *  Once a krb5 credentials cache is setup, we need to set the KRB5CCNAME
+  *  environment variable so that the library knows where to find it.
+@@ -379,7 +408,8 @@ sasl_do_kinit(unsigned logopt, struct lookup_context *ctxt)
+ 	krb5_principal tgs_princ, krb5_client_princ;
+ 	krb5_creds my_creds;
+ 	char *tgs_name;
+-	int status;
++	const char *realm_name;
++	int status, realm_length;
+ 
+ 	if (ctxt->kinit_done)
+ 		return 0;
+@@ -450,12 +480,11 @@ sasl_do_kinit(unsigned logopt, struct lookup_context *ctxt)
+ 	}
+ 
+ 	/* setup a principal for the ticket granting service */
++	_krb5_princ_realm(ctxt->krb5ctxt, krb5_client_princ, &realm_name, &realm_length);
+ 	ret = krb5_build_principal_ext(ctxt->krb5ctxt, &tgs_princ,
+-		krb5_princ_realm(ctxt->krb5ctxt, krb5_client_princ)->length,
+-		krb5_princ_realm(ctxt->krb5ctxt, krb5_client_princ)->data,
++		realm_length, realm_name,
+ 		strlen(KRB5_TGS_NAME), KRB5_TGS_NAME,
+-		krb5_princ_realm(ctxt->krb5ctxt, krb5_client_princ)->length,
+-		krb5_princ_realm(ctxt->krb5ctxt, krb5_client_princ)->data,
++		realm_length, realm_name,
+ 		0);
+ 	if (ret) {
+ 		error(logopt,
