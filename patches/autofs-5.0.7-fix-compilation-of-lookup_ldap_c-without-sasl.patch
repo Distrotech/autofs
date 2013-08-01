@@ -1,5 +1,5 @@
-Bottom: 5b93f3a2620cbcf9754abd094efad51a529f68c8
-Top:    e5c6a2348024b02b74635ec6b434433754fbce84
+Bottom: 20442de4a614dc4f22bd94b7e85e6d5d755a2d57
+Top:    acc4d9675fc6ab896656a7bf3f72418b4053d2ec
 Author: Dustin Polke <DuPol@gmx.de>
 Date:   2012-05-15 11:28:27 +0800
 
@@ -17,10 +17,10 @@ Edited by: Ian Kent <raven@themaw.net>
 ---
 
 diff --git a/CHANGELOG b/CHANGELOG
-index 9ed6abd..067dd26 100644
+index dd6fc1a..5764cb0 100644
 --- a/CHANGELOG
 +++ b/CHANGELOG
-@@ -66,6 +66,7 @@
+@@ -67,6 +67,7 @@
  - remove hard-coded STRIP variable.
  - use LIBS for link libraries.
  - unbundle NOTSTRIP from DEBUG so they dont depend on each other.
@@ -92,10 +92,10 @@ index de01ebd..8610783 100644
  endif
  
 diff --git a/modules/lookup_ldap.c b/modules/lookup_ldap.c
-index a2bfafd..2eafa52 100644
+index 655e9fa..d05098f 100644
 --- a/modules/lookup_ldap.c
 +++ b/modules/lookup_ldap.c
-@@ -66,6 +66,7 @@ struct ldap_search_params {
+@@ -72,6 +72,7 @@ struct ldap_search_params {
  
  static int decode_percent_hack(const char *, char **);
  
@@ -103,7 +103,7 @@ index a2bfafd..2eafa52 100644
  static int set_env(unsigned logopt, const char *name, const char *val)
  {
  	int ret = setenv(name, val, 1);
-@@ -75,6 +76,7 @@ static int set_env(unsigned logopt, const char *name, const char *val)
+@@ -81,6 +82,7 @@ static int set_env(unsigned logopt, const char *name, const char *val)
  	}
  	return 1;
  }
@@ -111,7 +111,7 @@ index a2bfafd..2eafa52 100644
  
  #ifndef HAVE_LDAP_CREATE_PAGE_CONTROL
  int ldap_create_page_control(LDAP *ldap, ber_int_t pagesize,
-@@ -183,9 +185,9 @@ int unbind_ldap_connection(unsigned logopt, LDAP *ldap, struct lookup_context *c
+@@ -205,9 +207,9 @@ int unbind_ldap_connection(unsigned logopt, LDAP *ldap, struct lookup_context *c
  {
  	int rv;
  
@@ -122,7 +122,7 @@ index a2bfafd..2eafa52 100644
  	autofs_sasl_unbind(ctxt);
  #endif
  
-@@ -243,7 +245,6 @@ LDAP *init_ldap_connection(unsigned logopt, const char *uri, struct lookup_conte
+@@ -265,7 +267,6 @@ LDAP *__init_ldap_connection(unsigned logopt, const char *uri, struct lookup_con
  		info(logopt, MODPREFIX "failed to set connection timeout to %d",
  		     net_timeout.tv_sec);
  
@@ -130,7 +130,7 @@ index a2bfafd..2eafa52 100644
  	if (ctxt->use_tls) {
  		if (ctxt->version == 2) {
  			if (ctxt->tls_required) {
-@@ -272,7 +273,6 @@ LDAP *init_ldap_connection(unsigned logopt, const char *uri, struct lookup_conte
+@@ -294,7 +295,6 @@ LDAP *__init_ldap_connection(unsigned logopt, const char *uri, struct lookup_con
  		}
  		ctxt->use_tls = LDAP_TLS_RELEASE;
  	}
@@ -138,7 +138,7 @@ index a2bfafd..2eafa52 100644
  
  	return ldap;
  }
-@@ -585,10 +585,12 @@ static LDAP *do_connect(unsigned logopt, const char *uri, struct lookup_context
+@@ -618,10 +618,12 @@ static LDAP *do_connect(unsigned logopt, const char *uri, struct lookup_context
  {
  	LDAP *ldap;
  
@@ -151,7 +151,7 @@ index a2bfafd..2eafa52 100644
  
  	ldap = init_ldap_connection(logopt, uri, ctxt);
  	if (ldap) {
-@@ -791,7 +793,6 @@ find_server:
+@@ -824,7 +826,6 @@ find_server:
  	return ldap;
  }
  
@@ -159,7 +159,7 @@ index a2bfafd..2eafa52 100644
  int get_property(unsigned logopt, xmlNodePtr node, const char *prop, char **value)
  {
  	xmlChar *ret;
-@@ -812,6 +813,7 @@ int get_property(unsigned logopt, xmlNodePtr node, const char *prop, char **valu
+@@ -845,6 +846,7 @@ int get_property(unsigned logopt, xmlNodePtr node, const char *prop, char **valu
  	return 0;
  }
  
@@ -167,7 +167,7 @@ index a2bfafd..2eafa52 100644
  /*
   *  For plain text, login and digest-md5 authentication types, we need
   *  user and password credentials.
-@@ -824,6 +826,7 @@ int authtype_requires_creds(const char *authtype)
+@@ -857,6 +859,7 @@ int authtype_requires_creds(const char *authtype)
  		return 1;
  	return 0;
  }
@@ -175,7 +175,7 @@ index a2bfafd..2eafa52 100644
  
  /*
   *  Returns:
-@@ -1056,6 +1059,7 @@ auth_fail:
+@@ -1089,6 +1092,7 @@ auth_fail:
  		}
  	} else if (auth_required == LDAP_AUTH_REQUIRED &&
  		  (authtype && !strncmp(authtype, "EXTERNAL", 8))) {
@@ -183,7 +183,7 @@ index a2bfafd..2eafa52 100644
  		ret = get_property(logopt, root, "external_cert",  &extern_cert);
  		ret |= get_property(logopt, root, "external_key",  &extern_key);
  		/*
-@@ -1074,6 +1078,7 @@ auth_fail:
+@@ -1107,6 +1111,7 @@ auth_fail:
  			if (extern_key)
  				free(extern_key);
  		}
@@ -191,7 +191,7 @@ index a2bfafd..2eafa52 100644
  	}
  
  	/*
-@@ -1094,8 +1099,10 @@ auth_fail:
+@@ -1127,8 +1132,10 @@ auth_fail:
  	ctxt->secret = secret;
  	ctxt->client_princ = client_princ;
  	ctxt->client_cc = client_cc;
@@ -202,7 +202,7 @@ index a2bfafd..2eafa52 100644
  
  	debug(logopt, MODPREFIX
  	      "ldap authentication configured with the following options:");
-@@ -1127,7 +1134,6 @@ out:
+@@ -1160,7 +1167,6 @@ out:
  
  	return ret;
  }
@@ -210,7 +210,7 @@ index a2bfafd..2eafa52 100644
  
  /*
   *  Take an input string as specified in the master map, and break it
-@@ -1390,10 +1396,12 @@ static void free_context(struct lookup_context *ctxt)
+@@ -1423,10 +1429,12 @@ static void free_context(struct lookup_context *ctxt)
  		defaults_free_searchdns(ctxt->sdns);
  	if (ctxt->dclist)
  		free_dclist(ctxt->dclist);

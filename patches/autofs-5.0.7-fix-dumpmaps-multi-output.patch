@@ -1,5 +1,5 @@
-Bottom: e5c6a2348024b02b74635ec6b434433754fbce84
-Top:    29a7f421e81d225cfad6d4e35f3cd5fe998236f5
+Bottom: acc4d9675fc6ab896656a7bf3f72418b4053d2ec
+Top:    535d5d7e0b8494040cd63615b288aec81fb3eb46
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-07-30 16:11:57 +0800
 
@@ -12,10 +12,10 @@ isn't right.
 ---
 
 diff --git a/CHANGELOG b/CHANGELOG
-index 067dd26..5506a8b 100644
+index 5764cb0..5e58aca 100644
 --- a/CHANGELOG
 +++ b/CHANGELOG
-@@ -67,6 +67,7 @@
+@@ -68,6 +68,7 @@
  - use LIBS for link libraries.
  - unbundle NOTSTRIP from DEBUG so they dont depend on each other.
  - fix compilation of lookup_ldap.c without sasl.

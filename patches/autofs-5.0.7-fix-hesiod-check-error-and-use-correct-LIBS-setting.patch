@@ -1,5 +1,5 @@
-Bottom: 424860ba8e685a0ed89cea81bd3e55c5d6d95657
-Top:    93137aa7f7566035521c8bbb1de63d0458cbb088
+Bottom: ce9dced8ad5ceca330fe7c440cb5d33315dc83cb
+Top:    fc87ac2aca9a91c60425e514cc99f193cbd6caee
 Author: Lan Yixun (dlan) <dennis.yxun@gmail.com>
 Date:   2013-07-24 09:58:20 +0800
 
@@ -20,11 +20,11 @@ Edited by: Ian Kent <raven@themaw.net>
 ---
 
 diff --git a/CHANGELOG b/CHANGELOG
-index 7ce6619..aaff5c2 100644
+index 5265f6c..647504b 100644
 --- a/CHANGELOG
 +++ b/CHANGELOG
-@@ -59,6 +59,7 @@
- - dont start readmap unless ready.
+@@ -60,6 +60,7 @@
+ - fix crash due to thread unsafe use of libldap.
  - fix compile error with heimdal support enabled.
  - fix typo forced-shutdown should be force-shutdown.
 +- fix hesiod check error and use correct $(LIBS) setting.

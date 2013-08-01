@@ -1,5 +1,5 @@
-Bottom: 29a7f421e81d225cfad6d4e35f3cd5fe998236f5
-Top:    706447a3776cafcfa8c1b32c3a2f2b89cbe7a1c7
+Bottom: 535d5d7e0b8494040cd63615b288aec81fb3eb46
+Top:    531ad2da6702deeefb0f1cf4a9b0fca8784f5c8a
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-07-30 18:34:51 +0800
 
@@ -13,10 +13,10 @@ from valgrind when checking code.
 ---
 
 diff --git a/CHANGELOG b/CHANGELOG
-index 5506a8b..2d94dd0 100644
+index 5e58aca..1583c76 100644
 --- a/CHANGELOG
 +++ b/CHANGELOG
-@@ -68,6 +68,7 @@
+@@ -69,6 +69,7 @@
  - unbundle NOTSTRIP from DEBUG so they dont depend on each other.
  - fix compilation of lookup_ldap.c without sasl.
  - fix dumpmaps multi output.
