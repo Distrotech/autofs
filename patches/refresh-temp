@@ -1,0 +1,21 @@
+Bottom: 8c04735676341766436837a017898bd0fb77414c
+Top:    9390b4918491f99071f2e612482d91b54658881a
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-08-01 11:15:51 +0800
+
+Refresh of autofs-5.0.7-teach-dumpmaps-to-output-simple-key-value-pairs.patch
+
+---
+
+diff --git a/CHANGELOG b/CHANGELOG
+index 1583c76..07f9d6d 100644
+--- a/CHANGELOG
++++ b/CHANGELOG
+@@ -70,6 +70,7 @@
+ - fix compilation of lookup_ldap.c without sasl.
+ - fix dumpmaps multi output.
+ - try and cleanup after dumpmaps.
++- teach dumpmaps to output simple key value pairs.
+ 
+ 25/07/2012 autofs-5.0.7
+ =======================
