@@ -1,6 +1,6 @@
 Bottom: bde9858f3728e15aaef149e7e3337e5f2bda2c2e
 Top:    82fb065052577cec8167dcbe8bbffe3ba3df57e2
-Author: Ian Kent <raven@themaw.net>
+Author: Leonardo Chiquitto <leonardo.lists@gmail.com>
 Date:   2013-08-01 10:42:50 +0800
 
 autofs-5.0.7 - fix crash due to thread unsafe use of libldap
