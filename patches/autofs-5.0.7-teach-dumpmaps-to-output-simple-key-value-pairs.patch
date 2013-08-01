@@ -16,9 +16,9 @@ If the dumpmaps option is given and is followed by two parameters,
 be read in by a map read are printed to stdout if the given map type
 and map name are found in the map configuration.
 
-If the map is an LDAP map and there is more than one map of same
-name in different base dns only the first map encountered by autofs
-will be listed.
+If the map is an LDAP map and there is more than one map of same name
+in different base dns only the first map encountered by autofs will
+be listed.
 
 If the map type is an old style multi map and any one of the map
 names matches the entries that would be used by autofs for all
