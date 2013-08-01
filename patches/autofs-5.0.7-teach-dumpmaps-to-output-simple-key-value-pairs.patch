@@ -12,8 +12,8 @@ This could be useful to save current maps as a backup for emergency
 use.
 
 If the dumpmaps option is given and is followed by two parameters,
-"<map type> <map name>" then the <key, value> pairs that would are
-read in by a map read are printed to stdout if the given map type
+"<map type> <map name>" then simple <key, value> pairs that would
+be read in by a map read are printed to stdout if the given map type
 and map name are found in the map configuration.
 
 If the map type is an LDAP map and there is more than one map of
