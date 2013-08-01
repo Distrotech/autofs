@@ -24,6 +24,9 @@
 /* Define to 1 if you have the <inttypes.h> header file. */
 #undef HAVE_INTTYPES_H
 
+/* Define to 1 if you have the `krb5_principal_get_realm' function. */
+#undef HAVE_KRB5_PRINCIPAL_GET_REALM
+
 /* Define to 1 if you have the `ldap_create_page_control' function. */
 #undef HAVE_LDAP_CREATE_PAGE_CONTROL
 
