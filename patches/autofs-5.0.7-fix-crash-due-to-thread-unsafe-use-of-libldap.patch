@@ -5,6 +5,40 @@ Date:   2013-08-01 10:42:50 +0800
 
 autofs-5.0.7 - fix crash due to thread unsafe use of libldap
 
+Add locking around LDAP initialization calls
+
+To prevent corruption inside SSL and LDAP libraries, it's necessary to
+serialize all calls to functions that initialize LDAP contexts.
+
+How to reproduce the problem:
+
+- Setup an LDAP server with SSL/TLS support enabled
+- Configure AutoFS to fetch the maps from LDAP
+- Make sure the OpenLDAP client library is configured to use SSL
+  connections and "usetls" is set to yes in autofs_ldap_auth.conf.
+
+In one directory handled by AutoFS (an indirect mount point), trigger in
+parallel some dozens of invalid mounts (ie, try to access keys that do not
+exist in the AutoFS map). Repeat until it crashes.
+
+Here it always crashes in less than 20 minutes, normally inside OpenSSL.
+Core dump inspection shows that internal SSL structures are corrupted,
+with function pointers pointing to random addresses.
+
+Trying to find similar reports on the web, I found this email from an
+OpenLDAP developer (partial quote, emphasis mine) [1]:
+
+"As far as I know, libldap is thread safe in the sense that multiple
+threads can use separate LDAP* handles without running into concurrency
+issues; *except for library initialization*, all accesses to common data
+(i.e. global variables) is read-only."
+
+[1]http://www.openldap.org/cgi-bin/wilma_hiliter/openldap-software/200606/msg00252.html
+
+AutoFS implements no locking around LDAP initialization libraries and
+it's quite common to see multiple threads executing ldap_initialize()
+or ldap_start_tls_s() at the same time.
+
 
 ---
 
