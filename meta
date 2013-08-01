@@ -1,11 +1,13 @@
 Version: 1
-Previous: 8b3fd96c0a3dd4fb084e5dffacf5d3194dee7364
-Head: fc39e883135f063abc59643cc121ebe2d1d76fe6
+Previous: b87d117347e82fb632d6e7d84ba19a20f7d01194
+Head: f4f30c39a894cb17441315fda1bfae27a7bc5bfb
 Applied:
   autofs-5.0.7-dont-override-LDFLAGS-in-make-rules.patch: 2e8251865c0ed6d91a97c107973a7eb75d3e131b
   autofs-5.0.7-fix-a-couple-of-compiler-warnings.patch: b8bdae4bfe855786de918c78eee228e4aabdab45
   autofs-5.0.7-add-after-sssd-dependency-to-unit-file.patch: 128ed44d3a899837e86f710b4b98523c11e7fe0d
   autofs-5.0.7-dont-kick-state-machine-unless-ready.patch: 2ce7972970d8617f82004c5636099020a23f03af
+  autofs-5.0.7-fix-crash-due-to-thread-unsafe-use-of-libldap.patch: f4f30c39a894cb17441315fda1bfae27a7bc5bfb
+Unapplied:
   autofs-5.0.7-fix-compile-error-with-heimdal-support-enabled.patch: 25e77757549b39d41bb1ddde92cb18dcc575e658
   autofs-5.0.7-fix-typo-forced-shutdown-should-be-force-shutdown.patch: d2e969be5a38be530ae0213927208f17da7ebc7d
   autofs-5.0.7-fix-hesiod-check-error-and-use-correct-LIBS-setting.patch: 2704aa03051f3103cef7a65eb725e5f1049a42dd
@@ -20,8 +22,6 @@ Applied:
   autofs-5.0.7-fix-dumpmaps-multi-output.patch: 2bf393dbd40e952fd76752e8ed130f7f873783b2
   autofs-5.0.7-try-and-cleanup-after-dumpmaps.patch: fa6079ad2c5828a322a7e5c7328190292b40e918
   autofs-5.0.7-teach-dumpmaps-to-output-simple-key-value-pairs.patch: dd368165d39729041dc06779a244a9174d91c880
-  autofs-5.0.7-fix-crash-due-to-thread-unsafe-use-of-libldap.patch: fc39e883135f063abc59643cc121ebe2d1d76fe6
-Unapplied:
   autofs-5.0.5-wait-for-master-map-available-at-start.patch: 28e191c68fc95cd90815f398deff088bd1d65d0a
   autofs-5.0.5-add-master-read-wait-option.patch: 05d9eb17fb1ec9418f236468875ad04b09b0546b
   autofs-5.0.7-add-host-map-reload-option.patch: 11d23f7a74b2f33e5011ba29f64ae1b4956acb09

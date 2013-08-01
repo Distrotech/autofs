@@ -1,5 +1,5 @@
-Bottom: bde9858f3728e15aaef149e7e3337e5f2bda2c2e
-Top:    82fb065052577cec8167dcbe8bbffe3ba3df57e2
+Bottom: d9402c166b2ed9f298ad3e072036c1f846cb9f79
+Top:    770fbea3cfb1867c9a1f021602ac9673e1728873
 Author: Leonardo Chiquitto <leonardo.lists@gmail.com>
 Date:   2013-08-01 10:42:50 +0800
 
@@ -43,7 +43,7 @@ or ldap_start_tls_s() at the same time.
 ---
 
 diff --git a/modules/lookup_ldap.c b/modules/lookup_ldap.c
-index 2eafa52..d05098f 100644
+index a2bfafd..655e9fa 100644
 --- a/modules/lookup_ldap.c
 +++ b/modules/lookup_ldap.c
 @@ -52,6 +52,12 @@ static struct ldap_schema common_schema[] = {
@@ -59,7 +59,7 @@ index 2eafa52..d05098f 100644
  struct ldap_search_params {
  	struct autofs_point *ap;
  	LDAP *ldap;
-@@ -138,6 +144,22 @@ int ldap_parse_page_control(LDAP *ldap, LDAPControl **controls,
+@@ -136,6 +142,22 @@ int ldap_parse_page_control(LDAP *ldap, LDAPControl **controls,
  }
  #endif /* HAVE_LDAP_PARSE_PAGE_CONTROL */
  
@@ -82,7 +82,7 @@ index 2eafa52..d05098f 100644
  static void uris_mutex_lock(struct lookup_context *ctxt)
  {
  	int status = pthread_mutex_lock(&ctxt->uris_mutex);
-@@ -198,7 +220,7 @@ int unbind_ldap_connection(unsigned logopt, LDAP *ldap, struct lookup_context *c
+@@ -196,7 +218,7 @@ int unbind_ldap_connection(unsigned logopt, LDAP *ldap, struct lookup_context *c
  	return rv;
  }
  
