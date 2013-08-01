@@ -1,0 +1,27 @@
+Bottom: d3f414484f6d7d2c027eb526497d78723d59fc1a
+Top:    9ebe7eef0a581d786392bb02e72ad747592374b8
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-08-01 11:12:59 +0800
+
+Refresh of autofs-5.0.7-teach-dumpmaps-to-output-simple-key-value-pairs.patch
+
+---
+
+diff --git a/man/automount.8 b/man/automount.8
+index aa2defc..86d8034 100644
+--- a/man/automount.8
++++ b/man/automount.8
+@@ -65,11 +65,11 @@ If the dumpmaps option is given and is followed by two parameters,
+ "<map type> <map name>" then simple "<key, value>" pairs that would
+ be read in by a map read are printed to stdout if the given map type
+ and map name are found in the map configuration.
+-    
++
+ If the map type is an LDAP map and there is more than one map of
+ same name in different base dns only the first map encountered by
+ autofs will be listed.
+-    
++
+ If the map type is an old style multi map and any one of the map
+ names matches the entries that would be used by autofs for all
+ the maps in the multi-map will be listed.
