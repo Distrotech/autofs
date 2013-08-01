@@ -1,5 +1,5 @@
 Bottom: 706447a3776cafcfa8c1b32c3a2f2b89cbe7a1c7
-Top:    83d90fae30ca5bed3cbce06c8271e1af308e5742
+Top:    bde9858f3728e15aaef149e7e3337e5f2bda2c2e
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-07-31 14:54:39 +0800
 
@@ -99,10 +99,10 @@ index 824707c..e77d5ba 100644
  extern inline unsigned int master_get_logopt(void);
  int master_list_empty(struct master *);
 diff --git a/lib/master.c b/lib/master.c
-index 734485e..87cfc2f 100644
+index 734485e..964b547 100644
 --- a/lib/master.c
 +++ b/lib/master.c
-@@ -1329,6 +1329,166 @@ static void print_map_info(struct map_source *source)
+@@ -1329,6 +1329,193 @@ static void print_map_info(struct map_source *source)
  	return;
  }
  
@@ -114,6 +114,40 @@ index 734485e..87cfc2f 100644
 +	if (!strncmp(source, type, 4) && (strlen(source) <= 5))
 +		return 1;
 +	return 0;
++}
++
++static char *get_map_name(char *string)
++{
++	char *name, *tmp;
++	char *start, *end, *base;
++
++	tmp = strdup(string);
++	if (!tmp) {
++		printf("error: allocation failure: %s\n", strerror(errno));
++		return NULL;
++	}
++
++	base = basename(tmp);
++	end = strchr(base, ',');
++	if (end)
++		*end = '\0';
++	start = strchr(tmp, '=');
++	if (start)
++		start++;
++	else {
++		char *colon = strrchr(base, ':');
++		if (colon)
++			start = ++colon;
++		else
++			start = base;
++	}
++
++	name = strdup(start);
++	if (!name)
++		printf("error: allocation failure: %s\n", strerror(errno));
++	free(tmp);
++
++	return name;
 +}
 +
 +static int match_name(struct map_source *source, const char *name)
@@ -138,13 +172,10 @@ index 734485e..87cfc2f 100644
 +			}
 +
 +			if (source->argv[i] && *source->argv[i] != '-') {
-+				char *map = strdup(source->argv[i]);
-+				if (!map) {
-+					printf("error: allocation failure: %s\n",
-+						strerror(errno));
++				char *map = get_map_name(source->argv[i]);
++				if (!map)
 +					break;
-+				}
-+				if (!strcmp(basename(map), name)) {
++				if (!strcmp(map, name)) {
 +					ret = 1;
 +					free(map);
 +					break;
@@ -214,12 +245,10 @@ index 734485e..87cfc2f 100644
 +					source = source->next;
 +					continue;
 +				}
-+
 +				if (!match_name(source, name)) {
 +					source = source->next;
 +					continue;
 +				}
-+
 +				instance = source;
 +			} else {
 +				struct map_source *map;
@@ -230,12 +259,10 @@ index 734485e..87cfc2f 100644
 +						map = map->next;
 +						continue;
 +					}
-+
 +					if (!match_name(map, name)) {
 +						map = map->next;
 +						continue;
 +					}
-+
 +					instance = map;
 +					break;
 +				}
