@@ -1,0 +1,38 @@
+Bottom: 8cc09c2d56d950cf6f33b15d12e28e2d9c6445f8
+Top:    d3f414484f6d7d2c027eb526497d78723d59fc1a
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-08-01 11:11:24 +0800
+
+Refresh of autofs-5.0.7-teach-dumpmaps-to-output-simple-key-value-pairs.patch
+
+---
+
+diff --git a/man/automount.8 b/man/automount.8
+index 844b876..aa2defc 100644
+--- a/man/automount.8
++++ b/man/automount.8
+@@ -57,8 +57,22 @@ Run the daemon in the foreground and log to stderr instead of syslog."
+ Enables the use of ramdom selection when choosing a host from a
+ list of replicated servers.
+ .TP
+-.I "\-m, \-\-dumpmaps"
+-Dump configured automounter maps, then exit.
++.I "\-m, \-\-dumpmaps [<map type> <map name]"
++With no parameters, list information about the configured automounter
++maps, then exit.
++
++If the dumpmaps option is given and is followed by two parameters,
++"<map type> <map name>" then simple "<key, value>" pairs that would
++be read in by a map read are printed to stdout if the given map type
++and map name are found in the map configuration.
++    
++If the map type is an LDAP map and there is more than one map of
++same name in different base dns only the first map encountered by
++autofs will be listed.
++    
++If the map type is an old style multi map and any one of the map
++names matches the entries that would be used by autofs for all
++the maps in the multi-map will be listed.
+ .TP
+ .I "\-O, \-\-global-options"
+ Allows the specification of global mount options used for all master
