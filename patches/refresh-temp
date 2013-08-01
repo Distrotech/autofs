@@ -1,0 +1,21 @@
+Bottom: 770fbea3cfb1867c9a1f021602ac9673e1728873
+Top:    e329f8f995bd3eb80afa2c69876263cfa9023478
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-08-01 10:50:25 +0800
+
+Refresh of autofs-5.0.7-fix-crash-due-to-thread-unsafe-use-of-libldap.patch
+
+---
+
+diff --git a/CHANGELOG b/CHANGELOG
+index 3228d6b..fe232f4 100644
+--- a/CHANGELOG
++++ b/CHANGELOG
+@@ -57,6 +57,7 @@
+ - fix a couple of compiler warnings.
+ - add after sssd dependency to unit file.
+ - dont start readmap unless ready.
++- fix crash due to thread unsafe use of libldap.
+ 
+ 25/07/2012 autofs-5.0.7
+ =======================
