@@ -1,5 +1,5 @@
 Bottom: 531ad2da6702deeefb0f1cf4a9b0fca8784f5c8a
-Top:    9ebe7eef0a581d786392bb02e72ad747592374b8
+Top:    8c04735676341766436837a017898bd0fb77414c
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-07-31 14:54:39 +0800
 
@@ -317,7 +317,7 @@ index 734485e..964b547 100644
  {
  	struct list_head *p, *head;
 diff --git a/man/automount.8 b/man/automount.8
-index 844b876..86d8034 100644
+index 844b876..9b2b9f0 100644
 --- a/man/automount.8
 +++ b/man/automount.8
 @@ -57,8 +57,22 @@ Run the daemon in the foreground and log to stderr instead of syslog."
@@ -335,9 +335,9 @@ index 844b876..86d8034 100644
 +be read in by a map read are printed to stdout if the given map type
 +and map name are found in the map configuration.
 +
-+If the map type is an LDAP map and there is more than one map of
-+same name in different base dns only the first map encountered by
-+autofs will be listed.
++If the map is an LDAP map and there is more than one map of same name
++in different base dns only the first map encountered by autofs will
++be listed.
 +
 +If the map type is an old style multi map and any one of the map
 +names matches the entries that would be used by autofs for all
