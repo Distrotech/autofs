@@ -1,0 +1,97 @@
+Bottom: 83d90fae30ca5bed3cbce06c8271e1af308e5742
+Top:    bde9858f3728e15aaef149e7e3337e5f2bda2c2e
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-08-01 10:15:22 +0800
+
+Refresh of autofs-5.0.7-teach-dumpmaps-to-output-simple-key-value-pairs.patch
+
+---
+
+diff --git a/lib/master.c b/lib/master.c
+index 87cfc2f..964b547 100644
+--- a/lib/master.c
++++ b/lib/master.c
+@@ -1339,6 +1339,40 @@ static int match_type(const char *source, const char *type)
+ 	return 0;
+ }
+ 
++static char *get_map_name(char *string)
++{
++	char *name, *tmp;
++	char *start, *end, *base;
++
++	tmp = strdup(string);
++	if (!tmp) {
++		printf("error: allocation failure: %s\n", strerror(errno));
++		return NULL;
++	}
++
++	base = basename(tmp);
++	end = strchr(base, ',');
++	if (end)
++		*end = '\0';
++	start = strchr(tmp, '=');
++	if (start)
++		start++;
++	else {
++		char *colon = strrchr(base, ':');
++		if (colon)
++			start = ++colon;
++		else
++			start = base;
++	}
++
++	name = strdup(start);
++	if (!name)
++		printf("error: allocation failure: %s\n", strerror(errno));
++	free(tmp);
++
++	return name;
++}
++
+ static int match_name(struct map_source *source, const char *name)
+ {
+ 	int argc = source->argc;
+@@ -1361,13 +1395,10 @@ static int match_name(struct map_source *source, const char *name)
+ 			}
+ 
+ 			if (source->argv[i] && *source->argv[i] != '-') {
+-				char *map = strdup(source->argv[i]);
+-				if (!map) {
+-					printf("error: allocation failure: %s\n",
+-						strerror(errno));
++				char *map = get_map_name(source->argv[i]);
++				if (!map)
+ 					break;
+-				}
+-				if (!strcmp(basename(map), name)) {
++				if (!strcmp(map, name)) {
+ 					ret = 1;
+ 					free(map);
+ 					break;
+@@ -1437,12 +1468,10 @@ int dump_map(struct master *master, const char *type, const char *name)
+ 					source = source->next;
+ 					continue;
+ 				}
+-
+ 				if (!match_name(source, name)) {
+ 					source = source->next;
+ 					continue;
+ 				}
+-
+ 				instance = source;
+ 			} else {
+ 				struct map_source *map;
+@@ -1453,12 +1482,10 @@ int dump_map(struct master *master, const char *type, const char *name)
+ 						map = map->next;
+ 						continue;
+ 					}
+-
+ 					if (!match_name(map, name)) {
+ 						map = map->next;
+ 						continue;
+ 					}
+-
+ 					instance = map;
+ 					break;
+ 				}
