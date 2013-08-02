@@ -1,5 +1,5 @@
 Bottom: 57539df5f4b3cf702a6f9700d9e1f00843d234c9
-Top:    d08f3fdc7727fb9619e3453f440266381c8b1519
+Top:    2b4d6d06f76ea2552d4edc06628120101d23bb70
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-08-02 15:12:15 +0800
 
@@ -9,19 +9,10 @@ autofs.debug
 ---
 
 diff --git a/modules/lookup_file.c b/modules/lookup_file.c
-index 4b4ee89..6027e49 100644
+index 4b4ee89..087b4dd 100644
 --- a/modules/lookup_file.c
 +++ b/modules/lookup_file.c
-@@ -1021,6 +1021,8 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
- 		}
- 	}
- 
-+	error(LOGOPT_ANY, "ap->type %d *key %c", ap->type, *key);
-+
- 	/*
- 	 * We can't check the direct mount map as if it's not in
- 	 * the map cache already we never get a mount lookup, so
-@@ -1084,7 +1086,19 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
+@@ -1084,7 +1084,19 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
  		}
  	}
  
@@ -42,7 +33,7 @@ index 4b4ee89..6027e49 100644
  do_cache_lookup:
  	me = cache_lookup(mc, key);
  	/*
-@@ -1129,7 +1143,8 @@ do_cache_lookup:
+@@ -1129,7 +1141,8 @@ do_cache_lookup:
  	debug(ap->logopt, MODPREFIX "%s -> %s", key, mapent);
  	ret = ctxt->parse->parse_mount(ap, key, key_len,
  				       mapent, ctxt->parse->context);
