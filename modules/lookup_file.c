@@ -1021,8 +1021,6 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 		}
 	}
 
-	error(LOGOPT_ANY, "ap->type %d *key %c", ap->type, *key);
-
 	/*
 	 * We can't check the direct mount map as if it's not in
 	 * the map cache already we never get a mount lookup, so
