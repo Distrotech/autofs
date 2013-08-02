@@ -1143,7 +1143,8 @@ do_cache_lookup:
 	debug(ap->logopt, MODPREFIX "%s -> %s", key, mapent);
 	ret = ctxt->parse->parse_mount(ap, key, key_len,
 				       mapent, ctxt->parse->context);
-	if (ret) {
+	/* Don't update negative cache when attempting to re-connect */
+	if (ret && !(ap->flags & MOUNT_FLAG_REMOUNT)) {
 		cache_writelock(mc);
 		cache_update_negative(mc, source, key, ap->negative_timeout);
 		cache_unlock(mc);
