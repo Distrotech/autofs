@@ -622,6 +622,7 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 			if (rv != CHE_FAIL) {
 				me = cache_lookup_distinct(mc, key);
 				me->status = time(NULL) + ap->negative_timeout;
+			}
 			cache_unlock(mc);
 		}
 		free(mapent);
