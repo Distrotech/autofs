@@ -1,0 +1,11 @@
+Bottom: 9390b4918491f99071f2e612482d91b54658881a
+Top:    9390b4918491f99071f2e612482d91b54658881a
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-08-02 13:37:45 +0800
+
+autofs-5.0.7 - fix syncronize handle_mounts() shutdown
+
+
+---
+
+
