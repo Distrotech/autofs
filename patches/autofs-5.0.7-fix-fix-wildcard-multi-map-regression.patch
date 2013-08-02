@@ -1,5 +1,5 @@
 Bottom: 57539df5f4b3cf702a6f9700d9e1f00843d234c9
-Top:    8df88534cd4cfb318f494e8100bdd8ede684b9d0
+Top:    c40c7b52173467542d24b59755d8f1673efce286
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-08-02 15:12:15 +0800
 
@@ -17,15 +17,14 @@ deadlock.
 ---
 
 diff --git a/modules/lookup_file.c b/modules/lookup_file.c
-index 4b4ee89..e9697e8 100644
+index 4b4ee89..4e4317f 100644
 --- a/modules/lookup_file.c
 +++ b/modules/lookup_file.c
-@@ -1084,7 +1084,19 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
+@@ -1084,7 +1084,17 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
  		}
  	}
  
 -	cache_writelock(mc);
-+	error(LOGOPT_ANY, "take cache writelock");
 +	/*
 +	 * We can't take the writelock for direct mounts. If we're
 +	 * starting up or trying to re-connect to an existing direct
@@ -37,11 +36,10 @@ index 4b4ee89..e9697e8 100644
 +		cache_writelock(mc);
 +	else
 +		cache_readlock(mc);
-+	error(LOGOPT_ANY, "got cache writelock");
  do_cache_lookup:
  	me = cache_lookup(mc, key);
  	/*
-@@ -1130,9 +1142,12 @@ do_cache_lookup:
+@@ -1130,9 +1140,12 @@ do_cache_lookup:
  	ret = ctxt->parse->parse_mount(ap, key, key_len,
  				       mapent, ctxt->parse->context);
  	if (ret) {
