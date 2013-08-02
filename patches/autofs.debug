@@ -1,5 +1,5 @@
 Bottom: 57539df5f4b3cf702a6f9700d9e1f00843d234c9
-Top:    2b4d6d06f76ea2552d4edc06628120101d23bb70
+Top:    363b4fc01b9f8b56bc5e05642ba7f8f62e8a4298
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-08-02 15:12:15 +0800
 
@@ -9,7 +9,7 @@ autofs.debug
 ---
 
 diff --git a/modules/lookup_file.c b/modules/lookup_file.c
-index 4b4ee89..087b4dd 100644
+index 4b4ee89..e9697e8 100644
 --- a/modules/lookup_file.c
 +++ b/modules/lookup_file.c
 @@ -1084,7 +1084,19 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
@@ -33,18 +33,24 @@ index 4b4ee89..087b4dd 100644
  do_cache_lookup:
  	me = cache_lookup(mc, key);
  	/*
-@@ -1129,7 +1141,8 @@ do_cache_lookup:
- 	debug(ap->logopt, MODPREFIX "%s -> %s", key, mapent);
+@@ -1130,9 +1142,12 @@ do_cache_lookup:
  	ret = ctxt->parse->parse_mount(ap, key, key_len,
  				       mapent, ctxt->parse->context);
--	if (ret) {
-+	/* Don't update negative cache when attempting to re-connect */
-+	if (ret && !(ap->flags & MOUNT_FLAG_REMOUNT)) {
- 		cache_writelock(mc);
- 		cache_update_negative(mc, source, key, ap->negative_timeout);
- 		cache_unlock(mc);
+ 	if (ret) {
+-		cache_writelock(mc);
+-		cache_update_negative(mc, source, key, ap->negative_timeout);
+-		cache_unlock(mc);
++		/* Don't update negative cache when re-connecting */
++		if (!(ap->flags & MOUNT_FLAG_REMOUNT)) {
++			cache_writelock(mc);
++			cache_update_negative(mc, source, key, ap->negative_timeout);
++			cache_unlock(mc);
++		}
+ 		return NSS_STATUS_TRYAGAIN;
+ 	}
+ 
 diff --git a/modules/lookup_ldap.c b/modules/lookup_ldap.c
-index d05098f..a388433 100644
+index d05098f..fb8de9a 100644
 --- a/modules/lookup_ldap.c
 +++ b/modules/lookup_ldap.c
 @@ -3016,7 +3016,17 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
@@ -66,16 +72,22 @@ index d05098f..a388433 100644
  	me = cache_lookup(mc, key);
  	/* Stale mapent => check for entry in alternate source or wildcard */
  	if (me && !me->mapent) {
-@@ -3052,7 +3062,8 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
- 	debug(ap->logopt, MODPREFIX "%s -> %s", key, mapent);
+@@ -3053,9 +3063,12 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
  	ret = ctxt->parse->parse_mount(ap, key, key_len,
  				       mapent, ctxt->parse->context);
--	if (ret) {
-+	/* Don't update negative cache when attempting to re-connect */
-+	if (ret && !(ap->flags & MOUNT_FLAG_REMOUNT)) {
- 		cache_writelock(mc);
- 		cache_update_negative(mc, source, key, ap->negative_timeout);
- 		cache_unlock(mc);
+ 	if (ret) {
+-		cache_writelock(mc);
+-		cache_update_negative(mc, source, key, ap->negative_timeout);
+-		cache_unlock(mc);
++		/* Don't update negative cache when re-connecting */
++		if (!(ap->flags & MOUNT_FLAG_REMOUNT)) {
++			cache_writelock(mc);
++			cache_update_negative(mc, source, key, ap->negative_timeout);
++			cache_unlock(mc);
++		}
+ 		return NSS_STATUS_TRYAGAIN;
+ 	}
+ 
 diff --git a/modules/lookup_nisplus.c b/modules/lookup_nisplus.c
 index ef942a7..d783396 100644
 --- a/modules/lookup_nisplus.c
