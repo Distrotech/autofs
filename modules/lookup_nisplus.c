@@ -569,7 +569,7 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 	 * when we're starting up so just take the readlock in that
 	 * case.
 	 */
-	if (ap->flags & MOUNT_FLAG_REMOUNT) {
+	if (ap->flags & MOUNT_FLAG_REMOUNT)
 		cache_readlock(mc);
 	else
 		cache_writelock(mc);
@@ -584,8 +584,8 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 	}
 	if (me && me->mapent) {
 		/*
-		 * Add wildcard match for later validation checks and
-		 * negative cache lookups.
+		 * If this is a lookup add wildcard match for later validation
+		 * checks and negative cache lookups.
 		 */
 		if (ap->type == LKP_INDIRECT && *me->key == '*' &&
 		   !(ap->flags & MOUNT_FLAG_REMOUNT)) {
@@ -615,19 +615,20 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 		time_t now = time(NULL);
 		int rv = CHE_OK;
 
-		/* Don't update negative cache when re-connecting */
-		if (!(ap->flags & MOUNT_FLAG_REMOUNT)) {
-			cache_writelock(mc);
-			me = cache_lookup_distinct(mc, key);
-			if (!me)
-				rv = cache_update(mc, source, key, NULL, now);
-			if (rv != CHE_FAIL) {
-				me = cache_lookup_distinct(mc, key);
-				me->status = time(NULL) + ap->negative_timeout;
-			}
-			cache_unlock(mc);
-		}
 		free(mapent);
+
+		/* Don't update negative cache when re-connecting */
+		if (ap->flags & MOUNT_FLAG_REMOUNT)
+			return NSS_STATUS_TRYAGAIN;
+		cache_writelock(mc);
+		me = cache_lookup_distinct(mc, key);
+		if (!me)
+			rv = cache_update(mc, source, key, NULL, now);
+		if (rv != CHE_FAIL) {
+			me = cache_lookup_distinct(mc, key);
+			me->status = time(NULL) + ap->negative_timeout;
+		}
+		cache_unlock(mc);
 		return NSS_STATUS_TRYAGAIN;
 	}
 	free(mapent);
