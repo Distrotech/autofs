@@ -1042,7 +1042,7 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 			return NSS_STATUS_UNAVAIL;
 		}
 
-		cache_writelock(mc);
+		cache_readlock(mc);
 		me = cache_lookup_first(mc);
 		if (me && st.st_mtime <= me->age) {
 			/*
@@ -1084,7 +1084,18 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 		}
 	}
 
-	cache_writelock(mc);
+	/*
+	 * We can't take the writelock for direct mounts. If we're
+	 * starting up or trying to re-connect to an existing direct
+	 * mount we could be iterating through the map entries with
+	 * the readlock held. But we don't need to update the cache
+	 * when we're starting up so just take the readlock in that
+	 * case.
+	 */
+	if (ap->flags & MOUNT_FLAG_REMOUNT)
+		cache_readlock(mc);
+	else
+		cache_writelock(mc);
 do_cache_lookup:
 	me = cache_lookup(mc, key);
 	/*
@@ -1102,10 +1113,11 @@ do_cache_lookup:
 	}
 	if (me && me->mapent) {
 		/*
-		 * Add wildcard match for later validation checks and
-		 * negative cache lookups.
+		 * If this is a lookup add wildcard match for later validation
+		 * checks and negative cache lookups.
 		 */
-		if (ap->type == LKP_INDIRECT && *me->key == '*') {
+		if (!(ap->flags & MOUNT_FLAG_REMOUNT) &&
+		    ap->type == LKP_INDIRECT && *me->key == '*') {
 			ret = cache_update(mc, source, key, me->mapent, me->age);
 			if (!(ret & (CHE_OK | CHE_UPDATED)))
 				me = NULL;
@@ -1130,6 +1142,9 @@ do_cache_lookup:
 	ret = ctxt->parse->parse_mount(ap, key, key_len,
 				       mapent, ctxt->parse->context);
 	if (ret) {
+		/* Don't update negative cache when re-connecting */
+		if (ap->flags & MOUNT_FLAG_REMOUNT)
+			return NSS_STATUS_TRYAGAIN;
 		cache_writelock(mc);
 		cache_update_negative(mc, source, key, ap->negative_timeout);
 		cache_unlock(mc);
