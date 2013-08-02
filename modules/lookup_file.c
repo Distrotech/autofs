@@ -1084,7 +1084,6 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 		}
 	}
 
-	error(LOGOPT_ANY, "take cache writelock");
 	/*
 	 * We can't take the writelock for direct mounts. If we're
 	 * starting up or trying to re-connect to an existing direct
@@ -1096,7 +1095,6 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 		cache_writelock(mc);
 	else
 		cache_readlock(mc);
-	error(LOGOPT_ANY, "got cache writelock");
 do_cache_lookup:
 	me = cache_lookup(mc, key);
 	/*
