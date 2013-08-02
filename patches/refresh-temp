@@ -1,0 +1,21 @@
+Bottom: 57539df5f4b3cf702a6f9700d9e1f00843d234c9
+Top:    d76bf71c33fa4a7cebb9f197fddcdb0cb7d53340
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-08-02 17:10:19 +0800
+
+Refresh of autofs-5.0.7-fix-syncronize-handle_mounts-shutdown.patch
+
+---
+
+diff --git a/CHANGELOG b/CHANGELOG
+index 07f9d6d..618ac20 100644
+--- a/CHANGELOG
++++ b/CHANGELOG
+@@ -71,6 +71,7 @@
+ - fix dumpmaps multi output.
+ - try and cleanup after dumpmaps.
+ - teach dumpmaps to output simple key value pairs.
++- fix syncronize handle_mounts() shutdown.
+ 
+ 25/07/2012 autofs-5.0.7
+ =======================
