@@ -5,6 +5,13 @@ Date:   2013-08-02 13:37:45 +0800
 
 autofs-5.0.7 - fix syncronize handle_mounts() shutdown
 
+A recent change to fix a problem where automount would exit when re-reading
+the master map if more than on entry had been removed causes automount to
+ignore HUP signals if the mount list is empty.
+
+Removing that check and testing shows that the remainder of the change still
+fixes the original problem.
+
 
 ---
 
