@@ -6,12 +6,12 @@ Date:   2013-08-02 15:12:15 +0800
 autofs-5.0.7 - fix fix wildcard multi map regression
 
 A recent patch to fix a wildcard multi map mount regression has a
-side effect of causing a deadlock at startup for direct mounts.
+side effect of causing a deadlock at startup when trying to re-connect
+to existing mounts.
 
-The patch required the map entry cache write lock to be taken so
-the cache could be updated. But when starting the traversal of the
-direct mount entries requires taking a read lock which caused the
-deadlock.
+The patch required the map entry cache write lock be taken so the cache
+could be updated. But when starting and trying to re-connect to existing
+mounts there's no need to update the cache.
 
 
 
