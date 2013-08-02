@@ -72,6 +72,7 @@
 - try and cleanup after dumpmaps.
 - teach dumpmaps to output simple key value pairs.
 - fix syncronize handle_mounts() shutdown.
+- fix fix wildcard multi map regression.
 
 25/07/2012 autofs-5.0.7
 =======================
