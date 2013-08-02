@@ -1,5 +1,5 @@
 Bottom: d76bf71c33fa4a7cebb9f197fddcdb0cb7d53340
-Top:    8b5fff8383febcc289012f202526cc0b950bf59e
+Top:    4acfa48b8a5ab88dad4c4c7623d7970ef1565619
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-08-02 15:12:15 +0800
 
@@ -187,10 +187,10 @@ index ef942a7..4f31d26 100644
  	}
  	free(mapent);
 diff --git a/modules/lookup_sss.c b/modules/lookup_sss.c
-index 1fe740b..297b3b2 100644
+index 1fe740b..4a9cfd2 100644
 --- a/modules/lookup_sss.c
 +++ b/modules/lookup_sss.c
-@@ -635,7 +635,18 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
+@@ -635,7 +635,17 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
  			return status;
  	}
  
@@ -198,7 +198,6 @@ index 1fe740b..297b3b2 100644
 +	/*
 +	 * We can't take the writelock for direct mounts. If we're
 +	 * starting up or trying to re-connect to an existing direct
-+	 * mount we could be iterating through the map entries with
 +	 * mount we could be iterating through the map entries with
 +	 * the readlock held. But we don't need to update the cache
 +	 * when we're starting up so just take the readlock in that
@@ -210,7 +209,7 @@ index 1fe740b..297b3b2 100644
  	me = cache_lookup(mc, key);
  	/* Stale mapent => check for entry in alternate source or wildcard */
  	if (me && !me->mapent) {
-@@ -647,10 +658,11 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
+@@ -647,10 +657,11 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
  	}
  	if (me && me->mapent) {
  		/*
@@ -225,7 +224,7 @@ index 1fe740b..297b3b2 100644
  			ret = cache_update(mc, source, key, me->mapent, me->age);
  			if (!(ret & (CHE_OK | CHE_UPDATED)))
  				me = NULL;
-@@ -672,6 +684,9 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
+@@ -672,6 +683,9 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
  	ret = ctxt->parse->parse_mount(ap, key, key_len,
  				       mapent, ctxt->parse->context);
  	if (ret) {
