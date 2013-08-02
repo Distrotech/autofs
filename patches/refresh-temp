@@ -1,0 +1,21 @@
+Bottom: e3c92b4bcdc18979c53c6b6e249b42e50607738d
+Top:    9a92a382d9baa90788aadd7d6d7fae7466a40901
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-08-02 17:10:45 +0800
+
+Refresh of autofs-5.0.7-fix-fix-wildcard-multi-map-regression.patch
+
+---
+
+diff --git a/CHANGELOG b/CHANGELOG
+index 618ac20..c3f12e5 100644
+--- a/CHANGELOG
++++ b/CHANGELOG
+@@ -72,6 +72,7 @@
+ - try and cleanup after dumpmaps.
+ - teach dumpmaps to output simple key value pairs.
+ - fix syncronize handle_mounts() shutdown.
++- fix fix wildcard multi map regression.
+ 
+ 25/07/2012 autofs-5.0.7
+ =======================
