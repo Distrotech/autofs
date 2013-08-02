@@ -3,7 +3,7 @@ Top:    8df88534cd4cfb318f494e8100bdd8ede684b9d0
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-08-02 15:12:15 +0800
 
-autofs.debug
+autofs-5.0.7 - fix fix wildcard multi map regression
 
 
 ---
