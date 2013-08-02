@@ -1,5 +1,5 @@
 Bottom: 57539df5f4b3cf702a6f9700d9e1f00843d234c9
-Top:    363b4fc01b9f8b56bc5e05642ba7f8f62e8a4298
+Top:    42a2491d83ba041a57114b79228b5b05ff5e7581
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-08-02 15:12:15 +0800
 
@@ -89,7 +89,7 @@ index d05098f..fb8de9a 100644
  	}
  
 diff --git a/modules/lookup_nisplus.c b/modules/lookup_nisplus.c
-index ef942a7..d783396 100644
+index ef942a7..b3b44c1 100644
 --- a/modules/lookup_nisplus.c
 +++ b/modules/lookup_nisplus.c
 @@ -561,7 +561,17 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
@@ -111,7 +111,7 @@ index ef942a7..d783396 100644
  	me = cache_lookup(mc, key);
  	/* Stale mapent => check for entry in alternate source or wildcard */
  	if (me && !me->mapent) {
-@@ -599,7 +609,8 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
+@@ -599,19 +609,22 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
  	debug(ap->logopt, MODPREFIX "%s -> %s", key, mapent);
  	ret = ctxt->parse->parse_mount(ap, key, key_len,
  				       mapent, ctxt->parse->context);
@@ -121,6 +121,27 @@ index ef942a7..d783396 100644
  		time_t now = time(NULL);
  		int rv = CHE_OK;
  
+-		cache_writelock(mc);
+-		me = cache_lookup_distinct(mc, key);
+-		if (!me)
+-			rv = cache_update(mc, source, key, NULL, now);
+-		if (rv != CHE_FAIL) {
++		/* Don't update negative cache when re-connecting */
++		if (!(ap->flags & MOUNT_FLAG_REMOUNT)) {
++			cache_writelock(mc);
+ 			me = cache_lookup_distinct(mc, key);
+-			me->status = time(NULL) + ap->negative_timeout;
++			if (!me)
++				rv = cache_update(mc, source, key, NULL, now);
++			if (rv != CHE_FAIL) {
++				me = cache_lookup_distinct(mc, key);
++				me->status = time(NULL) + ap->negative_timeout;
++			cache_unlock(mc);
+ 		}
+-		cache_unlock(mc);
+ 		free(mapent);
+ 		return NSS_STATUS_TRYAGAIN;
+ 	}
 diff --git a/modules/lookup_sss.c b/modules/lookup_sss.c
 index 1fe740b..fed8394 100644
 --- a/modules/lookup_sss.c
