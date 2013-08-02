@@ -1,5 +1,5 @@
 Bottom: 57539df5f4b3cf702a6f9700d9e1f00843d234c9
-Top:    d11f197afdd0b5b8a4ea032ce17b0b6f85f5a79b
+Top:    8df88534cd4cfb318f494e8100bdd8ede684b9d0
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-08-02 15:12:15 +0800
 
@@ -176,7 +176,7 @@ index 1fe740b..7374bcb 100644
  	}
  
 diff --git a/modules/lookup_yp.c b/modules/lookup_yp.c
-index e99e3c0..1bbba8e 100644
+index e99e3c0..783deff 100644
 --- a/modules/lookup_yp.c
 +++ b/modules/lookup_yp.c
 @@ -662,7 +662,17 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
@@ -198,13 +198,19 @@ index e99e3c0..1bbba8e 100644
  	me = cache_lookup(mc, key);
  	/* Stale mapent => check for entry in alternate source or wildcard */
  	if (me && !me->mapent) {
-@@ -697,7 +707,8 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
- 		debug(ap->logopt, MODPREFIX "%s -> %s", key, mapent);
+@@ -698,9 +708,12 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
  		ret = ctxt->parse->parse_mount(ap, key, key_len,
  					       mapent, ctxt->parse->context);
--		if (ret) {
-+		/* Don't update negative cache when attempting to re-connect */
-+		if (ret && !(ap->flags & MOUNT_FLAG_REMOUNT)) {
- 			cache_writelock(mc);
- 			cache_update_negative(mc, source, key, ap->negative_timeout);
- 			cache_unlock(mc);
+ 		if (ret) {
+-			cache_writelock(mc);
+-			cache_update_negative(mc, source, key, ap->negative_timeout);
+-			cache_unlock(mc);
++			/* Don't update negative cache when re-connecting */
++			if (!(ap->flags & MOUNT_FLAG_REMOUNT)) {
++				cache_writelock(mc);
++				cache_update_negative(mc, source, key, ap->negative_timeout);
++				cache_unlock(mc);
++			}
+ 			return NSS_STATUS_TRYAGAIN;
+ 		}
+ 	 }
