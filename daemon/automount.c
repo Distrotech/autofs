@@ -1286,7 +1286,7 @@ static int do_hup_signal(struct master *master, time_t age)
 
 	master_mutex_lock();
 	/* Already doing a map read or shutdown or no mounts */
-	if (master->reading || list_empty(&master->mounts)) {
+	if (master->reading) {
 		status = pthread_mutex_unlock(&mrc.mutex);
 		if (status)
 			fatal(status);

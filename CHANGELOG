@@ -71,6 +71,7 @@
 - fix dumpmaps multi output.
 - try and cleanup after dumpmaps.
 - teach dumpmaps to output simple key value pairs.
+- fix syncronize handle_mounts() shutdown.
 
 25/07/2012 autofs-5.0.7
 =======================
