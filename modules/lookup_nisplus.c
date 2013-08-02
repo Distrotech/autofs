@@ -609,8 +609,7 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 	debug(ap->logopt, MODPREFIX "%s -> %s", key, mapent);
 	ret = ctxt->parse->parse_mount(ap, key, key_len,
 				       mapent, ctxt->parse->context);
-	/* Don't update negative cache when attempting to re-connect */
-	if (ret && !(ap->flags & MOUNT_FLAG_REMOUNT)) {
+	if (ret) {
 		time_t now = time(NULL);
 		int rv = CHE_OK;
 
