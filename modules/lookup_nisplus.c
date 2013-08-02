@@ -561,7 +561,17 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 			return status;
 	}
 
-	cache_writelock(mc);
+	/*
+	 * We can't take the writelock for direct mounts. If we're
+	 * starting up or trying to re-connect to an existing direct
+	 * mount we could be iterating through the map entries with
+	 * the readlock held. But we don't need the write lock for
+	 * direct mounts so just take the readlock.
+	 */
+	if (ap->type == LKP_INDIRECT)
+		cache_writelock(mc);
+	else
+		cache_readlock(mc);
 	me = cache_lookup(mc, key);
 	/* Stale mapent => check for entry in alternate source or wildcard */
 	if (me && !me->mapent) {
@@ -603,15 +613,17 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 		time_t now = time(NULL);
 		int rv = CHE_OK;
 
-		cache_writelock(mc);
-		me = cache_lookup_distinct(mc, key);
-		if (!me)
-			rv = cache_update(mc, source, key, NULL, now);
-		if (rv != CHE_FAIL) {
+		/* Don't update negative cache when re-connecting */
+		if (!(ap->flags & MOUNT_FLAG_REMOUNT)) {
+			cache_writelock(mc);
 			me = cache_lookup_distinct(mc, key);
-			me->status = time(NULL) + ap->negative_timeout;
+			if (!me)
+				rv = cache_update(mc, source, key, NULL, now);
+			if (rv != CHE_FAIL) {
+				me = cache_lookup_distinct(mc, key);
+				me->status = time(NULL) + ap->negative_timeout;
+			cache_unlock(mc);
 		}
-		cache_unlock(mc);
 		free(mapent);
 		return NSS_STATUS_TRYAGAIN;
 	}
