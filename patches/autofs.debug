@@ -1,5 +1,5 @@
 Bottom: 57539df5f4b3cf702a6f9700d9e1f00843d234c9
-Top:    42a2491d83ba041a57114b79228b5b05ff5e7581
+Top:    6d38dd3a1877b6c751e77e4fddeb3f76e6a66c0a
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-08-02 15:12:15 +0800
 
@@ -89,7 +89,7 @@ index d05098f..fb8de9a 100644
  	}
  
 diff --git a/modules/lookup_nisplus.c b/modules/lookup_nisplus.c
-index ef942a7..b3b44c1 100644
+index ef942a7..fc31af3 100644
 --- a/modules/lookup_nisplus.c
 +++ b/modules/lookup_nisplus.c
 @@ -561,7 +561,17 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
@@ -111,13 +111,7 @@ index ef942a7..b3b44c1 100644
  	me = cache_lookup(mc, key);
  	/* Stale mapent => check for entry in alternate source or wildcard */
  	if (me && !me->mapent) {
-@@ -599,19 +609,22 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
- 	debug(ap->logopt, MODPREFIX "%s -> %s", key, mapent);
- 	ret = ctxt->parse->parse_mount(ap, key, key_len,
- 				       mapent, ctxt->parse->context);
--	if (ret) {
-+	/* Don't update negative cache when attempting to re-connect */
-+	if (ret && !(ap->flags & MOUNT_FLAG_REMOUNT)) {
+@@ -603,15 +613,17 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
  		time_t now = time(NULL);
  		int rv = CHE_OK;
  
