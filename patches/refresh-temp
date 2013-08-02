@@ -1,0 +1,10 @@
+Bottom: 4ace8a5af825d66049eb065fa2a01e9714be081a
+Top:    4ace8a5af825d66049eb065fa2a01e9714be081a
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-08-02 19:12:30 +0800
+
+Refresh of autofs-5.0.7-fix-fix-wildcard-multi-map-regression.patch
+
+---
+
+
