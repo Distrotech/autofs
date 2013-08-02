@@ -1,0 +1,32 @@
+Bottom: d11f197afdd0b5b8a4ea032ce17b0b6f85f5a79b
+Top:    8df88534cd4cfb318f494e8100bdd8ede684b9d0
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-08-02 16:53:57 +0800
+
+Refresh of autofs.debug
+
+---
+
+diff --git a/modules/lookup_yp.c b/modules/lookup_yp.c
+index 1bbba8e..783deff 100644
+--- a/modules/lookup_yp.c
++++ b/modules/lookup_yp.c
+@@ -707,11 +707,13 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
+ 		debug(ap->logopt, MODPREFIX "%s -> %s", key, mapent);
+ 		ret = ctxt->parse->parse_mount(ap, key, key_len,
+ 					       mapent, ctxt->parse->context);
+-		/* Don't update negative cache when attempting to re-connect */
+-		if (ret && !(ap->flags & MOUNT_FLAG_REMOUNT)) {
+-			cache_writelock(mc);
+-			cache_update_negative(mc, source, key, ap->negative_timeout);
+-			cache_unlock(mc);
++		if (ret) {
++			/* Don't update negative cache when re-connecting */
++			if (!(ap->flags & MOUNT_FLAG_REMOUNT)) {
++				cache_writelock(mc);
++				cache_update_negative(mc, source, key, ap->negative_timeout);
++				cache_unlock(mc);
++			}
+ 			return NSS_STATUS_TRYAGAIN;
+ 		}
+ 	 }
