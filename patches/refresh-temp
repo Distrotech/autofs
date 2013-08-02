@@ -1,0 +1,22 @@
+Bottom: d08f3fdc7727fb9619e3453f440266381c8b1519
+Top:    2b4d6d06f76ea2552d4edc06628120101d23bb70
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-08-02 16:44:56 +0800
+
+Refresh of autofs.debug
+
+---
+
+diff --git a/modules/lookup_file.c b/modules/lookup_file.c
+index 6027e49..087b4dd 100644
+--- a/modules/lookup_file.c
++++ b/modules/lookup_file.c
+@@ -1021,8 +1021,6 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
+ 		}
+ 	}
+ 
+-	error(LOGOPT_ANY, "ap->type %d *key %c", ap->type, *key);
+-
+ 	/*
+ 	 * We can't check the direct mount map as if it's not in
+ 	 * the map cache already we never get a mount lookup, so
