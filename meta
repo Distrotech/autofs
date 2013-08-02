@@ -1,6 +1,6 @@
 Version: 1
-Previous: 542a46bdbf818731d5addc4e022d3e27917b43c1
-Head: 3b76cdc50572279e2dd7556e5d1402ed0bf25246
+Previous: 4a75a20189cff6232fafaf00826ab7939ae358cb
+Head: 0b86b67d4239b4066e5ac4d63c6ae1a6bfbcbc6a
 Applied:
   autofs-5.0.7-dont-override-LDFLAGS-in-make-rules.patch: 2e8251865c0ed6d91a97c107973a7eb75d3e131b
   autofs-5.0.7-fix-a-couple-of-compiler-warnings.patch: b8bdae4bfe855786de918c78eee228e4aabdab45
@@ -21,8 +21,7 @@ Applied:
   autofs-5.0.7-fix-dumpmaps-multi-output.patch: 6c54348ad28b3e7d0861a014c37312d622539371
   autofs-5.0.7-try-and-cleanup-after-dumpmaps.patch: 19ebdf70fdac9a6ee5cb3187720f7f18f1582b71
   autofs-5.0.7-teach-dumpmaps-to-output-simple-key-value-pairs.patch: ffb25712b28d14f7a2923e168e4a4661d02900cd
-  autofs-5.0.7-fix-syncronize-handle_mounts-shutdown.patch: bba94e3979c1d4f5a277ad35d94e44598ffa7e8b
-  refresh-temp: 3b76cdc50572279e2dd7556e5d1402ed0bf25246
+  autofs-5.0.7-fix-syncronize-handle_mounts-shutdown.patch: 0b86b67d4239b4066e5ac4d63c6ae1a6bfbcbc6a
 Unapplied:
   autofs-5.0.5-wait-for-master-map-available-at-start.patch: 28e191c68fc95cd90815f398deff088bd1d65d0a
   autofs-5.0.5-add-master-read-wait-option.patch: 05d9eb17fb1ec9418f236468875ad04b09b0546b

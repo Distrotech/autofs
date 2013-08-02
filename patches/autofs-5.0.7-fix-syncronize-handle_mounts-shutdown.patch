@@ -1,5 +1,5 @@
 Bottom: 9390b4918491f99071f2e612482d91b54658881a
-Top:    9390b4918491f99071f2e612482d91b54658881a
+Top:    57539df5f4b3cf702a6f9700d9e1f00843d234c9
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-08-02 13:37:45 +0800
 
@@ -8,4 +8,16 @@ autofs-5.0.7 - fix syncronize handle_mounts() shutdown
 
 ---
 
-
+diff --git a/daemon/automount.c b/daemon/automount.c
+index 8bcc81e..72b284c 100644
+--- a/daemon/automount.c
++++ b/daemon/automount.c
+@@ -1286,7 +1286,7 @@ static int do_hup_signal(struct master *master, time_t age)
+ 
+ 	master_mutex_lock();
+ 	/* Already doing a map read or shutdown or no mounts */
+-	if (master->reading || list_empty(&master->mounts)) {
++	if (master->reading) {
+ 		status = pthread_mutex_unlock(&mrc.mutex);
+ 		if (status)
+ 			fatal(status);
