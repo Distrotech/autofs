@@ -1,5 +1,5 @@
 Bottom: d76bf71c33fa4a7cebb9f197fddcdb0cb7d53340
-Top:    4acfa48b8a5ab88dad4c4c7623d7970ef1565619
+Top:    417ee73716ca5a344c2c981792b9bd105687b9e0
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-08-02 15:12:15 +0800
 
@@ -30,9 +30,18 @@ index 618ac20..c3f12e5 100644
  25/07/2012 autofs-5.0.7
  =======================
 diff --git a/modules/lookup_file.c b/modules/lookup_file.c
-index 4b4ee89..6abf5df 100644
+index 4b4ee89..83ef048 100644
 --- a/modules/lookup_file.c
 +++ b/modules/lookup_file.c
+@@ -1042,7 +1042,7 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
+ 			return NSS_STATUS_UNAVAIL;
+ 		}
+ 
+-		cache_writelock(mc);
++		cache_readlock(mc);
+ 		me = cache_lookup_first(mc);
+ 		if (me && st.st_mtime <= me->age) {
+ 			/*
 @@ -1084,7 +1084,18 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
  		}
  	}
@@ -63,8 +72,8 @@ index 4b4ee89..6abf5df 100644
 +		 * checks and negative cache lookups.
  		 */
 -		if (ap->type == LKP_INDIRECT && *me->key == '*') {
-+		if (ap->type == LKP_INDIRECT && *me->key == '*' &&
-+		   !(ap->flags & MOUNT_FLAG_REMOUNT)) {
++		if (!(ap->flags & MOUNT_FLAG_REMOUNT) &&
++		    ap->type == LKP_INDIRECT && *me->key == '*') {
  			ret = cache_update(mc, source, key, me->mapent, me->age);
  			if (!(ret & (CHE_OK | CHE_UPDATED)))
  				me = NULL;
@@ -79,7 +88,7 @@ index 4b4ee89..6abf5df 100644
  		cache_update_negative(mc, source, key, ap->negative_timeout);
  		cache_unlock(mc);
 diff --git a/modules/lookup_ldap.c b/modules/lookup_ldap.c
-index d05098f..7695fc2 100644
+index d05098f..2ab1e8c 100644
 --- a/modules/lookup_ldap.c
 +++ b/modules/lookup_ldap.c
 @@ -3016,7 +3016,18 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
@@ -112,8 +121,8 @@ index d05098f..7695fc2 100644
 +		 * checks and negative cache lookups.
  		 */
 -		if (ap->type == LKP_INDIRECT && *me->key == '*') {
-+		if (ap->type == LKP_INDIRECT && *me->key == '*' &&
-+		   !(ap->flags & MOUNT_FLAG_REMOUNT)) {
++		if (!(ap->flags & MOUNT_FLAG_REMOUNT) &&
++		    ap->type == LKP_INDIRECT && *me->key == '*') {
  			ret = cache_update(mc, source, key, me->mapent, me->age);
  			if (!(ret & (CHE_OK | CHE_UPDATED)))
  				me = NULL;
@@ -128,7 +137,7 @@ index d05098f..7695fc2 100644
  		cache_update_negative(mc, source, key, ap->negative_timeout);
  		cache_unlock(mc);
 diff --git a/modules/lookup_nisplus.c b/modules/lookup_nisplus.c
-index ef942a7..4f31d26 100644
+index ef942a7..08878bb 100644
 --- a/modules/lookup_nisplus.c
 +++ b/modules/lookup_nisplus.c
 @@ -561,7 +561,18 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
@@ -161,8 +170,8 @@ index ef942a7..4f31d26 100644
 +		 * checks and negative cache lookups.
  		 */
 -		if (ap->type == LKP_INDIRECT && *me->key == '*') {
-+		if (ap->type == LKP_INDIRECT && *me->key == '*' &&
-+		   !(ap->flags & MOUNT_FLAG_REMOUNT)) {
++		if (!(ap->flags & MOUNT_FLAG_REMOUNT) &&
++		    ap->type == LKP_INDIRECT && *me->key == '*') {
  			ret = cache_update(mc, source, key, me->mapent, me->age);
  			if (!(ret & (CHE_OK | CHE_UPDATED)))
  				me = NULL;
