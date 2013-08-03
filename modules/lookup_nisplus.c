@@ -587,8 +587,8 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 		 * If this is a lookup add wildcard match for later validation
 		 * checks and negative cache lookups.
 		 */
-		if (ap->type == LKP_INDIRECT && *me->key == '*' &&
-		   !(ap->flags & MOUNT_FLAG_REMOUNT)) {
+		if (!(ap->flags & MOUNT_FLAG_REMOUNT) &&
+		    ap->type == LKP_INDIRECT && *me->key == '*') {
 			ret = cache_update(mc, source, key, me->mapent, me->age);
 			if (!(ret & (CHE_OK | CHE_UPDATED)))
 				me = NULL;
