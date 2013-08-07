@@ -5,6 +5,10 @@ Date:   2013-08-07 10:25:33 +0800
 
 autofs-5.0.7 - improve timeout option description
 
+The description of the configuration option is a little misleading.
+So add some explaination about the internal default and the reason
+the default installed configuration overrides it.
+
 
 ---
 
