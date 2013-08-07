@@ -21,8 +21,8 @@ in different base dns only the first map encountered by autofs will
 be listed.
 
 If the map type is an old style multi map and any one of the map
-names matches the entries that would be used by autofs for all
-the maps in the multi-map will be listed.
+names matches a map name listed in the multi-map entry the entries
+that would be used by autofs for the whole multi-map will be listed.
 
 
 
