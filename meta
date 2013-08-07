@@ -1,6 +1,6 @@
 Version: 1
-Previous: 6cec95e6b15b8ab785628024e1cebe43c9f3409d
-Head: ca3efda2ee0070cb4872f161fc811794441a1176
+Previous: 2ecadce9b45a1f9d45447ee734e834512a187b01
+Head: cad6aec665d4a0909e216955c2fde0c40636327e
 Applied:
   autofs-5.0.7-dont-override-LDFLAGS-in-make-rules.patch: 2e8251865c0ed6d91a97c107973a7eb75d3e131b
   autofs-5.0.7-fix-a-couple-of-compiler-warnings.patch: b8bdae4bfe855786de918c78eee228e4aabdab45
@@ -20,7 +20,7 @@ Applied:
   autofs-5.0.7-fix-compilation-of-lookup_ldap_c-without-sasl.patch: 01e303651c6cbb99e13d1b5dfdc8e18337758a14
   autofs-5.0.7-fix-dumpmaps-multi-output.patch: 6c54348ad28b3e7d0861a014c37312d622539371
   autofs-5.0.7-try-and-cleanup-after-dumpmaps.patch: 19ebdf70fdac9a6ee5cb3187720f7f18f1582b71
-  autofs-5.0.7-teach-dumpmaps-to-output-simple-key-value-pairs.patch: ca3efda2ee0070cb4872f161fc811794441a1176
+  autofs-5.0.7-teach-dumpmaps-to-output-simple-key-value-pairs.patch: cad6aec665d4a0909e216955c2fde0c40636327e
 Unapplied:
   autofs-5.0.7-fix-syncronize-handle_mounts-shutdown.patch: 222382a2ad181e1db49c52336a69ca6293e0faa2
   autofs-5.0.7-fix-fix-wildcard-multi-map-regression.patch: 3837a075452b52790152668710d5890f4c5e81d7
