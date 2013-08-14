@@ -1,5 +1,5 @@
 Bottom: 531ad2da6702deeefb0f1cf4a9b0fca8784f5c8a
-Top:    b891683367002221263337f77519b98242b329d3
+Top:    aa2546e38c135b0352bf2aac554f4f205a0affd4
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-07-31 14:54:39 +0800
 
@@ -41,10 +41,20 @@ index 1583c76..07f9d6d 100644
  25/07/2012 autofs-5.0.7
  =======================
 diff --git a/daemon/automount.c b/daemon/automount.c
-index 6849272..8bcc81e 100644
+index 6849272..2ce49bf 100644
 --- a/daemon/automount.c
 +++ b/daemon/automount.c
-@@ -2125,22 +2125,33 @@ int main(int argc, char *argv[])
+@@ -1725,7 +1725,8 @@ static void usage(void)
+ 		"	-f --foreground do not fork into background\n"
+ 		"	-r --random-multimount-selection\n"
+ 		"			use ramdom replicated server selection\n"
+-		"	-m --dumpmaps	dump automounter maps and exit\n"
++		"	-m --dumpmaps [<map type> <map name]"
++		"			dump automounter maps and exit\n"
+ 		"	-n --negative-timeout n\n"
+ 		"			set the timeout for failed key lookups.\n"
+ 		"	-O --global-options\n"
+@@ -2125,22 +2126,33 @@ int main(int argc, char *argv[])
  			program);
  #endif
  
@@ -89,7 +99,7 @@ index 6849272..8bcc81e 100644
  
  		master_init_scan();
  
-@@ -2153,7 +2164,10 @@ int main(int argc, char *argv[])
+@@ -2153,7 +2165,10 @@ int main(int argc, char *argv[])
  		master_list->nc = nc;
  
  		lookup_nss_read_master(master_list, 0);
@@ -101,7 +111,7 @@ index 6849272..8bcc81e 100644
  
  		head = &master_list->mounts;
  		p = head->next;
-@@ -2168,6 +2182,16 @@ int main(int argc, char *argv[])
+@@ -2168,6 +2183,16 @@ int main(int argc, char *argv[])
  		exit(0);
  	}
  
