@@ -1,0 +1,11 @@
+Bottom: a7cdbd886f6b45cc3e2971a4c9021c19b4368188
+Top:    a7cdbd886f6b45cc3e2971a4c9021c19b4368188
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-08-14 17:23:16 +0800
+
+autofs-5.0.7 - fix teach dumpmaps to output simple key value pairs
+
+
+---
+
+
