@@ -5,6 +5,8 @@ Date:   2013-08-14 17:23:16 +0800
 
 autofs-5.0.7 - fix teach dumpmaps to output simple key value pairs
 
+Forgot to update the automount(8) man page to reflect the dumpmaps change.
+
 
 ---
 
