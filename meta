@@ -1,6 +1,6 @@
 Version: 1
-Previous: 4dcf7a2ce36d80c73339ce10524e8d9f91ea102b
-Head: a09d2a888b65d3a11e4008ed47fce56ce4811ec4
+Previous: 7d2f09b5526310547c9d33bdf8e9bc204fdd3ebe
+Head: 9ec9b133905f46206fca252f29c8f15c5cae929e
 Applied:
   autofs-5.0.7-dont-override-LDFLAGS-in-make-rules.patch: 2e8251865c0ed6d91a97c107973a7eb75d3e131b
   autofs-5.0.7-fix-a-couple-of-compiler-warnings.patch: b8bdae4bfe855786de918c78eee228e4aabdab45
@@ -25,6 +25,7 @@ Applied:
   autofs-5.0.7-fix-fix-wildcard-multi-map-regression.patch: 5efbd5603674b0e33090dc115762142c654cb7c1
   autofs-5.0.7-improve-timeout-option-description.patch: c72c460e24d6cf6de4973665e1468a3721ccbe4d
   autofs-5.0.7-fix-teach-dumpmaps-to-output-simple-key-value-pairs.patch: a09d2a888b65d3a11e4008ed47fce56ce4811ec4
+  refresh-temp: 9ec9b133905f46206fca252f29c8f15c5cae929e
 Unapplied:
   autofs-5.0.5-wait-for-master-map-available-at-start.patch: 28e191c68fc95cd90815f398deff088bd1d65d0a
   autofs-5.0.5-add-master-read-wait-option.patch: 05d9eb17fb1ec9418f236468875ad04b09b0546b
