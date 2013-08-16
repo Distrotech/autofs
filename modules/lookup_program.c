@@ -36,7 +36,15 @@
 
 struct lookup_context {
 	const char *mapname;
+	char *mapfmt;
 	struct parse_mod *parse;
+};
+
+struct parse_context {
+	char *optstr;		/* Mount options */
+	char *macros;		/* Map wide macro defines */
+	struct substvar *subst;	/* $-substitutions */
+	int slashify_colons;	/* Change colons to slashes? */
 };
 
 int lookup_version = AUTOFS_LOOKUP_VERSION;	/* Required by protocol */
@@ -78,6 +86,8 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 
 	if (!mapfmt)
 		mapfmt = MAPFMT_DEFAULT;
+
+	ctxt->mapfmt = strdup(mapfmt);
 
 	ctxt->parse = open_parse(mapfmt, MODPREFIX, argc - 1, argv + 1);
 	if (!ctxt->parse) {
@@ -255,6 +265,14 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 			warn(ap->logopt,
 			     MODPREFIX "failed to set PWD to %s for map %s",
 			     ap->path, ctxt->mapname);
+		/*
+		 * MAPFMT_DEFAULT must be "sun" for ->parse_init() to have setup
+		 * the macro table.
+		 */
+		if (ctxt->mapfmt && strcmp(ctxt->mapfmt, "MAPFMT_DEFAULT")) {
+			struct parse_context *pctxt = (struct parse_context *) ctxt->parse->context;
+			macro_setenv(pctxt->subst);
+		}
 		execl(ctxt->mapname, ctxt->mapname, name, NULL);
 		_exit(255);	/* execl() failed */
 	}
@@ -448,6 +466,8 @@ int lookup_done(void *context)
 {
 	struct lookup_context *ctxt = (struct lookup_context *) context;
 	int rv = close_parse(ctxt->parse);
+	if (ctxt->mapfmt)
+		free(ctxt->mapfmt);
 	free(ctxt);
 	return rv;
 }
