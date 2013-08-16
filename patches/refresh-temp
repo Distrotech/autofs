@@ -1,0 +1,55 @@
+Bottom: 413e2370490273b47762c4ea338e646910ece707
+Top:    3236f76bfa2e0d92d2afc03006f1c7d0929c8c38
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-08-16 12:33:22 +0800
+
+Refresh of autofs-5.0.7-setup-program-map-env-from-macro-table.patch
+
+---
+
+diff --git a/include/macros.h b/include/macros.h
+index a73a4a7..5077b5d 100644
+--- a/include/macros.h
++++ b/include/macros.h
+@@ -40,5 +40,6 @@ void macro_free_global_table(void);
+ void macro_free_table(struct substvar *table);
+ const struct substvar *
+ macro_findvar(const struct substvar *table, const char *str, int len);
++void macro_setenv(const struct substvar *table);
+ 
+ #endif
+diff --git a/lib/macros.c b/lib/macros.c
+index b8e5852..90184bf 100644
+--- a/lib/macros.c
++++ b/lib/macros.c
+@@ -432,13 +432,15 @@ void macro_setenv(const struct substvar *table)
+ 	 * variables will overwrite these.
+ 	 */
+ 	while (sv) {
+-		setenv(sv->def, sv->val, 1);
++		if (sv->def)
++			setenv(sv->def, sv->val, 1);
+ 		sv = sv->next;
+ 	}
+ 
+ 	/* Next set environment from the local table */
+ 	while (lv) {
+-		setenv(lv->def, lv->val, 1);
++		if (lv->def)
++			setenv(lv->def, lv->val, 1);
+ 		lv = lv->next;
+ 	}
+ 
+diff --git a/modules/lookup_program.c b/modules/lookup_program.c
+index 13df720..b2057fe 100644
+--- a/modules/lookup_program.c
++++ b/modules/lookup_program.c
+@@ -35,8 +35,8 @@
+ #define MODPREFIX "lookup(program): "
+ 
+ struct lookup_context {
+-	const char *mapfmt;
+ 	const char *mapname;
++	char *mapfmt;
+ 	struct parse_mod *parse;
+ };
