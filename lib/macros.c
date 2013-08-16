@@ -437,6 +437,9 @@ void macro_setenv(const struct substvar *table)
 		sv = sv->next;
 	}
 
+	error(LOGOPT_ANY, "table %p", table);
+	dump_table(table);
+
 	/* Next set environment from the local table */
 	while (lv) {
 		if (lv->def)

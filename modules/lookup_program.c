@@ -270,7 +270,7 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 		 * the macro table.
 		 */
 		if (ctxt->mapfmt && strcmp(ctxt->mapfmt, "MAPFMT_DEFAULT")) {
-			struct parse_context *pctxt = (struct parse_context *) ctxt->parse;
+			struct parse_context *pctxt = (struct parse_context *) ctxt->parse->context;
 			macro_setenv(pctxt->subst);
 		}
 		execl(ctxt->mapname, ctxt->mapname, name, NULL);
