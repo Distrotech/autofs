@@ -3,7 +3,7 @@ Top:    74fc20de38d12ad9d5dad8f454b175c0336872d6
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-08-16 14:49:12 +0800
 
-autofs-5.0.7 - only prove specific nfs version if requested
+autofs-5.0.7 - only probe specific nfs version if requested
 
 If a specific NFS version is given as an option the set the probe flags
 to probe only that version.
