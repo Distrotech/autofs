@@ -40,5 +40,6 @@ void macro_free_global_table(void);
 void macro_free_table(struct substvar *table);
 const struct substvar *
 macro_findvar(const struct substvar *table, const char *str, int len);
+void macro_setenv(struct substvar *table);
 
 #endif
