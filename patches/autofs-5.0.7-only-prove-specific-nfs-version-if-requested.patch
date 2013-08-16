@@ -1,0 +1,11 @@
+Bottom: f600af05289e413bef6b724a0bc9235a09d6aa47
+Top:    f600af05289e413bef6b724a0bc9235a09d6aa47
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-08-16 14:49:12 +0800
+
+autofs-5.0.7 - only prove specific nfs version if requested
+
+
+---
+
+
