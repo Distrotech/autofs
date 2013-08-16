@@ -1,5 +1,5 @@
 Bottom: e73aca75bbb437e2fdf00c62d2cf1297494c585d
-Top:    51b880386c5b9a4105b4432b17b799f0b8513d49
+Top:    06a981ac46e40854ab6ff30576b3009887fdad7d
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-08-16 10:30:57 +0800
 
@@ -40,7 +40,7 @@ index 32b70bf..b8e5852 100644
 +	return;
 +}
 diff --git a/modules/lookup_program.c b/modules/lookup_program.c
-index 2457108..acfd3ac 100644
+index 2457108..2305759 100644
 --- a/modules/lookup_program.c
 +++ b/modules/lookup_program.c
 @@ -35,10 +35,18 @@
@@ -71,34 +71,6 @@ index 2457108..acfd3ac 100644
  	ctxt->parse = open_parse(mapfmt, MODPREFIX, argc - 1, argv + 1);
  	if (!ctxt->parse) {
  		logmsg(MODPREFIX "failed to open parse context");
-@@ -129,6 +139,13 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
- 
- 	mc = source->mc;
- 
-+	mapent = (char *) malloc(MAPENT_MAX_LEN + 1);
-+	if (!mapent) {
-+		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-+		logerr(MODPREFIX "malloc: %s", estr);
-+		return NSS_STATUS_UNAVAIL;
-+	}
-+
- 	/* Check if we recorded a mount fail for this key anywhere */
- 	me = lookup_source_mapent(ap, name, LKP_DISTINCT);
- 	if (me) {
-@@ -209,13 +226,6 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
- 		}
- 	}
- 
--	mapent = (char *) malloc(MAPENT_MAX_LEN + 1);
--	if (!mapent) {
--		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
--		logerr(MODPREFIX "malloc: %s", estr);
--		return NSS_STATUS_UNAVAIL;
--	}
--
- 	debug(ap->logopt, MODPREFIX "looking up %s", name);
- 
- 	/*
 @@ -255,6 +265,14 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
  			warn(ap->logopt,
  			     MODPREFIX "failed to set PWD to %s for map %s",
