@@ -139,6 +139,13 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 
 	mc = source->mc;
 
+	mapent = (char *) malloc(MAPENT_MAX_LEN + 1);
+	if (!mapent) {
+		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+		logerr(MODPREFIX "malloc: %s", estr);
+		return NSS_STATUS_UNAVAIL;
+	}
+
 	/* Check if we recorded a mount fail for this key anywhere */
 	me = lookup_source_mapent(ap, name, LKP_DISTINCT);
 	if (me) {
