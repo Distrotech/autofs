@@ -432,13 +432,15 @@ void macro_setenv(const struct substvar *table)
 	 * variables will overwrite these.
 	 */
 	while (sv) {
-		setenv(sv->def, sv->val, 1);
+		if (sv->def)
+			setenv(sv->def, sv->val, 1);
 		sv = sv->next;
 	}
 
 	/* Next set environment from the local table */
 	while (lv) {
-		setenv(lv->def, lv->val, 1);
+		if (lv->def)
+			setenv(lv->def, lv->val, 1);
 		lv = lv->next;
 	}
 

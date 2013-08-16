@@ -35,8 +35,8 @@
 #define MODPREFIX "lookup(program): "
 
 struct lookup_context {
-	const char *mapfmt;
 	const char *mapname;
+	char *mapfmt;
 	struct parse_mod *parse;
 };
 
