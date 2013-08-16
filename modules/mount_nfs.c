@@ -148,12 +148,12 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 					vers = NFS4_VERS_MASK | TCP_SUPPORTED;
 				else if (strncmp("vers=3", cp, o_len) == 0 ||
 					 strncmp("nfsvers=3", cp, o_len) == 0) {
-					vers &= ~NFS4_VERS_MASK;
-					vers |= (NFS3_REQUESTED & ~NFS_VERS_MASK);
+					vers &= ~(NFS4_VERS_MASK | NFS_VERS_MASK);
+					vers |= NFS3_REQUESTED;
 				} else if (strncmp("vers=2", cp, o_len) == 0 ||
 					 strncmp("nfsvers=2", cp, o_len) == 0) {
-					vers &= ~NFS4_VERS_MASK;
-					vers |= (NFS2_REQUESTED & ~NFS_VERS_MASK);
+					vers &= ~(NFS4_VERS_MASK | NFS_VERS_MASK);
+					vers |= NFS2_REQUESTED;
 				} else if (strstr(cp, "port=") == cp &&
 					 o_len - 5 < 25) {
 					char optport[25];
