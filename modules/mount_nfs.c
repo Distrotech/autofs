@@ -58,7 +58,6 @@ unsigned int set_nfs_vers(const char *fstype)
 {
 	unsigned int mount_default_proto = defaults_get_mount_nfs_default_proto();
 	unsigned int vers = NFS_VERS_MASK | NFS_PROTO_MASK;
-
 	if (strcmp(fstype, "nfs4") == 0)
 		vers = NFS4_VERS_MASK | TCP_SUPPORTED;
 	else if (mount_default_proto == 4)
@@ -74,7 +73,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 	char fullpath[PATH_MAX];
 	char buf[MAX_ERR_BUF];
 	struct host *this, *hosts = NULL;
-	unsigned int vers;
+	unsigned int mount_default_proto, vers;
 	char *nfsoptions = NULL;
 	const char *port_opt = NULL;
 	unsigned int flags = ap->flags &
@@ -93,7 +92,12 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 	      MODPREFIX "root=%s name=%s what=%s, fstype=%s, options=%s",
 	      root, name, what, fstype, options);
 
-	vers = set_nfs_vers(fstype);
+	mount_default_proto = defaults_get_mount_nfs_default_proto();
+	vers = NFS_VERS_MASK | NFS_PROTO_MASK;
+	if (strcmp(fstype, "nfs4") == 0)
+		vers = NFS4_VERS_MASK | TCP_SUPPORTED;
+	else if (mount_default_proto == 4)
+		vers = vers | NFS4_VERS_MASK;
 
 	/* Extract "nosymlink" pseudo-option which stops local filesystems
 	 * from being symlinked.
