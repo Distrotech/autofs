@@ -54,6 +54,18 @@ int mount_init(void **context)
 	return !mount_bind;
 }
 
+unsigned int set_nfs_vers(const char *fstype)
+{
+	unsigned int mount_default_proto = defaults_get_mount_nfs_default_proto();
+	unsigned int vers = NFS_VERS_MASK | NFS_PROTO_MASK;
+	if (strcmp(fstype, "nfs4") == 0)
+		vers = NFS4_VERS_MASK | TCP_SUPPORTED;
+	else if (mount_default_proto == 4)
+		vers = vers | NFS4_VERS_MASK;
+
+	return vers;
+}
+
 int mount_mount(struct autofs_point *ap, const char *root, const char *name, int name_len,
 		const char *what, const char *fstype, const char *options,
 		void *context)
@@ -146,7 +158,15 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 				if (strncmp("vers=4", cp, o_len) == 0 ||
 				    strncmp("nfsvers=4", cp, o_len) == 0)
 					vers = NFS4_VERS_MASK | TCP_SUPPORTED;
-				else if (strstr(cp, "port=") == cp &&
+				else if (strncmp("vers=3", cp, o_len) == 0 ||
+					 strncmp("nfsvers=3", cp, o_len) == 0) {
+					vers &= ~NFS4_VERS_MASK;
+					vers = (NFS3_REQUESTED & ~NFS_VERS_MASK);
+				} else if (strncmp("vers=2", cp, o_len) == 0 ||
+					 strncmp("nfsvers=2", cp, o_len) == 0) {
+					vers &= ~NFS4_VERS_MASK;
+					vers |= (NFS2_REQUESTED & ~NFS_VERS_MASK);
+				} else if (strstr(cp, "port=") == cp &&
 					 o_len - 5 < 25) {
 					char optport[25];
 
