@@ -149,7 +149,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 				else if (strncmp("vers=3", cp, o_len) == 0 ||
 					 strncmp("nfsvers=3", cp, o_len) == 0) {
 					vers &= ~NFS4_VERS_MASK;
-					vers = (NFS3_REQUESTED & ~NFS_VERS_MASK);
+					vers |= (NFS3_REQUESTED & ~NFS_VERS_MASK);
 				} else if (strncmp("vers=2", cp, o_len) == 0 ||
 					 strncmp("nfsvers=2", cp, o_len) == 0) {
 					vers &= ~NFS4_VERS_MASK;
