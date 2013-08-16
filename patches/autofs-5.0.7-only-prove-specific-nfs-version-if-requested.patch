@@ -1,5 +1,5 @@
 Bottom: f600af05289e413bef6b724a0bc9235a09d6aa47
-Top:    0313cc95380e8433e33705c1801e95f98f485d2f
+Top:    511d59a4118b97b791c3953b1998887da29858e2
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-08-16 14:49:12 +0800
 
@@ -9,29 +9,10 @@ autofs-5.0.7 - only prove specific nfs version if requested
 ---
 
 diff --git a/modules/mount_nfs.c b/modules/mount_nfs.c
-index adf2002..64546d7 100644
+index adf2002..a1e2d40 100644
 --- a/modules/mount_nfs.c
 +++ b/modules/mount_nfs.c
-@@ -54,6 +54,18 @@ int mount_init(void **context)
- 	return !mount_bind;
- }
- 
-+unsigned int set_nfs_vers(const char *fstype)
-+{
-+	unsigned int mount_default_proto = defaults_get_mount_nfs_default_proto();
-+	unsigned int vers = NFS_VERS_MASK | NFS_PROTO_MASK;
-+	if (strcmp(fstype, "nfs4") == 0)
-+		vers = NFS4_VERS_MASK | TCP_SUPPORTED;
-+	else if (mount_default_proto == 4)
-+		vers = vers | NFS4_VERS_MASK;
-+
-+	return vers;
-+}
-+
- int mount_mount(struct autofs_point *ap, const char *root, const char *name, int name_len,
- 		const char *what, const char *fstype, const char *options,
- 		void *context)
-@@ -146,7 +158,15 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
+@@ -146,7 +146,15 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
  				if (strncmp("vers=4", cp, o_len) == 0 ||
  				    strncmp("nfsvers=4", cp, o_len) == 0)
  					vers = NFS4_VERS_MASK | TCP_SUPPORTED;
