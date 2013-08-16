@@ -1,0 +1,22 @@
+Bottom: 06a981ac46e40854ab6ff30576b3009887fdad7d
+Top:    413e2370490273b47762c4ea338e646910ece707
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-08-16 11:42:55 +0800
+
+Refresh of autofs-5.0.7-setup-program-map-env-from-macro-table.patch
+
+---
+
+diff --git a/modules/lookup_program.c b/modules/lookup_program.c
+index 2305759..13df720 100644
+--- a/modules/lookup_program.c
++++ b/modules/lookup_program.c
+@@ -269,7 +269,7 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
+ 		 * MAPFMT_DEFAULT must be "sun" for ->parse_init() to have setup
+ 		 * the macro table.
+ 		 */
+-		if (ctxt->mapfmt && )strcmp(ctxt->mapfmt, "MAPFMT_DEFAULT") {
++		if (ctxt->mapfmt && strcmp(ctxt->mapfmt, "MAPFMT_DEFAULT")) {
+ 			struct parse_context *pctxt = (struct parse_context *) ctxt->parse;
+ 			macro_setenv(pctxt->subst);
+ 		}
