@@ -1,0 +1,27 @@
+Bottom: 72d5d58188146412d23d9343a5e014abfef4e86d
+Top:    51b880386c5b9a4105b4432b17b799f0b8513d49
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-08-16 11:20:05 +0800
+
+Refresh of autofs-5.0.7-setup-program-map-env-from-macro-table.patch
+
+---
+
+diff --git a/modules/lookup_program.c b/modules/lookup_program.c
+index 66317b9..acfd3ac 100644
+--- a/modules/lookup_program.c
++++ b/modules/lookup_program.c
+@@ -139,6 +139,13 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
+ 
+ 	mc = source->mc;
+ 
++	mapent = (char *) malloc(MAPENT_MAX_LEN + 1);
++	if (!mapent) {
++		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
++		logerr(MODPREFIX "malloc: %s", estr);
++		return NSS_STATUS_UNAVAIL;
++	}
++
+ 	/* Check if we recorded a mount fail for this key anywhere */
+ 	me = lookup_source_mapent(ap, name, LKP_DISTINCT);
+ 	if (me) {
