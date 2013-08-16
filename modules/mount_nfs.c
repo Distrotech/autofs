@@ -54,18 +54,6 @@ int mount_init(void **context)
 	return !mount_bind;
 }
 
-unsigned int set_nfs_vers(const char *fstype)
-{
-	unsigned int mount_default_proto = defaults_get_mount_nfs_default_proto();
-	unsigned int vers = NFS_VERS_MASK | NFS_PROTO_MASK;
-	if (strcmp(fstype, "nfs4") == 0)
-		vers = NFS4_VERS_MASK | TCP_SUPPORTED;
-	else if (mount_default_proto == 4)
-		vers = vers | NFS4_VERS_MASK;
-
-	return vers;
-}
-
 int mount_mount(struct autofs_point *ap, const char *root, const char *name, int name_len,
 		const char *what, const char *fstype, const char *options,
 		void *context)
