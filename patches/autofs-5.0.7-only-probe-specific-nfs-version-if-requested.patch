@@ -1,5 +1,5 @@
 Bottom: f600af05289e413bef6b724a0bc9235a09d6aa47
-Top:    74fc20de38d12ad9d5dad8f454b175c0336872d6
+Top:    9477e1692248b49619e8e94171be74ff86207393
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-08-16 14:49:12 +0800
 
@@ -11,6 +11,18 @@ to probe only that version.
 
 ---
 
+diff --git a/CHANGELOG b/CHANGELOG
+index 9639703..2499f1c 100644
+--- a/CHANGELOG
++++ b/CHANGELOG
+@@ -74,6 +74,7 @@
+ - fix syncronize handle_mounts() shutdown.
+ - fix fix wildcard multi map regression.
+ - improve timeout option description.
++- only probe specific nfs version if requested.
+ 
+ 25/07/2012 autofs-5.0.7
+ =======================
 diff --git a/modules/mount_nfs.c b/modules/mount_nfs.c
 index adf2002..5a582ef 100644
 --- a/modules/mount_nfs.c
