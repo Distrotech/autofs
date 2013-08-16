@@ -1,0 +1,21 @@
+Bottom: 74fc20de38d12ad9d5dad8f454b175c0336872d6
+Top:    9477e1692248b49619e8e94171be74ff86207393
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-08-16 15:28:47 +0800
+
+Refresh of autofs-5.0.7-only-probe-specific-nfs-version-if-requested.patch
+
+---
+
+diff --git a/CHANGELOG b/CHANGELOG
+index 9639703..2499f1c 100644
+--- a/CHANGELOG
++++ b/CHANGELOG
+@@ -74,6 +74,7 @@
+ - fix syncronize handle_mounts() shutdown.
+ - fix fix wildcard multi map regression.
+ - improve timeout option description.
++- only probe specific nfs version if requested.
+ 
+ 25/07/2012 autofs-5.0.7
+ =======================

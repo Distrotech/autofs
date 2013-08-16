@@ -1,6 +1,6 @@
 Version: 1
-Previous: 103426bf185cff5a7de806125e2b347d79fc825d
-Head: e592f8c25f3456edad007ce96b50e4520d7dd664
+Previous: e7df2ef77d75dd6f420541d3ed0aa8ff264ca632
+Head: e92bc429da49e98e6ae40143950487270d908d30
 Applied:
   autofs-5.0.7-dont-override-LDFLAGS-in-make-rules.patch: 2e8251865c0ed6d91a97c107973a7eb75d3e131b
   autofs-5.0.7-fix-a-couple-of-compiler-warnings.patch: b8bdae4bfe855786de918c78eee228e4aabdab45
@@ -26,6 +26,7 @@ Applied:
   autofs-5.0.7-improve-timeout-option-description.patch: 92f831b5013c4a0648861fc13bb47d54c12e2006
   autofs-5.0.7-setup-program-map-env-from-macro-table.patch: ebbaaca4764834ff644111e33f2a3212fd226543
   autofs-5.0.7-only-probe-specific-nfs-version-if-requested.patch: e592f8c25f3456edad007ce96b50e4520d7dd664
+  refresh-temp: e92bc429da49e98e6ae40143950487270d908d30
 Unapplied:
   autofs-5.0.5-wait-for-master-map-available-at-start.patch: 28e191c68fc95cd90815f398deff088bd1d65d0a
   autofs-5.0.5-add-master-read-wait-option.patch: 05d9eb17fb1ec9418f236468875ad04b09b0546b
