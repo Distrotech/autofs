@@ -1,5 +1,5 @@
 Bottom: f600af05289e413bef6b724a0bc9235a09d6aa47
-Top:    511d59a4118b97b791c3953b1998887da29858e2
+Top:    bcdcf7f7bde15e2c6e6ea0ddbe0cf8fc11348fdf
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-08-16 14:49:12 +0800
 
@@ -9,7 +9,7 @@ autofs-5.0.7 - only prove specific nfs version if requested
 ---
 
 diff --git a/modules/mount_nfs.c b/modules/mount_nfs.c
-index adf2002..a1e2d40 100644
+index adf2002..82f674d 100644
 --- a/modules/mount_nfs.c
 +++ b/modules/mount_nfs.c
 @@ -146,7 +146,15 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
@@ -20,7 +20,7 @@ index adf2002..a1e2d40 100644
 +				else if (strncmp("vers=3", cp, o_len) == 0 ||
 +					 strncmp("nfsvers=3", cp, o_len) == 0) {
 +					vers &= ~NFS4_VERS_MASK;
-+					vers = (NFS3_REQUESTED & ~NFS_VERS_MASK);
++					vers |= (NFS3_REQUESTED & ~NFS_VERS_MASK);
 +				} else if (strncmp("vers=2", cp, o_len) == 0 ||
 +					 strncmp("nfsvers=2", cp, o_len) == 0) {
 +					vers &= ~NFS4_VERS_MASK;
