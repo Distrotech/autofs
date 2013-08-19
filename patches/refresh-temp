@@ -1,0 +1,10 @@
+Bottom: bf97651431ac4212fc6d2b2d4738fafc4b299759
+Top:    bf97651431ac4212fc6d2b2d4738fafc4b299759
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-08-19 08:42:15 +0800
+
+Refresh of autofs-5.0.7-fix-bad-makdir-permission-on-create.patch
+
+---
+
+
