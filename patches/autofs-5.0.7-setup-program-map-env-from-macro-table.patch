@@ -5,6 +5,15 @@ Date:   2013-08-16 10:30:57 +0800
 
 autofs-5.0.7 - setup program map env from macro table
 
+The ability to pass parameters to program maps, in some way, is needed.
+Standard autofs specifies that program maps have one argument so passing
+parameters as arguments shouldn't be done.
+
+This patch sets the existing macro table definitions (for both global and
+local table) as environment variables before calling the map. The values
+are not checked after return so, at this stage, program maps can't change
+macro definitions.
+
 
 ---
 
