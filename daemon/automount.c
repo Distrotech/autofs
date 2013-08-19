@@ -122,7 +122,7 @@ static int do_mkdir(const char *parent, const char *path, mode_t mode)
 		status = statfs(parent, &fs);
 	if ((status != -1 && fs.f_type == (__SWORD_TYPE) AUTOFS_SUPER_MAGIC) ||
 	    contained_in_local_fs(path)) {
-		mode_t mask = umask(0022);
+		mode_t mask = umask((mode_t) 0022);
 		int ret = mkdir(path, mode);
 		void umask(mask);
 		if (ret == -1) {
