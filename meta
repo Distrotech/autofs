@@ -1,6 +1,6 @@
 Version: 1
-Previous: a12b06d2014c99b4b46f3cb9ddc30542ba57d43b
-Head: 92f831b5013c4a0648861fc13bb47d54c12e2006
+Previous: ea63e7e0dfbec9df9f91316db2f7fb694ab88007
+Head: deb2c776e61b22fe805ff51b6e647fb543046514
 Applied:
   autofs-5.0.7-dont-override-LDFLAGS-in-make-rules.patch: 2e8251865c0ed6d91a97c107973a7eb75d3e131b
   autofs-5.0.7-fix-a-couple-of-compiler-warnings.patch: b8bdae4bfe855786de918c78eee228e4aabdab45
@@ -24,8 +24,8 @@ Applied:
   autofs-5.0.7-fix-syncronize-handle_mounts-shutdown.patch: 993b68f15775f3d3a113dd460839e4bb4f8ce88e
   autofs-5.0.7-fix-fix-wildcard-multi-map-regression.patch: c5e024e3e9e080faff2353e596f2199e1816f7ac
   autofs-5.0.7-improve-timeout-option-description.patch: 92f831b5013c4a0648861fc13bb47d54c12e2006
-Unapplied:
   autofs-5.0.7-only-probe-specific-nfs-version-when-requested.patch: deb2c776e61b22fe805ff51b6e647fb543046514
+Unapplied:
   autofs-5.0.7-fix-bad-mkdir-permission-on-create.patch: f074664432805f83824b95c2cb8701aacca40457
   autofs-5.0.7-setup-program-map-env-from-macro-table.patch: 291ae7ad660a6501f077ac9980c1a5b0fc05e087
   autofs-5.0.5-wait-for-master-map-available-at-start.patch: 28e191c68fc95cd90815f398deff088bd1d65d0a
