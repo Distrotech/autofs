@@ -1,0 +1,22 @@
+Bottom: 6b2fccada78cd8beae51c0c9411bf6b34f735c90
+Top:    845d5ea04d64d48d669f488aae604f831577dfca
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-08-19 14:41:21 +0800
+
+Refresh of autofs-5.0.7-allow-use-of-hosts-map-in-maps.patch
+
+---
+
+diff --git a/modules/mount_autofs.c b/modules/mount_autofs.c
+index 872fa71..d33932c 100644
+--- a/modules/mount_autofs.c
++++ b/modules/mount_autofs.c
+@@ -201,7 +201,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
+ 		master_free_mapent(entry);
+ 		return 1;
+ 	}
+-	if (what)
++	if (info->map)
+ 		argv[0] = info->map;
+ 
+ 	if (options) {
