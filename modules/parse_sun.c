@@ -881,7 +881,8 @@ static int validate_location(unsigned int logopt, char *loc)
 		    !strncmp(ptr, "file:", 5) || !strncmp(ptr, "yp:", 3) ||
 		    !strncmp(ptr, "nis:", 4) || !strncmp(ptr, "nisplus:", 8) ||
 		    !strncmp(ptr, "ldap:", 5) || !strncmp(ptr, "ldaps:", 6) ||
-		    !strncmp(ptr, "sss:", 4) || !strncmp(ptr, "dir:", 4))
+		    !strncmp(ptr, "sss:", 4) || !strncmp(ptr, "dir:", 4) ||
+		    !strncmp(ptr, "hosts:", 4))
 			return 1;
 		error(logopt,
 		      "expected colon delimeter not found in location %s",
@@ -1292,6 +1293,15 @@ int parse_mount(struct autofs_point *ap, const char *name,
 		return 1;
 	}
 
+	/*
+	 * Transform hosts map into a map type so we don't confuse
+	 * the options parsing.
+	 */
+	if (strstr(pmapent, "-hosts")) {
+		char *t = strstr(pmapent, "-hosts");
+		*t++ = 'h'; *t++ = 'o'; *t++ = 's'; *t = 't'; *t = 's';
+		*t = ':';
+	}
 	p = skipspace(pmapent);
 
 	/* Deal with 0 or more options */
