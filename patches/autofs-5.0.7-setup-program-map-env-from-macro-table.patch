@@ -1,5 +1,5 @@
 Bottom: 0a1761f253ea12742618c66821075a1511a9eb28
-Top:    af4afd3216b9addcb5809a68e568b3213b6c03a1
+Top:    834dd3e0a06a7d310a19eff1d698db6afd185f07
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-08-16 10:30:57 +0800
 
@@ -17,6 +17,18 @@ macro definitions.
 
 ---
 
+diff --git a/CHANGELOG b/CHANGELOG
+index 3a3fec1..7b6a521 100644
+--- a/CHANGELOG
++++ b/CHANGELOG
+@@ -76,6 +76,7 @@
+ - improve timeout option description.
+ - only probe specific nfs version if requested.
+ - fix bad mkdir permission on create.
++- setup program map env from macro table.
+ 
+ 25/07/2012 autofs-5.0.7
+ =======================
 diff --git a/include/macros.h b/include/macros.h
 index a73a4a7..5077b5d 100644
 --- a/include/macros.h
