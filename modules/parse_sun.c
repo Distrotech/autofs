@@ -1440,8 +1440,6 @@ int parse_mount(struct autofs_point *ap, const char *name,
 			p += l;
 			p = skipspace(p);
 
-			error(LOGOPT_ANY, "options %s", options);
-
 			l = parse_mapent(p, options, &myoptions, &loc, ap->logopt);
 			if (!l) {
 				if (!(strstr(myoptions, "fstype=autofs") &&
