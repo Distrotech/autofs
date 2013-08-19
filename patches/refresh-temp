@@ -1,0 +1,24 @@
+Bottom: 25b370973988353131f3b8ea53234d10e60eda64
+Top:    de3dfaf6cadf2cabbf418cc0797af3b535a34787
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-08-19 11:14:16 +0800
+
+Refresh of debug.patch
+
+---
+
+diff --git a/modules/parse_sun.c b/modules/parse_sun.c
+index 9112918..0dfd4f7 100644
+--- a/modules/parse_sun.c
++++ b/modules/parse_sun.c
+@@ -1294,8 +1294,8 @@ int parse_mount(struct autofs_point *ap, const char *name,
+ 	}
+ 
+ 	/*
+-	 * Transform hosts map into a map type so we don't confuse
+-	 * the options parsing.
++	 * If this is an indirect mount transform hosts map into a map
++	 * type so we don't confuse the options parsing.
+ 	 */
+ 	if (strstr(pmapent, "-hosts")) {
+ 		char *t = strstr(pmapent, "-hosts");
