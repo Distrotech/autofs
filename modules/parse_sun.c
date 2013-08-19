@@ -803,7 +803,7 @@ update_offset_entry(struct autofs_point *ap, const char *name,
 
 	mc = source->mc;
 
-	if (!*path || !*loc) {
+	if (!*path) {
 		error(ap->logopt,
 		      MODPREFIX "syntax error in offset %s -> %s", path, loc);
 		return CHE_FAIL;
@@ -837,8 +837,10 @@ update_offset_entry(struct autofs_point *ap, const char *name,
 	if (*myoptions) {
 		strcpy(m_mapent, "-");
 		strcat(m_mapent, myoptions);
-		strcat(m_mapent, " ");
-		strcat(m_mapent, loc);
+		if (loc) {
+			strcat(m_mapent, " ");
+			strcat(m_mapent, loc);
+		}
 	} else
 		strcpy(m_mapent, loc);
 
