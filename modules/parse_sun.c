@@ -695,7 +695,7 @@ static int sun_mount(struct autofs_point *ap, const char *root,
 		rv = mount_nfs->mount_mount(ap, root, mountpoint, strlen(mountpoint),
 					    what, fstype, options, mount_nfs->context);
 	} else {
-		if (loclen)
+		if (!loclen)
 			what = NULL;
 		else {
 			what = alloca(loclen + 1);
