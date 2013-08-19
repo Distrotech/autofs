@@ -1,0 +1,29 @@
+Bottom: 27f6f8e16ca92774dbe54dca36f0b26d5a5be090
+Top:    42d57e7436a831bebef8cf56dea10496eeefb4b5
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-08-19 15:35:53 +0800
+
+Refresh of autofs-5.0.7-allow-use-of-hosts-map-in-maps.patch
+
+---
+
+diff --git a/modules/parse_sun.c b/modules/parse_sun.c
+index 3b35891..ee2106e 100644
+--- a/modules/parse_sun.c
++++ b/modules/parse_sun.c
+@@ -983,7 +983,6 @@ static int parse_mapent(const char *ent, char *g_options, char **options, char *
+ 	}
+ 
+ 	if (!validate_location(logopt, loc)) {
+-		error(LOGOPT_ANY, "revalidate_location failed");
+ 		free(myoptions);
+ 		free(loc);
+ 		return 0;
+@@ -1017,7 +1016,6 @@ static int parse_mapent(const char *ent, char *g_options, char **options, char *
+ 		}
+ 
+ 		if (!validate_location(logopt, ent_chunk)) {
+-			error(LOGOPT_ANY, "validate_location failed");
+ 			free(ent_chunk);
+ 			free(myoptions);
+ 			free(loc);
