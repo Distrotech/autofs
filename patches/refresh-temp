@@ -1,0 +1,21 @@
+Bottom: 42d57e7436a831bebef8cf56dea10496eeefb4b5
+Top:    a01c128ea7bf2cc6586c2696c46c1b4a22dcb52c
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-08-19 15:36:55 +0800
+
+Refresh of autofs-5.0.7-allow-use-of-hosts-map-in-maps.patch
+
+---
+
+diff --git a/modules/parse_sun.c b/modules/parse_sun.c
+index ee2106e..ab77e58 100644
+--- a/modules/parse_sun.c
++++ b/modules/parse_sun.c
+@@ -803,6 +803,7 @@ update_offset_entry(struct autofs_point *ap, const char *name,
+ 
+ 	mc = source->mc;
+ 
++	/* Internal hosts map may have loc == NULL */
+ 	if (!*path) {
+ 		error(ap->logopt,
+ 		      MODPREFIX "syntax error in offset %s -> %s", path, loc);
