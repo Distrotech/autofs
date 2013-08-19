@@ -1299,7 +1299,7 @@ int parse_mount(struct autofs_point *ap, const char *name,
 	 */
 	if (strstr(pmapent, "-hosts")) {
 		char *t = strstr(pmapent, "-hosts");
-		*t++ = 'h'; *t++ = 'o'; *t++ = 's'; *t = 't'; *t = 's';
+		*t++ = 'h'; *t++ = 'o'; *t++ = 's'; *t++ = 't'; *t++ = 's';
 		*t = ':';
 	}
 	p = skipspace(pmapent);
