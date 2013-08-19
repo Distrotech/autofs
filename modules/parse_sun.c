@@ -1293,15 +1293,6 @@ int parse_mount(struct autofs_point *ap, const char *name,
 		return 1;
 	}
 
-	/*
-	 * Transform hosts map into a map type so we don't confuse the
-	 * options parsing.
-	 */
-	if (strstr(pmapent, "-hosts")) {
-		char *t = strstr(pmapent, "-hosts");
-		*t++ = 'h'; *t++ = 'o'; *t++ = 's'; *t++ = 't'; *t++ = 's';
-		*t = ':';
-	}
 	p = skipspace(pmapent);
 
 	/* Deal with 0 or more options */
@@ -1442,6 +1433,8 @@ int parse_mount(struct autofs_point *ap, const char *name,
 
 			p += l;
 			p = skipspace(p);
+
+			error(LOGOPT_ANY, "options %s", options);
 
 			l = parse_mapent(p, options, &myoptions, &loc, ap->logopt);
 			if (!l) {
