@@ -1,5 +1,5 @@
 Bottom: af4afd3216b9addcb5809a68e568b3213b6c03a1
-Top:    fae0ddc79a572f1d4b19900cba92b2b54d150374
+Top:    27f6f8e16ca92774dbe54dca36f0b26d5a5be090
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-08-19 09:57:34 +0800
 
@@ -62,7 +62,7 @@ index 2326838..dd2a784 100644
  
  	free(buf);
 diff --git a/modules/mount_autofs.c b/modules/mount_autofs.c
-index 8c1e600..d33932c 100644
+index 8c1e600..319f2e4 100644
 --- a/modules/mount_autofs.c
 +++ b/modules/mount_autofs.c
 @@ -62,6 +62,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
@@ -126,15 +126,6 @@ index 8c1e600..d33932c 100644
  
  	if (options) {
  		p = options;
-@@ -197,6 +216,8 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
- 	}
- 	argv[argc] = NULL;
- 
-+	error(LOGOPT_ANY, "info type %s format %s map %s", info->type, info->format, info->map);
-+
- 	source = master_add_map_source(entry,
- 				       info->type, info->format,
- 				       time(NULL), argc, argv);
 diff --git a/modules/parse_sun.c b/modules/parse_sun.c
 index c1fc528..3b35891 100644
 --- a/modules/parse_sun.c
