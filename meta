@@ -1,6 +1,6 @@
 Version: 1
-Previous: e48826ea6b10659f9eef1fe17f5647a75a3573a0
-Head: aad7f6a6cc5de169c53819b85c9076018ab04a12
+Previous: 922e3893f1aa6b7b17d12c3b4e6eaea965cc7df5
+Head: 26fe4093c9e4de32080bc7d1ba1882ea058fa963
 Applied:
   autofs-5.0.7-dont-override-LDFLAGS-in-make-rules.patch: 2e8251865c0ed6d91a97c107973a7eb75d3e131b
   autofs-5.0.7-fix-a-couple-of-compiler-warnings.patch: b8bdae4bfe855786de918c78eee228e4aabdab45
@@ -26,6 +26,7 @@ Applied:
   autofs-5.0.7-improve-timeout-option-description.patch: 92f831b5013c4a0648861fc13bb47d54c12e2006
   autofs-5.0.7-only-probe-specific-nfs-version-when-requested.patch: deb2c776e61b22fe805ff51b6e647fb543046514
   autofs-5.0.7-fix-bad-mkdir-permission-on-create.patch: aad7f6a6cc5de169c53819b85c9076018ab04a12
+  refresh-temp: 26fe4093c9e4de32080bc7d1ba1882ea058fa963
 Unapplied:
   autofs-5.0.7-setup-program-map-env-from-macro-table.patch: 63640ad93a3d6f323fb50c2c6a454b0db9a2b36a
   debug.patch: c7f5847a72524f34ae6bbeb6284bcb98640f8d45
