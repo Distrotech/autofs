@@ -35,6 +35,7 @@ static struct types map_type[] = {
 	{ "ldaps", 5 },
 	{ "hesiod", 6 },
 	{ "userdir", 7 },
+	{ "hosts", 5 },
 };
 static unsigned int map_type_count = sizeof(map_type)/sizeof(struct types);
 
