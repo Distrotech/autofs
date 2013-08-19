@@ -1,5 +1,5 @@
 Bottom: af4afd3216b9addcb5809a68e568b3213b6c03a1
-Top:    3784a9081337bd31ddc7b6b2315291064c44cf51
+Top:    30c50efcbff260548fc311d81a94810ad9b678ad
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-08-19 09:57:34 +0800
 
@@ -21,14 +21,14 @@ index 2326838..cc1b4a4 100644
  static unsigned int map_type_count = sizeof(map_type)/sizeof(struct types);
  
 diff --git a/modules/mount_autofs.c b/modules/mount_autofs.c
-index 8c1e600..c7f8b3d 100644
+index 8c1e600..3d96e69 100644
 --- a/modules/mount_autofs.c
 +++ b/modules/mount_autofs.c
 @@ -184,6 +184,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
  		return 1;
  	}
  	argv[0] = info->map;
-+	error(LOGOPT_ANY, "info->type %s", info->type);
++	error(LOGOPT_ANY, "info type %s format %s map %s", info->type, info->format, info->map);
  
  	if (options) {
  		p = options;
