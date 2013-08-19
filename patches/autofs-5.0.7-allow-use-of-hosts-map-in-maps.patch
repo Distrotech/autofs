@@ -1,5 +1,5 @@
 Bottom: af4afd3216b9addcb5809a68e568b3213b6c03a1
-Top:    3afb51c6c6d08a52ef72ca238aa3e1406caad752
+Top:    fc28baf3514fe78424490d143b1112b8f900d448
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-08-19 09:57:34 +0800
 
@@ -25,7 +25,7 @@ index 2326838..cc1b4a4 100644
  static unsigned int map_type_count = sizeof(map_type)/sizeof(struct types);
  
 diff --git a/modules/parse_sun.c b/modules/parse_sun.c
-index c1fc528..86e3f48 100644
+index c1fc528..33a0903 100644
 --- a/modules/parse_sun.c
 +++ b/modules/parse_sun.c
 @@ -881,7 +881,8 @@ static int validate_location(unsigned int logopt, char *loc)
@@ -38,16 +38,20 @@ index c1fc528..86e3f48 100644
  			return 1;
  		error(logopt,
  		      "expected colon delimeter not found in location %s",
-@@ -1433,6 +1434,8 @@ int parse_mount(struct autofs_point *ap, const char *name,
+@@ -1433,8 +1434,11 @@ int parse_mount(struct autofs_point *ap, const char *name,
  			p += l;
  			p = skipspace(p);
  
 +			error(LOGOPT_ANY, "options %s", options);
 +
  			l = parse_mapent(p, options, &myoptions, &loc, ap->logopt);
- 			if (!l) {
+-			if (!l) {
++			if ((strstr(myoptions, "fstype=autofs") &&
++			     strstr(myoptions, "hosts")) || !l) {
  				cache_delete_offset_list(mc, name);
-@@ -1592,13 +1595,17 @@ int parse_mount(struct autofs_point *ap, const char *name,
+ 				cache_multi_unlock(me);
+ 				cache_unlock(mc);
+@@ -1592,13 +1596,17 @@ int parse_mount(struct autofs_point *ap, const char *name,
  			p = skipspace(p);
  		}
  
