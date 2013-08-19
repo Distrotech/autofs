@@ -1,0 +1,40 @@
+Bottom: 4d897aadd57ebc0e239069f9f04fee1cb84b2dc8
+Top:    b5d09fb9afc86c0bd242fca9a00b1ad8db186d76
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-08-19 13:01:30 +0800
+
+Refresh of autofs-5.0.7-allow-use-of-hosts-map-in-maps.patch
+
+---
+
+diff --git a/modules/parse_sun.c b/modules/parse_sun.c
+index ee545d6..5add1f6 100644
+--- a/modules/parse_sun.c
++++ b/modules/parse_sun.c
+@@ -695,14 +695,18 @@ static int sun_mount(struct autofs_point *ap, const char *root,
+ 		rv = mount_nfs->mount_mount(ap, root, mountpoint, strlen(mountpoint),
+ 					    what, fstype, options, mount_nfs->context);
+ 	} else {
+-		what = alloca(loclen + 1);
+-		if (*loc == ':') {
+-			loclen--;
+-			memcpy(what, loc + 1, loclen);
+-			what[loclen] = '\0';
+-		} else {
+-			memcpy(what, loc, loclen);
+-			what[loclen] = '\0';
++		if (loclen)
++			what = NULL;
++		else {
++			what = alloca(loclen + 1);
++			if (*loc == ':') {
++				loclen--;
++				memcpy(what, loc + 1, loclen);
++				what[loclen] = '\0';
++			} else {
++				memcpy(what, loc, loclen);
++				what[loclen] = '\0';
++			}
+ 		}
+ 
+ 		debug(ap->logopt, MODPREFIX
