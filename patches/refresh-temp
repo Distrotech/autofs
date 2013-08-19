@@ -1,0 +1,22 @@
+Bottom: f874a5bd0eb37ed6a962d7c708ee25b88f9547e7
+Top:    42ce98a088e70293b3977d03aaba3abf7f308284
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-08-19 10:10:49 +0800
+
+Refresh of debug.patch
+
+---
+
+diff --git a/daemon/automount.c b/daemon/automount.c
+index f3c2b0a..a22de2d 100644
+--- a/daemon/automount.c
++++ b/daemon/automount.c
+@@ -122,7 +122,7 @@ static int do_mkdir(const char *parent, const char *path, mode_t mode)
+ 		status = statfs(parent, &fs);
+ 	if ((status != -1 && fs.f_type == (__SWORD_TYPE) AUTOFS_SUPER_MAGIC) ||
+ 	    contained_in_local_fs(path)) {
+-		mode_t mask = umask((mode_t) 0022);
++		mode_t mask = umask(0022);
+ 		int ret = mkdir(path, mode);
+ 		void umask(mask);
+ 		if (ret == -1) {
