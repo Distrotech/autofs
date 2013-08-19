@@ -194,14 +194,15 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 				*p = '\0';
 				p++;
 			}
-			if (strcmp(fstype, "autofs") &&
-			    strncmp(p, "hosts", 5))
+			if (strncmp(p, "hosts", 5))
 				info = parse_map_type_info("hosts:");
 			else
 				argv[argc++] = p;
 		} while ((p = strchr(p, ',')) != NULL);
 	}
 	argv[argc] = NULL;
+
+	error(LOGOPT_ANY, "info type %s format %s map %s", info->type, info->format, info->map);
 
 	source = master_add_map_source(entry,
 				       info->type, info->format,
