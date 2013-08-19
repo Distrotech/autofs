@@ -1,0 +1,11 @@
+Bottom: 9477e1692248b49619e8e94171be74ff86207393
+Top:    9477e1692248b49619e8e94171be74ff86207393
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-08-19 08:27:40 +0800
+
+autofs-5.0.7 - fix bad makdir permission on create
+
+
+---
+
+
