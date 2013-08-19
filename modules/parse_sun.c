@@ -695,14 +695,18 @@ static int sun_mount(struct autofs_point *ap, const char *root,
 		rv = mount_nfs->mount_mount(ap, root, mountpoint, strlen(mountpoint),
 					    what, fstype, options, mount_nfs->context);
 	} else {
-		what = alloca(loclen + 1);
-		if (*loc == ':') {
-			loclen--;
-			memcpy(what, loc + 1, loclen);
-			what[loclen] = '\0';
-		} else {
-			memcpy(what, loc, loclen);
-			what[loclen] = '\0';
+		if (loclen)
+			what = NULL;
+		else {
+			what = alloca(loclen + 1);
+			if (*loc == ':') {
+				loclen--;
+				memcpy(what, loc + 1, loclen);
+				what[loclen] = '\0';
+			} else {
+				memcpy(what, loc, loclen);
+				what[loclen] = '\0';
+			}
 		}
 
 		debug(ap->logopt, MODPREFIX
@@ -881,7 +885,8 @@ static int validate_location(unsigned int logopt, char *loc)
 		    !strncmp(ptr, "file:", 5) || !strncmp(ptr, "yp:", 3) ||
 		    !strncmp(ptr, "nis:", 4) || !strncmp(ptr, "nisplus:", 8) ||
 		    !strncmp(ptr, "ldap:", 5) || !strncmp(ptr, "ldaps:", 6) ||
-		    !strncmp(ptr, "sss:", 4) || !strncmp(ptr, "dir:", 4))
+		    !strncmp(ptr, "sss:", 4) || !strncmp(ptr, "dir:", 4) ||
+		    !strncmp(ptr, "hosts:", 4))
 			return 1;
 		error(logopt,
 		      "expected colon delimeter not found in location %s",
@@ -1433,8 +1438,11 @@ int parse_mount(struct autofs_point *ap, const char *name,
 			p += l;
 			p = skipspace(p);
 
+			error(LOGOPT_ANY, "options %s", options);
+
 			l = parse_mapent(p, options, &myoptions, &loc, ap->logopt);
-			if (!l) {
+			if (!(strstr(myoptions, "fstype=autofs") &&
+			     strstr(myoptions, "hosts")) || !l) {
 				cache_delete_offset_list(mc, name);
 				cache_multi_unlock(me);
 				cache_unlock(mc);
@@ -1592,13 +1600,17 @@ int parse_mount(struct autofs_point *ap, const char *name,
 			p = skipspace(p);
 		}
 
-		loclen = strlen(loc);
-		if (loclen == 0) {
-			free(loc);
-			free(options);
-			error(ap->logopt,
-			      MODPREFIX "entry %s is empty!", name);
-			return 1;
+		/* if it's not a hosts map loc must be non-null */
+		if (!(strstr(options, "fstype=autofs") &&
+		      strstr(options, "hosts"))) {
+			loclen = strlen(loc);
+			if (loclen == 0) {
+				free(loc);
+				free(options);
+				error(ap->logopt,
+				      MODPREFIX "entry %s is empty!", name);
+				return 1;
+			}
 		}
 
 		debug(ap->logopt,
