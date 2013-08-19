@@ -62,6 +62,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 	char buf[MAX_ERR_BUF];
 	char *options, *p;
 	int len, ret;
+	int hosts = 0;
 
 	/* Root offset of multi-mount */
 	len = strlen(root);
@@ -123,6 +124,8 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 				ghost = 1;
 			else if (strncmp(cp, "symlink", 7) == 0)
 				symlnk = 1;
+			else if (strncmp(cp, "hosts", 5) == 0)
+				hosts = 1;
 			else if (strncmp(cp, "timeout=", 8) == 0) {
 				char *val = strchr(cp, '=');
 				unsigned tout;
@@ -164,7 +167,10 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 	if (symlnk)
 		nap->flags |= MOUNT_FLAG_SYMLINK;
 
-	argc = 1;
+	if (hosts)
+		argc = 0;
+	else
+		argc = 1;
 
 	if (options) {
 		char *t = options;
@@ -176,7 +182,10 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 	}
 	argv = (const char **) alloca((argc + 1) * sizeof(char *));
 
-	argc = 1;
+	if (hosts)
+		argc = 0;
+	else
+		argc = 1;
 
 	/*
 	 * If a mount of a hosts map is being requested it will come
