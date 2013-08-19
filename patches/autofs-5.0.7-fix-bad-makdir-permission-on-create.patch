@@ -3,7 +3,7 @@ Top:    29b9e08fe9d44d2f701a118b8342fe31b545f0f1
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-08-19 08:27:40 +0800
 
-autofs-5.0.7 - fix bad makdir permission on create
+autofs-5.0.7 - fix bad mkdir permission on create
 
 Reported by Gordon Lack (gordoni[dot]m[dot]lackr[at]gsk[dot]com).
 
