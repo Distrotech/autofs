@@ -1,5 +1,5 @@
 Bottom: d4bfce8f4c6be977c8d490433a4625cc572856e7
-Top:    29b9e08fe9d44d2f701a118b8342fe31b545f0f1
+Top:    4e6aa4a637717438e96073db4601629e7139185a
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-08-19 08:27:40 +0800
 
@@ -14,6 +14,18 @@ creates unusable directories (permission == 550).
 
 ---
 
+diff --git a/CHANGELOG b/CHANGELOG
+index 2499f1c..3a3fec1 100644
+--- a/CHANGELOG
++++ b/CHANGELOG
+@@ -75,6 +75,7 @@
+ - fix fix wildcard multi map regression.
+ - improve timeout option description.
+ - only probe specific nfs version if requested.
++- fix bad mkdir permission on create.
+ 
+ 25/07/2012 autofs-5.0.7
+ =======================
 diff --git a/daemon/automount.c b/daemon/automount.c
 index 97c726a..6b55103 100644
 --- a/daemon/automount.c
