@@ -1,5 +1,5 @@
-Bottom: cf10a30c62afdf98081325814cb39ee1bfabed38
-Top:    dbc6a9e87e9333f1a1acc7e0e23ec4743c2df930
+Bottom: af4afd3216b9addcb5809a68e568b3213b6c03a1
+Top:    6fe0d9dfb0ad85a232bed9dc7110bfde2b412292
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-08-19 17:03:12 +0800
 
@@ -26,7 +26,7 @@ index 55a8a7c..d2e7b12 100644
  .RE
  .sp
 diff --git a/modules/parse_sun.c b/modules/parse_sun.c
-index 20277d9..5ab451e 100644
+index c1fc528..bc86b5d 100644
 --- a/modules/parse_sun.c
 +++ b/modules/parse_sun.c
 @@ -107,6 +107,7 @@ static struct substvar *addstdenv(struct substvar *sv)
