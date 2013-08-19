@@ -1,5 +1,5 @@
 Bottom: af4afd3216b9addcb5809a68e568b3213b6c03a1
-Top:    33e9cf93ebaeb1803b9f10dfd0bba6b69ba4ce0c
+Top:    6ec7010c589e53310d4e9ffc5a91ba911210bf4d
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-08-19 09:57:34 +0800
 
@@ -136,7 +136,7 @@ index 8c1e600..d33932c 100644
  				       info->type, info->format,
  				       time(NULL), argc, argv);
 diff --git a/modules/parse_sun.c b/modules/parse_sun.c
-index c1fc528..302460f 100644
+index c1fc528..9db9e18 100644
 --- a/modules/parse_sun.c
 +++ b/modules/parse_sun.c
 @@ -695,14 +695,18 @@ static int sun_mount(struct autofs_point *ap, const char *root,
@@ -196,7 +196,16 @@ index c1fc528..302460f 100644
  				cache_delete_offset_list(mc, name);
  				cache_multi_unlock(me);
  				cache_unlock(mc);
-@@ -1592,13 +1602,20 @@ int parse_mount(struct autofs_point *ap, const char *name,
+@@ -1481,6 +1491,8 @@ int parse_mount(struct autofs_point *ap, const char *name,
+ 			clean_stale_multi_triggers(ap, me, NULL, NULL);
+ 		cache_set_parents(me);
+ 
++		error(LOGOPT_ANY, "call mount_subtree");
++
+ 		rv = mount_subtree(ap, me, name, NULL, options, ctxt);
+ 
+ 		cache_multi_unlock(me);
+@@ -1592,13 +1604,20 @@ int parse_mount(struct autofs_point *ap, const char *name,
  			p = skipspace(p);
  		}
  
