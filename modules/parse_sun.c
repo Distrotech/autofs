@@ -695,14 +695,18 @@ static int sun_mount(struct autofs_point *ap, const char *root,
 		rv = mount_nfs->mount_mount(ap, root, mountpoint, strlen(mountpoint),
 					    what, fstype, options, mount_nfs->context);
 	} else {
-		what = alloca(loclen + 1);
-		if (*loc == ':') {
-			loclen--;
-			memcpy(what, loc + 1, loclen);
-			what[loclen] = '\0';
-		} else {
-			memcpy(what, loc, loclen);
-			what[loclen] = '\0';
+		if (!loclen)
+			what = NULL;
+		else {
+			what = alloca(loclen + 1);
+			if (*loc == ':') {
+				loclen--;
+				memcpy(what, loc + 1, loclen);
+				what[loclen] = '\0';
+			} else {
+				memcpy(what, loc, loclen);
+				what[loclen] = '\0';
+			}
 		}
 
 		debug(ap->logopt, MODPREFIX
@@ -1433,8 +1437,11 @@ int parse_mount(struct autofs_point *ap, const char *name,
 			p += l;
 			p = skipspace(p);
 
+			error(LOGOPT_ANY, "options %s", options);
+
 			l = parse_mapent(p, options, &myoptions, &loc, ap->logopt);
-			if (!l) {
+			if (!(strstr(myoptions, "fstype=autofs") &&
+			     strstr(myoptions, "hosts")) || !l) {
 				cache_delete_offset_list(mc, name);
 				cache_multi_unlock(me);
 				cache_unlock(mc);
@@ -1592,13 +1599,20 @@ int parse_mount(struct autofs_point *ap, const char *name,
 			p = skipspace(p);
 		}
 
-		loclen = strlen(loc);
-		if (loclen == 0) {
-			free(loc);
-			free(options);
-			error(ap->logopt,
-			      MODPREFIX "entry %s is empty!", name);
-			return 1;
+		/* if it's not a hosts map loc must be non-null */
+		if ((strstr(options, "fstype=autofs") &&
+		      strstr(options, "hosts"))) {
+			loc = NULL;
+			loclen = 0;
+		} else {
+			loclen = strlen(loc);
+			if (loclen == 0) {
+				free(loc);
+				free(options);
+				error(ap->logopt,
+				      MODPREFIX "entry %s is empty!", name);
+				return 1;
+			}
 		}
 
 		debug(ap->logopt,
