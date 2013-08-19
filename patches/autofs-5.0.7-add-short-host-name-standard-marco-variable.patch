@@ -6,7 +6,8 @@ Date:   2013-08-19 17:03:12 +0800
 autofs-5.0.7 - add short host name standard marco variable
 
 Sometimes the short hostname (without the domain part) could be useful.
-Add this to the standard
+Add this to the standard additional macro variables, in particular, to
+compliment the ${HOST} macro.
 
 
 ---
