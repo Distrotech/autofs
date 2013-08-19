@@ -1,0 +1,10 @@
+Bottom: fc28baf3514fe78424490d143b1112b8f900d448
+Top:    fc28baf3514fe78424490d143b1112b8f900d448
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-08-19 12:50:47 +0800
+
+Refresh of autofs-5.0.7-allow-use-of-hosts-map-in-maps.patch
+
+---
+
+
