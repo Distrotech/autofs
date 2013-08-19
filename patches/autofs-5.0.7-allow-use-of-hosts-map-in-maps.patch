@@ -1,5 +1,5 @@
 Bottom: af4afd3216b9addcb5809a68e568b3213b6c03a1
-Top:    6a3ea35ed46e4cf08b635cf392766403e8d0d6ba
+Top:    646b12b3cf671d83e2dd12febbca1c8f6ceb54bc
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-08-19 09:57:34 +0800
 
@@ -127,7 +127,7 @@ index 8c1e600..319f2e4 100644
  	if (options) {
  		p = options;
 diff --git a/modules/parse_sun.c b/modules/parse_sun.c
-index c1fc528..87b93b4 100644
+index c1fc528..9aac7b5 100644
 --- a/modules/parse_sun.c
 +++ b/modules/parse_sun.c
 @@ -695,14 +695,18 @@ static int sun_mount(struct autofs_point *ap, const char *root,
@@ -205,16 +205,7 @@ index c1fc528..87b93b4 100644
  			}
  
  			p += l;
-@@ -1481,6 +1492,8 @@ int parse_mount(struct autofs_point *ap, const char *name,
- 			clean_stale_multi_triggers(ap, me, NULL, NULL);
- 		cache_set_parents(me);
- 
-+		error(LOGOPT_ANY, "call mount_subtree");
-+
- 		rv = mount_subtree(ap, me, name, NULL, options, ctxt);
- 
- 		cache_multi_unlock(me);
-@@ -1592,13 +1605,20 @@ int parse_mount(struct autofs_point *ap, const char *name,
+@@ -1592,13 +1603,20 @@ int parse_mount(struct autofs_point *ap, const char *name,
  			p = skipspace(p);
  		}
  
