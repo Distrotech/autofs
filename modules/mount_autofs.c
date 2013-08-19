@@ -184,7 +184,6 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 		return 1;
 	}
 	argv[0] = info->map;
-	error(LOGOPT_ANY, "info type %s format %s map %s", info->type, info->format, info->map);
 
 	if (options) {
 		p = options;
