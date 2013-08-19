@@ -1,0 +1,32 @@
+Bottom: e670863f161c92e9816865d7b6831a9322a905b7
+Top:    824ba798a21c43100c49e1a88569b2714f86aa16
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-08-19 13:54:49 +0800
+
+Refresh of autofs-5.0.7-allow-use-of-hosts-map-in-maps.patch
+
+---
+
+diff --git a/modules/mount_autofs.c b/modules/mount_autofs.c
+index 00a91e2..c072a10 100644
+--- a/modules/mount_autofs.c
++++ b/modules/mount_autofs.c
+@@ -194,8 +194,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
+ 				*p = '\0';
+ 				p++;
+ 			}
+-			if (strcmp(fstype, "autofs") &&
+-			    strncmp(p, "hosts", 5))
++			if (strncmp(p, "hosts", 5))
+ 				info = parse_map_type_info("hosts:");
+ 			else
+ 				argv[argc++] = p;
+@@ -203,6 +202,8 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
+ 	}
+ 	argv[argc] = NULL;
+ 
++	error(LOGOPT_ANY, "info type %s format %s map %s", info->type, info->format, info->map);
++
+ 	source = master_add_map_source(entry,
+ 				       info->type, info->format,
+ 				       time(NULL), argc, argv);
