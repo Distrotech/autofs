@@ -1,5 +1,5 @@
 Bottom: d4bfce8f4c6be977c8d490433a4625cc572856e7
-Top:    4e6aa4a637717438e96073db4601629e7139185a
+Top:    62f4d4743f20ccb238b49247fc21798a98005f55
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-08-19 08:27:40 +0800
 
@@ -27,7 +27,7 @@ index 2499f1c..3a3fec1 100644
  25/07/2012 autofs-5.0.7
  =======================
 diff --git a/daemon/automount.c b/daemon/automount.c
-index 97c726a..6b55103 100644
+index 97c726a..a22de2d 100644
 --- a/daemon/automount.c
 +++ b/daemon/automount.c
 @@ -122,7 +122,10 @@ static int do_mkdir(const char *parent, const char *path, mode_t mode)
@@ -35,7 +35,7 @@ index 97c726a..6b55103 100644
  	if ((status != -1 && fs.f_type == (__SWORD_TYPE) AUTOFS_SUPER_MAGIC) ||
  	    contained_in_local_fs(path)) {
 -		if (mkdir(path, mode) == -1) {
-+		int mask = umask(0022);
++		mode_t mask = umask(0022);
 +		int ret = mkdir(path, mode);
 +		void umask(mask);
 +		if (ret == -1) {
