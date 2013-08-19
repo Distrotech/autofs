@@ -1,5 +1,5 @@
 Bottom: af4afd3216b9addcb5809a68e568b3213b6c03a1
-Top:    646b12b3cf671d83e2dd12febbca1c8f6ceb54bc
+Top:    73a38369f7fcf42f8612eab528a604ea4a6a16ab
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-08-19 09:57:34 +0800
 
@@ -127,7 +127,7 @@ index 8c1e600..319f2e4 100644
  	if (options) {
  		p = options;
 diff --git a/modules/parse_sun.c b/modules/parse_sun.c
-index c1fc528..9aac7b5 100644
+index c1fc528..7fd1bca 100644
 --- a/modules/parse_sun.c
 +++ b/modules/parse_sun.c
 @@ -695,14 +695,18 @@ static int sun_mount(struct autofs_point *ap, const char *root,
@@ -205,7 +205,7 @@ index c1fc528..9aac7b5 100644
  			}
  
  			p += l;
-@@ -1592,13 +1603,20 @@ int parse_mount(struct autofs_point *ap, const char *name,
+@@ -1592,13 +1603,23 @@ int parse_mount(struct autofs_point *ap, const char *name,
  			p = skipspace(p);
  		}
  
@@ -216,9 +216,12 @@ index c1fc528..9aac7b5 100644
 -			error(ap->logopt,
 -			      MODPREFIX "entry %s is empty!", name);
 -			return 1;
-+		/* if it's not a hosts map loc must be non-null */
++		/*
++		 * If it's a hosts map loc will be empty but may contain
++		 * junk.
++		 */
 +		if ((strstr(options, "fstype=autofs") &&
-+		      strstr(options, "hosts"))) {
++		     strstr(options, "hosts"))) {
 +			loc = NULL;
 +			loclen = 0;
 +		} else {
