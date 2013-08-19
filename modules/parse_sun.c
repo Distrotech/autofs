@@ -1603,9 +1603,12 @@ int parse_mount(struct autofs_point *ap, const char *name,
 			p = skipspace(p);
 		}
 
-		/* if it's not a hosts map loc must be non-null */
+		/*
+		 * If it's a hosts map loc will be empty but may contain
+		 * junk.
+		 */
 		if ((strstr(options, "fstype=autofs") &&
-		      strstr(options, "hosts"))) {
+		     strstr(options, "hosts"))) {
 			loc = NULL;
 			loclen = 0;
 		} else {
