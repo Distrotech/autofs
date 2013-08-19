@@ -1,5 +1,5 @@
-Bottom: af4afd3216b9addcb5809a68e568b3213b6c03a1
-Top:    cf10a30c62afdf98081325814cb39ee1bfabed38
+Bottom: 9ad5ad84d488b315357028e195dd5b062f57bed9
+Top:    38b8d91242558692348d0c577a8139adf1ce2f87
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-08-19 09:57:34 +0800
 
@@ -127,10 +127,10 @@ index 8c1e600..319f2e4 100644
  	if (options) {
  		p = options;
 diff --git a/modules/parse_sun.c b/modules/parse_sun.c
-index c1fc528..20277d9 100644
+index bc86b5d..5ab451e 100644
 --- a/modules/parse_sun.c
 +++ b/modules/parse_sun.c
-@@ -695,14 +695,18 @@ static int sun_mount(struct autofs_point *ap, const char *root,
+@@ -708,14 +708,18 @@ static int sun_mount(struct autofs_point *ap, const char *root,
  		rv = mount_nfs->mount_mount(ap, root, mountpoint, strlen(mountpoint),
  					    what, fstype, options, mount_nfs->context);
  	} else {
@@ -157,7 +157,7 @@ index c1fc528..20277d9 100644
  		}
  
  		debug(ap->logopt, MODPREFIX
-@@ -799,7 +803,8 @@ update_offset_entry(struct autofs_point *ap, const char *name,
+@@ -812,7 +816,8 @@ update_offset_entry(struct autofs_point *ap, const char *name,
  
  	mc = source->mc;
  
@@ -167,7 +167,7 @@ index c1fc528..20277d9 100644
  		error(ap->logopt,
  		      MODPREFIX "syntax error in offset %s -> %s", path, loc);
  		return CHE_FAIL;
-@@ -833,8 +838,10 @@ update_offset_entry(struct autofs_point *ap, const char *name,
+@@ -846,8 +851,10 @@ update_offset_entry(struct autofs_point *ap, const char *name,
  	if (*myoptions) {
  		strcpy(m_mapent, "-");
  		strcat(m_mapent, myoptions);
@@ -180,7 +180,7 @@ index c1fc528..20277d9 100644
  	} else
  		strcpy(m_mapent, loc);
  
-@@ -1435,13 +1442,17 @@ int parse_mount(struct autofs_point *ap, const char *name,
+@@ -1448,13 +1455,17 @@ int parse_mount(struct autofs_point *ap, const char *name,
  
  			l = parse_mapent(p, options, &myoptions, &loc, ap->logopt);
  			if (!l) {
@@ -205,7 +205,7 @@ index c1fc528..20277d9 100644
  			}
  
  			p += l;
-@@ -1592,13 +1603,23 @@ int parse_mount(struct autofs_point *ap, const char *name,
+@@ -1605,13 +1616,23 @@ int parse_mount(struct autofs_point *ap, const char *name,
  			p = skipspace(p);
  		}
  
