@@ -803,6 +803,7 @@ update_offset_entry(struct autofs_point *ap, const char *name,
 
 	mc = source->mc;
 
+	/* Internal hosts map may have loc == NULL */
 	if (!*path) {
 		error(ap->logopt,
 		      MODPREFIX "syntax error in offset %s -> %s", path, loc);
