@@ -1,0 +1,22 @@
+Bottom: 33e9cf93ebaeb1803b9f10dfd0bba6b69ba4ce0c
+Top:    6ec7010c589e53310d4e9ffc5a91ba911210bf4d
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-08-19 15:04:59 +0800
+
+Refresh of autofs-5.0.7-allow-use-of-hosts-map-in-maps.patch
+
+---
+
+diff --git a/modules/parse_sun.c b/modules/parse_sun.c
+index 302460f..9db9e18 100644
+--- a/modules/parse_sun.c
++++ b/modules/parse_sun.c
+@@ -1491,6 +1491,8 @@ int parse_mount(struct autofs_point *ap, const char *name,
+ 			clean_stale_multi_triggers(ap, me, NULL, NULL);
+ 		cache_set_parents(me);
+ 
++		error(LOGOPT_ANY, "call mount_subtree");
++
+ 		rv = mount_subtree(ap, me, name, NULL, options, ctxt);
+ 
+ 		cache_multi_unlock(me);
