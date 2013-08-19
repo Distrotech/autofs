@@ -1,5 +1,5 @@
 Bottom: af4afd3216b9addcb5809a68e568b3213b6c03a1
-Top:    4d897aadd57ebc0e239069f9f04fee1cb84b2dc8
+Top:    b5d09fb9afc86c0bd242fca9a00b1ad8db186d76
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-08-19 09:57:34 +0800
 
@@ -25,10 +25,37 @@ index 2326838..cc1b4a4 100644
  static unsigned int map_type_count = sizeof(map_type)/sizeof(struct types);
  
 diff --git a/modules/parse_sun.c b/modules/parse_sun.c
-index c1fc528..ee545d6 100644
+index c1fc528..5add1f6 100644
 --- a/modules/parse_sun.c
 +++ b/modules/parse_sun.c
-@@ -881,7 +881,8 @@ static int validate_location(unsigned int logopt, char *loc)
+@@ -695,14 +695,18 @@ static int sun_mount(struct autofs_point *ap, const char *root,
+ 		rv = mount_nfs->mount_mount(ap, root, mountpoint, strlen(mountpoint),
+ 					    what, fstype, options, mount_nfs->context);
+ 	} else {
+-		what = alloca(loclen + 1);
+-		if (*loc == ':') {
+-			loclen--;
+-			memcpy(what, loc + 1, loclen);
+-			what[loclen] = '\0';
+-		} else {
+-			memcpy(what, loc, loclen);
+-			what[loclen] = '\0';
++		if (loclen)
++			what = NULL;
++		else {
++			what = alloca(loclen + 1);
++			if (*loc == ':') {
++				loclen--;
++				memcpy(what, loc + 1, loclen);
++				what[loclen] = '\0';
++			} else {
++				memcpy(what, loc, loclen);
++				what[loclen] = '\0';
++			}
+ 		}
+ 
+ 		debug(ap->logopt, MODPREFIX
+@@ -881,7 +885,8 @@ static int validate_location(unsigned int logopt, char *loc)
  		    !strncmp(ptr, "file:", 5) || !strncmp(ptr, "yp:", 3) ||
  		    !strncmp(ptr, "nis:", 4) || !strncmp(ptr, "nisplus:", 8) ||
  		    !strncmp(ptr, "ldap:", 5) || !strncmp(ptr, "ldaps:", 6) ||
@@ -38,7 +65,7 @@ index c1fc528..ee545d6 100644
  			return 1;
  		error(logopt,
  		      "expected colon delimeter not found in location %s",
-@@ -1433,8 +1434,11 @@ int parse_mount(struct autofs_point *ap, const char *name,
+@@ -1433,8 +1438,11 @@ int parse_mount(struct autofs_point *ap, const char *name,
  			p += l;
  			p = skipspace(p);
  
@@ -51,7 +78,7 @@ index c1fc528..ee545d6 100644
  				cache_delete_offset_list(mc, name);
  				cache_multi_unlock(me);
  				cache_unlock(mc);
-@@ -1592,13 +1596,17 @@ int parse_mount(struct autofs_point *ap, const char *name,
+@@ -1592,13 +1600,17 @@ int parse_mount(struct autofs_point *ap, const char *name,
  			p = skipspace(p);
  		}
  
