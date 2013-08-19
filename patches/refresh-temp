@@ -1,0 +1,25 @@
+Bottom: 9477e1692248b49619e8e94171be74ff86207393
+Top:    bf97651431ac4212fc6d2b2d4738fafc4b299759
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-08-19 08:37:33 +0800
+
+Refresh of autofs-5.0.7-fix-bad-makdir-permission-on-create.patch
+
+---
+
+diff --git a/daemon/automount.c b/daemon/automount.c
+index 97c726a..6b55103 100644
+--- a/daemon/automount.c
++++ b/daemon/automount.c
+@@ -122,7 +122,10 @@ static int do_mkdir(const char *parent, const char *path, mode_t mode)
+ 		status = statfs(parent, &fs);
+ 	if ((status != -1 && fs.f_type == (__SWORD_TYPE) AUTOFS_SUPER_MAGIC) ||
+ 	    contained_in_local_fs(path)) {
+-		if (mkdir(path, mode) == -1) {
++		int mask = umask(0022);
++		int ret = mkdir(path, mode);
++		void umask(mask);
++		if (ret == -1) {
+ 			errno = EACCES;
+ 			return 0;
+ 		}
