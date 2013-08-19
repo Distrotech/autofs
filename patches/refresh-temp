@@ -1,0 +1,24 @@
+Bottom: 73a38369f7fcf42f8612eab528a604ea4a6a16ab
+Top:    cf10a30c62afdf98081325814cb39ee1bfabed38
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-08-19 15:43:39 +0800
+
+Refresh of autofs-5.0.7-allow-use-of-hosts-map-in-maps.patch
+
+---
+
+diff --git a/modules/parse_sun.c b/modules/parse_sun.c
+index 7fd1bca..20277d9 100644
+--- a/modules/parse_sun.c
++++ b/modules/parse_sun.c
+@@ -1604,8 +1604,8 @@ int parse_mount(struct autofs_point *ap, const char *name,
+ 		}
+ 
+ 		/*
+-		 * If it's a hosts map loc will be empty but may contain
+-		 * junk.
++		 * If options are asking for a hosts map loc should be
++		 * NULL but we see it can contain junk, so ....
+ 		 */
+ 		if ((strstr(options, "fstype=autofs") &&
+ 		     strstr(options, "hosts"))) {
