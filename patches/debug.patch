@@ -1,5 +1,5 @@
 Bottom: af4afd3216b9addcb5809a68e568b3213b6c03a1
-Top:    30c50efcbff260548fc311d81a94810ad9b678ad
+Top:    89da7110d11eacd6bc5744af902e2e24e8a49539
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-08-19 09:57:34 +0800
 
@@ -33,7 +33,7 @@ index 8c1e600..3d96e69 100644
  	if (options) {
  		p = options;
 diff --git a/modules/parse_sun.c b/modules/parse_sun.c
-index c1fc528..aa7ae07 100644
+index c1fc528..adf302a 100644
 --- a/modules/parse_sun.c
 +++ b/modules/parse_sun.c
 @@ -881,7 +881,8 @@ static int validate_location(unsigned int logopt, char *loc)
@@ -46,3 +46,20 @@ index c1fc528..aa7ae07 100644
  			return 1;
  		error(logopt,
  		      "expected colon delimeter not found in location %s",
+@@ -1294,6 +1295,16 @@ int parse_mount(struct autofs_point *ap, const char *name,
+ 
+ 	p = skipspace(pmapent);
+ 
++	/*
++	 * Change special map -hosts into <type>: format so it
++	 * doesn't confuse the options parse.
++	 */
++	if (strstr(p, "-hosts")) {
++		char *pos = p;
++		*pos++ = 'h'; *pos++ = 'o'; *pos++ = 's'; *pos++ = 't';
++		*pos++ = ':';
++	}
++
+ 	/* Deal with 0 or more options */
+ 	if (*p == '-') {
+ 		char *tmp, *mnt_options = NULL;
