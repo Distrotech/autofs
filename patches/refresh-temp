@@ -1,0 +1,91 @@
+Bottom: ff0270577ff38104705eb4bc16df86b7c5232666
+Top:    6b2fccada78cd8beae51c0c9411bf6b34f735c90
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-08-19 14:40:11 +0800
+
+Refresh of autofs-5.0.7-allow-use-of-hosts-map-in-maps.patch
+
+---
+
+diff --git a/lib/parse_subs.c b/lib/parse_subs.c
+index cc1b4a4..dd2a784 100644
+--- a/lib/parse_subs.c
++++ b/lib/parse_subs.c
+@@ -385,7 +385,7 @@ struct map_type_info *parse_map_type_info(const char *str)
+ 					return NULL;
+ 				} else {
+ 					*pos++ = '\0';
+-					while (*pos == ' ')
++					while (*pos && *pos == ' ')
+ 						*pos++ = '\0';
+ 					map = pos;
+ 					break;
+@@ -413,7 +413,7 @@ struct map_type_info *parse_map_type_info(const char *str)
+ 							return NULL;
+ 						} else {
+ 							*pos++ = '\0';
+-							while (*pos == ' ')
++							while (*pos && *pos == ' ')
+ 								*pos++ = '\0';
+ 							map = pos;
+ 							break;
+@@ -459,11 +459,13 @@ struct map_type_info *parse_map_type_info(const char *str)
+ 		}
+ 	}
+ 
+-	info->map = strdup(map);
+-	if (!info->map) {
+-		free(buf);
+-		free_map_type_info(info);
+-		return NULL;
++	if (map) {
++		info->map = strdup(map);
++		if (!info->map) {
++			free(buf);
++			free_map_type_info(info);
++			return NULL;
++		}
+ 	}
+ 
+ 	free(buf);
+diff --git a/modules/mount_autofs.c b/modules/mount_autofs.c
+index 4f68ea6..872fa71 100644
+--- a/modules/mount_autofs.c
++++ b/modules/mount_autofs.c
+@@ -192,14 +192,17 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
+ 	 * ro us via the options. Catch that below when processing the
+ 	 * option and create type info struct then.
+ 	 */
+-	if (what) {
+-		if (!(info = parse_map_type_info(what))) {
+-			error(ap->logopt, MODPREFIX "failed to parse map info");
+-			master_free_mapent(entry);
+-			return 1;
+-		}
+-		argv[0] = info->map;
++	if (hosts)
++		info = parse_map_type_info("hosts:");
++	else
++		info = parse_map_type_info(what);
++	if (!info) {
++		error(ap->logopt, MODPREFIX "failed to parse map info");
++		master_free_mapent(entry);
++		return 1;
+ 	}
++	if (what)
++		argv[0] = info->map;
+ 
+ 	if (options) {
+ 		p = options;
+@@ -208,10 +211,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
+ 				*p = '\0';
+ 				p++;
+ 			}
+-			if (!strncmp(p, "hosts", 5))
+-				info = parse_map_type_info("hosts:");
+-			else
+-				argv[argc++] = p;
++			argv[argc++] = p;
+ 		} while ((p = strchr(p, ',')) != NULL);
+ 	}
+ 	argv[argc] = NULL;
