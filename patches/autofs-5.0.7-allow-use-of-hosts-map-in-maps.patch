@@ -1,5 +1,5 @@
 Bottom: af4afd3216b9addcb5809a68e568b3213b6c03a1
-Top:    73a38369f7fcf42f8612eab528a604ea4a6a16ab
+Top:    cf10a30c62afdf98081325814cb39ee1bfabed38
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-08-19 09:57:34 +0800
 
@@ -127,7 +127,7 @@ index 8c1e600..319f2e4 100644
  	if (options) {
  		p = options;
 diff --git a/modules/parse_sun.c b/modules/parse_sun.c
-index c1fc528..7fd1bca 100644
+index c1fc528..20277d9 100644
 --- a/modules/parse_sun.c
 +++ b/modules/parse_sun.c
 @@ -695,14 +695,18 @@ static int sun_mount(struct autofs_point *ap, const char *root,
@@ -217,8 +217,8 @@ index c1fc528..7fd1bca 100644
 -			      MODPREFIX "entry %s is empty!", name);
 -			return 1;
 +		/*
-+		 * If it's a hosts map loc will be empty but may contain
-+		 * junk.
++		 * If options are asking for a hosts map loc should be
++		 * NULL but we see it can contain junk, so ....
 +		 */
 +		if ((strstr(options, "fstype=autofs") &&
 +		     strstr(options, "hosts"))) {
