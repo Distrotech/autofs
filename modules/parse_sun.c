@@ -983,7 +983,6 @@ static int parse_mapent(const char *ent, char *g_options, char **options, char *
 	}
 
 	if (!validate_location(logopt, loc)) {
-		error(LOGOPT_ANY, "revalidate_location failed");
 		free(myoptions);
 		free(loc);
 		return 0;
@@ -1017,7 +1016,6 @@ static int parse_mapent(const char *ent, char *g_options, char **options, char *
 		}
 
 		if (!validate_location(logopt, ent_chunk)) {
-			error(LOGOPT_ANY, "validate_location failed");
 			free(ent_chunk);
 			free(myoptions);
 			free(loc);
