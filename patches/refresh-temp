@@ -1,0 +1,37 @@
+Bottom: 2b458f4817ad842a595a2e473a433410573500c0
+Top:    aa184c382353db018a17a27ba119521b89a3f6f5
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-08-19 11:00:49 +0800
+
+Refresh of debug.patch
+
+---
+
+diff --git a/modules/parse_sun.c b/modules/parse_sun.c
+index 1efdc9e..97d71c6 100644
+--- a/modules/parse_sun.c
++++ b/modules/parse_sun.c
+@@ -1293,16 +1293,16 @@ int parse_mount(struct autofs_point *ap, const char *name,
+ 		return 1;
+ 	}
+ 
+-	p = skipspace(pmapent);
+-
+ 	/*
+-	 * Change special map -hosts into <type>: format so it
+-	 * doesn't confuse the options parse.
++	 * Transform hosts map into a map type so we don't confuse
++	 * the options parsing.
+ 	 */
+-	if (strstr(p, "-hosts")) {
+-		*p++ = 'h'; *p++ = 'o'; *p++ = 's'; *p++ = 't';
+-		*p++ = ':';
++	if (strstr(pmapent, "-hosts")) {
++		char *t = strstr(pmapent, "-hosts");
++		*t++ = 'h'; *t++ = 'o'; *t++ = 's'; *t = 't'; *t = 's';
++		*t = ':';
+ 	}
++	p = skipspace(pmapent);
+ 
+ 	/* Deal with 0 or more options */
+ 	if (*p == '-') {
