@@ -35,6 +35,7 @@ static struct types map_type[] = {
 	{ "ldaps", 5 },
 	{ "hesiod", 6 },
 	{ "userdir", 7 },
+	{ "hosts", 5 },
 };
 static unsigned int map_type_count = sizeof(map_type)/sizeof(struct types);
 
@@ -384,7 +385,7 @@ struct map_type_info *parse_map_type_info(const char *str)
 					return NULL;
 				} else {
 					*pos++ = '\0';
-					while (*pos == ' ')
+					while (*pos && *pos == ' ')
 						*pos++ = '\0';
 					map = pos;
 					break;
@@ -412,7 +413,7 @@ struct map_type_info *parse_map_type_info(const char *str)
 							return NULL;
 						} else {
 							*pos++ = '\0';
-							while (*pos == ' ')
+							while (*pos && *pos == ' ')
 								*pos++ = '\0';
 							map = pos;
 							break;
@@ -458,11 +459,13 @@ struct map_type_info *parse_map_type_info(const char *str)
 		}
 	}
 
-	info->map = strdup(map);
-	if (!info->map) {
-		free(buf);
-		free_map_type_info(info);
-		return NULL;
+	if (map) {
+		info->map = strdup(map);
+		if (!info->map) {
+			free(buf);
+			free_map_type_info(info);
+			return NULL;
+		}
 	}
 
 	free(buf);
