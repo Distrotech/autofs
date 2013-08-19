@@ -5,6 +5,12 @@ Date:   2013-08-19 08:27:40 +0800
 
 autofs-5.0.7 - fix bad makdir permission on create
 
+Reported by Gordon Lack (gordoni[dot]m[dot]lackr[at]gsk[dot]com).
+
+If the automount daemon needs to create a directory (hierarchy) for an
+automount and it is started up with a umask of 027 (or similar) then it
+creates unusable directories (permission == 550).
+
 
 ---
 
