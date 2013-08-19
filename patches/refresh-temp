@@ -1,0 +1,34 @@
+Bottom: 824ba798a21c43100c49e1a88569b2714f86aa16
+Top:    7fbc784798e1c807824992ca78ca43155a8647a8
+Author: Ian Kent <raven@themaw.net>
+Date:   2013-08-19 14:00:16 +0800
+
+Refresh of autofs-5.0.7-allow-use-of-hosts-map-in-maps.patch
+
+---
+
+diff --git a/modules/mount_autofs.c b/modules/mount_autofs.c
+index c072a10..02332dd 100644
+--- a/modules/mount_autofs.c
++++ b/modules/mount_autofs.c
+@@ -178,6 +178,11 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
+ 
+ 	argc = 1;
+ 
++	/*
++	 * If a mount of a hosts map is being requested it will come
++	 * ro us via the options. Catch that below when processing the
++	 * option and create type info struct then.
++	 */
+ 	if (what) {
+ 		if (!(info = parse_map_type_info(what))) {
+ 			error(ap->logopt, MODPREFIX "failed to parse map info");
+@@ -194,7 +199,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
+ 				*p = '\0';
+ 				p++;
+ 			}
+-			if (strncmp(p, "hosts", 5))
++			if (!strncmp(p, "hosts", 5))
+ 				info = parse_map_type_info("hosts:");
+ 			else
+ 				argv[argc++] = p;
