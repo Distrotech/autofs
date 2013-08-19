@@ -216,8 +216,6 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 	}
 	argv[argc] = NULL;
 
-	error(LOGOPT_ANY, "info type %s format %s map %s", info->type, info->format, info->map);
-
 	source = master_add_map_source(entry,
 				       info->type, info->format,
 				       time(NULL), argc, argv);
