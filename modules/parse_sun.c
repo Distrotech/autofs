@@ -695,14 +695,18 @@ static int sun_mount(struct autofs_point *ap, const char *root,
 		rv = mount_nfs->mount_mount(ap, root, mountpoint, strlen(mountpoint),
 					    what, fstype, options, mount_nfs->context);
 	} else {
-		what = alloca(loclen + 1);
-		if (*loc == ':') {
-			loclen--;
-			memcpy(what, loc + 1, loclen);
-			what[loclen] = '\0';
-		} else {
-			memcpy(what, loc, loclen);
-			what[loclen] = '\0';
+		if (!loclen)
+			what = NULL;
+		else {
+			what = alloca(loclen + 1);
+			if (*loc == ':') {
+				loclen--;
+				memcpy(what, loc + 1, loclen);
+				what[loclen] = '\0';
+			} else {
+				memcpy(what, loc, loclen);
+				what[loclen] = '\0';
+			}
 		}
 
 		debug(ap->logopt, MODPREFIX
@@ -799,7 +803,8 @@ update_offset_entry(struct autofs_point *ap, const char *name,
 
 	mc = source->mc;
 
-	if (!*path || !*loc) {
+	/* Internal hosts map may have loc == NULL */
+	if (!*path) {
 		error(ap->logopt,
 		      MODPREFIX "syntax error in offset %s -> %s", path, loc);
 		return CHE_FAIL;
@@ -833,8 +838,10 @@ update_offset_entry(struct autofs_point *ap, const char *name,
 	if (*myoptions) {
 		strcpy(m_mapent, "-");
 		strcat(m_mapent, myoptions);
-		strcat(m_mapent, " ");
-		strcat(m_mapent, loc);
+		if (loc) {
+			strcat(m_mapent, " ");
+			strcat(m_mapent, loc);
+		}
 	} else
 		strcpy(m_mapent, loc);
 
@@ -1435,13 +1442,17 @@ int parse_mount(struct autofs_point *ap, const char *name,
 
 			l = parse_mapent(p, options, &myoptions, &loc, ap->logopt);
 			if (!l) {
-				cache_delete_offset_list(mc, name);
-				cache_multi_unlock(me);
-				cache_unlock(mc);
-				free(path);
-				free(options);
-				pthread_setcancelstate(cur_state, NULL);
-				return 1;
+				if (!(strstr(myoptions, "fstype=autofs") &&
+				      strstr(myoptions, "hosts"))) {
+					error(LOGOPT_ANY, "I think I'm a hosts map? l %d", l);
+					cache_delete_offset_list(mc, name);
+					cache_multi_unlock(me);
+					cache_unlock(mc);
+					free(path);
+					free(options);
+					pthread_setcancelstate(cur_state, NULL);
+					return 1;
+				}
 			}
 
 			p += l;
@@ -1480,6 +1491,8 @@ int parse_mount(struct autofs_point *ap, const char *name,
 		if (me == me->multi)
 			clean_stale_multi_triggers(ap, me, NULL, NULL);
 		cache_set_parents(me);
+
+		error(LOGOPT_ANY, "call mount_subtree");
 
 		rv = mount_subtree(ap, me, name, NULL, options, ctxt);
 
@@ -1592,13 +1605,20 @@ int parse_mount(struct autofs_point *ap, const char *name,
 			p = skipspace(p);
 		}
 
-		loclen = strlen(loc);
-		if (loclen == 0) {
-			free(loc);
-			free(options);
-			error(ap->logopt,
-			      MODPREFIX "entry %s is empty!", name);
-			return 1;
+		/* if it's not a hosts map loc must be non-null */
+		if ((strstr(options, "fstype=autofs") &&
+		      strstr(options, "hosts"))) {
+			loc = NULL;
+			loclen = 0;
+		} else {
+			loclen = strlen(loc);
+			if (loclen == 0) {
+				free(loc);
+				free(options);
+				error(ap->logopt,
+				      MODPREFIX "entry %s is empty!", name);
+				return 1;
+			}
 		}
 
 		debug(ap->logopt,
