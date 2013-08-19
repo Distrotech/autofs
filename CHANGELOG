@@ -76,6 +76,7 @@
 - improve timeout option description.
 - only probe specific nfs version if requested.
 - fix bad mkdir permission on create.
+- add short host name standard marco variable.
 
 25/07/2012 autofs-5.0.7
 =======================
