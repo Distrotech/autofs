@@ -695,14 +695,18 @@ static int sun_mount(struct autofs_point *ap, const char *root,
 		rv = mount_nfs->mount_mount(ap, root, mountpoint, strlen(mountpoint),
 					    what, fstype, options, mount_nfs->context);
 	} else {
-		what = alloca(loclen + 1);
-		if (*loc == ':') {
-			loclen--;
-			memcpy(what, loc + 1, loclen);
-			what[loclen] = '\0';
-		} else {
-			memcpy(what, loc, loclen);
-			what[loclen] = '\0';
+		if (loclen)
+			what = NULL;
+		else {
+			what = alloca(loclen + 1);
+			if (*loc == ':') {
+				loclen--;
+				memcpy(what, loc + 1, loclen);
+				what[loclen] = '\0';
+			} else {
+				memcpy(what, loc, loclen);
+				what[loclen] = '\0';
+			}
 		}
 
 		debug(ap->logopt, MODPREFIX
