@@ -1604,8 +1604,8 @@ int parse_mount(struct autofs_point *ap, const char *name,
 		}
 
 		/*
-		 * If it's a hosts map loc will be empty but may contain
-		 * junk.
+		 * If options are asking for a hosts map loc should be
+		 * NULL but we see it can contain junk, so ....
 		 */
 		if ((strstr(options, "fstype=autofs") &&
 		     strstr(options, "hosts"))) {
