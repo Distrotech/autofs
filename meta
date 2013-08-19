@@ -1,6 +1,6 @@
 Version: 1
-Previous: c0155d96de2351019437b96602d2e5de7717560b
-Head: 9ac95578e5aeabce383734137dad2d430787c9a8
+Previous: dc7ce72703a06c30fd0c65bbe0e0e30c187c487e
+Head: a32c975ca2f029e46685a658fbb64fbe837e7be8
 Applied:
   autofs-5.0.7-dont-override-LDFLAGS-in-make-rules.patch: 2e8251865c0ed6d91a97c107973a7eb75d3e131b
   autofs-5.0.7-fix-a-couple-of-compiler-warnings.patch: b8bdae4bfe855786de918c78eee228e4aabdab45
@@ -28,6 +28,7 @@ Applied:
   autofs-5.0.7-fix-bad-mkdir-permission-on-create.patch: b53f709f6af2ffe563b22f730f8fd7be0a5300e3
   autofs-5.0.7-setup-program-map-env-from-macro-table.patch: ef9d839c5e7520224f22163ef1757f00edc6d199
   debug.patch: 9ac95578e5aeabce383734137dad2d430787c9a8
+  refresh-temp: a32c975ca2f029e46685a658fbb64fbe837e7be8
 Unapplied:
   autofs-5.0.5-wait-for-master-map-available-at-start.patch: 28e191c68fc95cd90815f398deff088bd1d65d0a
   autofs-5.0.5-add-master-read-wait-option.patch: 05d9eb17fb1ec9418f236468875ad04b09b0546b
