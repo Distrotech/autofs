@@ -1015,7 +1015,7 @@ static int parse_mapent(const char *ent, char *g_options, char **options, char *
 		}
 
 		if (!validate_location(logopt, ent_chunk)) {
-			error(LOGOPT_ANY, "revalidate_location failed");
+			error(LOGOPT_ANY, "validate_location failed");
 			free(ent_chunk);
 			free(myoptions);
 			free(loc);
@@ -1442,8 +1442,9 @@ int parse_mount(struct autofs_point *ap, const char *name,
 			error(LOGOPT_ANY, "options %s", options);
 
 			l = parse_mapent(p, options, &myoptions, &loc, ap->logopt);
-			if (!(strstr(myoptions, "fstype=autofs") &&
-			     strstr(myoptions, "hosts")) || !l) {
+			if (!l &&
+			    !(strstr(options, "fstype=autofs") &&
+			      strstr(options, "hosts"))) {
 				error(LOGOPT_ANY, "I think I'm a hosts map? l %d", l);
 				cache_delete_offset_list(mc, name);
 				cache_multi_unlock(me);
