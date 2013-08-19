@@ -107,6 +107,7 @@ static struct substvar *addstdenv(struct substvar *sv)
 
 	tsv = pthread_getspecific(key_thread_stdenv_vars);
 	if (tsv) {
+		struct substvar *mv;
 		int ret;
 		long num;
 
@@ -121,6 +122,17 @@ static struct substvar *addstdenv(struct substvar *sv)
 		list = macro_addvar(list, "USER", 4, tsv->user);
 		list = macro_addvar(list, "GROUP", 5, tsv->group);
 		list = macro_addvar(list, "HOME", 4, tsv->home);
+		mv = macro_findvar(list, "HOST", 4);
+		if (mv) {
+			char *shost = strdup(mv->val);
+			if (shost) {
+				char *dot = strchr(shost, '.');
+				if (dot)
+					*dot = '\0';
+				list = macro_addvar(list, "SHOST", 5, shost);
+				free(shost);
+			}
+		}
 	}
 	return list;
 }
@@ -134,6 +146,7 @@ static struct substvar *removestdenv(struct substvar *sv)
 	list = macro_removevar(list, "HOME", 4);
 	list = macro_removevar(list, "GID", 3);
 	list = macro_removevar(list, "GROUP", 5);
+	list = macro_removevar(list, "SHOST", 5);
 	return list;
 }
 
