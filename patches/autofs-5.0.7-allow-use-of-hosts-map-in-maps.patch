@@ -1,5 +1,5 @@
 Bottom: af4afd3216b9addcb5809a68e568b3213b6c03a1
-Top:    c61b24147b53d5633133ac638ef68a5ff802b44d
+Top:    fae0ddc79a572f1d4b19900cba92b2b54d150374
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-08-19 09:57:34 +0800
 
@@ -136,7 +136,7 @@ index 8c1e600..d33932c 100644
  				       info->type, info->format,
  				       time(NULL), argc, argv);
 diff --git a/modules/parse_sun.c b/modules/parse_sun.c
-index c1fc528..f7cca85 100644
+index c1fc528..3b35891 100644
 --- a/modules/parse_sun.c
 +++ b/modules/parse_sun.c
 @@ -695,14 +695,18 @@ static int sun_mount(struct autofs_point *ap, const char *root,
@@ -166,7 +166,29 @@ index c1fc528..f7cca85 100644
  		}
  
  		debug(ap->logopt, MODPREFIX
-@@ -977,6 +981,7 @@ static int parse_mapent(const char *ent, char *g_options, char **options, char *
+@@ -799,7 +803,7 @@ update_offset_entry(struct autofs_point *ap, const char *name,
+ 
+ 	mc = source->mc;
+ 
+-	if (!*path || !*loc) {
++	if (!*path) {
+ 		error(ap->logopt,
+ 		      MODPREFIX "syntax error in offset %s -> %s", path, loc);
+ 		return CHE_FAIL;
+@@ -833,8 +837,10 @@ update_offset_entry(struct autofs_point *ap, const char *name,
+ 	if (*myoptions) {
+ 		strcpy(m_mapent, "-");
+ 		strcat(m_mapent, myoptions);
+-		strcat(m_mapent, " ");
+-		strcat(m_mapent, loc);
++		if (loc) {
++			strcat(m_mapent, " ");
++			strcat(m_mapent, loc);
++		}
+ 	} else
+ 		strcpy(m_mapent, loc);
+ 
+@@ -977,6 +983,7 @@ static int parse_mapent(const char *ent, char *g_options, char **options, char *
  	}
  
  	if (!validate_location(logopt, loc)) {
@@ -174,7 +196,7 @@ index c1fc528..f7cca85 100644
  		free(myoptions);
  		free(loc);
  		return 0;
-@@ -1010,6 +1015,7 @@ static int parse_mapent(const char *ent, char *g_options, char **options, char *
+@@ -1010,6 +1017,7 @@ static int parse_mapent(const char *ent, char *g_options, char **options, char *
  		}
  
  		if (!validate_location(logopt, ent_chunk)) {
@@ -182,7 +204,7 @@ index c1fc528..f7cca85 100644
  			free(ent_chunk);
  			free(myoptions);
  			free(loc);
-@@ -1433,15 +1439,21 @@ int parse_mount(struct autofs_point *ap, const char *name,
+@@ -1433,15 +1441,21 @@ int parse_mount(struct autofs_point *ap, const char *name,
  			p += l;
  			p = skipspace(p);
  
@@ -211,7 +233,7 @@ index c1fc528..f7cca85 100644
  			}
  
  			p += l;
-@@ -1481,6 +1493,8 @@ int parse_mount(struct autofs_point *ap, const char *name,
+@@ -1481,6 +1495,8 @@ int parse_mount(struct autofs_point *ap, const char *name,
  			clean_stale_multi_triggers(ap, me, NULL, NULL);
  		cache_set_parents(me);
  
@@ -220,7 +242,7 @@ index c1fc528..f7cca85 100644
  		rv = mount_subtree(ap, me, name, NULL, options, ctxt);
  
  		cache_multi_unlock(me);
-@@ -1592,13 +1606,20 @@ int parse_mount(struct autofs_point *ap, const char *name,
+@@ -1592,13 +1608,20 @@ int parse_mount(struct autofs_point *ap, const char *name,
  			p = skipspace(p);
  		}
  
