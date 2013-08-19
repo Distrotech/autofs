@@ -1,5 +1,5 @@
 Bottom: af4afd3216b9addcb5809a68e568b3213b6c03a1
-Top:    e9931ef7ac5a21466a35ef421d8c12582eb09c1a
+Top:    46ad9810d35fa1e8e5d0079402323143da9da45b
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-08-19 09:57:34 +0800
 
@@ -8,6 +8,18 @@ debug.patch
 
 ---
 
+diff --git a/lib/parse_subs.c b/lib/parse_subs.c
+index 2326838..cc1b4a4 100644
+--- a/lib/parse_subs.c
++++ b/lib/parse_subs.c
+@@ -35,6 +35,7 @@ static struct types map_type[] = {
+ 	{ "ldaps", 5 },
+ 	{ "hesiod", 6 },
+ 	{ "userdir", 7 },
++	{ "hosts", 5 },
+ };
+ static unsigned int map_type_count = sizeof(map_type)/sizeof(struct types);
+ 
 diff --git a/modules/parse_sun.c b/modules/parse_sun.c
 index c1fc528..aa7ae07 100644
 --- a/modules/parse_sun.c
