@@ -1294,8 +1294,8 @@ int parse_mount(struct autofs_point *ap, const char *name,
 	}
 
 	/*
-	 * Transform hosts map into a map type so we don't confuse
-	 * the options parsing.
+	 * If this is an indirect mount transform hosts map into a map
+	 * type so we don't confuse the options parsing.
 	 */
 	if (strstr(pmapent, "-hosts")) {
 		char *t = strstr(pmapent, "-hosts");
