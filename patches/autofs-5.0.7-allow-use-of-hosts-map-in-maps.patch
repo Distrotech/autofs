@@ -1,5 +1,5 @@
 Bottom: af4afd3216b9addcb5809a68e568b3213b6c03a1
-Top:    de3dfaf6cadf2cabbf418cc0797af3b535a34787
+Top:    3e69dd8b87405c8918da8978e1412c95d681b1a8
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-08-19 09:57:34 +0800
 
@@ -25,7 +25,7 @@ index 2326838..cc1b4a4 100644
  static unsigned int map_type_count = sizeof(map_type)/sizeof(struct types);
  
 diff --git a/modules/parse_sun.c b/modules/parse_sun.c
-index c1fc528..0dfd4f7 100644
+index c1fc528..de09f2b 100644
 --- a/modules/parse_sun.c
 +++ b/modules/parse_sun.c
 @@ -881,7 +881,8 @@ static int validate_location(unsigned int logopt, char *loc)
@@ -43,8 +43,8 @@ index c1fc528..0dfd4f7 100644
  	}
  
 +	/*
-+	 * If this is an indirect mount transform hosts map into a map
-+	 * type so we don't confuse the options parsing.
++	 * Transform hosts map into a map type so we don't confuse the
++	 * options parsing.
 +	 */
 +	if (strstr(pmapent, "-hosts")) {
 +		char *t = strstr(pmapent, "-hosts");
