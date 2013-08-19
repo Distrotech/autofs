@@ -1437,7 +1437,7 @@ int parse_mount(struct autofs_point *ap, const char *name,
 			error(LOGOPT_ANY, "options %s", options);
 
 			l = parse_mapent(p, options, &myoptions, &loc, ap->logopt);
-			if ((strstr(myoptions, "fstype=autofs") &&
+			if (!(strstr(myoptions, "fstype=autofs") &&
 			     strstr(myoptions, "hosts")) || !l) {
 				cache_delete_offset_list(mc, name);
 				cache_multi_unlock(me);
