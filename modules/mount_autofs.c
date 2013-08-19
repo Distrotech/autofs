@@ -201,7 +201,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 		master_free_mapent(entry);
 		return 1;
 	}
-	if (what)
+	if (info->map)
 		argv[0] = info->map;
 
 	if (options) {
