@@ -5,6 +5,10 @@ Date:   2013-08-19 09:57:34 +0800
 
 debug.patch
 
+At the moment the internal hosts map can only be an entry in the master
+map but there's no reason it shouldn't be possible to use it as an entry
+in indirect maps.
+
 
 ---
 
