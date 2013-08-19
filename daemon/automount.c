@@ -124,7 +124,7 @@ static int do_mkdir(const char *parent, const char *path, mode_t mode)
 	    contained_in_local_fs(path)) {
 		mode_t mask = umask(0022);
 		int ret = mkdir(path, mode);
-		void umask(mask);
+		(void) umask(mask);
 		if (ret == -1) {
 			errno = EACCES;
 			return 0;
