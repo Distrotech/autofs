@@ -1442,17 +1442,18 @@ int parse_mount(struct autofs_point *ap, const char *name,
 			error(LOGOPT_ANY, "options %s", options);
 
 			l = parse_mapent(p, options, &myoptions, &loc, ap->logopt);
-			if (!l &&
-			    !(strstr(options, "fstype=autofs") &&
-			      strstr(options, "hosts"))) {
-				error(LOGOPT_ANY, "I think I'm a hosts map? l %d", l);
-				cache_delete_offset_list(mc, name);
-				cache_multi_unlock(me);
-				cache_unlock(mc);
-				free(path);
-				free(options);
-				pthread_setcancelstate(cur_state, NULL);
-				return 1;
+			if (!l) {
+				if (!(strstr(myoptions, "fstype=autofs") &&
+				      strstr(myoptions, "hosts"))) {
+					error(LOGOPT_ANY, "I think I'm a hosts map? l %d", l);
+					cache_delete_offset_list(mc, name);
+					cache_multi_unlock(me);
+					cache_unlock(mc);
+					free(path);
+					free(options);
+					pthread_setcancelstate(cur_state, NULL);
+					return 1;
+				}
 			}
 
 			p += l;
