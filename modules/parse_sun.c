@@ -1595,13 +1595,17 @@ int parse_mount(struct autofs_point *ap, const char *name,
 			p = skipspace(p);
 		}
 
-		loclen = strlen(loc);
-		if (loclen == 0) {
-			free(loc);
-			free(options);
-			error(ap->logopt,
-			      MODPREFIX "entry %s is empty!", name);
-			return 1;
+		/* if it's not a hosts map loc must be non-null */
+		if (!(strstr(options, "fstype=autofs") &&
+		      strstr(options, "hosts"))) {
+			loclen = strlen(loc);
+			if (loclen == 0) {
+				free(loc);
+				free(options);
+				error(ap->logopt,
+				      MODPREFIX "entry %s is empty!", name);
+				return 1;
+			}
 		}
 
 		debug(ap->logopt,
