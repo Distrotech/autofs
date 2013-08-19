@@ -1,5 +1,5 @@
 Bottom: cf10a30c62afdf98081325814cb39ee1bfabed38
-Top:    85d5387879ad7f7fdbe6f637414c4748dc685cc5
+Top:    dbc6a9e87e9333f1a1acc7e0e23ec4743c2df930
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-08-19 17:03:12 +0800
 
@@ -13,7 +13,7 @@ compliment the ${HOST} macro.
 ---
 
 diff --git a/man/autofs.5 b/man/autofs.5
-index 55a8a7c..942b151 100644
+index 55a8a7c..d2e7b12 100644
 --- a/man/autofs.5
 +++ b/man/autofs.5
 @@ -170,7 +170,7 @@ UID	The user login ID
@@ -21,7 +21,7 @@ index 55a8a7c..942b151 100644
  GID	The user group ID
  HOME	The user home directory
 -HOST	Hostname (uname -n)
-+SHOST	Short hostname (domainname removed if present)
++SHOST	Short hostname (domain part removed if present)
  .fi
  .RE
  .sp
