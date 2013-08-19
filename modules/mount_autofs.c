@@ -192,14 +192,17 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 	 * ro us via the options. Catch that below when processing the
 	 * option and create type info struct then.
 	 */
-	if (what) {
-		if (!(info = parse_map_type_info(what))) {
-			error(ap->logopt, MODPREFIX "failed to parse map info");
-			master_free_mapent(entry);
-			return 1;
-		}
-		argv[0] = info->map;
+	if (hosts)
+		info = parse_map_type_info("hosts:");
+	else
+		info = parse_map_type_info(what);
+	if (!info) {
+		error(ap->logopt, MODPREFIX "failed to parse map info");
+		master_free_mapent(entry);
+		return 1;
 	}
+	if (what)
+		argv[0] = info->map;
 
 	if (options) {
 		p = options;
@@ -208,10 +211,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 				*p = '\0';
 				p++;
 			}
-			if (!strncmp(p, "hosts", 5))
-				info = parse_map_type_info("hosts:");
-			else
-				argv[argc++] = p;
+			argv[argc++] = p;
 		} while ((p = strchr(p, ',')) != NULL);
 	}
 	argv[argc] = NULL;
