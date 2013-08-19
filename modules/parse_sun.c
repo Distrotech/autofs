@@ -1601,8 +1601,11 @@ int parse_mount(struct autofs_point *ap, const char *name,
 		}
 
 		/* if it's not a hosts map loc must be non-null */
-		if (!(strstr(options, "fstype=autofs") &&
+		if ((strstr(options, "fstype=autofs") &&
 		      strstr(options, "hosts"))) {
+			loc = NULL;
+			loclen = 0;
+		} else {
 			loclen = strlen(loc);
 			if (loclen == 0) {
 				free(loc);
