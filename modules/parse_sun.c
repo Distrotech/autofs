@@ -1492,8 +1492,6 @@ int parse_mount(struct autofs_point *ap, const char *name,
 			clean_stale_multi_triggers(ap, me, NULL, NULL);
 		cache_set_parents(me);
 
-		error(LOGOPT_ANY, "call mount_subtree");
-
 		rv = mount_subtree(ap, me, name, NULL, options, ctxt);
 
 		cache_multi_unlock(me);
