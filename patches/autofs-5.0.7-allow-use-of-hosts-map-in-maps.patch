@@ -1,5 +1,5 @@
 Bottom: af4afd3216b9addcb5809a68e568b3213b6c03a1
-Top:    7fbc784798e1c807824992ca78ca43155a8647a8
+Top:    32bf53139fbe620aee0e9a45ffd6b9e46f950459
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-08-19 09:57:34 +0800
 
@@ -72,7 +72,7 @@ index 8c1e600..02332dd 100644
  				       info->type, info->format,
  				       time(NULL), argc, argv);
 diff --git a/modules/parse_sun.c b/modules/parse_sun.c
-index c1fc528..c138b71 100644
+index c1fc528..412c9c8 100644
 --- a/modules/parse_sun.c
 +++ b/modules/parse_sun.c
 @@ -695,14 +695,18 @@ static int sun_mount(struct autofs_point *ap, const char *root,
@@ -102,17 +102,7 @@ index c1fc528..c138b71 100644
  		}
  
  		debug(ap->logopt, MODPREFIX
-@@ -881,7 +885,8 @@ static int validate_location(unsigned int logopt, char *loc)
- 		    !strncmp(ptr, "file:", 5) || !strncmp(ptr, "yp:", 3) ||
- 		    !strncmp(ptr, "nis:", 4) || !strncmp(ptr, "nisplus:", 8) ||
- 		    !strncmp(ptr, "ldap:", 5) || !strncmp(ptr, "ldaps:", 6) ||
--		    !strncmp(ptr, "sss:", 4) || !strncmp(ptr, "dir:", 4))
-+		    !strncmp(ptr, "sss:", 4) || !strncmp(ptr, "dir:", 4) ||
-+		    !strncmp(ptr, "hosts:", 4))
- 			return 1;
- 		error(logopt,
- 		      "expected colon delimeter not found in location %s",
-@@ -1433,8 +1438,11 @@ int parse_mount(struct autofs_point *ap, const char *name,
+@@ -1433,8 +1437,11 @@ int parse_mount(struct autofs_point *ap, const char *name,
  			p += l;
  			p = skipspace(p);
  
@@ -125,7 +115,7 @@ index c1fc528..c138b71 100644
  				cache_delete_offset_list(mc, name);
  				cache_multi_unlock(me);
  				cache_unlock(mc);
-@@ -1592,13 +1600,20 @@ int parse_mount(struct autofs_point *ap, const char *name,
+@@ -1592,13 +1599,20 @@ int parse_mount(struct autofs_point *ap, const char *name,
  			p = skipspace(p);
  		}
  
