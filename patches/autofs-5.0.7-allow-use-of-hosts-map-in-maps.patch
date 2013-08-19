@@ -3,7 +3,7 @@ Top:    de3dfaf6cadf2cabbf418cc0797af3b535a34787
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-08-19 09:57:34 +0800
 
-debug.patch
+autofs-5.0.7 - allow use of hosts map in maps
 
 At the moment the internal hosts map can only be an entry in the master
 map but there's no reason it shouldn't be possible to use it in map
