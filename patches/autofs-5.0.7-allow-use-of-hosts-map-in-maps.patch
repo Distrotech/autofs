@@ -1,5 +1,5 @@
 Bottom: af4afd3216b9addcb5809a68e568b3213b6c03a1
-Top:    7abf17eb4d91e19582471e43dd856ccec8678c5b
+Top:    390a619f0e8aa1e599fca9d37e673bc4adcc46be
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-08-19 09:57:34 +0800
 
@@ -62,7 +62,7 @@ index 8c1e600..00a91e2 100644
  	}
  	argv[argc] = NULL;
 diff --git a/modules/parse_sun.c b/modules/parse_sun.c
-index c1fc528..5add1f6 100644
+index c1fc528..2026fc4 100644
 --- a/modules/parse_sun.c
 +++ b/modules/parse_sun.c
 @@ -695,14 +695,18 @@ static int sun_mount(struct autofs_point *ap, const char *root,
@@ -77,7 +77,7 @@ index c1fc528..5add1f6 100644
 -		} else {
 -			memcpy(what, loc, loclen);
 -			what[loclen] = '\0';
-+		if (loclen)
++		if (!loclen)
 +			what = NULL;
 +		else {
 +			what = alloca(loclen + 1);
