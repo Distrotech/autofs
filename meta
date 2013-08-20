@@ -1,6 +1,6 @@
 Version: 1
-Previous: 1d9793c40029ceb37fd4c9aa8fafe7e93a3ffc51
-Head: bcd8e1b642e91c54937ff97ed8dc7d6600f5300a
+Previous: 53fbdfcf51f0025d8f1e182a6fdd0bc7856daff1
+Head: b272a8a71b3b555ab4770b29848975772deec1e7
 Applied:
   autofs-5.0.7-dont-override-LDFLAGS-in-make-rules.patch: 2e8251865c0ed6d91a97c107973a7eb75d3e131b
   autofs-5.0.7-fix-a-couple-of-compiler-warnings.patch: b8bdae4bfe855786de918c78eee228e4aabdab45
@@ -15,8 +15,8 @@ Applied:
   autofs-5.0.7-use-compiler-determined-by-configure-instead-of-hard-coded-ones.patch: c9b3bdd863debf343c003831e69c515a9575bbe4
   autofs-5.0.7-remove-hard-coded-STRIP-variable.patch: d1f5c888f006fd662e8c9fc2a0272ab3eeefba06
   autofs-5.0.7-use-LIBS-for-link-libraries.patch: bcd8e1b642e91c54937ff97ed8dc7d6600f5300a
+  autofs-5.0.7-unbundle-NOTSTRIP-from-DEBUG-so-they-dont-depend-on-each-other.patch: b272a8a71b3b555ab4770b29848975772deec1e7
 Unapplied:
-  autofs-5.0.7-unbundle-NOTSTRIP-from-DEBUG-so-they-dont-depend-on-each-other.patch: 2c105d3a7259f1cf94be4941fbd7d2fa63bfcf02
   autofs-5.0.7-fix-occasional-build-error-when-enable-parallel-compiling.patch: e4098b8a0401bda99f333b58c526da3935854620
   autofs-5.0.7-fix-compilation-of-lookup_ldap_c-without-sasl.patch: 01e303651c6cbb99e13d1b5dfdc8e18337758a14
   autofs-5.0.7-fix-dumpmaps-multi-output.patch: 6c54348ad28b3e7d0861a014c37312d622539371
