@@ -1,5 +1,5 @@
 Bottom: e329f8f995bd3eb80afa2c69876263cfa9023478
-Top:    d5b2c10cbcd3cd9257f971d44ce48fc4f9166bf9
+Top:    29780e89a1adaff725b75a2ec269c86abf6d6ed6
 Author: Lan Yixun (dlan) <dennis.yxun@gmail.com>
 Date:   2013-07-25 09:05:41 +0800
 
@@ -170,10 +170,10 @@ index a2a05a8..8a52080 100644
  #undef HAVE_LDAP_CREATE_PAGE_CONTROL
  
 diff --git a/modules/cyrus-sasl.c b/modules/cyrus-sasl.c
-index 68f9242..b9c16f3 100644
+index 68f9242..21bc00c 100644
 --- a/modules/cyrus-sasl.c
 +++ b/modules/cyrus-sasl.c
-@@ -64,6 +64,35 @@
+@@ -64,6 +64,36 @@
  #endif
  #endif
  
@@ -187,6 +187,7 @@ index 68f9242..b9c16f3 100644
 +	else
 +		*len = 0;
 +	return;
++}
 +#else
 +void _krb5_princ_realm(krb5_context context, krb5_const_principal princ,
 +                          const char **realm, int *len)
@@ -209,7 +210,7 @@ index 68f9242..b9c16f3 100644
  /*
   *  Once a krb5 credentials cache is setup, we need to set the KRB5CCNAME
   *  environment variable so that the library knows where to find it.
-@@ -379,7 +408,8 @@ sasl_do_kinit(unsigned logopt, struct lookup_context *ctxt)
+@@ -379,7 +409,8 @@ sasl_do_kinit(unsigned logopt, struct lookup_context *ctxt)
  	krb5_principal tgs_princ, krb5_client_princ;
  	krb5_creds my_creds;
  	char *tgs_name;
@@ -219,7 +220,7 @@ index 68f9242..b9c16f3 100644
  
  	if (ctxt->kinit_done)
  		return 0;
-@@ -450,12 +480,11 @@ sasl_do_kinit(unsigned logopt, struct lookup_context *ctxt)
+@@ -450,12 +481,11 @@ sasl_do_kinit(unsigned logopt, struct lookup_context *ctxt)
  	}
  
  	/* setup a principal for the ticket granting service */
