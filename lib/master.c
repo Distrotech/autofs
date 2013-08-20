@@ -1426,6 +1426,8 @@ int master_show_mounts(struct master *master)
 			source = source->next;
 		}
 
+		lookup_close_lookup(ap);
+
 		printf("\n");
 	}
 
