@@ -1,6 +1,6 @@
 Version: 1
-Previous: 30ddd8f228e7b649102518f3819c71a8e0d9fd39
-Head: bb285a4be91d6676b26058a61836867666aaa037
+Previous: 144b90a6fa76bb43778d2736b11c6f6b7ab38007
+Head: 452fca28fd7e93c429954dea715f84fd8967d834
 Applied:
   autofs-5.0.7-dont-override-LDFLAGS-in-make-rules.patch: 2e8251865c0ed6d91a97c107973a7eb75d3e131b
   autofs-5.0.7-fix-a-couple-of-compiler-warnings.patch: b8bdae4bfe855786de918c78eee228e4aabdab45
@@ -11,6 +11,7 @@ Applied:
   autofs-5.0.7-fix-typo-forced-shutdown-should-be-force-shutdown.patch: fc499196a2b0d714aec64af76fb384e8913b3b5a
   autofs-5.0.7-fix-hesiod-check-error-and-use-correct-LIBS-setting.patch: 89c7205d34926d996eab38d27de88d12883be87f
   autofs-5.0.7-fix-dead-LDAP-symbolic-link-when-LDAP-support-is-disabled.patch: 452fca28fd7e93c429954dea715f84fd8967d834
+Unapplied:
   autofs-5.0.7-add-missing-libtirpc-lib-to-mount_nfs.so-when-TIRPC-enabled.patch: 39a6544a666a5dde0418817f96a9ad75ced7c7d7
   autofs-5.0.7-use-compiler-determined-by-configure-instead-of-hard-coded-ones.patch: c8702b5f83262983b38ca3d323facfbb14760cf1
   autofs-5.0.7-remove-hard-coded-STRIP-variable.patch: e296689b37ad6d6d09e0cbd7063bfd5d66e1c029
@@ -29,7 +30,6 @@ Applied:
   autofs-5.0.7-setup-program-map-env-from-macro-table.patch: e1298aefb50162153f2d33a50ed86b42f67466b6
   autofs-5.0.7-add-short-host-name-standard-marco-variable.patch: a880915f69816b29c558070aa4df5156d5c6331a
   autofs-5.0.7-allow-use-of-hosts-map-in-maps.patch: bb285a4be91d6676b26058a61836867666aaa037
-Unapplied:
   autofs-5.0.5-wait-for-master-map-available-at-start.patch: 28e191c68fc95cd90815f398deff088bd1d65d0a
   autofs-5.0.5-add-master-read-wait-option.patch: 05d9eb17fb1ec9418f236468875ad04b09b0546b
   autofs-5.0.7-add-host-map-reload-option.patch: 11d23f7a74b2f33e5011ba29f64ae1b4956acb09
