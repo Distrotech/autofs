@@ -74,6 +74,7 @@ void _krb5_princ_realm(krb5_context context, krb5_const_principal princ,
 	else
 		*len = 0;
 	return;
+}
 #else
 void _krb5_princ_realm(krb5_context context, krb5_const_principal princ,
                           const char **realm, int *len)
