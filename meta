@@ -1,6 +1,6 @@
 Version: 1
-Previous: 234ce9a0fa0eeed7773f1fda427b3752b1a821b3
-Head: fb6807e71a6bd2276f3c40256ee91143cde047a1
+Previous: bb28d8e1b1268f4cbbeae0b2f87c9bdeae5ab3f6
+Head: 682289ee9f326ac3034546f33245b0f96ff70f5d
 Applied:
   autofs-5.0.7-dont-override-LDFLAGS-in-make-rules.patch: 2e8251865c0ed6d91a97c107973a7eb75d3e131b
   autofs-5.0.7-fix-a-couple-of-compiler-warnings.patch: b8bdae4bfe855786de918c78eee228e4aabdab45
@@ -27,8 +27,8 @@ Applied:
   autofs-5.0.7-only-probe-specific-nfs-version-when-requested.patch: 323fd4500351a5e03465b69ff98e92fbdd7d3ae8
   autofs-5.0.7-fix-bad-mkdir-permission-on-create.patch: 06051fbddfd32c4fa822c49299b89e3450c40172
   autofs-5.0.7-setup-program-map-env-from-macro-table.patch: 682289ee9f326ac3034546f33245b0f96ff70f5d
-  autofs-5.0.7-add-short-host-name-standard-marco-variable.patch: fb6807e71a6bd2276f3c40256ee91143cde047a1
 Unapplied:
+  autofs-5.0.7-add-short-host-name-standard-marco-variable.patch: fb6807e71a6bd2276f3c40256ee91143cde047a1
   autofs-5.0.7-allow-use-of-hosts-map-in-maps.patch: 93b7e4eb617c50f2ee28a2724a30f1526efc95f1
   autofs-5.0.5-wait-for-master-map-available-at-start.patch: 28e191c68fc95cd90815f398deff088bd1d65d0a
   autofs-5.0.5-add-master-read-wait-option.patch: 05d9eb17fb1ec9418f236468875ad04b09b0546b
