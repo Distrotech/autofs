@@ -1,5 +1,5 @@
 Bottom: de4448c62459095e73382abc412837d61913407f
-Top:    621fa0d8d74cc2ac93a98a0a689e1854cbc22084
+Top:    de795530562064436462399dfe158865988794ad
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-07-31 14:54:39 +0800
 
@@ -41,7 +41,7 @@ index 1583c76..07f9d6d 100644
  25/07/2012 autofs-5.0.7
  =======================
 diff --git a/daemon/automount.c b/daemon/automount.c
-index 6849272..2ce49bf 100644
+index 6849272..16ea31a 100644
 --- a/daemon/automount.c
 +++ b/daemon/automount.c
 @@ -1725,7 +1725,8 @@ static void usage(void)
@@ -49,7 +49,7 @@ index 6849272..2ce49bf 100644
  		"	-r --random-multimount-selection\n"
  		"			use ramdom replicated server selection\n"
 -		"	-m --dumpmaps	dump automounter maps and exit\n"
-+		"	-m --dumpmaps [<map type> <map name]"
++		"	-m --dumpmaps [<map type> <map name]\n"
 +		"			dump automounter maps and exit\n"
  		"	-n --negative-timeout n\n"
  		"			set the timeout for failed key lookups.\n"
