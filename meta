@@ -1,6 +1,6 @@
 Version: 1
-Previous: d54e771cc6b388c9f8e1a0ad052d067b1ce5ae96
-Head: 323fd4500351a5e03465b69ff98e92fbdd7d3ae8
+Previous: 83ecb7e72df3a5573b9e01107d0a458f820d09d5
+Head: 7590840fe1802e9c86ac0b31411d7286d48f750e
 Applied:
   autofs-5.0.7-dont-override-LDFLAGS-in-make-rules.patch: 2e8251865c0ed6d91a97c107973a7eb75d3e131b
   autofs-5.0.7-fix-a-couple-of-compiler-warnings.patch: b8bdae4bfe855786de918c78eee228e4aabdab45
@@ -24,8 +24,8 @@ Applied:
   autofs-5.0.7-fix-syncronize-handle_mounts-shutdown.patch: 67185de17a76c0d67e8632b823f579e584aeaa74
   autofs-5.0.7-fix-fix-wildcard-multi-map-regression.patch: e6aba20a5b84156a2e6af0a30fc86896943d3842
   autofs-5.0.7-improve-timeout-option-description.patch: 7590840fe1802e9c86ac0b31411d7286d48f750e
-  autofs-5.0.7-only-probe-specific-nfs-version-when-requested.patch: 323fd4500351a5e03465b69ff98e92fbdd7d3ae8
 Unapplied:
+  autofs-5.0.7-only-probe-specific-nfs-version-when-requested.patch: 323fd4500351a5e03465b69ff98e92fbdd7d3ae8
   autofs-5.0.7-fix-bad-mkdir-permission-on-create.patch: 06051fbddfd32c4fa822c49299b89e3450c40172
   autofs-5.0.7-setup-program-map-env-from-macro-table.patch: 682289ee9f326ac3034546f33245b0f96ff70f5d
   autofs-5.0.7-add-short-host-name-standard-marco-variable.patch: fb6807e71a6bd2276f3c40256ee91143cde047a1
