@@ -1,6 +1,6 @@
 Version: 1
-Previous: e02510b1b8cf9b90cae1bfc9d3aa42ef08476e40
-Head: 26d653ac3c7d4a71869738279f9ce4751471dbe1
+Previous: 8dc4a231722e80038b2af96af970d05c4a7d951f
+Head: 37b091d537ea1c16ad1f07ec5b843f1ac20b60dc
 Applied:
   autofs-5.0.7-dont-override-LDFLAGS-in-make-rules.patch: 2e8251865c0ed6d91a97c107973a7eb75d3e131b
   autofs-5.0.7-fix-a-couple-of-compiler-warnings.patch: b8bdae4bfe855786de918c78eee228e4aabdab45
@@ -21,8 +21,8 @@ Applied:
   autofs-5.0.7-fix-dumpmaps-multi-output.patch: bcbff6b13c15ac34c6b11ab2b12476185071320b
   autofs-5.0.7-try-and-cleanup-after-dumpmaps.patch: 488e872f0ba08391a8b60e77704bbd5741529f08
   autofs-5.0.7-teach-dumpmaps-to-output-simple-key-value-pairs.patch: 26d653ac3c7d4a71869738279f9ce4751471dbe1
+  autofs-5.0.7-fix-syncronize-handle_mounts-shutdown.patch: 37b091d537ea1c16ad1f07ec5b843f1ac20b60dc
 Unapplied:
-  autofs-5.0.7-fix-syncronize-handle_mounts-shutdown.patch: 67185de17a76c0d67e8632b823f579e584aeaa74
   autofs-5.0.7-fix-fix-wildcard-multi-map-regression.patch: e6aba20a5b84156a2e6af0a30fc86896943d3842
   autofs-5.0.7-improve-timeout-option-description.patch: 7590840fe1802e9c86ac0b31411d7286d48f750e
   autofs-5.0.7-only-probe-specific-nfs-version-when-requested.patch: 323fd4500351a5e03465b69ff98e92fbdd7d3ae8
