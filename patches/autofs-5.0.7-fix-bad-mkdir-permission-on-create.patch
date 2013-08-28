@@ -1,5 +1,5 @@
-Bottom: dc229693e71493122f41d678754ce0ca04389019
-Top:    99d7f4f7cc1beafd9e91770dcd060313cdd5f07a
+Bottom: f202dff8188dfbe0b70e34c8140c545c95a4b990
+Top:    7531d6fef78af2e9f8aa79d4c595621af0622fd3
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-08-19 08:27:40 +0800
 
@@ -27,7 +27,7 @@ index 2499f1c..3a3fec1 100644
  25/07/2012 autofs-5.0.7
  =======================
 diff --git a/daemon/automount.c b/daemon/automount.c
-index 97c726a..ef76467 100644
+index 9b4c91b..ce903e9 100644
 --- a/daemon/automount.c
 +++ b/daemon/automount.c
 @@ -122,7 +122,10 @@ static int do_mkdir(const char *parent, const char *path, mode_t mode)

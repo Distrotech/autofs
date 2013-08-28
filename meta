@@ -1,6 +1,6 @@
 Version: 1
-Previous: 864aeadd5eb5ca54c9d7d030730f9df595b2479b
-Head: d7a556a79a567ec741836bb6d0e287043029f96f
+Previous: 4fd874ba8175f3b64608ec2771095303609f22f9
+Head: 377b5546571c91b46fa91b89dad75bc15bb6c0da
 Applied:
   autofs-5.0.7-dont-override-LDFLAGS-in-make-rules.patch: 2e8251865c0ed6d91a97c107973a7eb75d3e131b
   autofs-5.0.7-fix-a-couple-of-compiler-warnings.patch: b8bdae4bfe855786de918c78eee228e4aabdab45
@@ -24,12 +24,12 @@ Applied:
   autofs-5.0.7-fix-syncronize-handle_mounts-shutdown.patch: 37b091d537ea1c16ad1f07ec5b843f1ac20b60dc
   autofs-5.0.7-fix-fix-wildcard-multi-map-regression.patch: 9139664e546c4403cd7dd48b1fcdc470b1442164
   autofs-5.0.7-improve-timeout-option-description.patch: d7a556a79a567ec741836bb6d0e287043029f96f
+  autofs-5.0.7-only-probe-specific-nfs-version-when-requested.patch: f6b005570ef62b31436d9c07a6c4e34722bdae0c
+  autofs-5.0.7-fix-bad-mkdir-permission-on-create.patch: 6b90a2cfdd081e68658e6450b0d2920bdc5acedc
+  autofs-5.0.7-setup-program-map-env-from-macro-table.patch: 84138a25480df0e0d5ce019788dc9f6a092262ce
+  autofs-5.0.7-add-short-host-name-standard-marco-variable.patch: 48dbeaabbca6cbe45539da1f1ad15b5532f03bdf
+  autofs-5.0.7-allow-use-of-hosts-map-in-maps.patch: 377b5546571c91b46fa91b89dad75bc15bb6c0da
 Unapplied:
-  autofs-5.0.7-only-probe-specific-nfs-version-when-requested.patch: 323fd4500351a5e03465b69ff98e92fbdd7d3ae8
-  autofs-5.0.7-fix-bad-mkdir-permission-on-create.patch: 06051fbddfd32c4fa822c49299b89e3450c40172
-  autofs-5.0.7-setup-program-map-env-from-macro-table.patch: 682289ee9f326ac3034546f33245b0f96ff70f5d
-  autofs-5.0.7-add-short-host-name-standard-marco-variable.patch: fb6807e71a6bd2276f3c40256ee91143cde047a1
-  autofs-5.0.7-allow-use-of-hosts-map-in-maps.patch: 93b7e4eb617c50f2ee28a2724a30f1526efc95f1
   autofs-5.0.5-wait-for-master-map-available-at-start.patch: 28e191c68fc95cd90815f398deff088bd1d65d0a
   autofs-5.0.5-add-master-read-wait-option.patch: 05d9eb17fb1ec9418f236468875ad04b09b0546b
   autofs-5.0.7-add-host-map-reload-option.patch: 11d23f7a74b2f33e5011ba29f64ae1b4956acb09
