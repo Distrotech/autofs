@@ -1,5 +1,5 @@
-Bottom: de795530562064436462399dfe158865988794ad
-Top:    4b876ca17877f5b3bbd40ad8daeda2fbdb596939
+Bottom: a68a4d08c4aa027858cc023f476306031723446b
+Top:    5664d55823e12283fdc075f2de000558ecb5de55
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-08-02 13:37:45 +0800
 
@@ -28,7 +28,7 @@ index 07f9d6d..618ac20 100644
  25/07/2012 autofs-5.0.7
  =======================
 diff --git a/daemon/automount.c b/daemon/automount.c
-index 16ea31a..9b4c91b 100644
+index 07abd68..54e54f6 100644
 --- a/daemon/automount.c
 +++ b/daemon/automount.c
 @@ -1286,7 +1286,7 @@ static int do_hup_signal(struct master *master, time_t age)
