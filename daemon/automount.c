@@ -1725,7 +1725,7 @@ static void usage(void)
 		"	-f --foreground do not fork into background\n"
 		"	-r --random-multimount-selection\n"
 		"			use ramdom replicated server selection\n"
-		"	-m --dumpmaps [<map type> <map name]\n"
+		"	-m --dumpmaps [<map type> <map name>]\n"
 		"			dump automounter maps and exit\n"
 		"	-n --negative-timeout n\n"
 		"			set the timeout for failed key lookups.\n"
