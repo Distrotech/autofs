@@ -1,0 +1,31 @@
+Bottom: a0ffc0711c6f939cf434e38fb906c2ebe3975d40
+Top:    6e5265b31786f8d5a7dc52446a3057486c6f770d
+Author: Ian Kent <ikent@redhat.com>
+Date:   2013-09-13 16:02:17 +0800
+
+Refresh of autofs-5.0.7-teach-dumpmaps-to-output-simple-key-value-pairs.patch
+
+---
+
+diff --git a/daemon/automount.c b/daemon/automount.c
+index 07abd68..1c339fb 100644
+--- a/daemon/automount.c
++++ b/daemon/automount.c
+@@ -2165,9 +2165,14 @@ int main(int argc, char *argv[])
+ 		master_list->nc = nc;
+ 
+ 		lookup_nss_read_master(master_list, 0);
+-		if (type)
+-			dump_map(master_list, type, name);
+-		else
++		if (type) {
++			const char *map = basename(name);
++			if (!map)
++				printf("%s: invalid map name %s\n",
++					program, name);
++			else
++				dump_map(master_list, type, map);
++		} else
+ 			master_show_mounts(master_list);
+ 
+ 		head = &master_list->mounts;
