@@ -1,5 +1,5 @@
 Bottom: de4448c62459095e73382abc412837d61913407f
-Top:    26947f4c017d0005c80338bceaf0f2fc66d784dd
+Top:    04e181c77083ba1c13394cdbfabaed175727feff
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-07-31 14:54:39 +0800
 
@@ -344,10 +344,10 @@ index 734485e..ce6320e 100644
  {
  	struct list_head *p, *head;
 diff --git a/man/automount.8 b/man/automount.8
-index 844b876..25282f9 100644
+index 844b876..678c1ed 100644
 --- a/man/automount.8
 +++ b/man/automount.8
-@@ -57,8 +57,22 @@ Run the daemon in the foreground and log to stderr instead of syslog."
+@@ -57,8 +57,24 @@ Run the daemon in the foreground and log to stderr instead of syslog."
  Enables the use of ramdom selection when choosing a host from a
  list of replicated servers.
  .TP
@@ -364,7 +364,9 @@ index 844b876..25282f9 100644
 +
 +If the map is an LDAP map and there is more than one map of same name
 +in different base dns only the first map encountered by autofs will
-+be listed.
++be listed. Similarly, if the map is a file map and there is more than
++one map of the same name in different directories, only the first map
++encountered will be listed.
 +
 +If the map type is an old style multi-map and any one of the map
 +names in the multi-map entry matches the given map name the entries
