@@ -1,5 +1,5 @@
 Bottom: de4448c62459095e73382abc412837d61913407f
-Top:    a0ffc0711c6f939cf434e38fb906c2ebe3975d40
+Top:    6e5265b31786f8d5a7dc52446a3057486c6f770d
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-07-31 14:54:39 +0800
 
@@ -41,7 +41,7 @@ index 1583c76..07f9d6d 100644
  25/07/2012 autofs-5.0.7
  =======================
 diff --git a/daemon/automount.c b/daemon/automount.c
-index 6849272..07abd68 100644
+index 6849272..1c339fb 100644
 --- a/daemon/automount.c
 +++ b/daemon/automount.c
 @@ -1725,7 +1725,8 @@ static void usage(void)
@@ -99,19 +99,24 @@ index 6849272..07abd68 100644
  
  		master_init_scan();
  
-@@ -2153,7 +2165,10 @@ int main(int argc, char *argv[])
+@@ -2153,7 +2165,15 @@ int main(int argc, char *argv[])
  		master_list->nc = nc;
  
  		lookup_nss_read_master(master_list, 0);
 -		master_show_mounts(master_list);
-+		if (type)
-+			dump_map(master_list, type, name);
-+		else
++		if (type) {
++			const char *map = basename(name);
++			if (!map)
++				printf("%s: invalid map name %s\n",
++					program, name);
++			else
++				dump_map(master_list, type, map);
++		} else
 +			master_show_mounts(master_list);
  
  		head = &master_list->mounts;
  		p = head->next;
-@@ -2168,6 +2183,16 @@ int main(int argc, char *argv[])
+@@ -2168,6 +2188,16 @@ int main(int argc, char *argv[])
  		exit(0);
  	}
  
