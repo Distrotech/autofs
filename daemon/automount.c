@@ -2165,9 +2165,14 @@ int main(int argc, char *argv[])
 		master_list->nc = nc;
 
 		lookup_nss_read_master(master_list, 0);
-		if (type)
-			dump_map(master_list, type, name);
-		else
+		if (type) {
+			const char *map = basename(name);
+			if (!map)
+				printf("%s: invalid map name %s\n",
+					program, name);
+			else
+				dump_map(master_list, type, map);
+		} else
 			master_show_mounts(master_list);
 
 		head = &master_list->mounts;
