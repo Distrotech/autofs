@@ -68,7 +68,9 @@ and map name are found in the map configuration.
 
 If the map is an LDAP map and there is more than one map of same name
 in different base dns only the first map encountered by autofs will
-be listed.
+be listed. Similarly, if the map is a file map and there is more than
+one map of the same name in different directories, only the first map
+encountered will be listed.
 
 If the map type is an old style multi-map and any one of the map
 names in the multi-map entry matches the given map name the entries
