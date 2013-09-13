@@ -1339,7 +1339,7 @@ static int match_type(const char *source, const char *type)
 	return 0;
 }
 
-static char *get_map_name(char *string)
+static char *get_map_name(const char *string)
 {
 	char *name, *tmp;
 	char *start, *end, *base;
