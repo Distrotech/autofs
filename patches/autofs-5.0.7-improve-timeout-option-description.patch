@@ -1,5 +1,5 @@
-Bottom: 203ef1324c06ac1d88716527cf2f96c156d21bd2
-Top:    85b0c80fd05b4480cf19e4104e600ab1c9ba8e9f
+Bottom: 9506353fe7ee00e7d8b2d30510713f7f72e6530b
+Top:    4f96e04f5ae18495f3a82f9c38255500d816370e
 Author: Ian Kent <raven@themaw.net>
 Date:   2013-08-07 10:25:33 +0800
 
@@ -41,7 +41,7 @@ index 7907ffa..65a86b2 100644
  .B NEGATIVE_TIMEOUT
  Set the default timeout for caching failed key lookups (program default
 diff --git a/man/automount.8 b/man/automount.8
-index 48f5c5a..abb40bc 100644
+index 678c1ed..bfcb41e 100644
 --- a/man/automount.8
 +++ b/man/automount.8
 @@ -29,10 +29,13 @@ Print brief help on program usage.
