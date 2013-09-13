@@ -1,0 +1,10 @@
+Bottom: 6e5265b31786f8d5a7dc52446a3057486c6f770d
+Top:    6e5265b31786f8d5a7dc52446a3057486c6f770d
+Author: Ian Kent <ikent@redhat.com>
+Date:   2013-09-13 16:37:00 +0800
+
+Refresh of autofs-5.0.7-teach-dumpmaps-to-output-simple-key-value-pairs.patch
+
+---
+
+
