@@ -1,0 +1,24 @@
+Bottom: 26947f4c017d0005c80338bceaf0f2fc66d784dd
+Top:    04e181c77083ba1c13394cdbfabaed175727feff
+Author: Ian Kent <ikent@redhat.com>
+Date:   2013-09-13 16:47:40 +0800
+
+Refresh of autofs-5.0.7-teach-dumpmaps-to-output-simple-key-value-pairs.patch
+
+---
+
+diff --git a/man/automount.8 b/man/automount.8
+index 25282f9..678c1ed 100644
+--- a/man/automount.8
++++ b/man/automount.8
+@@ -68,7 +68,9 @@ and map name are found in the map configuration.
+ 
+ If the map is an LDAP map and there is more than one map of same name
+ in different base dns only the first map encountered by autofs will
+-be listed.
++be listed. Similarly, if the map is a file map and there is more than
++one map of the same name in different directories, only the first map
++encountered will be listed.
+ 
+ If the map type is an old style multi-map and any one of the map
+ names in the multi-map entry matches the given map name the entries
