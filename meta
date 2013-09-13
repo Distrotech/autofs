@@ -1,6 +1,6 @@
 Version: 1
-Previous: ff4d42ae8a37ce9471242f9d7c4c958786f280cf
-Head: 441446f80ec7c94cd9f28cae8a249db71d417480
+Previous: 8b43849dcd3243c35623f5c93f88ea563792af3e
+Head: 58493a581df9303fb43e75cf9347e651975cf8d3
 Applied:
   autofs-5.0.7-dont-override-LDFLAGS-in-make-rules.patch: 2e8251865c0ed6d91a97c107973a7eb75d3e131b
   autofs-5.0.7-fix-a-couple-of-compiler-warnings.patch: b8bdae4bfe855786de918c78eee228e4aabdab45
@@ -21,7 +21,6 @@ Applied:
   autofs-5.0.7-fix-dumpmaps-multi-output.patch: bcbff6b13c15ac34c6b11ab2b12476185071320b
   autofs-5.0.7-try-and-cleanup-after-dumpmaps.patch: 488e872f0ba08391a8b60e77704bbd5741529f08
   autofs-5.0.7-teach-dumpmaps-to-output-simple-key-value-pairs.patch: 58493a581df9303fb43e75cf9347e651975cf8d3
-  refresh-temp: 441446f80ec7c94cd9f28cae8a249db71d417480
 Unapplied:
   autofs-5.0.7-fix-syncronize-handle_mounts-shutdown.patch: 1efc0bb4df652001c0c884416007390b4148a23e
   autofs-5.0.7-fix-fix-wildcard-multi-map-regression.patch: 9bc652f54dbeea9867e25f57bc77620c95dacf08
