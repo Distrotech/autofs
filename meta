@@ -1,6 +1,6 @@
 Version: 1
-Previous: 769e9b08efe7f8806c4f434cb5d5bf1e038fa8aa
-Head: 21b85d6b558c6f9df34238822311ef8eb2b72812
+Previous: a8591900a7010f112d4072dfda490d76285cc8da
+Head: e04677ba8ac5ef924dd333df42e58d6a479a1d5e
 Applied:
   autofs-5.0.7-dont-override-LDFLAGS-in-make-rules.patch: 2e8251865c0ed6d91a97c107973a7eb75d3e131b
   autofs-5.0.7-fix-a-couple-of-compiler-warnings.patch: b8bdae4bfe855786de918c78eee228e4aabdab45
@@ -21,6 +21,7 @@ Applied:
   autofs-5.0.7-fix-dumpmaps-multi-output.patch: bcbff6b13c15ac34c6b11ab2b12476185071320b
   autofs-5.0.7-try-and-cleanup-after-dumpmaps.patch: 488e872f0ba08391a8b60e77704bbd5741529f08
   autofs-5.0.7-teach-dumpmaps-to-output-simple-key-value-pairs.patch: e04677ba8ac5ef924dd333df42e58d6a479a1d5e
+Unapplied:
   autofs-5.0.7-fix-syncronize-handle_mounts-shutdown.patch: 1efc0bb4df652001c0c884416007390b4148a23e
   autofs-5.0.7-fix-fix-wildcard-multi-map-regression.patch: 9bc652f54dbeea9867e25f57bc77620c95dacf08
   autofs-5.0.7-improve-timeout-option-description.patch: 543b7a0c4bd06b0ba5805d1275faae73f45ed03d
@@ -29,7 +30,6 @@ Applied:
   autofs-5.0.7-setup-program-map-env-from-macro-table.patch: 43c02b3c603ac1033935830c7b2ee7e60ec4e024
   autofs-5.0.7-add-short-host-name-standard-marco-variable.patch: e2a814fa0f4ef1c42cd8b3caa3c877e3f10b7ccf
   autofs-5.0.7-allow-use-of-hosts-map-in-maps.patch: 21b85d6b558c6f9df34238822311ef8eb2b72812
-Unapplied:
   autofs-5.0.5-wait-for-master-map-available-at-start.patch: 28e191c68fc95cd90815f398deff088bd1d65d0a
   autofs-5.0.5-add-master-read-wait-option.patch: 05d9eb17fb1ec9418f236468875ad04b09b0546b
   autofs-5.0.7-add-host-map-reload-option.patch: 11d23f7a74b2f33e5011ba29f64ae1b4956acb09
