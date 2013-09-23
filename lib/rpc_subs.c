@@ -43,6 +43,12 @@
                 } while (0)
 #endif
 
+#ifdef WITH_LIBTIRPC
+const rpcvers_t rpcb_version = RPCBVERS_4;
+#else
+const rpcvers_t rpcb_version = PMAPVERS;
+#endif
+
 #include "mount.h"
 #include "rpc_subs.h"
 #include "automount.h"
@@ -512,7 +518,7 @@ int rpc_portmap_getclient(struct conn_info *info,
 	info->addr_len = addr_len;
 	info->program = PMAPPROG;
 	info->port = PMAPPORT;
-	info->version = PMAPVERS;
+	info->version = rpcb_version;
 	info->proto = proto;
 	info->send_sz = RPCSMALLMSGSIZE;
 	info->recv_sz = RPCSMALLMSGSIZE;
@@ -557,7 +563,7 @@ int rpc_portmap_getport(struct conn_info *info,
 		pmap_info.addr_len = info->addr_len;
 		pmap_info.port = PMAPPORT;
 		pmap_info.program = PMAPPROG;
-		pmap_info.version = PMAPVERS;
+		pmap_info.version = rpcb_version;
 		pmap_info.proto = info->proto;
 		pmap_info.send_sz = RPCSMALLMSGSIZE;
 		pmap_info.recv_sz = RPCSMALLMSGSIZE;
