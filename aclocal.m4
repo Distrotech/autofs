@@ -428,7 +428,7 @@ if test "$af_have_libtirpc" = "yes"; then
     TIRPCLIB="-ltirpc"
 fi
 
-AC_CHECK_FUNCS([getrpcbyname])
+AC_CHECK_FUNCS([getrpcbyname getservbyname])
 
 # restore flags
 CFLAGS="$af_check_libtirpc_save_cflags"
