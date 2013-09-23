@@ -338,7 +338,7 @@ static int rpc_do_create_client(struct sockaddr *addr, struct conn_info *info, i
 }
 #endif
 
-#ifdef HAVE_GETRPCBYNAME
+#if defined(HAVE_GETRPCBYNAME) || defined(HAVE_GETSERVBYNAME)
 static pthread_mutex_t rpcb_mutex = PTHREAD_MUTEX_INITIALIZER;
 #endif
 
@@ -353,7 +353,7 @@ static rpcprog_t rpc_getrpcbyname(const rpcprog_t program)
 		entry = getrpcbyname(rpcb_pgmtbl[i]);
 		if (entry) {
 			pthread_mutex_unlock(&rpcb_mutex);
-			return (rpcprog_t)entry->r_number;
+			return (rpcprog_t) entry->r_number;
 		}
 	}
 	pthread_mutex_unlock(&rpcb_mutex);
@@ -361,37 +361,22 @@ static rpcprog_t rpc_getrpcbyname(const rpcprog_t program)
 	return program;
 }
 
-static unsigned short rpc_getservbyname(const char *service, const int protocol)
+static unsigned short rpc_getrpcbport(const int proto)
 {
-	const struct addrinfo hints = {
-		.ai_family      = AF_INET,
-		.ai_protocol    = protocol,
-		.ai_flags       = AI_PASSIVE,
-	};
-	struct addrinfo *result;
-	const struct sockaddr_in *sin;
-	unsigned short port;
-
-	if (getaddrinfo(NULL, service, &hints, &result) != 0)
-		return 0;
-
-	sin = (const struct sockaddr_in *) result->ai_addr;
-	port = sin->sin_port;
-
-	freeaddrinfo(result);
-	return port;
-}
-
-static unsigned short rpc_getrpcbport(const int protocol)
-{
+#ifdef HAVE_GETSERVBYNAME
+	struct servent *entry;
 	unsigned int i;
 
+	pthread_mutex_lock(&rpcb_mutex);
 	for (i = 0; rpcb_netnametbl[i] != NULL; i++) {
-		unsigned short port;
-		port = rpc_getservbyname(rpcb_netnametbl[i], protocol);
-		if (port)
-			return port;
+		entry = getservbyname(rpcb_netnametbl[i], proto);
+		if (entry) {
+			pthread_mutex_unlock(&rpcb_mutex);
+			return (unsigned short) entry->s_port;
+		}
 	}
+	pthread_mutex_unlock(&rpcb_mutex);
+#endif
 	return (unsigned short) PMAPPORT;
 }
 
