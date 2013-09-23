@@ -358,7 +358,7 @@ static rpcprog_t rpc_getrpcbyname(const rpcprog_t program)
 	return program;
 }
 
-static unsigned short rpc_getservbyname(const char *service, const int protocol) 
+static unsigned short rpc_getservbyname(const char *service, const int protocol)
 {
 	const struct addrinfo hints = {
 		.ai_family      = AF_INET,
