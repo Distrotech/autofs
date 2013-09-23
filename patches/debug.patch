@@ -1,5 +1,5 @@
 Bottom: cd777575545a8e99abcfdb43a3a37d2eb8adbe87
-Top:    2a23bb504e7919134c657861ae402ed215f628c2
+Top:    64bb76c87124025e2a1a803435e23f18f0cc84d5
 Author: Ian Kent <ikent@redhat.com>
 Date:   2013-09-23 13:21:08 +0800
 
@@ -59,7 +59,7 @@ index 8a52080..bf94822 100644
  #undef HAVE_INTTYPES_H
  
 diff --git a/lib/rpc_subs.c b/lib/rpc_subs.c
-index a90a238..6ac8d32 100644
+index a90a238..1f35b01 100644
 --- a/lib/rpc_subs.c
 +++ b/lib/rpc_subs.c
 @@ -44,8 +44,22 @@
@@ -85,7 +85,7 @@ index a90a238..6ac8d32 100644
  const rpcvers_t rpcb_version = PMAPVERS;
  #endif
  
-@@ -321,6 +335,65 @@ static int rpc_do_create_client(struct sockaddr *addr, struct conn_info *info, i
+@@ -321,6 +335,63 @@ static int rpc_do_create_client(struct sockaddr *addr, struct conn_info *info, i
  }
  #endif
  
@@ -99,17 +99,15 @@ index a90a238..6ac8d32 100644
 +	struct rpcent *entry;
 +	unsigned int i;
 +
-+	if (table != NULL) {
-+		pthread_mutex_lock(&rpcb_mutex);
-+		for (i = 0; rpcb_pgmtbl[i] != NULL; i++) {
-+			entry = getrpcbyname(rpcb_pgmtbl[i]);
-+			if (entry) {
-+				pthread_mutex_unlock(&rpcb_mutex);
-+				return (rpcprog_t)entry->r_number;
-+			}
++	pthread_mutex_lock(&rpcb_mutex);
++	for (i = 0; rpcb_pgmtbl[i] != NULL; i++) {
++		entry = getrpcbyname(rpcb_pgmtbl[i]);
++		if (entry) {
++			pthread_mutex_unlock(&rpcb_mutex);
++			return (rpcprog_t)entry->r_number;
 +		}
-+		pthread_mutex_unlock(&rpcb_mutex);
 +	}
++	pthread_mutex_unlock(&rpcb_mutex);
 +#endif
 +	return program;
 +}
@@ -151,7 +149,7 @@ index a90a238..6ac8d32 100644
  /*
   * Create an RPC client
   */
-@@ -516,8 +589,8 @@ int rpc_portmap_getclient(struct conn_info *info,
+@@ -516,8 +587,8 @@ int rpc_portmap_getclient(struct conn_info *info,
  	info->host = host;
  	info->addr = addr;
  	info->addr_len = addr_len;
@@ -162,7 +160,7 @@ index a90a238..6ac8d32 100644
  	info->version = rpcb_version;
  	info->proto = proto;
  	info->send_sz = RPCSMALLMSGSIZE;
-@@ -561,8 +634,8 @@ int rpc_portmap_getport(struct conn_info *info,
+@@ -561,8 +632,8 @@ int rpc_portmap_getport(struct conn_info *info,
  		pmap_info.host = info->host;
  		pmap_info.addr = info->addr;
  		pmap_info.addr_len = info->addr_len;
