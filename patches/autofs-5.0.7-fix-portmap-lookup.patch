@@ -1,5 +1,5 @@
 Bottom: 8edbd1e235052bd9e6a4f20d0e3f6cc9f506acdf
-Top:    4b9c00872f04d4b6f88d4006f53a90777eafcc33
+Top:    70e5aa92b0f7b7bd5e46962b4d89379d36daa725
 Author: Ian Kent <ikent@redhat.com>
 Date:   2013-09-23 12:18:52 +0800
 
@@ -97,7 +97,7 @@ index b6d59f9..1d5357c 100644
  #define PMAP_TOUT_TCP	5
  
 diff --git a/lib/rpc_subs.c b/lib/rpc_subs.c
-index f5742e8..25f8968 100644
+index f5742e8..d6c4b5a 100644
 --- a/lib/rpc_subs.c
 +++ b/lib/rpc_subs.c
 @@ -43,6 +43,26 @@
@@ -112,7 +112,7 @@ index f5742e8..25f8968 100644
 +	"rpcbind", "portmapper", "sunrpc", NULL,
 +};
 +const rpcprog_t rpcb_prog = RPCBPROG;
-+const rpcvers_t rpcb_version = RPCBVERS_4;
++const rpcvers_t rpcb_version = RPCBVERS;
 +#else
 +static const char *rpcb_pgmtbl[] = {
 +	NULL,
@@ -127,7 +127,17 @@ index f5742e8..25f8968 100644
  #include "mount.h"
  #include "rpc_subs.h"
  #include "automount.h"
-@@ -315,6 +335,63 @@ static int rpc_do_create_client(struct sockaddr *addr, struct conn_info *info, i
+@@ -259,6 +279,9 @@ static int rpc_do_create_client(struct sockaddr *addr, struct conn_info *info, i
+ 		laddr = (struct sockaddr *) &in4_laddr;
+ 		in4_raddr->sin_port = htons(info->port);
+ 		slen = sizeof(struct sockaddr_in);
++		/* Use rpcbind v2 for AF_INET */
++		if (info->program == rpcb_prog)
++			info->version = PMAPVERS;
+ 	} else if (addr->sa_family == AF_INET6) {
+ 		struct sockaddr_in6 *in6_raddr = (struct sockaddr_in6 *) addr;
+ 		in6_laddr.sin6_family = AF_INET6;
+@@ -315,6 +338,63 @@ static int rpc_do_create_client(struct sockaddr *addr, struct conn_info *info, i
  }
  #endif
  
@@ -191,7 +201,7 @@ index f5742e8..25f8968 100644
  /*
   * Create an RPC client
   */
-@@ -510,9 +587,9 @@ int rpc_portmap_getclient(struct conn_info *info,
+@@ -510,9 +590,15 @@ int rpc_portmap_getclient(struct conn_info *info,
  	info->host = host;
  	info->addr = addr;
  	info->addr_len = addr_len;
@@ -199,20 +209,32 @@ index f5742e8..25f8968 100644
 -	info->port = PMAPPORT;
 -	info->version = PMAPVERS;
 +	info->program = rpc_getrpcbyname(rpcb_prog);
-+	info->port = rpc_getrpcbport(proto);
++	info->port = ntohs(rpc_getrpcbport(proto));
++	/*
++	 * When using libtirpc we might need to change the rpcbind version
++	 * to qurey AF_INET addresses. Since we might not have an address
++	 * yet set AF_INET rpcbind version in rpc_do_create_client() when
++	 * we always have an address.
++	 */
 +	info->version = rpcb_version;
  	info->proto = proto;
  	info->send_sz = RPCSMALLMSGSIZE;
  	info->recv_sz = RPCSMALLMSGSIZE;
-@@ -555,9 +632,9 @@ int rpc_portmap_getport(struct conn_info *info,
+@@ -555,9 +641,15 @@ int rpc_portmap_getport(struct conn_info *info,
  		pmap_info.host = info->host;
  		pmap_info.addr = info->addr;
  		pmap_info.addr_len = info->addr_len;
 -		pmap_info.port = PMAPPORT;
 -		pmap_info.program = PMAPPROG;
 -		pmap_info.version = PMAPVERS;
-+		pmap_info.port = rpc_getrpcbport(info->proto);
++		pmap_info.port = ntohs(rpc_getrpcbport(info->proto));
 +		pmap_info.program = rpc_getrpcbyname(rpcb_prog);
++		/*
++		 * When using libtirpc we might need to change the rpcbind
++		 * version to qurey AF_INET addresses. Since we might not
++		 * have an address yet set AF_INET rpcbind version in
++		 * rpc_do_create_client() when we always have an address.
++		 */
 +		pmap_info.version = rpcb_version;
  		pmap_info.proto = info->proto;
  		pmap_info.send_sz = RPCSMALLMSGSIZE;
