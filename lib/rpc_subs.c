@@ -44,21 +44,9 @@
 #endif
 
 #ifdef WITH_LIBTIRPC
-static const char *rpcb_pgmtbl[] = {
-	"rpcbind", "portmap", "portmapper", "sunrpc", NULL,
-};
-static const char *rpcb_netnametbl[] = {
-	"rpcbind", "portmapper", "sunrpc", NULL,
-};
 const rpcprog_t rpcb_prog = RPCBPROG;
 const rpcvers_t rpcb_version = RPCBVERS;
 #else
-static const char *rpcb_pgmtbl[] = {
-	NULL,
-};
-static const char *rpcb_netnametbl[] = {
-	NULL,
-};
 const rpcprog_t rpcb_prog = PMAPPROG;
 const rpcvers_t rpcb_version = PMAPVERS;
 #endif
@@ -280,7 +268,7 @@ static int rpc_do_create_client(struct sockaddr *addr, struct conn_info *info, i
 		in4_raddr->sin_port = htons(info->port);
 		slen = sizeof(struct sockaddr_in);
 		/* Use rpcbind v2 for AF_INET */
-		if (info->program == rpc_prog)
+		if (info->program == rpcb_prog)
 			info->version = PMAPVERS;
 	} else if (addr->sa_family == AF_INET6) {
 		struct sockaddr_in6 *in6_raddr = (struct sockaddr_in6 *) addr;
@@ -338,22 +326,27 @@ static int rpc_do_create_client(struct sockaddr *addr, struct conn_info *info, i
 }
 #endif
 
-#ifdef HAVE_GETRPCBYNAME
+#if defined(HAVE_GETRPCBYNAME) || defined(HAVE_GETSERVBYNAME)
 static pthread_mutex_t rpcb_mutex = PTHREAD_MUTEX_INITIALIZER;
 #endif
 
 static rpcprog_t rpc_getrpcbyname(const rpcprog_t program)
 {
 #ifdef HAVE_GETRPCBYNAME
+	static const char *rpcb_pgmtbl[] = {
+		"rpcbind", "portmap", "portmapper", "sunrpc", NULL,
+	};
 	struct rpcent *entry;
+	rpcprog_t prog_number;
 	unsigned int i;
 
 	pthread_mutex_lock(&rpcb_mutex);
 	for (i = 0; rpcb_pgmtbl[i] != NULL; i++) {
 		entry = getrpcbyname(rpcb_pgmtbl[i]);
 		if (entry) {
+			prog_number = entry->r_number;
 			pthread_mutex_unlock(&rpcb_mutex);
-			return (rpcprog_t)entry->r_number;
+			return prog_number;
 		}
 	}
 	pthread_mutex_unlock(&rpcb_mutex);
@@ -361,37 +354,32 @@ static rpcprog_t rpc_getrpcbyname(const rpcprog_t program)
 	return program;
 }
 
-static unsigned short rpc_getservbyname(const char *service, const int protocol)
+static unsigned short rpc_getrpcbport(const int proto)
 {
-	const struct addrinfo hints = {
-		.ai_family      = AF_INET,
-		.ai_protocol    = protocol,
-		.ai_flags       = AI_PASSIVE,
+#ifdef HAVE_GETSERVBYNAME
+	static const char *rpcb_netnametbl[] = {
+		"rpcbind", "portmapper", "sunrpc", NULL,
 	};
-	struct addrinfo *result;
-	const struct sockaddr_in *sin;
+	struct servent *entry;
+	struct protoent *p_ent;
 	unsigned short port;
-
-	if (getaddrinfo(NULL, service, &hints, &result) != 0)
-		return 0;
-
-	sin = (const struct sockaddr_in *) result->ai_addr;
-	port = sin->sin_port;
-
-	freeaddrinfo(result);
-	return port;
-}
-
-static unsigned short rpc_getrpcbport(const int protocol)
-{
 	unsigned int i;
 
+	pthread_mutex_lock(&rpcb_mutex);
+	p_ent = getprotobynumber(proto);
+	if (!p_ent)
+		goto done;
 	for (i = 0; rpcb_netnametbl[i] != NULL; i++) {
-		unsigned short port;
-		port = rpc_getservbyname(rpcb_netnametbl[i], protocol);
-		if (port)
+		entry = getservbyname(rpcb_netnametbl[i], p_ent->p_name);
+		if (entry) {
+			port = entry->s_port;
+			pthread_mutex_unlock(&rpcb_mutex);
 			return port;
+		}
 	}
+done:
+	pthread_mutex_unlock(&rpcb_mutex);
+#endif
 	return (unsigned short) PMAPPORT;
 }
 
