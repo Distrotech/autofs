@@ -590,6 +590,7 @@ int rpc_portmap_getclient(struct conn_info *info,
 	info->program = rpc_getrpcbyname(rpcb_prog);
 	info->port = rpc_getrpcbport(proto);
 	info->version = rpcb_version;
+	error(LOGOPT_ANY, "program %d port %d version %d", info->program, info->port, info->version);
 	info->proto = proto;
 	info->send_sz = RPCSMALLMSGSIZE;
 	info->recv_sz = RPCSMALLMSGSIZE;
@@ -635,6 +636,7 @@ int rpc_portmap_getport(struct conn_info *info,
 		pmap_info.port = rpc_getrpcbport(info->proto);
 		pmap_info.program = rpc_getrpcbyname(rpcb_prog);
 		pmap_info.version = rpcb_version;
+		error(LOGOPT_ANY, "program %d port %d version %d", pmap_info->program, pmap_info->port, pmap_info->version);
 		pmap_info.proto = info->proto;
 		pmap_info.send_sz = RPCSMALLMSGSIZE;
 		pmap_info.recv_sz = RPCSMALLMSGSIZE;
