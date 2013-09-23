@@ -592,8 +592,13 @@ int rpc_portmap_getclient(struct conn_info *info,
 	info->addr_len = addr_len;
 	info->program = rpc_getrpcbyname(rpcb_prog);
 	info->port = ntohs(rpc_getrpcbport(proto));
+	/*
+	 * When using libtirpc we might need to change the rpcbind version
+	 * to qurey AF_INET addresses. Since we might not have an address
+	 * yet set AF_INET rpcbind version in rpc_do_create_client() when
+	 * we always have an address.
+	 */
 	info->version = rpcb_version;
-	error(LOGOPT_ANY, "program %d port %d version %d", info->program, info->port, info->version);
 	info->proto = proto;
 	info->send_sz = RPCSMALLMSGSIZE;
 	info->recv_sz = RPCSMALLMSGSIZE;
@@ -638,8 +643,13 @@ int rpc_portmap_getport(struct conn_info *info,
 		pmap_info.addr_len = info->addr_len;
 		pmap_info.port = ntohs(rpc_getrpcbport(info->proto));
 		pmap_info.program = rpc_getrpcbyname(rpcb_prog);
+		/*
+		 * When using libtirpc we might need to change the rpcbind
+		 * version to qurey AF_INET addresses. Since we might not
+		 * have an address yet set AF_INET rpcbind version in
+		 * rpc_do_create_client() when we always have an address.
+		 */
 		pmap_info.version = rpcb_version;
-		error(LOGOPT_ANY, "program %d port %d version %d", pmap_info.program, pmap_info.port, pmap_info.version);
 		pmap_info.proto = info->proto;
 		pmap_info.send_sz = RPCSMALLMSGSIZE;
 		pmap_info.recv_sz = RPCSMALLMSGSIZE;
