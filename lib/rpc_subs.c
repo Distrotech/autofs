@@ -43,6 +43,26 @@
                 } while (0)
 #endif
 
+#ifdef WITH_LIBTIRPC
+static const char *rpcb_pgmtbl[] = {
+	"rpcbind", "portmap", "portmapper", "sunrpc", NULL,
+};
+static const char *rpcb_netnametbl[] = {
+	"rpcbind", "portmapper", "sunrpc", NULL,
+};
+const rpcprog_t rpcb_prog = RPCBPROG;
+const rpcvers_t rpcb_version = RPCBVERS_4;
+#else
+static const char *rpcb_pgmtbl[] = {
+	NULL,
+};
+static const char *rpcb_netnametbl[] = {
+	NULL,
+};
+const rpcprog_t rpcb_prog = PMAPPROG;
+const rpcvers_t rpcb_version = PMAPVERS;
+#endif
+
 #include "mount.h"
 #include "rpc_subs.h"
 #include "automount.h"
@@ -315,6 +335,63 @@ static int rpc_do_create_client(struct sockaddr *addr, struct conn_info *info, i
 }
 #endif
 
+#ifdef HAVE_GETRPCBYNAME
+static pthread_mutex_t rpcb_mutex = PTHREAD_MUTEX_INITIALIZER;
+#endif
+
+static rpcprog_t rpc_getrpcbyname(const rpcprog_t program)
+{
+#ifdef HAVE_GETRPCBYNAME
+	struct rpcent *entry;
+	unsigned int i;
+
+	pthread_mutex_lock(&rpcb_mutex);
+	for (i = 0; rpcb_pgmtbl[i] != NULL; i++) {
+		entry = getrpcbyname(rpcb_pgmtbl[i]);
+		if (entry) {
+			pthread_mutex_unlock(&rpcb_mutex);
+			return (rpcprog_t)entry->r_number;
+		}
+	}
+	pthread_mutex_unlock(&rpcb_mutex);
+#endif
+	return program;
+}
+
+static unsigned short rpc_getservbyname(const char *service, const int protocol) 
+{
+	const struct addrinfo hints = {
+		.ai_family      = AF_INET,
+		.ai_protocol    = protocol,
+		.ai_flags       = AI_PASSIVE,
+	};
+	struct addrinfo *result;
+	const struct sockaddr_in *sin;
+	unsigned short port;
+
+	if (getaddrinfo(NULL, service, &hints, &result) != 0)
+		return 0;
+
+	sin = (const struct sockaddr_in *) result->ai_addr;
+	port = sin->sin_port;
+
+	freeaddrinfo(result);
+	return port;
+}
+
+static unsigned short rpc_getrpcbport(const int protocol)
+{
+	unsigned int i;
+
+	for (i = 0; rpcb_netnametbl[i] != NULL; i++) {
+		unsigned short port;
+		port = rpc_getservbyname(rpcb_netnametbl[i], protocol);
+		if (port)
+			return port;
+	}
+	return (unsigned short) PMAPPORT;
+}
+
 /*
  * Create an RPC client
  */
@@ -510,9 +587,9 @@ int rpc_portmap_getclient(struct conn_info *info,
 	info->host = host;
 	info->addr = addr;
 	info->addr_len = addr_len;
-	info->program = PMAPPROG;
-	info->port = PMAPPORT;
-	info->version = PMAPVERS;
+	info->program = rpc_getrpcbyname(rpcb_prog);
+	info->port = rpc_getrpcbport(proto);
+	info->version = rpcb_version;
 	info->proto = proto;
 	info->send_sz = RPCSMALLMSGSIZE;
 	info->recv_sz = RPCSMALLMSGSIZE;
@@ -555,9 +632,9 @@ int rpc_portmap_getport(struct conn_info *info,
 		pmap_info.host = info->host;
 		pmap_info.addr = info->addr;
 		pmap_info.addr_len = info->addr_len;
-		pmap_info.port = PMAPPORT;
-		pmap_info.program = PMAPPROG;
-		pmap_info.version = PMAPVERS;
+		pmap_info.port = rpc_getrpcbport(info->proto);
+		pmap_info.program = rpc_getrpcbyname(rpcb_prog);
+		pmap_info.version = rpcb_version;
 		pmap_info.proto = info->proto;
 		pmap_info.send_sz = RPCSMALLMSGSIZE;
 		pmap_info.recv_sz = RPCSMALLMSGSIZE;
