@@ -1,4 +1,4 @@
-Bottom: 4b9c00872f04d4b6f88d4006f53a90777eafcc33
+Bottom: 70e5aa92b0f7b7bd5e46962b4d89379d36daa725
 Top:    70e5aa92b0f7b7bd5e46962b4d89379d36daa725
 Author: Ian Kent <ikent@redhat.com>
 Date:   2013-09-23 14:41:26 +0800
@@ -8,57 +8,4 @@ debug.patch
 
 ---
 
-diff --git a/lib/rpc_subs.c b/lib/rpc_subs.c
-index 25f8968..d6c4b5a 100644
---- a/lib/rpc_subs.c
-+++ b/lib/rpc_subs.c
-@@ -51,7 +51,7 @@ static const char *rpcb_netnametbl[] = {
- 	"rpcbind", "portmapper", "sunrpc", NULL,
- };
- const rpcprog_t rpcb_prog = RPCBPROG;
--const rpcvers_t rpcb_version = RPCBVERS_4;
-+const rpcvers_t rpcb_version = RPCBVERS;
- #else
- static const char *rpcb_pgmtbl[] = {
- 	NULL,
-@@ -279,6 +279,9 @@ static int rpc_do_create_client(struct sockaddr *addr, struct conn_info *info, i
- 		laddr = (struct sockaddr *) &in4_laddr;
- 		in4_raddr->sin_port = htons(info->port);
- 		slen = sizeof(struct sockaddr_in);
-+		/* Use rpcbind v2 for AF_INET */
-+		if (info->program == rpcb_prog)
-+			info->version = PMAPVERS;
- 	} else if (addr->sa_family == AF_INET6) {
- 		struct sockaddr_in6 *in6_raddr = (struct sockaddr_in6 *) addr;
- 		in6_laddr.sin6_family = AF_INET6;
-@@ -588,7 +591,13 @@ int rpc_portmap_getclient(struct conn_info *info,
- 	info->addr = addr;
- 	info->addr_len = addr_len;
- 	info->program = rpc_getrpcbyname(rpcb_prog);
--	info->port = rpc_getrpcbport(proto);
-+	info->port = ntohs(rpc_getrpcbport(proto));
-+	/*
-+	 * When using libtirpc we might need to change the rpcbind version
-+	 * to qurey AF_INET addresses. Since we might not have an address
-+	 * yet set AF_INET rpcbind version in rpc_do_create_client() when
-+	 * we always have an address.
-+	 */
- 	info->version = rpcb_version;
- 	info->proto = proto;
- 	info->send_sz = RPCSMALLMSGSIZE;
-@@ -632,8 +641,14 @@ int rpc_portmap_getport(struct conn_info *info,
- 		pmap_info.host = info->host;
- 		pmap_info.addr = info->addr;
- 		pmap_info.addr_len = info->addr_len;
--		pmap_info.port = rpc_getrpcbport(info->proto);
-+		pmap_info.port = ntohs(rpc_getrpcbport(info->proto));
- 		pmap_info.program = rpc_getrpcbyname(rpcb_prog);
-+		/*
-+		 * When using libtirpc we might need to change the rpcbind
-+		 * version to qurey AF_INET addresses. Since we might not
-+		 * have an address yet set AF_INET rpcbind version in
-+		 * rpc_do_create_client() when we always have an address.
-+		 */
- 		pmap_info.version = rpcb_version;
- 		pmap_info.proto = info->proto;
- 		pmap_info.send_sz = RPCSMALLMSGSIZE;
+
