@@ -79,6 +79,7 @@
 - setup program map env from macro table.
 - add short host name standard marco variable.
 - fix get_nfs_info() probe.
+- fix portmap lookup.
 
 25/07/2012 autofs-5.0.7
 =======================
