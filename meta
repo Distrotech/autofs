@@ -1,6 +1,6 @@
 Version: 1
-Previous: 6bdf42e131fb3a001fe51c4d06a0276d34cc3de0
-Head: ed086e641660cf5e33bd5c317b5fd5fefedc1834
+Previous: 9676535ed65d6a35bcf68838619968467c1283bb
+Head: 775f52ca28b8acf4894de2af79663055bca4368f
 Applied:
   autofs-5.0.7-dont-override-LDFLAGS-in-make-rules.patch: 2e8251865c0ed6d91a97c107973a7eb75d3e131b
   autofs-5.0.7-fix-a-couple-of-compiler-warnings.patch: b8bdae4bfe855786de918c78eee228e4aabdab45
@@ -30,6 +30,7 @@ Applied:
   autofs-5.0.7-add-short-host-name-standard-marco-variable.patch: 7ddcfc7da9489739588ae2de9ace8c71ac8382c5
   autofs-5.0.7-allow-use-of-hosts-map-in-maps.patch: 7623059e6cf885350a6f9f059e8cf603866696d4
   autofs-5.0.7-fix-portmap-version.patch: ed086e641660cf5e33bd5c317b5fd5fefedc1834
+  refresh-temp: 775f52ca28b8acf4894de2af79663055bca4368f
 Unapplied:
   debug.patch: 3b0dc384c9ac4638240963317f6807dd0a41057b
   autofs-5.0.5-wait-for-master-map-available-at-start.patch: 28e191c68fc95cd90815f398deff088bd1d65d0a
