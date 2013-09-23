@@ -1,5 +1,5 @@
 Bottom: bfeb325e55235e836eb8323ba9bfaad36857f2c6
-Top:    f94c26248d74733b62cff57e63bf84ae958ef7c3
+Top:    5a0fcc281f94f30c7502a5b1a6e15d89cd8e5e85
 Author: Ian Kent <ikent@redhat.com>
 Date:   2013-09-23 16:19:20 +0800
 
@@ -58,7 +58,7 @@ index bf94822..7037b24 100644
  #undef HAVE_INTTYPES_H
  
 diff --git a/lib/rpc_subs.c b/lib/rpc_subs.c
-index a0de199..2139813 100644
+index a0de199..37d7320 100644
 --- a/lib/rpc_subs.c
 +++ b/lib/rpc_subs.c
 @@ -44,21 +44,9 @@
@@ -92,7 +92,7 @@ index a0de199..2139813 100644
  			info->version = PMAPVERS;
  	} else if (addr->sa_family == AF_INET6) {
  		struct sockaddr_in6 *in6_raddr = (struct sockaddr_in6 *) addr;
-@@ -338,13 +326,16 @@ static int rpc_do_create_client(struct sockaddr *addr, struct conn_info *info, i
+@@ -338,22 +326,27 @@ static int rpc_do_create_client(struct sockaddr *addr, struct conn_info *info, i
  }
  #endif
  
@@ -108,18 +108,21 @@ index a0de199..2139813 100644
 +		"rpcbind", "portmap", "portmapper", "sunrpc", NULL,
 +	};
  	struct rpcent *entry;
++	rpcprog_t prog_number;
  	unsigned int i;
  
-@@ -353,7 +344,7 @@ static rpcprog_t rpc_getrpcbyname(const rpcprog_t program)
+ 	pthread_mutex_lock(&rpcb_mutex);
+ 	for (i = 0; rpcb_pgmtbl[i] != NULL; i++) {
  		entry = getrpcbyname(rpcb_pgmtbl[i]);
  		if (entry) {
++			prog_number = entry->r_number;
  			pthread_mutex_unlock(&rpcb_mutex);
 -			return (rpcprog_t)entry->r_number;
-+			return (rpcprog_t) entry->r_number;
++			return prog_number;
  		}
  	}
  	pthread_mutex_unlock(&rpcb_mutex);
-@@ -361,37 +352,25 @@ static rpcprog_t rpc_getrpcbyname(const rpcprog_t program)
+@@ -361,37 +354,32 @@ static rpcprog_t rpc_getrpcbyname(const rpcprog_t program)
  	return program;
  }
  
@@ -136,7 +139,9 @@ index a0de199..2139813 100644
  	};
 -	struct addrinfo *result;
 -	const struct sockaddr_in *sin;
--	unsigned short port;
++	struct servent *entry;
++	struct protent *p_ent;
+ 	unsigned short port;
 -
 -	if (getaddrinfo(NULL, service, &hints, &result) != 0)
 -		return 0;
@@ -150,21 +155,24 @@ index a0de199..2139813 100644
 -
 -static unsigned short rpc_getrpcbport(const int protocol)
 -{
-+	struct servent *entry;
  	unsigned int i;
  
 +	pthread_mutex_lock(&rpcb_mutex);
++	p_ent = getprotobynumber(proto);
++	if (!p_ent)
++		goto done;
  	for (i = 0; rpcb_netnametbl[i] != NULL; i++) {
 -		unsigned short port;
 -		port = rpc_getservbyname(rpcb_netnametbl[i], protocol);
 -		if (port)
--			return port;
-+		entry = getservbyname(rpcb_netnametbl[i], proto);
++		entry = getservbyname(rpcb_netnametbl[i], p_ent->p_name);
 +		if (entry) {
++			port = entry->s_port;
 +			pthread_mutex_unlock(&rpcb_mutex);
-+			return (unsigned short) entry->s_port;
+ 			return port;
 +		}
  	}
++done:
 +	pthread_mutex_unlock(&rpcb_mutex);
 +#endif
  	return (unsigned short) PMAPPORT;
