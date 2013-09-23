@@ -590,7 +590,7 @@ int rpc_portmap_getclient(struct conn_info *info,
 	info->addr = addr;
 	info->addr_len = addr_len;
 	info->program = rpc_getrpcbyname(rpcb_prog);
-	info->port = rpc_getrpcbport(proto)
+	info->port = rpc_getrpcbport(proto);
 	info->version = rpcb_version;
 	info->proto = proto;
 	info->send_sz = RPCSMALLMSGSIZE;
