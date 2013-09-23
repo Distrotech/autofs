@@ -1,5 +1,5 @@
 Bottom: 4b9c00872f04d4b6f88d4006f53a90777eafcc33
-Top:    662a846c8120f9bd9b0ff20f430fa9ca3781869e
+Top:    1801eac9cf7ae938e37f2283fd9e428216376a76
 Author: Ian Kent <ikent@redhat.com>
 Date:   2013-09-23 14:41:26 +0800
 
@@ -9,9 +9,18 @@ debug.patch
 ---
 
 diff --git a/lib/rpc_subs.c b/lib/rpc_subs.c
-index 25f8968..a3444c4 100644
+index 25f8968..57da8e6 100644
 --- a/lib/rpc_subs.c
 +++ b/lib/rpc_subs.c
+@@ -51,7 +51,7 @@ static const char *rpcb_netnametbl[] = {
+ 	"rpcbind", "portmapper", "sunrpc", NULL,
+ };
+ const rpcprog_t rpcb_prog = RPCBPROG;
+-const rpcvers_t rpcb_version = RPCBVERS_4;
++const rpcvers_t rpcb_version = RPCBVERS;
+ #else
+ static const char *rpcb_pgmtbl[] = {
+ 	NULL,
 @@ -588,8 +588,9 @@ int rpc_portmap_getclient(struct conn_info *info,
  	info->addr = addr;
  	info->addr_len = addr_len;
