@@ -280,7 +280,7 @@ static int rpc_do_create_client(struct sockaddr *addr, struct conn_info *info, i
 		in4_raddr->sin_port = htons(info->port);
 		slen = sizeof(struct sockaddr_in);
 		/* Use rpcbind v2 for AF_INET */
-		if (info->program == rpcb_prog)
+		if (info->program != PMAPVERS)
 			info->version = PMAPVERS;
 	} else if (addr->sa_family == AF_INET6) {
 		struct sockaddr_in6 *in6_raddr = (struct sockaddr_in6 *) addr;
