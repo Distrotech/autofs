@@ -1,5 +1,5 @@
 Bottom: 8edbd1e235052bd9e6a4f20d0e3f6cc9f506acdf
-Top:    bfeb325e55235e836eb8323ba9bfaad36857f2c6
+Top:    7ae1fbe3cf953f2bc4fe34ca7036ba66bb9ec43a
 Author: Ian Kent <ikent@redhat.com>
 Date:   2013-09-23 12:18:52 +0800
 
@@ -34,32 +34,33 @@ index 56d083a..aea47d3 100644
  25/07/2012 autofs-5.0.7
  =======================
 diff --git a/aclocal.m4 b/aclocal.m4
-index 637a775..7c7e405 100644
+index 637a775..3e6f223 100644
 --- a/aclocal.m4
 +++ b/aclocal.m4
 @@ -428,6 +428,8 @@ if test "$af_have_libtirpc" = "yes"; then
      TIRPCLIB="-ltirpc"
  fi
  
-+AC_CHECK_FUNCS([getrpcbyname])
++AC_CHECK_FUNCS([getrpcbyname getservbyname])
 +
  # restore flags
  CFLAGS="$af_check_libtirpc_save_cflags"
  LDFLAGS="$af_check_libtirpc_save_ldflags"
 diff --git a/configure b/configure
-index e6d5d4a..ee095df 100755
+index e6d5d4a..70996ee 100755
 --- a/configure
 +++ b/configure
-@@ -3228,6 +3228,18 @@ $as_echo "#define TIRPC_WORKAROUND 1" >>confdefs.h
+@@ -3228,6 +3228,19 @@ $as_echo "#define TIRPC_WORKAROUND 1" >>confdefs.h
      TIRPCLIB="-ltirpc"
  fi
  
-+for ac_func in getrpcbyname
++for ac_func in getrpcbyname getservbyname
 +do :
-+  ac_fn_c_check_func "$LINENO" "getrpcbyname" "ac_cv_func_getrpcbyname"
-+if test "x$ac_cv_func_getrpcbyname" = xyes; then :
++  as_ac_var=`$as_echo "ac_cv_func_$ac_func" | $as_tr_sh`
++ac_fn_c_check_func "$LINENO" "$ac_func" "$as_ac_var"
++if eval test \"x\$"$as_ac_var"\" = x"yes"; then :
 +  cat >>confdefs.h <<_ACEOF
-+#define HAVE_GETRPCBYNAME 1
++#define `$as_echo "HAVE_$ac_func" | $as_tr_cpp` 1
 +_ACEOF
 +
 +fi
@@ -70,15 +71,18 @@ index e6d5d4a..ee095df 100755
  CFLAGS="$af_check_libtirpc_save_cflags"
  LDFLAGS="$af_check_libtirpc_save_ldflags"
 diff --git a/include/config.h.in b/include/config.h.in
-index 8a52080..bf94822 100644
+index 8a52080..7037b24 100644
 --- a/include/config.h.in
 +++ b/include/config.h.in
-@@ -21,6 +21,9 @@
+@@ -21,6 +21,12 @@
  /* define if you have E4FSCK */
  #undef HAVE_E4FSCK
  
 +/* Define to 1 if you have the `getrpcbyname' function. */
 +#undef HAVE_GETRPCBYNAME
++
++/* Define to 1 if you have the `getservbyname' function. */
++#undef HAVE_GETSERVBYNAME
 +
  /* Define to 1 if you have the <inttypes.h> header file. */
  #undef HAVE_INTTYPES_H
@@ -97,29 +101,17 @@ index b6d59f9..1d5357c 100644
  #define PMAP_TOUT_TCP	5
  
 diff --git a/lib/rpc_subs.c b/lib/rpc_subs.c
-index f5742e8..a0de199 100644
+index f5742e8..46b3e8d 100644
 --- a/lib/rpc_subs.c
 +++ b/lib/rpc_subs.c
-@@ -43,6 +43,26 @@
+@@ -43,6 +43,14 @@
                  } while (0)
  #endif
  
 +#ifdef WITH_LIBTIRPC
-+static const char *rpcb_pgmtbl[] = {
-+	"rpcbind", "portmap", "portmapper", "sunrpc", NULL,
-+};
-+static const char *rpcb_netnametbl[] = {
-+	"rpcbind", "portmapper", "sunrpc", NULL,
-+};
 +const rpcprog_t rpcb_prog = RPCBPROG;
 +const rpcvers_t rpcb_version = RPCBVERS;
 +#else
-+static const char *rpcb_pgmtbl[] = {
-+	NULL,
-+};
-+static const char *rpcb_netnametbl[] = {
-+	NULL,
-+};
 +const rpcprog_t rpcb_prog = PMAPPROG;
 +const rpcvers_t rpcb_version = PMAPVERS;
 +#endif
@@ -127,36 +119,41 @@ index f5742e8..a0de199 100644
  #include "mount.h"
  #include "rpc_subs.h"
  #include "automount.h"
-@@ -259,6 +279,9 @@ static int rpc_do_create_client(struct sockaddr *addr, struct conn_info *info, i
+@@ -259,6 +267,9 @@ static int rpc_do_create_client(struct sockaddr *addr, struct conn_info *info, i
  		laddr = (struct sockaddr *) &in4_laddr;
  		in4_raddr->sin_port = htons(info->port);
  		slen = sizeof(struct sockaddr_in);
 +		/* Use rpcbind v2 for AF_INET */
-+		if (info->program == rpc_prog)
++		if (info->program == rpcb_prog)
 +			info->version = PMAPVERS;
  	} else if (addr->sa_family == AF_INET6) {
  		struct sockaddr_in6 *in6_raddr = (struct sockaddr_in6 *) addr;
  		in6_laddr.sin6_family = AF_INET6;
-@@ -315,6 +338,63 @@ static int rpc_do_create_client(struct sockaddr *addr, struct conn_info *info, i
+@@ -315,6 +326,63 @@ static int rpc_do_create_client(struct sockaddr *addr, struct conn_info *info, i
  }
  #endif
  
-+#ifdef HAVE_GETRPCBYNAME
++#if defined(HAVE_GETRPCBYNAME) || defined(HAVE_GETSERVBYNAME)
 +static pthread_mutex_t rpcb_mutex = PTHREAD_MUTEX_INITIALIZER;
 +#endif
 +
 +static rpcprog_t rpc_getrpcbyname(const rpcprog_t program)
 +{
 +#ifdef HAVE_GETRPCBYNAME
++	static const char *rpcb_pgmtbl[] = {
++		"rpcbind", "portmap", "portmapper", "sunrpc", NULL,
++	};
 +	struct rpcent *entry;
++	rpcprog_t prog_number;
 +	unsigned int i;
 +
 +	pthread_mutex_lock(&rpcb_mutex);
 +	for (i = 0; rpcb_pgmtbl[i] != NULL; i++) {
 +		entry = getrpcbyname(rpcb_pgmtbl[i]);
 +		if (entry) {
++			prog_number = entry->r_number;
 +			pthread_mutex_unlock(&rpcb_mutex);
-+			return (rpcprog_t)entry->r_number;
++			return prog_number;
 +		}
 +	}
 +	pthread_mutex_unlock(&rpcb_mutex);
@@ -164,44 +161,39 @@ index f5742e8..a0de199 100644
 +	return program;
 +}
 +
-+static unsigned short rpc_getservbyname(const char *service, const int protocol)
++static unsigned short rpc_getrpcbport(const int proto)
 +{
-+	const struct addrinfo hints = {
-+		.ai_family      = AF_INET,
-+		.ai_protocol    = protocol,
-+		.ai_flags       = AI_PASSIVE,
++#ifdef HAVE_GETSERVBYNAME
++	static const char *rpcb_netnametbl[] = {
++		"rpcbind", "portmapper", "sunrpc", NULL,
 +	};
-+	struct addrinfo *result;
-+	const struct sockaddr_in *sin;
++	struct servent *entry;
++	struct protoent *p_ent;
 +	unsigned short port;
-+
-+	if (getaddrinfo(NULL, service, &hints, &result) != 0)
-+		return 0;
-+
-+	sin = (const struct sockaddr_in *) result->ai_addr;
-+	port = sin->sin_port;
-+
-+	freeaddrinfo(result);
-+	return port;
-+}
-+
-+static unsigned short rpc_getrpcbport(const int protocol)
-+{
 +	unsigned int i;
 +
++	pthread_mutex_lock(&rpcb_mutex);
++	p_ent = getprotobynumber(proto);
++	if (!p_ent)
++		goto done;
 +	for (i = 0; rpcb_netnametbl[i] != NULL; i++) {
-+		unsigned short port;
-+		port = rpc_getservbyname(rpcb_netnametbl[i], protocol);
-+		if (port)
++		entry = getservbyname(rpcb_netnametbl[i], p_ent->p_name);
++		if (entry) {
++			port = entry->s_port;
++			pthread_mutex_unlock(&rpcb_mutex);
 +			return port;
++		}
 +	}
++done:
++	pthread_mutex_unlock(&rpcb_mutex);
++#endif
 +	return (unsigned short) PMAPPORT;
 +}
 +
  /*
   * Create an RPC client
   */
-@@ -510,9 +590,15 @@ int rpc_portmap_getclient(struct conn_info *info,
+@@ -510,9 +578,15 @@ int rpc_portmap_getclient(struct conn_info *info,
  	info->host = host;
  	info->addr = addr;
  	info->addr_len = addr_len;
@@ -220,7 +212,7 @@ index f5742e8..a0de199 100644
  	info->proto = proto;
  	info->send_sz = RPCSMALLMSGSIZE;
  	info->recv_sz = RPCSMALLMSGSIZE;
-@@ -555,9 +641,15 @@ int rpc_portmap_getport(struct conn_info *info,
+@@ -555,9 +629,15 @@ int rpc_portmap_getport(struct conn_info *info,
  		pmap_info.host = info->host;
  		pmap_info.addr = info->addr;
  		pmap_info.addr_len = info->addr_len;
