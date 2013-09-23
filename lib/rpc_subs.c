@@ -43,6 +43,14 @@
                 } while (0)
 #endif
 
+#ifdef WITH_LIBTIRPC
+const rpcprog_t rpcb_prog = RPCBPROG;
+const rpcvers_t rpcb_version = RPCBVERS;
+#else
+const rpcprog_t rpcb_prog = PMAPPROG;
+const rpcvers_t rpcb_version = PMAPVERS;
+#endif
+
 #include "mount.h"
 #include "rpc_subs.h"
 #include "automount.h"
@@ -259,6 +267,9 @@ static int rpc_do_create_client(struct sockaddr *addr, struct conn_info *info, i
 		laddr = (struct sockaddr *) &in4_laddr;
 		in4_raddr->sin_port = htons(info->port);
 		slen = sizeof(struct sockaddr_in);
+		/* Use rpcbind v2 for AF_INET */
+		if (info->program == rpcb_prog)
+			info->version = PMAPVERS;
 	} else if (addr->sa_family == AF_INET6) {
 		struct sockaddr_in6 *in6_raddr = (struct sockaddr_in6 *) addr;
 		in6_laddr.sin6_family = AF_INET6;
@@ -314,6 +325,63 @@ static int rpc_do_create_client(struct sockaddr *addr, struct conn_info *info, i
 	return 0;
 }
 #endif
+
+#if defined(HAVE_GETRPCBYNAME) || defined(HAVE_GETSERVBYNAME)
+static pthread_mutex_t rpcb_mutex = PTHREAD_MUTEX_INITIALIZER;
+#endif
+
+static rpcprog_t rpc_getrpcbyname(const rpcprog_t program)
+{
+#ifdef HAVE_GETRPCBYNAME
+	static const char *rpcb_pgmtbl[] = {
+		"rpcbind", "portmap", "portmapper", "sunrpc", NULL,
+	};
+	struct rpcent *entry;
+	rpcprog_t prog_number;
+	unsigned int i;
+
+	pthread_mutex_lock(&rpcb_mutex);
+	for (i = 0; rpcb_pgmtbl[i] != NULL; i++) {
+		entry = getrpcbyname(rpcb_pgmtbl[i]);
+		if (entry) {
+			prog_number = entry->r_number;
+			pthread_mutex_unlock(&rpcb_mutex);
+			return prog_number;
+		}
+	}
+	pthread_mutex_unlock(&rpcb_mutex);
+#endif
+	return program;
+}
+
+static unsigned short rpc_getrpcbport(const int proto)
+{
+#ifdef HAVE_GETSERVBYNAME
+	static const char *rpcb_netnametbl[] = {
+		"rpcbind", "portmapper", "sunrpc", NULL,
+	};
+	struct servent *entry;
+	struct protoent *p_ent;
+	unsigned short port;
+	unsigned int i;
+
+	pthread_mutex_lock(&rpcb_mutex);
+	p_ent = getprotobynumber(proto);
+	if (!p_ent)
+		goto done;
+	for (i = 0; rpcb_netnametbl[i] != NULL; i++) {
+		entry = getservbyname(rpcb_netnametbl[i], p_ent->p_name);
+		if (entry) {
+			port = entry->s_port;
+			pthread_mutex_unlock(&rpcb_mutex);
+			return port;
+		}
+	}
+done:
+	pthread_mutex_unlock(&rpcb_mutex);
+#endif
+	return (unsigned short) PMAPPORT;
+}
 
 /*
  * Create an RPC client
@@ -510,9 +578,15 @@ int rpc_portmap_getclient(struct conn_info *info,
 	info->host = host;
 	info->addr = addr;
 	info->addr_len = addr_len;
-	info->program = PMAPPROG;
-	info->port = PMAPPORT;
-	info->version = PMAPVERS;
+	info->program = rpc_getrpcbyname(rpcb_prog);
+	info->port = ntohs(rpc_getrpcbport(proto));
+	/*
+	 * When using libtirpc we might need to change the rpcbind version
+	 * to qurey AF_INET addresses. Since we might not have an address
+	 * yet set AF_INET rpcbind version in rpc_do_create_client() when
+	 * we always have an address.
+	 */
+	info->version = rpcb_version;
 	info->proto = proto;
 	info->send_sz = RPCSMALLMSGSIZE;
 	info->recv_sz = RPCSMALLMSGSIZE;
@@ -555,9 +629,15 @@ int rpc_portmap_getport(struct conn_info *info,
 		pmap_info.host = info->host;
 		pmap_info.addr = info->addr;
 		pmap_info.addr_len = info->addr_len;
-		pmap_info.port = PMAPPORT;
-		pmap_info.program = PMAPPROG;
-		pmap_info.version = PMAPVERS;
+		pmap_info.port = ntohs(rpc_getrpcbport(info->proto));
+		pmap_info.program = rpc_getrpcbyname(rpcb_prog);
+		/*
+		 * When using libtirpc we might need to change the rpcbind
+		 * version to qurey AF_INET addresses. Since we might not
+		 * have an address yet set AF_INET rpcbind version in
+		 * rpc_do_create_client() when we always have an address.
+		 */
+		pmap_info.version = rpcb_version;
 		pmap_info.proto = info->proto;
 		pmap_info.send_sz = RPCSMALLMSGSIZE;
 		pmap_info.recv_sz = RPCSMALLMSGSIZE;
