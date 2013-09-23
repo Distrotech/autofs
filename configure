@@ -3228,6 +3228,19 @@ $as_echo "#define TIRPC_WORKAROUND 1" >>confdefs.h
     TIRPCLIB="-ltirpc"
 fi
 
+for ac_func in getrpcbyname getservbyname
+do :
+  as_ac_var=`$as_echo "ac_cv_func_$ac_func" | $as_tr_sh`
+ac_fn_c_check_func "$LINENO" "$ac_func" "$as_ac_var"
+if eval test \"x\$"$as_ac_var"\" = x"yes"; then :
+  cat >>confdefs.h <<_ACEOF
+#define `$as_echo "HAVE_$ac_func" | $as_tr_cpp` 1
+_ACEOF
+
+fi
+done
+
+
 # restore flags
 CFLAGS="$af_check_libtirpc_save_cflags"
 LDFLAGS="$af_check_libtirpc_save_ldflags"
