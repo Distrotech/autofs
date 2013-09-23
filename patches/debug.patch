@@ -1,5 +1,5 @@
 Bottom: bfeb325e55235e836eb8323ba9bfaad36857f2c6
-Top:    c83a07466a1c73a53d23ecb1cd50fffda2f752b8
+Top:    fd2be63602554b0fb762bd95a5a95fc3f594be74
 Author: Ian Kent <ikent@redhat.com>
 Date:   2013-09-23 16:19:20 +0800
 
@@ -22,10 +22,32 @@ index 7c7e405..3e6f223 100644
  # restore flags
  CFLAGS="$af_check_libtirpc_save_cflags"
 diff --git a/lib/rpc_subs.c b/lib/rpc_subs.c
-index a0de199..c7493cf 100644
+index a0de199..fb79eb0 100644
 --- a/lib/rpc_subs.c
 +++ b/lib/rpc_subs.c
-@@ -338,7 +338,7 @@ static int rpc_do_create_client(struct sockaddr *addr, struct conn_info *info, i
+@@ -44,21 +44,9 @@
+ #endif
+ 
+ #ifdef WITH_LIBTIRPC
+-static const char *rpcb_pgmtbl[] = {
+-	"rpcbind", "portmap", "portmapper", "sunrpc", NULL,
+-};
+-static const char *rpcb_netnametbl[] = {
+-	"rpcbind", "portmapper", "sunrpc", NULL,
+-};
+ const rpcprog_t rpcb_prog = RPCBPROG;
+ const rpcvers_t rpcb_version = RPCBVERS;
+ #else
+-static const char *rpcb_pgmtbl[] = {
+-	NULL,
+-};
+-static const char *rpcb_netnametbl[] = {
+-	NULL,
+-};
+ const rpcprog_t rpcb_prog = PMAPPROG;
+ const rpcvers_t rpcb_version = PMAPVERS;
+ #endif
+@@ -338,13 +326,16 @@ static int rpc_do_create_client(struct sockaddr *addr, struct conn_info *info, i
  }
  #endif
  
@@ -34,7 +56,16 @@ index a0de199..c7493cf 100644
  static pthread_mutex_t rpcb_mutex = PTHREAD_MUTEX_INITIALIZER;
  #endif
  
-@@ -353,7 +353,7 @@ static rpcprog_t rpc_getrpcbyname(const rpcprog_t program)
+ static rpcprog_t rpc_getrpcbyname(const rpcprog_t program)
+ {
+ #ifdef HAVE_GETRPCBYNAME
++	static const char *rpcb_pgmtbl[] = {
++		"rpcbind", "portmap", "portmapper", "sunrpc", NULL,
++	};
+ 	struct rpcent *entry;
+ 	unsigned int i;
+ 
+@@ -353,7 +344,7 @@ static rpcprog_t rpc_getrpcbyname(const rpcprog_t program)
  		entry = getrpcbyname(rpcb_pgmtbl[i]);
  		if (entry) {
  			pthread_mutex_unlock(&rpcb_mutex);
@@ -43,17 +74,21 @@ index a0de199..c7493cf 100644
  		}
  	}
  	pthread_mutex_unlock(&rpcb_mutex);
-@@ -361,37 +361,22 @@ static rpcprog_t rpc_getrpcbyname(const rpcprog_t program)
+@@ -361,37 +352,25 @@ static rpcprog_t rpc_getrpcbyname(const rpcprog_t program)
  	return program;
  }
  
 -static unsigned short rpc_getservbyname(const char *service, const int protocol)
--{
++static unsigned short rpc_getrpcbport(const int proto)
+ {
 -	const struct addrinfo hints = {
 -		.ai_family      = AF_INET,
 -		.ai_protocol    = protocol,
 -		.ai_flags       = AI_PASSIVE,
--	};
++#ifdef HAVE_GETSERVBYNAME
++	static const char *rpcb_netnametbl[] = {
++		"rpcbind", "portmapper", "sunrpc", NULL,
+ 	};
 -	struct addrinfo *result;
 -	const struct sockaddr_in *sin;
 -	unsigned short port;
@@ -69,9 +104,7 @@ index a0de199..c7493cf 100644
 -}
 -
 -static unsigned short rpc_getrpcbport(const int protocol)
-+static unsigned short rpc_getrpcbport(const int proto)
- {
-+#ifdef HAVE_GETSERVBYNAME
+-{
 +	struct servent *entry;
  	unsigned int i;
  
