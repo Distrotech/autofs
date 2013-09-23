@@ -1,0 +1,20 @@
+Bottom: 8edbd1e235052bd9e6a4f20d0e3f6cc9f506acdf
+Top:    8edbd1e235052bd9e6a4f20d0e3f6cc9f506acdf
+Author: Ian Kent <ikent@redhat.com>
+Date:   2013-09-23 12:18:52 +0800
+
+autofs-5.0.7 - fix portmap version
+
+The autofs RPC library has fallen behind some.
+
+When using IPv6 (rpbbind) version 3 or 4 is available whereas with IPv4
+(portmap) verions 2 and 3 are available.
+
+autofs uses the version defined by PMAPVERS in the portmap include files
+whereas it should be using the RPCBVERS defines when using libtirpc. This
+incompatibility only shows up with IPv6.
+
+
+---
+
+
