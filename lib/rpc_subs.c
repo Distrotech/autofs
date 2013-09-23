@@ -588,7 +588,7 @@ int rpc_portmap_getclient(struct conn_info *info,
 	info->addr = addr;
 	info->addr_len = addr_len;
 	info->program = rpc_getrpcbyname(rpcb_prog);
-	info->port = rpc_getrpcbport(proto);
+	info->port = ntohs(rpc_getrpcbport(proto));
 	info->version = rpcb_version;
 	error(LOGOPT_ANY, "program %d port %d version %d", info->program, info->port, info->version);
 	info->proto = proto;
@@ -633,7 +633,7 @@ int rpc_portmap_getport(struct conn_info *info,
 		pmap_info.host = info->host;
 		pmap_info.addr = info->addr;
 		pmap_info.addr_len = info->addr_len;
-		pmap_info.port = rpc_getrpcbport(info->proto);
+		pmap_info.port = ntohs(rpc_getrpcbport(info->proto));
 		pmap_info.program = rpc_getrpcbyname(rpcb_prog);
 		pmap_info.version = rpcb_version;
 		error(LOGOPT_ANY, "program %d port %d version %d", pmap_info.program, pmap_info.port, pmap_info.version);
