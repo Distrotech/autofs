@@ -44,21 +44,9 @@
 #endif
 
 #ifdef WITH_LIBTIRPC
-static const char *rpcb_pgmtbl[] = {
-	"rpcbind", "portmap", "portmapper", "sunrpc", NULL,
-};
-static const char *rpcb_netnametbl[] = {
-	"rpcbind", "portmapper", "sunrpc", NULL,
-};
 const rpcprog_t rpcb_prog = RPCBPROG;
 const rpcvers_t rpcb_version = RPCBVERS;
 #else
-static const char *rpcb_pgmtbl[] = {
-	NULL,
-};
-static const char *rpcb_netnametbl[] = {
-	NULL,
-};
 const rpcprog_t rpcb_prog = PMAPPROG;
 const rpcvers_t rpcb_version = PMAPVERS;
 #endif
@@ -345,6 +333,9 @@ static pthread_mutex_t rpcb_mutex = PTHREAD_MUTEX_INITIALIZER;
 static rpcprog_t rpc_getrpcbyname(const rpcprog_t program)
 {
 #ifdef HAVE_GETRPCBYNAME
+	static const char *rpcb_pgmtbl[] = {
+		"rpcbind", "portmap", "portmapper", "sunrpc", NULL,
+	};
 	struct rpcent *entry;
 	unsigned int i;
 
@@ -364,6 +355,9 @@ static rpcprog_t rpc_getrpcbyname(const rpcprog_t program)
 static unsigned short rpc_getrpcbport(const int proto)
 {
 #ifdef HAVE_GETSERVBYNAME
+	static const char *rpcb_netnametbl[] = {
+		"rpcbind", "portmapper", "sunrpc", NULL,
+	};
 	struct servent *entry;
 	unsigned int i;
 
