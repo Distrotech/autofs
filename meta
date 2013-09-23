@@ -1,6 +1,6 @@
 Version: 1
-Previous: db3d647926e7d18dd23db29ddb537055bbac2af3
-Head: c5be42a19f2d09aa2853d906ed7ae25e21360d82
+Previous: 6bd1d04b3e37b64c07fb667a36b656908875b603
+Head: ed78181dd06753efabdc623c0a1f09b5362d2017
 Applied:
   autofs-5.0.7-dont-override-LDFLAGS-in-make-rules.patch: 2e8251865c0ed6d91a97c107973a7eb75d3e131b
   autofs-5.0.7-fix-a-couple-of-compiler-warnings.patch: b8bdae4bfe855786de918c78eee228e4aabdab45
@@ -31,6 +31,7 @@ Applied:
   autofs-5.0.7-allow-use-of-hosts-map-in-maps.patch: 7623059e6cf885350a6f9f059e8cf603866696d4
   autofs-5.0.7-fix-portmap-lookup.patch: be0155407c3a2b5c16169caeb7a2d5ea5ab9fe71
   debug.patch: c5be42a19f2d09aa2853d906ed7ae25e21360d82
+  refresh-temp: ed78181dd06753efabdc623c0a1f09b5362d2017
 Unapplied:
   autofs-5.0.5-wait-for-master-map-available-at-start.patch: 28e191c68fc95cd90815f398deff088bd1d65d0a
   autofs-5.0.5-add-master-read-wait-option.patch: 05d9eb17fb1ec9418f236468875ad04b09b0546b
