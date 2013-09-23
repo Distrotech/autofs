@@ -1,0 +1,45 @@
+Bottom: a70e6e55e624bfa6c913daf4b55334c5a9be32b7
+Top:    5dbea22d838c6dd59b9a3d747d8fafdf4ccbaa10
+Author: Ian Kent <ikent@redhat.com>
+Date:   2013-09-23 13:27:52 +0800
+
+Refresh of debug.patch
+
+---
+
+diff --git a/configure b/configure
+index e6d5d4a..ee095df 100755
+--- a/configure
++++ b/configure
+@@ -3228,6 +3228,18 @@ $as_echo "#define TIRPC_WORKAROUND 1" >>confdefs.h
+     TIRPCLIB="-ltirpc"
+ fi
+ 
++for ac_func in getrpcbyname
++do :
++  ac_fn_c_check_func "$LINENO" "getrpcbyname" "ac_cv_func_getrpcbyname"
++if test "x$ac_cv_func_getrpcbyname" = xyes; then :
++  cat >>confdefs.h <<_ACEOF
++#define HAVE_GETRPCBYNAME 1
++_ACEOF
++
++fi
++done
++
++
+ # restore flags
+ CFLAGS="$af_check_libtirpc_save_cflags"
+ LDFLAGS="$af_check_libtirpc_save_ldflags"
+diff --git a/include/config.h.in b/include/config.h.in
+index 8a52080..bf94822 100644
+--- a/include/config.h.in
++++ b/include/config.h.in
+@@ -21,6 +21,9 @@
+ /* define if you have E4FSCK */
+ #undef HAVE_E4FSCK
+ 
++/* Define to 1 if you have the `getrpcbyname' function. */
++#undef HAVE_GETRPCBYNAME
++
+ /* Define to 1 if you have the <inttypes.h> header file. */
+ #undef HAVE_INTTYPES_H
