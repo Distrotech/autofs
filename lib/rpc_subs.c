@@ -51,7 +51,7 @@ static const char *rpcb_netnametbl[] = {
 	"rpcbind", "portmapper", "sunrpc", NULL,
 };
 const rpcprog_t rpcb_prog = RPCBPROG;
-const rpcvers_t rpcb_version = RPCBVERS_4;
+const rpcvers_t rpcb_version = RPCBVERS;
 #else
 static const char *rpcb_pgmtbl[] = {
 	NULL,
