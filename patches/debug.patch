@@ -1,5 +1,5 @@
 Bottom: 4b9c00872f04d4b6f88d4006f53a90777eafcc33
-Top:    1801eac9cf7ae938e37f2283fd9e428216376a76
+Top:    61af7b78e1666f92ff6c99f3fc62a74188655b12
 Author: Ian Kent <ikent@redhat.com>
 Date:   2013-09-23 14:41:26 +0800
 
@@ -9,7 +9,7 @@ debug.patch
 ---
 
 diff --git a/lib/rpc_subs.c b/lib/rpc_subs.c
-index 25f8968..57da8e6 100644
+index 25f8968..e4ea97d 100644
 --- a/lib/rpc_subs.c
 +++ b/lib/rpc_subs.c
 @@ -51,7 +51,7 @@ static const char *rpcb_netnametbl[] = {
@@ -21,7 +21,17 @@ index 25f8968..57da8e6 100644
  #else
  static const char *rpcb_pgmtbl[] = {
  	NULL,
-@@ -588,8 +588,9 @@ int rpc_portmap_getclient(struct conn_info *info,
+@@ -279,6 +279,9 @@ static int rpc_do_create_client(struct sockaddr *addr, struct conn_info *info, i
+ 		laddr = (struct sockaddr *) &in4_laddr;
+ 		in4_raddr->sin_port = htons(info->port);
+ 		slen = sizeof(struct sockaddr_in);
++		/* Use rpcbind v2 for AF_INET */
++		if (info->program == rpcb_prog)
++			info->version = PMAPVERS;
+ 	} else if (addr->sa_family == AF_INET6) {
+ 		struct sockaddr_in6 *in6_raddr = (struct sockaddr_in6 *) addr;
+ 		in6_laddr.sin6_family = AF_INET6;
+@@ -588,8 +591,9 @@ int rpc_portmap_getclient(struct conn_info *info,
  	info->addr = addr;
  	info->addr_len = addr_len;
  	info->program = rpc_getrpcbyname(rpcb_prog);
@@ -32,7 +42,7 @@ index 25f8968..57da8e6 100644
  	info->proto = proto;
  	info->send_sz = RPCSMALLMSGSIZE;
  	info->recv_sz = RPCSMALLMSGSIZE;
-@@ -632,9 +633,10 @@ int rpc_portmap_getport(struct conn_info *info,
+@@ -632,9 +636,10 @@ int rpc_portmap_getport(struct conn_info *info,
  		pmap_info.host = info->host;
  		pmap_info.addr = info->addr;
  		pmap_info.addr_len = info->addr_len;
