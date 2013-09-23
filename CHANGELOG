@@ -78,6 +78,7 @@
 - fix bad mkdir permission on create.
 - setup program map env from macro table.
 - add short host name standard marco variable.
+- fix portmap version.
 
 25/07/2012 autofs-5.0.7
 =======================
