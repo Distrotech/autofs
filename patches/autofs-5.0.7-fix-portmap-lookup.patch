@@ -1,5 +1,5 @@
 Bottom: 8edbd1e235052bd9e6a4f20d0e3f6cc9f506acdf
-Top:    70e5aa92b0f7b7bd5e46962b4d89379d36daa725
+Top:    bc56257f04aa66cbdcbb09b964f3ad3a8fbbcef9
 Author: Ian Kent <ikent@redhat.com>
 Date:   2013-09-23 12:18:52 +0800
 
@@ -97,7 +97,7 @@ index b6d59f9..1d5357c 100644
  #define PMAP_TOUT_TCP	5
  
 diff --git a/lib/rpc_subs.c b/lib/rpc_subs.c
-index f5742e8..d6c4b5a 100644
+index f5742e8..5164e70 100644
 --- a/lib/rpc_subs.c
 +++ b/lib/rpc_subs.c
 @@ -43,6 +43,26 @@
@@ -132,7 +132,7 @@ index f5742e8..d6c4b5a 100644
  		in4_raddr->sin_port = htons(info->port);
  		slen = sizeof(struct sockaddr_in);
 +		/* Use rpcbind v2 for AF_INET */
-+		if (info->program == rpcb_prog)
++		if (info->program != PMAPVERS)
 +			info->version = PMAPVERS;
  	} else if (addr->sa_family == AF_INET6) {
  		struct sockaddr_in6 *in6_raddr = (struct sockaddr_in6 *) addr;
