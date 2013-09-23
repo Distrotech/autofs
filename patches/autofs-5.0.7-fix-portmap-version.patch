@@ -1,5 +1,5 @@
 Bottom: 8edbd1e235052bd9e6a4f20d0e3f6cc9f506acdf
-Top:    8edbd1e235052bd9e6a4f20d0e3f6cc9f506acdf
+Top:    540e4b48729f21e0955382d5851967004ef32105
 Author: Ian Kent <ikent@redhat.com>
 Date:   2013-09-23 12:18:52 +0800
 
@@ -17,4 +17,51 @@ incompatibility only shows up with IPv6.
 
 ---
 
-
+diff --git a/include/rpc_subs.h b/include/rpc_subs.h
+index b6d59f9..1d5357c 100644
+--- a/include/rpc_subs.h
++++ b/include/rpc_subs.h
+@@ -39,6 +39,8 @@
+ #define RPC_CLOSE_ACTIVE	RPC_CLOSE_DEFAULT
+ #define RPC_CLOSE_NOLINGER	0x0001
+ 
++extern const rpcvers_t rpcb_version;
++
+ #define PMAP_TOUT_UDP	3
+ #define PMAP_TOUT_TCP	5
+ 
+diff --git a/lib/rpc_subs.c b/lib/rpc_subs.c
+index f5742e8..a90a238 100644
+--- a/lib/rpc_subs.c
++++ b/lib/rpc_subs.c
+@@ -43,6 +43,12 @@
+                 } while (0)
+ #endif
+ 
++#ifdef WITH_LIBTIRPC
++const rpcvers_t rpcb_version = RPCBVERS_4;
++#else
++const rpcvers_t rpcb_version = PMAPVERS;
++#endif
++
+ #include "mount.h"
+ #include "rpc_subs.h"
+ #include "automount.h"
+@@ -512,7 +518,7 @@ int rpc_portmap_getclient(struct conn_info *info,
+ 	info->addr_len = addr_len;
+ 	info->program = PMAPPROG;
+ 	info->port = PMAPPORT;
+-	info->version = PMAPVERS;
++	info->version = rpcb_version;
+ 	info->proto = proto;
+ 	info->send_sz = RPCSMALLMSGSIZE;
+ 	info->recv_sz = RPCSMALLMSGSIZE;
+@@ -557,7 +563,7 @@ int rpc_portmap_getport(struct conn_info *info,
+ 		pmap_info.addr_len = info->addr_len;
+ 		pmap_info.port = PMAPPORT;
+ 		pmap_info.program = PMAPPROG;
+-		pmap_info.version = PMAPVERS;
++		pmap_info.version = rpcb_version;
+ 		pmap_info.proto = info->proto;
+ 		pmap_info.send_sz = RPCSMALLMSGSIZE;
+ 		pmap_info.recv_sz = RPCSMALLMSGSIZE;
