@@ -337,14 +337,16 @@ static rpcprog_t rpc_getrpcbyname(const rpcprog_t program)
 		"rpcbind", "portmap", "portmapper", "sunrpc", NULL,
 	};
 	struct rpcent *entry;
+	rpcprog_t prog_number;
 	unsigned int i;
 
 	pthread_mutex_lock(&rpcb_mutex);
 	for (i = 0; rpcb_pgmtbl[i] != NULL; i++) {
 		entry = getrpcbyname(rpcb_pgmtbl[i]);
 		if (entry) {
+			prog_number = entry->r_number;
 			pthread_mutex_unlock(&rpcb_mutex);
-			return (rpcprog_t) entry->r_number;
+			return prog_number;
 		}
 	}
 	pthread_mutex_unlock(&rpcb_mutex);
@@ -359,16 +361,23 @@ static unsigned short rpc_getrpcbport(const int proto)
 		"rpcbind", "portmapper", "sunrpc", NULL,
 	};
 	struct servent *entry;
+	struct protent *p_ent;
+	unsigned short port;
 	unsigned int i;
 
 	pthread_mutex_lock(&rpcb_mutex);
+	p_ent = getprotobynumber(proto);
+	if (!p_ent)
+		goto done;
 	for (i = 0; rpcb_netnametbl[i] != NULL; i++) {
-		entry = getservbyname(rpcb_netnametbl[i], proto);
+		entry = getservbyname(rpcb_netnametbl[i], p_ent->p_name);
 		if (entry) {
+			port = entry->s_port;
 			pthread_mutex_unlock(&rpcb_mutex);
-			return (unsigned short) entry->s_port;
+			return port;
 		}
 	}
+done:
 	pthread_mutex_unlock(&rpcb_mutex);
 #endif
 	return (unsigned short) PMAPPORT;
