@@ -51,7 +51,7 @@ static const char *rpcb_netnametbl[] = {
 	"rpcbind", "portmapper", "sunrpc", NULL,
 };
 const rpcprog_t rpcb_prog = RPCBPROG;
-const rpcvers_t rpcb_version = RPCBVERS_4;
+const rpcvers_t rpcb_version = RPCBVERS;
 #else
 static const char *rpcb_pgmtbl[] = {
 	NULL,
@@ -279,6 +279,9 @@ static int rpc_do_create_client(struct sockaddr *addr, struct conn_info *info, i
 		laddr = (struct sockaddr *) &in4_laddr;
 		in4_raddr->sin_port = htons(info->port);
 		slen = sizeof(struct sockaddr_in);
+		/* Use rpcbind v2 for AF_INET */
+		if (info->program == rpcb_prog)
+			info->version = PMAPVERS;
 	} else if (addr->sa_family == AF_INET6) {
 		struct sockaddr_in6 *in6_raddr = (struct sockaddr_in6 *) addr;
 		in6_laddr.sin6_family = AF_INET6;
@@ -588,8 +591,9 @@ int rpc_portmap_getclient(struct conn_info *info,
 	info->addr = addr;
 	info->addr_len = addr_len;
 	info->program = rpc_getrpcbyname(rpcb_prog);
-	info->port = rpc_getrpcbport(proto);
+	info->port = ntohs(rpc_getrpcbport(proto));
 	info->version = rpcb_version;
+	error(LOGOPT_ANY, "program %d port %d version %d", info->program, info->port, info->version);
 	info->proto = proto;
 	info->send_sz = RPCSMALLMSGSIZE;
 	info->recv_sz = RPCSMALLMSGSIZE;
@@ -632,9 +636,10 @@ int rpc_portmap_getport(struct conn_info *info,
 		pmap_info.host = info->host;
 		pmap_info.addr = info->addr;
 		pmap_info.addr_len = info->addr_len;
-		pmap_info.port = rpc_getrpcbport(info->proto);
+		pmap_info.port = ntohs(rpc_getrpcbport(info->proto));
 		pmap_info.program = rpc_getrpcbyname(rpcb_prog);
 		pmap_info.version = rpcb_version;
+		error(LOGOPT_ANY, "program %d port %d version %d", pmap_info.program, pmap_info.port, pmap_info.version);
 		pmap_info.proto = info->proto;
 		pmap_info.send_sz = RPCSMALLMSGSIZE;
 		pmap_info.recv_sz = RPCSMALLMSGSIZE;
