@@ -39,6 +39,8 @@
 #define RPC_CLOSE_ACTIVE	RPC_CLOSE_DEFAULT
 #define RPC_CLOSE_NOLINGER	0x0001
 
+extern const rpcvers_t rpcb_version;
+
 #define PMAP_TOUT_UDP	3
 #define PMAP_TOUT_TCP	5
 
