@@ -361,7 +361,7 @@ static unsigned short rpc_getrpcbport(const int proto)
 		"rpcbind", "portmapper", "sunrpc", NULL,
 	};
 	struct servent *entry;
-	struct protent *p_ent;
+	struct protoent *p_ent;
 	unsigned short port;
 	unsigned int i;
 
