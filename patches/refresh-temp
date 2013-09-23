@@ -1,0 +1,10 @@
+Bottom: 14b527b167cd8f59e77865a591f646ec1c3c1c48
+Top:    14b527b167cd8f59e77865a591f646ec1c3c1c48
+Author: Ian Kent <ikent@redhat.com>
+Date:   2013-09-23 17:08:09 +0800
+
+Refresh of autofs-5.0.7-fix-portmap-lookup.patch
+
+---
+
+
