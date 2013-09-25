@@ -5,13 +5,12 @@ Date:   2013-09-25 18:59:09 +0800
 
 autofs-5.0.7 - fix get_nfs_info() probe
 
-A recent contributed patch series changed to behaviour of server
-probing to handle port specification to be the same as used by
-mount.nfs(8).
+A recent contributed patch series changed the behaviour of server
+probing to use port specification in the same way as mount.nfs(8).
 
 Unfortunately, if NFSv2 only is to be probed and the NFS port
-needs to be obtained the probe fails unconditionally because
-there no rpc client has yet been created.
+needs to be obtained, the probe fails unconditionally because
+no rpc client has yet been created.
 
 
 

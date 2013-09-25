@@ -1,6 +1,6 @@
 Version: 1
-Previous: c5c6378a2de94e8ae1b5a14771b52ec7a390cdc6
-Head: 3d5ae797cf336ff4a6b8c73839fc0c4791548292
+Previous: e5cf44e77c225f1c35d69c17e91356d22d928565
+Head: d7fa3da98cdd65eae9dc76ba571cadf50c95cc1a
 Applied:
   autofs-5.0.7-dont-override-LDFLAGS-in-make-rules.patch: 2e8251865c0ed6d91a97c107973a7eb75d3e131b
   autofs-5.0.7-fix-a-couple-of-compiler-warnings.patch: b8bdae4bfe855786de918c78eee228e4aabdab45
@@ -29,7 +29,7 @@ Applied:
   autofs-5.0.7-setup-program-map-env-from-macro-table.patch: 2f32a4a1e948c02ed0069b0432e25e91c7d08c8f
   autofs-5.0.7-add-short-host-name-standard-marco-variable.patch: 7ddcfc7da9489739588ae2de9ace8c71ac8382c5
   autofs-5.0.7-allow-use-of-hosts-map-in-maps.patch: 7623059e6cf885350a6f9f059e8cf603866696d4
-  autofs-5.0.7-fix-get_nfs_info-probe.patch: 3d5ae797cf336ff4a6b8c73839fc0c4791548292
+  autofs-5.0.7-fix-get_nfs_info-probe.patch: d7fa3da98cdd65eae9dc76ba571cadf50c95cc1a
 Unapplied:
   autofs-5.0.7-fix-portmap-lookup.patch: dd42c7fe7b56ddde29f391fb9083df6d78421892
   autofs-5.0.5-wait-for-master-map-available-at-start.patch: 28e191c68fc95cd90815f398deff088bd1d65d0a
