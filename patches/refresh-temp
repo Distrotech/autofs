@@ -1,0 +1,80 @@
+Bottom: 8edbd1e235052bd9e6a4f20d0e3f6cc9f506acdf
+Top:    7c1f5cfd1106ce8f16e773a29c9b32bebc9ecad8
+Author: Ian Kent <ikent@redhat.com>
+Date:   2013-09-25 19:06:23 +0800
+
+Refresh of autofs-5.0.7-fix-get_nfs_info-probe.patch
+
+---
+
+diff --git a/modules/replicated.c b/modules/replicated.c
+index e793ca4..5fdd9d9 100644
+--- a/modules/replicated.c
++++ b/modules/replicated.c
+@@ -444,6 +444,11 @@ static unsigned int get_nfs_info(unsigned logopt, struct host *host,
+ 		      host->name, proto, version);
+ 
+ 	rpc_info->proto = proto;
++	if (port < 0)
++		rpc_info->port = NFS_PORT;
++	else if (port > 0)
++		rpc_info->port = port;
++
+ 	memset(&parms, 0, sizeof(struct pmap));
+ 	parms.pm_prog = NFS_PROGRAM;
+ 	parms.pm_prot = proto;
+@@ -451,11 +456,7 @@ static unsigned int get_nfs_info(unsigned logopt, struct host *host,
+ 	if (!(version & NFS4_REQUESTED))
+ 		goto v3_ver;
+ 
+-	if (port < 0)
+-		rpc_info->port = NFS_PORT;
+-	else if (port > 0)
+-		rpc_info->port = port;
+-	else {
++	if (!port) {
+ 		status = rpc_portmap_getclient(pm_info,
+ 				host->name, host->addr, host->addr_len,
+ 				proto, RPC_CLOSE_DEFAULT);
+@@ -515,7 +516,7 @@ v3_ver:
+ 	if (!(version & NFS3_REQUESTED))
+ 		goto v2_ver;
+ 
+-	if (port <= 0 && !(version & NFS4_REQUESTED && port == 0)) {
++	if (!port && !pm_info->client) {
+ 		status = rpc_portmap_getclient(pm_info,
+ 				host->name, host->addr, host->addr_len,
+ 				proto, RPC_CLOSE_DEFAULT);
+@@ -526,9 +527,7 @@ v3_ver:
+ 			goto done_ver;
+ 	}
+ 
+-	if (port > 0)
+-		rpc_info->port = port;
+-	else {
++	if (!port) {
+ 		parms.pm_vers = NFS3_VERSION;
+ 		status = rpc_portmap_getport(pm_info, &parms, &rpc_info->port);
+ 		if (status == -EHOSTUNREACH || status == -ETIMEDOUT) {
+@@ -573,9 +572,18 @@ v2_ver:
+ 	if (!(version & NFS2_REQUESTED))
+ 		goto done_ver;
+ 
+-	if (port > 0)
+-		rpc_info->port = port;
+-	else {
++	if (!port && !pm_info->client) {
++		status = rpc_portmap_getclient(pm_info,
++				host->name, host->addr, host->addr_len,
++				proto, RPC_CLOSE_DEFAULT);
++		if (status == -EHOSTUNREACH) {
++			supported = status;
++			goto done_ver;
++		} else if (status)
++			goto done_ver;
++	}
++
++	if (!port) {
+ 		parms.pm_vers = NFS2_VERSION;
+ 		status = rpc_portmap_getport(pm_info, &parms, &rpc_info->port);
+ 		if (status == -EHOSTUNREACH || status == -ETIMEDOUT) {
