@@ -1,0 +1,20 @@
+Bottom: 14b527b167cd8f59e77865a591f646ec1c3c1c48
+Top:    14b527b167cd8f59e77865a591f646ec1c3c1c48
+Author: Ian Kent <ikent@redhat.com>
+Date:   2013-09-25 18:59:09 +0800
+
+autofs-5.0.7 - fix get_nfs_info() probe
+
+A recent contributed patch series changed to behaviour of server
+probing to handle port specification to be the same as used by
+mount.nfs(8).
+
+Unfortunately, if NFSv2 only is to be probed and the NFS port
+needs to be obtained the probe fails unconditionally because
+there no rpc client has yet been created.
+
+
+
+---
+
+
