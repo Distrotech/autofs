@@ -3,7 +3,7 @@ Top:    26f7e817f2f2d6a10346230ac6323ed065b496d1
 Author: Ian Kent <ikent@redhat.com>
 Date:   2013-10-02 08:16:31 +0800
 
-autofs-5.0.7 - add std vars to program map invokation
+autofs-5.0.7 - add std vars to program map invocation
 
 Program maps currently don't have the standard macro variables set
 in the environemt when they run.
