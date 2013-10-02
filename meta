@@ -1,6 +1,6 @@
 Version: 1
-Previous: f2f1586826a90bafe12501a01c3d59e8062be517
-Head: b5432b7acce1636ed76acbef20d272d7f4be6152
+Previous: 33e8ee45e160a7d5afdd44afb6e25164c39e93cb
+Head: 0a36d35c808950a607b9851be06124687db30dba
 Applied:
   autofs-5.0.7-dont-override-LDFLAGS-in-make-rules.patch: 2e8251865c0ed6d91a97c107973a7eb75d3e131b
   autofs-5.0.7-fix-a-couple-of-compiler-warnings.patch: b8bdae4bfe855786de918c78eee228e4aabdab45
@@ -26,8 +26,7 @@ Applied:
   autofs-5.0.7-improve-timeout-option-description.patch: 6ba51c0e4e4888a1323c5a843dc06edee2f74d8f
   autofs-5.0.7-only-probe-specific-nfs-version-when-requested.patch: 0ce479aa1960b9ece3e9aec6e76ff649348b0450
   autofs-5.0.7-fix-bad-mkdir-permission-on-create.patch: 147ee53b10ece92e619a41ffcf7eae73ba95e1f7
-  autofs-5.0.7-setup-program-map-env-from-macro-table.patch: 2f32a4a1e948c02ed0069b0432e25e91c7d08c8f
-  refresh-temp: b5432b7acce1636ed76acbef20d272d7f4be6152
+  autofs-5.0.7-setup-program-map-env-from-macro-table.patch: 0a36d35c808950a607b9851be06124687db30dba
 Unapplied:
   autofs-5.0.7-add-short-host-name-standard-marco-variable.patch: 7ddcfc7da9489739588ae2de9ace8c71ac8382c5
   autofs-5.0.7-allow-use-of-hosts-map-in-maps.patch: 7623059e6cf885350a6f9f059e8cf603866696d4
