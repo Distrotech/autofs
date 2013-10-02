@@ -1,5 +1,5 @@
 Bottom: c9730ad919be036a76a786626c277379def8e39e
-Top:    0b716ca64b3ecc74dc339dd7eefd3dacc20c2d24
+Top:    30f8ff8d229ecf7724823c8878a9023ef2771e47
 Author: Ian Kent <ikent@redhat.com>
 Date:   2013-10-02 08:16:31 +0800
 
@@ -84,3 +84,65 @@ index a6f560e..ed92b43 100644
  /*
   * Make common autofs mount options string
   */
+diff --git a/modules/parse_sun.c b/modules/parse_sun.c
+index 5ab451e..30820b5 100644
+--- a/modules/parse_sun.c
++++ b/modules/parse_sun.c
+@@ -99,57 +99,6 @@ static void kill_context(struct parse_context *ctxt)
+ 	free(ctxt);
+ }
+ 
+-static struct substvar *addstdenv(struct substvar *sv)
+-{
+-	struct substvar *list = sv;
+-	struct thread_stdenv_vars *tsv;
+-	char numbuf[16];
+-
+-	tsv = pthread_getspecific(key_thread_stdenv_vars);
+-	if (tsv) {
+-		struct substvar *mv;
+-		int ret;
+-		long num;
+-
+-		num = (long) tsv->uid;
+-		ret = sprintf(numbuf, "%ld", num);
+-		if (ret > 0)
+-			list = macro_addvar(list, "UID", 3, numbuf);
+-		num = (long) tsv->gid;
+-		ret = sprintf(numbuf, "%ld", num);
+-		if (ret > 0)
+-			list = macro_addvar(list, "GID", 3, numbuf);
+-		list = macro_addvar(list, "USER", 4, tsv->user);
+-		list = macro_addvar(list, "GROUP", 5, tsv->group);
+-		list = macro_addvar(list, "HOME", 4, tsv->home);
+-		mv = macro_findvar(list, "HOST", 4);
+-		if (mv) {
+-			char *shost = strdup(mv->val);
+-			if (shost) {
+-				char *dot = strchr(shost, '.');
+-				if (dot)
+-					*dot = '\0';
+-				list = macro_addvar(list, "SHOST", 5, shost);
+-				free(shost);
+-			}
+-		}
+-	}
+-	return list;
+-}
+-
+-static struct substvar *removestdenv(struct substvar *sv)
+-{
+-	struct substvar *list = sv;
+-
+-	list = macro_removevar(list, "UID", 3);
+-	list = macro_removevar(list, "USER", 4);
+-	list = macro_removevar(list, "HOME", 4);
+-	list = macro_removevar(list, "GID", 3);
+-	list = macro_removevar(list, "GROUP", 5);
+-	list = macro_removevar(list, "SHOST", 5);
+-	return list;
+-}
+-
+ /* 
+  * $- and &-expand a Sun-style map entry and return the length of the entry.
+  * If "dst" is NULL, just count the length.
