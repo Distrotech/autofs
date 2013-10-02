@@ -1,5 +1,5 @@
 Bottom: c9730ad919be036a76a786626c277379def8e39e
-Top:    0f04188d89f3e5db212757aaf717a69f512a1eac
+Top:    0500f777b73566255e98c791f630944375eacda5
 Author: Ian Kent <ikent@redhat.com>
 Date:   2013-10-02 08:16:31 +0800
 
@@ -104,7 +104,7 @@ index a6f560e..ed92b43 100644
   * Make common autofs mount options string
   */
 diff --git a/modules/lookup_program.c b/modules/lookup_program.c
-index 7e22b38..fb6a2ea 100644
+index 7e22b38..5b87b9c 100644
 --- a/modules/lookup_program.c
 +++ b/modules/lookup_program.c
 @@ -271,6 +271,8 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
@@ -112,7 +112,7 @@ index 7e22b38..fb6a2ea 100644
  		if (ctxt->mapfmt && strcmp(ctxt->mapfmt, "MAPFMT_DEFAULT")) {
  			struct parse_context *pctxt = (struct parse_context *) ctxt->parse->context;
 +			/* Add standard environment as seen by sun map parser */
-+			ctxt->subst = addstdenv(pctxt->subst);
++			pctxt->subst = addstdenv(pctxt->subst);
  			macro_setenv(pctxt->subst);
  		}
  		execl(ctxt->mapname, ctxt->mapname, name, NULL);
