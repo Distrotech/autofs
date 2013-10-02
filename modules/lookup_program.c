@@ -271,6 +271,8 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 		 */
 		if (ctxt->mapfmt && strcmp(ctxt->mapfmt, "MAPFMT_DEFAULT")) {
 			struct parse_context *pctxt = (struct parse_context *) ctxt->parse->context;
+			/* Add standard environment as seen by sun map parser */
+			ctxt->subst = addstdenv(ctxt->subst);
 			macro_setenv(pctxt->subst);
 		}
 		execl(ctxt->mapname, ctxt->mapname, name, NULL);
