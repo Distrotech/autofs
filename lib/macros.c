@@ -422,7 +422,7 @@ macro_findvar(const struct substvar *table, const char *str, int len)
 }
 
 /* Set environment from macro variable table */
-void macro_setenv(const struct substvar *table)
+void macro_setenv(struct substvar *table)
 {
 	const struct substvar *sv = system_table;
 	const struct substvar *lv = table;
