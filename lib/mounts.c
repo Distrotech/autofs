@@ -311,7 +311,7 @@ struct substvar *addstdenv(struct substvar *sv)
 
 	tsv = pthread_getspecific(key_thread_stdenv_vars);
 	if (tsv) {
-		struct substvar *mv;
+		const struct substvar *mv;
 		int ret;
 		long num;
 
