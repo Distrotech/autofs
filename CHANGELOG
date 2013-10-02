@@ -80,6 +80,7 @@
 - add short host name standard marco variable.
 - fix get_nfs_info() probe.
 - fix portmap lookup.
+- add std vars to program map invocation.
 
 25/07/2012 autofs-5.0.7
 =======================
