@@ -1,0 +1,21 @@
+Bottom: a627982eaec6247f3927c282320aa019c09762e5
+Top:    de09e2c6782ad049e0cd2b8b1a2b9f66343f8367
+Author: Ian Kent <ikent@redhat.com>
+Date:   2013-10-02 08:49:15 +0800
+
+Refresh of autofs-5.0.7-samples-auto_smb-add-logic-to-obtain-credentials.patch
+
+---
+
+diff --git a/CHANGELOG b/CHANGELOG
+index c920c9d..1895116 100644
+--- a/CHANGELOG
++++ b/CHANGELOG
+@@ -81,6 +81,7 @@
+ - fix get_nfs_info() probe.
+ - fix portmap lookup.
+ - add std vars to program map invocation.
++- samples/auto.smb: add logic to obtain credentials.
+ 
+ 25/07/2012 autofs-5.0.7
+ =======================
