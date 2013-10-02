@@ -1,5 +1,5 @@
 Bottom: c9730ad919be036a76a786626c277379def8e39e
-Top:    26f7e817f2f2d6a10346230ac6323ed065b496d1
+Top:    fb90f4daf188bdefcaf87cccc1d7cca34d5c7895
 Author: Ian Kent <ikent@redhat.com>
 Date:   2013-10-02 08:16:31 +0800
 
@@ -15,6 +15,18 @@ the same way it's done by the Sun map parser.
 
 ---
 
+diff --git a/CHANGELOG b/CHANGELOG
+index ecd29e7..c920c9d 100644
+--- a/CHANGELOG
++++ b/CHANGELOG
+@@ -80,6 +80,7 @@
+ - add short host name standard marco variable.
+ - fix get_nfs_info() probe.
+ - fix portmap lookup.
++- add std vars to program map invocation.
+ 
+ 25/07/2012 autofs-5.0.7
+ =======================
 diff --git a/include/mounts.h b/include/mounts.h
 index d1cfdc4..c2f92ec 100644
 --- a/include/mounts.h
