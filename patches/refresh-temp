@@ -1,0 +1,24 @@
+Bottom: fb90f4daf188bdefcaf87cccc1d7cca34d5c7895
+Top:    dce5b29a6dfd2878292fb9ef1620ea6b56697dbd
+Author: Ian Kent <ikent@redhat.com>
+Date:   2013-10-02 08:39:17 +0800
+
+Refresh of autofs-5.0.7-add-std-vars-to-program-map-invocation.patch
+
+---
+
+diff --git a/modules/lookup_program.c b/modules/lookup_program.c
+index 3e1e0af..170f20d 100644
+--- a/modules/lookup_program.c
++++ b/modules/lookup_program.c
+@@ -271,9 +271,9 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
+ 		 */
+ 		if (ctxt->mapfmt && strcmp(ctxt->mapfmt, "MAPFMT_DEFAULT")) {
+ 			struct parse_context *pctxt = (struct parse_context *) ctxt->parse->context;
+-			macro_setenv(pctxt->subst);
+ 			/* Add standard environment as seen by sun map parser */
+ 			ctxt->subst = addstdenv(ctxt->subst);
++			macro_setenv(pctxt->subst);
+ 		}
+ 		execl(ctxt->mapname, ctxt->mapname, name, NULL);
+ 		_exit(255);	/* execl() failed */
