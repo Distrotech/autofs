@@ -303,6 +303,57 @@ int check_nfs_mount_version(struct nfs_mount_vers *vers,
 }
 #endif
 
+struct substvar *addstdenv(struct substvar *sv)
+{
+	struct substvar *list = sv;
+	struct thread_stdenv_vars *tsv;
+	char numbuf[16];
+
+	tsv = pthread_getspecific(key_thread_stdenv_vars);
+	if (tsv) {
+		const struct substvar *mv;
+		int ret;
+		long num;
+
+		num = (long) tsv->uid;
+		ret = sprintf(numbuf, "%ld", num);
+		if (ret > 0)
+			list = macro_addvar(list, "UID", 3, numbuf);
+		num = (long) tsv->gid;
+		ret = sprintf(numbuf, "%ld", num);
+		if (ret > 0)
+			list = macro_addvar(list, "GID", 3, numbuf);
+		list = macro_addvar(list, "USER", 4, tsv->user);
+		list = macro_addvar(list, "GROUP", 5, tsv->group);
+		list = macro_addvar(list, "HOME", 4, tsv->home);
+		mv = macro_findvar(list, "HOST", 4);
+		if (mv) {
+			char *shost = strdup(mv->val);
+			if (shost) {
+				char *dot = strchr(shost, '.');
+				if (dot)
+					*dot = '\0';
+				list = macro_addvar(list, "SHOST", 5, shost);
+				free(shost);
+			}
+		}
+	}
+	return list;
+}
+
+struct substvar *removestdenv(struct substvar *sv)
+{
+	struct substvar *list = sv;
+
+	list = macro_removevar(list, "UID", 3);
+	list = macro_removevar(list, "USER", 4);
+	list = macro_removevar(list, "HOME", 4);
+	list = macro_removevar(list, "GID", 3);
+	list = macro_removevar(list, "GROUP", 5);
+	list = macro_removevar(list, "SHOST", 5);
+	return list;
+}
+
 /*
  * Make common autofs mount options string
  */
