@@ -1,5 +1,5 @@
 Bottom: d5958a63024b234fef955aeb0f517323349dbf8c
-Top:    0cff76fce94b300ea6551c6b6ca415a2b7c0cbce
+Top:    a4f7defaa98d26a5ee51742c4aa0819530e51afd
 Author: Ian Kent <ikent@redhat.com>
 Date:   2013-10-02 08:16:31 +0800
 
@@ -42,7 +42,7 @@ index d1cfdc4..c2f92ec 100644
  unsigned int get_kver_major(void);
  unsigned int get_kver_minor(void);
 diff --git a/lib/mounts.c b/lib/mounts.c
-index a6f560e..ed92b43 100644
+index a6f560e..f666f29 100644
 --- a/lib/mounts.c
 +++ b/lib/mounts.c
 @@ -303,6 +303,57 @@ int check_nfs_mount_version(struct nfs_mount_vers *vers,
@@ -57,7 +57,7 @@ index a6f560e..ed92b43 100644
 +
 +	tsv = pthread_getspecific(key_thread_stdenv_vars);
 +	if (tsv) {
-+		struct substvar *mv;
++		const struct substvar *mv;
 +		int ret;
 +		long num;
 +
