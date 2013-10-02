@@ -81,6 +81,7 @@
 - fix get_nfs_info() probe.
 - fix portmap lookup.
 - add std vars to program map invocation.
+- samples/auto.smb: add logic to obtain credentials.
 
 25/07/2012 autofs-5.0.7
 =======================
