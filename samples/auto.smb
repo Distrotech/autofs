@@ -17,7 +17,8 @@
 # 1) if a credentials file (see mount.cifs(8)) is present
 #    under /etc/creds/$key, use it.
 # 2) Otherwise, try to find a usable kerberos credentials cache
-#    for the calling user and use that.
+#    for the uid of the user that was first to trigger the mount
+#    and use that.
 # If both methods fail, the script will try to obtain the list
 # of shares anonymously.
 
