@@ -23,7 +23,7 @@
 
 get_krb5_cache() {
     cache=
-    uid=$(id -u)
+    uid=${UID}
     for x in $(ls -d /run/user/$uid/krb5cc_* 2>/dev/null); do
         if [ -d "$x" ] && klist -s DIR:"$x"; then
 	    cache=DIR:$x
