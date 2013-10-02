@@ -5,6 +5,13 @@ Date:   2013-10-02 08:16:31 +0800
 
 autofs-5.0.7 - add std vars to program map invokation
 
+Program maps currently don't have the standard macro variables set
+in the environemt when they run.
+
+Also, program maps aren't necessarily executed within a shell so
+setting the standard variables in the environment needs to be done
+the same way it's done by the Sun map parser.
+
 
 ---
 
