@@ -1,6 +1,6 @@
 Version: 1
-Previous: c828579057d6c991ab1f9ed3956c9d227bab5c9d
-Head: 9440e026d0afb44aa069902da6647a6cfbf011f7
+Previous: deb505e10b81249ff50007f94ac1b614913e3479
+Head: cfdd093a17c8a5914f40938f9c920fed7107cf09
 Applied:
   autofs-5.0.7-dont-override-LDFLAGS-in-make-rules.patch: 2e8251865c0ed6d91a97c107973a7eb75d3e131b
   autofs-5.0.7-fix-a-couple-of-compiler-warnings.patch: b8bdae4bfe855786de918c78eee228e4aabdab45
@@ -32,7 +32,7 @@ Applied:
   autofs-5.0.7-fix-get_nfs_info-probe.patch: d7fa3da98cdd65eae9dc76ba571cadf50c95cc1a
   autofs-5.0.7-fix-portmap-lookup.patch: 82878d2518942ee8f97ec8b7f7583b7585370bee
   autofs-5.0.7-add-std-vars-to-program-map-invocation.patch: 56906984c2560e070517de816abe1611323cb9fd
-  autofs-5.0.7-samples-auto_smb-add-logic-to-obtain-credentials.patch: 9440e026d0afb44aa069902da6647a6cfbf011f7
+  autofs-5.0.7-samples-auto_smb-add-logic-to-obtain-credentials.patch: cfdd093a17c8a5914f40938f9c920fed7107cf09
 Unapplied:
   autofs-5.0.5-wait-for-master-map-available-at-start.patch: 28e191c68fc95cd90815f398deff088bd1d65d0a
   autofs-5.0.5-add-master-read-wait-option.patch: 05d9eb17fb1ec9418f236468875ad04b09b0546b
