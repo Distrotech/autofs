@@ -1,0 +1,21 @@
+Bottom: 26f7e817f2f2d6a10346230ac6323ed065b496d1
+Top:    fb90f4daf188bdefcaf87cccc1d7cca34d5c7895
+Author: Ian Kent <ikent@redhat.com>
+Date:   2013-10-02 08:30:38 +0800
+
+Refresh of autofs-5.0.7-add-std-vars-to-program-map-invocation.patch
+
+---
+
+diff --git a/CHANGELOG b/CHANGELOG
+index ecd29e7..c920c9d 100644
+--- a/CHANGELOG
++++ b/CHANGELOG
+@@ -80,6 +80,7 @@
+ - add short host name standard marco variable.
+ - fix get_nfs_info() probe.
+ - fix portmap lookup.
++- add std vars to program map invocation.
+ 
+ 25/07/2012 autofs-5.0.7
+ =======================
