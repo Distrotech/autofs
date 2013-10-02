@@ -1,6 +1,6 @@
 Version: 1
-Previous: e112d453a65237654019aa2f7db98393275a8f96
-Head: 72725128fa28219927cb67c9bc235f0cc7ec0f66
+Previous: e167ba66106a65941a2f6d4ad7cdc647d0be1fd6
+Head: 62793cd97cb03a879a3b768ffbb8536796760adc
 Applied:
   autofs-5.0.7-dont-override-LDFLAGS-in-make-rules.patch: 2e8251865c0ed6d91a97c107973a7eb75d3e131b
   autofs-5.0.7-fix-a-couple-of-compiler-warnings.patch: b8bdae4bfe855786de918c78eee228e4aabdab45
@@ -28,8 +28,8 @@ Applied:
   autofs-5.0.7-fix-bad-mkdir-permission-on-create.patch: 147ee53b10ece92e619a41ffcf7eae73ba95e1f7
   autofs-5.0.7-setup-program-map-env-from-macro-table.patch: 0a36d35c808950a607b9851be06124687db30dba
   autofs-5.0.7-add-short-host-name-standard-marco-variable.patch: 72725128fa28219927cb67c9bc235f0cc7ec0f66
+  autofs-5.0.7-allow-use-of-hosts-map-in-maps.patch: 62793cd97cb03a879a3b768ffbb8536796760adc
 Unapplied:
-  autofs-5.0.7-allow-use-of-hosts-map-in-maps.patch: 7623059e6cf885350a6f9f059e8cf603866696d4
   autofs-5.0.7-fix-get_nfs_info-probe.patch: d7fa3da98cdd65eae9dc76ba571cadf50c95cc1a
   autofs-5.0.7-fix-portmap-lookup.patch: 82878d2518942ee8f97ec8b7f7583b7585370bee
   autofs-5.0.7-add-std-vars-to-program-map-invocation.patch: 59ee10353b4b1a16a3fa0882757d6518c694e609
