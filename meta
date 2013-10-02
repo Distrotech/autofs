@@ -1,6 +1,6 @@
 Version: 1
-Previous: 16b60f5e458e1b4aaf1d13af6342716eab6792b5
-Head: d123011fb34a7deb77b0c8cbb219e99db2779bb0
+Previous: 776f876d05652b34f13c5915ae1a74fbafab91b0
+Head: 7acfa6cba07a3ad8cb7976046852ce2830bd2f7e
 Applied:
   autofs-5.0.7-dont-override-LDFLAGS-in-make-rules.patch: 2e8251865c0ed6d91a97c107973a7eb75d3e131b
   autofs-5.0.7-fix-a-couple-of-compiler-warnings.patch: b8bdae4bfe855786de918c78eee228e4aabdab45
@@ -30,8 +30,8 @@ Applied:
   autofs-5.0.7-add-short-host-name-standard-marco-variable.patch: 72725128fa28219927cb67c9bc235f0cc7ec0f66
   autofs-5.0.7-allow-use-of-hosts-map-in-maps.patch: 62793cd97cb03a879a3b768ffbb8536796760adc
   autofs-5.0.7-fix-get_nfs_info-probe.patch: d123011fb34a7deb77b0c8cbb219e99db2779bb0
+  autofs-5.0.7-fix-portmap-lookup.patch: 7acfa6cba07a3ad8cb7976046852ce2830bd2f7e
 Unapplied:
-  autofs-5.0.7-fix-portmap-lookup.patch: 82878d2518942ee8f97ec8b7f7583b7585370bee
   autofs-5.0.7-add-std-vars-to-program-map-invocation.patch: 59ee10353b4b1a16a3fa0882757d6518c694e609
   autofs-5.0.7-samples-auto_smb-add-logic-to-obtain-credentials.patch: dbe9360de53776d49a89598ac6c74fc06743e3a4
   autofs-5.0.5-wait-for-master-map-available-at-start.patch: 28e191c68fc95cd90815f398deff088bd1d65d0a
