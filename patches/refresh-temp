@@ -1,0 +1,22 @@
+Bottom: caee3e13e3c18d681304315aa3eb533c41e7c75f
+Top:    15d3b48915fc769743d4c21ef36df83ac0b76477
+Author: Ian Kent <ikent@redhat.com>
+Date:   2013-10-02 09:10:23 +0800
+
+Refresh of autofs-5.0.7-samples-auto_smb-add-logic-to-obtain-credentials.patch
+
+---
+
+diff --git a/samples/auto.smb b/samples/auto.smb
+index 3ec2e90..6af5d85 100755
+--- a/samples/auto.smb
++++ b/samples/auto.smb
+@@ -17,7 +17,8 @@
+ # 1) if a credentials file (see mount.cifs(8)) is present
+ #    under /etc/creds/$key, use it.
+ # 2) Otherwise, try to find a usable kerberos credentials cache
+-#    for the calling user and use that.
++#    for the uid of the user that was first to trigger the mount
++#    and use that.
+ # If both methods fail, the script will try to obtain the list
+ # of shares anonymously.
