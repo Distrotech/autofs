@@ -1,0 +1,11 @@
+Bottom: be8d75f7d9372464eb70c8c89bc52f63b7a321fa
+Top:    be8d75f7d9372464eb70c8c89bc52f63b7a321fa
+Author: Ian Kent <ikent@redhat.com>
+Date:   2013-10-09 16:46:02 +0800
+
+autofs-5.0.7 - deal with ldap thread safety issue
+
+
+---
+
+

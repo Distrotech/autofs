@@ -1,7 +1,8 @@
 Version: 1
-Previous: 311860fc3d2d975fd59a8c5ecae5a23f3c99668f
-Head: d120584c5b8868b277df94edadd5d3c483a1ce47
+Previous: 420a1216a537b3334a93d9a9094287bd4cb84f48
+Head: 47786e01f50c424fb10204565b0be92735d39f8f
 Applied:
+  autofs-5.0.7-deal-with-ldap-thread-safety-issue.patch: 47786e01f50c424fb10204565b0be92735d39f8f
 Unapplied:
   autofs-5.0.5-wait-for-master-map-available-at-start.patch: 28e191c68fc95cd90815f398deff088bd1d65d0a
   autofs-5.0.5-add-master-read-wait-option.patch: 05d9eb17fb1ec9418f236468875ad04b09b0546b
