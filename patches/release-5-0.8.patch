@@ -1,5 +1,5 @@
 Bottom: be8d75f7d9372464eb70c8c89bc52f63b7a321fa
-Top:    3b06bfc7354459eda8cb471305e67abb7f915d6a
+Top:    436fd4a3c04d198491c7df11f62d81ed8da336e1
 Author: Ian Kent <ikent@redhat.com>
 Date:   2013-10-17 09:40:57 +0800
 
@@ -81,3 +81,17 @@ index 0013a39..5f29163 100644
  
  #
  # autofs installs by default in /usr
+diff --git a/man/automount.8 b/man/automount.8
+index bfcb41e..c1895c4 100644
+--- a/man/automount.8
++++ b/man/automount.8
+@@ -181,7 +181,7 @@ Don't know, I've fixed everything I know about.
+ The documentation could be better.
+ 
+ Please report other bugs along with a detailed description to
+-<autofs@linux.kernel.org>. For instructions on how to join the list
+-and for archives visit http://linux.kernel.org/mailman/listinfo/autofs
++<autofs@vger.kernel.org>. Please visit http://vger.kernel.org/vger-lists.html#autofs
++for information about the list.
+ .SH AUTHOR
+ H. Peter Anvin <hpa@transmeta.com> and Ian Kent <raven@themaw.net>.
