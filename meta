@@ -1,8 +1,8 @@
 Version: 1
-Previous: 223eee87c0db21f868dbaa740d1055760a0fe1dd
-Head: 97379bf4557df361391f5fdaba086eaeb7ab3882
+Previous: 49985c45414456138f899f8e3cd41899d027dca7
+Head: aaf4536c8278fbb0c48e82088610f5b8dc4acb96
 Applied:
-  release-5-0.8.patch: 97379bf4557df361391f5fdaba086eaeb7ab3882
+  release-5-0.8.patch: aaf4536c8278fbb0c48e82088610f5b8dc4acb96
 Unapplied:
   autofs-5.0.5-wait-for-master-map-available-at-start.patch: 28e191c68fc95cd90815f398deff088bd1d65d0a
   autofs-5.0.5-add-master-read-wait-option.patch: 05d9eb17fb1ec9418f236468875ad04b09b0546b
