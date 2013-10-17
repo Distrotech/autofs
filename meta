@@ -1,9 +1,8 @@
 Version: 1
-Previous: d6745f8ac8871fe60823e2b47bebd34b6f94edc8
-Head: 66a9335dc011c19bce66e995958c8dcfd1ee4688
+Previous: f42f3d56d70115941cf6911cee9a9dd8326f50ee
+Head: 019b08547c60810f3fead5b4b7aee2554c4e1b12
 Applied:
-  autofs-5.0.7-fix-automount-8-mailing-list-info.patch: e48cc4a5528da95e406eef65aeef3d726cf43099
-  refresh-temp: 66a9335dc011c19bce66e995958c8dcfd1ee4688
+  autofs-5.0.7-fix-automount-8-mailing-list-info.patch: 019b08547c60810f3fead5b4b7aee2554c4e1b12
 Unapplied:
   release-5-0.8.patch: c2bf4f4e4122d864fea8c69adfc4b726773273ef
   autofs-5.0.5-wait-for-master-map-available-at-start.patch: 28e191c68fc95cd90815f398deff088bd1d65d0a
