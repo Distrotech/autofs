@@ -1,5 +1,5 @@
 Bottom: be8d75f7d9372464eb70c8c89bc52f63b7a321fa
-Top:    be8d75f7d9372464eb70c8c89bc52f63b7a321fa
+Top:    3b06bfc7354459eda8cb471305e67abb7f915d6a
 Author: Ian Kent <ikent@redhat.com>
 Date:   2013-10-17 09:40:57 +0800
 
@@ -8,4 +8,76 @@ Release 5.0.8
 
 ---
 
-
+diff --git a/.autofs-5.0.7 b/.autofs-5.0.7
+deleted file mode 100644
+index 587be6b..0000000
+--- a/.autofs-5.0.7
++++ /dev/null
+@@ -1 +0,0 @@
+-x
+diff --git a/.version b/.version
+index 0043336..51e67ba 100644
+--- a/.version
++++ b/.version
+@@ -1 +1 @@
+-5.0.7
++5.0.8
+diff --git a/CHANGELOG b/CHANGELOG
+index 1895116..62dac81 100644
+--- a/CHANGELOG
++++ b/CHANGELOG
+@@ -1,4 +1,4 @@
+-??/??/2012 autofs-5.0.8
++17/10/2013 autofs-5.0.8
+ =======================
+ - fix nobind sun escaped map entries.
+ - fix use cache entry after free in lookup_prune_one_cache().
+diff --git a/autofs.spec b/autofs.spec
+index 9a2bf6e..ecf2f3f 100644
+--- a/autofs.spec
++++ b/autofs.spec
+@@ -18,7 +18,7 @@
+ 
+ Summary: A tool from automatically mounting and umounting filesystems.
+ Name: autofs
+-%define version 5.0.7
++%define version 5.0.8
+ %define release 1
+ Version: %{version}
+ Release: %{release}
+@@ -189,6 +189,9 @@ fi
+ %dir /etc/auto.master.d
+ 
+ %changelog
++* Thu Oct 17 2013 Ian Kent <raven@themaw.net>
++- Update package to version 5.0.7.
++
+ * Wed Jul 25 2012 Ian Kent <raven@themaw.net>
+ - Update package to version 5.0.7.
+ 
+diff --git a/configure b/configure
+index 70996ee..2c2e312 100755
+--- a/configure
++++ b/configure
+@@ -582,7 +582,7 @@ PACKAGE_STRING=
+ PACKAGE_BUGREPORT=
+ PACKAGE_URL=
+ 
+-ac_unique_file=".autofs-5.0.7"
++ac_unique_file=".autofs-5.0.8"
+ ac_default_prefix=/usr
+ # Factoring default headers for most tests.
+ ac_includes_default="\
+diff --git a/configure.in b/configure.in
+index 0013a39..5f29163 100644
+--- a/configure.in
++++ b/configure.in
+@@ -9,7 +9,7 @@ AC_PREREQ(2.5)
+ #
+ define([AC_CACHE_LOAD], )dnl
+ define([AC_CACHE_SAVE], )dnl
+-AC_INIT(.autofs-5.0.7)
++AC_INIT(.autofs-5.0.8)
+ 
+ #
+ # autofs installs by default in /usr
