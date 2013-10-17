@@ -1,0 +1,13 @@
+Bottom: be8d75f7d9372464eb70c8c89bc52f63b7a321fa
+Top:    be8d75f7d9372464eb70c8c89bc52f63b7a321fa
+Author: Ian Kent <ikent@redhat.com>
+Date:   2013-10-17 10:20:13 +0800
+
+autofs-5.0.7 - fix automount(8) mailing list info
+
+Replace a reference to the old mailman mailing list in automount(8).
+
+
+---
+
+
