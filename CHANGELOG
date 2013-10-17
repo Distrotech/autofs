@@ -1,4 +1,4 @@
-??/??/2012 autofs-5.0.8
+17/10/2013 autofs-5.0.8
 =======================
 - fix nobind sun escaped map entries.
 - fix use cache entry after free in lookup_prune_one_cache().
