@@ -846,20 +846,20 @@ int get_property(unsigned logopt, xmlNodePtr node, const char *prop, char **valu
 	return 0;
 }
 
-#ifdef WITH_SASL
 /*
  *  For plain text, login and digest-md5 authentication types, we need
  *  user and password credentials.
  */
 int authtype_requires_creds(const char *authtype)
 {
+#ifdef WITH_SASL
 	if (!strncmp(authtype, "PLAIN", strlen("PLAIN")) ||
 	    !strncmp(authtype, "DIGEST-MD5", strlen("DIGEST-MD5")) ||
 	    !strncmp(authtype, "LOGIN", strlen("LOGIN")))
 		return 1;
+#endif
 	return 0;
 }
-#endif
 
 /*
  *  Returns:
