@@ -818,12 +818,12 @@ done:
 		new = st_alloc_task(ap, state);
 		if (new)
 			list_add(&new->list, head);
-		/* Added to empty state queue, kick state machine */
-		signaled = 1;
-		status = pthread_cond_signal(&cond);
-		if (status)
-			fatal(status);
 	}
+
+	signaled = 1;
+	status = pthread_cond_signal(&cond);
+	if (status)
+		fatal(status);
 
 	return 1;
 }
