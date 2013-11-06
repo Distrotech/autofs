@@ -1,6 +1,7 @@
 ??/??/20?? autofs-5.0.9
 =======================
 - fix undefined authtype_requires_creds err if ldap enabled but without sasl.
+- fix master map type check.
 
 17/10/2013 autofs-5.0.8
 =======================

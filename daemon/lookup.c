@@ -171,14 +171,22 @@ int lookup_nss_read_master(struct master *master, time_t age)
 			char source[10];
 
 			memset(source, 0, 10);
-			if (!strncmp(name, "file:", 5) ||
-			    !strncmp(name, "yp:", 3) ||
-			    !strncmp(name, "nis:", 4) ||
-			    !strncmp(name, "nisplus:", 8) ||
-			    !strncmp(name, "ldap:", 5) ||
-			    !strncmp(name, "ldaps:", 6) ||
-			    !strncmp(name, "sss:", 4) ||
-			    !strncmp(name, "dir:", 4)) {
+			if ((!strncmp(name, "file", 4) &&
+				 (name[4] == ',' || name[4] == ':')) ||
+			    (!strncmp(name, "yp", 3) &&
+				 (name[3] == ',' || name[3] == ':')) ||
+			    (!strncmp(name, "nis", 3) &&
+				 (name[3] == ',' || name[3] == ':')) ||
+			    (!strncmp(name, "nisplus", 7) &&
+				 (name[7] == ',' || name[7] == ':')) ||
+			    (!strncmp(name, "ldap", 4) &&
+				 (name[4] == ',' || name[4] == ':')) ||
+			    (!strncmp(name, "ldaps", 5) &&
+				 (name[5] == ',' || name[5] == ':')) ||
+			    (!strncmp(name, "sss", 3) ||
+				 (name[3] == ',' || name[3] == ':')) ||
+			    (!strncmp(name, "dir", 3) &&
+				 (name[3] == ',' || name[3] == ':'))) {
 				strncpy(source, name, tmp - name);
 
 				/*
