@@ -441,7 +441,7 @@ CFLAGS="$af_check_libtirpc_save_cflags"
 LDFLAGS="$af_check_libtirpc_save_ldflags"
 ])
 
-AC_DEFUN([AM_WITH_LIBTIRPC],
+AC_DEFUN([AF_WITH_LIBTIRPC],
 [AC_MSG_CHECKING([if libtirpc is requested and available])
 AC_ARG_WITH(libtirpc,
 [  --with-libtirpc         use libtirpc if available],

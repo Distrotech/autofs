@@ -124,7 +124,7 @@ AC_SUBST(flagdir)
 #
 # Use libtirpc
 #
-AM_WITH_LIBTIRPC()
+AF_WITH_LIBTIRPC()
 AC_SUBST(TIRPCLIB)
 
 #
