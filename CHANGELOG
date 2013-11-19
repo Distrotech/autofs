@@ -4,6 +4,7 @@
 - fix master map type check.
 - fix task manager not getting signaled.
 - allow --with-systemd to take a path arg.
+- fix WITH_LIBTIRPC function name.
 
 17/10/2013 autofs-5.0.8
 =======================
