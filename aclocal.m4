@@ -229,8 +229,10 @@ dnl Check the location of the systemd unit files directory
 dnl --------------------------------------------------------------------------
 AC_DEFUN([AF_WITH_SYSTEMD],
 [AC_ARG_WITH(systemd,
-[  --with-systemd         install systemd unit file if systemd unit directory
-			  is found on system],
+[  --with-systemd@<:@=systemddir@:>@  install systemd unit file.  If 'yes'
+			  probe the system for unit directory.
+			  If a path is specified, assume that
+			  is a valid install path.],
 [if test "$withval" = yes; then
   if test -z "$systemddir"; then
     AC_MSG_CHECKING([location of the systemd unit files directory])
@@ -247,6 +249,10 @@ AC_DEFUN([AF_WITH_SYSTEMD],
   else
     AC_MSG_RESULT(not found)
   fi
+else
+ if test "$withval" != no; then
+  systemddir=$withval
+ fi
 fi])
 ])
 
