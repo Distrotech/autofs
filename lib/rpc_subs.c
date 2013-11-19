@@ -234,6 +234,28 @@ static int rpc_do_create_client(struct sockaddr *addr, struct conn_info *info, i
 
 	return 0;
 }
+static int rpc_getport(struct conn_info *info,
+		       struct pmap *parms, CLIENT *client)
+{
+	enum clnt_stat status;
+
+	/*
+	 * Check to see if server is up otherwise a getport will take
+	 * forever to timeout.
+	 */
+	status = clnt_call(client, PMAPPROC_NULL,
+			 (xdrproc_t) xdr_void, 0, (xdrproc_t) xdr_void, 0,
+			 info->timeout);
+
+	if (status == RPC_SUCCESS) {
+		status = clnt_call(client, PMAPPROC_GETPORT,
+				 (xdrproc_t) xdr_pmap, (caddr_t) parms,
+				 (xdrproc_t) xdr_u_short, (caddr_t) port,
+				 info->timeout);
+	}
+
+	return status;
+}
 #else
 static int rpc_do_create_client(struct sockaddr *addr, struct conn_info *info, int *fd, CLIENT **client)
 {
@@ -267,9 +289,6 @@ static int rpc_do_create_client(struct sockaddr *addr, struct conn_info *info, i
 		laddr = (struct sockaddr *) &in4_laddr;
 		in4_raddr->sin_port = htons(info->port);
 		slen = sizeof(struct sockaddr_in);
-		/* Use rpcbind v2 for AF_INET */
-		if (info->program == rpcb_prog)
-			info->version = PMAPVERS;
 	} else if (addr->sa_family == AF_INET6) {
 		struct sockaddr_in6 *in6_raddr = (struct sockaddr_in6 *) addr;
 		in6_laddr.sin6_family = AF_INET6;
@@ -323,6 +342,244 @@ static int rpc_do_create_client(struct sockaddr *addr, struct conn_info *info, i
 	*client = clnt;
 
 	return 0;
+}
+
+/*
+ * Thankfully nfs-utils had already dealt with this.
+ * Thanks to Chuck Lever for his nfs-utils patch series, much of
+ * which is used here.
+ */
+static pthread_mutex_t proto_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+static enum clnt_stat rpc_get_netid(const sa_family_t family,
+				    const int protocol, char **netid)
+{
+	char *nc_protofmly, *nc_proto, *nc_netid;
+	struct netconfig *nconf;
+	struct protoent *proto;
+	void *handle;
+
+	switch (family) {
+	case AF_LOCAL:
+	case AF_INET:
+		nc_protofmly = NC_INET;
+		break;
+	case AF_INET6:
+		nc_protofmly = NC_INET6;
+		break;
+	default:
+		return RPC_UNKNOWNPROTO;
+        }
+
+	pthread_mutex_lock(&proto_mutex);
+	proto = getprotobynumber(protocol);
+	if (!proto) {
+		pthread_mutex_unlock(&proto_mutex);
+		return RPC_UNKNOWNPROTO;
+	}
+	nc_proto = strdup(proto->p_name);
+	pthread_mutex_unlock(&proto_mutex);
+	if (!nc_proto)
+		return RPC_SYSTEMERROR;
+
+	handle = setnetconfig();
+	while ((nconf = getnetconfig(handle)) != NULL) {
+		if (nconf->nc_protofmly != NULL &&
+		    strcmp(nconf->nc_protofmly, nc_protofmly) != 0)
+			continue;
+		if (nconf->nc_proto != NULL &&
+		    strcmp(nconf->nc_proto, nc_proto) != 0)
+			continue;
+
+		nc_netid = strdup(nconf->nc_netid);
+		if (!nc_netid) {
+			free(nc_proto);
+			return RPC_SYSTEMERROR;
+		}
+
+		*netid = nc_netid;
+	}
+	endnetconfig(handle);
+	free(nc_proto);
+
+	return RPC_SUCCESS;
+}
+
+static char *rpc_sockaddr2universal(const struct sockaddr *addr)
+{
+	const struct sockaddr_in6 *sin6 = (const struct sockaddr_in6 *) addr;
+	const struct sockaddr_un *sun = (const struct sockaddr_un *) addr;
+	const struct sockaddr_in *sin = (const struct sockaddr_in *) addr;
+	char buf[INET6_ADDRSTRLEN + 8 /* for port information */];
+	uint16_t port;
+	size_t count;
+	char *result;
+	int len;
+
+	switch (addr->sa_family) {
+	case AF_LOCAL:
+		return strndup(sun->sun_path, sizeof(sun->sun_path));
+	case AF_INET:
+		if (inet_ntop(AF_INET, (const void *)&sin->sin_addr.s_addr,
+					buf, (socklen_t)sizeof(buf)) == NULL)
+			goto out_err;
+		port = ntohs(sin->sin_port);
+		break;
+	case AF_INET6:
+		if (inet_ntop(AF_INET6, (const void *)&sin6->sin6_addr,
+					buf, (socklen_t)sizeof(buf)) == NULL)
+			goto out_err;
+		port = ntohs(sin6->sin6_port);
+		break;
+	default:
+		goto out_err;
+	}
+
+	count = sizeof(buf) - strlen(buf);
+	len = snprintf(buf + strlen(buf), count, ".%u.%u",
+			(unsigned)(port >> 8), (unsigned)(port & 0xff));
+	/* before glibc 2.0.6, snprintf(3) could return -1 */
+	if (len < 0 || (size_t)len > count)
+		goto out_err;
+
+	result = strdup(buf);
+	return result;
+
+out_err:
+        return NULL;
+}
+
+static int rpc_universal2port(const char *uaddr)
+{
+	char *addrstr;
+	char *p, *endptr;
+	unsigned long portlo, porthi;
+	int port = -1;
+
+	addrstr = strdup(uaddr);
+	if (!addrstr)
+		return -1;
+
+	p = strrchr(addrstr, '.');
+	if (!p)
+		goto out;
+
+	portlo = strtoul(p + 1, &endptr, 10);
+	if (*endptr != '\0' || portlo > 255)
+		goto out;
+	*p = '\0';
+
+        p = strrchr(addrstr, '.');
+        if (!p)
+                goto out;
+
+        porthi = strtoul(p + 1, &endptr, 10);
+        if (*endptr != '\0' || porthi > 255)
+                goto out;
+        *p = '\0';
+
+        port = (porthi << 8) | portlo;
+
+out:
+	free(addrstr);
+	return port;
+}
+
+static enum clnt_stat rpc_rpcb_getport(CLIENT *client,
+				       struct rpcb *parms,
+				       struct timeval timeout,
+				       unsigned short *port)
+{
+	rpcvers_t rpcb_version;
+	struct rpc_err rpcerr;
+	int s_port = 0;
+
+	for (rpcb_version = RPCBVERS_4;
+	     rpcb_version >= RPCBVERS_3;
+	     rpcb_version--) {
+		enum clnt_stat status;
+		char *uaddr = NULL;
+
+		CLNT_CONTROL(client, CLSET_VERS, (void *) &rpcb_version);
+		status = CLNT_CALL(client, (rpcproc_t) RPCBPROC_GETADDR,
+				  (xdrproc_t) xdr_rpcb, (void *) parms,
+				  (xdrproc_t) xdr_wrapstring, (void *) &uaddr,
+				  timeout);
+
+		switch (status) {
+		case RPC_SUCCESS:
+			if ((uaddr == NULL) || (uaddr[0] == '\0'))
+				return RPC_PROGNOTREGISTERED;
+
+			s_port = rpc_universal2port(uaddr);
+			xdr_free((xdrproc_t) xdr_wrapstring, (char *) &uaddr);
+			if (s_port == -1) {
+				return RPC_N2AXLATEFAILURE;
+			}
+			*port = s_port;
+			return RPC_SUCCESS;
+
+		case RPC_PROGVERSMISMATCH:
+			clnt_geterr(client, &rpcerr);
+			if (rpcerr.re_vers.low > RPCBVERS4)
+				return status;
+			continue;
+		case RPC_PROCUNAVAIL:
+		case RPC_PROGUNAVAIL:
+			continue;
+		default:
+                        /* Most likely RPC_TIMEDOUT or RPC_CANTRECV */
+			return status;
+		}
+	}
+
+        if (s_port == 0)
+		return RPC_PROGNOTREGISTERED;
+
+        return RPC_PROCUNAVAIL;
+}
+
+static enum clnt_stat rpc_getport(struct conn_info *info,
+				  struct pmap *parms, CLIENT *client,
+				  unsigned short *port)
+{
+	enum clnt_stat status;
+	struct sockaddr *paddr, addr;
+	struct rpcb rpcb_parms;
+	char *netid, *raddr;
+
+	if (info->addr)
+		paddr = info->addr;
+	else {
+		if (!clnt_control(client, CLGET_SERVER_ADDR, (char *) &addr))
+			return RPC_UNKNOWNADDR;
+		paddr = &addr;
+	}
+
+	netid = NULL;
+	status = rpc_get_netid(paddr->sa_family, info->proto, &netid);
+	if (status != RPC_SUCCESS)
+		return status;
+
+	raddr = rpc_sockaddr2universal(paddr);
+	if (!raddr) {
+		free(netid);
+		return RPC_UNKNOWNADDR;
+	}
+
+	memset(&rpcb_parms, 0, sizeof(rpcb_parms));
+	rpcb_parms.r_prog   = parms->pm_prog;
+	rpcb_parms.r_vers   = parms->pm_vers;
+	rpcb_parms.r_netid  = netid;
+	rpcb_parms.r_addr   = raddr;
+	rpcb_parms.r_owner  = "";
+
+	status = rpc_rpcb_getport(client, &rpcb_parms, info->timeout, port);
+
+	free(netid);
+	free(raddr);
+
+	return status;
 }
 #endif
 
@@ -647,20 +904,7 @@ int rpc_portmap_getport(struct conn_info *info,
 			return ret;
 	}
 
-	/*
-	 * Check to see if server is up otherwise a getport will take
-	 * forever to timeout.
-	 */
-	status = clnt_call(client, PMAPPROC_NULL,
-			 (xdrproc_t) xdr_void, 0, (xdrproc_t) xdr_void, 0,
-			 pmap_info.timeout);
-
-	if (status == RPC_SUCCESS) {
-		status = clnt_call(client, PMAPPROC_GETPORT,
-				 (xdrproc_t) xdr_pmap, (caddr_t) parms,
-				 (xdrproc_t) xdr_u_short, (caddr_t) port,
-				 pmap_info.timeout);
-	}
+	status = rpc_getport(&pmap_info, parms, client, port);
 
 	if (!info->client) {
 		/*
@@ -867,6 +1111,11 @@ static int rpc_get_exports_proto(struct conn_info *info, exports *exp)
 	clnt_control(client, CLSET_RETRY_TIMEOUT, (char *) &info->timeout);
 
 	client->cl_auth = authunix_create_default();
+	if (client->cl_auth == NULL) {
+		error(LOGOPT_ANY, "auth create failed");
+		clnt_destroy(client);
+		return 0;
+	}
 
 	vers_entry = 0;
 	while (1) {
