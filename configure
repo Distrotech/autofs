@@ -1372,8 +1372,10 @@ Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
   --with-path=PATH	  look in PATH for binaries needed by the automounter
-  --with-systemd         install systemd unit file if systemd unit directory
-			  is found on system
+  --with-systemd[=systemddir]  install systemd unit file.  If 'yes'
+			  probe the system for unit directory.
+			  If a path is specified, assume that
+			  is a valid install path.
   --with-confdir=DIR	  use DIR for autofs configuration files
   --with-mapdir=PATH	  look in PATH for mount maps used by the automounter
   --with-fifodir=PATH	   use PATH as the directory for fifos used by the automounter
@@ -2260,6 +2262,10 @@ $as_echo "$systemddir" >&6; }
     { $as_echo "$as_me:${as_lineno-$LINENO}: result: not found" >&5
 $as_echo "not found" >&6; }
   fi
+else
+ if test "$withval" != no; then
+  systemddir=$withval
+ fi
 fi
 fi
 
