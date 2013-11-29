@@ -877,6 +877,8 @@ int rpc_portmap_getport(struct conn_info *info,
 
 	memset(&pmap_info, 0, sizeof(struct conn_info));
 
+	pmap_info.proto = proto;
+
 	if (proto == IPPROTO_TCP)
 		pmap_info.timeout.tv_sec = PMAP_TOUT_TCP;
 	else
