@@ -862,7 +862,7 @@ static int validate_location(unsigned int logopt, char *loc)
 			    *ptr == '-' || *ptr == '.' || *ptr == '_' ||
 			    *ptr == ',' || *ptr == '(' || *ptr == ')' ||
 			    *ptr == '#' || *ptr == '@' || *ptr == ':' ||
-			    *ptr == '[' || *ptr == ']')) {
+			    *ptr == '[' || *ptr == ']' || *ptr == '%')) {
 				error(logopt, "invalid character \"%c\" "
 				      "found in location %s", *ptr, loc);
 				return 0;
