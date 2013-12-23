@@ -444,9 +444,12 @@ static unsigned int get_nfs_info(unsigned logopt, struct host *host,
 		      host->name, proto, version);
 
 	rpc_info->proto = proto;
-	if (port < 0)
-		rpc_info->port = NFS_PORT;
-	else if (port > 0)
+	if (port < 0) {
+		if (version & NFS4_REQUESTED)
+			rpc_info->port = NFS_PORT;
+		else
+			port = 0;
+	} else if (port > 0)
 		rpc_info->port = port;
 
 	memset(&parms, 0, sizeof(struct pmap));
