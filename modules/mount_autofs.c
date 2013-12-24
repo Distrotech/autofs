@@ -116,17 +116,17 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 			while (*comma != '\0' && *comma != ',')
 				comma++;
 
-			if (strncmp(cp, "nobrowse", 8) == 0)
+			if (_strncmp(cp, "nobrowse", 8) == 0)
 				ghost = 0;
-			else if (strncmp(cp, "nobind", 6) == 0)
+			else if (_strncmp(cp, "nobind", 6) == 0)
 				nobind = 1;
-			else if (strncmp(cp, "browse", 6) == 0)
+			else if (_strncmp(cp, "browse", 6) == 0)
 				ghost = 1;
-			else if (strncmp(cp, "symlink", 7) == 0)
+			else if (_strncmp(cp, "symlink", 7) == 0)
 				symlnk = 1;
-			else if (strncmp(cp, "hosts", 5) == 0)
+			else if (_strncmp(cp, "hosts", 5) == 0)
 				hosts = 1;
-			else if (strncmp(cp, "timeout=", 8) == 0) {
+			else if (_strncmp(cp, "timeout=", 8) == 0) {
 				char *val = strchr(cp, '=');
 				unsigned tout;
 				if (val) {

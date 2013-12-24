@@ -107,7 +107,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 				end--;
 
 			o_len = end - cp + 1;
-			if (strncmp("symlink", cp, o_len) == 0)
+			if (_strncmp("symlink", cp, o_len) == 0)
 				symlnk = 1;
 		}
 	}

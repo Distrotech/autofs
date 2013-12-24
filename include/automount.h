@@ -335,6 +335,7 @@ size_t _strlen(const char *str, size_t max);
 int cat_path(char *buf, size_t len, const char *dir, const char *base);
 int ncat_path(char *buf, size_t len,
               const char *dir, const char *base, size_t blen);
+int _strncmp(const char *s1, const char *s2, size_t n);
 
 /* Core automount definitions */
 

@@ -77,7 +77,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 
 	if (options && options[0]) {
 		for (p = options; (p1 = strchr(p, ',')); p = p1)
-			if (!strncmp(p, "ro", p1 - p) && ++p1 - p == sizeof("ro"))
+			if (!_strncmp(p, "ro", p1 - p) && ++p1 - p == sizeof("ro"))
 				ro = 1;
 		if (!strcmp(p, "ro"))
 			ro = 1;
