@@ -524,10 +524,15 @@ static enum clnt_stat rpc_rpcb_getport(CLIENT *client,
 			if (rpcerr.re_vers.low > RPCBVERS4)
 				return status;
 			continue;
+
 		case RPC_PROGUNAVAIL:
 			continue;
+
+		case RPC_PROGNOTREGISTERED:
+			continue;
+
 		default:
-                        /* Most likely RPC_TIMEDOUT or RPC_CANTRECV */
+			/* Most likely RPC_TIMEDOUT or RPC_CANTRECV */
 			return status;
 		}
 	}
@@ -574,6 +579,18 @@ static enum clnt_stat rpc_getport(struct conn_info *info,
 
 	free(netid);
 	free(raddr);
+
+	error(LOGOPT_ANY, "status %d", status);
+	if (status == RPC_PROGNOTREGISTERED) {
+		/* Last chance, version 2 uses a different procedure */
+		rpcvers_t rpcb_version = PMAPVERS;
+		CLNT_CONTROL(client, CLSET_VERS, (void *) &rpcb_version);
+		status = clnt_call(client, PMAPPROC_GETPORT,
+				  (xdrproc_t) xdr_pmap, (caddr_t) parms,
+				  (xdrproc_t) xdr_u_short, (caddr_t) port,
+				  info->timeout);
+		error(LOGOPT_ANY, "v2 %d %d", status, *port);
+	}
 
 	return status;
 }
