@@ -589,7 +589,6 @@ static enum clnt_stat rpc_getport(struct conn_info *info,
 				  (xdrproc_t) xdr_pmap, (caddr_t) parms,
 				  (xdrproc_t) xdr_u_short, (caddr_t) port,
 				  info->timeout);
-		error(LOGOPT_ANY, "v2 %d %d", status, *port);
 	}
 
 	return status;
