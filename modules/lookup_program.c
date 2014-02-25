@@ -113,122 +113,29 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 	return NSS_STATUS_UNKNOWN;
 }
 
-int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *context)
+static char *lookup_one(struct autofs_point *ap,
+			const char *name, int name_len,
+			struct lookup_context *ctxt)
 {
-	struct lookup_context *ctxt = (struct lookup_context *) context;
-	struct map_source *source;
-	struct mapent_cache *mc;
 	char *mapent = NULL, *mapp, *tmp;
-	struct mapent *me;
 	char buf[MAX_ERR_BUF];
 	char errbuf[1024], *errp;
 	char ch;
 	int pipefd[2], epipefd[2];
 	struct pollfd pfd[2];
 	pid_t f;
-	int status;
 	enum state { st_space, st_map, st_done } state;
 	int quoted = 0;
-	int ret = 1;
 	int distance;
 	int alloci = 1;
-
-	source = ap->entry->current;
-	ap->entry->current = NULL;
-	master_source_current_signal(ap->entry);
-
-	mc = source->mc;
-
-	/* Check if we recorded a mount fail for this key anywhere */
-	me = lookup_source_mapent(ap, name, LKP_DISTINCT);
-	if (me) {
-		if (me->status >= time(NULL)) {
-			cache_unlock(me->mc);
-			return NSS_STATUS_NOTFOUND;
-		} else {
-			struct mapent_cache *smc = me->mc;
-			struct mapent *sme;
-
-			if (me->mapent)
-				cache_unlock(smc);
-			else {
-				cache_unlock(smc);
-				cache_writelock(smc);
-				sme = cache_lookup_distinct(smc, name);
-				/* Negative timeout expired for non-existent entry. */
-				if (sme && !sme->mapent) {
-					if (cache_pop_mapent(sme) == CHE_FAIL)
-						cache_delete(smc, name);
-				}
-				cache_unlock(smc);
-			}
-		}
-	}
-
-	/* Catch installed direct offset triggers */
-	cache_readlock(mc);
-	me = cache_lookup_distinct(mc, name);
-	if (!me) {
-		cache_unlock(mc);
-		/*
-		 * If there's a '/' in the name and the offset is not in
-		 * the cache then it's not a valid path in the mount tree.
-		 */
-		if (strchr(name, '/')) {
-			debug(ap->logopt,
-			      MODPREFIX "offset %s not found", name);
-			return NSS_STATUS_NOTFOUND;
-		}
-	} else {
-		/* Otherwise we found a valid offset so try mount it */
-		debug(ap->logopt, MODPREFIX "%s -> %s", name, me->mapent);
-
-		/*
-		 * If this is a request for an offset mount (whose entry
-		 * must be present in the cache to be valid) or the entry
-		 * is newer than the negative timeout value then just
-		 * try and mount it. Otherwise try and remove it and
-		 * proceed with the program map lookup.
-		 */
-		if (strchr(name, '/') ||
-		    me->age + ap->negative_timeout > time(NULL)) {
-			char *ent = NULL;
-
-			if (me->mapent) {
-				ent = alloca(strlen(me->mapent) + 1);
-				strcpy(ent, me->mapent);
-			}
-			cache_unlock(mc);
-			master_source_current_wait(ap->entry);
-			ap->entry->current = source;
-			ret = ctxt->parse->parse_mount(ap, name,
-				 name_len, ent, ctxt->parse->context);
-			goto out_free;
-		} else {
-			if (me->multi) {
-				cache_unlock(mc);
-				warn(ap->logopt, MODPREFIX
-				     "unexpected lookup for active multi-mount"
-				     " key %s, returning fail", name);
-				return NSS_STATUS_UNAVAIL;
-			}
-			cache_unlock(mc);
-			cache_writelock(mc);
-			me = cache_lookup_distinct(mc, name);
-			if (me)
-				cache_delete(mc, name);
-			cache_unlock(mc);
-		}
-	}
+	int status;
 
 	mapent = (char *) malloc(MAPENT_MAX_LEN + 1);
 	if (!mapent) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
 		logerr(MODPREFIX "malloc: %s", estr);
-		return NSS_STATUS_UNAVAIL;
+		return NULL;
 	}
-
-	debug(ap->logopt, MODPREFIX "looking up %s", name);
 
 	/*
 	 * We don't use popen because we don't want to run /bin/sh plus we
@@ -238,12 +145,12 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 	if (open_pipe(pipefd)) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
 		logerr(MODPREFIX "pipe: %s", estr);
-		goto out_free;
+		goto out_error;
 	}
 	if (open_pipe(epipefd)) {
 		close(pipefd[0]);
 		close(pipefd[1]);
-		goto out_free;
+		goto out_error;
 	}
 
 	f = fork();
@@ -254,7 +161,7 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 		close(pipefd[1]);
 		close(epipefd[0]);
 		close(epipefd[1]);
-		goto out_free;
+		goto out_error;
 	} else if (f == 0) {
 		reset_signals();
 		close(pipefd[0]);
@@ -420,21 +327,288 @@ next:
 	if (waitpid(f, &status, 0) != f) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
 		logerr(MODPREFIX "waitpid: %s", estr);
-		goto out_free;
+		goto out_error;
 	}
 
 	if (mapp == mapent || !WIFEXITED(status) || WEXITSTATUS(status) != 0) {
 		info(ap->logopt, MODPREFIX "lookup for %s failed", name);
-		goto out_free;
+		goto out_error;
 	}
 
-	cache_writelock(mc);
-	ret = cache_update(mc, source, name, mapent, time(NULL));
-	cache_unlock(mc);
-	if (ret == CHE_FAIL) {
+	return mapent;
+
+out_error:
+	if (mapent)
 		free(mapent);
-		return NSS_STATUS_UNAVAIL;
+
+	return NULL;
+}
+
+static int lookup_amd_defaults(struct autofs_point *ap,
+			       struct map_source *source,
+			       struct lookup_context *ctxt)
+{
+	struct mapent_cache *mc = source->mc;
+	char *ment = lookup_one(ap, "/defaults", 9, ctxt);
+	if (ment) {
+		char *start = ment + 9;
+		int ret;
+
+		while (isblank(*start))
+			start++;
+		cache_writelock(mc);
+		ret = cache_update(mc, source, "/defaults", start, time(NULL));
+		cache_unlock(mc);
+		if (ret == CHE_FAIL) {
+			free(ment);
+			return NSS_STATUS_UNAVAIL;
+		}
+		free(ment);
 	}
+	return NSS_STATUS_SUCCESS;
+}
+
+static int match_key(struct autofs_point *ap,
+		     struct map_source *source,
+		     const char *name, int name_len,
+		     char **mapent, struct lookup_context *ctxt)
+{
+	unsigned int is_amd_format = source->flags & MAP_FLAG_FORMAT_AMD;
+	struct mapent_cache *mc = source->mc;
+	char buf[MAX_ERR_BUF];
+	char *ment;
+	char *lkp_key;
+	size_t lkp_len;
+	char *prefix;
+	int ret;
+
+	if (source->flags & MAP_FLAG_FORMAT_AMD) {
+		ret = lookup_amd_defaults(ap, source, ctxt);
+		if (ret != NSS_STATUS_SUCCESS) {
+			warn(ap->logopt,
+			     MODPREFIX "failed to save /defaults entry");
+		}
+	}
+
+	if (!is_amd_format) {
+		lkp_key = strdup(name);
+		lkp_len = name_len;
+	} else {
+		size_t len;
+
+		if (ap->pref)
+			len = strlen(ap->pref) + strlen(name);
+		else
+			len = strlen(name);
+
+		lkp_key = malloc(len + 1);
+		if (!lkp_key) {
+			char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+			error(ap->logopt, MODPREFIX "malloc: %s", estr);
+			return NSS_STATUS_UNAVAIL;
+		}
+
+		if (ap->pref) {
+			strcpy(lkp_key, ap->pref);
+			strcat(lkp_key, name);
+		} else
+			strcpy(lkp_key, name);
+
+		lkp_len = len;
+	}
+
+	ment = lookup_one(ap, lkp_key, lkp_len, ctxt);
+	if (ment) {
+		char *start = ment;
+		if (source->flags & MAP_FLAG_FORMAT_AMD) {
+			start = ment + lkp_len;
+			while (isblank(*start))
+				start++;
+		}
+		cache_writelock(mc);
+		ret = cache_update(mc, source, lkp_key, start, time(NULL));
+		cache_unlock(mc);
+		if (ret == CHE_FAIL) {
+			free(ment);
+			free(lkp_key);
+			return NSS_STATUS_UNAVAIL;
+		}
+		*mapent = strdup(start);
+		if (!*mapent) {
+			char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+			error(ap->logopt, MODPREFIX "malloc: %s", estr);
+			free(lkp_key);
+			free(ment);
+			return NSS_STATUS_UNAVAIL;
+		}
+		free(lkp_key);
+		free(ment);
+		return NSS_STATUS_SUCCESS;
+	}
+
+	if (!is_amd_format) {
+		free(lkp_key);
+		return NSS_STATUS_NOTFOUND;
+	}
+
+	ret = NSS_STATUS_NOTFOUND;
+
+	/*
+	 * Now strip successive directory components and try a
+	 * match against map entries ending with a wildcard and
+	 * finally try the wilcard entry itself.
+	 */
+	while ((prefix = strrchr(lkp_key, '/'))) {
+		char *match;
+		size_t len;
+		*prefix = '\0';
+		len = strlen(lkp_key) + 3;
+		match = malloc(len);
+		if (!match) {
+			char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+			error(ap->logopt, MODPREFIX "malloc: %s", estr);
+			free(lkp_key);
+			return NSS_STATUS_UNAVAIL;
+		}
+		len--;
+		strcpy(match, lkp_key);
+		strcat(match, "/*");
+		ment = lookup_one(ap, match, len, ctxt);
+		if (ment) {
+			char *start = ment + len;
+			while (isblank(*start))
+				start++;
+			cache_writelock(mc);
+			ret = cache_update(mc, source, match, start, time(NULL));
+			cache_unlock(mc);
+			if (ret == CHE_FAIL) {
+				free(match);
+				free(ment);
+				free(lkp_key);
+				return NSS_STATUS_UNAVAIL;
+			}
+			free(match);
+			*mapent = strdup(start);
+			if (!*mapent) {
+				char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+				error(ap->logopt, MODPREFIX "malloc: %s", estr);
+				free(ment);
+				free(lkp_key);
+				return NSS_STATUS_UNAVAIL;
+			}
+			free(ment);
+			free(lkp_key);
+			return NSS_STATUS_SUCCESS;
+		}
+		free(match);
+	}
+	free(lkp_key);
+
+	return ret;
+}
+
+int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *context)
+{
+	struct lookup_context *ctxt = (struct lookup_context *) context;
+	struct map_source *source;
+	struct mapent_cache *mc;
+	char *mapent = NULL;
+	struct mapent *me;
+	int ret = 1;
+
+	source = ap->entry->current;
+	ap->entry->current = NULL;
+	master_source_current_signal(ap->entry);
+
+	mc = source->mc;
+
+	/* Check if we recorded a mount fail for this key anywhere */
+	me = lookup_source_mapent(ap, name, LKP_DISTINCT);
+	if (me) {
+		if (me->status >= time(NULL)) {
+			cache_unlock(me->mc);
+			return NSS_STATUS_NOTFOUND;
+		} else {
+			struct mapent_cache *smc = me->mc;
+			struct mapent *sme;
+
+			if (me->mapent)
+				cache_unlock(smc);
+			else {
+				cache_unlock(smc);
+				cache_writelock(smc);
+				sme = cache_lookup_distinct(smc, name);
+				/* Negative timeout expired for non-existent entry. */
+				if (sme && !sme->mapent) {
+					if (cache_pop_mapent(sme) == CHE_FAIL)
+						cache_delete(smc, name);
+				}
+				cache_unlock(smc);
+			}
+		}
+	}
+
+	/* Catch installed direct offset triggers */
+	cache_readlock(mc);
+	me = cache_lookup_distinct(mc, name);
+	if (!me) {
+		cache_unlock(mc);
+		/*
+		 * If there's a '/' in the name and the offset is not in
+		 * the cache then it's not a valid path in the mount tree.
+		 */
+		if (strchr(name, '/')) {
+			debug(ap->logopt,
+			      MODPREFIX "offset %s not found", name);
+			return NSS_STATUS_NOTFOUND;
+		}
+	} else {
+		/* Otherwise we found a valid offset so try mount it */
+		debug(ap->logopt, MODPREFIX "%s -> %s", name, me->mapent);
+
+		/*
+		 * If this is a request for an offset mount (whose entry
+		 * must be present in the cache to be valid) or the entry
+		 * is newer than the negative timeout value then just
+		 * try and mount it. Otherwise try and remove it and
+		 * proceed with the program map lookup.
+		 */
+		if (strchr(name, '/') ||
+		    me->age + ap->negative_timeout > time(NULL)) {
+			char *ent = NULL;
+
+			if (me->mapent) {
+				ent = alloca(strlen(me->mapent) + 1);
+				strcpy(ent, me->mapent);
+			}
+			cache_unlock(mc);
+			master_source_current_wait(ap->entry);
+			ap->entry->current = source;
+			ret = ctxt->parse->parse_mount(ap, name,
+				 name_len, ent, ctxt->parse->context);
+			goto out_free;
+		} else {
+			if (me->multi) {
+				cache_unlock(mc);
+				warn(ap->logopt, MODPREFIX
+				     "unexpected lookup for active multi-mount"
+				     " key %s, returning fail", name);
+				return NSS_STATUS_UNAVAIL;
+			}
+			cache_unlock(mc);
+			cache_writelock(mc);
+			me = cache_lookup_distinct(mc, name);
+			if (me)
+				cache_delete(mc, name);
+			cache_unlock(mc);
+		}
+	}
+
+	debug(ap->logopt, MODPREFIX "looking up %s", name);
+
+	ret = match_key(ap, source, name, name_len, &mapent, ctxt);
+	if (ret != NSS_STATUS_SUCCESS)
+		goto out_free;
 
 	debug(ap->logopt, MODPREFIX "%s -> %s", name, mapent);
 
