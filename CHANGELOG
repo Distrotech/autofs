@@ -6,6 +6,10 @@
 - allow --with-systemd to take a path arg.
 - fix WITH_LIBTIRPC function name.
 - fix ipv6 libtirpc getport.
+- get_nfs_info() should query portmapper if port is not given.
+- fix rpc_portmap_getport() proto not set.
+- fix options compare.
+- fix protmap not trying proto v2.
 
 17/10/2013 autofs-5.0.8
 =======================
