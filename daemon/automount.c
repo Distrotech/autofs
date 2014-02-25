@@ -462,7 +462,7 @@ static int umount_subtree_mounts(struct autofs_point *ap, const char *path, unsi
 {
 	struct mapent_cache *mc;
 	struct mapent *me;
-	unsigned int is_mm_root;
+	unsigned int is_mm_root = 0;
 	int left;
 
 	me = lookup_source_mapent(ap, path, LKP_DISTINCT);
@@ -474,21 +474,21 @@ static int umount_subtree_mounts(struct autofs_point *ap, const char *path, unsi
 			ind_key++;
 
 		me = lookup_source_mapent(ap, ind_key, LKP_NORMAL);
-		if (!me)
-			return 0;
 	}
 
-	mc = me->mc;
-	is_mm_root = (me->multi == me);
+	if (me) {
+		mc = me->mc;
+		is_mm_root = (me->multi == me);
+	}
 
 	left = 0;
 
-	pthread_cleanup_push(cache_lock_cleanup, mc);
-
-	if (me->multi) {
+	if (me && me->multi) {
 		char root[PATH_MAX];
 		char *base;
 		int cur_state;
+
+		pthread_cleanup_push(cache_lock_cleanup, mc);
 
 		if (!strchr(me->multi->key, '/'))
 			/* Indirect multi-mount root */
@@ -516,9 +516,11 @@ static int umount_subtree_mounts(struct autofs_point *ap, const char *path, unsi
 		    (ap->entry->maps->flags & MAP_FLAG_FORMAT_AMD))
 			cache_pop_mapent(me);
 		pthread_setcancelstate(cur_state, NULL);
+		pthread_cleanup_pop(0);
 	}
 
-	pthread_cleanup_pop(1);
+	if (me)
+		cache_unlock(mc);
 
 	if (left || is_autofs_fs)
 		return left;
