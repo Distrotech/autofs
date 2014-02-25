@@ -20,7 +20,6 @@
 #include <ctype.h>
 #include <stdio.h>
 #include <sys/param.h>
-#include <sys/types.h>
 #include <sys/stat.h>
 
 #include "automount.h"
@@ -360,24 +359,6 @@ struct mapent_cache *cache_init_null_cache(struct master *master)
 	mc->map = NULL;
 
 	return mc;
-}
-
-static u_int32_t hash(const char *key, unsigned int size)
-{
-	u_int32_t hashval;
-	char *s = (char *) key;
-
-	for (hashval = 0; *s != '\0';) {
-		hashval += (unsigned char) *s++;
-		hashval += (hashval << 10);
-		hashval ^= (hashval >> 6);
-	}
-
-	hashval += (hashval << 3);
-	hashval ^= (hashval >> 11);
-	hashval += (hashval << 15);
-
-	return hashval % size;
 }
 
 static u_int32_t ino_hash(dev_t dev, ino_t ino, unsigned int size)

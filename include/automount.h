@@ -136,6 +136,24 @@ struct autofs_point;
 #define UMOUNT_RETRIES		8
 #define EXPIRE_RETRIES		3
 
+static u_int32_t inline hash(const char *key, unsigned int size)
+{
+	u_int32_t hashval;
+	char *s = (char *) key;
+
+	for (hashval = 0; *s != '\0';) {
+		hashval += (unsigned char) *s++;
+		hashval += (hashval << 10);
+		hashval ^= (hashval >> 6);
+	}
+
+	hashval += (hashval << 3);
+	hashval ^= (hashval >> 11);
+	hashval += (hashval << 15);
+
+	return hashval % size;
+}
+
 struct mapent_cache {
 	pthread_rwlock_t rwlock;
 	unsigned int size;

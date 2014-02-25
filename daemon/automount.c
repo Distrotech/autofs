@@ -2339,6 +2339,7 @@ int main(int argc, char *argv[])
 		unlink(pid_file);
 		pid_file = NULL;
 	}
+	defaults_conf_release();
 	closelog();
 	release_flag_file();
 	macro_free_global_table();

@@ -2,7 +2,9 @@
  *
  *  defaults.h - system initialization defaults.
  *
- *   Copyright 2006 Ian Kent <raven@themaw.net> - All Rights Reserved
+ *   Copyright 2013 Red Hat, Inc.
+ *   Copyright 2006, 2013 Ian Kent <raven@themaw.net>
+ *   All rights reserved.
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -16,6 +18,7 @@
 #include <stdio.h>
 #include <ctype.h>
 #include <string.h>
+#include <sys/stat.h>
 
 #include "config.h"
 #include "list.h"
@@ -26,132 +29,450 @@
 #include "log.h"
 #include "automount.h"
 
-#define DEFAULTS_CONFIG_FILE		AUTOFS_CONF_DIR "/autofs"
+#define AUTOFS_GLOBAL_SECTION		"autofs"
+
+#define DEFAULT_CONFIG_FILE		AUTOFS_CONF_DIR "/autofs"
 #define MAX_LINE_LEN			256
 
-#define ENV_NAME_MASTER_MAP		"MASTER_MAP_NAME"
+#define NAME_MASTER_MAP			"master_map_name"
 
-#define ENV_NAME_TIMEOUT		"TIMEOUT"
-#define ENV_NAME_NEGATIVE_TIMEOUT	"NEGATIVE_TIMEOUT"
-#define ENV_NAME_BROWSE_MODE		"BROWSE_MODE"
-#define ENV_NAME_LOGGING		"LOGGING"
+#define NAME_TIMEOUT			"timeout"
+#define NAME_NEGATIVE_TIMEOUT		"negative_timeout"
+#define NAME_BROWSE_MODE		"browse_mode"
+#define NAME_LOGGING			"logging"
 
-#define LDAP_URI			"LDAP_URI"
-#define ENV_LDAP_TIMEOUT		"LDAP_TIMEOUT"
-#define ENV_LDAP_NETWORK_TIMEOUT	"LDAP_NETWORK_TIMEOUT"
+#define NAME_LDAP_URI			"ldap_uri"
+#define NAME_LDAP_TIMEOUT		"ldap_timeout"
+#define NAME_LDAP_NETWORK_TIMEOUT	"ldap_network_timeout"
 
-#define SEARCH_BASE			"SEARCH_BASE"
+#define NAME_SEARCH_BASE		"search_base"
 
-#define ENV_NAME_MAP_OBJ_CLASS		"MAP_OBJECT_CLASS"
-#define ENV_NAME_ENTRY_OBJ_CLASS	"ENTRY_OBJECT_CLASS"
-#define ENV_NAME_MAP_ATTR		"MAP_ATTRIBUTE"
-#define ENV_NAME_ENTRY_ATTR		"ENTRY_ATTRIBUTE"
-#define ENV_NAME_VALUE_ATTR		"VALUE_ATTRIBUTE"
+#define NAME_MAP_OBJ_CLASS		"map_object_class"
+#define NAME_ENTRY_OBJ_CLASS		"entry_object_class"
+#define NAME_MAP_ATTR			"map_attribute"
+#define NAME_ENTRY_ATTR			"entry_attribute"
+#define NAME_VALUE_ATTR			"value_attribute"
 
-#define ENV_MOUNT_NFS_DEFAULT_PROTOCOL	"MOUNT_NFS_DEFAULT_PROTOCOL"
-#define ENV_APPEND_OPTIONS		"APPEND_OPTIONS"
-#define ENV_MOUNT_WAIT			"MOUNT_WAIT"
-#define ENV_UMOUNT_WAIT			"UMOUNT_WAIT"
-#define ENV_AUTH_CONF_FILE		"AUTH_CONF_FILE"
+#define NAME_MOUNT_NFS_DEFAULT_PROTOCOL	"mount_nfs_default_protocol"
+#define NAME_APPEND_OPTIONS		"append_options"
+#define NAME_MOUNT_WAIT			"mount_wait"
+#define NAME_UMOUNT_WAIT		"umount_wait"
+#define NAME_AUTH_CONF_FILE		"auth_conf_file"
 
-#define ENV_MAP_HASH_TABLE_SIZE		"MAP_HASH_TABLE_SIZE"
+#define NAME_MAP_HASH_TABLE_SIZE	"map_hash_table_size"
+
+/* Status returns */
+#define CFG_OK		0x0000
+#define CFG_FAIL	0x0001
+#define CFG_EXISTS	0x0002
+#define CFG_NOTFOUND	0x0004
+
+/* Config entry flags */
+#define CONF_ENV		0x00000001
+
+#define CFG_TABLE_SIZE	128
 
 static const char *default_master_map_name = DEFAULT_MASTER_MAP_NAME;
 static const char *default_auth_conf_file  = DEFAULT_AUTH_CONF_FILE;
+static const char *autofs_gbl_sec	   = AUTOFS_GLOBAL_SECTION;
 
-static char *get_env_string(const char *name)
+struct conf_option {
+	char *section;
+	char *name;
+	char *value;
+	unsigned long flags;
+	struct conf_option *next;
+};
+
+struct conf_cache {
+	struct conf_option **hash;
+	time_t modified;
+};
+static pthread_mutex_t conf_mutex = PTHREAD_MUTEX_INITIALIZER;
+static struct conf_cache *config = NULL;
+
+static int conf_load_autofs_defaults(void);
+static int conf_update(const char *, const char *, const char *, unsigned long);
+static void conf_delete(const char *, const char *);
+static struct conf_option *conf_lookup(const char *, const char *);
+
+
+static void message(unsigned int to_syslog, const char *msg, ...)
 {
-	char *val, *res;
+	va_list ap;
 
-	val = getenv(name);
-	if (!val)
-		return NULL;
+	va_start(ap, msg);
+	if (to_syslog)
+		vsyslog(LOG_CRIT, msg, ap);
+	else {
+		vfprintf(stderr, msg, ap);
+		fputc('\n', stderr);
+	}
+	va_end(ap);
 
-	res = strdup(val);
-	if (!res)
-		return NULL;
-
-	return res;
+	return;
 }
 
-static long get_env_number(const char *name)
+static int conf_init(void)
 {
-	char *val;
-	long res = -1;
+	struct conf_cache *cc;
+	unsigned int size = CFG_TABLE_SIZE;
+	unsigned int i;
 
-	val = getenv(name);
-	if (!val)
-		return -1;
+	cc = malloc(sizeof(struct conf_cache));
+	if (!cc)
+		return CFG_FAIL;
+	cc->modified = 0;
 
-	if (isdigit(*val))
-		res = atol(val);
+	cc->hash = malloc(size * sizeof(struct conf_option *));
+	if (!cc->hash) {
+		free(cc);
+		return CFG_FAIL;
+	}
 
-	if (res < 0)
-		return -1;
+	for (i = 0; i < size; i++) {
+		cc->hash[i] = NULL;
+	}
 
-	return res;
+	config = cc;
+
+	return CFG_OK;
 }
 
-static int get_env_yesno(const char *name)
+static void __conf_release(void)
 {
-	const char *val;
-	int res = -1;
+	struct conf_cache *cc = config;
+	unsigned int size = CFG_TABLE_SIZE;
+	struct conf_option *co, *next;
+	unsigned int i;
 
-	val = getenv(name);
-	if (!val)
-		return -1;
+	for (i = 0; i < size; i++) {
+		co = cc->hash[i];
+		if (co == NULL)
+			continue;
+		next = co->next;
+		free(co->section);
+		free(co->name);
+		if (co->value)
+			free(co->value);
+		free(co);
 
-	if (isdigit(*val))
-		res = atoi(val);
-	else if (!strcasecmp(val, "yes"))
-		return 1;
-	else if (!strcasecmp(val, "no"))
-		return 0;
+		while (next) {
+			co = next;
+			next = co->next;
+			free(co->section);
+			free(co->name);
+			if (co->value)
+				free(co->value);
+			free(co);
+		}
+		cc->hash[i] = NULL;
+	}
 
-	return res;
+	free(cc->hash);
+	free(cc);
+	config = NULL;
+
+	return;
+}
+
+void defaults_conf_release(void)
+{
+	pthread_mutex_lock(&conf_mutex);
+	__conf_release();
+	pthread_mutex_unlock(&conf_mutex);
+	return;
+}
+
+static int conf_load_autofs_defaults(void)
+{
+	struct conf_option *co;
+	const char *sec = autofs_gbl_sec;
+	int ret;
+
+	ret = conf_update(sec, NAME_MASTER_MAP,
+			  DEFAULT_MASTER_MAP_NAME, CONF_ENV);
+	if (ret == CFG_FAIL)
+		goto error;
+
+	ret = conf_update(sec, NAME_TIMEOUT,
+			  DEFAULT_TIMEOUT, CONF_ENV);
+	if (ret == CFG_FAIL)
+		goto error;
+
+	ret = conf_update(sec, NAME_NEGATIVE_TIMEOUT,
+			  DEFAULT_NEGATIVE_TIMEOUT, CONF_ENV);
+	if (ret == CFG_FAIL)
+		goto error;
+
+	ret = conf_update(sec, NAME_BROWSE_MODE,
+			  DEFAULT_BROWSE_MODE, CONF_ENV);
+	if (ret == CFG_FAIL)
+		goto error;
+
+	ret = conf_update(sec, NAME_LOGGING,
+			  DEFAULT_LOGGING, CONF_ENV);
+	if (ret == CFG_FAIL)
+		goto error;
+
+	ret = conf_update(sec, NAME_LDAP_TIMEOUT,
+			  DEFAULT_LDAP_TIMEOUT, CONF_ENV);
+	if (ret == CFG_FAIL)
+		goto error;
+
+	ret = conf_update(sec, NAME_LDAP_NETWORK_TIMEOUT,
+			  DEFAULT_LDAP_NETWORK_TIMEOUT, CONF_ENV);
+	if (ret == CFG_FAIL)
+		goto error;
+
+	ret = conf_update(sec, NAME_MAP_OBJ_CLASS,
+			  DEFAULT_MAP_OBJ_CLASS, CONF_ENV);
+	if (ret == CFG_FAIL)
+		goto error;
+
+	ret = conf_update(sec, NAME_ENTRY_OBJ_CLASS,
+			  DEFAULT_ENTRY_OBJ_CLASS, CONF_ENV);
+	if (ret == CFG_FAIL)
+		goto error;
+
+	ret = conf_update(sec, NAME_MAP_ATTR,
+			  DEFAULT_MAP_ATTR, CONF_ENV);
+	if (ret == CFG_FAIL)
+		goto error;
+
+	ret = conf_update(sec, NAME_ENTRY_ATTR,
+			  DEFAULT_ENTRY_ATTR, CONF_ENV);
+	if (ret == CFG_FAIL)
+		goto error;
+
+	ret = conf_update(sec, NAME_VALUE_ATTR,
+			  DEFAULT_VALUE_ATTR, CONF_ENV);
+	if (ret == CFG_FAIL)
+		goto error;
+
+	ret = conf_update(sec, NAME_APPEND_OPTIONS,
+			  DEFAULT_APPEND_OPTIONS, CONF_ENV);
+	if (ret == CFG_FAIL)
+		goto error;
+
+	ret = conf_update(sec, NAME_MOUNT_WAIT,
+			  DEFAULT_MOUNT_WAIT, CONF_ENV);
+	if (ret == CFG_FAIL)
+		goto error;
+
+	ret = conf_update(sec, NAME_UMOUNT_WAIT,
+			  DEFAULT_UMOUNT_WAIT, CONF_ENV);
+	if (ret == CFG_FAIL)
+		goto error;
+
+	ret = conf_update(sec, NAME_AUTH_CONF_FILE,
+			  DEFAULT_AUTH_CONF_FILE, CONF_ENV);
+	if (ret == CFG_FAIL)
+		goto error;
+
+	ret = conf_update(sec, NAME_MOUNT_NFS_DEFAULT_PROTOCOL,
+			  DEFAULT_MOUNT_NFS_DEFAULT_PROTOCOL, CONF_ENV);
+	if (ret == CFG_FAIL)
+		goto error;
+
+	/* LDAP_URI nad SEARCH_BASE can occur multiple times */
+	while ((co = conf_lookup(sec, NAME_LDAP_URI)))
+		conf_delete(co->section, co->name);
+
+	while ((co = conf_lookup(sec, NAME_SEARCH_BASE)))
+		conf_delete(co->section, co->name);
+
+	return 1;
+
+error:
+	return 0;
+}
+
+static int conf_add(const char *section, const char *key, const char *value, unsigned long flags)
+{
+	struct conf_option *co;
+	char *sec, *name, *val, *tmp;
+	unsigned int size = CFG_TABLE_SIZE;
+	u_int32_t index;
+	int ret;
+
+	sec = name = val = NULL;
+
+	co = conf_lookup(section, key);
+	if (co) {
+		ret = CFG_EXISTS;
+		goto error;
+	}
+
+	ret = CFG_FAIL;
+
+	/* Environment overrides file value */
+	if (((flags & CFG_ENV) && (tmp = getenv(key))) || value) {
+		if (tmp)
+			val = strdup(tmp);
+		else
+			val = strdup(value);
+		if (!val)
+			goto error;
+	}
+
+	name = strdup(key);
+	if (!key)
+		goto error;
+
+	sec = strdup(section);
+	if (!sec)
+		goto error;
+
+	co = malloc(sizeof(struct conf_option));
+	if (!co)
+		goto error;
+
+	co->section = sec;
+	co->name = name;
+	co->value = val;
+	co->flags = flags;
+	co->next = NULL;
+
+	/* Don't change user set values in the environment */
+	if (flags & CONF_ENV)
+		setenv(name, value, 0);
+
+	index = hash(key, size);
+	if (!config->hash[index])
+		config->hash[index] = co;
+	else {
+		struct conf_option *last = NULL, *next;
+		next = config->hash[index];
+		while (next) {
+			last = next;
+			next = last->next;
+		}
+		last->next = co;
+	}
+
+	return CFG_OK;
+
+error:
+	if (name)
+		free(name);
+	if (val)
+		free(val);
+	if (sec)
+		free(sec);
+
+	return ret;
+}
+
+static void conf_delete(const char *section, const char *key)
+{
+	struct conf_option *co, *last;
+	unsigned int size = CFG_TABLE_SIZE;
+
+	last = NULL;
+	for (co = config->hash[hash(key, size)]; co != NULL; co = co->next) {
+		if (strcasecmp(section, co->section))
+			continue;
+		if (!strcasecmp(key, co->name))
+			break;
+		last = co;
+	}
+
+	if (!co)
+		return;
+
+	if (last)
+		last->next = co->next;
+
+	free(co->section);
+	free(co->name);
+	if (co->value);
+		free(co->value);
+	free(co);
+}
+
+static int conf_update(const char *section,
+			const char *key, const char *value,
+			unsigned long flags)
+{
+	struct conf_option *co = NULL;
+	int ret;
+
+	ret = CFG_FAIL;
+	co = conf_lookup(section, key);
+	if (!co)
+		ret = conf_add(section, key, value, flags);
+	else {
+		char *val = NULL, *tmp;
+		/* Environment overrides file value */
+		if (((flags & CONF_ENV) && (tmp = getenv(key))) || value) {
+			if (tmp)
+				val = strdup(tmp);
+			else
+				val = strdup(value);
+			if (!val)
+				goto error;
+		}
+		if (co->value)
+			free(co->value);
+		co->value = val;
+		if (flags)
+			co->flags = flags;
+		/* Don't change user set values in the environment */
+		if (flags & CONF_ENV)
+			setenv(key, value, 0);
+	}
+
+	return CFG_OK;
+
+error:
+	return ret;
+}
+
+static struct conf_option *conf_lookup(const char *section, const char *key)
+{
+	struct conf_option *co;
+	unsigned int size = CFG_TABLE_SIZE;
+
+	if (!key || !section)
+		return NULL;
+
+	for (co = config->hash[hash(key, size)]; co != NULL; co = co->next) {
+		if (strcasecmp(section, co->section))
+			continue;
+		if (!strcasecmp(key, co->name))
+			break;
+		/*
+		 * Strip "DEFAULT_" and look for config entry for
+		 * backward compatibility with old style config names.
+		 */
+		if (strlen(key) <= 8)
+			continue;
+		if (!strncasecmp("DEFAULT_", key, 8) &&
+		    !strcasecmp(key + 8, co->name))
+			break;
+	}
+
+	return co;
 }
 
 /*
  * We've changed the key names so we need to check for the
  * config key and it's old name for backward conpatibility.
 */
-static int check_set_config_value(const char *res, const char *name, const char *value, unsigned to_syslog)
+static int check_set_config_value(const char *res, const char *value)
 {
-	char *old_name;
+	const char *sec = autofs_gbl_sec;
 	int ret;
 
-	if (!strcasecmp(res, name)) {
-		ret = setenv(name, value, 0);
-		if (ret) {
-			if (!to_syslog)
-				fprintf(stderr,
-				        "can't set config value for %s, "
-					"error %d\n", name, ret);
-			else
-				logmsg("can't set config value for %s, "
-				      "error %d", name, ret);
-		}
-		return 1;
-	}
+	if (!strcasecmp(res, NAME_LDAP_URI))
+		ret = conf_add(sec, res, value, 0);
+	else if (!strcasecmp(res, NAME_SEARCH_BASE))
+		ret = conf_add(sec, res, value, 0);
+	else
+		ret = conf_update(sec, res, value, 0);
 
-	old_name = alloca(strlen(name) + 9);
-	strcpy(old_name, "DEFAULT_");
-	strcat(old_name, name);
-
-	if (!strcasecmp(res, old_name)) {
-		ret = setenv(name, value, 0);
-		if (ret) {
-			if (!to_syslog)
-				fprintf(stderr,
-				        "can't set config value for %s, "
-					"error %d\n", name, ret);
-			else
-				logmsg("can't set config value for %s, "
-				      "error %d\n", name, ret);
-		}
-		return 1;
-	}
-	return 0;
+	return ret;
 }
 
 static int parse_line(char *line, char **res, char **value)
@@ -200,6 +521,119 @@ static int parse_line(char *line, char **res, char **value)
 	return 1;
 }
 
+/*
+ * Read config env variables and check they have been set.
+ *
+ * This simple minded routine assumes the config file
+ * is valid bourne shell script without spaces around "="
+ * and that it has valid values.
+ */
+unsigned int defaults_read_config(unsigned int to_syslog)
+{
+	FILE *f;
+	char buf[MAX_LINE_LEN];
+	struct stat stb;
+	char *res;
+	int ret;
+
+	f = open_fopen_r(DEFAULT_CONFIG_FILE);
+	if (!f)
+		return 0;
+
+	pthread_mutex_lock(&conf_mutex);
+	if (config) {
+		if (fstat(fileno(f), &stb) != -1) {
+			/* Config hasn't been updated */
+			if (stb.st_mtime <= config->modified)
+				goto out;
+		}
+	} else {
+		if (conf_init()) {
+			pthread_mutex_unlock(&conf_mutex);
+			message(to_syslog, "failed to init config");
+			return 0;
+		}
+	}
+
+	/* Set configuration to defaults */
+	ret = conf_load_autofs_defaults();
+	if (!ret) {
+		pthread_mutex_unlock(&conf_mutex);
+		message(to_syslog, "failed to reset autofs default config");
+		return 0;
+	}
+
+	while ((res = fgets(buf, MAX_LINE_LEN, f))) {
+		char *key, *value;
+		if (!parse_line(res, &key, &value))
+			continue;
+		check_set_config_value(key, value);
+	}
+
+	if (fstat(fileno(f), &stb) != -1)
+		config->modified = stb.st_mtime;
+	else
+		message(to_syslog, "failed to update config modified time");
+
+	if (!feof(f) || ferror(f)) {
+		pthread_mutex_unlock(&conf_mutex);
+		message(to_syslog,
+			"fgets returned error %d while reading %s",
+			ferror(f), DEFAULT_CONFIG_FILE);
+		fclose(f);
+		return 0;
+	}
+out:
+	pthread_mutex_unlock(&conf_mutex);
+	fclose(f);
+	return 1;
+}
+
+static char *conf_get_string(const char *section, const char *name)
+{
+	struct conf_option *co;
+	char *val = NULL;
+
+	pthread_mutex_lock(&conf_mutex);
+	co = conf_lookup(section, name);
+	if (co && co->value)
+		val = strdup(co->value);
+	pthread_mutex_unlock(&conf_mutex);
+	return val;
+}
+
+static long conf_get_number(const char *section, const char *name)
+{
+	struct conf_option *co;
+	long val = -1;
+
+	pthread_mutex_lock(&conf_mutex);
+	co = conf_lookup(section, name);
+	if (co && co->value)
+		val = atol(co->value);
+	pthread_mutex_unlock(&conf_mutex);
+	return val;
+}
+
+static int conf_get_yesno(const char *section, const char *name)
+{
+	struct conf_option *co;
+	int val = -1;
+
+	pthread_mutex_lock(&conf_mutex);
+	co = conf_lookup(section, name);
+	if (co && co->value) {
+		if (isdigit(*co->value))
+			val = atoi(co->value);
+		else if (!strcasecmp(co->value, "yes"))
+			val = 1;
+		else if (!strcasecmp(co->value, "no"))
+			val = 0;
+	}
+	pthread_mutex_unlock(&conf_mutex);
+	return val;
+}
+
 #ifdef WITH_LDAP
 void defaults_free_uris(struct list_head *list)
 {
@@ -229,7 +663,7 @@ static unsigned int add_uris(char *value, struct list_head *list)
 	char *str, *tok, *ptr = NULL;
 	size_t len = strlen(value) + 1;
 
-	str = alloca(len);
+	str = malloc(len);
 	if (!str)
 		return 0;
 	strcpy(str, value);
@@ -253,44 +687,48 @@ static unsigned int add_uris(char *value, struct list_head *list)
 
 		tok = strtok_r(NULL, " ", &ptr);
 	}
+	free(str);
 
 	return 1;
 }
 
 struct list_head *defaults_get_uris(void)
 {
-	FILE *f;
-	char buf[MAX_LINE_LEN];
-	char *res;
+	struct conf_option *co;
 	struct list_head *list;
-
-	f = open_fopen_r(DEFAULTS_CONFIG_FILE);
-	if (!f)
-		return NULL;
 
 	list = malloc(sizeof(struct list_head));
 	if (!list) {
-		fclose(f);
 		return NULL;
 	}
 	INIT_LIST_HEAD(list);
 
-	while ((res = fgets(buf, MAX_LINE_LEN, f))) {
-		char *key, *value;
-
-		if (!parse_line(res, &key, &value))
-			continue;
-
-		if (!strcasecmp(res, LDAP_URI))
-			add_uris(value, list);
+	if (defaults_read_config(0)) {
+		free(list);
+		return NULL;
 	}
+
+	pthread_mutex_lock(&conf_mutex);
+	co = conf_lookup(autofs_gbl_sec, NAME_LDAP_URI);
+	if (!co || !co->value) {
+		pthread_mutex_unlock(&conf_mutex);
+		free(list);
+		return NULL;
+	}
+
+	while (co) {
+		if (!strcasecmp(co->name, NAME_LDAP_URI))
+			if (co->value)
+				add_uris(co->value, list);
+		co = co->next;
+	}
+	pthread_mutex_unlock(&conf_mutex);
 
 	if (list_empty(list)) {
 		free(list);
 		list = NULL;
 	}
 
-	fclose(f);
 	return list;
 }
 
@@ -390,45 +828,50 @@ void defaults_free_searchdns(struct ldap_searchdn *sdn)
 
 struct ldap_searchdn *defaults_get_searchdns(void)
 {
-	FILE *f;
-	char buf[MAX_LINE_LEN];
-	char *res;
+	struct conf_option *co;
 	struct ldap_searchdn *sdn, *last;
 
-	f = open_fopen_r(DEFAULTS_CONFIG_FILE);
-	if (!f)
+	if (defaults_read_config(0))
 		return NULL;
+
+	pthread_mutex_lock(&conf_mutex);
+	co = conf_lookup(autofs_gbl_sec, NAME_SEARCH_BASE);
+	if (!co || !co->value) {
+		pthread_mutex_unlock(&conf_mutex);
+		return NULL;
+	}
 
 	sdn = last = NULL;
 
-	while ((res = fgets(buf, MAX_LINE_LEN, f))) {
-		char *key, *value;
+	while (co) {
+		struct ldap_searchdn *new;
 
-		if (!parse_line(res, &key, &value))
+		if (!co->value || strcasecmp(co->name, NAME_SEARCH_BASE) ) {
+			co = co->next;
 			continue;
-
-		if (!strcasecmp(key, SEARCH_BASE)) {
-			struct ldap_searchdn *new = alloc_searchdn(value);
-
-			if (!new) {
-				defaults_free_searchdns(sdn);
-				fclose(f);
-				return NULL;
-			}
-
-			if (!last)
-				last = new;
-			else {
-				last->next = new;
-				last = new;
-			}
-
-			if (!sdn)
-				sdn = new;
 		}
-	}
 
-	fclose(f);
+		new = alloc_searchdn(co->value);
+		if (!new) {
+			pthread_mutex_unlock(&conf_mutex);
+			defaults_free_searchdns(sdn);
+			return NULL;
+		}
+
+		if (!last)
+			last = new;
+		else {
+			last->next = new;
+			last = new;
+		}
+
+		if (!sdn)
+			sdn = new;
+
+		co = co->next;
+	}
+	pthread_mutex_unlock(&conf_mutex);
+
 	return sdn;
 }
 
@@ -436,25 +879,26 @@ struct ldap_schema *defaults_get_schema(void)
 {
 	struct ldap_schema *schema;
 	char *mc, *ma, *ec, *ea, *va;
+	const char *sec = autofs_gbl_sec;
 
-	mc = get_env_string(ENV_NAME_MAP_OBJ_CLASS);
+	mc = conf_get_string(sec, NAME_MAP_OBJ_CLASS);
 	if (!mc)
 		return NULL;
 
-	ma = get_env_string(ENV_NAME_MAP_ATTR);
+	ma = conf_get_string(sec, NAME_MAP_ATTR);
 	if (!ma) {
 		free(mc);
 		return NULL;
 	}
 
-	ec = get_env_string(ENV_NAME_ENTRY_OBJ_CLASS);
+	ec = conf_get_string(sec, NAME_ENTRY_OBJ_CLASS);
 	if (!ec) {
 		free(mc);
 		free(ma);
 		return NULL;
 	}
 
-	ea = get_env_string(ENV_NAME_ENTRY_ATTR);
+	ea = conf_get_string(sec, NAME_ENTRY_ATTR);
 	if (!ea) {
 		free(mc);
 		free(ma);
@@ -462,7 +906,7 @@ struct ldap_schema *defaults_get_schema(void)
 		return NULL;
 	}
 
-	va = get_env_string(ENV_NAME_VALUE_ATTR);
+	va = conf_get_string(sec, NAME_VALUE_ATTR);
 	if (!va) {
 		free(mc);
 		free(ma);
@@ -491,72 +935,9 @@ struct ldap_schema *defaults_get_schema(void)
 }
 #endif
 
-/*
- * Read config env variables and check they have been set.
- *
- * This simple minded routine assumes the config file
- * is valid bourne shell script without spaces around "="
- * and that it has valid values.
- */
-unsigned int defaults_read_config(unsigned int to_syslog)
-{
-	FILE *f;
-	char buf[MAX_LINE_LEN];
-	char *res;
-
-	f = open_fopen_r(DEFAULTS_CONFIG_FILE);
-	if (!f)
-		return 0;
-
-	while ((res = fgets(buf, MAX_LINE_LEN, f))) {
-		char *key, *value;
-
-		if (!parse_line(res, &key, &value))
-			continue;
-
-		if (check_set_config_value(key, ENV_NAME_MASTER_MAP, value, to_syslog) ||
-		    check_set_config_value(key, ENV_NAME_TIMEOUT, value, to_syslog) ||
-		    check_set_config_value(key, ENV_NAME_NEGATIVE_TIMEOUT, value, to_syslog) ||
-		    check_set_config_value(key, ENV_NAME_BROWSE_MODE, value, to_syslog) ||
-		    check_set_config_value(key, ENV_NAME_LOGGING, value, to_syslog) ||
-		    check_set_config_value(key, ENV_LDAP_TIMEOUT, value, to_syslog) ||
-		    check_set_config_value(key, ENV_LDAP_NETWORK_TIMEOUT, value, to_syslog) ||
-		    check_set_config_value(key, ENV_NAME_MAP_OBJ_CLASS, value, to_syslog) ||
-		    check_set_config_value(key, ENV_NAME_ENTRY_OBJ_CLASS, value, to_syslog) ||
-		    check_set_config_value(key, ENV_NAME_MAP_ATTR, value, to_syslog) ||
-		    check_set_config_value(key, ENV_NAME_ENTRY_ATTR, value, to_syslog) ||
-		    check_set_config_value(key, ENV_NAME_VALUE_ATTR, value, to_syslog) ||
-		    check_set_config_value(key, ENV_APPEND_OPTIONS, value, to_syslog) ||
-		    check_set_config_value(key, ENV_MOUNT_WAIT, value, to_syslog) ||
-		    check_set_config_value(key, ENV_UMOUNT_WAIT, value, to_syslog) ||
-		    check_set_config_value(key, ENV_AUTH_CONF_FILE, value, to_syslog) ||
-		    check_set_config_value(key, ENV_MAP_HASH_TABLE_SIZE, value, to_syslog) ||
-		    check_set_config_value(key, ENV_MOUNT_NFS_DEFAULT_PROTOCOL, value, to_syslog))
-			;
-	}
-
-	if (!feof(f) || ferror(f)) {
-		if (!to_syslog) {
-			fprintf(stderr,
-				"fgets returned error %d while reading %s\n",
-				ferror(f), DEFAULTS_CONFIG_FILE);
-		} else {
-			logmsg("fgets returned error %d while reading %s",
-			      ferror(f), DEFAULTS_CONFIG_FILE);
-		}
-		fclose(f);
-		return 0;
-	}
-
-	fclose(f);
-	return 1;
-}
-
 const char *defaults_get_master_map(void)
 {
-	char *master;
-
-	master = get_env_string(ENV_NAME_MASTER_MAP);
+	char *master = conf_get_string(autofs_gbl_sec, NAME_MASTER_MAP);
 	if (!master)
 		return strdup(default_master_map_name);
 
@@ -565,20 +946,23 @@ const char *defaults_get_master_map(void)
 
 int defaults_master_set(void)
 {
-	char *val = getenv(ENV_NAME_MASTER_MAP);
-	if (!val)
-		return 0;
+	struct conf_option *co;
 
-	return 1;
+	pthread_mutex_lock(&conf_mutex);
+	co = conf_lookup(autofs_gbl_sec, NAME_MASTER_MAP);
+	pthread_mutex_unlock(&conf_mutex);
+	if (co)
+		return 1;
+	return 0;
 }
 
 unsigned int defaults_get_timeout(void)
 {
 	long timeout;
 
-	timeout = get_env_number(ENV_NAME_TIMEOUT);
+	timeout = conf_get_number(autofs_gbl_sec, NAME_TIMEOUT);
 	if (timeout < 0)
-		timeout = DEFAULT_TIMEOUT;
+		timeout = atol(DEFAULT_TIMEOUT);
 
 	return (unsigned int) timeout;
 }
@@ -587,9 +971,9 @@ unsigned int defaults_get_negative_timeout(void)
 {
 	long n_timeout;
 
-	n_timeout = get_env_number(ENV_NAME_NEGATIVE_TIMEOUT);
+	n_timeout = conf_get_number(autofs_gbl_sec, NAME_NEGATIVE_TIMEOUT);
 	if (n_timeout <= 0)
-		n_timeout = DEFAULT_NEGATIVE_TIMEOUT;
+		n_timeout = atol(DEFAULT_NEGATIVE_TIMEOUT);
 
 	return (unsigned int) n_timeout;
 }
@@ -598,9 +982,9 @@ unsigned int defaults_get_browse_mode(void)
 {
 	int res;
 
-	res = get_env_yesno(ENV_NAME_BROWSE_MODE);
+	res = conf_get_yesno(autofs_gbl_sec, NAME_BROWSE_MODE);
 	if (res < 0)
-		res = DEFAULT_BROWSE_MODE;
+		res = atoi(DEFAULT_BROWSE_MODE);
 
 	return res;
 }
@@ -608,14 +992,14 @@ unsigned int defaults_get_browse_mode(void)
 unsigned int defaults_get_logging(void)
 {
 	char *res;
-	unsigned int logging = DEFAULT_LOGGING;
+	unsigned int logging = LOGOPT_NONE;
 
-	res = get_env_string(ENV_NAME_LOGGING);
+	res = conf_get_string(autofs_gbl_sec, NAME_LOGGING);
 	if (!res)
 		return logging;
 
 	if (!strcasecmp(res, "none"))
-		logging = DEFAULT_LOGGING;
+		logging = LOGOPT_NONE;
 	else {
 		if (!strcasecmp(res, "verbose"))
 			logging |= LOGOPT_VERBOSE;
@@ -633,9 +1017,9 @@ unsigned int defaults_get_ldap_timeout(void)
 {
 	int res;
 
-	res = get_env_number(ENV_LDAP_TIMEOUT);
+	res = conf_get_number(autofs_gbl_sec, NAME_LDAP_TIMEOUT);
 	if (res < 0)
-		res = DEFAULT_LDAP_TIMEOUT;
+		res = atoi(DEFAULT_LDAP_TIMEOUT);
 
 	return res;
 }
@@ -644,20 +1028,20 @@ unsigned int defaults_get_ldap_network_timeout(void)
 {
 	int res;
 
-	res = get_env_number(ENV_LDAP_NETWORK_TIMEOUT);
+	res = conf_get_number(autofs_gbl_sec, NAME_LDAP_NETWORK_TIMEOUT);
 	if (res < 0)
-		res = DEFAULT_LDAP_NETWORK_TIMEOUT;
+		res = atoi(DEFAULT_LDAP_NETWORK_TIMEOUT);
 
 	return res;
 }
 
 unsigned int defaults_get_mount_nfs_default_proto(void)
 {
-	long proto;
+	int proto;
 
-	proto = get_env_number(ENV_MOUNT_NFS_DEFAULT_PROTOCOL);
+	proto = conf_get_number(autofs_gbl_sec, NAME_MOUNT_NFS_DEFAULT_PROTOCOL);
 	if (proto < 2 || proto > 4)
-		proto = DEFAULT_NFS_MOUNT_PROTOCOL;
+		proto = atoi(DEFAULT_MOUNT_NFS_DEFAULT_PROTOCOL);
 
 	return (unsigned int) proto;
 }
@@ -666,9 +1050,9 @@ unsigned int defaults_get_append_options(void)
 {
 	int res;
 
-	res = get_env_yesno(ENV_APPEND_OPTIONS);
+	res = conf_get_yesno(autofs_gbl_sec, NAME_APPEND_OPTIONS);
 	if (res < 0)
-		res = DEFAULT_APPEND_OPTIONS;
+		res = atoi(DEFAULT_APPEND_OPTIONS);
 
 	return res;
 }
@@ -677,9 +1061,9 @@ unsigned int defaults_get_mount_wait(void)
 {
 	long wait;
 
-	wait = get_env_number(ENV_MOUNT_WAIT);
+	wait = conf_get_number(autofs_gbl_sec, NAME_MOUNT_WAIT);
 	if (wait < 0)
-		wait = DEFAULT_MOUNT_WAIT;
+		wait = atoi(DEFAULT_MOUNT_WAIT);
 
 	return (unsigned int) wait;
 }
@@ -688,9 +1072,9 @@ unsigned int defaults_get_umount_wait(void)
 {
 	long wait;
 
-	wait = get_env_number(ENV_UMOUNT_WAIT);
+	wait = conf_get_number(autofs_gbl_sec, NAME_UMOUNT_WAIT);
 	if (wait < 0)
-		wait = DEFAULT_UMOUNT_WAIT;
+		wait = atoi(DEFAULT_UMOUNT_WAIT);
 
 	return (unsigned int) wait;
 }
@@ -699,7 +1083,7 @@ const char *defaults_get_auth_conf_file(void)
 {
 	char *cf;
 
-	cf = get_env_string(ENV_AUTH_CONF_FILE);
+	cf = conf_get_string(autofs_gbl_sec, NAME_AUTH_CONF_FILE);
 	if (!cf)
 		return strdup(default_auth_conf_file);
 
@@ -710,9 +1094,9 @@ unsigned int defaults_get_map_hash_table_size(void)
 {
 	long size;
 
-	size = get_env_number(ENV_MAP_HASH_TABLE_SIZE);
+	size = conf_get_number(autofs_gbl_sec, NAME_MAP_HASH_TABLE_SIZE);
 	if (size < 0)
-		size = DEFAULT_MAP_HASH_TABLE_SIZE;
+		size = atoi(DEFAULT_MAP_HASH_TABLE_SIZE);
 
 	return (unsigned int) size;
 }

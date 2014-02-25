@@ -2,7 +2,9 @@
  *
  *  defaults.h - system initialization defaults.
  *
- *   Copyright 2006 Ian Kent <raven@themaw.net>
+ *   Copyright 2013 Red Hat, Inc.
+ *   Copyright 2006, 2013 Ian Kent <raven@themaw.net>
+ *   All rights reserved.
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
@@ -22,15 +24,15 @@
 
 #define DEFAULT_MASTER_MAP_NAME	"auto.master"
 
-#define DEFAULT_TIMEOUT			600
-#define DEFAULT_NEGATIVE_TIMEOUT	60
-#define DEFAULT_MOUNT_WAIT		-1
-#define DEFAULT_UMOUNT_WAIT		12
-#define DEFAULT_BROWSE_MODE		1
-#define DEFAULT_LOGGING			0
+#define DEFAULT_TIMEOUT			"600"
+#define DEFAULT_NEGATIVE_TIMEOUT	"60"
+#define DEFAULT_MOUNT_WAIT		"-1"
+#define DEFAULT_UMOUNT_WAIT		"12"
+#define DEFAULT_BROWSE_MODE		"1"
+#define DEFAULT_LOGGING			"none"
 
-#define DEFAULT_LDAP_TIMEOUT		-1
-#define DEFAULT_LDAP_NETWORK_TIMEOUT	8
+#define DEFAULT_LDAP_TIMEOUT		"-1"
+#define DEFAULT_LDAP_NETWORK_TIMEOUT	"8"
 
 #define DEFAULT_MAP_OBJ_CLASS		"nisMap"
 #define DEFAULT_ENTRY_OBJ_CLASS		"nisObject"
@@ -38,11 +40,11 @@
 #define DEFAULT_ENTRY_ATTR		"cn"
 #define DEFAULT_VALUE_ATTR		"nisMapEntry"
 
-#define DEFAULT_NFS_MOUNT_PROTOCOL	3
-#define DEFAULT_APPEND_OPTIONS		1
+#define DEFAULT_MOUNT_NFS_DEFAULT_PROTOCOL	"3"
+#define DEFAULT_APPEND_OPTIONS		"1"
 #define DEFAULT_AUTH_CONF_FILE		AUTOFS_MAP_DIR "/autofs_ldap_auth.conf"
 
-#define DEFAULT_MAP_HASH_TABLE_SIZE	1024
+#define DEFAULT_MAP_HASH_TABLE_SIZE	"1024"
 
 #ifdef WITH_LDAP
 struct ldap_schema;
@@ -56,6 +58,7 @@ struct ldap_schema *defaults_get_schema(void);
 #endif
 
 unsigned int defaults_read_config(unsigned int);
+void defaults_conf_release(void);
 const char *defaults_get_master_map(void);
 int defaults_master_set(void);
 unsigned int defaults_get_timeout(void);
