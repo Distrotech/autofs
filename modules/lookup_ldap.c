@@ -53,8 +53,9 @@ static struct ldap_schema common_schema[] = {
 static unsigned int common_schema_count = sizeof(common_schema)/sizeof(struct ldap_schema);
 
 /*
- * Initialization of LDAP and OpenSSL must be always serialized to
- * avoid corruption of context structures inside these libraries.
+ * Initialization and de-initialization of LDAP and OpenSSL must be
+ * always serialized to avoid corruption of context structures inside
+ * these libraries.
  */
 pthread_mutex_t ldapinit_mutex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -203,7 +204,7 @@ int bind_ldap_simple(unsigned logopt, LDAP *ldap, const char *uri, struct lookup
 	return 0;
 }
 
-int unbind_ldap_connection(unsigned logopt, LDAP *ldap, struct lookup_context *ctxt)
+int __unbind_ldap_connection(unsigned logopt, LDAP *ldap, struct lookup_context *ctxt)
 {
 	int rv;
 
@@ -216,6 +217,17 @@ int unbind_ldap_connection(unsigned logopt, LDAP *ldap, struct lookup_context *c
 	rv = ldap_unbind_ext(ldap, NULL, NULL);
 	if (rv != LDAP_SUCCESS)
 		error(logopt, "unbind failed: %s", ldap_err2string(rv));
+
+	return rv;
+}
+
+int unbind_ldap_connection(unsigned logopt, LDAP *ldap, struct lookup_context *ctxt)
+{
+	int rv;
+
+	ldapinit_mutex_lock();
+	rv = __unbind_ldap_connection(logopt, ldap, ctxt);
+	ldapinit_mutex_unlock();
 
 	return rv;
 }
@@ -280,7 +292,7 @@ LDAP *__init_ldap_connection(unsigned logopt, const char *uri, struct lookup_con
 
 		rv = ldap_start_tls_s(ldap, NULL, NULL);
 		if (rv != LDAP_SUCCESS) {
-			unbind_ldap_connection(logopt, ldap, ctxt);
+			__unbind_ldap_connection(logopt, ldap, ctxt);
 			if (ctxt->tls_required) {
 				error(logopt, MODPREFIX
 				      "TLS required but START_TLS failed: %s",
