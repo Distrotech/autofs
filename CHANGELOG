@@ -28,6 +28,7 @@
 - dont clobber mapent for negative cache.
 - fix macro_addvar() and move init to main thread.
 - change walk_tree() to take ap.
+- add negative cache lookup to hesiod lookup.
 
 17/10/2013 autofs-5.0.8
 =======================
