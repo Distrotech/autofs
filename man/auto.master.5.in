@@ -38,14 +38,14 @@ Access to mounts in maps is governed by a key.
 .P
 For direct maps the mount point is always specified as:
 .P
-/-
+.BR /-
 .P
 and the key used within the direct map is the full path to the mount point. The direct map
 may have multiple entries in the master map.
 .P
 For indirect maps access is by using the path scheme:
 .P
-.RI / mount-point / key 
+.BR /mount-point/key
 .P
 where
 .I mount-point
@@ -57,7 +57,9 @@ map given in the entry (See
 .P
 Additionally, a map may be included from its source as if it were itself
 present in the master map by including a line of the form:
-.BR +\ [ maptype , format :] map [ options ]
+.P
+.BR + [ maptype [, format ]:] map\  [ options ]
+.P
 and 
 .BR automount (8)
 will process the map according to the specification described below for
@@ -73,14 +75,14 @@ which contains options to be applied to all entries in the map.
 .P
 The format of a master map entry is:
 .TP
-.IR mount-point\  [ map-type [, format ]:] map\  [ options ]
+.BR mount-point\  [ map-type [, format ]:] map\  [ options ]
 .TP
-\fBmount-point\fP
+.B mount-point
 Base location for the \fBautofs\fP filesystem to be mounted.  For
 indirect maps this directory will be created (as with \fBmkdir \-p\fP)
 and is removed when the \fBautofs\fP filesystem is umounted.
 .TP
-\fBmap-type\fP
+.B map-type
 Type of map used for this mount point.  The following are
 valid map types:
 .RS
@@ -133,7 +135,8 @@ for maps of types \fBfile\fP, \fBdir\fP, or \fBprogram\fP, and the name of a dat
 in the case for maps of type \fByp\fP, \fBnisplus\fP, or \fBhesiod\fP or
 the \fBdn\fP of an LDAP entry for maps of type \fBldap\fP.
 .TP
-\fBoptions\fP
+.B options
+.br
 Any remaining command line arguments without leading dashes (\-) are
 taken as options (\fI\-o\fP) to \fBmount\fP.  Arguments with leading
 dashes are considered options for the maps.
@@ -287,6 +290,7 @@ it will used for subsequent lookups.
 There are three common schemas in use:
 .TP
 .I nisMap
+.br
 Entries in the \fBnisMap\fP schema are \fBnisObject\fP objects in
 the specified subtree, where the \fBcn\fP attribute is the key
 (the wildcard key is "/"), and the \fBnisMapEntry\fP attribute
