@@ -214,14 +214,14 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 			      MODPREFIX
 			      "failed to create symlink %s -> %s",
 			      fullpath, what);
-			if ((ap->flags & MOUNT_FLAG_GHOST) && !status)
+			if ((ap->flags & MOUNT_FLAG_GHOST) && !status) {
 				if (mkdir_path(fullpath, 0555) && errno != EEXIST) {
 					char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
 					error(ap->logopt,
 					      MODPREFIX "mkdir_path %s failed: %s",
 					      fullpath, estr);
 				}
-			else {
+			} else {
 				if (ap->type == LKP_INDIRECT)
 					rmdir_path(ap, fullpath, ap->dev);
 			}
