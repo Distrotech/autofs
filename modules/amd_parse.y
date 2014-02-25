@@ -28,6 +28,7 @@
 
 #include "automount.h"
 #include "parse_amd.h"
+#include "log.h"
 
 #define MAX_OPTS_LEN	1024
 #define MAX_ERR_LEN	512
@@ -45,6 +46,7 @@ static void local_free_vars(void);
 
 static int amd_error(const char *s);
 static int amd_notify(const char *s);
+static int amd_info(const char *s);
 static int amd_msg(const char *s);
 
 static int add_location(void);
@@ -59,6 +61,7 @@ static struct autofs_point *pap;
 struct substvar *psv;
 static char opts[MAX_OPTS_LEN];
 static void prepend_opt(char *, char *);
+static char msg_buf[MAX_ERR_LEN];
 
 #define YYDEBUG 0
 
@@ -99,6 +102,7 @@ static int amd_fprintf(FILE *, char *, ...);
 
 %token <strtype> MAP_OPTION
 %token <strtype> MAP_TYPE
+%token <strtype> CACHE_OPTION
 %token <strtype> FS_TYPE
 %token <strtype> FS_OPTION
 %token <strtype> FS_OPT_VALUE
@@ -259,6 +263,20 @@ option_assignment: MAP_OPTION OPTION_ASSIGN FS_TYPE
 			   !strcmp($3, "ext4")) {
 			entry.flags |= AMD_MOUNT_TYPE_EXT;
 			entry.type = amd_strdup($3);
+		} else if (!strcmp($3, "jfs") ||
+			   !strcmp($3, "linkx") ||
+			   !strcmp($3, "nfsx") ||
+			   !strcmp($3, "nfsl") ||
+			   !strcmp($3, "program") ||
+			   !strcmp($3, "lustre") ||
+			   !strcmp($3, "direct")) {
+			sprintf(msg_buf, "file system type %s is "
+					 "not yet implemented", $3);
+			amd_msg(msg_buf);
+			YYABORT;
+		} else if (!strcmp($3, "cachefs")) {
+			sprintf(msg_buf, "file syatem %s is not "
+					 "supported by autofs, ignored", $3);
 		} else {
 			amd_notify($1);
 			YYABORT;
@@ -275,7 +293,18 @@ option_assignment: MAP_OPTION OPTION_ASSIGN FS_TYPE
 		else if (!strcmp($3, "exec"))
 			/* autofs uses "program" for "exec" map type */
 			entry.map_type = amd_strdup("program");
-		else {
+		else if (!strcmp($3, "passwd")) {
+			sprintf(msg_buf, "map type %s is "
+					 "not yet implemented", $3);
+			amd_msg(msg_buf);
+			YYABORT;
+		} else if (!strcmp($3, "ndbm") ||
+			   !strcmp($3, "union")) {
+			sprintf(msg_buf, "map type %s is not "
+					 "supported by autofs", $3);
+			amd_msg(msg_buf);
+			YYABORT;
+		} else {
 			amd_notify($1);
 			YYABORT;
 		}
@@ -304,7 +333,17 @@ option_assignment: MAP_OPTION OPTION_ASSIGN FS_TYPE
 			entry.rfs = amd_strdup($3);
 		else if (!strcmp($1, "dev"))
 			entry.dev = amd_strdup($3);
-		else {
+		else if (!strcmp($1, "mount") ||
+			 !strcmp($1, "unmount") ||
+			 !strcmp($1, "umount")) {
+			amd_info("file system type program is not "
+				 "yet implemented, option ignored");
+			YYABORT;
+		} else if (!strcmp($1, "delay") ||
+			   !strcmp($1, "cachedir")) {
+			sprintf(msg_buf, "option %s is not used by autofs", $1);
+			amd_info(msg_buf);
+		} else {
 			amd_notify($1);
 			YYABORT;
 		}
@@ -326,11 +365,44 @@ option_assignment: MAP_OPTION OPTION_ASSIGN FS_TYPE
 			YYABORT;
 		}
 	}
+	| MAP_OPTION OPTION_ASSIGN CACHE_OPTION
+	{
+		sprintf(msg_buf, "option %s is not used, autofs "
+				 "default caching is always used", $1);
+		amd_info(msg_buf);
+	}
 	;
 
 options: OPTION
 	{
-		prepend_opt(opts, $1);
+		if (!strcmp($1, "browsable") ||
+		    !strcmp($1, "fullybrowsable") ||
+		    !strcmp($1, "nounmount") ||
+		    !strcmp($1, "unmount")) {
+			sprintf(msg_buf, "option %s is not currently "
+					 "implemented, ignored", $1);
+			amd_info(msg_buf);
+		} else if (!strncmp($1, "ping=", 5) ||
+			   !strncmp($1, "retry=", 6) ||
+			   !strcmp($1, "public") ||
+			   !strcmp($1, "softlookup") ||
+			   !strcmp($1, "xlatecookie")) {
+			sprintf(msg_buf, "option %s is not used by "
+					 "autofs, ignored", $1);
+			amd_info(msg_buf);
+		} else if (!strncmp($1, "utimeout=", 9)) {
+			if (entry.flags & AMD_MOUNT_TYPE_AUTO) {
+				char *opt = $1;
+				prepend_opt(opts, ++opt);
+			} else {
+				sprintf(msg_buf, "umount timeout can't be "
+						 "used for other than type "
+						 "\"auto\" with autofs, "
+						 "ignored");
+				amd_info(msg_buf);
+			}
+		} else
+			prepend_opt(opts, $1);
 	}
 	| OPTION COMMA options
 	{
@@ -385,6 +457,12 @@ static int amd_notify(const char *s)
 {
 	logmsg("syntax error in location near [ %s ]\n", s);
 	return(0);
+}
+
+static int amd_info(const char *s)
+{
+	info(pap->logopt, "%s\n", s);
+	return 0;
 }
 
 static int amd_msg(const char *s)

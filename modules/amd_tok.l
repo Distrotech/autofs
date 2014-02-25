@@ -94,13 +94,14 @@ OPTS		({OSTR}(=({VSTR}|{QSTR}|{MACRO})+)?)
 SOPT		(({SSTR}|{QSTR}|{MACRO})+)
 NOPT		({SSTR}|(({IP4ADDR}(\/{V4MASK})?)|({IP6ADDR}(\/{V6MASK})?)))
 
-MAPOPT		(fs|type|maptype|pref|sublink|delay)
+MAPOPT		(fs|type|maptype|pref|sublink|cache)
 MNTOPT		(opts|addopts|remopts)
-FSOPTS		(rhost|rfs|dev|cachedir)
+FSOPTS		(rhost|rfs|dev|cachedir|mount|unmount|umount|delay)
+CHEOPT		(mapdefault|none|inc|re|regexp|all)
 MAPTYPE		(file|nis|nisplus|ldap|hesiod|exec|ndbm|passwd|union)
 FSTYPE_LOCAL	(link|linkx|lofs|ext2|ext3|ext4|xfs|jfs|cachefs)
 FSTYPE_NET	(nfs|nfsx|nfsl|host)
-FSTYPE		(auto|program|direct|{FSTYPE_LOCAL}|{FSTYPE_NET})
+FSTYPE		(auto|program|direct|lustre|{FSTYPE_LOCAL}|{FSTYPE_NET})
 
 OSSEL		(arch|karch|os|osver|full_os|vendor)
 HSTSEL		(host|hostd|domain|byte|cluster)
@@ -202,6 +203,11 @@ CUTSEP		(\|\||\/)
 	{MAPTYPE} {
 		strcpy(amd_lval.strtype, amd_text);
 		return MAP_TYPE;
+	}
+
+	{CHEOPT} {
+		strcpy(amd_lval.strtype, amd_text);
+		return CACHE_OPTION;
 	}
 
 	{FOPT} {
