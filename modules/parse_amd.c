@@ -736,6 +736,36 @@ static void normalize_sublink(unsigned int logopt,
 	return;
 }
 
+/*
+ * Set the prefix.
+ *
+ * This is done in a couple of places, here is as good a place as
+ * any to describe it.
+ *
+ * If a prefix is present in the map entry then use it.
+ *
+ * A pref option with the value none is required to use no prefix,
+ * otherwise the prefix of the parent map, if any, will be used.
+ */
+static void update_prefix(struct autofs_point *ap,
+			  struct amd_entry *entry, const char *name)
+{
+	size_t len;
+	char *new;
+
+	if (!entry->pref && ap->pref) {
+		len = strlen(ap->pref) + strlen(name) + 2;
+		new = malloc(len);
+		if (new) {
+			strcpy(new, ap->pref);
+			strcat(new, name);
+			strcat(new, "/");
+			entry->pref = new;
+		}
+	}
+	return;
+}
+
 static struct amd_entry *dup_defaults_entry(struct amd_entry *defaults)
 {
 	struct amd_entry *entry;
@@ -1044,6 +1074,7 @@ int parse_mount(struct autofs_point *ap, const char *name,
 		sv = expand_entry(ap, this, flags, sv);
 		sv = merge_entry_options(ap, this, sv);
 		normalize_sublink(ap->logopt, this, sv);
+		update_prefix(ap, this, name);
 
 		dequote_entry(ap, this);
 

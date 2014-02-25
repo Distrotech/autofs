@@ -86,6 +86,7 @@ int master_add_autofs_point(struct master_mapent *entry, unsigned logopt,
 		free(ap);
 		return 0;
 	}
+	ap->pref = NULL;
 
 	ap->entry = entry;
 	ap->exp_thread = 0;
@@ -144,6 +145,8 @@ void master_free_autofs_point(struct autofs_point *ap)
 	if (status)
 		fatal(status);
 
+	if (ap->pref)
+		free(ap->pref);
 	free(ap->path);
 	free(ap);
 }
