@@ -8,6 +8,7 @@
 - fix ipv6 libtirpc getport.
 - fix ipv6 link local address handling.
 - fix fix ipv6 libtirpc getport.
+- get_nfs_info() should query portmapper if port is not given.
 
 17/10/2013 autofs-5.0.8
 =======================
