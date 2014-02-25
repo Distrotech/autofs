@@ -267,10 +267,10 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 }
 
 static int lookup_one(struct autofs_point *ap,
+		      struct map_source *source,
 		      const char *key, int key_len,
 		      struct lookup_context *ctxt)
 {
-	struct map_source *source;
 	struct mapent_cache *mc;
 	char *tablename;
 	nis_result *result;
@@ -279,10 +279,6 @@ static int lookup_one(struct autofs_point *ap,
 	time_t age = time(NULL);
 	int ret, cur_state;
 	char buf[MAX_ERR_BUF];
-
-	source = ap->entry->current;
-	ap->entry->current = NULL;
-	master_source_current_signal(ap->entry);
 
 	mc = source->mc;
 
@@ -326,9 +322,9 @@ static int lookup_one(struct autofs_point *ap,
 	return ret;
 }
 
-static int lookup_wild(struct autofs_point *ap, struct lookup_context *ctxt)
+static int lookup_wild(struct autofs_point *ap,
+		       struct map_source *source, struct lookup_context *ctxt)
 {
-	struct map_source *source;
 	struct mapent_cache *mc;
 	char *tablename;
 	nis_result *result;
@@ -337,10 +333,6 @@ static int lookup_wild(struct autofs_point *ap, struct lookup_context *ctxt)
 	time_t age = time(NULL);
 	int ret, cur_state;
 	char buf[MAX_ERR_BUF];
-
-	source = ap->entry->current;
-	ap->entry->current = NULL;
-	master_source_current_signal(ap->entry);
 
 	mc = source->mc;
 
@@ -383,27 +375,20 @@ static int lookup_wild(struct autofs_point *ap, struct lookup_context *ctxt)
 }
 
 static int check_map_indirect(struct autofs_point *ap,
+			      struct map_source *source,
 			      char *key, int key_len,
 			      struct lookup_context *ctxt)
 {
-	struct map_source *source;
 	struct mapent_cache *mc;
 	struct mapent *me, *exists;
 	time_t now = time(NULL);
 	time_t t_last_read;
 	int ret = 0;
 
-	source = ap->entry->current;
-	ap->entry->current = NULL;
-	master_source_current_signal(ap->entry);
-
 	mc = source->mc;
 
-	master_source_current_wait(ap->entry);
-	ap->entry->current = source;
-
 	/* check map and if change is detected re-read map */
-	ret = lookup_one(ap, key, key_len, ctxt);
+	ret = lookup_one(ap, source, key, key_len, ctxt);
 	if (ret == CHE_FAIL)
 		return NSS_STATUS_NOTFOUND;
 
@@ -452,10 +437,7 @@ static int check_map_indirect(struct autofs_point *ap,
 		int wild = CHE_MISSING;
 		struct mapent *we;
 
-		master_source_current_wait(ap->entry);
-		ap->entry->current = source;
-
-		wild = lookup_wild(ap, ctxt);
+		wild = lookup_wild(ap, source, ctxt);
 		/*
 		 * Check for map change and update as needed for
 		 * following cache lookup.
@@ -553,10 +535,8 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 		if (!lkp_key)
 			return NSS_STATUS_UNKNOWN;
 
-		master_source_current_wait(ap->entry);
-		ap->entry->current = source;
-
-		status = check_map_indirect(ap, lkp_key, strlen(lkp_key), ctxt);
+		status = check_map_indirect(ap, source,
+					    lkp_key, strlen(lkp_key), ctxt);
 		if (status)
 			return status;
 	}

@@ -22,6 +22,7 @@
 - fix max() declaration.
 - fix symlink fail message in mount_bind.c.
 - fix cache readlock not taken on lookup.
+- pass map_source as function paramter where possible.
 
 17/10/2013 autofs-5.0.8
 =======================

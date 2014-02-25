@@ -2366,19 +2366,15 @@ next:
 
 
 static int read_one_map(struct autofs_point *ap,
+			struct map_source *source,
 			struct lookup_context *ctxt,
 			time_t age, int *result_ldap)
 {
-	struct map_source *source;
 	struct ldap_search_params sp;
 	char buf[MAX_ERR_BUF];
 	char *class, *info, *entry;
 	char *attrs[3];
 	int rv, l;
-
-	source = ap->entry->current;
-	ap->entry->current = NULL;
-	master_source_current_signal(ap->entry);
 
 	/*
 	 * If we don't need to create directories then there's no use
@@ -2498,11 +2494,16 @@ static int read_one_map(struct autofs_point *ap,
 int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 {
 	struct lookup_context *ctxt = (struct lookup_context *) context;
+	struct map_source *source;
 	int rv = LDAP_SUCCESS;
 	int ret, cur_state;
 
+	source = ap->entry->current;
+	ap->entry->current = NULL;
+	master_source_current_signal(ap->entry);
+
 	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cur_state);
-	ret = read_one_map(ap, ctxt, age, &rv);
+	ret = read_one_map(ap, source, ctxt, age, &rv);
 	if (ret != NSS_STATUS_SUCCESS) {
 		switch (rv) {
 		case LDAP_SIZELIMIT_EXCEEDED:
@@ -2519,10 +2520,9 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 	return ret;
 }
 
-static int lookup_one(struct autofs_point *ap,
+static int lookup_one(struct autofs_point *ap, struct map_source *source,
 		char *qKey, int qKey_len, struct lookup_context *ctxt)
 {
-	struct map_source *source;
 	struct mapent_cache *mc;
 	int rv, i, l, ql, count;
 	char buf[MAX_ERR_BUF];
@@ -2540,10 +2540,6 @@ static int lookup_one(struct autofs_point *ap,
 	struct mapent *we;
 	unsigned int wild = 0;
 	int ret = CHE_MISSING;
-
-	source = ap->entry->current;
-	ap->entry->current = NULL;
-	master_source_current_signal(ap->entry);
 
 	mc = source->mc;
 
@@ -2879,27 +2875,20 @@ next:
 }
 
 static int check_map_indirect(struct autofs_point *ap,
+			      struct map_source *source,
 			      char *key, int key_len,
 			      struct lookup_context *ctxt)
 {
-	struct map_source *source;
 	struct mapent_cache *mc;
 	struct mapent *me;
 	time_t now = time(NULL);
 	time_t t_last_read;
 	int ret, cur_state;
 
-	source = ap->entry->current;
-	ap->entry->current = NULL;
-	master_source_current_signal(ap->entry);
-
 	mc = source->mc;
 
-	master_source_current_wait(ap->entry);
-	ap->entry->current = source;
-
 	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cur_state);
-	ret = lookup_one(ap, key, key_len, ctxt);
+	ret = lookup_one(ap, source, key, key_len, ctxt);
 	if (ret == CHE_FAIL) {
 		pthread_setcancelstate(cur_state, NULL);
 		return NSS_STATUS_NOTFOUND;
@@ -3019,10 +3008,8 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 		if (!lkp_key)
 			return NSS_STATUS_UNKNOWN;
 
-		master_source_current_wait(ap->entry);
-		ap->entry->current = source;
-
-		status = check_map_indirect(ap, lkp_key, strlen(lkp_key), ctxt);
+		status = check_map_indirect(ap, source,
+					    lkp_key, strlen(lkp_key), ctxt);
 		free(lkp_key);
 		if (status)
 			return status;
