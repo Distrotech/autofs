@@ -1384,7 +1384,7 @@ int handle_packet_missing_direct(struct autofs_point *ap, autofs_packet_missing_
 		master_source_unlock(ap->entry);
 		master_mutex_unlock();
 		pthread_setcancelstate(state, NULL);
-		return 1;
+		return 0;
 	}
 
 	/* Check if we recorded a mount fail for this key */
@@ -1409,7 +1409,7 @@ int handle_packet_missing_direct(struct autofs_point *ap, autofs_packet_missing_
 		master_source_unlock(ap->entry);
 		master_mutex_unlock();
 		pthread_setcancelstate(state, NULL);
-		return 1;
+		return 0;
 	}
 
 	mt = malloc(sizeof(struct pending_args));
@@ -1423,7 +1423,7 @@ int handle_packet_missing_direct(struct autofs_point *ap, autofs_packet_missing_
 		master_source_unlock(ap->entry);
 		master_mutex_unlock();
 		pthread_setcancelstate(state, NULL);
-		return 1;
+		return 0;
 	}
 	memset(mt, 0, sizeof(struct pending_args));
 

@@ -34,6 +34,7 @@
 - fix map source with type lookup.
 - fix lookup_nss_mount() map lookup.
 - dont ignore null cache entries on multi mount umount.
+- fix inconsistent error returns in handle_packet_missing_direct().
 
 17/10/2013 autofs-5.0.8
 =======================
