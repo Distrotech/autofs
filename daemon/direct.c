@@ -912,7 +912,7 @@ void *expire_proc_direct(void *arg)
 			cache_writelock(me->mc);
 			if (me->ioctlfd != -1 && 
 			    fstat(me->ioctlfd, &st) != -1 &&
-			    !count_mounts(ap->logopt, next->path, st.st_dev)) {
+			    !count_mounts(ap, next->path, st.st_dev)) {
 				ops->close(ap->logopt, me->ioctlfd);
 				me->ioctlfd = -1;
 				cache_unlock(me->mc);

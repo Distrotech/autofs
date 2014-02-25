@@ -27,6 +27,7 @@
 - fix symlink expire.
 - dont clobber mapent for negative cache.
 - fix macro_addvar() and move init to main thread.
+- change walk_tree() to take ap.
 
 17/10/2013 autofs-5.0.8
 =======================

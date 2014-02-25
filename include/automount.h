@@ -526,8 +526,8 @@ int handle_packet_expire_indirect(struct autofs_point *ap, autofs_packet_expire_
 int handle_packet_expire_direct(struct autofs_point *ap, autofs_packet_expire_direct_t *pkt);
 int handle_packet_missing_indirect(struct autofs_point *ap, autofs_packet_missing_indirect_t *pkt);
 int handle_packet_missing_direct(struct autofs_point *ap, autofs_packet_missing_direct_t *pkt);
-void rm_unwanted(unsigned logopt, const char *path, int incl, dev_t dev);
-int count_mounts(unsigned logopt, const char *path, dev_t dev);
+void rm_unwanted(struct autofs_point *ap, const char *path, int incl);
+int count_mounts(struct autofs_point *ap, const char *path, dev_t dev);
 
 #define mounts_mutex_lock(ap) \
 do { \
