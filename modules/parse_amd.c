@@ -1286,6 +1286,7 @@ static int amd_mount(struct autofs_point *ap, const char *name,
 
 	case AMD_MOUNT_TYPE_EXT:
 	case AMD_MOUNT_TYPE_XFS:
+	case AMD_MOUNT_TYPE_CDFS:
 		if (!validate_generic_options(ap->logopt, fstype, entry))
 			return 1;
 		ret = do_generic_mount(ap, name, entry, entry->dev, flags);

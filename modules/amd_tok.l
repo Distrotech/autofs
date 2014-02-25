@@ -99,7 +99,7 @@ MNTOPT		(opts|addopts|remopts)
 FSOPTS		(rhost|rfs|dev|cachedir|mount|unmount|umount|delay)
 CHEOPT		(mapdefault|none|inc|re|regexp|all)
 MAPTYPE		(file|nis|nisplus|ldap|hesiod|exec|ndbm|passwd|union)
-FSTYPE_LOCAL	(link|linkx|lofs|ext2|ext3|ext4|xfs|jfs|cachefs)
+FSTYPE_LOCAL	(link|linkx|lofs|ext2|ext3|ext4|xfs|jfs|cdfs|cachefs)
 FSTYPE_NET	(nfs|nfsx|nfsl|host)
 FSTYPE		(auto|program|direct|lustre|{FSTYPE_LOCAL}|{FSTYPE_NET})
 
