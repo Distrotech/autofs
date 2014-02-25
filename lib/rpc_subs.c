@@ -649,7 +649,7 @@ static unsigned short rpc_getrpcbport(const int proto)
 done:
 	pthread_mutex_unlock(&rpcb_mutex);
 #endif
-	return (unsigned short) PMAPPORT;
+	return (unsigned short) htons(PMAPPORT);
 }
 
 /*

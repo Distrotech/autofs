@@ -12,6 +12,7 @@
 - fix rpc_portmap_getport() proto not set.
 - fix protmap not trying proto v2.
 - fix rpc_getport() when libtirpc is disabled.
+- fix rpc_getrpcbport() when libtirpc is disabled.
 
 17/10/2013 autofs-5.0.8
 =======================
