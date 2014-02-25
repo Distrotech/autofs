@@ -113,6 +113,8 @@ struct map_type_info {
 unsigned int get_proximity(struct sockaddr *);
 unsigned int get_network_proximity(const char *);
 unsigned int in_network(char *);
+struct mapent *match_cached_key(struct autofs_point *, const char *,
+				struct map_source *, const char *);
 const char *skipspace(const char *);
 int check_colon(const char *);
 int chunklen(const char *, int);

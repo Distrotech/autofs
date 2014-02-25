@@ -498,6 +498,90 @@ unsigned int in_network(char *network)
 	return 1;
 }
 
+struct mapent *match_cached_key(struct autofs_point *ap,
+				const char *err_prefix,
+				struct map_source *source,
+				const char *key)
+{
+	char buf[MAX_ERR_BUF];
+	struct mapent_cache *mc;
+	struct mapent *me;
+
+	mc = source->mc;
+
+	if (!(source->flags & MAP_FLAG_FORMAT_AMD)) {
+		int ret;
+
+		me = cache_lookup(mc, key);
+		/*
+		 * Stale mapent => check for entry in alternate source or
+		 * wildcard. Note, plus included direct mount map entries
+		 * are included as an instance (same map entry cache), not
+		 * in a distinct source.
+		 */
+		if (me && (!me->mapent ||
+		   (me->source != source && *me->key != '/'))) {
+			while ((me = cache_lookup_key_next(me)))
+				if (me->source == source)
+					break;
+			if (!me)
+				me = cache_lookup_distinct(mc, "*");
+		}
+
+		if (!me)
+			goto done;
+
+		/*
+		 * If this is a lookup add wildcard match for later validation
+		 * checks and negative cache lookups.
+		 */
+		if (!(ap->flags & MOUNT_FLAG_REMOUNT) &&
+		    ap->type == LKP_INDIRECT && *me->key == '*') {
+			ret = cache_update(mc, source, key, me->mapent, me->age);
+			if (!(ret & (CHE_OK | CHE_UPDATED)))
+				me = NULL;
+		}
+	} else {
+		char *lkp_key = strdup(key);
+		if (!lkp_key) {
+			char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+			error(ap->logopt, "%s strdup: %s", err_prefix, estr);
+			return NULL;
+		}
+
+		/* If it's found we're done */
+		me = cache_lookup_distinct(mc, lkp_key);
+		if (me)
+			goto free;
+
+		/*
+		 * Otherwise strip successive directory components and try
+		 * a match against map entries ending with a wildcard and
+		 * finally try the wilcard entry itself.
+		*/
+		while (!me) {
+			char *prefix;
+
+			while ((prefix = strrchr(lkp_key, '/'))) {
+				*prefix = '\0';
+				me = cache_partial_match_wild(mc, lkp_key);
+				if (me)
+					goto free;
+			}
+
+			me = cache_lookup_distinct(mc, "*");
+			if (me)
+				goto free;
+
+			break;
+		}
+free:
+		free(lkp_key);
+	}
+done:
+	return me;
+}
+
 /*
  * Skip whitespace in a string; if we hit a #, consider the rest of the
  * entry a comment.
