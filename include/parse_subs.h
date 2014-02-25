@@ -18,6 +18,13 @@
 #ifndef PARSE_SUBS_H
 #define PARSE_SUBS_H
 
+#define PROXIMITY_ERROR		0x0000
+#define PROXIMITY_LOCAL         0x0001
+#define PROXIMITY_SUBNET        0x0002
+#define PROXIMITY_NET           0x0004
+#define PROXIMITY_OTHER         0x0008
+#define PROXIMITY_UNSUPPORTED   0x0010
+
 struct mapent;
 
 struct map_type_info {
@@ -26,6 +33,7 @@ struct map_type_info {
 	char *map;
 };
 
+unsigned int get_proximity(struct sockaddr *);
 const char *skipspace(const char *);
 int check_colon(const char *);
 int chunklen(const char *, int);
