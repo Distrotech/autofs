@@ -20,6 +20,7 @@
 #include <ctype.h>
 #include <sys/types.h>
 #include <ifaddrs.h>
+#include <libgen.h>
 #include <net/if.h>
 #include "automount.h"
 
@@ -38,6 +39,11 @@ static int volatile ifc_last_len = 0;
 
 /* Get numeric value of the n bits starting at position p */
 #define getbits(x, p, n)	((x >> (p + 1 - n)) & ~(~0 << n))
+
+#define EXPAND_LEADING_SLASH	0x0001
+#define EXPAND_TRAILING_SLASH	0x0002
+#define EXPAND_LEADING_DOT	0x0004
+#define EXPAND_TRAILING_DOT	0x0008
 
 struct types {
 	char *type;
@@ -634,6 +640,211 @@ next:
 		result[len - 1] = '\0';
 
 	return strdup(result);
+}
+
+static char *expand_slash_or_dot(char *str, unsigned int type)
+{
+	char *val = NULL;
+
+	if (!str)
+		return NULL;
+
+	if (!type)
+		return str;
+
+	if (type & EXPAND_LEADING_SLASH)
+		val = basename(str);
+	else if (type & EXPAND_TRAILING_SLASH)
+		val = dirname(str);
+	else if (type & (EXPAND_LEADING_DOT | EXPAND_TRAILING_DOT)) {
+		char *dot = strchr(str, '.');
+		if (dot)
+			*dot++ = '\0';
+		if (type & EXPAND_LEADING_DOT)
+			val = dot;
+		else
+			val = str;
+	}
+
+	return val;
+}
+
+/*
+ * $-expand an amd-style map entry and return the length of the entry.
+ * If "dst" is NULL, just count the length.
+ */
+/* TODO: how should quoting be handled? */
+int expandamdent(const char *src, char *dst, const struct substvar *svc)
+{
+	unsigned int flags = conf_amd_get_flags(NULL);
+	const struct substvar *sv;
+	const char *o_src = src;
+	int len, l;
+	const char *p;
+	char ch;
+
+	len = 0;
+
+	while ((ch = *src++)) {
+		switch (ch) {
+		case '$':
+			if (*src == '{') {
+				char *start, *end;
+				unsigned int type = 0;
+				p = strchr(++src, '}');
+				if (!p) {
+					/* Ignore rest of string */
+					if (dst)
+						*dst = '\0';
+					return len;
+				}
+				start = (char *) src;
+				if (*src == '/' || *src == '.') {
+					start++;
+					type = EXPAND_LEADING_SLASH;
+					if (*src == '.')
+						type = EXPAND_LEADING_DOT;
+				}
+				end = (char *) p;
+				if (*(p - 1) == '/' || *(p - 1) == '.') {
+					end--;
+					type = EXPAND_TRAILING_SLASH;
+					if (*(p - 1) == '.')
+						type = EXPAND_TRAILING_DOT;
+				}
+				sv = macro_findvar(svc, start, end - start);
+				if (sv) {
+					char *val;
+					char *str = strdup(sv->val);
+					val = expand_slash_or_dot(str, type);
+					if (!val)
+						val = sv->val;
+					l = strlen(val);
+					if (dst) {
+						if (*dst)
+							strcat(dst, val);
+						else
+							strcpy(dst, val);
+						dst += l;
+					}
+					len += l;
+					if (str)
+						free(str);
+				} else {
+					if (dst) {
+						*dst++ = ch;
+						*dst++ = '{';
+						strncat(dst, src, p - src);
+						dst += (p - src);
+						*dst++ = '}';
+					}
+					len += 1 + 1 + (p - src) + 1;
+				}
+				src = p + 1;
+			} else {
+				if (dst)
+					*(dst++) = ch;
+				len++;
+			}
+			break;
+
+		case '\\':
+			if (!(flags & CONF_NORMALIZE_SLASHES)) {
+				len++;
+				if (dst)
+					*dst++ = ch;
+				break;
+			}
+
+			if (*src) {
+				len++;
+				if (dst)
+					*dst++ = *src;
+				src++;
+			}
+			break;
+
+		case '/':
+			len++;
+			if (dst)
+				*dst++ = ch;
+
+			if (!(flags & CONF_NORMALIZE_SLASHES))
+				break;
+
+			/* Double slash at start is allowed */
+			if (src == (o_src + 1) && *src == '/') {
+				len++;
+				if (dst)
+					*dst++ = *src;
+				src++;
+			}
+			while (*src == '/')
+				src++;
+			break;
+
+		case '"':
+			len++;
+			if (dst)
+				*dst++ = ch;
+
+			while (*src && *src != '"') {
+				len++;
+				if (dst)
+					*dst++ = *src;
+				src++;
+			}
+			if (*src) {
+				len++;
+				if (dst)
+					*dst++ = *src;
+				src++;
+			}
+			break;
+
+		default:
+			if (dst)
+				*(dst++) = ch;
+			len++;
+			break;
+		}
+	}
+	if (dst)
+		*dst = '\0';
+
+	return len;
+}
+
+int expand_selectors(struct autofs_point *ap,
+		     const char *mapstr, char **pmapstr,
+		     struct substvar *sv)
+{
+	char buf[MAX_ERR_BUF];
+	char *expand;
+	size_t len;
+
+	if (!mapstr)
+		return 0;
+
+	len = expandamdent(mapstr, NULL, sv);
+	if (len == 0) {
+		error(ap->logopt, "failed to expand map entry");
+		return 0;
+	}
+
+	expand = malloc(len + 1);
+	if (!expand) {
+		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+		error(ap->logopt, "malloc: %s", estr);
+		return 0;
+	}
+	memset(expand, 0, len + 1);
+
+	expandamdent(mapstr, expand, sv);
+
+	*pmapstr = expand;
+
+	return len;
 }
 
 void free_map_type_info(struct map_type_info *info)
