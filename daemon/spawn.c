@@ -111,6 +111,12 @@ static int timed_read(int pipe, char *buf, size_t len, int time)
 		return ret;
 	}
 
+	if (pfd[0].fd == -1)
+		return 0;
+
+	if ((pfd[0].revents & (POLLIN|POLLHUP)) == POLLHUP)
+		return 0;
+
 	while ((ret = read(pipe, buf, len)) == -1 && errno == EINTR);
 
 	return ret;
@@ -179,7 +185,8 @@ static int do_spawn(unsigned logopt, unsigned int wait,
 		 * I hope host names are never allowed "/" as first char
 		 */
 		if (use_open && *(argv[loc]) == '/') {
-			int fd;
+			char **p;
+			int is_bind, fd;
 
 			pid_t pgrp = getpgrp();
 
@@ -209,6 +216,33 @@ static int do_spawn(unsigned logopt, unsigned int wait,
 			setegid(0);
 			if (pgrp >= 0)
 				setpgid(0, pgrp);
+
+			/*
+			 * The kernel leaves mount type autofs alone because
+			 * they are supposed to be autofs sub-mounts and they
+			 * look after their own expiration. So mounts bound
+			 * to an autofs submount won't ever be expired.
+			 */
+			is_bind = 0;
+			p = (char **) argv;
+			while (*p) {
+				if (strcmp(*p, "--bind")) {
+					p++;
+					continue;
+				}
+				is_bind = 1;
+				break;
+			}
+			if (!is_bind)
+				goto done;
+
+			if (is_mounted(_PROC_MOUNTS, argv[loc], MNTS_AUTOFS)) {
+				fprintf(stderr,
+				     "error: can't bind to an autofs mount\n");
+				close(STDOUT_FILENO);
+				close(STDERR_FILENO);
+				 _exit(EINVAL);
+			}
 		}
 done:
 		execv(prog, (char *const *) argv);
@@ -384,7 +418,7 @@ int spawn_mount(unsigned logopt, ...)
 
 	while (retries--) {
 		ret = do_spawn(logopt, wait, options, prog, (const char **) argv);
-		if (ret & MTAB_NOTUPDATED) {
+		if (ret == MTAB_NOTUPDATED) {
 			struct timespec tm = {3, 0};
 
 			/*
@@ -502,7 +536,7 @@ int spawn_bind_mount(unsigned logopt, ...)
 
 	while (retries--) {
 		ret = do_spawn(logopt, -1, options, prog, (const char **) argv);
-		if (ret & MTAB_NOTUPDATED) {
+		if (ret == MTAB_NOTUPDATED) {
 			struct timespec tm = {3, 0};
 
 			/*
@@ -604,7 +638,7 @@ int spawn_umount(unsigned logopt, ...)
 
 	while (retries--) {
 		ret = do_spawn(logopt, wait, options, prog, (const char **) argv);
-		if (ret & MTAB_NOTUPDATED) {
+		if (ret == MTAB_NOTUPDATED) {
 			/*
 			 * If the mount succeeded but the mtab was not
 			 * updated, then retry the umount just to update
