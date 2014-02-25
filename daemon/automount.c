@@ -512,6 +512,9 @@ static int umount_subtree_mounts(struct autofs_point *ap, const char *path, unsi
 			left++;
 		}
 		cache_multi_unlock(me->parent);
+		if (ap->entry->maps &&
+		    (ap->entry->maps->flags & MAP_FLAG_FORMAT_AMD))
+			cache_pop_mapent(me);
 		pthread_setcancelstate(cur_state, NULL);
 	}
 
@@ -525,13 +528,36 @@ static int umount_subtree_mounts(struct autofs_point *ap, const char *path, unsi
 	 * it already to ensure it's ok to remove any offset triggers.
 	 */
 	if (!is_mm_root && is_mounted(_PATH_MOUNTED, path, MNTS_REAL)) {
+		struct amd_entry *entry;
 		debug(ap->logopt, "unmounting dir = %s", path);
 		if (umount_ent(ap, path)) {
 			warn(ap->logopt, "could not umount dir %s", path);
 			left++;
+			goto done;
 		}
-	}
 
+		/* Check for an external mount and umount if possible */
+		mounts_mutex_lock(ap);
+		entry = __master_find_amdmount(ap, path);
+		if (!entry) {
+			mounts_mutex_unlock(ap);
+			goto done;
+		}
+		list_del(&entry->entries);
+		mounts_mutex_unlock(ap);
+		if (ext_mount_remove(&entry->ext_mount, entry->fs)) {
+			if (umount_ent(ap, entry->fs))
+				debug(ap->logopt,
+				      "failed to umount external mount %s",
+				      entry->fs);
+			else
+				debug(ap->logopt,
+				      "umounted external mount %s",
+				      entry->fs);
+		}
+		free_amd_entry(entry);
+	}
+done:
 	return left;
 }
 
@@ -540,9 +566,54 @@ static int umount_subtree_mounts(struct autofs_point *ap, const char *path, unsi
 int umount_multi(struct autofs_point *ap, const char *path, int incl)
 {
 	int is_autofs_fs;
+	struct stat st;
 	int left;
 
 	debug(ap->logopt, "path %s incl %d", path, incl);
+
+	if (lstat(path, &st)) {
+		warn(ap->logopt,
+		     "failed to stat mount point directory %s", path);
+		return 1;
+	}
+
+	/* if this is a symlink we can handle it now */
+	if (S_ISLNK(st.st_mode)) {
+		struct amd_entry *entry;
+		if (st.st_dev != ap->dev) {
+			crit(ap->logopt,
+			     "symlink %s has the wrong device, "
+			     "possible race condition", path);
+			return 1;
+		}
+		debug(ap->logopt, "removing symlink %s", path);
+		if (unlink(path)) {
+			error(ap->logopt,
+			      "failed to remove symlink %s", path);
+			return 1;
+		}
+		/* Check for an external mount and attempt umount if needed */
+		mounts_mutex_lock(ap);
+		entry = __master_find_amdmount(ap, path);
+		if (!entry) {
+			mounts_mutex_unlock(ap);
+			return 0;
+		}
+		list_del(&entry->entries);
+		mounts_mutex_unlock(ap);
+		if (ext_mount_remove(&entry->ext_mount, entry->fs)) {
+			if (umount_ent(ap, entry->fs))
+				debug(ap->logopt,
+				      "failed to umount external mount %s",
+				      entry->fs);
+			else
+				debug(ap->logopt,
+				      "umounted external mount %s",
+				      entry->fs);
+		}
+		free_amd_entry(entry);
+		return 0;
+	}
 
 	is_autofs_fs = 0;
 	if (master_find_submount(ap, path))
@@ -1475,9 +1546,15 @@ static void handle_mounts_cleanup(void *arg)
 		clean = 1;
 
 	if (submount) {
+		struct amd_entry *am;
 		/* We are finishing up */
 		ap->parent->submnt_count--;
 		list_del_init(&ap->mounts);
+		am = __master_find_amdmount(ap->parent, ap->path);
+		if (am) {
+			list_del_init(&am->entries);
+			free_amd_entry(am);
+		}
 	}
 
 	/* Don't signal the handler if we have already done so */

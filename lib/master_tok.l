@@ -119,7 +119,7 @@ DNNAMESTR2	([[:alnum:]_.\-]+)
 INTMAP		(-hosts|-null)
 MULTI		((multi)(,(sun|hesiod))?(:{OPTWS}|{WS}))
 MULTISEP	([\-]{2}[[:blank:]]+)
-MTYPE		((file|program|sss|yp|nis|nisplus|ldap|ldaps|hesiod|userdir)(,(sun|hesiod))?(:{OPTWS}|{WS}))
+MTYPE		((file|program|sss|yp|nis|nisplus|ldap|ldaps|hesiod|userdir)(,(sun|hesiod|amd))?(:{OPTWS}|{WS}))
 
 
 OPTTOUT		(-t{OPTWS}|-t{OPTWS}={OPTWS}|--timeout{OPTWS}|--timeout{OPTWS}={OPTWS})

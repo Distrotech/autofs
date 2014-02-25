@@ -203,6 +203,30 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 	}
 	if (info->map)
 		argv[0] = info->map;
+	/*
+	 * If the parent map format is amd and the format isn't
+	 * specified in the map entry set it from the parent map
+	 * source.
+	 */
+	if (!info->format && ap->entry->maps) {
+		struct map_source *s = ap->entry->maps;
+		/*
+		 * For amd maps, if the format and source type aren't
+		 * specified try and set them from the parent.
+		 */
+		if (s->flags & MAP_FLAG_FORMAT_AMD) {
+			info->format = strdup("amd");
+			if (!info->format)
+				warn(ap->logopt, MODPREFIX
+				     "failed to set amd map format");
+			if (!info->type && s->type) {
+				info->type = strdup(s->type);
+				if (!info->type)
+					warn(ap->logopt, MODPREFIX
+					     "failed to set amd map type");
+			}
+		}
+	}
 
 	if (options) {
 		p = options;

@@ -109,6 +109,7 @@ static unsigned int map_type_count = sizeof(map_type)/sizeof(struct types);
 static struct types format_type[] = {
 	{ "sun", 3 },
 	{ "hesiod", 6 },
+	{ "amd", 3},
 };
 static unsigned int format_type_count = sizeof(format_type)/sizeof(struct types);
 

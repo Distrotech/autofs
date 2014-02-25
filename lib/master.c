@@ -120,6 +120,7 @@ int master_add_autofs_point(struct master_mapent *entry, unsigned logopt,
 	ap->submount = submount;
 	INIT_LIST_HEAD(&ap->mounts);
 	INIT_LIST_HEAD(&ap->submounts);
+	INIT_LIST_HEAD(&ap->amdmounts);
 	ap->shutdown = 0;
 
 	status = pthread_mutex_init(&ap->mounts_mutex, NULL);
@@ -136,10 +137,25 @@ int master_add_autofs_point(struct master_mapent *entry, unsigned logopt,
 
 void master_free_autofs_point(struct autofs_point *ap)
 {
+	struct list_head *p, *head;
 	int status;
 
 	if (!ap)
 		return;
+
+	mounts_mutex_lock(ap);
+	head = &ap->amdmounts;
+	p = head->next;
+	while (p != head) {
+		struct amd_entry *entry = list_entry(p, struct amd_entry, entries);
+		p = p->next;
+		if (!list_empty(&entry->ext_mount))
+			ext_mount_remove(&entry->ext_mount, entry->fs);
+		if (!list_empty(&entry->entries))
+			list_del(&entry->entries);
+		free(entry);
+	}
+	mounts_mutex_unlock(ap);
 
 	status = pthread_mutex_destroy(&ap->mounts_mutex);
 	if (status)
@@ -692,6 +708,34 @@ struct autofs_point *master_find_submount(struct autofs_point *ap, const char *p
 	mounts_mutex_unlock(ap);
 
 	return submount;
+}
+
+struct amd_entry *__master_find_amdmount(struct autofs_point *ap, const char *path)
+{
+	struct list_head *head, *p;
+
+	head = &ap->amdmounts;
+	list_for_each(p, head) {
+		struct amd_entry *entry;
+
+		entry = list_entry(p, struct amd_entry, entries);
+
+		if (!strcmp(entry->path, path))
+			return entry;
+	}
+
+	return NULL;
+}
+
+struct amd_entry *master_find_amdmount(struct autofs_point *ap, const char *path)
+{
+	struct amd_entry *entry;
+
+	mounts_mutex_lock(ap);
+	entry = __master_find_amdmount(ap, path);
+	mounts_mutex_unlock(ap);
+
+	return entry;
 }
 
 struct master_mapent *master_new_mapent(struct master *master, const char *path, time_t age)

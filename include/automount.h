@@ -510,6 +510,7 @@ struct autofs_point {
 	struct autofs_point *parent;	/* Owner of mounts list for submount */
 	pthread_mutex_t mounts_mutex;	/* Protect mount lists */
 	struct list_head mounts;	/* List of autofs mounts at current level */
+	struct list_head amdmounts;	/* List of non submount amd mounts */
 	unsigned int submount;		/* Is this a submount */
 	unsigned int shutdown;		/* Shutdown notification */
 	unsigned int submnt_count;	/* Number of submounts */

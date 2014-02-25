@@ -790,12 +790,29 @@ int master_parse_entry(const char *buffer, unsigned int default_timeout, unsigne
 		}
 	}
 
+	if (!format) {
+		if (conf_amd_mount_section_exists(path))
+			format = strdup("amd");
+	}
+
+	if (format && !strcmp(format, "amd")) {
+		unsigned int loglevel = conf_amd_get_log_options();
+		if (loglevel <= LOG_DEBUG && loglevel > LOG_INFO)
+			logopt = LOGOPT_DEBUG;
+		else if (loglevel <= LOG_INFO && loglevel > LOG_ERR)
+			logopt = LOGOPT_VERBOSE;
+	}
+
+
 	if (timeout < 0) {
 		/*
-		 * If no timeout is given get the timout from first
-		 * map (if it exists).
+		 * If no timeout is given get the timout from the
+		 * first map (if it exists) or the config for amd
+		 * maps.
 		 */
-		if (entry->maps)
+		if (format && !strcmp(format, "amd"))
+			timeout = conf_amd_get_dismount_interval(path);
+		else if (entry->maps)
 			timeout = entry->maps->exp_timeout;
 		else
 			timeout = default_timeout;

@@ -1563,8 +1563,18 @@ int parse_mount(struct autofs_point *ap, const char *name,
 		dequote_entry(ap, this);
 
 		rv = amd_mount(ap, name, this, source, sv, flags, ctxt);
-		if (!rv)
+		mounts_mutex_lock(ap);
+		if (!rv) {
+			/* Add to the parent list of mounts */
+			list_add_tail(&this->entries, &ap->amdmounts);
+			/* Mounted, leave it on the parent list */
+			list_del_init(&this->list);
+			mounts_mutex_unlock(ap);
 			break;
+		}
+		/* Not mounted, remove it from the parent list */
+		list_del_init(&this->entries);
+		mounts_mutex_unlock(ap);
 	}
 	free_amd_entry(cur_defaults);
 
