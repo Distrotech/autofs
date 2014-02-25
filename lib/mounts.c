@@ -46,6 +46,17 @@ static const char mnt_name_template[]      = "automount(pid%u)";
 static struct kernel_mod_version kver = {0, 0};
 static const char kver_options_template[]  = "fd=%d,pgrp=%u,minproto=3,maxproto=5";
 
+#define EXT_MOUNTS_HASH_SIZE    50
+
+struct ext_mount {
+	char *mountpoint;
+	struct list_head mount;
+	struct list_head mounts;
+};
+static struct list_head ext_mounts_hash[EXT_MOUNTS_HASH_SIZE];
+static unsigned int ext_mounts_hash_init_done = 0;
+static pthread_mutex_t ext_mount_hash_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 unsigned int linux_version_code(void)
 {
 	struct utsname my_utsname;
@@ -420,6 +431,127 @@ char *make_mnt_name_string(char *path)
 	mnt_name[len] = '\0';
 
 	return mnt_name;
+}
+
+static void ext_mounts_hash_init(void)
+{
+	int i;
+	for (i = 0; i < EXT_MOUNTS_HASH_SIZE; i++)
+		INIT_LIST_HEAD(&ext_mounts_hash[i]);
+	ext_mounts_hash_init_done = 1;
+}
+
+static struct ext_mount *ext_mount_lookup(const char *mountpoint)
+{
+	u_int32_t hval = hash(mountpoint, EXT_MOUNTS_HASH_SIZE);
+	struct list_head *p, *head;
+
+	if (!ext_mounts_hash_init_done)
+		ext_mounts_hash_init();
+
+	if (list_empty(&ext_mounts_hash[hval]))
+		return NULL;
+
+	head = &ext_mounts_hash[hval];
+	list_for_each(p, head) {
+		struct ext_mount *this = list_entry(p, struct ext_mount, mount);
+		if (!strcmp(this->mountpoint, mountpoint))
+			return this;
+	}
+	return NULL;
+}
+
+int ext_mount_add(struct list_head *entry, const char *path)
+{
+	struct ext_mount *em;
+	char *auto_dir;
+	u_int32_t hval;
+	int ret = 0;
+
+	/* Not a mount in the external mount directory */
+	auto_dir = conf_amd_get_auto_dir();
+	if (strncmp(path, auto_dir, strlen(auto_dir))) {
+		free(auto_dir);
+		return 0;
+	}
+	free(auto_dir);
+
+	pthread_mutex_lock(&ext_mount_hash_mutex);
+
+	em = ext_mount_lookup(path);
+	if (em) {
+		struct list_head *p, *head;
+		head = &em->mounts;
+		list_for_each(p, head) {
+			if (p == entry)
+				goto done;
+		}
+		list_add_tail(entry, &em->mounts);
+		ret = 1;
+		goto done;
+	}
+
+	em = malloc(sizeof(struct ext_mount));
+	if (!em) {
+		ret = -1;
+		goto done;
+	}
+
+	em->mountpoint = strdup(path);
+	if (!em->mountpoint) {
+		free(em);
+		ret = -1;
+		goto done;
+	}
+	INIT_LIST_HEAD(&em->mount);
+	INIT_LIST_HEAD(&em->mounts);
+
+	hval = hash(path, EXT_MOUNTS_HASH_SIZE);
+	list_add_tail(&em->mount, &ext_mounts_hash[hval]);
+
+	list_add_tail(entry, &em->mounts);
+
+	ret = 1;
+done:
+	pthread_mutex_unlock(&ext_mount_hash_mutex);
+	return ret;
+}
+
+int ext_mount_remove(struct list_head *entry, const char *path)
+{
+	struct ext_mount *em;
+	char *auto_dir;
+	int ret = 0;
+
+	/* Not a mount in the external mount directory */
+	auto_dir = conf_amd_get_auto_dir();
+	if (strncmp(path, auto_dir, strlen(auto_dir))) {
+		free(auto_dir);
+		return 0;
+	}
+	free(auto_dir);
+
+	pthread_mutex_lock(&ext_mount_hash_mutex);
+
+	em = ext_mount_lookup(path);
+	if (!em)
+		goto done;
+
+	list_del_init(entry);
+
+	if (!list_empty(&em->mounts))
+		goto done;
+	else {
+		list_del_init(&em->mount);
+		if (list_empty(&em->mount)) {
+			free(em->mountpoint);
+			free(em);
+		}
+		ret = 1;
+	}
+done:
+	pthread_mutex_unlock(&ext_mount_hash_mutex);
+	return ret;
 }
 
 /*

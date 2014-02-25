@@ -93,6 +93,8 @@ unsigned int get_kver_major(void);
 unsigned int get_kver_minor(void);
 char *make_options_string(char *path, int kernel_pipefd, const char *extra);
 char *make_mnt_name_string(char *path);
+int ext_mount_add(struct list_head *, const char *);
+int ext_mount_remove(struct list_head *, const char *);
 struct mnt_list *get_mnt_list(const char *table, const char *path, int include);
 struct mnt_list *reverse_mnt_list(struct mnt_list *list);
 void free_mnt_list(struct mnt_list *list);
