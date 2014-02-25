@@ -45,6 +45,44 @@ static int volatile ifc_last_len = 0;
 #define EXPAND_LEADING_DOT	0x0004
 #define EXPAND_TRAILING_DOT	0x0008
 
+#define SELECTOR_HASH_SIZE	20
+
+static struct sel sel_table[] = {
+	{ SEL_ARCH,	  "arch",	SEL_FLAG_MACRO|SEL_FLAG_STR, NULL },
+	{ SEL_KARCH,	  "karch",	SEL_FLAG_MACRO|SEL_FLAG_STR, NULL },
+	{ SEL_OS,	  "os",		SEL_FLAG_MACRO|SEL_FLAG_STR, NULL },
+	{ SEL_OSVER,	  "osver",	SEL_FLAG_MACRO|SEL_FLAG_STR, NULL },
+	{ SEL_FULL_OS,	  "full_os",	SEL_FLAG_MACRO|SEL_FLAG_STR, NULL },
+	{ SEL_VENDOR,	  "vendor",	SEL_FLAG_MACRO|SEL_FLAG_STR, NULL },
+	{ SEL_HOST,	  "host",	SEL_FLAG_MACRO|SEL_FLAG_STR, NULL },
+	{ SEL_HOSTD,	  "hostd",	SEL_FLAG_MACRO|SEL_FLAG_STR, NULL },
+	{ SEL_XHOST,	  "xhost",	SEL_FLAG_FUNC1|SEL_FLAG_BOOL, NULL },
+	{ SEL_DOMAIN,	  "domain",	SEL_FLAG_MACRO|SEL_FLAG_STR, NULL },
+	{ SEL_BYTE,	  "byte",	SEL_FLAG_MACRO|SEL_FLAG_STR, NULL },
+	{ SEL_CLUSTER,	  "cluster",	SEL_FLAG_MACRO|SEL_FLAG_STR, NULL },
+	{ SEL_NETGRP,	  "netgrp",	SEL_FLAG_FUNC2|SEL_FLAG_BOOL, NULL },
+	{ SEL_NETGRPD,	  "netgrpd",	SEL_FLAG_FUNC2|SEL_FLAG_BOOL, NULL },
+	{ SEL_IN_NETWORK, "in_network",	SEL_FLAG_FUNC1|SEL_FLAG_BOOL, NULL },
+	{ SEL_IN_NETWORK, "netnumber",	SEL_FLAG_FUNC1|SEL_FLAG_BOOL, NULL },
+	{ SEL_IN_NETWORK, "network",	SEL_FLAG_FUNC1|SEL_FLAG_BOOL, NULL },
+	{ SEL_IN_NETWORK, "wire",	SEL_FLAG_FUNC1|SEL_FLAG_BOOL, NULL },
+	{ SEL_UID,	  "uid",	SEL_FLAG_MACRO|SEL_FLAG_NUM, NULL },
+	{ SEL_GID,	  "gid",	SEL_FLAG_MACRO|SEL_FLAG_NUM, NULL },
+	{ SEL_KEY,	  "key",	SEL_FLAG_MACRO|SEL_FLAG_STR, NULL },
+	{ SEL_MAP,	  "map",	SEL_FLAG_MACRO|SEL_FLAG_STR, NULL },
+	{ SEL_PATH,	  "path",	SEL_FLAG_MACRO|SEL_FLAG_STR, NULL },
+	{ SEL_EXISTS,	  "exists",	SEL_FLAG_FUNC1|SEL_FLAG_BOOL, NULL },
+	{ SEL_AUTODIR,	  "autodir",	SEL_FLAG_MACRO|SEL_FLAG_STR, NULL },
+	{ SEL_DOLLAR,	  "dollar",	SEL_FLAG_MACRO|SEL_FLAG_STR, NULL },
+	{ SEL_TRUE,	  "true",	SEL_FLAG_FUNC1|SEL_FLAG_BOOL, NULL },
+	{ SEL_FALSE,	  "false",	SEL_FLAG_FUNC1|SEL_FLAG_BOOL, NULL },
+};
+static unsigned int sel_count = sizeof(sel_table)/sizeof(struct sel);
+
+static struct sel *sel_hash[SELECTOR_HASH_SIZE];
+static unsigned int sel_hash_init_done = 0;
+static pthread_mutex_t sel_hash_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 struct types {
 	char *type;
 	unsigned int len;
@@ -69,6 +107,85 @@ static struct types format_type[] = {
 	{ "hesiod", 6 },
 };
 static unsigned int format_type_count = sizeof(format_type)/sizeof(struct types);
+
+static void sel_add(struct sel *sel)
+{
+	u_int32_t hval = hash(sel->name, SELECTOR_HASH_SIZE);
+	struct sel *old;
+
+	old = sel_hash[hval];
+	sel_hash[hval] = sel;
+	sel_hash[hval]->next = old;
+}
+
+void sel_hash_init(void)
+{
+	int i;
+
+	pthread_mutex_lock(&sel_hash_mutex);
+	if (sel_hash_init_done) {
+		pthread_mutex_unlock(&sel_hash_mutex);
+		return;
+	}
+	for (i = 0; i < SELECTOR_HASH_SIZE; i++)
+		sel_hash[i] = NULL;
+
+	for (i = 0; i < sel_count; i++)
+		sel_add(&sel_table[i]);
+
+	sel_hash_init_done = 1;
+	pthread_mutex_unlock(&sel_hash_mutex);
+}
+
+struct sel *sel_lookup(const char *name)
+{
+	u_int32_t hval = hash(name, SELECTOR_HASH_SIZE);
+	struct sel *sel;
+
+	pthread_mutex_lock(&sel_hash_mutex);
+	for (sel = sel_hash[hval]; sel != NULL; sel = sel->next) {
+		if (strcmp(name, sel->name) == 0) {
+			pthread_mutex_unlock(&sel_hash_mutex);
+			return sel;
+		}
+	}
+	pthread_mutex_unlock(&sel_hash_mutex);
+	return NULL;
+}
+
+struct selector *get_selector(char *name)
+{
+	struct sel *sel;
+
+	sel = sel_lookup(name);
+	if (sel) {
+		struct selector *new = malloc(sizeof(struct selector));
+		if (!new)
+			return NULL;
+		memset(new, 0, sizeof(*new));
+		new->sel = sel;
+		return new;
+	}
+	return NULL;
+}
+
+void free_selector(struct selector *selector)
+{
+	struct selector *s = selector;
+	struct selector *next = s;
+
+	while (s) {
+		next = s->next;
+		if (s->sel->flags & SEL_FREE_VALUE_MASK)
+			free(s->comp.value);
+		if (s->sel->flags & SEL_FREE_ARG1_MASK)
+			free(s->func.arg1);
+		if (s->sel->flags & SEL_FREE_ARG2_MASK)
+			free(s->func.arg2);
+		s = next;
+	}
+	return;
+}
 
 static unsigned int ipv6_mask_cmp(uint32_t *host, uint32_t *iface, uint32_t *mask)
 {
