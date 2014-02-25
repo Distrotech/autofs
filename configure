@@ -5631,7 +5631,7 @@ else
   enableval=yes
 fi
 
-if test x$enable_ext_env = xyes; then
+if test x$enable_ext_env = xyes -o x$enableval = xyes; then
 
 $as_echo "#define ENABLE_EXT_ENV 1" >>confdefs.h
 
