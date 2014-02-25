@@ -100,6 +100,27 @@ static int do_read_master(struct master *master, char *type, time_t age)
 	return status;
 }
 
+static char *find_map_path(struct map_source *map)
+{
+	struct stat st;
+	char *path;
+
+	path = malloc(strlen(AUTOFS_MAP_DIR) + strlen(map->argv[0]) + 2);
+	if (!path)
+		return NULL;
+
+	strcpy(path, AUTOFS_MAP_DIR);
+	strcat(path, "/");
+	strcat(path, map->argv[0]);
+
+	if (!stat(path, &st))
+		return path;
+
+	free(path);
+
+	return NULL;
+}
+
 static int read_master_map(struct master *master, char *type, time_t age)
 {
 	unsigned int logopt = master->logopt;
@@ -392,6 +413,42 @@ static void argv_cleanup(void *arg)
 	return;
 }
 
+static int lookup_map_read_map(struct autofs_point *ap,
+			       struct map_source *map, time_t age)
+{
+	char *path;
+
+	if (!map->argv[0])
+		return NSS_STATUS_UNKNOWN;
+
+	/*
+	 * This is only called when map->type != NULL.
+	 * We only need to look for a map if source type is
+	 * file and the map name doesn't begin with a "/".
+	 */
+	if (strncmp(map->type, "file", 4))
+		return do_read_map(ap, map, age);
+
+	if (map->argv[0][0] == '/')
+		return do_read_map(ap, map, age);
+
+	path = find_map_path(map);
+	if (!path)
+		return NSS_STATUS_UNKNOWN;
+
+	if (map->argc >= 1) {
+		if (map->argv[0])
+			free((char *) map->argv[0]);
+		map->argv[0] = path;
+	} else {
+		error(ap->logopt, "invalid arguments for autofs_point");
+		free(path);
+		return NSS_STATUS_UNKNOWN;
+	}
+
+	return do_read_map(ap, map, age);
+}
+
 static enum nsswitch_status read_map_source(struct nss_source *this,
 		struct autofs_point *ap, struct map_source *map, time_t age)
 {
@@ -428,13 +485,9 @@ static enum nsswitch_status read_map_source(struct nss_source *this,
 	tmap.argc = 0;
 	tmap.argv = NULL;
 
-	path = malloc(strlen(AUTOFS_MAP_DIR) + strlen(map->argv[0]) + 2);
+	path = find_map_path(map);
 	if (!path)
 		return NSS_STATUS_UNKNOWN;
-
-	strcpy(path, AUTOFS_MAP_DIR);
-	strcat(path, "/");
-	strcat(path, map->argv[0]);
 
 	if (map->argc >= 1) {
 		tmap.argc = map->argc;
@@ -496,7 +549,7 @@ int lookup_nss_read_map(struct autofs_point *ap, struct map_source *source, time
 				debug(ap->logopt,
 				      "reading map %s %s",
 				       map->type, map->argv[0]);
-			result = do_read_map(ap, map, age);
+			result = lookup_map_read_map(ap, map, age);
 			map = map->next;
 			continue;
 		}
@@ -750,6 +803,43 @@ static int lookup_name_source_instance(struct autofs_point *ap, struct map_sourc
 	return do_lookup_mount(ap, instance, name, name_len);
 }
 
+static int do_name_lookup_mount(struct autofs_point *ap,
+				struct map_source *map,
+				const char *name, int name_len)
+{
+	char *path;
+
+	if (!map->argv[0])
+		return NSS_STATUS_UNKNOWN;
+
+	/*
+	 * This is only called when map->type != NULL.
+	 * We only need to look for a map if source type is
+	 * file and the map name doesn't begin with a "/".
+	 */
+	if (strncmp(map->type, "file", 4))
+		return do_lookup_mount(ap, map, name, name_len);
+
+	if (map->argv[0][0] == '/')
+		return do_lookup_mount(ap, map, name, name_len);
+
+	path = find_map_path(map);
+	if (!path)
+		return NSS_STATUS_UNKNOWN;
+
+	if (map->argc >= 1) {
+		if (map->argv[0])
+			free((char *) map->argv[0]);
+		map->argv[0] = path;
+	} else {
+		error(ap->logopt, "invalid arguments for autofs_point");
+		free(path);
+		return NSS_STATUS_UNKNOWN;
+	}
+
+	return do_lookup_mount(ap, map, name, name_len);
+}
+
 static enum nsswitch_status lookup_map_name(struct nss_source *this,
 			struct autofs_point *ap, struct map_source *map,
 			const char *name, int name_len)
@@ -785,13 +875,9 @@ static enum nsswitch_status lookup_map_name(struct nss_source *this,
 	tmap.argc = 0;
 	tmap.argv = NULL;
 
-	path = malloc(strlen(AUTOFS_MAP_DIR) + strlen(map->argv[0]) + 2);
+	path = find_map_path(map);
 	if (!path)
 		return NSS_STATUS_UNKNOWN;
-
-	strcpy(path, AUTOFS_MAP_DIR);
-	strcat(path, "/");
-	strcat(path, map->argv[0]);
 
 	if (map->argc >= 1) {
 		tmap.argc = map->argc;
@@ -901,8 +987,7 @@ int lookup_nss_mount(struct autofs_point *ap, struct map_source *source, const c
 		sched_yield();
 
 		if (map->type) {
-			result = do_lookup_mount(ap, map, name, name_len);
-
+			result = do_name_lookup_mount(ap, map, name, name_len);
 			if (result == NSS_STATUS_SUCCESS)
 				break;
 
