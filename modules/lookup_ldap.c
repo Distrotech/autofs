@@ -300,7 +300,7 @@ LDAP *__init_ldap_connection(unsigned logopt, const char *uri, struct lookup_con
 				return NULL;
 			}
 			ctxt->use_tls = LDAP_TLS_DONT_USE;
-			ldap = init_ldap_connection(logopt, uri, ctxt);
+			ldap = __init_ldap_connection(logopt, uri, ctxt);
 			if (ldap)
 				ctxt->use_tls = LDAP_TLS_INIT;
 			return ldap;
