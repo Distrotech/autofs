@@ -787,6 +787,62 @@ int do_lookup_mount(struct autofs_point *ap, struct map_source *map, const char 
 	return status;
 }
 
+static int lookup_amd_instance(struct autofs_point *ap,
+			       struct map_source *map,
+			       const char *name, int name_len)
+{
+	struct map_source *instance;
+	struct amd_entry *entry;
+	const char *argv[2];
+	const char **pargv = NULL;
+	int argc = 0;
+	struct mapent *me;
+	char *m_key;
+
+	me = cache_lookup_distinct(map->mc, name);
+	if (!me || !me->multi) {
+		error(ap->logopt, "expected multi mount entry not found");
+		return NSS_STATUS_UNKNOWN;
+	}
+
+	m_key = malloc(strlen(ap->path) + strlen(me->multi->key) + 1);
+	if (!m_key) {
+		error(ap->logopt, "failed to allocate storage for search key");
+		return NSS_STATUS_UNKNOWN;
+	}
+
+	strcpy(m_key, ap->path);
+	strcat(m_key, "/");
+	strcat(m_key, me->multi->key);
+	entry = master_find_amdmount(ap, m_key);
+	if (!entry) {
+		error(ap->logopt, "expected amd mount entry not found");
+		free(m_key);
+		return NSS_STATUS_UNKNOWN;
+	}
+	free(m_key);
+
+	if (strcmp(entry->type, "host")) {
+		error(ap->logopt, "unexpected map type %s", entry->type);
+		return NSS_STATUS_UNKNOWN;
+	}
+
+	if (entry->opts) {
+		argv[0] = entry->opts;
+		argv[1] = NULL;
+		pargv = argv;
+		argc = 1;
+	}
+
+	instance = master_find_source_instance(map, "hosts", "sun", argc, pargv);
+	if (!instance) {
+		error(ap->logopt, "expected hosts map instance not found");
+		return NSS_STATUS_UNKNOWN;
+	}
+
+	return do_lookup_mount(ap, instance, name, name_len);
+}
+
 static int lookup_name_file_source_instance(struct autofs_point *ap, struct map_source *map, const char *name, int name_len)
 {
 	struct map_source *instance;
@@ -795,6 +851,9 @@ static int lookup_name_file_source_instance(struct autofs_point *ap, struct map_
 	time_t age = time(NULL);
 	struct stat st;
 	char *type, *format;
+
+	if (*name == '/' && map->flags & MAP_FLAG_FORMAT_AMD)
+		return lookup_amd_instance(ap, map, name, name_len);
 
 	if (stat(map->argv[0], &st) == -1) {
 		debug(ap->logopt, "file map not found");
@@ -831,6 +890,9 @@ static int lookup_name_source_instance(struct autofs_point *ap, struct map_sourc
 	const char *format;
 	time_t age = time(NULL);
 
+	if (*name == '/' && map->flags & MAP_FLAG_FORMAT_AMD)
+		return lookup_amd_instance(ap, map, name, name_len);
+
 	format = map->format;
 
 	instance = master_find_source_instance(map, type, format, 0, NULL);
@@ -858,6 +920,9 @@ static int do_name_lookup_mount(struct autofs_point *ap,
 			return do_lookup_mount(ap, map, name, name_len);
 		return NSS_STATUS_UNKNOWN;
 	}
+
+	if (*name == '/' && map->flags & MAP_FLAG_FORMAT_AMD)
+		return lookup_amd_instance(ap, map, name, name_len);
 
 	/*
 	 * This is only called when map->type != NULL.

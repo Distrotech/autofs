@@ -1073,29 +1073,53 @@ static int do_host_mount(struct autofs_point *ap, const char *name,
 			 unsigned int flags)
 {
 	struct lookup_mod *lookup;
+	struct map_source *instance;
 	struct mapent *me;
 	const char *argv[2];
+	const char **pargv = NULL;
+	int argc = 0;
 	int ret = 1;
 
-	argv[0] = entry->opts;
-	argv[1] = NULL;
+	if (entry->opts) {
+		argv[0] = entry->opts;
+		argv[1] = NULL;
+		pargv = argv;
+		argc = 1;
+	}
 
-	lookup = open_lookup("hosts", MODPREFIX, NULL, 1, argv);
+	instance_mutex_lock();
+	lookup = open_lookup("hosts", MODPREFIX, NULL, argc, pargv);
 	if (!lookup) {
 		debug(ap->logopt, "open lookup module hosts failed");
+		instance_mutex_unlock();
 		goto out;
 	}
 
+	instance = master_find_source_instance(source, "hosts", "sun", argc, pargv);
+	if (!instance) {
+		instance = master_add_source_instance(source,
+				 "hosts", "sun", time(NULL), argc, pargv);
+		if (!instance) {
+			error(ap->logopt, MODPREFIX
+			     "failed to create source instance for hosts map");
+			instance_mutex_unlock();
+			close_lookup(lookup);
+			goto out;
+		}
+	}
+	instance->lookup = lookup;
+	instance_mutex_unlock();
+
+	cache_writelock(source->mc);
 	me = cache_lookup_distinct(source->mc, name);
 	if (me)
 		cache_push_mapent(me, NULL);
+	cache_unlock(source->mc);
 
 	master_source_current_wait(ap->entry);
 	ap->entry->current = source;
 
 	ret = lookup->lookup_mount(ap, name, strlen(name), lookup->context);
-
-	close_lookup(lookup);
 out:
 	return ret;
 }
