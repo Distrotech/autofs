@@ -524,7 +524,6 @@ static enum clnt_stat rpc_rpcb_getport(CLIENT *client,
 			if (rpcerr.re_vers.low > RPCBVERS4)
 				return status;
 			continue;
-		case RPC_PROCUNAVAIL:
 		case RPC_PROGUNAVAIL:
 			continue;
 		default:
@@ -533,10 +532,7 @@ static enum clnt_stat rpc_rpcb_getport(CLIENT *client,
 		}
 	}
 
-        if (s_port == 0)
-		return RPC_PROGNOTREGISTERED;
-
-        return RPC_PROCUNAVAIL;
+	return RPC_PROGNOTREGISTERED;
 }
 
 static enum clnt_stat rpc_getport(struct conn_info *info,
