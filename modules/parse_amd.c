@@ -955,6 +955,23 @@ out:
 	return ret;
 }
 
+static int do_linkx_mount(struct autofs_point *ap, const char *name,
+			  struct amd_entry *entry, unsigned int flags)
+{
+	struct stat st;
+	char *target;
+
+	if (entry->sublink)
+		target = entry->sublink;
+	else
+		target = entry->fs;
+
+	if (lstat(target, &st) < 0)
+		return errno;
+
+	return do_link_mount(ap, name, entry, flags);
+}
+
 static int do_generic_mount(struct autofs_point *ap, const char *name,
 			    struct amd_entry *entry, const char *target,
 			    unsigned int flags)
@@ -1020,6 +1037,35 @@ out:
 	return ret;
 }
 
+static int do_nfsl_mount(struct autofs_point *ap, const char *name,
+			 struct amd_entry *entry, struct substvar *sv,
+			 unsigned int flags)
+{
+	const struct substvar *host, *hostd;
+	struct stat st;
+	char *target;
+
+	host = macro_findvar(sv, "host", 4);
+	if (!host)
+		return do_nfs_mount(ap, name, entry, flags);
+	hostd = macro_findvar(sv, "hostd", 5);
+	if (!hostd || !*hostd->val)
+		return do_nfs_mount(ap, name, entry, flags);
+
+	if (entry->sublink)
+		target = entry->sublink;
+	else
+		target = entry->fs;
+
+	if (strcasecmp(host->val, entry->rhost) ||
+	    strcasecmp(hostd->val, entry->rhost))
+		return do_nfs_mount(ap, name, entry, flags);
+	else if (lstat(target, &st) < 0)
+		return do_nfs_mount(ap, name, entry, flags);
+
+	return do_link_mount(ap, name, entry, flags);
+}
+
 static int do_host_mount(struct autofs_point *ap, const char *name,
 			 struct amd_entry *entry, struct map_source *source,
 			 unsigned int flags)
@@ -1078,8 +1124,16 @@ static int amd_mount(struct autofs_point *ap, const char *name,
 		ret = do_nfs_mount(ap, name, entry, flags);
 		break;
 
+	case AMD_MOUNT_TYPE_NFSL:
+		ret = do_nfsl_mount(ap, name, entry, sv, flags);
+		break;
+
 	case AMD_MOUNT_TYPE_LINK:
 		ret = do_link_mount(ap, name, entry, flags);
+		break;
+
+	case AMD_MOUNT_TYPE_LINKX:
+		ret = do_linkx_mount(ap, name, entry, flags);
 		break;
 
 	case AMD_MOUNT_TYPE_HOST:

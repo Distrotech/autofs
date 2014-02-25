@@ -246,8 +246,14 @@ option_assignment: MAP_OPTION OPTION_ASSIGN FS_TYPE
 			   !strcmp($3, "nfs4")) {
 			entry.flags |= AMD_MOUNT_TYPE_NFS;
 			entry.type = amd_strdup($3);
+		} else if (!strcmp($3, "nfsl")) {
+			entry.flags |= AMD_MOUNT_TYPE_NFSL;
+			entry.type = amd_strdup($3);
 		} else if (!strcmp($3, "link")) {
 			entry.flags |= AMD_MOUNT_TYPE_LINK;
+			entry.type = amd_strdup($3);
+		} else if (!strcmp($3, "linkx")) {
+			entry.flags |= AMD_MOUNT_TYPE_LINKX;
 			entry.type = amd_strdup($3);
 		} else if (!strcmp($3, "host")) {
 			entry.flags |= AMD_MOUNT_TYPE_HOST;
@@ -264,9 +270,7 @@ option_assignment: MAP_OPTION OPTION_ASSIGN FS_TYPE
 			entry.flags |= AMD_MOUNT_TYPE_EXT;
 			entry.type = amd_strdup($3);
 		} else if (!strcmp($3, "jfs") ||
-			   !strcmp($3, "linkx") ||
 			   !strcmp($3, "nfsx") ||
-			   !strcmp($3, "nfsl") ||
 			   !strcmp($3, "program") ||
 			   !strcmp($3, "lustre") ||
 			   !strcmp($3, "direct")) {
