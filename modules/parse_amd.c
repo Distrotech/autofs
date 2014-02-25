@@ -988,20 +988,26 @@ static int do_nfs_mount(struct autofs_point *ap, const char *name,
 			struct amd_entry *entry, unsigned int flags)
 {
 	char target[PATH_MAX + 1];
+	unsigned int proximity;
+	char *opts = entry->opts;
 	int ret = 0;
 
 	strcpy(target, entry->rhost);
 	strcat(target, ":");
 	strcat(target, entry->rfs);
 
+	proximity = get_network_proximity(entry->rhost);
+	if (proximity == PROXIMITY_OTHER && entry->remopts)
+		opts = entry->remopts;
+
 	if (!entry->sublink) {
 		ret = mount_nfs->mount_mount(ap, ap->path, name, strlen(name),
-					     target, entry->type, entry->opts,
+					     target, entry->type, opts,
 					     mount_nfs->context);
 	} else {
 		if (!is_mounted(_PATH_MOUNTED, entry->fs, MNTS_REAL)) {
 			ret = mount_nfs->mount_mount(ap, entry->fs, "/", 1,
-						target, entry->type, entry->opts,
+						target, entry->type, opts,
 						mount_nfs->context);
 			if (ret)
 				goto out;
