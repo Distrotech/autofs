@@ -29,6 +29,7 @@
 - add negative cache lookup to hesiod lookup.
 - fix external env configure.
 - make autofs(5) consistent with auto.master(5).
+- fix map source with type lookup.
 
 17/10/2013 autofs-5.0.8
 =======================
