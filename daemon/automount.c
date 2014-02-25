@@ -107,9 +107,9 @@ static int do_mkdir(const char *parent, const char *path, mode_t mode)
 	/* If path exists we're done */
 	status = stat(path, &st);
 	if (status == 0) {
+		errno = EEXIST;
 		if (!S_ISDIR(st.st_mode))
 			errno = ENOTDIR;
-		errno = EEXIST;
 		return 0;
 	}
 
