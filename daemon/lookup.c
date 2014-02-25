@@ -636,6 +636,13 @@ int lookup_nss_read_map(struct autofs_point *ap, struct map_source *source, time
 		list_for_each(p, head) {
 			this = list_entry(p, struct nss_source, list);
 
+			if (map->flags & MAP_FLAG_FORMAT_AMD &&
+			    !strcmp(this->source, "sss")) {
+				warn(ap->logopt,
+				     "source sss is not available for amd maps.");
+				continue;
+			}
+
 			debug(ap->logopt,
 			      "reading map %s %s", this->source, map->argv[0]);
 
@@ -1155,6 +1162,13 @@ int lookup_nss_mount(struct autofs_point *ap, struct map_source *source, const c
 		head = &nsslist;
 		list_for_each(p, head) {
 			this = list_entry(p, struct nss_source, list);
+
+			if (map->flags & MAP_FLAG_FORMAT_AMD &&
+			    !strcmp(this->source, "sss")) {
+				warn(ap->logopt,
+				     "source sss is not available for amd maps.");
+				continue;
+			}
 
 			result = lookup_map_name(this, ap, map, name, name_len);
 
