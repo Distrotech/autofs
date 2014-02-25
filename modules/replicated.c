@@ -73,8 +73,8 @@ static int volatile ifc_last_len = 0;
 /* Get numeric value of the n bits starting at position p */
 #define getbits(x, p, n)	((x >> (p + 1 - n)) & ~(~0 << n))
 
-#define max(x, y)	(x >= y ? x : y)
-#define mmax(x, y, z)	(max(x, y) == x ? max(x, z) : max(y, z))
+#define mymax(x, y)	(x >= y ? x : y)
+#define mmax(x, y, z)	(mymax(x, y) == x ? mymax(x, z) : mymax(y, z))
 
 unsigned int ipv6_mask_cmp(uint32_t *host, uint32_t *iface, uint32_t *mask)
 {
@@ -961,7 +961,7 @@ int prune_host_list(unsigned logopt, struct host **list,
 
 	max_tcp_count = mmax(v4_tcp_count, v3_tcp_count, v2_tcp_count);
 	max_udp_count = mmax(v4_udp_count, v3_udp_count, v2_udp_count);
-	max_count = max(max_tcp_count, max_udp_count);
+	max_count = mymax(max_tcp_count, max_udp_count);
 
 	if (max_count == v4_tcp_count) {
 		selected_version = NFS4_TCP_SUPPORTED;
