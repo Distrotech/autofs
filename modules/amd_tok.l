@@ -70,11 +70,13 @@ int amd_yyinput(char *, int);
 
 %option nounput
 
-%x MAPOPTVAL FSOPTVAL MNTOPTVAL SELOPTVAL
+%x MAPOPTVAL FSOPTVAL MNTOPTVAL SELOPTVAL SELARGVAL
 
 NL		\r?\n
 OPTWS		[[:blank:]]*
 OTHR		[^!;:=/|\- \t\r\n#]*
+
+V4NUM		([01]?[0-9][0-9]?|2[0-4][0-9]|25[0-5])
 
 MACRO		(\$\{([[:alpha:]_/]([[:alnum:]_\-])([[:alnum:]_\-/])*)\})
 QSTR		(\"([^"\\]|\\.)*\")
@@ -82,10 +84,15 @@ OSTR		([[:alpha:]]([[:alnum:]_\-])+)
 FSTR		([[:alnum:]_/\.]([[:alnum:]_\-/\.]|(\\.))*)
 VSTR		(([[:alnum:]_\-\:/\.])+)
 SSTR		([[:alpha:]]([[:alnum:]\-\.])+)
+IP4ADDR		({V4NUM}\.((({V4NUM}\.){0,2}){V4NUM}?))
+V4MASK		({IP4ADDR}|([1-2][0-9]|3[0-2]|[1-9]))
+IP6ADDR		((([A-Fa-f0-9]{1,4}\:\:?){1,7}[A-Fa-f0-9]{1,4})|(\:\:1))
+V6MASK		(12[0-8]|1[0-1][0-9]|[1-9][0-9]|[1-9])
 
 FOPT		(({QSTR}|{FSTR}|{MACRO})+)
 OPTS		({OSTR}(=({VSTR}|{QSTR}|{MACRO})+)?)
 SOPT		(({SSTR}|{QSTR}|{MACRO})+)
+NOPT		({SSTR}|(({IP4ADDR}(\/{V4MASK})?)|({IP6ADDR}(\/{V6MASK})?)))
 
 MAPOPT		(fs|type|maptype|pref|sublink|delay)
 MNTOPT		(opts|addopts|remopts)
@@ -94,13 +101,16 @@ MAPTYPE		(file|nis|nisplus|ldap|hesiod|exec|ndbm|passwd|union)
 FSTYPE		(auto|nfs|link|host|nfsx|ufs|xfs|efs)
 
 OSSEL		(arch|karch|os|osver|full_os|vendor)
-HSTSEL		(host|hostd|xhost|domain|byte|cluster)
-NETSEL		(netnumber|network|wire|netgrp|netgrpd|in_network)
+HSTSEL		(host|hostd|domain|byte|cluster)
+NETSEL		(netnumber|network|wire|in_network)
 USRSEL		(uid|gid)
 MAPSEL		(key|map|path)
-OTRSEL		(exists|autodir|dollar)
+OTRSEL		(autodir|dollar)
 BOLSEL		(true|false)
-SELOPT		({OSSEL}|{HSTSEL}|{NETSEL}|{BOLSEL}|{USRSEL}|{MAPSEL}|{OTRSEL})
+
+SELOPT		({OSSEL}|{HSTSEL}|{USRSEL}|{MAPSEL}|{OTRSEL})
+SEL1ARG		(xhost|exists|{NETSEL}|{BOLSEL})
+SEL2ARG		(netgrp|netgrpd)
 
 CUTSEP		(\|\||\/)
 
@@ -131,6 +141,20 @@ CUTSEP		(\|\||\/)
 
 	{SELOPT} {
 		BEGIN(SELOPTVAL);
+		strcpy(amd_lval.strtype, amd_text);
+		return SELECTOR;
+	}
+
+	"!"/({SEL1ARG}|{SEL2ARG}) { return NOT; }
+
+	{SEL1ARG} {
+		BEGIN(SELARGVAL);
+		strcpy(amd_lval.strtype, amd_text);
+		return SELECTOR;
+	}
+
+	{SEL2ARG} {
+		BEGIN(SELARGVAL);
 		strcpy(amd_lval.strtype, amd_text);
 		return SELECTOR;
 	}
@@ -261,6 +285,45 @@ CUTSEP		(\|\||\/)
 		strcpy(amd_lval.strtype, amd_text);
 		return SELECTOR_VALUE;
 	}
+}
+
+<SELARGVAL>{
+	{NL} |
+	\x00 {
+		BEGIN(INITIAL);
+		yyless(1);
+	}
+
+	";" {
+		BEGIN(INITIAL);
+		return SEPERATOR;
+	}
+
+	"(" { return LBRACKET; }
+
+	{NOPT} {
+		strcpy(amd_lval.strtype, amd_text);
+		return SEL_ARG_VALUE;
+	}
+
+	{SOPT}/"," {
+		strcpy(amd_lval.strtype, amd_text);
+		return SEL_ARG_VALUE;
+	}
+
+	"," { return COMMA; }
+
+	{SOPT} {
+		strcpy(amd_lval.strtype, amd_text);
+		return SEL_ARG_VALUE;
+	}
+
+	{FOPT} {
+		strcpy(amd_lval.strtype, amd_text);
+		return SEL_ARG_VALUE;
+	}
+
+	")" { return RBRACKET; }
 }
 
 %%

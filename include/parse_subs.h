@@ -111,6 +111,8 @@ struct map_type_info {
 };
 
 unsigned int get_proximity(struct sockaddr *);
+unsigned int get_network_proximity(const char *);
+unsigned int in_network(char *);
 const char *skipspace(const char *);
 int check_colon(const char *);
 int chunklen(const char *, int);

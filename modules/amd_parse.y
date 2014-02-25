@@ -92,6 +92,9 @@ static int amd_fprintf(FILE *, char *, ...);
 %token NOT_EQUAL
 %token COMMA
 %token OPTION_ASSIGN
+%token LBRACKET
+%token RBRACKET
+%token NOT
 %token NILL
 
 %token <strtype> MAP_OPTION
@@ -102,6 +105,7 @@ static int amd_fprintf(FILE *, char *, ...);
 %token <strtype> MNT_OPTION
 %token <strtype> SELECTOR
 %token <strtype> SELECTOR_VALUE
+%token <strtype> SEL_ARG_VALUE
 %token <strtype> OPTION
 %token <strtype> MACRO
 %token <strtype> OTHER
@@ -187,15 +191,43 @@ selector_or_option: selection
 
 selection: SELECTOR IS_EQUAL SELECTOR_VALUE
 	{
-		if (!make_selector($1, $3, NULL, SEL_TYPE_EQUAL)) {
+		if (!make_selector($1, $3, NULL, SEL_COMP_EQUAL)) {
 			amd_notify($1);
 			YYABORT;
 		}
 	}
 	| SELECTOR NOT_EQUAL SELECTOR_VALUE
 	{
-		if (!make_selector($1, $3, NULL, SEL_TYPE_NOTEQUAL)) {
+		if (!make_selector($1, $3, NULL, SEL_COMP_NOTEQUAL)) {
 			amd_notify($1);
+			YYABORT;
+		}
+	}
+	| SELECTOR LBRACKET SEL_ARG_VALUE RBRACKET
+	{
+		if (!make_selector($1, $3, NULL, SEL_COMP_NONE)) {
+			amd_notify($1);
+			YYABORT;
+		}
+	}
+	| SELECTOR LBRACKET SEL_ARG_VALUE COMMA SEL_ARG_VALUE RBRACKET
+	{
+		if (!make_selector($1, $3, $5, SEL_COMP_NONE)) {
+			amd_notify($1);
+			YYABORT;
+		}
+	}
+	| NOT SELECTOR LBRACKET SEL_ARG_VALUE RBRACKET
+	{
+		if (!make_selector($2, $4, NULL, SEL_COMP_NOT)) {
+			amd_notify($2);
+			YYABORT;
+		}
+	}
+	| NOT SELECTOR LBRACKET SEL_ARG_VALUE COMMA SEL_ARG_VALUE RBRACKET
+	{
+		if (!make_selector($2, $4, $6, SEL_COMP_NOT)) {
+			amd_notify($2);
 			YYABORT;
 		}
 	}
@@ -388,9 +420,6 @@ static int make_selector(char *name,
 	if (!sel_lookup(name))
 		return 0;
 
-	if (!value1)
-		return 0;
-
 	s = get_selector(name);
 	if (!s)
 		return 0;
@@ -401,9 +430,13 @@ static int make_selector(char *name,
 			goto error;
 		s->comp.value = tmp;
 	} else if (s->sel->flags & SEL_FLAG_FUNC1) {
-		char *tmp = amd_strdup(value1);
-		if (!tmp)
-			goto error;
+		if (!value1)
+			tmp = NULL;
+		else {
+			char *tmp = amd_strdup(value1);
+			if (!tmp)
+				goto error;
+		}
 		s->func.arg1 = tmp;
 	} else if (s->sel->flags & SEL_FLAG_FUNC2) {
 		char *tmp = amd_strdup(value1);

@@ -19,9 +19,13 @@
 #include <string.h>
 #include <ctype.h>
 #include <sys/types.h>
+#include <sys/socket.h>
 #include <ifaddrs.h>
 #include <libgen.h>
 #include <net/if.h>
+#include <arpa/inet.h>
+#include <netdb.h>
+
 #include "automount.h"
 
 #define MAX_OPTIONS_LEN		256
@@ -368,6 +372,129 @@ unsigned int get_proximity(struct sockaddr *host_addr)
 	freeifaddrs(ifa);
 
 	return PROXIMITY_OTHER;
+}
+
+static char *inet_fill_net(const char *net_num, char *net)
+{
+	char *np;
+	unsigned int dots = 3;
+
+	if (strlen(net_num) > INET_ADDRSTRLEN)
+		return NULL;
+
+	if (!isdigit(*net_num))
+		return NULL;
+
+	*net = '\0';
+	strcpy(net, net_num);
+
+	np = net;
+	while (*np++) {
+		if (*np == '.') {
+			np++;
+			dots--;
+			if (!*np && dots)
+				strcat(net, "0");
+			continue;
+		}
+
+		if ((*np && !isdigit(*np)) || dots < 0) {
+			*net = '\0';
+			return NULL;
+		}
+	}
+
+	while (dots--)
+		strcat(net, ".0");
+
+	return net;
+}
+
+static char *get_network_number(const char *network)
+{
+	struct netent *netent;
+	char cnet[MAX_NETWORK_LEN];
+	uint32_t h_net;
+	size_t len;
+
+	len = strlen(network) + 1;
+	if (len > MAX_NETWORK_LEN)
+		return NULL;
+
+	netent = getnetbyname(network);
+	if (!netent)
+		return NULL;
+	h_net = ntohl(netent->n_net);
+
+	if (!inet_ntop(AF_INET, &h_net, cnet, INET_ADDRSTRLEN))
+		return NULL;
+
+	return strdup(cnet);
+}
+
+unsigned int get_network_proximity(const char *name)
+{
+	struct addrinfo hints;
+	struct addrinfo *ni, *this;
+	char name_or_num[NI_MAXHOST];
+	unsigned int proximity;
+	char *net;
+	int ret;
+
+	if (!name)
+		return PROXIMITY_ERROR;
+
+	net = get_network_number(name);
+	if (net)
+		strcpy(name_or_num, net);
+	else {
+		char this[NI_MAXHOST];
+		char *mask;
+
+		strcpy(this, name);
+		if ((mask = strchr(this, '/')))
+			*mask++ = '\0';
+		if (!strchr(this, '.'))
+			strcpy(name_or_num, this);
+		else {
+			char buf[NI_MAXHOST], *new;
+			new = inet_fill_net(this, buf);
+			if (!new)
+				return PROXIMITY_ERROR;
+			strcpy(name_or_num, new);
+		}
+	}
+
+	memset(&hints, 0, sizeof(struct addrinfo));
+	hints.ai_family = AF_UNSPEC;
+	hints.ai_socktype = SOCK_DGRAM;
+
+	ret = getaddrinfo(name_or_num, NULL, &hints, &ni);
+	if (ret) {
+		logerr("getaddrinfo: %s", gai_strerror(ret));
+		return PROXIMITY_ERROR;
+	}
+
+	proximity = PROXIMITY_OTHER;
+
+	this = ni;
+	while (this) {
+		unsigned int prx = get_proximity(this->ai_addr);
+		if (prx < proximity)
+			proximity = prx;
+		this = this->ai_next;
+	}
+
+	return proximity;
+}
+
+unsigned int in_network(char *network)
+{
+	unsigned int proximity = get_network_proximity(network);
+	if (proximity == PROXIMITY_ERROR ||
+	    proximity > PROXIMITY_SUBNET)
+		return 0;
+	return 1;
 }
 
 /*

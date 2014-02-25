@@ -223,6 +223,307 @@ static struct substvar *add_lookup_vars(struct autofs_point *ap,
 	return list;
 }
 
+static int match_my_name(unsigned int logopt, const char *name, struct substvar *sv)
+{
+	struct addrinfo hints, *cni, *ni, *haddr;
+	char host[NI_MAXHOST + 1], numeric[NI_MAXHOST + 1];
+	const struct substvar *v;
+	int rv = 0, ret;
+
+	v = macro_findvar(sv, "host", 4);
+	if (v) {
+		if (!strcmp(v->val, name))
+			return 1;
+	}
+
+	/* Check if comparison value is an alias */
+
+	memset(&hints, 0, sizeof(hints));
+	hints.ai_flags = AI_CANONNAME;
+	hints.ai_family = AF_UNSPEC;
+	hints.ai_socktype = SOCK_DGRAM;
+
+	/* Get host canonical name */
+	ret = getaddrinfo(v->val, NULL, &hints, &cni);
+	if (ret) {
+		error(logopt,
+		      "hostname lookup failed: %s\n", gai_strerror(ret));
+		goto out;
+	}
+
+	hints.ai_flags = 0;
+
+	/* Resolve comparison name to its names and compare */
+	ret = getaddrinfo(name, NULL, &hints, &ni);
+	if (ret) {
+		error(logopt,
+		      "hostname lookup failed: %s\n", gai_strerror(ret));
+		freeaddrinfo(cni);
+		goto out;
+	}
+
+	haddr = ni;
+	while (haddr) {
+		/* Translate the host address into a numeric string form */
+		ret = getnameinfo(haddr->ai_addr, haddr->ai_addrlen,
+				  numeric, sizeof(numeric), NULL, 0,
+				  NI_NUMERICHOST);
+		if (ret) {
+			error(logopt,
+			      "host address info lookup failed: %s\n",
+			      gai_strerror(ret));
+			freeaddrinfo(cni);
+			goto next;
+		}
+
+		/* Try to resolve back again to get the canonical name */
+		ret = getnameinfo(haddr->ai_addr, haddr->ai_addrlen,
+				  host, NI_MAXHOST, NULL, 0, 0);
+		if (ret) {
+			error(logopt,
+			      "host address info lookup failed: %s\n",
+			      gai_strerror(ret));
+			freeaddrinfo(cni);
+			goto next;
+		}
+
+		if (!strcmp(host, cni->ai_canonname)) {
+			rv = 1;
+			break;
+		}
+next:
+		haddr = haddr->ai_next;
+	}
+	freeaddrinfo(ni);
+	freeaddrinfo(cni);
+out:
+	return rv;
+}
+
+static int eval_selector(unsigned int logopt,
+			 struct amd_entry *this, struct substvar *sv)
+{
+	struct selector *s = this->selector;
+	const struct substvar *v;
+	unsigned int s_type;
+	unsigned int v_type;
+	struct stat st;
+	char *host;
+	int res, val, ret = 0;
+
+	s_type = s->sel->flags & SEL_FLAGS_TYPE_MASK;
+
+	switch (s_type) {
+	case SEL_FLAG_MACRO:
+		v = macro_findvar(sv, s->sel->name, strlen(s->sel->name));
+		if (!v) {
+			error(logopt, "failed to get selector %s", s->sel->name);
+			return 0;
+		}
+
+		v_type = s->sel->flags & SEL_FLAGS_VALUE_MASK;
+
+		switch (v_type) {
+		case SEL_FLAG_STR:
+			res = strcmp(v->val, s->comp.value);
+			if (s->compare & SEL_COMP_EQUAL && !res) {
+				debug(logopt, MODPREFIX
+				      "matched selector %s(%s) == %s",
+				      v->def, v->val, s->comp.value);
+				ret = 1;
+				break;
+			} else if (s->compare & SEL_COMP_NOTEQUAL && res) {
+				debug(logopt, MODPREFIX
+				      "matched selector %s(%s) != %s",
+				      v->def, v->val, s->comp.value);
+				ret = 1;
+				break;
+			}
+
+			debug(logopt, MODPREFIX
+				      "did not match selector %s(%s) %s %s",
+				      v->def, v->val,
+				      (s->compare & SEL_COMP_EQUAL ? "==" : "!="),
+				      s->comp.value);
+			break;
+
+		case SEL_FLAG_NUM:
+			res = atoi(v->val);
+			val = atoi(s->comp.value);
+			if (s->compare & SEL_COMP_EQUAL && res == val) {
+				debug(logopt, MODPREFIX
+				      "matched selector %s(%s) equal to %s",
+				      v->def, v->val, s->comp.value);
+				ret = 1;
+				break;
+			} else if (s->compare & SEL_COMP_NOTEQUAL && res != val) {
+				debug(logopt, MODPREFIX
+				      "matched selector %s(%s) not equal to %s",
+				      v->def, v->val, s->comp.value);
+				ret = 1;
+				break;
+			}
+
+			debug(logopt, MODPREFIX
+				      "did not match selector %s(%s) %s %s",
+				      v->def, v->val,
+				      (s->compare & SEL_COMP_EQUAL ? "==" : "!="),
+				      s->comp.value);
+			break;
+
+		default:
+			break;
+		}
+		break;
+
+	case SEL_FLAG_FUNC1:
+		if (s->sel->selector != SEL_TRUE &&
+		    s->sel->selector != SEL_FALSE &&
+		    !s->func.arg1) {
+			error(logopt, MODPREFIX
+			      "expected argument missing for selector %s",
+			      s->sel->name);
+			break;
+		}
+
+		switch (s->sel->selector) {
+		case SEL_TRUE:
+			ret = 1;
+			if (s->compare == SEL_COMP_NOT)
+				ret = !ret;
+			if (ret)
+				debug(logopt, MODPREFIX
+				      "matched selector %s(%s)",
+				      s->sel->name, s->func.arg1);
+			else
+				debug(logopt, MODPREFIX
+				      "did not match selector %s(%s)",
+				      s->sel->name, s->func.arg1);
+			break;
+
+		case SEL_FALSE:
+			if (s->compare == SEL_COMP_NOT)
+				ret = !ret;
+			if (ret)
+				debug(logopt, MODPREFIX
+				      "matched selector %s(%s)",
+				      s->sel->name, s->func.arg1);
+			else
+				debug(logopt, MODPREFIX
+				      "did not match selector %s(%s)",
+				      s->sel->name, s->func.arg1);
+			break;
+
+		case SEL_XHOST:
+			ret = match_my_name(logopt, s->func.arg1, sv);
+			if (s->compare == SEL_COMP_NOT)
+				ret = !ret;
+			if (ret)
+				debug(logopt, MODPREFIX
+				      "matched selector %s(%s) to host name",
+				      s->sel->name, s->func.arg1);
+			else
+				debug(logopt, MODPREFIX
+				      "did not match selector %s(%s) to host name",
+				      s->sel->name, s->func.arg1);
+			break;
+
+		case SEL_EXISTS:
+			/* Sould be OK to fail on any error here */
+			ret = !lstat(s->func.arg1, &st);
+			if (s->compare == SEL_COMP_NOT)
+				ret = !ret;
+			if (ret)
+				debug(logopt, MODPREFIX
+				      "matched selector %s(%s)",
+				      s->sel->name, s->func.arg1);
+			else
+				debug(logopt, MODPREFIX
+				      "did not match selector %s(%s)",
+				      s->sel->name, s->func.arg1);
+			break;
+
+		case SEL_IN_NETWORK:
+			ret = in_network(s->func.arg1);
+			if (s->compare == SEL_COMP_NOT)
+				ret = !ret;
+			if (ret)
+				debug(logopt, MODPREFIX
+				      "matched selector %s(%s)",
+				      s->sel->name, s->func.arg1);
+			else
+				debug(logopt, MODPREFIX
+				      "did not match selector %s(%s)",
+				      s->sel->name, s->func.arg1);
+			break;
+
+		default:
+			break;
+		}
+		break;
+
+	case SEL_FLAG_FUNC2:
+		if (!s->func.arg1) {
+			error(logopt, MODPREFIX
+			      "expected argument missing for selector %s",
+			      s->sel->name);
+			break;
+		}
+
+		switch (s->sel->selector) {
+		case SEL_NETGRP:
+		case SEL_NETGRPD:
+			if (s->func.arg2)
+				host = s->func.arg2;
+			else {
+				if (s->sel->selector == SEL_NETGRP)
+					v = macro_findvar(sv, "host", 4);
+				else
+					v = macro_findvar(sv, "hostd", 5);
+				if (!v || !*v->val) {
+					error(logopt,
+					     "failed to get value of ${host}");
+					break;
+				}
+				host = v->val;
+			}
+			ret = innetgr(s->func.arg1, host, NULL, NULL);
+			if (s->compare == SEL_COMP_NOT)
+				ret = !ret;
+			if (ret) {
+				if (!s->func.arg2)
+					debug(logopt, MODPREFIX
+					      "matched selector %s(%s)",
+					      s->sel->name, s->func.arg1);
+				else
+					debug(logopt, MODPREFIX
+					      "matched selector %s(%s,%s)",
+					      s->sel->name, s->func.arg1,
+					      s->func.arg2);
+			} else {
+				if (!s->func.arg2)
+					debug(logopt, MODPREFIX
+					      "did not match selector %s(%s)",
+					      s->sel->name, s->func.arg1);
+				else
+					debug(logopt, MODPREFIX
+					      "did not match selector %s(%s,%s)",
+					      s->sel->name, s->func.arg1, s->func.arg2);
+			}
+			break;
+
+		default:
+			break;
+		}
+		break;
+
+	default:
+		break;
+	}
+
+	return ret;
+}
+
 static void update_with_defaults(struct amd_entry *defaults,
 				 struct amd_entry *entry,
 				 struct substvar *sv)
@@ -884,6 +1185,33 @@ static void update_prefix(struct autofs_point *ap,
 	return;
 }
 
+static int match_selectors(unsigned int logopt,
+			   struct amd_entry *entry, struct substvar *sv)
+{
+	struct selector *s = entry->selector;
+	int ret;
+
+	/* No selectors, always match */
+	if (!s) {
+		debug(logopt, "no selectors found in location");
+		return 1;
+	}
+
+	ret = 0;
+
+	/* All selectors must match */
+	while (s) {
+		ret = eval_selector(logopt, entry, sv);
+		if (!ret)
+			break;
+		s = s->next;
+	}
+	if (!s)
+		ret = 1;
+
+	return ret;
+}
+
 static struct amd_entry *dup_defaults_entry(struct amd_entry *defaults)
 {
 	struct amd_entry *entry;
@@ -1007,6 +1335,23 @@ static struct amd_entry *select_default_entry(struct autofs_point *ap,
 			list_del_init(&this->list);
 			free_amd_entry(this);
 			continue;
+		}
+
+		/*
+		 * This probably should be a fail since we expect
+		 * selectors to pick the default entry.
+		 */
+		if (!this->selector)
+			continue;
+
+		if (match_selectors(ap->logopt, this, sv)) {
+			if (entry_default) {
+				/*update_with_defaults(entry_default, this, sv);*/
+				free_amd_entry(entry_default);
+			}
+			list_del_init(&this->list);
+			defaults_entry = this;
+			break;
 		}
 	}
 
@@ -1194,6 +1539,9 @@ int parse_mount(struct autofs_point *ap, const char *name,
 			free_amd_entry(this);
 			continue;
 		}
+
+		if (!match_selectors(ap->logopt, this, sv))
+			continue;
 
 		update_with_defaults(cur_defaults, this, sv);
 		sv = expand_entry(ap, this, flags, sv);
