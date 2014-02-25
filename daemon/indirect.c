@@ -365,7 +365,7 @@ force_umount:
 	} else {
 		info(ap->logopt, "umounted indirect mount %s", mountpoint);
 		if (ap->submount)
-			rm_unwanted(ap->logopt, mountpoint, 1, ap->dev);
+			rm_unwanted(ap, mountpoint, 1);
 	}
 
 	return rv;
@@ -476,7 +476,7 @@ void *expire_proc_indirect(void *arg)
 
 				/* Check for manual umount */
 				if (fstat(me->ioctlfd, &st) == -1 ||
-				    !count_mounts(ap->logopt, me->key, st.st_dev)) {
+				    !count_mounts(ap, me->key, st.st_dev)) {
 					ops->close(ap->logopt, me->ioctlfd);
 					me->ioctlfd = -1;
 				}
@@ -538,7 +538,7 @@ void *expire_proc_indirect(void *arg)
 	 * so we need to umount or unlink them here.
 	 */
 	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cur_state);
-	retries = (count_mounts(ap->logopt, ap->path, ap->dev) + 1);
+	retries = (count_mounts(ap, ap->path, ap->dev) + 1);
 	while (retries--) {
 		ret = ops->expire(ap->logopt, ap->ioctlfd, ap->path, now);
 		if (ret)

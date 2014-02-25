@@ -254,10 +254,12 @@ int rmdir_path(struct autofs_point *ap, const char *path, dev_t dev)
 /* Like ftw, except fn gets called twice: before a directory is
    entered, and after.  If the before call returns 0, the directory
    isn't entered. */
-static int walk_tree(const char *base, int (*fn) (unsigned logopt,
+static int walk_tree(const char *base, int (*fn) (struct autofs_point *ap,
 						  const char *file,
 						  const struct stat * st,
-						  int, void *), int incl, unsigned logopt, void *arg)
+						  int, void *), int incl,
+						  struct autofs_point *ap,
+						  void *arg)
 {
 	char buf[PATH_MAX + 1];
 	struct stat st, *pst = &st;
@@ -270,7 +272,7 @@ static int walk_tree(const char *base, int (*fn) (unsigned logopt,
 		ret = 0;
 	}
 
-	if (ret != -1 && (fn) (logopt, base, pst, 0, arg)) {
+	if (ret != -1 && (fn) (ap, base, pst, 0, arg)) {
 		if (S_ISDIR(st.st_mode)) {
 			struct dirent **de;
 			int n;
@@ -298,18 +300,20 @@ static int walk_tree(const char *base, int (*fn) (unsigned logopt,
 					return -1;
 				}
 
-				walk_tree(buf, fn, 1, logopt, arg);
+				walk_tree(buf, fn, 1, ap, arg);
 				free(de[n]);
 			}
 			free(de);
 		}
 		if (incl)
-			(fn) (logopt, base, pst, 1, arg);
+			(fn) (ap, base, pst, 1, arg);
 	}
 	return 0;
 }
 
-static int rm_unwanted_fn(unsigned logopt, const char *file, const struct stat *st, int when, void *arg)
+static int rm_unwanted_fn(struct autofs_point *ap,
+			  const char *file, const struct stat *st,
+			  int when, void *arg)
 {
 	dev_t dev = *(dev_t *) arg;
 	char buf[MAX_ERR_BUF];
@@ -325,38 +329,40 @@ static int rm_unwanted_fn(unsigned logopt, const char *file, const struct stat *
 	}
 
 	if (lstat(file, &newst)) {
-		crit(logopt, "unable to stat file, possible race condition");
+		crit(ap->logopt,
+		     "unable to stat file, possible race condition");
 		return 0;
 	}
 
 	if (newst.st_dev != dev) {
-		crit(logopt, "file %s has the wrong device, possible race condition",
+		crit(ap->logopt,
+		     "file %s has the wrong device, possible race condition",
 		     file);
 		return 0;
 	}
 
 	if (S_ISDIR(newst.st_mode)) {
-		debug(logopt, "removing directory %s", file);
+		debug(ap->logopt, "removing directory %s", file);
 		if (rmdir(file)) {
 			char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-			warn(logopt,
+			warn(ap->logopt,
 			      "unable to remove directory %s: %s", file, estr);
 			return 0;
 		}
 	} else if (S_ISREG(newst.st_mode)) {
-		crit(logopt, "attempting to remove files from a mounted "
+		crit(ap->logopt, "attempting to remove files from a mounted "
 		     "directory. file %s", file);
 		return 0;
 	} else if (S_ISLNK(newst.st_mode)) {
-		debug(logopt, "removing symlink %s", file);
+		debug(ap->logopt, "removing symlink %s", file);
 		unlink(file);
 	}
 	return 1;
 }
 
-void rm_unwanted(unsigned logopt, const char *path, int incl, dev_t dev)
+void rm_unwanted(struct autofs_point *ap, const char *path, int incl)
 {
-	walk_tree(path, rm_unwanted_fn, incl, logopt, &dev);
+	walk_tree(path, rm_unwanted_fn, incl, ap, &ap->dev);
 }
 
 struct counter_args {
@@ -364,7 +370,8 @@ struct counter_args {
 	dev_t dev;
 };
 
-static int counter_fn(unsigned logopt, const char *file, const struct stat *st, int when, void *arg)
+static int counter_fn(struct autofs_point *ap, const char *file,
+		      const struct stat *st, int when, void *arg)
 {
 	struct counter_args *counter = (struct counter_args *) arg;
 
@@ -378,14 +385,14 @@ static int counter_fn(unsigned logopt, const char *file, const struct stat *st, 
 }
 
 /* Count mounted filesystems and symlinks */
-int count_mounts(unsigned logopt, const char *path, dev_t dev)
+int count_mounts(struct autofs_point *ap, const char *path, dev_t dev)
 {
 	struct counter_args counter;
 
 	counter.count = 0;
 	counter.dev = dev;
 	
-	if (walk_tree(path, counter_fn, 0, logopt, &counter) == -1)
+	if (walk_tree(path, counter_fn, 0, ap, &counter) == -1)
 		return -1;
 
 	return counter.count;
@@ -409,9 +416,9 @@ static void check_rm_dirs(struct autofs_point *ap, const char *path, int incl)
 	    (ap->state == ST_SHUTDOWN_PENDING ||
 	     ap->state == ST_SHUTDOWN_FORCE ||
 	     ap->state == ST_SHUTDOWN))
-		rm_unwanted(ap->logopt, path, incl, ap->dev);
+		rm_unwanted(ap, path, incl);
 	else if ((ap->flags & MOUNT_FLAG_GHOST) && (ap->type == LKP_INDIRECT))
-		rm_unwanted(ap->logopt, path, 0, ap->dev);
+		rm_unwanted(ap, path, 0);
 }
 
 /* Try to purge cache entries kept around due to existing mounts */
@@ -553,7 +560,9 @@ int umount_multi(struct autofs_point *ap, const char *path, int incl)
 	left += umount_subtree_mounts(ap, path, is_autofs_fs);
 
 	/* Delete detritus like unwanted mountpoints and symlinks */
-	if (left == 0 && ap->state != ST_READMAP) {
+	if (left == 0 &&
+	    ap->state != ST_READMAP &&
+	    !count_mounts(ap, path, ap->dev)) {
 		update_map_cache(ap, path);
 		check_rm_dirs(ap, path, incl);
 	}
