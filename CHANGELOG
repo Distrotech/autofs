@@ -19,6 +19,7 @@
 - check for existing offset mount before mounting.
 - fix max() declaration.
 - fix symlink fail message in mount_bind.c.
+- fix cache readlock not taken on lookup.
 
 17/10/2013 autofs-5.0.8
 =======================
