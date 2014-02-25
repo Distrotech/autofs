@@ -126,32 +126,32 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 
 			o_len = end - cp + 1;
 
-			if (strncmp("proto=rdma", cp, o_len) == 0 ||
-				   strncmp("rdma", cp, o_len) == 0)
+			if (_strncmp("proto=rdma", cp, o_len) == 0 ||
+				   _strncmp("rdma", cp, o_len) == 0)
 				rdma = 1;
 
-			if (strncmp("nosymlink", cp, o_len) == 0) {
+			if (_strncmp("nosymlink", cp, o_len) == 0) {
 				warn(ap->logopt, MODPREFIX
 				     "the \"nosymlink\" option is depricated "
 				     "and will soon be removed, "
 				     "use the \"nobind\" option instead");
 				nosymlink = 1;
-			} else if (strncmp("nobind", cp, o_len) == 0) {
+			} else if (_strncmp("nobind", cp, o_len) == 0) {
 				nobind = 1;
-			} else if (strncmp("no-use-weight-only", cp, o_len) == 0) {
+			} else if (_strncmp("no-use-weight-only", cp, o_len) == 0) {
 				flags &= ~MOUNT_FLAG_USE_WEIGHT_ONLY;
-			} else if (strncmp("use-weight-only", cp, o_len) == 0) {
+			} else if (_strncmp("use-weight-only", cp, o_len) == 0) {
 				flags |= MOUNT_FLAG_USE_WEIGHT_ONLY;
 			} else {
-				if (strncmp("vers=4", cp, o_len) == 0 ||
-				    strncmp("nfsvers=4", cp, o_len) == 0)
+				if (_strncmp("vers=4", cp, o_len) == 0 ||
+				    _strncmp("nfsvers=4", cp, o_len) == 0)
 					vers = NFS4_VERS_MASK | TCP_SUPPORTED;
-				else if (strncmp("vers=3", cp, o_len) == 0 ||
-					 strncmp("nfsvers=3", cp, o_len) == 0) {
+				else if (_strncmp("vers=3", cp, o_len) == 0 ||
+					 _strncmp("nfsvers=3", cp, o_len) == 0) {
 					vers &= ~(NFS4_VERS_MASK | NFS_VERS_MASK);
 					vers |= NFS3_REQUESTED;
-				} else if (strncmp("vers=2", cp, o_len) == 0 ||
-					 strncmp("nfsvers=2", cp, o_len) == 0) {
+				} else if (_strncmp("vers=2", cp, o_len) == 0 ||
+					 _strncmp("nfsvers=2", cp, o_len) == 0) {
 					vers &= ~(NFS4_VERS_MASK | NFS_VERS_MASK);
 					vers |= NFS2_REQUESTED;
 				} else if (strstr(cp, "port=") == cp &&
@@ -164,16 +164,16 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 					if (port < 0)
 						port = 0;
 					port_opt = cp;
-				} else if (strncmp("proto=udp", cp, o_len) == 0 ||
-					   strncmp("udp", cp, o_len) == 0) {
+				} else if (_strncmp("proto=udp", cp, o_len) == 0 ||
+					   _strncmp("udp", cp, o_len) == 0) {
 					vers &= ~TCP_SUPPORTED;
-				} else if (strncmp("proto=tcp", cp, o_len) == 0 ||
-					   strncmp("tcp", cp, o_len) == 0) {
+				} else if (_strncmp("proto=tcp", cp, o_len) == 0 ||
+					   _strncmp("tcp", cp, o_len) == 0) {
 					vers &= ~UDP_SUPPORTED;
 				}
 				/* Check for options that also make sense
 				   with bind mounts */
-				else if (strncmp("ro", cp, o_len) == 0)
+				else if (_strncmp("ro", cp, o_len) == 0)
 					ro = 1;
 				/* and jump over trailing white space */
 				memcpy(nfsp, cp, comma - cp + 1);

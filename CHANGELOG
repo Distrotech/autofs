@@ -16,6 +16,7 @@
 - don't reset errno.
 - extend fix for crash due to thread unsafe use of libldap.
 - fix deadlock in init_ldap_connection.
+- fix options compare.
 
 17/10/2013 autofs-5.0.8
 =======================

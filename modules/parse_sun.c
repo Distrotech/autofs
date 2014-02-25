@@ -511,29 +511,29 @@ static int sun_mount(struct autofs_point *ap, const char *root,
 			while (*comma != '\0' && *comma != ',')
 				comma++;
 
-			if (strncmp("fstype=", cp, 7) == 0) {
+			if (_strncmp("fstype=", cp, 7) == 0) {
 				int typelen = comma - (cp + 7);
 				fstype = alloca(typelen + 1);
 				memcpy(fstype, cp + 7, typelen);
 				fstype[typelen] = '\0';
-			} else if (strncmp("nonstrict", cp, 9) == 0) {
+			} else if (_strncmp("nonstrict", cp, 9) == 0) {
 				nonstrict = 1;
-			} else if (strncmp("strict", cp, 6) == 0) {
+			} else if (_strncmp("strict", cp, 6) == 0) {
 				nonstrict = 0;
-			} else if (strncmp("nobrowse", cp, 8) == 0 ||
-				   strncmp("browse", cp, 6) == 0 ||
-				   strncmp("timeout=", cp, 8) == 0) {
+			} else if (_strncmp("nobrowse", cp, 8) == 0 ||
+				   _strncmp("browse", cp, 6) == 0 ||
+				   _strncmp("timeout=", cp, 8) == 0) {
 				if (strcmp(fstype, "autofs") == 0 ||
 				    strstr(cp, "fstype=autofs")) {
 					memcpy(np, cp, comma - cp + 1);
 					np += comma - cp + 1;
 				}
-			} else if (strncmp("no-use-weight-only", cp, 18) == 0) {
+			} else if (_strncmp("no-use-weight-only", cp, 18) == 0) {
 				use_weight_only = -1;
-			} else if (strncmp("use-weight-only", cp, 15) == 0) {
+			} else if (_strncmp("use-weight-only", cp, 15) == 0) {
 				use_weight_only = MOUNT_FLAG_USE_WEIGHT_ONLY;
-			} else if (strncmp("bg", cp, 2) == 0 ||
-				   strncmp("nofg", cp, 4) == 0) {
+			} else if (_strncmp("bg", cp, 2) == 0 ||
+				   _strncmp("nofg", cp, 4) == 0) {
 				continue;
 			} else {
 				memcpy(np, cp, comma - cp + 1);

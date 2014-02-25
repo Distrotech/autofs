@@ -87,3 +87,12 @@ int ncat_path(char *buf, size_t len,
 	return cat_path(buf, len, dir, name);
 }
 
+/* Compare first n bytes of s1 and s2 and that n == strlen(s1) */
+int _strncmp(const char *s1, const char *s2, size_t n)
+{
+	size_t len = strlen(s1);
+
+	if (n != len)
+		return n - len;
+	return strncmp(s1, s2, n);
+}
