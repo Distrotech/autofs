@@ -135,6 +135,12 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 	if (options == NULL || *options == '\0')
 		options = "defaults";
 
+	if (!strcmp(what, fullpath)) {
+		debug(ap->logopt, MODPREFIX
+		     "cannot mount or symlink %s to itself", fullpath);
+		return 1;
+	}
+
 	if (!symlnk && bind_works) {
 		int status, existed = 1;
 
