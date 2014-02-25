@@ -129,6 +129,100 @@ int parse_init(int argc, const char *const *argv, void **context)
 	return 0;
 }
 
+static struct substvar *add_lookup_vars(struct autofs_point *ap,
+					const char *key, int key_len,
+					struct map_source *source,
+					struct substvar *sv)
+{
+	struct substvar *list = sv;
+	struct thread_stdenv_vars *tsv;
+	char lkp_key[PATH_MAX + 1];
+	char path[PATH_MAX + 1];
+	struct mapent *me;
+	int len;
+
+	len = strlen(ap->path) + 1 + key_len + 1;
+	if (len > PATH_MAX) {
+		error(ap->logopt, MODPREFIX
+		      "error: lookup key is greater than PATH_MAX");
+		return NULL;
+	}
+
+	if (ap->pref) {
+		if (snprintf(lkp_key, sizeof(lkp_key), "%s%s",
+			     ap->pref, key) >= sizeof(lkp_key)) {
+			error(ap->logopt, MODPREFIX "key too long");
+			return NULL;
+		}
+	} else {
+		if (snprintf(lkp_key, sizeof(lkp_key), "%s",
+			     key) >= sizeof(lkp_key)) {
+			error(ap->logopt, MODPREFIX "key too long");
+			return NULL;
+		}
+	}
+
+	if (*key == '/')
+		strcpy(path, key);
+	else {
+		strcpy(path, ap->path);
+		strcat(path, "/");
+		strcat(path, key);
+	}
+	list = macro_addvar(list, "path", 4, path);
+
+	me = cache_lookup_distinct(source->mc, lkp_key);
+	if (me)
+		list = macro_addvar(list, "key", 3, me->key);
+
+	while (!me) {
+		char match[PATH_MAX + 1];
+		char *prefix;
+
+		strcpy(match, lkp_key);
+		while ((prefix = strrchr(match, '/'))) {
+			*prefix = '\0';
+			me = cache_partial_match_wild(source->mc, match);
+			if (me) {
+				list = macro_addvar(list, "key", 3, lkp_key);
+				break;
+			}
+		}
+
+		if (!me) {
+			me = cache_lookup_distinct(source->mc, "*");
+			if (me)
+				list = macro_addvar(list, "key", 3, lkp_key);
+		}
+
+		break;
+	}
+
+	if (source->argv[0][0])
+		list = macro_addvar(list, "map", 3, source->argv[0]);
+
+	tsv = pthread_getspecific(key_thread_stdenv_vars);
+	if (tsv) {
+		char numbuf[16];
+		long num;
+		int ret;
+
+		num = (long) tsv->uid;
+		ret = sprintf(numbuf, "%ld", num);
+		if (ret > 0)
+			list = macro_addvar(list, "uid", 3, numbuf);
+		num = (long) tsv->gid;
+		ret = sprintf(numbuf, "%ld", num);
+		if (ret > 0)
+			list = macro_addvar(list, "gid", 3, numbuf);
+	}
+
+	list = macro_addvar(list, "fs", 2, "${autodir}/${rhost}${rfs}");
+	list = macro_addvar(list, "rfs", 3, path);
+
+	return list;
+}
+
 static void update_with_defaults(struct amd_entry *defaults,
 				 struct amd_entry *entry,
 				 struct substvar *sv)
@@ -167,22 +261,40 @@ static void update_with_defaults(struct amd_entry *defaults,
 			entry->pref = tmp;
 	}
 
-	if (!entry->fs && defaults->fs) {
-		tmp = strdup(defaults->fs);
-		if (tmp)
-			entry->fs = tmp;
+	if (!entry->fs) {
+		if (defaults->fs) {
+			tmp = strdup(defaults->fs);
+			if (tmp)
+				entry->fs = tmp;
+		} else {
+			v = macro_findvar(sv, "fs", 2);
+			if (v)
+				entry->fs = strdup(v->val);
+		}
 	}
 
-	if (!entry->rfs && defaults->rfs) {
-		tmp = strdup(defaults->rfs);
-		if (tmp)
-			entry->rfs = tmp;
+	if (!entry->rfs) {
+		if (defaults->rfs) {
+			tmp = strdup(defaults->rfs);
+			if (tmp)
+				entry->rfs = tmp;
+		} else {
+			v = macro_findvar(sv, "rfs", 3);
+			if (v)
+				entry->rfs = strdup(v->val);
+		}
 	}
 
-	if (!entry->rhost && defaults->rhost) {
-		tmp = strdup(defaults->rhost);
-		if (tmp)
-			entry->rhost = tmp;
+	if (!entry->rhost) {
+		if (defaults->rhost) {
+			tmp = strdup(defaults->rhost);
+			if (tmp)
+				entry->rhost = tmp;
+		} else {
+			v = macro_findvar(sv, "host", 4);
+			if (v)
+				entry->rhost = strdup(v->val);
+		}
 	}
 
 	if (!entry->opts && defaults->opts) {
@@ -197,10 +309,16 @@ static void update_with_defaults(struct amd_entry *defaults,
 			entry->addopts = tmp;
 	}
 
-	if (!entry->remopts && defaults->remopts) {
-		tmp = merge_options(defaults->remopts, entry->remopts);
-		if (tmp)
-			entry->remopts = tmp;
+	if (!entry->remopts) {
+		if (defaults->remopts) {
+			tmp = strdup(defaults->remopts);
+			if (tmp)
+				entry->remopts = tmp;
+		} else {
+			v = macro_findvar(sv, "remopts", 7);
+			if (v)
+				entry->remopts = strdup(v->val);
+		}
 	}
 
 	return;
@@ -983,6 +1101,13 @@ int parse_mount(struct autofs_point *ap, const char *name,
 	}
 
 	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cur_state);
+
+	sv = add_lookup_vars(ap, name, name_len, source, sv);
+	if (!sv) {
+		macro_free_table(sv);
+		pthread_setcancelstate(cur_state, NULL);
+		return 1;
+	}
 
 	len = expand_selectors(ap, mapent, &pmapent, sv);
 	if (!len) {
