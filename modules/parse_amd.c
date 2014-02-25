@@ -1070,7 +1070,7 @@ static int do_nfsl_mount(struct autofs_point *ap, const char *name,
 
 static int wait_for_expire(struct autofs_point *ap)
 {
-	int ret = 1;
+	int ret = 0;
 
 	st_wait_task(ap, ST_EXPIRE, 0);
 
@@ -1078,7 +1078,7 @@ static int wait_for_expire(struct autofs_point *ap)
 	if (ap->state != ST_SHUTDOWN &&
 	    ap->state != ST_SHUTDOWN_PENDING &&
 	    ap->state != ST_SHUTDOWN_FORCE) {
-		ret = 0;
+		ret = 1;
 	}
 	st_mutex_unlock();
 
@@ -1181,6 +1181,88 @@ out:
 	return ret;
 }
 
+static unsigned int validate_auto_options(unsigned int logopt,
+					  struct amd_entry *entry)
+{
+	/*
+	 * The amd manual implies all the mount type auto options
+	 * are optional but I don't think there's much point if
+	 * no map is given.
+	 */
+	if (!entry->fs) {
+		error(logopt, MODPREFIX
+		      "%s: file system not given", entry->type);
+		return 0;
+	}
+	return 1;
+}
+
+static unsigned int validate_link_options(unsigned int logopt,
+					  struct amd_entry *entry)
+{
+	/* fs is the destimation of the link */
+	return validate_auto_options(logopt, entry);
+}
+
+static unsigned int validate_nfs_options(unsigned int logopt,
+					 struct amd_entry *entry)
+{
+	/*
+	 * Required option rhost will always have a value.
+	 * It is set from ${host} if it is found to be NULL
+	 * earlier in the parsing process.
+	 */
+	if (!entry->rfs) {
+		if (entry->fs)
+			entry->rfs = strdup(entry->fs);
+		if (!entry->rfs) {
+			error(logopt, MODPREFIX
+			      "%s: remote file system not given", entry->type);
+			return 0;
+		}
+	}
+	return 1;
+}
+
+static unsigned int validate_generic_options(unsigned int logopt,
+					     unsigned long fstype,
+					     struct amd_entry *entry)
+{
+	if (fstype != AMD_MOUNT_TYPE_LOFS) {
+		if (!entry->dev) {
+			error(logopt, MODPREFIX
+			      "%s: mount device not given", entry->type);
+			return 0;
+		}
+	} else {
+		if (!entry->rfs) {
+			/*
+			 * Can't use entry->type as the mount type to reprot
+			 * the error since entry->type == "bind" not "lofs".
+			 */
+			error(logopt, "lofs: mount device not given");
+			return 0;
+		}
+	}
+	return 1;
+}
+
+static unsigned int validate_host_options(unsigned int logopt,
+					  struct amd_entry *entry)
+{
+	/*
+	 * Not really that useful since rhost is always non-null
+	 * because it will have the the value of the host name if
+	 * it isn't set in the map entry.
+	 */
+	if (!entry->rhost) {
+		error(logopt, MODPREFIX
+		      "%s: remote host name not given", entry->type);
+		return 0;
+	}
+	return 1;
+}
+
 static int amd_mount(struct autofs_point *ap, const char *name,
 		     struct amd_entry *entry, struct map_source *source,
 		     struct substvar *sv, unsigned int flags,
@@ -1191,35 +1273,52 @@ static int amd_mount(struct autofs_point *ap, const char *name,
 
 	switch (fstype) {
 	case AMD_MOUNT_TYPE_AUTO:
+		if (!validate_auto_options(ap->logopt, entry))
+			return 1;
 		ret = do_auto_mount(ap, name, entry, flags);
 		break;
 
 	case AMD_MOUNT_TYPE_LOFS:
+		if (!validate_generic_options(ap->logopt, fstype, entry))
+			return 1;
 		ret = do_generic_mount(ap, name, entry, entry->rfs, flags);
 		break;
 
 	case AMD_MOUNT_TYPE_EXT:
 	case AMD_MOUNT_TYPE_XFS:
+		if (!validate_generic_options(ap->logopt, fstype, entry))
+			return 1;
 		ret = do_generic_mount(ap, name, entry, entry->dev, flags);
 		break;
 
 	case AMD_MOUNT_TYPE_NFS:
+		if (!validate_nfs_options(ap->logopt, entry))
+			return 1;
 		ret = do_nfs_mount(ap, name, entry, flags);
 		break;
 
 	case AMD_MOUNT_TYPE_NFSL:
+		if (!validate_nfs_options(ap->logopt, entry) ||
+		    !validate_link_options(ap->logopt, entry))
+			return 1;
 		ret = do_nfsl_mount(ap, name, entry, sv, flags);
 		break;
 
 	case AMD_MOUNT_TYPE_LINK:
+		if (!validate_link_options(ap->logopt, entry))
+			return 1;
 		ret = do_link_mount(ap, name, entry, flags);
 		break;
 
 	case AMD_MOUNT_TYPE_LINKX:
+		if (!validate_link_options(ap->logopt, entry))
+			return 1;
 		ret = do_linkx_mount(ap, name, entry, flags);
 		break;
 
 	case AMD_MOUNT_TYPE_HOST:
+		if (!validate_host_options(ap->logopt, entry))
+			return 1;
 		ret = do_host_mount(ap, name, entry, source, flags);
 		break;
 
