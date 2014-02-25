@@ -669,6 +669,12 @@ static int create_client(struct conn_info *info, CLIENT **client)
 			goto done;
 		if (ret == -EHOSTUNREACH)
 			goto out_close;
+		if (ret == -EINVAL) {
+			char buf[MAX_ERR_BUF];
+			char *estr = strerror_r(-ret, buf, MAX_ERR_BUF);
+			error(LOGOPT_ANY, "connect() failed: %s", estr);
+			goto out_close;
+		}
 
 		if (!info->client && fd != RPC_ANYSOCK) {
 			close(fd);
