@@ -17,6 +17,7 @@
 - fix deadlock in init_ldap_connection.
 - fix negative status being reset on map read.
 - check for existing offset mount before mounting.
+- fix max() declaration.
 
 17/10/2013 autofs-5.0.8
 =======================
