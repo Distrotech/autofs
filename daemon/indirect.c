@@ -388,6 +388,7 @@ void *expire_proc_indirect(void *arg)
 	struct expire_args ec;
 	unsigned int now;
 	int offsets, submnts, count;
+	int retries;
 	int ioctlfd, cur_state;
 	int status, ret, left;
 
@@ -533,20 +534,17 @@ void *expire_proc_indirect(void *arg)
 
 	/*
 	 * If there are no more real mounts left we could still
-	 * have some offset mounts with no '/' offset so we need to
-	 * umount them here.
+	 * have some offset mounts with no '/' offset or symlinks
+	 * so we need to umount or unlink them here.
 	 */
-	if (mnts) {
-		int retries;
-		pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cur_state);
-		retries = (count_mounts(ap->logopt, ap->path, ap->dev) + 1);
-		while (retries--) {
-			ret = ops->expire(ap->logopt, ap->ioctlfd, ap->path, now);
-			if (ret)
-				left++;
-		}
-		pthread_setcancelstate(cur_state, NULL);
+	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cur_state);
+	retries = (count_mounts(ap->logopt, ap->path, ap->dev) + 1);
+	while (retries--) {
+		ret = ops->expire(ap->logopt, ap->ioctlfd, ap->path, now);
+		if (ret)
+			left++;
 	}
+	pthread_setcancelstate(cur_state, NULL);
 	pthread_cleanup_pop(1);
 
 	count = offsets = submnts = 0;
