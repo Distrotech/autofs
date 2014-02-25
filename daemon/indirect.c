@@ -513,15 +513,13 @@ void *expire_proc_indirect(void *arg)
 		if (!me && ind_key)
 			me = lookup_source_mapent(ap, ind_key, LKP_NORMAL);
 		pthread_cleanup_pop(1);
-		if (!me)
-			continue;
 
-		if (*me->key == '/') {
-			ioctlfd = me->ioctlfd;
-		} else {
-			ioctlfd = ap->ioctlfd;
+		ioctlfd = ap->ioctlfd;
+		if (me) {
+			if (*me->key == '/')
+				ioctlfd = me->ioctlfd;
+			cache_unlock(me->mc);
 		}
-		cache_unlock(me->mc);
 
 		debug(ap->logopt, "expire %s", next->path);
 
