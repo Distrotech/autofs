@@ -702,9 +702,22 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 		} else {
 			char *s_key; 
 
-			s_key = sanitize_path(key, k_len, ap->type, ap->logopt);
-			if (!s_key)
-				continue;
+			if (source->flags & MAP_FLAG_FORMAT_AMD) {
+				if (!strcmp(key, "/defaults")) {
+					cache_writelock(mc);
+					cache_update(mc, source, key, mapent, age);
+					cache_unlock(mc);
+					continue;
+				}
+				/* Don't fail on "/" in key => type == 0 */
+				s_key = sanitize_path(key, k_len, 0, ap->logopt);
+				if (!s_key)
+					continue;
+			} else {
+				s_key = sanitize_path(key, k_len, ap->type, ap->logopt);
+				if (!s_key)
+					continue;
+			}
 
 			cache_writelock(mc);
 			cache_update(mc, source, s_key, mapent, age);
@@ -724,20 +737,81 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 	return NSS_STATUS_SUCCESS;
 }
 
+static int match_key(struct autofs_point *ap,
+		     struct map_source *source, char *map_key,
+		     const char *key, size_t key_len, const char *mapent)
+{
+	char buf[MAX_ERR_BUF];
+	struct mapent_cache *mc;
+	time_t age = time(NULL);
+	char *lkp_key;
+	char *prefix;
+	size_t map_key_len;
+	int ret, eq;
+
+	mc = source->mc;
+
+	/* exact match is a match for both autofs and amd */
+	eq = strcmp(map_key, key);
+	if (eq == 0) {
+		cache_writelock(mc);
+		ret = cache_update(mc, source, key, mapent, age);
+		cache_unlock(mc);
+		return ret;
+	}
+
+	if (!(source->flags & MAP_FLAG_FORMAT_AMD))
+		return CHE_FAIL;
+
+	map_key_len = strlen(map_key);
+
+	lkp_key = strdup(key);
+	if (!lkp_key) {
+		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+		error(ap->logopt, MODPREFIX "strdup: %s", estr);
+		return CHE_FAIL;
+	}
+
+	ret = CHE_FAIL;
+
+	if (map_key_len > (strlen(lkp_key) + 2))
+		goto done;
+
+	/*
+	 * Now strip successive directory components and try a
+	 * match against map entries ending with a wildcard and
+	 * finally try the wilcard entry itself. If we get a match
+	 * then update the cache with the read key and its mapent.
+	*/
+	while ((prefix = strrchr(lkp_key, '/'))) {
+		size_t len;
+		*prefix = '\0';
+		len = strlen(lkp_key);
+		eq = strncmp(map_key, lkp_key, len);
+		if (!eq && map_key[len + 1] == '*') {
+			cache_writelock(mc);
+			ret = cache_update(mc, source, map_key, mapent, age);
+			cache_unlock(mc);
+			goto done;
+		}
+	}
+done:
+	free(lkp_key);
+	return ret;
+}
+
 static int lookup_one(struct autofs_point *ap,
 		      struct map_source *source,
 		      const char *key, int key_len,
 		      struct lookup_context *ctxt)
 {
-	struct mapent_cache *mc;
+	struct mapent_cache *mc = source->mc;
 	char mkey[KEY_MAX_LEN + 1];
 	char mapent[MAPENT_MAX_LEN + 1];
 	time_t age = time(NULL);
 	FILE *f;
 	unsigned int k_len, m_len;
 	int entry, ret;
-
-	mc = source->mc;
 
 	f = open_fopen_r(ctxt->mapname);
 	if (!f) {
@@ -781,28 +855,37 @@ static int lookup_one(struct autofs_point *ap,
 				}
 			} else {
 				char *s_key; 
-				int eq;
 
-				s_key = sanitize_path(mkey, k_len, ap->type, ap->logopt);
-				if (!s_key)
-					continue;
+				if (source->flags & MAP_FLAG_FORMAT_AMD) {
+					if (!strcmp(mkey, "/defaults")) {
+						cache_writelock(mc);
+						cache_update(mc, source, mkey, mapent, age);
+						cache_unlock(mc);
+						continue;
+					}
+					/* Don't fail on "/" in key => type == 0 */
+					s_key = sanitize_path(mkey, k_len, 0, ap->logopt);
+					if (!s_key)
+						continue;
+				} else {
+					s_key = sanitize_path(mkey, k_len, ap->type, ap->logopt);
+					if (!s_key)
+						continue;
 
-				if (key_len != strlen(s_key)) {
-					free(s_key);
-					continue;
+					if (key_len != strlen(s_key)) {
+						free(s_key);
+						continue;
+					}
 				}
 
-				eq = strncmp(s_key, key, key_len);
-				if (eq != 0) {
+				ret = match_key(ap, source,
+						s_key, key, key_len, mapent);
+				if (ret == CHE_FAIL) {
 					free(s_key);
 					continue;
 				}
 
 				free(s_key);
-
-				cache_writelock(mc);
-				ret = cache_update(mc, source, key, mapent, age);
-				cache_unlock(mc);
 
 				fclose(f);
 
@@ -897,7 +980,10 @@ static int check_map_indirect(struct autofs_point *ap,
 		return NSS_STATUS_NOTFOUND;
 
 	cache_writelock(mc);
-	exists = cache_lookup_distinct(mc, key);
+	if (source->flags & MAP_FLAG_FORMAT_AMD)
+		exists = match_cached_key(ap, MODPREFIX, source, key);
+	else
+		exists = cache_lookup_distinct(mc, key);
 	/* Not found in the map but found in the cache */
 	if (exists && exists->source == source && ret & CHE_MISSING) {
 		if (exists->mapent) {
@@ -936,6 +1022,53 @@ static int check_map_indirect(struct autofs_point *ap,
 	return NSS_STATUS_SUCCESS;
 }
 
+static int map_update_needed(struct autofs_point *ap,
+			     struct map_source *source,
+			     struct lookup_context * ctxt)
+{
+	struct mapent_cache *mc;
+	struct mapent *me;
+	struct stat st;
+	int ret = 1;
+
+	mc = source->mc;
+
+	/*
+	 * We can skip the map lookup and cache update altogether
+	 * if we know the map hasn't been modified since it was
+	 * last read. If it has then we can mark the map stale
+	 * so a re-read is triggered following the lookup.
+	 */
+	if (stat(ctxt->mapname, &st)) {
+		error(ap->logopt, MODPREFIX
+		      "file map %s, could not stat", ctxt->mapname);
+		return -1;
+	}
+
+	cache_readlock(mc);
+	me = cache_lookup_first(mc);
+	if (me && st.st_mtime <= me->age) {
+		/*
+		 * If any map instances are present for this source
+		 * then either we have plus included entries or we
+		 * are looking through the list of nsswitch sources.
+		 * In either case, or if it's a "multi" source, we
+		 * cannot avoid reading through the map because we
+		 * must preserve the key order over multiple sources
+		 * or maps. But also, we can't know, at this point,
+		 * if a source instance has been changed since the
+		 * last time we checked it.
+		 */
+		if (!source->instance &&
+		    source->type && strcmp(source->type, "multi"))
+			ret = 0;
+	} else
+		source->stale = 1;
+	cache_unlock(mc);
+
+	return ret;
+}
+
 int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *context)
 {
 	struct lookup_context *ctxt = (struct lookup_context *) context;
@@ -944,8 +1077,10 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 	struct mapent *me;
 	char key[KEY_MAX_LEN + 1];
 	int key_len;
+	char *lkp_key;
 	char *mapent = NULL;
 	char mapent_buf[MAPENT_MAX_LEN + 1];
+	char buf[MAX_ERR_BUF];
 	int status = 0;
 	int ret = 1;
 
@@ -967,9 +1102,18 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 
 	debug(ap->logopt, MODPREFIX "looking up %s", name);
 
-	key_len = snprintf(key, KEY_MAX_LEN + 1, "%s", name);
-	if (key_len > KEY_MAX_LEN)
-		return NSS_STATUS_NOTFOUND;
+	if (!(source->flags & MAP_FLAG_FORMAT_AMD)) {
+		key_len = snprintf(key, KEY_MAX_LEN + 1, "%s", name);
+		if (key_len > KEY_MAX_LEN)
+			return NSS_STATUS_NOTFOUND;
+	} else {
+		key_len = expandamdent(name, NULL, NULL);
+		if (key_len > KEY_MAX_LEN)
+			return NSS_STATUS_NOTFOUND;
+		memset(key, 0, KEY_MAX_LEN + 1);
+		expandamdent(name, key, NULL);
+		debug(ap->logopt, MODPREFIX "expanded key: \"%s\"", key);
+	}
 
 	/* Check if we recorded a mount fail for this key anywhere */
 	me = lookup_source_mapent(ap, key, LKP_DISTINCT);
@@ -1003,50 +1147,35 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 	 * we never know about it.
 	 */
 	if (ap->type == LKP_INDIRECT && *key != '/') {
-		struct stat st;
-		char *lkp_key;
+		int ret;
 
-		/*
-		 * We can skip the map lookup and cache update altogether
-		 * if we know the map hasn't been modified since it was
-		 * last read. If it has then we can mark the map stale
-		 * so a re-read is triggered following the lookup.
-		 */
-		if (stat(ctxt->mapname, &st)) {
-			error(ap->logopt, MODPREFIX
-			      "file map %s, could not stat", ctxt->mapname);
-			return NSS_STATUS_UNAVAIL;
-		}
+		ret = map_update_needed(ap, source, ctxt);
+		if (!ret)
+			goto do_cache_lookup;
+		/* Map isn't accessable, just try the cache */
+		if (ret < 0)
+			goto do_cache_lookup;
 
 		cache_readlock(mc);
-		me = cache_lookup_first(mc);
-		if (me && st.st_mtime <= me->age) {
-			/*
-			 * If any map instances are present for this source
-			 * then either we have plus included entries or we
-			 * are looking through the list of nsswitch sources.
-			 * In either case, or if it's a "multi" source, we
-			 * cannot avoid reading through the map because we
-			 * must preserve the key order over multiple sources
-			 * or maps. But also, we can't know, at this point,
-			 * if a source instance has been changed since the
-			 * last time we checked it.
-			 */
-			if (!source->instance &&
-			    source->type && strcmp(source->type, "multi"))
-				goto do_cache_lookup;
-		} else
-			source->stale = 1;
-
 		me = cache_lookup_distinct(mc, key);
 		if (me && me->multi)
 			lkp_key = strdup(me->multi->key);
-		else
+		else if (!ap->pref)
 			lkp_key = strdup(key);
+		else {
+			lkp_key = malloc(strlen(ap->pref) + strlen(key) + 1);
+			if (lkp_key) {
+				strcpy(lkp_key, ap->pref);
+				strcat(lkp_key, key);
+			}
+		}
 		cache_unlock(mc);
 
-		if (!lkp_key)
+		if (!lkp_key) {
+			char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+			error(ap->logopt, MODPREFIX "malloc: %s", estr);
 			return NSS_STATUS_UNKNOWN;
+		}
 
 		status = check_map_indirect(ap, source,
 					    lkp_key, strlen(lkp_key), ctxt);
@@ -1066,42 +1195,38 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 	 * when we're starting up so just take the readlock in that
 	 * case.
 	 */
+do_cache_lookup:
 	if (ap->flags & MOUNT_FLAG_REMOUNT)
 		cache_readlock(mc);
 	else
 		cache_writelock(mc);
-do_cache_lookup:
-	me = cache_lookup(mc, key);
-	/*
-	 * Stale mapent => check for entry in alternate source or wildcard.
-	 * Note, plus included direct mount map entries are included as an
-	 * instance (same map entry cache), not in a distinct source.
-	 */
-	if (me && (!me->mapent || 
-	   (me->source != source && *me->key != '/'))) {
-		while ((me = cache_lookup_key_next(me)))
-			if (me->source == source)
-				break;
-		if (!me)
-			me = cache_lookup_distinct(mc, "*");
-	}
-	if (me && me->mapent) {
-		/*
-		 * If this is a lookup add wildcard match for later validation
-		 * checks and negative cache lookups.
-		 */
-		if (!(ap->flags & MOUNT_FLAG_REMOUNT) &&
-		    ap->type == LKP_INDIRECT && *me->key == '*') {
-			ret = cache_update(mc, source, key, me->mapent, me->age);
-			if (!(ret & (CHE_OK | CHE_UPDATED)))
-				me = NULL;
+
+	if (!ap->pref)
+		lkp_key = strdup(key);
+	else {
+		lkp_key = malloc(strlen(ap->pref) + strlen(key) + 1);
+		if (lkp_key) {
+			strcpy(lkp_key, ap->pref);
+			strcat(lkp_key, key);
 		}
+	}
+
+	if (!lkp_key) {
+		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+		error(ap->logopt, MODPREFIX "malloc: %s", estr);
+		cache_unlock(mc);
+		return NSS_STATUS_UNKNOWN;
+	}
+
+	me = match_cached_key(ap, MODPREFIX, source, lkp_key);
+	if (me && me->mapent) {
 		if (me && (me->source == source || *me->key == '/')) {
 			strcpy(mapent_buf, me->mapent);
 			mapent = mapent_buf;
 		}
 	}
 	cache_unlock(mc);
+	free(lkp_key);
 
 	if (!me)
 		return NSS_STATUS_NOTFOUND;
