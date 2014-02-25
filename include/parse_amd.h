@@ -20,6 +20,14 @@
 #define AMD_MOUNT_TYPE_NFS	0x00000002
 #define AMD_MOUNT_TYPE_LINK	0x00000004
 #define AMD_MOUNT_TYPE_HOST	0x00000008
+#define AMD_MOUNT_TYPE_NFSL	0x00000010
+#define AMD_MOUNT_TYPE_NFSX	0x00000020
+#define AMD_MOUNT_TYPE_LINKX	0x00000040
+#define AMD_MOUNT_TYPE_LOFS	0x00000080
+#define AMD_MOUNT_TYPE_EXT	0x00000100
+#define AMD_MOUNT_TYPE_XFS	0x00000200
+#define AMD_MOUNT_TYPE_JFS	0x00000400
+#define AMD_MOUNT_TYPE_CACHEFS	0x00000800
 #define AMD_MOUNT_TYPE_MASK	0x0000ffff
 
 #define AMD_ENTRY_CUT		0x00010000
@@ -38,6 +46,7 @@ struct amd_entry {
 	char *fs;
 	char *rhost;
 	char *rfs;
+	char *dev;
 	char *opts;
 	char *addopts;
 	char *remopts;

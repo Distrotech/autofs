@@ -248,6 +248,17 @@ option_assignment: MAP_OPTION OPTION_ASSIGN FS_TYPE
 		} else if (!strcmp($3, "host")) {
 			entry.flags |= AMD_MOUNT_TYPE_HOST;
 			entry.type = amd_strdup($3);
+		} else if (!strcmp($3, "lofs")) {
+			entry.flags |= AMD_MOUNT_TYPE_LOFS;
+			entry.type = amd_strdup("bind");
+		} else if (!strcmp($3, "xfs")) {
+			entry.flags |= AMD_MOUNT_TYPE_XFS;
+			entry.type = amd_strdup($3);
+		} else if (!strcmp($3, "ext2") ||
+			   !strcmp($3, "ext3") ||
+			   !strcmp($3, "ext4")) {
+			entry.flags |= AMD_MOUNT_TYPE_EXT;
+			entry.type = amd_strdup($3);
 		} else {
 			amd_notify($1);
 			YYABORT;
@@ -291,6 +302,8 @@ option_assignment: MAP_OPTION OPTION_ASSIGN FS_TYPE
 			entry.rhost = amd_strdup($3);
 		else if (!strcmp($1, "rfs"))
 			entry.rfs = amd_strdup($3);
+		else if (!strcmp($1, "dev"))
+			entry.dev = amd_strdup($3);
 		else {
 			amd_notify($1);
 			YYABORT;

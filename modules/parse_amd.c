@@ -598,6 +598,12 @@ static void update_with_defaults(struct amd_entry *defaults,
 		}
 	}
 
+	if (!entry->dev && defaults->dev) {
+		tmp = strdup(defaults->dev);
+		if (tmp)
+			entry->dev = tmp;
+	}
+
 	if (!entry->opts && defaults->opts) {
 		tmp = merge_options(defaults->opts, entry->opts);
 		if (tmp)
@@ -949,6 +955,35 @@ out:
 	return ret;
 }
 
+static int do_generic_mount(struct autofs_point *ap, const char *name,
+			    struct amd_entry *entry, const char *target,
+			    unsigned int flags)
+{
+	int ret = 0;
+
+	if (!entry->sublink) {
+		ret = do_mount(ap, ap->path, name, strlen(name),
+			       target, entry->type, entry->opts);
+	} else {
+		/*
+		 * Careful, external mounts may get mounted
+		 * multiple times since they are outside of
+		 * the automount filesystem.
+		 */
+		if (!is_mounted(_PATH_MOUNTED, entry->fs, MNTS_REAL)) {
+			ret = do_mount(ap, entry->fs, "/", 1,
+				       target, entry->type, entry->opts);
+			if (ret)
+				goto out;
+		}
+		/* We might be using an external mount */
+		ext_mount_add(&entry->ext_mount, entry->fs);
+		ret = do_link_mount(ap, name, entry, flags);
+	}
+out:
+	return ret;
+}
+
 static int do_nfs_mount(struct autofs_point *ap, const char *name,
 			struct amd_entry *entry, unsigned int flags)
 {
@@ -1022,6 +1057,15 @@ static int amd_mount(struct autofs_point *ap, const char *name,
 	switch (fstype) {
 	case AMD_MOUNT_TYPE_AUTO:
 		ret = do_auto_mount(ap, name, entry, flags);
+		break;
+
+	case AMD_MOUNT_TYPE_LOFS:
+		ret = do_generic_mount(ap, name, entry, entry->rfs, flags);
+		break;
+
+	case AMD_MOUNT_TYPE_EXT:
+	case AMD_MOUNT_TYPE_XFS:
+		ret = do_generic_mount(ap, name, entry, entry->dev, flags);
 		break;
 
 	case AMD_MOUNT_TYPE_NFS:
@@ -1258,6 +1302,12 @@ static struct amd_entry *dup_defaults_entry(struct amd_entry *defaults)
 		tmp = strdup(defaults->rhost);
 		if (tmp)
 			entry->rhost = tmp;
+	}
+
+	if (defaults->dev) {
+		tmp = strdup(defaults->dev);
+		if (tmp)
+			entry->dev = tmp;
 	}
 
 	if (defaults->opts) {
