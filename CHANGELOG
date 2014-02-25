@@ -33,6 +33,7 @@
 - make autofs(5) consistent with auto.master(5).
 - fix map source with type lookup.
 - fix lookup_nss_mount() map lookup.
+- dont ignore null cache entries on multi mount umount.
 
 17/10/2013 autofs-5.0.8
 =======================

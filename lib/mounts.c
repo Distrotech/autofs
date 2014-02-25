@@ -1804,7 +1804,7 @@ int umount_multi_triggers(struct autofs_point *ap, struct mapent *me, char *root
 
 		oe = cache_lookup_offset(mm_base, offset, start, &me->multi_list);
 		/* root offset is a special case */
-		if (!oe || !oe->mapent || (strlen(oe->key) - start) == 1)
+		if (!oe || (strlen(oe->key) - start) == 1)
 			continue;
 
 		/*
@@ -1926,7 +1926,7 @@ int clean_stale_multi_triggers(struct autofs_point *ap,
 
 		oe = cache_lookup_offset(mm_base, offset, start, &me->multi_list);
 		/* root offset is a special case */
-		if (!oe || !oe->mapent || (strlen(oe->key) - start) == 1)
+		if (!oe || (strlen(oe->key) - start) == 1)
 			continue;
 
 		/* Check for and umount stale subtree offsets */
