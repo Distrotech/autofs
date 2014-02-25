@@ -1031,10 +1031,8 @@ int lookup_nss_mount(struct autofs_point *ap, struct map_source *source, const c
 
 			result = lookup_map_name(this, ap, map, name, name_len);
 
-			if (result == NSS_STATUS_UNKNOWN) {
-				map = map->next;
+			if (result == NSS_STATUS_UNKNOWN)
 				continue;
-			}
 
 			status = check_nss_result(this, result);
 			if (status >= 0) {
