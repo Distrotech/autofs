@@ -35,6 +35,7 @@ static struct substvar
 };
 
 static struct substvar *system_table = &sv_osvers;
+static unsigned int macro_init_done = 0;
 
 static pthread_mutex_t table_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t macro_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -62,6 +63,12 @@ void dump_table(struct substvar *table)
 /* Get processor information for predefined macro definitions */
 void macro_init(void)
 {
+	macro_lock();
+	if (macro_init_done) {
+		macro_unlock();
+		return;
+	}
+
 	uname(&un);
 	/*
 	 * uname -p is not defined on Linux.  Make it the same as
@@ -71,6 +78,10 @@ void macro_init(void)
 	if (processor[0] == 'i' && processor[1] >= '3' &&
 		!strcmp(processor + 2, "86"))
 		processor[1] = '3';
+
+	macro_init_done = 1;
+	macro_unlock();
+	return;
 }
 
 int macro_is_systemvar(const char *str, int len)
@@ -118,10 +129,11 @@ int macro_global_addvar(const char *str, int len, const char *value)
 	}
 
 	if (sv && !sv->readonly) {
-		char *this = realloc(sv->val, strlen(value) + 1);
+		char *this = malloc(strlen(value) + 1);
 		if (!this)
 			goto done;
-		strcat(this, value);
+		strcpy(this, value);
+		free(sv->val);
 		sv->val = this;
 		ret = 1;
 	} else {
@@ -213,13 +225,16 @@ macro_addvar(struct substvar *table, const char *str, int len, const char *value
 	}
 
 	if (lv) {
-		char *this = realloc(lv->val, strlen(value) + 1);
+		char *this = malloc(strlen(value) + 1);
 		if (!this) {
 			lv = table;
 			goto done;
 		}
-		strcat(this, value);
+		strcpy(this, value);
+		free(lv->val);
 		lv->val = this;
+		if (lv != table)
+			lv = table;
 	} else {
 		struct substvar *new;
 		char *def, *val;
@@ -413,7 +428,7 @@ macro_findvar(const struct substvar *table, const char *str, int len)
 	etmp[len]='\0';
 
 	if ((value=getenv(etmp)) != NULL) {
-		lv_var = macro_addvar(table, str, len, value);
+		lv_var = macro_addvar((struct substvar *) table, str, len, value);
 		return(lv_var);
 	}
 #endif

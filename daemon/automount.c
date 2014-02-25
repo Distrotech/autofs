@@ -2129,6 +2129,9 @@ int main(int argc, char *argv[])
 			program);
 #endif
 
+	/* Get processor information for predefined escapes */
+	macro_init();
+
 	if (dumpmaps) {
 		struct master_mapent *entry;
 		struct list_head *head, *p;
@@ -2152,6 +2155,7 @@ int main(int argc, char *argv[])
 			master_list = master_new(master, timeout, ghost);
 		if (!master_list) {
 			printf("%s: can't create master map", program);
+			macro_free_global_table();
 			exit(1);
 		}
 
@@ -2163,6 +2167,7 @@ int main(int argc, char *argv[])
 		if (!nc) {
 			printf("%s: failed to init null map cache for %s",
 				program, master_list->name);
+			macro_free_global_table();
 			exit(1);
 		}
 		master_list->nc = nc;
@@ -2187,6 +2192,7 @@ int main(int argc, char *argv[])
 			master_free_mapent(entry);
 		}
 		master_kill(master_list);
+		macro_free_global_table();
 
 		exit(0);
 	}
@@ -2198,6 +2204,7 @@ int main(int argc, char *argv[])
 
 	if (!master_list) {
 		printf("%s: can't create master map %s", program, argv[0]);
+		macro_free_global_table();
 		exit(1);
 	}
 
@@ -2209,6 +2216,7 @@ int main(int argc, char *argv[])
 		res = write(start_pipefd[1], pst_stat, sizeof(*pst_stat));
 		close(start_pipefd[1]);
 		release_flag_file();
+		macro_free_global_table();
 		exit(1);
 	}
 
@@ -2218,6 +2226,7 @@ int main(int argc, char *argv[])
 		res = write(start_pipefd[1], pst_stat, sizeof(*pst_stat));
 		close(start_pipefd[1]);
 		release_flag_file();
+		macro_free_global_table();
 		exit(1);
 	}
 
@@ -2228,6 +2237,7 @@ int main(int argc, char *argv[])
 		res = write(start_pipefd[1], pst_stat, sizeof(*pst_stat));
 		close(start_pipefd[1]);
 		release_flag_file();
+		macro_free_global_table();
 		exit(1);
 	}
 
@@ -2239,6 +2249,7 @@ int main(int argc, char *argv[])
 		res = write(start_pipefd[1], pst_stat, sizeof(*pst_stat));
 		close(start_pipefd[1]);
 		release_flag_file();
+		macro_free_global_table();
 		exit(1);
 	}
 #endif
@@ -2257,6 +2268,7 @@ int main(int argc, char *argv[])
 		res = write(start_pipefd[1], pst_stat, sizeof(*pst_stat));
 		close(start_pipefd[1]);
 		release_flag_file();
+		macro_free_global_table();
 		exit(1);
 	}
 
@@ -2268,6 +2280,7 @@ int main(int argc, char *argv[])
 		res = write(start_pipefd[1], pst_stat, sizeof(*pst_stat));
 		close(start_pipefd[1]);
 		release_flag_file();
+		macro_free_global_table();
 		exit(1);
 	}
 
@@ -2277,6 +2290,7 @@ int main(int argc, char *argv[])
 		res = write(start_pipefd[1], pst_stat, sizeof(*pst_stat));
 		close(start_pipefd[1]);
 		release_flag_file();
+		macro_free_global_table();
 		exit(1);
 	}
 
@@ -2299,6 +2313,7 @@ int main(int argc, char *argv[])
 		res = write(start_pipefd[1], pst_stat, sizeof(*pst_stat));
 		close(start_pipefd[1]);
 		release_flag_file();
+		macro_free_global_table();
 		exit(3);
 	}
 
@@ -2323,6 +2338,7 @@ int main(int argc, char *argv[])
 	}
 	closelog();
 	release_flag_file();
+	macro_free_global_table();
 
 #ifdef TIRPC_WORKAROUND
 	if (dh_tirpc)
