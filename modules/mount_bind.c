@@ -206,7 +206,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 		if (symlink(what, fullpath) && errno != EEXIST) {
 			error(ap->logopt,
 			      MODPREFIX
-			      "failed to create local mount %s -> %s",
+			      "failed to create symlink %s -> %s",
 			      fullpath, what);
 			if ((ap->flags & MOUNT_FLAG_GHOST) && !status)
 				if (mkdir_path(fullpath, 0555) && errno != EEXIST) {
