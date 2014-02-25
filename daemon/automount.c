@@ -1776,12 +1776,6 @@ static void show_build_info(void)
 #ifdef ENABLE_FORCED_SHUTDOWN
 	printf("ENABLE_FORCED_SHUTDOWN ");
 	count = count + 23;
-
-	if (count > 60) {
-		printf("\n  ");
-		count = 0;
-	}
-
 #endif
 
 #ifdef ENABLE_IGNORE_BUSY_MOUNTS
