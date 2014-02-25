@@ -442,6 +442,87 @@ void remove_std_amd_vars(void)
 	return;
  }
 
+struct amd_entry *new_amd_entry(const struct substvar *sv)
+{
+	struct amd_entry *new;
+	const struct substvar *v;
+	char *path;
+
+	v = macro_findvar(sv, "path", 4);
+	if (!v)
+		return NULL;
+
+	path = strdup(v->val);
+	if (!path)
+		return NULL;
+
+	new = malloc(sizeof(struct amd_entry));
+	if (!new) {
+		free(path);
+		return NULL;
+	}
+
+	memset(new, 0, sizeof(*new));
+	new->path = path;
+	INIT_LIST_HEAD(&new->list);
+	INIT_LIST_HEAD(&new->entries);
+	INIT_LIST_HEAD(&new->ext_mount);
+
+	return new;
+}
+
+void clear_amd_entry(struct amd_entry *entry)
+{
+	if (!entry)
+		return;
+	if (entry->path)
+		free(entry->path);
+	if (entry->map_type)
+		free(entry->map_type);
+	if (entry->pref)
+		free(entry->pref);
+	if (entry->fs)
+		free(entry->fs);
+	if (entry->rhost)
+		free(entry->rhost);
+	if (entry->rfs)
+		free(entry->rfs);
+	if (entry->opts)
+		free(entry->opts);
+	if (entry->addopts)
+		free(entry->addopts);
+	if (entry->remopts)
+		free(entry->remopts);
+	if (entry->sublink)
+		free(entry->sublink);
+	if (entry->selector)
+		free_selector(entry->selector);
+	return;
+}
+
+void free_amd_entry(struct amd_entry *entry)
+{
+	clear_amd_entry(entry);
+	free(entry);
+	return;
+}
+
+void free_amd_entry_list(struct list_head *entries)
+{
+	if (!list_empty(entries)) {
+		struct list_head *head = entries;
+		struct amd_entry *this;
+		struct list_head *p;
+
+		p = head->next;
+		while (p != head) {
+			this = list_entry(p, struct amd_entry, list);
+			p = p->next;
+			free_amd_entry(this);
+		}
+	}
+}
+
 /*
  * Make common autofs mount options string
  */

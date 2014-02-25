@@ -34,6 +34,7 @@
 #include "parse_subs.h"
 #include "mounts.h"
 #include "dev-ioctl-lib.h"
+#include "parse_amd.h"
 
 #ifdef WITH_DMALLOC
 #include <dmalloc.h>

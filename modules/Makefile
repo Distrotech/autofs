@@ -7,15 +7,17 @@ include ../Makefile.rules
 
 SRCS :=	lookup_file.c lookup_program.c  lookup_userhome.c \
 	lookup_multi.c lookup_hosts.c lookup_dir.c \
-	parse_sun.c    \
+	parse_sun.c parse_amd.c \
 	mount_generic.c  mount_nfs.c  mount_afs.c  mount_autofs.c \
 	mount_changer.c  mount_bind.c
 
 MODS :=	lookup_file.so lookup_program.so lookup_userhome.so \
 	lookup_multi.so lookup_hosts.so lookup_dir.so \
-	parse_sun.so \
+	parse_sun.so parse_amd.so \
 	mount_generic.so mount_nfs.so mount_afs.so mount_autofs.so \
 	mount_changer.so mount_bind.so
+
+YACCSRC = amd_tok.c amd_parse.tab.c amd_parse.tab.h \
 
 ifeq ($(EXT2FS), 1)
   SRCS += mount_ext2.c
@@ -95,6 +97,21 @@ else ifeq ($(EXT3FS), 1)
 else ifeq ($(EXT4FS), 1)
 	mv $(INSTALLROOT)$(autofslibdir)/mount_ext2.so $(INSTALLROOT)$(autofslibdir)/mount_ext4.so
 endif
+
+amd_tok.c: amd_tok.l
+	$(LEX) -o$@ -Pamd_ $?
+
+amd_tok.o: amd_tok.c amd_parse.tab.h
+
+amd_parse.tab.c amd_parse.tab.h: amd_parse.y
+	$(YACC) -v -d -p amd_ -b amd_parse $?
+
+amd_parse.tab.o: amd_parse.tab.c amd_parse.tab.h
+
+parse_amd.so: parse_amd.c amd_parse.tab.o amd_tok.o
+	$(CC) $(LDFLAGS) $(SOLDFLAGS) $(CFLAGS) -o parse_amd.so \
+		parse_amd.c amd_parse.tab.o amd_tok.o $(AUTOFS_LIB) $(LIBS)
+	$(STRIP) parse_amd.so
 
 #
 # Ad hoc compilation rules for modules which need auxilliary libraries

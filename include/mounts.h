@@ -85,10 +85,16 @@ unsigned int linux_version_code(void);
 int check_nfs_mount_version(struct nfs_mount_vers *, struct nfs_mount_vers *);
 extern unsigned int nfs_mount_uses_string_options;
 
+struct amd_entry;
+
 struct substvar *addstdenv(struct substvar *sv);
 struct substvar *removestdenv(struct substvar *sv);
 void add_std_amd_vars(struct substvar *sv);
 void remove_std_amd_vars(void);
+struct amd_entry *new_amd_entry(const struct substvar *sv);
+void clear_amd_entry(struct amd_entry *entry);
+void free_amd_entry(struct amd_entry *entry);
+void free_amd_entry_list(struct list_head *entries);
 
 unsigned int query_kproto_ver(void);
 unsigned int get_kver_major(void);
