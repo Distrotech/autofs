@@ -566,7 +566,9 @@ struct mapent *cache_lookup_offset(const char *prefix, const char *offset, int s
 }
 
 /* cache must be read locked by caller */
-struct mapent *cache_partial_match(struct mapent_cache *mc, const char *prefix)
+static struct mapent *__cache_partial_match(struct mapent_cache *mc,
+					    const char *prefix,
+					    unsigned int type)
 {
 	struct mapent *me = NULL;
 	size_t len = strlen(prefix);
@@ -578,18 +580,44 @@ struct mapent *cache_partial_match(struct mapent_cache *mc, const char *prefix)
 			continue;
 
 		if (len < strlen(me->key) &&
-		    (strncmp(prefix, me->key, len) == 0) && me->key[len] == '/')
-			return me;
+		    (strncmp(prefix, me->key, len) == 0) &&
+		     me->key[len] == '/') {
+			if (type == LKP_NORMAL)
+				return me;
+			if (type == LKP_WILD &&
+			    me->key[len] != '\0' &&
+			    me->key[len + 1] == '*')
+				return me;
+		}
 
 		me = me->next;
 		while (me != NULL) {
 			if (len < strlen(me->key) &&
-			    strncmp(prefix, me->key, len) == 0 && me->key[len] == '/')
-				return me;
+			    (strncmp(prefix, me->key, len) == 0 &&
+			    me->key[len] == '/')) {
+				if (type == LKP_NORMAL)
+					return me;
+				if (type == LKP_WILD &&
+				    me->key[len] != '\0' &&
+				    me->key[len + 1] == '*')
+					return me;
+			}
 			me = me->next;
 		}
 	}
 	return NULL;
+}
+
+/* cache must be read locked by caller */
+struct mapent *cache_partial_match(struct mapent_cache *mc, const char *prefix)
+{
+	return __cache_partial_match(mc, prefix, LKP_NORMAL);
+}
+
+/* cache must be read locked by caller */
+struct mapent *cache_partial_match_wild(struct mapent_cache *mc, const char *prefix)
+{
+	return __cache_partial_match(mc, prefix, LKP_WILD);
 }
 
 /* cache must be write locked by caller */
