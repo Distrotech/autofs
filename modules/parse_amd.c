@@ -1425,6 +1425,7 @@ int parse_mount(struct autofs_point *ap, const char *name,
 	struct map_source *source;
 	struct mapent_cache *mc;
 	struct mapent *me;
+	unsigned int at_least_one;
 	struct list_head entries, *p, *head;
 	struct amd_entry *defaults_entry;
 	struct amd_entry *cur_defaults;
@@ -1517,6 +1518,7 @@ int parse_mount(struct autofs_point *ap, const char *name,
 		goto done;
 	}
 
+	at_least_one = 0;
 	head = &entries;
 	p = head->next;
 	while (p != head) {
@@ -1540,8 +1542,17 @@ int parse_mount(struct autofs_point *ap, const char *name,
 			continue;
 		}
 
+		if (this->flags & AMD_ENTRY_CUT && at_least_one) {
+			info(ap->logopt, MODPREFIX
+			     "at least one entry tried before cut selector, "
+			     "not continuing");
+			break;
+		}
+
 		if (!match_selectors(ap->logopt, this, sv))
 			continue;
+
+		at_least_one = 1;
 
 		update_with_defaults(cur_defaults, this, sv);
 		sv = expand_entry(ap, this, flags, sv);
