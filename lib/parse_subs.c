@@ -23,6 +23,9 @@
 #include <net/if.h>
 #include "automount.h"
 
+#define MAX_OPTIONS_LEN		256
+#define MAX_OPTION_LEN		40
+
 #define MAX_NETWORK_LEN		255
 
 #define MAX_IFC_BUF		2048
@@ -521,6 +524,116 @@ char *sanitize_path(const char *path, int origlen, unsigned int type, unsigned i
 		*(cp - 1) = '\0';
 
 	return s_path;
+}
+
+static char *hasopt(const char *str, const char *opt)
+{
+	const size_t optlen = strlen(opt);
+	char *rest = (char *) str, *p;
+
+	while ((p = strstr(rest, opt)) != NULL) {
+		if ((p == rest || p[-1] == ',') &&
+		    (p[optlen] == '\0' || p[optlen] == '=' ||
+		     p[optlen] == ','))
+			return p;
+
+		rest = strchr (p, ',');
+		if (rest == NULL)
+			break;
+		++rest;
+	}
+
+	return NULL;
+}
+
+char *merge_options(const char *opt1, const char *opt2)
+{
+	char str[MAX_OPTIONS_LEN];
+	char result[MAX_OPTIONS_LEN];
+	char neg[MAX_OPTION_LEN];
+	char *tok, *ptr = NULL;
+	size_t len;
+
+	if (!opt1 && !opt2)
+		return NULL;
+
+	if (!opt2)
+		return strdup(opt1);
+
+	if (!opt1)
+		return strdup(opt2);
+
+	if (!strcmp(opt1, opt2))
+		return strdup(opt1);
+
+	memset(result, 0, sizeof(result));
+	strcpy(str, opt1);
+
+	tok = strtok_r(str, ",", &ptr);
+	while (tok) {
+		const char *this = (const char *) tok;
+		char *eq = strchr(this, '=');
+		if (eq) {
+			*eq = '\0';
+			if (!hasopt(opt2, this)) {
+				*eq = '=';
+				if (!*result)
+					strcpy(result, this);
+				else
+					strcat(result, this);
+				strcat(result, ",");
+				goto next;
+			}
+		}
+
+		if (!strcmp(this, "rw") && hasopt(opt2, "ro"))
+			goto next;
+		if (!strcmp(this, "ro") && hasopt(opt2, "rw"))
+			goto next;
+		if (!strcmp(this, "bg") && hasopt(opt2, "fg"))
+			goto next;
+		if (!strcmp(this, "fg") && hasopt(opt2, "bg"))
+			goto next;
+		if (!strcmp(this, "bg") && hasopt(opt2, "fg"))
+			goto next;
+		if (!strcmp(this, "soft") && hasopt(opt2, "hard"))
+			goto next;
+		if (!strcmp(this, "hard") && hasopt(opt2, "soft"))
+			goto next;
+
+		if (!strncmp(this, "no", 2)) {
+			strcpy(neg, this + 2);
+			if (hasopt(opt2, neg))
+				goto next;
+		} else {
+			strcpy(neg, "no");
+			strcat(neg, this);
+			if (hasopt(opt2, neg))
+				goto next;
+		}
+
+		if (hasopt(opt2, tok))
+			goto next;
+
+		if (!*result)
+			strcpy(result, this);
+		else
+			strcat(result, this);
+		strcat(result, ",");
+next:
+		tok = strtok_r(NULL, ",", &ptr);
+	}
+
+	if (!*result)
+		strcpy(result, opt2);
+	else
+		strcat(result, opt2);
+
+	len = strlen(result);
+	if (len && result[len - 1] == ',')
+		result[len - 1] = '\0';
+
+	return strdup(result);
 }
 
 void free_map_type_info(struct map_type_info *info)
