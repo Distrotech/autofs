@@ -671,14 +671,13 @@ int mount_autofs_offset(struct autofs_point *ap, struct mapent *me, const char *
 		if (!(ret == -1 && errno == ENOENT))
 			return MOUNT_OFFSET_FAIL;
 	} else {
-/*
 		if (is_mounted(_PROC_MOUNTS, me->key, MNTS_AUTOFS)) {
 			if (ap->state != ST_READMAP)
 				warn(ap->logopt,
 				     "trigger %s already mounted", me->key);
 			return MOUNT_OFFSET_OK;
 		}
-*/
+
 		if (me->ioctlfd != -1) {
 			error(ap->logopt, "active offset mount %s", me->key);
 			return MOUNT_OFFSET_FAIL;
