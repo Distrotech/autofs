@@ -476,6 +476,7 @@ static enum nsswitch_status read_map_source(struct nss_source *this,
 	}
 
 	this->source[4] = '\0';
+	tmap.flags = map->flags;
 	tmap.type = this->source;
 	tmap.format = map->format;
 	tmap.lookup = map->lookup;
@@ -871,6 +872,7 @@ static enum nsswitch_status lookup_map_name(struct nss_source *this,
 	}
 
 	this->source[4] = '\0';
+	tmap.flags = map->flags;
 	tmap.type = this->source;
 	tmap.format = map->format;
 	tmap.mc = map->mc;

@@ -178,6 +178,8 @@ master_add_map_source(struct master_mapent *entry,
 			return NULL;
 		}
 		source->format = nformat;
+		if (!strcmp(nformat, "amd"))
+			source->flags |= MAP_FLAG_FORMAT_AMD;
 	}
 
 	source->age = age;
@@ -430,6 +432,8 @@ master_add_source_instance(struct map_source *source, const char *type, const ch
 			return NULL;
 		}
 		new->format = nformat;
+		if (!strcmp(nformat, "amd"))
+			new->flags |= MAP_FLAG_FORMAT_AMD;
 	}
 
 	new->age = age;

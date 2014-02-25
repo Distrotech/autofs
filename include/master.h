@@ -20,7 +20,10 @@
 #ifndef MASTER_H
 #define MASTER_H
 
+#define MAP_FLAG_FORMAT_AMD	0x0001
+
 struct map_source {
+	unsigned int flags;
 	char *type;
 	char *format;
 	time_t exp_timeout;		/* Timeout for expiring mounts */
