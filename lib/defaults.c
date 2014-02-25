@@ -18,6 +18,7 @@
 #include <stdio.h>
 #include <ctype.h>
 #include <string.h>
+#include <sys/utsname.h>
 #include <sys/stat.h>
 
 #include "config.h"
@@ -30,9 +31,11 @@
 #include "automount.h"
 
 #define AUTOFS_GLOBAL_SECTION		"autofs"
+#define AMD_GLOBAL_SECTION		"amd"
 
 #define DEFAULT_CONFIG_FILE		AUTOFS_CONF_DIR "/autofs"
 #define MAX_LINE_LEN			256
+#define MAX_SECTION_NAME		MAX_LINE_LEN
 
 #define NAME_MASTER_MAP			"master_map_name"
 
@@ -61,20 +64,84 @@
 
 #define NAME_MAP_HASH_TABLE_SIZE	"map_hash_table_size"
 
+#define NAME_AMD_ARCH				"arch"
+#define NAME_AMD_AUTO_ATTRCACHE			"auto_attrcache"
+#define NAME_AMD_AUTO_DIR			"auto_dir"
+#define NAME_AMD_AUTOFS_USE_LOFS		"autofs_use_lofs"
+#define NAME_AMD_BROWSABLE_DIRS			"browsable_dirs"
+#define NAME_AMD_CACHE_DURATION			"cache_duration"
+#define NAME_AMD_CLUSTER			"cluster"
+#define NAME_AMD_DEBUG_MTAB_FILE		"debug_mtab_file"
+#define NAME_AMD_DEBUG_OPTIONS			"debug_options"
+#define NAME_AMD_DISMOUNT_INTERVAL		"dismount_interval"
+#define NAME_AMD_DOMAIN_STRIP			"domain_strip"
+#define NAME_AMD_EXEC_MAP_TIMEOUT		"exec_map_timeout"
+#define NAME_AMD_FORCED_UMOUNTS			"forced_unmounts"
+#define NAME_AMD_FULLY_QUALIFIED_HOSTS		"fully_qualified_hosts"
+#define NAME_AMD_FULL_OS			"full_os"
+#define NAME_AMD_HESIOD_BASE			"hesiod_base"
+#define NAME_AMD_KARCH				"karch"
+#define NAME_AMD_LDAP_BASE			"ldap_base"
+#define NAME_AMD_LDAP_CACHE_MAXMEM		"ldap_cache_maxmem"
+#define NAME_AMD_LDAP_CACHE_SECONDS		"ldap_cache_seconds"
+#define NAME_AMD_LDAP_HOSTPORTS			"ldap_hostports"
+#define NAME_AMD_LDAP_PROTO_VERSION		"ldap_proto_version"
+#define NAME_AMD_SUB_DOMAIN			"local_domain"
+#define NAME_AMD_LOCALHOST_ADDRESS		"localhost_address"
+#define NAME_AMD_LOG_FILE			"log_file"
+#define NAME_AMD_LOG_OPTIONS			"log_options"
+#define NAME_AMD_MAP_DEFAULTS			"map_defaults"
+#define NAME_AMD_MAP_OPTIONS			"map_options"
+#define NAME_AMD_MAP_RELOAD_INTERVAL		"map_reload_interval"
+#define NAME_AMD_MAP_TYPE			"map_type"
+#define NAME_AMD_MOUNT_TYPE			"mount_type"
+#define NAME_AMD_PID_FILE			"pid_file"
+#define NAME_AMD_PORTMAP_PROGRAM		"portmap_program"
+#define NAME_AMD_PREFERRED_AMQ_PORT		"preferred_amq_port"
+#define NAME_AMD_NFS_ALLOW_ANY_INTERFACE	"nfs_allow_any_interface"
+#define NAME_AMD_NFS_ALLOW_INSECURE_PORT	"nfs_allow_insecure_port"
+#define NAME_AMD_NFS_PROTO			"nfs_proto"
+#define NAME_AMD_NFS_RETRANSMIT_COUNTER		"nfs_retransmit_counter"
+#define NAME_AMD_NFS_RETRANSMIT_COUNTER_UDP	"nfs_retransmit_counter_udp"
+#define NAME_AMD_NFS_RETRANSMIT_COUNTER_TCP	"nfs_retransmit_counter_tcp"
+#define NAME_AMD_NFS_RETRANSMIT_COUNTER_TOPLVL	"nfs_retransmit_counter_toplvl"
+#define NAME_AMD_NFS_RETRY_INTERVAL		"nfs_retry_interval"
+#define NAME_AMD_NFS_RETRY_INTERVAL_UDP		"nfs_retry_interval_udp"
+#define NAME_AMD_NFS_RETRY_INTERVAL_TCP		"nfs_retry_interval_tcp"
+#define NAME_AMD_NFS_RETRY_INTERVAL_TOPLVL	"nfs_retry_interval_toplvl"
+#define NAME_AMD_NFS_VERS			"nfs_vers"
+#define NAME_AMD_NFS_VERS_PING			"nfs_vers_ping"
+#define NAME_AMD_NIS_DOMAIN			"nis_domain"
+#define NAME_AMD_NORMALIZE_HOSTNAMES		"normalize_hostnames"
+#define NAME_AMD_NORMALIZE_SLASHES		"normalize_slashes"
+#define NAME_AMD_OS				"os"
+#define NAME_AMD_OSVER				"osver"
+#define NAME_AMD_PLOCK				"plock"
+#define NAME_AMD_PRINT_PID			"print_pid"
+#define NAME_AMD_PRINT_VERSION			"print_version"
+#define NAME_AMD_RESTART_MOUNTS			"restart_mounts"
+#define NAME_AMD_SEARCH_PATH			"search_path"
+#define NAME_AMD_SELECTORS_ON_DEFAULT		"selectors_on_default"
+#define NAME_AMD_SELECTORS_IN_DEFAULTS		"selectors_in_defaults"
+#define NAME_AMD_SHOW_STATFS_ENTRIES		"show_statfs_entries"
+#define NAME_AMD_SUN_MAP_SYNTAX			"sun_map_syntax"
+#define NAME_AMD_TRUNCATE_LOG			"truncate_log"
+#define NAME_AMD_UMOUNT_ON_EXIT			"unmount_on_exit"
+#define NAME_AMD_USE_TCPWRAPPERS		"use_tcpwrappers"
+#define NAME_AMD_VENDOR				"vendor"
+
 /* Status returns */
 #define CFG_OK		0x0000
 #define CFG_FAIL	0x0001
 #define CFG_EXISTS	0x0002
 #define CFG_NOTFOUND	0x0004
 
-/* Config entry flags */
-#define CONF_ENV		0x00000001
-
 #define CFG_TABLE_SIZE	128
 
 static const char *default_master_map_name = DEFAULT_MASTER_MAP_NAME;
 static const char *default_auth_conf_file  = DEFAULT_AUTH_CONF_FILE;
 static const char *autofs_gbl_sec	   = AUTOFS_GLOBAL_SECTION;
+static const char *amd_gbl_sec		   = AMD_GLOBAL_SECTION;
 
 struct conf_option {
 	char *section;
@@ -288,30 +355,211 @@ error:
 	return 0;
 }
 
+static int conf_load_amd_defaults(void)
+{
+	struct utsname uts;
+	const char *sec = amd_gbl_sec;
+	char *host_os_name, *host_os_version, *host_arch;
+	int ret;
+
+	if (uname(&uts)) {
+		host_os_name = uts.sysname;
+		host_os_version = uts.release;
+		host_arch = uts.machine;
+	} else {
+		host_os_name = NULL;
+		host_os_version = NULL;
+		host_arch = NULL;
+	}
+
+	ret = conf_update(sec, NAME_AMD_ARCH, host_arch, CONF_NONE);
+	if (ret == CFG_FAIL)
+		goto error;
+
+	ret = conf_update(sec, NAME_AMD_KARCH, host_arch, CONF_NONE);
+	if (ret == CFG_FAIL)
+		goto error;
+
+	ret = conf_update(sec, NAME_AMD_OS, host_os_name, CONF_NONE);
+	if (ret == CFG_FAIL)
+		goto error;
+
+	ret = conf_update(sec, NAME_AMD_OSVER, host_os_version, CONF_NONE);
+	if (ret == CFG_FAIL)
+		goto error;
+
+	ret = conf_update(sec, NAME_AMD_AUTO_DIR,
+			  DEFAULT_AMD_AUTO_DIR, CONF_NONE);
+	if (ret == CFG_FAIL)
+		goto error;
+
+	ret = conf_update(sec, NAME_AMD_AUTOFS_USE_LOFS,
+			  DEFAULT_AMD_AUTO_DIR, CONF_NONE);
+	if (ret == CFG_FAIL)
+		goto error;
+
+	ret = conf_update(sec, NAME_AMD_BROWSABLE_DIRS,
+			  DEFAULT_AMD_BROWSABLE_DIRS, CONF_NONE);
+	if (ret == CFG_FAIL)
+		goto error;
+
+	ret = conf_update(sec, NAME_AMD_CLUSTER,
+			  DEFAULT_AMD_CLUSTER, CONF_NONE);
+	if (ret == CFG_FAIL)
+		goto error;
+
+	/*
+	 * DISMOUNT_INTERVAL defers to the autofs default so we
+	 * don't set an amd default in the configuration.
+	 */
+	/*ret = conf_update(sec, NAME_AMD_DISMOUNT_INTERVAL,
+			  DEFAULT_AMD_DISMOUNT_INTERVAL, CONF_NONE);
+	if (ret == CFG_FAIL)
+		goto error;*/
+
+	ret = conf_update(sec, NAME_AMD_DOMAIN_STRIP,
+			  DEFAULT_AMD_DOMAIN_STRIP, CONF_NONE);
+	if (ret == CFG_FAIL)
+		goto error;
+
+	ret = conf_update(sec, NAME_AMD_EXEC_MAP_TIMEOUT,
+			  DEFAULT_AMD_EXEC_MAP_TIMEOUT, CONF_NONE);
+	if (ret == CFG_FAIL)
+		goto error;
+
+	ret = conf_update(sec, NAME_AMD_FORCED_UMOUNTS,
+			  DEFAULT_AMD_FORCED_UMOUNTS, CONF_NONE);
+	if (ret == CFG_FAIL)
+		goto error;
+
+	ret = conf_update(sec, NAME_AMD_FULLY_QUALIFIED_HOSTS,
+			  DEFAULT_AMD_FULLY_QUALIFIED_HOSTS, CONF_NONE);
+	if (ret == CFG_FAIL)
+		goto error;
+
+	ret = conf_update(sec, NAME_AMD_FULL_OS,
+			  DEFAULT_AMD_FULL_OS, CONF_NONE);
+	if (ret == CFG_FAIL)
+		goto error;
+
+	ret = conf_update(sec, NAME_AMD_HESIOD_BASE,
+			  DEFAULT_AMD_HESIOD_BASE, CONF_NONE);
+	if (ret == CFG_FAIL)
+		goto error;
+
+	ret = conf_update(sec, NAME_AMD_KARCH, host_arch, CONF_NONE);
+	if (ret == CFG_FAIL)
+		goto error;
+
+	ret = conf_update(sec, NAME_AMD_LDAP_BASE,
+			  DEFAULT_AMD_LDAP_BASE, CONF_NONE);
+	if (ret == CFG_FAIL)
+		goto error;
+
+	ret = conf_update(sec, NAME_AMD_LDAP_HOSTPORTS,
+			  DEFAULT_AMD_LDAP_HOSTPORTS, CONF_NONE);
+	if (ret == CFG_FAIL)
+		goto error;
+
+	ret = conf_update(sec, NAME_AMD_SUB_DOMAIN,
+			  DEFAULT_AMD_SUB_DOMAIN, CONF_NONE);
+	if (ret == CFG_FAIL)
+		goto error;
+
+	ret = conf_update(sec, NAME_AMD_LOCALHOST_ADDRESS,
+			  DEFAULT_AMD_LOCALHOST_ADDRESS, CONF_NONE);
+	if (ret == CFG_FAIL)
+		goto error;
+
+	ret = conf_update(sec, NAME_AMD_LOG_OPTIONS,
+			  DEFAULT_AMD_LOG_OPTIONS, CONF_NONE);
+	if (ret == CFG_FAIL)
+		goto error;
+
+	ret = conf_update(sec, NAME_AMD_MAP_DEFAULTS,
+			  DEFAULT_AMD_MAP_DEFAULTS, CONF_NONE);
+	if (ret == CFG_FAIL)
+		goto error;
+
+	ret = conf_update(sec, NAME_AMD_MAP_TYPE,
+			  DEFAULT_AMD_MAP_TYPE, CONF_NONE);
+	if (ret == CFG_FAIL)
+		goto error;
+
+	ret = conf_update(sec, NAME_AMD_NIS_DOMAIN,
+			  DEFAULT_AMD_NIS_DOMAIN, CONF_NONE);
+	if (ret == CFG_FAIL)
+		goto error;
+
+	ret = conf_update(sec, NAME_AMD_NORMALIZE_HOSTNAMES,
+			  DEFAULT_AMD_NORMALIZE_HOSTNAMES, CONF_NONE);
+	if (ret == CFG_FAIL)
+		goto error;
+
+	ret = conf_update(sec, NAME_AMD_NORMALIZE_SLASHES,
+			  DEFAULT_AMD_NORMALIZE_SLASHES, CONF_NONE);
+	if (ret == CFG_FAIL)
+		goto error;
+
+	ret = conf_update(sec, NAME_AMD_OS, host_os_name, CONF_NONE);
+	if (ret == CFG_FAIL)
+		goto error;
+
+	ret = conf_update(sec, NAME_AMD_RESTART_MOUNTS,
+			  DEFAULT_AMD_RESTART_MOUNTS, CONF_NONE);
+	if (ret == CFG_FAIL)
+		goto error;
+
+	ret = conf_update(sec, NAME_AMD_SEARCH_PATH,
+			  DEFAULT_AMD_SEARCH_PATH, CONF_NONE);
+	if (ret == CFG_FAIL)
+		goto error;
+
+	/* selectors_on_default is depricated, use selectors_in_defaults */
+	ret = conf_update(sec, NAME_AMD_SELECTORS_ON_DEFAULT,
+			  DEFAULT_AMD_SELECTORS_IN_DEFAULTS, CONF_NONE);
+	if (ret == CFG_FAIL)
+		goto error;
+
+	ret = conf_update(sec, NAME_AMD_SELECTORS_IN_DEFAULTS,
+			  DEFAULT_AMD_SELECTORS_IN_DEFAULTS, CONF_NONE);
+	if (ret == CFG_FAIL)
+		goto error;
+
+	ret = conf_update(sec, NAME_AMD_UMOUNT_ON_EXIT,
+			  DEFAULT_AMD_UMOUNT_ON_EXIT, CONF_NONE);
+	if (ret == CFG_FAIL)
+		goto error;
+
+	ret = conf_update(sec, NAME_AMD_VENDOR,
+			  DEFAULT_AMD_VENDOR, CONF_NONE);
+	if (ret == CFG_FAIL)
+		goto error;
+
+	return 1;
+
+error:
+	return 0;
+}
+
 static int conf_add(const char *section, const char *key, const char *value, unsigned long flags)
 {
 	struct conf_option *co;
 	char *sec, *name, *val, *tmp;
 	unsigned int size = CFG_TABLE_SIZE;
 	u_int32_t index;
-	int ret;
+	int ret = CFG_FAIL;
 
-	sec = name = val = NULL;
-
-	co = conf_lookup(section, key);
-	if (co) {
-		ret = CFG_EXISTS;
-		goto error;
-	}
-
-	ret = CFG_FAIL;
+	sec = name = val = tmp = NULL;
 
 	/* Environment overrides file value */
-	if (((flags & CFG_ENV) && (tmp = getenv(key))) || value) {
+	if (((flags & CONF_ENV) && (tmp = getenv(key))) || value) {
 		if (tmp)
 			val = strdup(tmp);
-		else
-			val = strdup(value);
+		else {
+			if (value)
+				val = strdup(value);
+		}
 		if (!val)
 			goto error;
 	}
@@ -335,7 +583,7 @@ static int conf_add(const char *section, const char *key, const char *value, uns
 	co->next = NULL;
 
 	/* Don't change user set values in the environment */
-	if (flags & CONF_ENV)
+	if (flags & CONF_ENV && value)
 		setenv(name, value, 0);
 
 	index = hash(key, size);
@@ -386,7 +634,7 @@ static void conf_delete(const char *section, const char *key)
 
 	free(co->section);
 	free(co->name);
-	if (co->value);
+	if (co->value)
 		free(co->value);
 	free(co);
 }
@@ -403,13 +651,15 @@ static int conf_update(const char *section,
 	if (!co)
 		ret = conf_add(section, key, value, flags);
 	else {
-		char *val = NULL, *tmp;
+		char *val = NULL, *tmp = NULL;
 		/* Environment overrides file value */
 		if (((flags & CONF_ENV) && (tmp = getenv(key))) || value) {
 			if (tmp)
 				val = strdup(tmp);
-			else
-				val = strdup(value);
+			else {
+				if (value)
+					val = strdup(value);
+			}
 			if (!val)
 				goto error;
 		}
@@ -419,7 +669,7 @@ static int conf_update(const char *section,
 		if (flags)
 			co->flags = flags;
 		/* Don't change user set values in the environment */
-		if (flags & CONF_ENV)
+		if (flags & CONF_ENV && value)
 			setenv(key, value, 0);
 	}
 
@@ -456,14 +706,38 @@ static struct conf_option *conf_lookup(const char *section, const char *key)
 	return co;
 }
 
+static unsigned int conf_section_exists(const char *section)
+{
+	struct conf_option *co;
+	int ret;
+
+	if (!section)
+		return 0;
+
+	ret = 0;
+	pthread_mutex_lock(&conf_mutex);
+	co = conf_lookup(section, section);
+	if (co)
+		ret = 1;
+	pthread_mutex_unlock(&conf_mutex);
+
+	return ret;
+}
+
 /*
  * We've changed the key names so we need to check for the
  * config key and it's old name for backward conpatibility.
 */
-static int check_set_config_value(const char *res, const char *value)
+static int check_set_config_value(const char *section,
+				  const char *res, const char *value)
 {
-	const char *sec = autofs_gbl_sec;
+	const char *sec;
 	int ret;
+
+	if (section)
+		sec = section;
+	else
+		sec = autofs_gbl_sec;
 
 	if (!strcasecmp(res, NAME_LDAP_URI))
 		ret = conf_add(sec, res, value, 0);
@@ -475,14 +749,15 @@ static int check_set_config_value(const char *res, const char *value)
 	return ret;
 }
 
-static int parse_line(char *line, char **res, char **value)
+static int parse_line(char *line, char **sec, char **res, char **value)
 {
 	char *key, *val, *trailer;
+	char *tmp;
 	int len;
 
 	key = line;
 
-	if (*key == '#' || !isalpha(*key))
+	if (*key == '#' || (*key != '[' && !isalpha(*key)))
 		return 0;
 
 	while (*key && *key == ' ')
@@ -491,10 +766,33 @@ static int parse_line(char *line, char **res, char **value)
 	if (!*key)
 		return 0;
 
+	if (*key == '[') {
+		char *tmp;
+		while (*key && (*key == '[' || *key == ' '))
+			key++;
+		tmp = strchr(key, ']');
+		if (!tmp)
+			return 0;
+		*tmp = ' ';
+		while (*tmp && *tmp == ' ') {
+			*tmp = '\0';
+			tmp--;
+		}
+		*sec = key;
+		*res = NULL;
+		*value = NULL;
+		return 1;
+	}
+
 	if (!(val = strchr(key, '=')))
 		return 0;
 
+	tmp = val;
+
 	*val++ = '\0';
+
+	while (*(--tmp) == ' ')
+		*tmp = '\0';
 
 	while (*val && (*val == '"' || isblank(*val)))
 		val++;
@@ -515,10 +813,95 @@ static int parse_line(char *line, char **res, char **value)
 	while (*trailer && (*trailer == '"' || isblank(*trailer)))
 		*(trailer--) = '\0';;
 
+	*sec = NULL;
 	*res = key;
 	*value = val;
 
 	return 1;
+}
+
+static int read_config(unsigned int to_syslog, FILE *f, const char *name)
+{
+	char buf[MAX_LINE_LEN];
+	char secbuf[MAX_SECTION_NAME];
+	char *new_sec;
+	char *res;
+
+	new_sec = NULL;
+	while ((res = fgets(buf, MAX_LINE_LEN, f))) {
+		char *sec, *key, *value;
+		sec = key = value = NULL;
+		if (!parse_line(res, &sec, &key, &value))
+			continue;
+		if (sec) {
+			strcpy(secbuf, sec);
+			new_sec = &secbuf[0];
+			conf_update(sec, sec, NULL, 0);
+			continue;
+		}
+		if (!strcasecmp(res, NAME_AMD_MOUNT_TYPE)) {
+			message(to_syslog,
+				"%s is always autofs, ignored", res);
+			continue;
+		}
+		if (!strcasecmp(res, NAME_AMD_PID_FILE)) {
+			message(to_syslog,
+				"%s must be specified as a command line"
+				" option, ignored", res);
+			continue;
+		}
+		if (!strcasecmp(res, NAME_AMD_RESTART_MOUNTS)) {
+			message(to_syslog,
+				"%s is always done by autofs, ignored", res);
+			continue;
+		}
+		if (!strcasecmp(res, NAME_AMD_USE_TCPWRAPPERS) ||
+		    !strcasecmp(res, NAME_AMD_AUTO_ATTRCACHE) ||
+		    !strcasecmp(res, NAME_AMD_PRINT_PID) ||
+		    !strcasecmp(res, NAME_AMD_PRINT_VERSION) ||
+		    !strcasecmp(res, NAME_AMD_LOG_FILE) ||
+		    !strcasecmp(res, NAME_AMD_PREFERRED_AMQ_PORT) ||
+		    !strcasecmp(res, NAME_AMD_TRUNCATE_LOG) ||
+		    !strcasecmp(res, NAME_AMD_DEBUG_MTAB_FILE) ||
+		    !strcasecmp(res, NAME_AMD_DEBUG_OPTIONS) ||
+		    !strcasecmp(res, NAME_AMD_SUN_MAP_SYNTAX) ||
+		    !strcasecmp(res, NAME_AMD_PORTMAP_PROGRAM) ||
+		    !strcasecmp(res, NAME_AMD_NFS_VERS) ||
+		    !strcasecmp(res, NAME_AMD_NFS_VERS_PING) ||
+		    !strcasecmp(res, NAME_AMD_NFS_PROTO) ||
+		    !strcasecmp(res, NAME_AMD_NFS_ALLOW_ANY_INTERFACE) ||
+		    !strcasecmp(res, NAME_AMD_NFS_ALLOW_INSECURE_PORT) ||
+		    !strcasecmp(res, NAME_AMD_NFS_RETRANSMIT_COUNTER) ||
+		    !strcasecmp(res, NAME_AMD_NFS_RETRANSMIT_COUNTER_UDP) ||
+		    !strcasecmp(res, NAME_AMD_NFS_RETRANSMIT_COUNTER_TCP) ||
+		    !strcasecmp(res, NAME_AMD_NFS_RETRANSMIT_COUNTER_TOPLVL) ||
+		    !strcasecmp(res, NAME_AMD_NFS_RETRY_INTERVAL) ||
+		    !strcasecmp(res, NAME_AMD_NFS_RETRY_INTERVAL_UDP) ||
+		    !strcasecmp(res, NAME_AMD_NFS_RETRY_INTERVAL_TCP) ||
+		    !strcasecmp(res, NAME_AMD_NFS_RETRY_INTERVAL_TOPLVL) ||
+		    !strcasecmp(res, NAME_AMD_LDAP_CACHE_MAXMEM) ||
+		    !strcasecmp(res, NAME_AMD_LDAP_CACHE_SECONDS) ||
+		    !strcasecmp(res, NAME_AMD_LDAP_PROTO_VERSION) ||
+		    !strcasecmp(res, NAME_AMD_SHOW_STATFS_ENTRIES) ||
+		    !strcasecmp(res, NAME_AMD_CACHE_DURATION) ||
+		    !strcasecmp(res, NAME_AMD_MAP_RELOAD_INTERVAL) ||
+		    !strcasecmp(res, NAME_AMD_MAP_OPTIONS) ||
+		    !strcasecmp(res, NAME_AMD_PLOCK)) {
+			message(to_syslog,
+				"%s is not used by autofs, ignored", res);
+			continue;
+		}
+		check_set_config_value(new_sec, key, value);
+	}
+
+	if (!feof(f) || ferror(f)) {
+		message(to_syslog,
+			"fgets returned error %d while reading config %s",
+			ferror(f), name);
+		return 0;
+	}
+
+	return 0;
 }
 
 /*
@@ -531,23 +914,11 @@ static int parse_line(char *line, char **res, char **value)
 unsigned int defaults_read_config(unsigned int to_syslog)
 {
 	FILE *f;
-	char buf[MAX_LINE_LEN];
 	struct stat stb;
-	char *res;
 	int ret;
 
-	f = open_fopen_r(DEFAULT_CONFIG_FILE);
-	if (!f)
-		return 0;
-
 	pthread_mutex_lock(&conf_mutex);
-	if (config) {
-		if (fstat(fileno(f), &stb) != -1) {
-			/* Config hasn't been updated */
-			if (stb.st_mtime <= config->modified)
-				goto out;
-		}
-	} else {
+	if (!config) {
 		if (conf_init()) {
 			pthread_mutex_unlock(&conf_mutex);
 			message(to_syslog, "failed to init config");
@@ -563,29 +934,39 @@ unsigned int defaults_read_config(unsigned int to_syslog)
 		return 0;
 	}
 
-	while ((res = fgets(buf, MAX_LINE_LEN, f))) {
-		char *key, *value;
-		if (!parse_line(res, &key, &value))
-			continue;
-		check_set_config_value(key, value);
+	ret = conf_load_amd_defaults();
+	if (!ret) {
+		pthread_mutex_unlock(&conf_mutex);
+		message(to_syslog, "failed to reset amd default config");
+		return 0;
 	}
+
+	f = open_fopen_r(DEFAULT_CONFIG_FILE);
+	if (!f) {
+		message(to_syslog, "failed to to open config %s",
+			DEFAULT_CONFIG_FILE);
+		goto out;
+	}
+
+	if (fstat(fileno(f), &stb) != -1) {
+		/* Config hasn't been updated */
+		if (stb.st_mtime <= config->modified) {
+			fclose(f);
+			goto out;
+		}
+	}
+
+	ret = read_config(to_syslog, f, DEFAULT_CONFIG_FILE);
 
 	if (fstat(fileno(f), &stb) != -1)
 		config->modified = stb.st_mtime;
 	else
 		message(to_syslog, "failed to update config modified time");
 
-	if (!feof(f) || ferror(f)) {
-		pthread_mutex_unlock(&conf_mutex);
-		message(to_syslog,
-			"fgets returned error %d while reading %s",
-			ferror(f), DEFAULT_CONFIG_FILE);
-		fclose(f);
-		return 0;
-	}
+	fclose(f);
+
 out:
 	pthread_mutex_unlock(&conf_mutex);
-	fclose(f);
 	return 1;
 }
 
@@ -1101,3 +1482,269 @@ unsigned int defaults_get_map_hash_table_size(void)
 	return (unsigned int) size;
 }
 
+unsigned int conf_amd_mount_section_exists(const char *section)
+{
+	return conf_section_exists(section);
+}
+
+char *conf_amd_get_arch(void)
+{
+	return conf_get_string(amd_gbl_sec, NAME_AMD_ARCH);
+}
+
+char *conf_amd_get_karch(void)
+{
+	char *tmp = conf_get_string(amd_gbl_sec, NAME_AMD_KARCH);
+	if (!tmp)
+		tmp = conf_amd_get_arch();
+
+	return tmp;
+}
+
+char *conf_amd_get_os(void)
+{
+	return conf_get_string(amd_gbl_sec, NAME_AMD_OS);
+}
+
+char *conf_amd_get_os_ver(void)
+{
+	return conf_get_string(amd_gbl_sec, NAME_AMD_OSVER);
+}
+
+char *conf_amd_get_vendor(void)
+{
+	return conf_get_string(amd_gbl_sec, NAME_AMD_VENDOR);
+}
+
+char *conf_amd_get_full_os(void)
+{
+	return conf_get_string(amd_gbl_sec, NAME_AMD_FULL_OS);
+}
+
+char *conf_amd_get_auto_dir(void)
+{
+	char *tmp = conf_get_string(amd_gbl_sec, NAME_AMD_AUTO_DIR);
+	if (!tmp)
+		return strdup(DEFAULT_AMD_AUTO_DIR);
+
+	return tmp;
+}
+
+char *conf_amd_get_cluster(void)
+{
+	return conf_get_string(amd_gbl_sec, NAME_AMD_CLUSTER);
+}
+
+unsigned int conf_amd_get_exec_map_timeout(void)
+{
+	long tmp = conf_get_number(amd_gbl_sec, NAME_AMD_EXEC_MAP_TIMEOUT);
+	if (tmp == -1)
+		tmp = atoi(DEFAULT_AMD_EXEC_MAP_TIMEOUT);
+
+	return (unsigned int) tmp;
+}
+
+char *conf_amd_get_hesiod_base(void)
+{
+	return conf_get_string(amd_gbl_sec, NAME_AMD_HESIOD_BASE);
+}
+
+char *conf_amd_get_ldap_base(void)
+{
+	return conf_get_string(amd_gbl_sec, NAME_AMD_LDAP_BASE);
+}
+
+char *conf_amd_get_ldap_hostports(void)
+{
+	return conf_get_string(amd_gbl_sec, NAME_AMD_LDAP_HOSTPORTS);
+}
+
+unsigned int conf_amd_get_ldap_proto_version(void)
+{
+	long tmp = conf_get_number(amd_gbl_sec, NAME_AMD_LDAP_PROTO_VERSION);
+	if (tmp == -1)
+		tmp = atoi(DEFAULT_AMD_LDAP_PROTO_VERSION);
+
+	return (unsigned int) tmp;
+}
+
+char *conf_amd_get_sub_domain(void)
+{
+	return conf_get_string(amd_gbl_sec, NAME_AMD_SUB_DOMAIN);
+}
+
+char *conf_amd_get_localhost_address(void)
+{
+	return conf_get_string(amd_gbl_sec, NAME_AMD_LOCALHOST_ADDRESS);
+}
+
+unsigned int conf_amd_get_log_options(void)
+{
+	int log_level = -1;
+	char *tmp = conf_get_string(amd_gbl_sec, NAME_AMD_LOG_OPTIONS);
+	if (tmp) {
+		if (strstr(tmp, "debug") || strstr(tmp, "all")) {
+			if (log_level < LOG_DEBUG)
+				log_level = LOG_DEBUG;
+		}
+		if (strstr(tmp, "info") ||
+		    strstr(tmp, "user") ||
+		    strcmp(tmp, "defaults")) {
+			if (log_level < LOG_INFO)
+				log_level = LOG_INFO;
+		}
+		if (strstr(tmp, "notice")) {
+			if (log_level < LOG_NOTICE)
+				log_level = LOG_NOTICE;
+		}
+		if (strstr(tmp, "warn") ||
+		    strstr(tmp, "map") ||
+		    strstr(tmp, "stats") ||
+		    strstr(tmp, "warning")) {
+			if (log_level < LOG_WARNING)
+				log_level = LOG_WARNING;
+		}
+		if (strstr(tmp, "error")) {
+			if (log_level < LOG_ERR)
+				log_level = LOG_ERR;
+		}
+		if (strstr(tmp, "fatal")) {
+			if (log_level < LOG_CRIT)
+				log_level = LOG_CRIT;
+		}
+	}
+
+	if (log_level == -1)
+		log_level = LOG_ERR;
+
+	return (unsigned int) log_level;
+}
+
+char *conf_amd_get_nis_domain(void)
+{
+	return conf_get_string(amd_gbl_sec, NAME_AMD_NIS_DOMAIN);
+}
+
+unsigned int conf_amd_set_nis_domain(const char *domain)
+{
+	int ret;
+	ret = conf_update(amd_gbl_sec, NAME_AMD_NIS_DOMAIN, domain, CONF_NONE);
+
+	return (unsigned int) ret;
+}
+
+char *conf_amd_get_map_defaults(const char *section)
+{
+	char *tmp = NULL;
+	if (section)
+		tmp = conf_get_string(section, NAME_AMD_MAP_DEFAULTS);
+	if (!tmp)
+		tmp = conf_get_string(amd_gbl_sec, NAME_AMD_MAP_DEFAULTS);
+
+	return tmp;
+}
+
+char *conf_amd_get_map_type(const char *section)
+{
+	char *tmp = NULL;
+	if (section)
+		tmp = conf_get_string(section, NAME_AMD_MAP_TYPE);
+	if (!tmp)
+		tmp = conf_get_string(amd_gbl_sec, NAME_AMD_MAP_TYPE);
+
+	return tmp;
+}
+
+char *conf_amd_get_search_path(const char *section)
+{
+	char *tmp = NULL;
+	if (section)
+		tmp = conf_get_string(section, NAME_AMD_SEARCH_PATH);
+	if (!tmp)
+		tmp = conf_get_string(amd_gbl_sec, NAME_AMD_SEARCH_PATH);
+
+	return tmp;
+}
+
+unsigned int conf_amd_get_dismount_interval(const char *section)
+{
+	long tmp = -1;
+	if (section)
+		tmp = conf_get_number(section, NAME_AMD_DISMOUNT_INTERVAL);
+	if (tmp == -1)
+		tmp = conf_get_number(amd_gbl_sec, NAME_AMD_DISMOUNT_INTERVAL);
+	if (tmp == -1)
+		tmp = defaults_get_timeout();
+	/*
+	 * This won't happen as defaults_get_timeout() will return
+	 * the autofs setting which is used if no other setting is
+	 * found.
+	 */
+	if (tmp == -1)
+		tmp = atoi(DEFAULT_TIMEOUT);
+
+	return (unsigned int) tmp;
+}
+
+unsigned long conf_amd_get_flags(const char *section)
+{
+	const char *amd = amd_gbl_sec;
+	unsigned long flags, tmp;
+
+	/* Always true for us */
+	flags = CONF_MOUNT_TYPE_AUTOFS;
+
+	tmp = -1;
+	if (section)
+		tmp = conf_get_yesno(section, NAME_AMD_BROWSABLE_DIRS);
+	if (tmp == -1)
+		tmp = conf_get_yesno(amd, NAME_AMD_BROWSABLE_DIRS);
+	if (tmp)
+		flags |= CONF_BROWSABLE_DIRS;
+
+	tmp = -1;
+	if (section)
+		tmp = conf_get_yesno(section, NAME_AMD_SELECTORS_IN_DEFAULTS);
+	if (tmp == -1)
+		tmp = conf_get_yesno(amd, NAME_AMD_SELECTORS_IN_DEFAULTS);
+	if (tmp)
+		flags |= CONF_SELECTORS_IN_DEFAULTS;
+
+	tmp = conf_get_yesno(amd, NAME_AMD_NORMALIZE_HOSTNAMES);
+	if (tmp)
+		flags |= CONF_NORMALIZE_HOSTNAMES;
+
+	tmp = conf_get_yesno(amd, NAME_AMD_RESTART_MOUNTS);
+	if (tmp)
+		flags |= CONF_RESTART_EXISTING_MOUNTS;
+
+	tmp = conf_get_yesno(amd, NAME_AMD_FULLY_QUALIFIED_HOSTS);
+	if (tmp)
+		flags |= CONF_FULLY_QUALIFIED_HOSTS;
+
+	tmp = conf_get_yesno(amd, NAME_AMD_UMOUNT_ON_EXIT);
+	if (tmp)
+		flags |= CONF_UNMOUNT_ON_EXIT;
+
+	tmp = -1;
+	if (section)
+		tmp = conf_get_yesno(section, NAME_AMD_AUTOFS_USE_LOFS);
+	if (tmp == -1)
+		tmp = conf_get_yesno(amd, NAME_AMD_AUTOFS_USE_LOFS);
+	if (tmp)
+		flags |= CONF_AUTOFS_USE_LOFS;
+
+	tmp = conf_get_yesno(amd, NAME_AMD_DOMAIN_STRIP);
+	if (tmp)
+		flags |= CONF_DOMAIN_STRIP;
+
+	tmp = conf_get_yesno(amd, NAME_AMD_NORMALIZE_SLASHES);
+	if (tmp)
+		flags |= CONF_NORMALIZE_SLASHES;
+
+	tmp = conf_get_yesno(amd, NAME_AMD_FORCED_UMOUNTS);
+	if (tmp)
+		flags |= CONF_FORCED_UNMOUNTS;
+
+	return flags;
+}
