@@ -51,6 +51,7 @@ static const char kver_options_template[]  = "fd=%d,pgrp=%u,minproto=3,maxproto=
 
 struct ext_mount {
 	char *mountpoint;
+	unsigned int umount;
 	struct list_head mount;
 	struct list_head mounts;
 };
@@ -619,7 +620,7 @@ static struct ext_mount *ext_mount_lookup(const char *mountpoint)
 	return NULL;
 }
 
-int ext_mount_add(struct list_head *entry, const char *path)
+int ext_mount_add(struct list_head *entry, const char *path, unsigned int umount)
 {
 	struct ext_mount *em;
 	char *auto_dir;
@@ -661,6 +662,7 @@ int ext_mount_add(struct list_head *entry, const char *path)
 		ret = -1;
 		goto done;
 	}
+	em->umount = umount;
 	INIT_LIST_HEAD(&em->mount);
 	INIT_LIST_HEAD(&em->mounts);
 
@@ -701,11 +703,12 @@ int ext_mount_remove(struct list_head *entry, const char *path)
 		goto done;
 	else {
 		list_del_init(&em->mount);
+		if (em->umount)
+			ret = 1;
 		if (list_empty(&em->mount)) {
 			free(em->mountpoint);
 			free(em);
 		}
-		ret = 1;
 	}
 done:
 	pthread_mutex_unlock(&ext_mount_hash_mutex);

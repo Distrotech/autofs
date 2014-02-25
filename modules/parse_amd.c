@@ -978,6 +978,7 @@ static int do_generic_mount(struct autofs_point *ap, const char *name,
 			    struct amd_entry *entry, const char *target,
 			    unsigned int flags)
 {
+	unsigned int umount = 0;
 	int ret = 0;
 
 	if (!entry->sublink) {
@@ -994,9 +995,10 @@ static int do_generic_mount(struct autofs_point *ap, const char *name,
 				       target, entry->type, entry->opts);
 			if (ret)
 				goto out;
+			umount = 1;
 		}
 		/* We might be using an external mount */
-		ext_mount_add(&entry->ext_mount, entry->fs);
+		ext_mount_add(&entry->ext_mount, entry->fs, umount);
 		ret = do_link_mount(ap, name, entry, flags);
 	}
 out:
@@ -1009,6 +1011,7 @@ static int do_nfs_mount(struct autofs_point *ap, const char *name,
 	char target[PATH_MAX + 1];
 	unsigned int proximity;
 	char *opts = entry->opts;
+	unsigned int umount = 0;
 	int ret = 0;
 
 	strcpy(target, entry->rhost);
@@ -1030,9 +1033,10 @@ static int do_nfs_mount(struct autofs_point *ap, const char *name,
 						mount_nfs->context);
 			if (ret)
 				goto out;
+			umount = 1;
 		}
 		/* We might be using an external mount */
-		ext_mount_add(&entry->ext_mount, entry->fs);
+		ext_mount_add(&entry->ext_mount, entry->fs, umount);
 		ret = do_link_mount(ap, name, entry, flags);
 	}
 out:
