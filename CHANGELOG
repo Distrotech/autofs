@@ -24,6 +24,7 @@
 - fix cache readlock not taken on lookup.
 - pass map_source as function paramter where possible.
 - check for bind onto self in mount_bind.c.
+- fix symlink expire.
 
 17/10/2013 autofs-5.0.8
 =======================
