@@ -113,5 +113,6 @@ externally configured credential cache that is used during authentication.
 By default, autofs will setup a memory based credential cache.
 .SH "SEE ALSO"
 .BR auto.master (5),
+.BR autofs.conf (5),
 .SH AUTHOR
 This manual page was written by Ian Kent <raven@themaw.net>.
