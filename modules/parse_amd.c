@@ -1068,6 +1068,23 @@ static int do_nfsl_mount(struct autofs_point *ap, const char *name,
 	return do_link_mount(ap, name, entry, flags);
 }
 
+static int wait_for_expire(struct autofs_point *ap)
+{
+	int ret = 1;
+
+	st_wait_task(ap, ST_EXPIRE, 0);
+
+	st_mutex_lock();
+	if (ap->state != ST_SHUTDOWN &&
+	    ap->state != ST_SHUTDOWN_PENDING &&
+	    ap->state != ST_SHUTDOWN_FORCE) {
+		ret = 0;
+	}
+	st_mutex_unlock();
+
+	return ret;
+}
+
 static int do_host_mount(struct autofs_point *ap, const char *name,
 			 struct amd_entry *entry, struct map_source *source,
 			 unsigned int flags)
@@ -1079,6 +1096,36 @@ static int do_host_mount(struct autofs_point *ap, const char *name,
 	const char **pargv = NULL;
 	int argc = 0;
 	int ret = 1;
+
+	/*
+	 * If the mount point name isn't the same as the host name
+	 * then we need to symlink to it after the mount. Attempt
+	 * the allocation and set entry->path to the base location
+	 * of the hosts mount tree so we can find it in
+	 * lookup_nss_mount() later.
+	 */
+	if (strcmp(name, entry->rhost)) {
+		char *target;
+		size_t len = strlen(ap->path) + strlen(entry->rhost) + 2;
+		target = malloc(len);
+		if (!target) {
+			warn(ap->logopt, MODPREFIX
+			     "failed to alloc target to hosts mount base");
+			goto out;
+		}
+		strcpy(target, ap->path);
+		strcat(target, "/");
+		strcat(target, entry->rhost);
+		if (entry->path)
+			free(entry->path);
+		entry->path = target;
+		/*
+		 * Wait for any expire before racing to mount the
+		 * export tree or bail out if we're shutting down.
+		*/
+		if (!wait_for_expire(ap))
+			goto out;
+	}
 
 	if (entry->opts) {
 		argv[0] = entry->opts;
@@ -1095,7 +1142,8 @@ static int do_host_mount(struct autofs_point *ap, const char *name,
 		goto out;
 	}
 
-	instance = master_find_source_instance(source, "hosts", "sun", argc, pargv);
+	instance = master_find_source_instance(source,
+					 "hosts", "sun", argc, pargv);
 	if (!instance) {
 		instance = master_add_source_instance(source,
 				 "hosts", "sun", time(NULL), argc, pargv);
@@ -1119,7 +1167,16 @@ static int do_host_mount(struct autofs_point *ap, const char *name,
 	master_source_current_wait(ap->entry);
 	ap->entry->current = source;
 
-	ret = lookup->lookup_mount(ap, name, strlen(name), lookup->context);
+	ret = lookup->lookup_mount(ap, entry->rhost,
+				   strlen(entry->rhost), lookup->context);
+
+	if (!strcmp(name, entry->rhost))
+		goto out;
+
+	if (do_mount(ap, ap->path,
+		     name, strlen(name), entry->path, "bind", "symlink"))
+		warn(ap->logopt, MODPREFIX
+		     "failed to create symlink to hosts mount base");
 out:
 	return ret;
 }

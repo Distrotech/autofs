@@ -807,7 +807,8 @@ static int lookup_amd_instance(struct autofs_point *ap,
 
 	m_key = malloc(strlen(ap->path) + strlen(me->multi->key) + 1);
 	if (!m_key) {
-		error(ap->logopt, "failed to allocate storage for search key");
+		error(ap->logopt,
+		     "failed to allocate storage for search key");
 		return NSS_STATUS_UNKNOWN;
 	}
 
@@ -815,12 +816,12 @@ static int lookup_amd_instance(struct autofs_point *ap,
 	strcat(m_key, "/");
 	strcat(m_key, me->multi->key);
 	entry = master_find_amdmount(ap, m_key);
+	free(m_key);
+
 	if (!entry) {
 		error(ap->logopt, "expected amd mount entry not found");
-		free(m_key);
 		return NSS_STATUS_UNKNOWN;
 	}
-	free(m_key);
 
 	if (strcmp(entry->type, "host")) {
 		error(ap->logopt, "unexpected map type %s", entry->type);
@@ -835,6 +836,17 @@ static int lookup_amd_instance(struct autofs_point *ap,
 	}
 
 	instance = master_find_source_instance(map, "hosts", "sun", argc, pargv);
+	/* If this is an nss map instance it may have an amd host map sub instance */
+	if (!instance && map->instance) {
+		struct map_source *next = map->instance;
+		while (next) {
+			instance = master_find_source_instance(next,
+						"hosts", "sun", argc, pargv);
+			if (instance)
+				break;
+			next = next->next;
+		}
+	}
 	if (!instance) {
 		error(ap->logopt, "expected hosts map instance not found");
 		return NSS_STATUS_UNKNOWN;
@@ -1166,7 +1178,6 @@ int lookup_nss_mount(struct autofs_point *ap, struct map_source *source, const c
 	}
 	if (ap->state != ST_INIT)
 		send_map_update_request(ap);
-	pthread_cleanup_pop(1);
 
 	/*
 	 * The last source lookup will return NSS_STATUS_NOTFOUND if the
@@ -1175,6 +1186,7 @@ int lookup_nss_mount(struct autofs_point *ap, struct map_source *source, const c
 	 */
 	if (result == NSS_STATUS_NOTFOUND || result == NSS_STATUS_UNAVAIL)
 		update_negative_cache(ap, source, name);
+	pthread_cleanup_pop(1);
 
 	return !result;
 }

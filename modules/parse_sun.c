@@ -1343,26 +1343,32 @@ int parse_mount(struct autofs_point *ap, const char *name,
 			strcat(m_root, name);
 		}
 
+		pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cur_state);
 		cache_readlock(mc);
 		me = cache_lookup_distinct(mc, name);
-		if (me) {
-			/* So we know we're the multi-mount root */
-			if (!me->multi)
-				me->multi = me;
-		}
-
 		if (!me) {
 			free(options);
 			cache_unlock(mc);
+			pthread_setcancelstate(cur_state, NULL);
 			error(ap->logopt,
 			      MODPREFIX "can't find multi root %s", name);
 			return 1;
 		}
 
+		cache_multi_writelock(me);
+		/* Someone beat us to it, return success */
+		if (me->multi) {
+			free(options);
+			cache_multi_unlock(me);
+			cache_unlock(mc);
+			pthread_setcancelstate(cur_state, NULL);
+			return 0;
+		}
+		/* So we know we're the multi-mount root */
+		me->multi = me;
+
 		age = me->age;
 
-		pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cur_state);
-		cache_multi_writelock(me);
 		/* It's a multi-mount; deal with it */
 		do {
 			char *path, *myoptions, *loc;
