@@ -146,6 +146,12 @@ struct mapent_cache {
 	struct mapent **hash;
 };
 
+struct stack {
+	char *mapent;
+	time_t age;
+	struct stack *next;
+};
+
 struct mapent {
 	struct mapent *next;
 	struct list_head ino_index;
@@ -159,6 +165,7 @@ struct mapent {
 	struct mapent *parent;
 	char *key;
 	char *mapent;
+	struct stack *stack;
 	time_t age;
 	/* Time of last mount fail */
 	time_t status;
@@ -175,6 +182,8 @@ void cache_readlock(struct mapent_cache *mc);
 void cache_writelock(struct mapent_cache *mc);
 int cache_try_writelock(struct mapent_cache *mc);
 void cache_unlock(struct mapent_cache *mc);
+int cache_push_mapent(struct mapent *me, char *mapent);
+int cache_pop_mapent(struct mapent *me);
 struct mapent_cache *cache_init(struct autofs_point *ap, struct map_source *map);
 struct mapent_cache *cache_init_null_cache(struct master *master);
 int cache_set_ino_index(struct mapent_cache *mc, const char *key, dev_t dev, ino_t ino);

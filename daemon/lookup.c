@@ -852,7 +852,11 @@ static void update_negative_cache(struct autofs_point *ap, struct map_source *so
 			int rv = CHE_FAIL;
 
 			cache_writelock(map->mc);
-			rv = cache_update(map->mc, map, name, NULL, now);
+			me = cache_lookup_distinct(map->mc, name);
+			if (me)
+				rv = cache_push_mapent(me, NULL);
+			else
+				rv = cache_update(map->mc, map, name, NULL, now);
 			if (rv != CHE_FAIL) {
 				me = cache_lookup_distinct(map->mc, name);
 				me->status = now + ap->negative_timeout;

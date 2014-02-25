@@ -155,7 +155,9 @@ static int do_parse_mount(struct autofs_point *ap, struct map_source *source,
 
 		cache_writelock(mc);
 		me = cache_lookup_distinct(mc, name);
-		if (!me)
+		if (me)
+			rv = cache_push_mapent(me, NULL);
+		else
 			rv = cache_update(mc, source, name, NULL, now);
 		if (rv != CHE_FAIL) {
 			me = cache_lookup_distinct(mc, name);
@@ -315,8 +317,10 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 				cache_writelock(smc);
 				sme = cache_lookup_distinct(smc, name);
 				/* Negative timeout expired for non-existent entry. */
-				if (sme && !sme->mapent)
-					cache_delete(smc, name);
+				if (sme && !sme->mapent) {
+					if (cache_pop_mapent(sme) == CHE_FAIL)
+						cache_delete(smc, name);
+				}
 				cache_unlock(smc);
 			}
 		}

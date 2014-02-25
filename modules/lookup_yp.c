@@ -613,8 +613,10 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 				cache_writelock(smc);
 				sme = cache_lookup_distinct(smc, key);
 				/* Negative timeout expired for non-existent entry. */
-				if (sme && !sme->mapent)
-					cache_delete(smc, key);
+				if (sme && !sme->mapent) {
+					if (cache_pop_mapent(sme) == CHE_FAIL)
+						cache_delete(smc, key);
+				}
 				cache_unlock(smc);
 			}
 		}

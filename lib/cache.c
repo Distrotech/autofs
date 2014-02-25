@@ -177,6 +177,69 @@ static inline void ino_index_unlock(struct mapent_cache *mc)
 	return;
 }
 
+/* Save the cache entry mapent field onto a stack and set a new mapent */
+int cache_push_mapent(struct mapent *me, char *mapent)
+{
+	struct stack *s;
+	char *new;
+
+	if (!me->mapent)
+		return CHE_FAIL;
+
+	if (!mapent)
+		new = NULL;
+	else {
+		new = strdup(mapent);
+		if (!new)
+			return CHE_FAIL;
+	}
+
+	s = malloc(sizeof(struct stack));
+	if (!s) {
+		if (new)
+			free(new);
+		return CHE_FAIL;
+	}
+	memset(s, 0, sizeof(*s));
+
+	s->mapent = me->mapent;
+	s->age = me->age;
+	me->mapent = mapent;
+
+	if (me->stack)
+		s->next = me->stack;
+	me->stack = s;
+
+	return CHE_OK;
+}
+
+/* Restore cache entry mapent to a previously saved mapent, discard current */
+int cache_pop_mapent(struct mapent *me)
+{
+	struct stack *s = me->stack;
+	char *mapent;
+	time_t age;
+
+	if (!s || !s->mapent)
+		return CHE_FAIL;
+
+	mapent = s->mapent;
+	age = s->age;
+	me->stack = s->next;
+	free(s);
+
+	if (age < me->age) {
+		free(mapent);
+		return CHE_OK;
+	}
+
+	if (me->mapent)
+		free(me->mapent);
+	me->mapent = mapent;
+
+	return CHE_OK;
+}
+
 struct mapent_cache *cache_init(struct autofs_point *ap, struct map_source *map)
 {
 	struct mapent_cache *mc;
@@ -578,6 +641,8 @@ int cache_add(struct mapent_cache *mc, struct map_source *ms, const char *key, c
 	} else
 		me->mapent = NULL;
 
+	me->stack = NULL;
+
 	me->age = age;
 	me->status = 0;
 	me->mc = mc;
@@ -689,7 +754,9 @@ void cache_update_negative(struct mapent_cache *mc,
 	int rv = CHE_OK;
 
 	me = cache_lookup_distinct(mc, key);
-	if (!me)
+	if (me)
+		rv = cache_push_mapent(me, NULL);
+	else
 		rv = cache_update(mc, ms, key, NULL, now);
 	if (rv != CHE_FAIL) {
 		me = cache_lookup_distinct(mc, key);
@@ -858,6 +925,7 @@ int cache_delete(struct mapent_cache *mc, const char *key)
 		pred = me;
 		me = me->next;
 		if (strcmp(this, me->key) == 0) {
+			struct stack *s = me->stack;
 			if (me->multi && !list_empty(&me->multi_list)) {
 				ret = CHE_FAIL;
 				goto done;
@@ -872,6 +940,13 @@ int cache_delete(struct mapent_cache *mc, const char *key)
 			free(me->key);
 			if (me->mapent)
 				free(me->mapent);
+			while (s) {
+				struct stack *next = s->next;
+				if (s->mapent)
+					free(s->mapent);
+				free(s);
+				s = next;
+			}
 			free(me);
 			me = pred;
 		}
@@ -882,6 +957,7 @@ int cache_delete(struct mapent_cache *mc, const char *key)
 		goto done;
 
 	if (strcmp(this, me->key) == 0) {
+		struct stack *s = me->stack;
 		if (me->multi && !list_empty(&me->multi_list)) {
 			ret = CHE_FAIL;
 			goto done;
@@ -896,6 +972,13 @@ int cache_delete(struct mapent_cache *mc, const char *key)
 		free(me->key);
 		if (me->mapent)
 			free(me->mapent);
+		while (s) {
+			struct stack *next = s->next;
+			if (s->mapent)
+				free(s->mapent);
+			free(s);
+			s = next;
+		}
 		free(me);
 	}
 done:
