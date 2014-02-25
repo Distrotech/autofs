@@ -99,10 +99,11 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
  */
 int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *context)
 {
+	struct lookup_context *ctxt = (struct lookup_context *) context;
 	struct map_source *source;
 	struct mapent_cache *mc;
+	struct mapent *me;
 	char **hes_result;
-	struct lookup_context *ctxt = (struct lookup_context *) context;
 	int status, rv;
 	char **record, *best_record = NULL, *p;
 	int priority, lowest_priority = INT_MAX;	
@@ -116,6 +117,32 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 	debug(ap->logopt,
 	      MODPREFIX "looking up root=\"%s\", name=\"%s\"",
 	      ap->path, name);
+
+	/* Check if we recorded a mount fail for this key anywhere */
+	me = lookup_source_mapent(ap, name, LKP_DISTINCT);
+	if (me) {
+		if (me->status >= time(NULL)) {
+			cache_unlock(me->mc);
+			return NSS_STATUS_NOTFOUND;
+		} else {
+			struct mapent_cache *smc = me->mc;
+			struct mapent *sme;
+
+			if (me->mapent)
+				cache_unlock(smc);
+			else {
+				cache_unlock(smc);
+				cache_writelock(smc);
+				sme = cache_lookup_distinct(smc, name);
+				/* Negative timeout expired for non-existent entry. */
+				if (sme && !sme->mapent) {
+					if (cache_pop_mapent(sme) == CHE_FAIL)
+						cache_delete(smc, name);
+				}
+				cache_unlock(smc);
+			}
+		}
+	}
 
 	chdir("/");		/* If this is not here the filesystem stays
 				   busy, for some reason... */
@@ -170,6 +197,16 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 	status = pthread_mutex_unlock(&hesiod_mutex);
 	if (status)
 		fatal(status);
+
+	if (rv) {
+		/* Don't update negative cache when re-connecting */
+		if (ap->flags & MOUNT_FLAG_REMOUNT)
+			return NSS_STATUS_TRYAGAIN;
+		cache_writelock(mc);
+		cache_update_negative(mc, source, name, ap->negative_timeout);
+		cache_unlock(mc);
+		return NSS_STATUS_TRYAGAIN;
+	}
 
 	/*
 	 * Unavailable due to error such as module load fail 
