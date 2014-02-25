@@ -1,6 +1,7 @@
 ??/??/2014 autofs-5.1.0
 =======================
 - fix mistake in assignment.
+- add amd map format parser.
 
 28/03/2014 autofs-5.0.9
 =======================
@@ -46,6 +47,7 @@
 - fixes for samples/auto.master.
 - fix variable substitution description.
 - fix incorrect append options description in README.v5-release.
+- add amd map format parser.
 
 17/10/2013 autofs-5.0.8
 =======================
