@@ -41,7 +41,6 @@ int parse_version = AUTOFS_PARSE_VERSION;	/* Required by protocol */
 
 static struct mount_mod *mount_nfs = NULL;
 static int init_ctr = 0;
-static int macro_init_done = 0;
 static pthread_mutex_t instance_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static void instance_mutex_lock(void)
@@ -242,14 +241,6 @@ int parse_init(int argc, const char *const *argv, void **context)
 	int optlen, len, offset;
 	int i, bval;
 	unsigned int append_options;
-
-	/* Get processor information for predefined escapes */
-	macro_lock();
-	if (!macro_init_done) {
-		macro_init_done = 1;
-		macro_init();
-	}
-	macro_unlock();
 
 	/* Set up context and escape chain */
 

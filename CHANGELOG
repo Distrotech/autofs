@@ -24,6 +24,7 @@
 - check for bind onto self in mount_bind.c.
 - fix symlink expire.
 - dont clobber mapent for negative cache.
+- fix macro_addvar() and move init to main thread.
 
 17/10/2013 autofs-5.0.8
 =======================
