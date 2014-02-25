@@ -36,9 +36,10 @@
 #define MODPREFIX "lookup(yp): "
 
 struct lookup_context {
-	const char *domainname;
+	char *domainname;
 	const char *mapname;
 	unsigned long order;
+	unsigned int check_defaults;
 	struct parse_mod *parse;
 };
 
@@ -113,7 +114,7 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 	ctxt = malloc(sizeof(struct lookup_context));
 	if (!ctxt) {
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		logerr(MODPREFIX "%s", estr);
+		logerr(MODPREFIX "malloc: %s", estr);
 		return 1;
 	}
 	memset(ctxt, 0, sizeof(struct lookup_context));
@@ -124,17 +125,28 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 		return 1;
 	}
 	ctxt->mapname = argv[0];
+	ctxt->check_defaults = 1;
 
-	/* This should, but doesn't, take a const char ** */
-	err = yp_get_default_domain((char **) &ctxt->domainname);
-	if (err) {
-		size_t len = strlen(ctxt->mapname);
-		char *name = alloca(len + 1);
-		memcpy(name, ctxt->mapname, len);
-		name[len] = '\0';
-		free(ctxt);
-		logerr(MODPREFIX "map %s: %s", name, yperr_string(err));
-		return 1;
+	if (mapfmt && !strcmp(mapfmt, "amd"))
+		ctxt->domainname = conf_amd_get_nis_domain();
+
+	if (!ctxt->domainname) {
+		char *domainname;
+		/* This should, but doesn't, take a const char ** */
+		err = yp_get_default_domain(&domainname);
+		if (err) {
+			logerr(MODPREFIX
+			      "map %s: %s", ctxt->mapname, yperr_string(err));
+			free(ctxt);
+			return 1;
+		}
+		ctxt->domainname = strdup(domainname);
+		if (!ctxt->domainname) {
+			char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+			logerr(MODPREFIX "strdup: %s", estr);
+			free(ctxt);
+			return 1;
+		}
 	}
 
 	ctxt->order = get_map_order(ctxt->domainname, ctxt->mapname);
@@ -286,7 +298,12 @@ int yp_all_callback(int status, char *ypkey, int ypkeylen,
 	if (*ypkey == '+')
 		return 0;
 
-	key = sanitize_path(ypkey, ypkeylen, ap->type, ap->logopt);
+	if (!(source->flags & MAP_FLAG_FORMAT_AMD))
+		key = sanitize_path(ypkey, ypkeylen, ap->type, ap->logopt);
+	else
+		/* Don't fail on "/" in key => type == 0 */
+		key = sanitize_path(ypkey, ypkeylen, 0, ap->logopt);
+
 	if (!key) {
 		error(logopt, MODPREFIX "invalid path %s", ypkey);
 		return 0;
@@ -372,6 +389,9 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 	}
 
 	source->age = age;
+	pthread_mutex_lock(&ap->entry->current_mutex);
+	ctxt->check_defaults = 0;
+	pthread_mutex_unlock(&ap->entry->current_mutex);
 
 	return NSS_STATUS_SUCCESS;
 }
@@ -432,6 +452,66 @@ static int lookup_one(struct autofs_point *ap,
 	return ret;
 }
 
+static int match_key(struct autofs_point *ap,
+		     struct map_source *source,
+		     const char *key, int key_len,
+		     struct lookup_context *ctxt)
+{
+	char buf[MAX_ERR_BUF];
+	char *lkp_key;
+	char *prefix;
+	int ret;
+
+	ret = lookup_one(ap, source, key, strlen(key), ctxt);
+	if (ret < 0)
+		return ret;
+	if (ret == CHE_OK || ret == CHE_UPDATED)
+		return ret;
+
+	if (!(source->flags & MAP_FLAG_FORMAT_AMD))
+		return CHE_FAIL;
+
+	lkp_key = strdup(key);
+	if (!lkp_key) {
+		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+		error(ap->logopt, MODPREFIX "strdup: %s", estr);
+		return CHE_FAIL;
+	}
+
+	ret = CHE_MISSING;
+
+	/*
+	 * Now strip successive directory components and try a
+	 * match against map entries ending with a wildcard and
+	 * finally try the wilcard entry itself.
+	 */
+	while ((prefix = strrchr(lkp_key, '/'))) {
+		char *match;
+		size_t len;
+		*prefix = '\0';
+		len = strlen(lkp_key) + 3;
+		match = malloc(len);
+		if (!match) {
+			char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+			error(ap->logopt, MODPREFIX "malloc: %s", estr);
+			ret = CHE_FAIL;
+			goto done;
+		}
+		len--;
+		strcpy(match, lkp_key);
+		strcat(match, "/*");
+		ret = lookup_one(ap, source, match, len, ctxt);
+		free(match);
+		if (ret < 0)
+			goto done;
+		if (ret == CHE_OK || ret == CHE_UPDATED)
+			goto done;
+	}
+done:
+	free(lkp_key);
+	return ret;
+}
+
 static int lookup_wild(struct autofs_point *ap,
 		       struct map_source *source, struct lookup_context *ctxt)
 {
@@ -480,6 +560,52 @@ static int lookup_wild(struct autofs_point *ap,
 	return ret;
 }
 
+static int lookup_amd_defaults(struct autofs_point *ap,
+			       struct map_source *source,
+			       struct lookup_context *ctxt)
+{
+	struct mapent_cache *mc = source->mc;
+	char *mapname;
+	char *mapent;
+	int mapent_len;
+	int ret;
+
+	mapname = malloc(strlen(ctxt->mapname) + 1);
+	if (!mapname)
+		return 0;
+
+	strcpy(mapname, ctxt->mapname);
+
+	ret = yp_match((char *) ctxt->domainname, mapname,
+		       (char *) "/defaults", 9, &mapent, &mapent_len);
+
+	if (ret != YPERR_SUCCESS) {
+		if (ret == YPERR_MAP) {
+			char *usc;
+
+			while ((usc = strchr(mapname, '_')))
+				*usc = '.';
+
+			ret = yp_match((char *) ctxt->domainname, mapname,
+				       "/defaults", 9, &mapent, &mapent_len);
+		}
+	}
+	free(mapname);
+
+	/* No /defaults entry */
+	if (ret == YPERR_KEY)
+		return CHE_OK;
+
+	if (ret != YPERR_SUCCESS)
+		return CHE_FAIL;
+
+	cache_writelock(mc);
+	ret = cache_update(mc, source, "/defaults", mapent, time(NULL));
+	cache_unlock(mc);
+
+	return ret;
+}
+
 static int check_map_indirect(struct autofs_point *ap,
 			      struct map_source *source,
 			      char *key, int key_len,
@@ -492,8 +618,28 @@ static int check_map_indirect(struct autofs_point *ap,
 
 	mc = source->mc;
 
+	/* Only read map if it has been modified */
+	pthread_mutex_lock(&ap->entry->current_mutex);
+	map_order = get_map_order(ctxt->domainname, ctxt->mapname);
+	if (map_order > ctxt->order) {
+		ctxt->order = map_order;
+		source->stale = 1;
+		ctxt->check_defaults = 1;
+	}
+
+	if (source->flags & MAP_FLAG_FORMAT_AMD && ctxt->check_defaults) {
+		/* Check for a /defaults entry to update the map source */
+		if (lookup_amd_defaults(ap, source, ctxt) == CHE_FAIL) {
+			warn(ap->logopt, MODPREFIX
+			     "error getting /defaults from map %s",
+			     ctxt->mapname);
+		} else
+			ctxt->check_defaults = 0;
+	}
+	pthread_mutex_unlock(&ap->entry->current_mutex);
+
 	/* check map and if change is detected re-read map */
-	ret = lookup_one(ap, source, key, key_len, ctxt);
+	ret = match_key(ap, source, key, key_len, ctxt);
 	if (ret == CHE_FAIL)
 		return NSS_STATUS_NOTFOUND;
 
@@ -503,7 +649,10 @@ static int check_map_indirect(struct autofs_point *ap,
 		 * and belongs to this map return success and use the entry.
 		 */
 		cache_readlock(mc);
-		exists = cache_lookup(mc, key);
+		if (source->flags & MAP_FLAG_FORMAT_AMD)
+			exists = match_cached_key(ap, MODPREFIX, source, key);
+		else
+			exists = cache_lookup(mc, key);
 		if (exists && exists->source == source) {
 			cache_unlock(mc);
 			return NSS_STATUS_SUCCESS;
@@ -517,15 +666,11 @@ static int check_map_indirect(struct autofs_point *ap,
 		return NSS_STATUS_UNAVAIL;
 	}
 
-	/* Only read map if it has been modified */
-	map_order = get_map_order(ctxt->domainname, ctxt->mapname);
-	if (map_order > ctxt->order) {
-		ctxt->order = map_order;
-		source->stale = 1;
-	}
-
 	cache_writelock(mc);
-	exists = cache_lookup_distinct(mc, key);
+	if (source->flags & MAP_FLAG_FORMAT_AMD)
+		exists = match_cached_key(ap, MODPREFIX, source, key);
+	else
+		exists = cache_lookup_distinct(mc, key);
 	/* Not found in the map but found in the cache */
 	if (exists && exists->source == source && ret & CHE_MISSING) {
 		if (exists->mapent) {
@@ -578,9 +723,11 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 	struct mapent_cache *mc;
 	char key[KEY_MAX_LEN + 1];
 	int key_len;
+	char *lkp_key;
 	char *mapent = NULL;
 	int mapent_len;
 	struct mapent *me;
+	char buf[MAX_ERR_BUF];
 	int status = 0;
 	int ret = 1;
 
@@ -592,9 +739,18 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 
 	debug(ap->logopt, MODPREFIX "looking up %s", name);
 
-	key_len = snprintf(key, KEY_MAX_LEN + 1, "%s", name);
-	if (key_len > KEY_MAX_LEN)
-		return NSS_STATUS_NOTFOUND;
+	if (!(source->flags & MAP_FLAG_FORMAT_AMD)) {
+		key_len = snprintf(key, KEY_MAX_LEN + 1, "%s", name);
+		if (key_len > KEY_MAX_LEN)
+			return NSS_STATUS_NOTFOUND;
+	} else {
+		key_len = expandamdent(name, NULL, NULL);
+		if (key_len > KEY_MAX_LEN)
+			return NSS_STATUS_NOTFOUND;
+		memset(key, 0, KEY_MAX_LEN + 1);
+		expandamdent(name, key, NULL);
+		debug(ap->logopt, MODPREFIX "expanded key: \"%s\"", key);
+	}
 
 	/* Check if we recorded a mount fail for this key anywhere */
 	me = lookup_source_mapent(ap, key, LKP_DISTINCT);
@@ -628,18 +784,26 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 	  * we never know about it.
 	  */
         if (ap->type == LKP_INDIRECT && *key != '/') {
-		char *lkp_key;
-
 		cache_readlock(mc);
 		me = cache_lookup_distinct(mc, key);
 		if (me && me->multi)
 			lkp_key = strdup(me->multi->key);
-		else
+		else if (!ap->pref)
 			lkp_key = strdup(key);
+		else {
+			lkp_key = malloc(strlen(ap->pref) + strlen(key) + 1);
+			if (lkp_key) {
+				strcpy(lkp_key, ap->pref);
+				strcat(lkp_key, key);
+			}
+		}
 		cache_unlock(mc);
 
-		if (!lkp_key)
+		if (!lkp_key) {
+			char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+			error(ap->logopt, MODPREFIX "malloc: %s", estr);
 			return NSS_STATUS_UNKNOWN;
+		}
 
 		status = check_map_indirect(ap, source,
 					    lkp_key, strlen(lkp_key), ctxt);
@@ -660,7 +824,25 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 		cache_readlock(mc);
 	else
 		cache_writelock(mc);
-	me = cache_lookup(mc, key);
+
+	if (!ap->pref)
+		lkp_key = strdup(key);
+	else {
+		lkp_key = malloc(strlen(ap->pref) + strlen(key) + 1);
+		if (lkp_key) {
+			strcpy(lkp_key, ap->pref);
+			strcat(lkp_key, key);
+		}
+	}
+
+	if (!lkp_key) {
+		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+		error(ap->logopt, MODPREFIX "malloc: %s", estr);
+		cache_unlock(mc);
+		return NSS_STATUS_UNKNOWN;
+	}
+
+	me = match_cached_key(ap, MODPREFIX, source, lkp_key);
 	/* Stale mapent => check for entry in alternate source or wildcard */
 	if (me && !me->mapent) {
 		while ((me = cache_lookup_key_next(me)))
@@ -687,6 +869,7 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 		}
 	}
 	cache_unlock(mc);
+	free(lkp_key);
 
 	if (mapent) {
 		master_source_current_wait(ap->entry);
@@ -716,6 +899,7 @@ int lookup_done(void *context)
 {
 	struct lookup_context *ctxt = (struct lookup_context *) context;
 	int rv = close_parse(ctxt->parse);
+	free(ctxt->domainname);
 	free(ctxt);
 	return rv;
 }
