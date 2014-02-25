@@ -235,7 +235,8 @@ static int rpc_do_create_client(struct sockaddr *addr, struct conn_info *info, i
 	return 0;
 }
 static int rpc_getport(struct conn_info *info,
-		       struct pmap *parms, CLIENT *client)
+		       struct pmap *parms, CLIENT *client,
+		       unsigned short *port)
 {
 	enum clnt_stat status;
 
