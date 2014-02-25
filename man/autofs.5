@@ -22,42 +22,56 @@ This is a description of the text file format.  Other methods of specifying
 these files may exist.  All empty lines or lines beginning with # are
 ignored. The basic format of one line in such maps is:
 .P
-.BI "key [" -options "] location"
-
-.SS key
+.BR key\  [ -options ]\  location
+.TP
+.B key
+.br
 For indirect mounts this is the part of the path name between the mount point
 and the path into the filesystem when it is mounted. Usually you can think about the
 key as a sub-directory name below the autofs managed mount point.
 
 For direct mounts this is the full path of each mount point. This map is always
 associated with the /- mount point in the master map. 
-
-.SS options
+.TP
+.B options
+.br
 Zero or more options may be given.  Options can also be given in the 
 .B auto.master
 file in which case both values are cumulative (this is a difference
 from SunOS).  The options are a list of comma separated options as
 customary for the
 .BR mount (8)
-command. There are two special options
-.I -fstype=
-used to specify a filesystem type if the filesystem is not of the default
+command.
+
+There are several special options
+.RS
+.TP
+.B -fstype=
+.br
+is used to specify a filesystem type if the filesystem is not of the default
 NFS type.  This option is processed by the automounter and not by the mount
 command.
-.I -strict
+.TP
+.B -strict
+.br
 is used to treat errors when mounting file systems as fatal. This is important when
 multiple file systems should be mounted (`multi-mounts'). If this option
 is given, no file system is mounted at all if at least one file system
 can't be mounted.
-.I -use-weight-only
+.TP
+.B -use-weight-only
+.br
 is used to make the weight the sole factor in selecting a server when multiple
 servers are present in a map entry.
 and
-.I -no-use-weight-only
+.TP
+.B -no-use-weight-only
+.br
 can be used to negate the option if it is present in the master map entry
 for the map but is not wanted for the given mount.
-
-.SS location
+.RE
+.TP
+.B location
 The location specifies from where the file system is to be mounted.  In the
 most cases this will be an NFS volume and the usual notation
 .I host:pathname
@@ -227,7 +241,6 @@ Anything else is questionable and unsupported, but these variations will also wo
 <path> host1(3),host:/blah
 .fi
 .RE
-.sp
 .SH UNSUPPORTED
 This version of the automounter supports direct maps stored in FILE, NIS, NISPLUS
 and LDAP only.
