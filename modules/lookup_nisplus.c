@@ -509,8 +509,10 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 				cache_writelock(smc);
 				sme = cache_lookup_distinct(smc, key);
 				/* Negative timeout expired for non-existent entry. */
-				if (sme && !sme->mapent)
-					cache_delete(smc, key);
+				if (sme && !sme->mapent) {
+					if (cache_pop_mapent(sme) == CHE_FAIL)
+						cache_delete(smc, key);
+				}
 				cache_unlock(smc);
 			}
 		}
@@ -602,7 +604,9 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 			return NSS_STATUS_TRYAGAIN;
 		cache_writelock(mc);
 		me = cache_lookup_distinct(mc, key);
-		if (!me)
+		if (me)
+			rv = cache_push_mapent(me, NULL);
+		else
 			rv = cache_update(mc, source, key, NULL, now);
 		if (rv != CHE_FAIL) {
 			me = cache_lookup_distinct(mc, key);
