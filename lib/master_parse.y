@@ -329,7 +329,10 @@ map:	PATH
 		if ((tmp = strchr($1, ',')))
 			*tmp++ = '\0';
 
-		type = master_strdup($1);
+		if (strcmp($1, "exec"))
+			type = master_strdup($1);
+		else
+			type = master_strdup("program");
 		if (!type) {
 			master_error("memory allocation error");
 			local_free_vars();
@@ -360,7 +363,10 @@ map:	PATH
 		if ((tmp = strchr($1, ',')))
 			*tmp++ = '\0';
 
-		type = master_strdup($1);
+		if (strcmp($1, "exec"))
+			type = master_strdup($1);
+		else
+			type = master_strdup("program");
 		if (!type) {
 			master_error("memory allocation error");
 			local_free_vars();
@@ -391,7 +397,10 @@ map:	PATH
 		if ((tmp = strchr($1, ',')))
 			*tmp++ = '\0';
 
-		type = master_strdup($1);
+		if (strcmp($1, "exec"))
+			type = master_strdup($1);
+		else
+			type = master_strdup("program");
 		if (!type) {
 			master_error("memory allocation error");
 			local_free_vars();

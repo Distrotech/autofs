@@ -93,6 +93,8 @@ The map is a regular text file.
 .B program
 The map is an executable program, which is passed a key on the command
 line and returns an entry (everything besides the key) on stdout if successful.
+Optinally, the keyword exec may be used as a synonym for program to avoid
+confusion with amd formated maps mount type program.
 .TP
 .B yp
 The map is a NIS (YP) database.
