@@ -198,7 +198,9 @@ static struct substvar *add_lookup_vars(struct autofs_point *ap,
 		break;
 	}
 
-	if (source->argv[0][0])
+	if (source->name)
+		list = macro_addvar(list, "map", 3, source->name);
+	else if (source->argv[0][0])
 		list = macro_addvar(list, "map", 3, source->argv[0]);
 
 	tsv = pthread_getspecific(key_thread_stdenv_vars);

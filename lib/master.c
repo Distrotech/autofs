@@ -211,6 +211,8 @@ master_add_map_source(struct master_mapent *entry,
 	}
 	source->argc = argc;
 	source->argv = tmpargv;
+	if (source->argv[0])
+		source->name = strdup(source->argv[0]);
 
 	master_source_writelock(entry);
 
@@ -333,6 +335,8 @@ static void __master_free_map_source(struct map_source *source, unsigned int fre
 		free(source->type);
 	if (source->format)
 		free(source->format);
+	if (source->name)
+		free(source->name);
 	if (free_cache && source->mc)
 		cache_release(source);
 	if (source->lookup) {
@@ -468,6 +472,8 @@ master_add_source_instance(struct map_source *source, const char *type, const ch
 	}
 	new->argc = argc;
 	new->argv = tmpargv;
+	if (source->name)
+		new->name = strdup(source->name);
 
 	status = pthread_mutex_lock(&instance_mutex);
 	if (status)

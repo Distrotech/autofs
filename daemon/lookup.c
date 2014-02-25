@@ -100,25 +100,64 @@ static int do_read_master(struct master *master, char *type, time_t age)
 	return status;
 }
 
-static char *find_map_path(struct map_source *map)
+static char *find_map_path(struct autofs_point *ap, struct map_source *map)
 {
+	const char *mname = map->argv[0];
+	unsigned int mlen = strlen(mname);
+	char *tok, *ptr = NULL;
+	char *path = NULL;
+	char *search_path;
 	struct stat st;
-	char *path;
 
-	path = malloc(strlen(AUTOFS_MAP_DIR) + strlen(map->argv[0]) + 2);
-	if (!path)
+	/*
+	 * This is different to the way it is in amd.
+	 * autofs will always try to locate maps in AUTOFS_MAP_DIR
+	 * but amd has no default and will not find a file map that
+	 * isn't a full path when no search_path is configured, either
+	 * in the mount point or global configuration.
+	 */
+	search_path = strdup(AUTOFS_MAP_DIR);
+	if (map->flags & MAP_FLAG_FORMAT_AMD) {
+		struct autofs_point *pap = ap;
+		char *tmp;
+		/*
+		 * Make sure we get search_path from the root of the
+		 * mount tree, if one is present in the configuration.
+		 * Again different from amd, which ignores the submount
+		 * case.
+		 */
+		while (pap->parent)
+			pap = pap->parent;
+		tmp = conf_amd_get_search_path(pap->path);
+		if (tmp) {
+			if (search_path)
+				free(search_path);
+			search_path = tmp;
+		}
+	}
+	if (!search_path)
 		return NULL;
 
-	strcpy(path, AUTOFS_MAP_DIR);
-	strcat(path, "/");
-	strcat(path, map->argv[0]);
+	tok = strtok_r(search_path, ":", &ptr);
+	while (tok) {
+		char *this = malloc(strlen(tok) + mlen + 2);
+		if (!this) {
+			free(search_path);
+			return NULL;
+		}
+		strcpy(this, tok);
+		strcat(this, "/");
+		strcat(this, mname);
+		if (!stat(this, &st)) {
+			path = this;
+			break;
+		}
+		free(this);
+		tok = strtok_r(NULL, ":", &ptr);
+	}
 
-	if (!stat(path, &st))
-		return path;
-
-	free(path);
-
-	return NULL;
+	free(search_path);
+	return path;
 }
 
 static int read_master_map(struct master *master, char *type, time_t age)
@@ -435,7 +474,7 @@ static int lookup_map_read_map(struct autofs_point *ap,
 	if (map->argv[0][0] == '/')
 		return do_read_map(ap, map, age);
 
-	path = find_map_path(map);
+	path = find_map_path(ap, map);
 	if (!path)
 		return NSS_STATUS_UNKNOWN;
 
@@ -479,6 +518,7 @@ static enum nsswitch_status read_map_source(struct nss_source *this,
 	tmap.flags = map->flags;
 	tmap.type = this->source;
 	tmap.format = map->format;
+	tmap.name = map->name;
 	tmap.lookup = map->lookup;
 	tmap.mc = map->mc;
 	tmap.instance = map->instance;
@@ -489,7 +529,7 @@ static enum nsswitch_status read_map_source(struct nss_source *this,
 	tmap.argc = 0;
 	tmap.argv = NULL;
 
-	path = find_map_path(map);
+	path = find_map_path(ap, map);
 	if (!path)
 		return NSS_STATUS_UNKNOWN;
 
@@ -830,7 +870,7 @@ static int do_name_lookup_mount(struct autofs_point *ap,
 	if (map->argv[0][0] == '/')
 		return do_lookup_mount(ap, map, name, name_len);
 
-	path = find_map_path(map);
+	path = find_map_path(ap, map);
 	if (!path)
 		return NSS_STATUS_UNKNOWN;
 
@@ -875,6 +915,7 @@ static enum nsswitch_status lookup_map_name(struct nss_source *this,
 	tmap.flags = map->flags;
 	tmap.type = this->source;
 	tmap.format = map->format;
+	tmap.name = map->name;
 	tmap.mc = map->mc;
 	tmap.instance = map->instance;
 	tmap.exp_timeout = map->exp_timeout;
@@ -883,7 +924,7 @@ static enum nsswitch_status lookup_map_name(struct nss_source *this,
 	tmap.argc = 0;
 	tmap.argv = NULL;
 
-	path = find_map_path(map);
+	path = find_map_path(ap, map);
 	if (!path)
 		return NSS_STATUS_UNKNOWN;
 

@@ -26,6 +26,7 @@ struct map_source {
 	unsigned int flags;
 	char *type;
 	char *format;
+	char *name;
 	time_t exp_timeout;		/* Timeout for expiring mounts */
 	time_t age;
 	unsigned int master_line;

@@ -327,6 +327,11 @@ and can be used to provide different defaults on specific machines
 without having to modify centrally managed maps. It is empty by
 default.
 .TP
+.B search_path
+.br
+Colon seperated paths to search for maps that are not specified
+as a full path.
+.TP
 .B dismount_interval
 .br
 Is equivalent to the autofs timeout option. It is only possible

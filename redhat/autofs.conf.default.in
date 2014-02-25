@@ -221,12 +221,6 @@ mount_nfs_default_protocol = 4
 #
 # A number of configuration options are not yet implemented:
 #
-# search_path - always a little frustrating, the compiled in
-#	map location should be used to locate maps but isn't
-#	in some cases. This requires work within autofs itself
-#	and that will (obviously) include implementing this
-#	configuration option for the amd map parser as well.
-#
 # fully_qualified_hosts - not yet implemented.
 #
 # unmount_on_exit - since autofs always tries to re-connect
@@ -268,6 +262,9 @@ mount_nfs_default_protocol = 4
 #	and can be used to provide different defaults on specific
 #	machines without having to modify centrally managed maps.
 #	It is empty by default.
+#
+# search_path - colon seperated paths to search for maps that
+#	are not specified as a full path.
 #
 # dismount_interval - is equivalent to the autofs timeout option. It
 #	is only possible to use this with type "auto" mounts due
