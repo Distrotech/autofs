@@ -18,11 +18,17 @@
 #include <string.h>
 #include <limits.h>
 #include <sys/utsname.h>
+#include <unistd.h>
 
 #include "automount.h"
 
 static struct utsname un;
 static char processor[65];		/* Not defined on Linux, so we make our own */
+static char hostname[HOST_NAME_MAX + 1];
+static char host[HOST_NAME_MAX];
+static char domain[HOST_NAME_MAX];
+static char hostd[HOST_NAME_MAX + 1];
+static char endian[] = "unknown";
 
 /* Predefined variables: tail of link chain */
 static struct substvar
@@ -31,10 +37,18 @@ static struct substvar
 	sv_host   = {"HOST",   un.nodename, 1, &sv_cpu},
 	sv_osname = {"OSNAME", un.sysname,  1, &sv_host},
 	sv_osrel  = {"OSREL",  un.release,  1, &sv_osname},
-	sv_osvers = {"OSVERS", un.version,  1, &sv_osrel
+	sv_osvers = {"OSVERS", un.version,  1, &sv_osrel},
+	sv_dollar = {"dollar", "$",         1, &sv_osvers},
+	sv_true   = {"true",   "1",         1, &sv_dollar},
+	sv_false  = {"false",  "0",         1, &sv_true},
+	sv_byte	  = {"byte",   endian,	    1, &sv_false},
+	sv_host2  = {"host",   host,        1, &sv_byte},
+	sv_xhost  = {"xhost",  host,	    1, &sv_host2},
+	sv_domain = {"domain", domain,      1, &sv_xhost},
+	sv_hostd  = {"hostd",  hostd,       1, &sv_domain
 };
 
-static struct substvar *system_table = &sv_osvers;
+static struct substvar *system_table = &sv_hostd;
 static unsigned int macro_init_done = 0;
 
 static pthread_mutex_t table_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -63,6 +77,13 @@ void dump_table(struct substvar *table)
 /* Get processor information for predefined macro definitions */
 void macro_init(void)
 {
+	char *local_domain;
+
+	memset(hostname, 0, HOST_NAME_MAX + 1);
+	memset(host, 0, HOST_NAME_MAX);
+	memset(domain, 0, HOST_NAME_MAX);
+	memset(hostd, 0, HOST_NAME_MAX + 1);
+
 	macro_lock();
 	if (macro_init_done) {
 		macro_unlock();
@@ -78,6 +99,41 @@ void macro_init(void)
 	if (processor[0] == 'i' && processor[1] >= '3' &&
 		!strcmp(processor + 2, "86"))
 		processor[1] = '3';
+
+	local_domain = conf_amd_get_sub_domain();
+
+	if (!gethostname(hostname, HOST_NAME_MAX)) {
+		char *dot;
+		dot = strchr(hostname, '.');
+		if (dot) {
+			*dot++ = '\0';
+			strcpy(domain, dot);
+		}
+		strcpy(host, hostname);
+		strcpy(hostd, host);
+		if (*domain || local_domain) {
+			strcat(hostd, ".");
+			if (!local_domain)
+				strcat(hostd, domain);
+			else {
+				strcat(hostd, local_domain);
+				strcpy(domain, local_domain);
+			}
+		}
+	}
+
+	if (sizeof(short) == 2) {
+		union { short s; char c[sizeof(short)]; } order;
+		order.s = 0x0102;
+		if (order.c[0] == 1 && order.c[1] == 2)
+			strcpy(endian, "big");
+		else if (order.c[0] == 2 && order.c[1] == 1)
+			strcpy(endian, "little");
+		else
+			strcpy(endian, "unknown");
+	}
+
+	add_std_amd_vars(system_table);
 
 	macro_init_done = 1;
 	macro_unlock();

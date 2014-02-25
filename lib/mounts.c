@@ -26,6 +26,7 @@
 #include <sys/vfs.h>
 #include <pwd.h>
 #include <grp.h>
+#include <libgen.h>
 
 #include "automount.h"
 
@@ -364,6 +365,82 @@ struct substvar *removestdenv(struct substvar *sv)
 	list = macro_removevar(list, "SHOST", 5);
 	return list;
 }
+
+void add_std_amd_vars(struct substvar *sv)
+{
+	char *tmp;
+
+	tmp = conf_amd_get_arch();
+	if (tmp) {
+		macro_global_addvar("arch", 4, tmp);
+		free(tmp);
+	}
+
+	tmp = conf_amd_get_karch();
+	if (tmp) {
+		macro_global_addvar("karch", 5, tmp);
+		free(tmp);
+	}
+
+	tmp = conf_amd_get_os();
+	if (tmp) {
+		macro_global_addvar("os", 2, tmp);
+		free(tmp);
+	}
+
+	tmp = conf_amd_get_full_os();
+	if (tmp) {
+		macro_global_addvar("full_os", 7, tmp);
+		free(tmp);
+	}
+
+	tmp = conf_amd_get_os_ver();
+	if (tmp) {
+		macro_global_addvar("osver", 5, tmp);
+		free(tmp);
+	}
+
+	tmp = conf_amd_get_vendor();
+	if (tmp) {
+		macro_global_addvar("vendor", 6, tmp);
+		free(tmp);
+	}
+
+	/* Umm ... HP_UX cluster name, probably not used */
+	tmp = conf_amd_get_cluster();
+	if (tmp) {
+		macro_global_addvar("cluster", 7, tmp);
+		free(tmp);
+	} else {
+		const struct substvar *v = macro_findvar(sv, "domain", 4);
+		if (v && *v->val) {
+			tmp = strdup(v->val);
+			if (tmp)
+				macro_global_addvar("cluster", 7, tmp);
+		}
+	}
+
+	tmp = conf_amd_get_auto_dir();
+	if (tmp) {
+		macro_global_addvar("autodir", 7, tmp);
+		free(tmp);
+	}
+
+	return;
+}
+
+void remove_std_amd_vars(void)
+{
+	macro_global_removevar("autodir", 7);
+	macro_global_removevar("cluster", 7);
+	macro_global_removevar("vendor", 6);
+	macro_global_removevar("osver", 5);
+	macro_global_removevar("full_os", 7);
+	macro_global_removevar("os", 2);
+	macro_global_removevar("karch", 5);
+	macro_global_removevar("arch", 4);
+	return;
+ }
 
 /*
  * Make common autofs mount options string

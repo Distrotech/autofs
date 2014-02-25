@@ -87,6 +87,8 @@ extern unsigned int nfs_mount_uses_string_options;
 
 struct substvar *addstdenv(struct substvar *sv);
 struct substvar *removestdenv(struct substvar *sv);
+void add_std_amd_vars(struct substvar *sv);
+void remove_std_amd_vars(void);
 
 unsigned int query_kproto_ver(void);
 unsigned int get_kver_major(void);
