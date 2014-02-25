@@ -205,14 +205,47 @@ or in the configuration.
 Set the timeout for caching failed key lookups. This option can be
 used to override the global default given either on the command line
 or in the configuration.
-.SH GENERAL SYSTEM DEFAULTS CONFIGURATION
+.SH AUTOFS CONFIGURATION
 .P
-The default value of several general settings may be changed in the
-configuration file
+There are two files that amy contain configuration settings
 .nh
+.BR @@autofsmapdir@@/autofs.conf .
+.hy
+and
 .BR @@autofsconfdir@@/autofs .
 .hy
-They are:
+The former contains the bulk of configuration options while the later
+contains entries to be set in the environment for use by the init
+sub-system.
+.TP
+The only entry currently present in the init system configuration
+is OPTIONS which may be used to specify options to be used when
+starting
+.BR automount (8) .
+.TP
+Previously all configuration entries were located in the init system
+configuration file and their values were set in the environment for
+later use by autofs. Configuration entries that were set in the
+environment continue to be set in the environment at program startup
+and any setting already present in the environment takes precedence.
+.SH SYSTEM DEFAULTS CONFIGURATION
+.P
+The value of most settings may be set in the configuration file
+.nh
+.BR @@autofsmapdir@@/autofs.conf .
+.hy
+Configuration entries are "name = value" pairs and the name is case
+insensitive. Older configuration names had a DEFAULTS_ prefix which
+is appended to the configuration name when a value isn't found and
+the search repeated.
+.TP
+An optional section name
+.nh
+.BR [ autofs ]
+.hy
+may also be given.
+.TP
+The available configuration entries are:
 .TP
 .B timeout
 Sets the default mount timeout in seconds. The internal program
@@ -308,7 +341,7 @@ The object classes and attributes used for accessing automount maps in
 LDAP can be changed by setting entries in the autofs configuration
 located in
 .nh
-.BR @@autofsconfdir@@/autofs .
+.BR @@autofsmapdir@@/autofs.conf .
 .hy
 .TP
 .B NOTE:
