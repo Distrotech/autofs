@@ -255,6 +255,14 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 
 	mounts_mutex_lock(ap);
 
+	if (source->flags & MAP_FLAG_FORMAT_AMD) {
+		struct amd_entry *am_entry = __master_find_amdmount(ap, entry->path);
+		if (am_entry && am_entry->pref) {
+			nap->pref = am_entry->pref;
+			am_entry->pref = NULL;
+		}
+	}
+
 	if (handle_mounts_startup_cond_init(&suc)) {
 		crit(ap->logopt, MODPREFIX
 		     "failed to init startup cond for mount %s", entry->path);

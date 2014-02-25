@@ -893,7 +893,6 @@ static int do_auto_mount(struct autofs_point *ap, const char *name,
 			 struct amd_entry *entry, unsigned int flags)
 {
 	char target[PATH_MAX + 1];
-	int ret;
 
 	if (!entry->map_type)
 		strcpy(target, entry->fs);
@@ -903,18 +902,8 @@ static int do_auto_mount(struct autofs_point *ap, const char *name,
 		strcat(target, entry->fs);
 	}
 
-	ret = do_mount(ap, ap->path,
-		       name, strlen(name), target, "autofs", NULL);
-	if (!ret) {
-		struct autofs_point *sm;
-		sm = master_find_submount(ap, entry->path);
-		if (sm) {
-			sm->pref = entry->pref;
-			entry->pref = NULL;
-		}
-	}
-
-	return ret;
+	return do_mount(ap, ap->path,
+			name, strlen(name), target, "autofs", NULL);
 }
 
 static int do_link_mount(struct autofs_point *ap, const char *name,
@@ -1878,17 +1867,24 @@ int parse_mount(struct autofs_point *ap, const char *name,
 
 		dequote_entry(ap, this);
 
+		/*
+		 * Type "auto" needs to set the prefix at mount time so
+		 * add parsed entry to parent amd mount list and remove
+		 * on mount fail.
+		 */
+		mounts_mutex_lock(ap);
+		list_add_tail(&this->entries, &ap->amdmounts);
+		mounts_mutex_unlock(ap);
+
 		rv = amd_mount(ap, name, this, source, sv, flags, ctxt);
 		mounts_mutex_lock(ap);
 		if (!rv) {
-			/* Add to the parent list of mounts */
-			list_add_tail(&this->entries, &ap->amdmounts);
-			/* Mounted, leave it on the parent list */
+			/* Mounted, remove entry from parsed list */
 			list_del_init(&this->list);
 			mounts_mutex_unlock(ap);
 			break;
 		}
-		/* Not mounted, remove it from the parent list */
+		/* Not mounted, remove entry from the parent list */
 		list_del_init(&this->entries);
 		mounts_mutex_unlock(ap);
 	}
