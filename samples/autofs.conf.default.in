@@ -1,23 +1,25 @@
 #
 # Define default options for autofs.
 #
-# MASTER_MAP_NAME - default map name for the master map.
+[ autofs ]
 #
-#MASTER_MAP_NAME="auto.master"
+# master_map_name - default map name for the master map.
 #
-# TIMEOUT - set the default mount timeout in secons. The internal
+#master_map_name = auto.master
+#
+# timeout - set the default mount timeout in secons. The internal
 #	    program default is 10 minutes, but the default installed
 #	    configuration overrides this and sets the timeout to 5
 #	    minutes to be consistent with earlier autofs releases.
 #
-TIMEOUT=300
+timeout = 300
 #
-# NEGATIVE_TIMEOUT - set the default negative timeout for
+# negative_timeout - set the default negative timeout for
 # 		     failed mount attempts (default 60).
 #
-#NEGATIVE_TIMEOUT=60
+#negative_timeout = 60
 #
-# MOUNT_WAIT - time to wait for a response from mount(8).
+# mount_wait - time to wait for a response from mount(8).
 # 	       Setting this timeout can cause problems when
 # 	       mount would otherwise wait for a server that
 # 	       is temporarily unavailable, such as when it's
@@ -25,34 +27,36 @@ TIMEOUT=300
 # 	       for mount(8) usually results in a wait of around
 # 	       3 minutes.
 #
-#MOUNT_WAIT=-1
+#mount_wait = -1
 #
-# UMOUNT_WAIT - time to wait for a response from umount(8).
+# umount_wait - time to wait for a response from umount(8).
 #
-#UMOUNT_WAIT=12
+#umount_wait = 12
 #
-# BROWSE_MODE - maps are browsable by default.
+# browse_mode - maps are browsable by default.
 #
-BROWSE_MODE="no"
+browse_mode = no
 #
-# MOUNT_NFS_DEFAULT_PROTOCOL - specify the default protocol used by
+# mount_nfs_default_protocol - specify the default protocol used by
 # 			       mount.nfs(8). Since we can't identify
 # 			       the default automatically we need to
 # 			       set it in our configuration.
 #
-#MOUNT_NFS_DEFAULT_PROTOCOL=3
+#mount_nfs_default_protocol = 3
 #
-# APPEND_OPTIONS - append to global options instead of replace.
+# append_options - append to global options instead of replace.
 #
-#APPEND_OPTIONS="yes"
+#append_options = yes
 #
-# LOGGING - set default log level "none", "verbose" or "debug"
+# logging - set default log level "none", "verbose" or "debug"
 #
-#LOGGING="none"
+#logging = none
+#
+# Define base dn for map dn lookup.
 #
 # Define server URIs
 #
-# LDAP_URI - space seperated list of server uris of the form
+# ldap_uri - space seperated list of server uris of the form
 # 	     <proto>://<server>[/] where <proto> can be ldap
 # 	     or ldaps. The option can be given multiple times.
 # 	     Map entries that include a server name override
@@ -69,24 +73,22 @@ BROWSE_MODE="no"
 #	     the minimum ttl found in the SRV RR records or
 #	     after one hour, whichever is less.
 #
-#LDAP_URI=""
+#ldap_uri = ""
 #
-# LDAP__TIMEOUT - timeout value for the synchronous API  calls
+# ldap_timeout - timeout value for the synchronous API  calls
 #		  (default is LDAP library default).
 #
-#LDAP_TIMEOUT=-1
+#ldap_timeout = -1
 #
-# LDAP_NETWORK_TIMEOUT - set the network response timeout (default 8).
+# ldap_network_timeout - set the network response timeout (default 8).
 #
-#LDAP_NETWORK_TIMEOUT=8
+#ldap_network_timeout = 8
 #
-# Define base dn for map dn lookup.
-#
-# SEARCH_BASE - base dn to use for searching for map search dn.
+# search_base - base dn to use for searching for map search dn.
 # 		Multiple entries can be given and they are checked
 # 		in the order they occur here.
 #
-#SEARCH_BASE=""
+#search_base = ""
 #
 # Define the LDAP schema to used for lookups
 #
@@ -95,43 +97,34 @@ BROWSE_MODE="no"
 # basdn for lookups. If you want to minimize the number of
 # queries to the server set the values here.
 #
-#MAP_OBJECT_CLASS="nisMap"
-#ENTRY_OBJECT_CLASS="nisObject"
-#MAP_ATTRIBUTE="nisMapName"
-#ENTRY_ATTRIBUTE="cn"
-#VALUE_ATTRIBUTE="nisMapEntry"
+#map_object_class = nisMap
+#entry_object_class = nisObject
+#map_attribute = nisMapName
+#entry_attribute = cn
+#value_attribute= nisMapEntry
 #
 # Other common LDAP nameing
 #
-#MAP_OBJECT_CLASS="automountMap"
-#ENTRY_OBJECT_CLASS="automount"
-#MAP_ATTRIBUTE="ou"
-#ENTRY_ATTRIBUTE="cn"
-#VALUE_ATTRIBUTE="automountInformation"
+#map_object_class = automountMap
+#entry_object_class = automount
+#map_attribute = ou
+#entry_attribute = cn
+#value_attribute= automountInformation
 #
-#MAP_OBJECT_CLASS="automountMap"
-#ENTRY_OBJECT_CLASS="automount"
-#MAP_ATTRIBUTE="automountMapName"
-#ENTRY_ATTRIBUTE="automountKey"
-#VALUE_ATTRIBUTE="automountInformation"
+#map_object_class = automountMap
+#entry_object_class = automount
+#map_attribute = automountMapName
+#entry_attribute = automountKey
+#value_attribute= automountInformation
 #
-# AUTH_CONF_FILE - set the default location for the SASL
-#			   authentication configuration file.
+# auth_conf_file - set the default location for the SASL
+#		   authentication configuration file.
 #
-#AUTH_CONF_FILE="@@autofsmapdir@@/autofs_ldap_auth.conf"
+#auth_conf_file = @@autofsmapdir@@/autofs_ldap_auth.conf
 #
-# MAP_HASH_TABLE_SIZE - set the map cache hash table size.
+# map_hash_table_size - set the map cache hash table size.
 # 			Should be a power of 2 with a ratio roughly
 # 			between 1:10 and 1:20 for each map.
 #
-#MAP_HASH_TABLE_SIZE=1024
-#
-# General global options
-#
-# If the kernel supports using the autofs miscellanous device
-# and you wish to use it you must set this configuration option
-# to "yes" otherwise it will not be used.
-USE_MISC_DEVICE="yes"
-#
-#OPTIONS=""
+#map_hash_table_size = 1024
 #

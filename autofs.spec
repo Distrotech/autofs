@@ -118,6 +118,7 @@ install -m 644 redhat/autofs.service $RPM_BUILD_ROOT%{unitdir}/autofs.service
 install -m 755 redhat/autofs.init $RPM_BUILD_ROOT/etc/rc.d/init.d/autofs
 %define init_file_name /etc/rc.d/init.d/autofs
 %endif
+install -m 644 redhat/autofs.conf $RPM_BUILD_ROOT/etc/autofs.conf
 install -m 644 redhat/autofs.sysconfig $RPM_BUILD_ROOT/etc/sysconfig/autofs
 
 %clean
@@ -177,6 +178,7 @@ fi
 %doc CREDITS CHANGELOG INSTALL COPY* README* samples/ldap* samples/autofs.schema samples/autofs_ldap_auth.conf
 %config %{init_file_name}
 %config(noreplace) /etc/auto.master
+%config(noreplace) /etc/autofs.conf
 %config(noreplace,missingok) /etc/auto.misc
 %config(noreplace,missingok) /etc/auto.net
 %config(noreplace,missingok) /etc/auto.smb

@@ -33,7 +33,14 @@
 #define AUTOFS_GLOBAL_SECTION		"autofs"
 #define AMD_GLOBAL_SECTION		"amd"
 
-#define DEFAULT_CONFIG_FILE		AUTOFS_CONF_DIR "/autofs"
+/*
+ * The configuration location has changed.
+ * The name of the configuration is now autofs.conf and it is
+ * located in the same directory as the maps. AUTOFS_CONF_DIR
+ * remains pointed at the init system configuration.
+ */
+#define DEFAULT_CONFIG_FILE		AUTOFS_MAP_DIR "/autofs.conf"
+#define OLD_CONFIG_FILE			AUTOFS_CONF_DIR "/autofs"
 #define MAX_LINE_LEN			256
 #define MAX_SECTION_NAME		MAX_LINE_LEN
 
@@ -965,6 +972,19 @@ unsigned int defaults_read_config(unsigned int to_syslog)
 
 	fclose(f);
 
+	/*
+	 * Try to read the old config file and override the installed
+	 * defaults in case user has a stale config following updating
+	 * to the new config file location.
+	 */
+
+	f = open_fopen_r(OLD_CONFIG_FILE);
+	if (!f)
+		goto out;
+
+	read_config(to_syslog, f, OLD_CONFIG_FILE);
+
+	fclose(f);
 out:
 	pthread_mutex_unlock(&conf_mutex);
 	return 1;

@@ -4,7 +4,7 @@ include ../Makefile.rules
 
 SAMPLES = auto.master auto.misc auto.net auto.smb
 
-all: rc.autofs autofs.conf.default autofs.service
+all: rc.autofs autofs.conf.default autofs.init.conf autofs.service
 
 rc.autofs: rc.autofs.in
 	sed -e "s|@@sbindir@@|$(sbindir)|g" \
@@ -46,26 +46,52 @@ else
    endif
 endif
 
-CONFIG = $(shell test -e $(INSTALLROOT)$(autofsconfdir)/autofs.orig || echo "-b --suffix=.orig")
-CEXISTS = $(shell test -e $(INSTALLROOT)$(autofsconfdir)/autofs || echo "no")
+#
+# The map directory contains the main autofs configuration ...
+#
+CONFIG = $(shell test -e $(INSTALLROOT)$(autofsmapdir)/autofs.conf.orig || echo "-b --suffix=.orig")
+CEXISTS = $(shell test -e $(INSTALLROOT)$(autofsmapdir)/autofs || echo "no")
 
 .PHONY: autofs.conf
 autofs.conf: autofs.conf.default
 	@echo
-	@echo "Installing autofs default configuation in $(autofsconfdir)"
+	@echo "Installing autofs default configuation in $(autofsmapdir)"
 	@if test -z "$(CONFIG)" ; \
 	then \
 		install -v autofs.conf.default -m 644 \
-			$(INSTALLROOT)$(autofsconfdir)/autofs.conf.new ; \
+			$(INSTALLROOT)$(autofsmapdir)/autofs.conf.new ; \
 		echo "Found existing backup of configuration file." ; \
 		echo "Installed package default configuration file as \"autofs.conf.new\"." ; \
 	else \
 		install -v autofs.conf.default -m 644 $(CONFIG) \
-				$(INSTALLROOT)$(autofsconfdir)/autofs ; \
-		echo "Installed package configuration configuration as \"autofs\"." ; \
+				$(INSTALLROOT)$(autofsmapdir)/autofs.conf ; \
+		echo "Installed package default configuration as \"autofs.conf\"." ; \
 		if test -z "$(CEXISTS)" ; \
 		then \
-			echo "Backup of existing configuration made to \"autofs.orig\"." ; \
+			echo "Backup of existing configuration made to \"autofs.conf.orig\"." ; \
+		fi ; \
+	fi
+
+CINIT = $(shell test -e $(INSTALLROOT)$(autofsconfdir)/autofs.orig || echo "-b --suffix=.orig")
+CIEXISTS = $(shell test -e $(INSTALLROOT)$(autofsconfdir)/autofs || echo "no")
+
+.PHONY: autofs.sysinit
+autofs.sysinit: autofs.init.conf
+	@echo
+	@echo "Installing autofs init configuation in $(autofsconfdir)"
+	@if test -z "$(CINIT)" ; \
+	then \
+		install -v autofs.init.conf -m 644 \
+			$(INSTALLROOT)$(autofsconfdir)/autofs.new ; \
+		echo "Found existing backup of init configuration file." ; \
+		echo "Installed package init configuration file as \"autofs.new\"." ; \
+	else \
+		install -v autofs.init.conf -m 644 $(CINIT) \
+				$(INSTALLROOT)$(autofsconfdir)/autofs ; \
+		echo "Installed package init configuration as \"autofs\"." ; \
+		if test -z "$(CIEXISTS)" ; \
+		then \
+			echo "Backup of existing init configuration made to \"autofs.orig\"." ; \
 		fi ; \
 	fi
 
@@ -185,7 +211,7 @@ auto.smb:
 	fi
 
 install: rc.autofs autofs.conf.default dirs autofs.init autofs.service \
-		autofs.conf autofs_ldap_auth.conf $(SAMPLES)
+		autofs.conf autofs.sysinit autofs_ldap_auth.conf $(SAMPLES)
 	@echo
 
 clean:

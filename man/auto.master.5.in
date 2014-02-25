@@ -214,44 +214,44 @@ configuration file
 .hy
 They are:
 .TP
-.B TIMEOUT
+.B timeout
 Sets the default mount timeout in seconds. The internal program
 default is 10 minutes, but the default installed configuration
 overrides this and sets the timeout to 5 minutes to be consistent
 with earlier autofs releases.
 .TP
-.B NEGATIVE_TIMEOUT
+.B negative_timeout
 Set the default timeout for caching failed key lookups (program default
 60). If the equivalent command line option is given it will override this
 setting.
 .TP
-.B MOUNT_WAIT
+.B mount_wait
 Set the default time to wait for a response from a spawned mount(8)
 before sending it a SIGTERM. Note that we still need to wait for the
 RPC layer to timeout before the sub-process exits so this isn't ideal
 but it is the best we can do. The default is to wait until mount(8)
 returns without intervention.
 .TP
-.B UMOUNT_WAIT
+.B umount_wait
 Set the default time to wait for a response from a spawned umount(8)
 before sending it a SIGTERM. Note that we still need to wait for the
 RPC layer to timeout before the sub-process exits so this isn't ideal
 but it is the best we can do.
 .TP
-.B BROWSE_MODE
+.B browse_mode
 Maps are browsable by default (program default "yes").
 .TP
-.B MOUNT_NFS_DEFAULT_PROTOCOL
+.B mount_nfs_default_protocol
 Specify the default protocol used by mount.nfs(8) (program default 3). Since
 we can't identify this default automatically we need to set it in the autofs
 configuration.
 .TP
-.B APPEND_OPTIONS
+.B append_options
 Determine whether global options, given on the command line or per mount
 in the master map, are appended to map entry options or if the map entry
 options replace the global options (program default "yes", append options).
 .TP
-.B LOGGING
+.B logging
 set default log level "none", "verbose" or "debug" (program default "none").
 .SH BUILTIN MAP -hosts
 If "-hosts" is given as the map then accessing a key under the mount point
@@ -317,15 +317,15 @@ values must be set, any partial schema specification will be ignored.
 .P
 The configuration settings available are:
 .TP
-.B LDAP_TIMEOUT
+.B ldap_timeout
 Set the network response timeout (default 8).
 Set timeout value for the synchronous API  calls. The default is the LDAP
 library default of an infinite timeout.
 .TP
-.B LDAP_NETWORK_TIMEOUT
+.B ldap_network_timeout
 Set the network response timeout (default 8).
 .TP
-.B LDAP_URI
+.B ldap_uri
 A space seperated list of server uris of the form <proto>://<server>[/]
 where <proto> can be ldap or ldaps. The option can be given multiple times.
 Map entries that include a server name override this option and it is then
@@ -341,34 +341,34 @@ SRV RR lookup. The server list returned from an SRV RR lookup is refreshed
 according to the minimum ttl found in the SRV RR records or after one hour,
 whichever is less.
 .TP
-.B SEARCH_BASE
+.B search_base
 The base dn to use when searching for amap base dn. This entry may be
 given multiple times and each will be checked for a map base dn in
 the order they occur in the configuration. The search base list is read
 at startup and whenever the daemon recieves a HUP signal.
 .TP
-.B MAP_OBJECT_CLASS
+.B map_object_class
 The map object class. In the \fBnisMap\fP schema this corresponds to the class
 \fBnisMap\fP and in the \fBautomountMap\fP schema it corresponds to the class
 \fBautomountMap\fP.
 .TP
-.B ENTRY_OBJECT_CLASS
+.B entry_object_class
 The map entry object class. In the \fBnisMap\fP schema this corresponds
 to the class \fBnisObject\fP and in the \fBautomountMap\fP schema it
 corresponds to the class \fBautomount\fP.
 .TP
-.B MAP_ATTRIBUTE
+.B map_attribute
 The attribute used to identify the name of the map to which this
 entry belongs.  In the \fBnisMap\fP schema this corresponds to the attribute
 \fBnisMapName\fP and in the \fBautomountMap\fP schema it corresponds to the
 attribute \fBou\fP or \fBautomountMapName\fP.
 .TP
-.B ENTRY_ATTRIBUTE
+.B entry_attribute
 The attribute used to identify a map key. In the \fBnisMap\fP schema this
 corresponds to the attribute \fBcn\fP and in the \fBautomountMap\fP schema
 it corresponds to the attribute \fBautomountKey\fP.
 .TP
-.B VALUE_ATTRIBUTE
+.B value_attribute
 The attribute used to identify the value of the map entry. In the \fBnisMap\fP
 schema this corresponds to the attribute \fBnisMapEntry\fP and in the \fBautomountMap\fP
 schema it corresponds to the attribute \fBautomountInformation\fP.
@@ -386,6 +386,11 @@ settings.  The default location of this file is
 .nh
 .BR @@autofsmapdir@@/autofs_ldap_auth.conf .
 .hy
+.TP
+.B auth_conf_file
+This configuration option may be used to specify an alternate location
+for the ldap authentication file
+.P
 If this file exists it will be used to establish whether TLS or authentication
 should be used.
 .P

@@ -2,7 +2,7 @@
 -include ../Makefile.conf
 include ../Makefile.rules
 
-all: autofs.init autofs.sysconfig autofs.service
+all: autofs.init autofs.conf autofs.service
 
 autofs.init: autofs.init.in
 	sed -e "s|@@sbindir@@|$(sbindir)|g" \
@@ -11,9 +11,9 @@ autofs.init: autofs.init.in
 	    -e "s|@@autofspiddir@@|$(autofspiddir)|g" \
 	    -e "s|@@initdir@@|$(initdir)|g" < autofs.init.in > autofs.init
 
-autofs.sysconfig: autofs.sysconfig.in
+autofs.conf: autofs.conf.default.in
 	sed -e "s|@@autofsmapdir@@|$(autofsmapdir)|g" \
-		< autofs.sysconfig.in > autofs.sysconfig
+		< autofs.conf.default.in > autofs.conf
 
 autofs.service: ../samples/autofs.service.in
 	sed -e "s|@@sbindir@@|$(sbindir)|g" \
