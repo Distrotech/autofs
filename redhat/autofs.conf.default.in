@@ -325,7 +325,7 @@ dismount_interval = 300
 # appears to work reasonably well most of the time without the
 # update).
 #
-# autofs_use_lofs = no
+# autofs_use_lofs = yes
 #
 # Several configuration options can be set per mount point.
 # In particulr map_type, map_name, map_defaults, search_path,
