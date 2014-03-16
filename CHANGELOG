@@ -37,6 +37,7 @@
 - fix inconsistent error returns in handle_packet_missing_direct().
 - simple coverity fixes.
 - fix fix options compare.
+- use open(2) instead of access(2) to trigger dependent mounts.
 
 17/10/2013 autofs-5.0.8
 =======================

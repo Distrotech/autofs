@@ -32,7 +32,7 @@ static pthread_mutex_t spawn_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 #define SPAWN_OPT_NONE		0x0000
 #define SPAWN_OPT_LOCK		0x0001
-#define SPAWN_OPT_ACCESS	0x0002
+#define SPAWN_OPT_OPEN		0x0002
 
 #define MTAB_LOCK_RETRIES	3
 
@@ -126,7 +126,7 @@ static int do_spawn(unsigned logopt, unsigned int wait,
 	int errp, errn;
 	int cancel_state;
 	unsigned int use_lock = options & SPAWN_OPT_LOCK;
-	unsigned int use_access = options & SPAWN_OPT_ACCESS;
+	unsigned int use_open = options & SPAWN_OPT_OPEN;
 	sigset_t allsigs, tmpsig, oldsig;
 	struct thread_stdenv_vars *tsv;
 	pid_t euid = 0;
@@ -166,6 +166,8 @@ static int do_spawn(unsigned logopt, unsigned int wait,
 		/* what to mount must always be second last */
 		while (*pargv++)
 			loc++;
+		if (loc <= 3)
+			goto done;
 		loc -= 2;
 
 		/*
@@ -176,7 +178,9 @@ static int do_spawn(unsigned logopt, unsigned int wait,
 		 *
 		 * I hope host names are never allowed "/" as first char
 		 */
-		if (use_access && *(argv[loc]) == '/') {
+		if (use_open && *(argv[loc]) == '/') {
+			int fd;
+
 			pid_t pgrp = getpgrp();
 
 			/*
@@ -192,19 +196,21 @@ static int do_spawn(unsigned logopt, unsigned int wait,
 			/*
 			 * Trigger the recursive mount.
 			 *
-			 * Ignore the access(2) return code as there may be
+			 * Ignore the open(2) return code as there may be
 			 * multiple waiters for this mount and we need to
-			 * let the  VFS handle access returns to each
-			 * individual waiter.
+			 * let the VFS handle returns to each individual
+			 * waiter.
 			 */
-			access(argv[loc], F_OK);
+			fd = open(argv[loc], O_DIRECTORY);
+			if (fd != -1)
+				close(fd);
 
 			seteuid(0);
 			setegid(0);
 			if (pgrp >= 0)
 				setpgid(0, pgrp);
 		}
-
+done:
 		execv(prog, (char *const *) argv);
 		_exit(255);	/* execv() failed */
 	} else {
@@ -327,7 +333,7 @@ int spawn_mount(unsigned logopt, ...)
 #ifdef ENABLE_MOUNT_LOCKING
 	options = SPAWN_OPT_LOCK;
 #else
-	options = SPAWN_OPT_ACCESS;
+	options = SPAWN_OPT_OPEN;
 #endif
 
 	va_start(arg, logopt);
@@ -360,7 +366,7 @@ int spawn_mount(unsigned logopt, ...)
 		p = argv + 2;
 	}
 	while ((*p = va_arg(arg, char *))) {
-		if (options == SPAWN_OPT_ACCESS && !strcmp(*p, "-t")) {
+		if (options == SPAWN_OPT_OPEN && !strcmp(*p, "-t")) {
 			*(++p) = va_arg(arg, char *);
 			if (!*p)
 				break;
@@ -429,7 +435,7 @@ int spawn_mount(unsigned logopt, ...)
 
 /*
  * For bind mounts that depend on the target being mounted (possibly
- * itself an automount) we attempt to mount the target using an access
+ * itself an automount) we attempt to mount the target using an open(2)
  * call. For this to work the location must be the second last arg.
  *
  * NOTE: If mount locking is enabled this type of recursive mount cannot
@@ -455,7 +461,7 @@ int spawn_bind_mount(unsigned logopt, ...)
 #ifdef ENABLE_MOUNT_LOCKING
 	options = SPAWN_OPT_LOCK;
 #else
-	options = SPAWN_OPT_ACCESS;
+	options = SPAWN_OPT_OPEN;
 #endif
 
 	/*
