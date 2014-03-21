@@ -130,6 +130,7 @@
 #define DEFAULT_AMD_UMOUNT_ON_EXIT		"yes"
 #define DEFAULT_AMD_USE_TCPWRAPPERS		DEFAULT_AMD_NULL_VALUE
 #define DEFAULT_AMD_VENDOR			"unknown"
+#define DEFAULT_AMD_LINUX_UFS_MOUNT_TYPE	"ext3"
 
 #ifdef WITH_LDAP
 struct ldap_schema;
@@ -184,6 +185,7 @@ char *conf_amd_get_map_defaults(const char *);
 char *conf_amd_get_map_type(const char *);
 char *conf_amd_get_search_path(const char *);
 unsigned int conf_amd_get_dismount_interval(const char *);
+char *conf_amd_get_linux_ufs_mount_type(void);
 unsigned long conf_amd_get_flags(const char *);
 
 #endif

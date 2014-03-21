@@ -390,6 +390,15 @@ LDAP URIs.
 .B hesiod_base
 .br
 Sets the base name used for hesiod map sources.
+.TP
+.B linux_ufs_mount_type
+.br
+This is an aditional configuration option for the autofs amd format
+parser implementation.
+
+There's no simple way to determine what the system default filesystem
+is and am-utils needs to be continually updated to do this and can
+easily get it wrong ayway. So allow it to be set in the configuration.
 .SH EXAMPLE
 .sp
 .RS +.2i

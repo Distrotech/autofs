@@ -136,6 +136,7 @@
 #define NAME_AMD_UMOUNT_ON_EXIT			"unmount_on_exit"
 #define NAME_AMD_USE_TCPWRAPPERS		"use_tcpwrappers"
 #define NAME_AMD_VENDOR				"vendor"
+#define NAME_AMD_LINUX_UFS_MOUNT_TYPE		"linux_ufs_mount_type"
 
 /* Status returns */
 #define CFG_OK		0x0000
@@ -543,6 +544,10 @@ static int conf_load_amd_defaults(void)
 	if (ret == CFG_FAIL)
 		goto error;
 
+	ret = conf_update(sec, NAME_AMD_LINUX_UFS_MOUNT_TYPE,
+			  DEFAULT_AMD_LINUX_UFS_MOUNT_TYPE, CONF_NONE);
+	if (ret == CFG_FAIL)
+		goto error;
 	return 1;
 
 error:
@@ -1704,6 +1709,11 @@ unsigned int conf_amd_get_dismount_interval(const char *section)
 		tmp = atoi(DEFAULT_TIMEOUT);
 
 	return (unsigned int) tmp;
+}
+
+char *conf_amd_get_linux_ufs_mount_type(void)
+{
+	return conf_get_string(amd_gbl_sec, NAME_AMD_LINUX_UFS_MOUNT_TYPE);
 }
 
 unsigned long conf_amd_get_flags(const char *section)

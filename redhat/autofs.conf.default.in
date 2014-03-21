@@ -306,6 +306,15 @@ mount_nfs_default_protocol = 4
 #
 # hesiod_base - the base name used for hesiod map sources.
 #
+# Additional configuration options added:
+#
+# linux_ufs_mount_type - set the default system filesystem type that's
+#	used for mount type ufs. There's no simple way to determine
+#	what the system default filesystem is and am-utils needs to
+#	be continually updated to do this and can easily get it wrong
+#	anyway.
+#
+#
 # Define global options for the amd parser within autofs.
 #
 [ amd ]

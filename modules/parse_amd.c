@@ -1245,6 +1245,22 @@ static unsigned int validate_generic_options(unsigned int logopt,
 	return 1;
 }
 
+static unsigned int validate_ufs_fstype(unsigned int logopt,
+					struct amd_entry *entry)
+{
+	const char *type = (const char *) entry->type;
+
+	if (strcmp(type, "ext") && strcmp(type, "ext2") &&
+	    strcmp(type, "ext3") && strcmp(type, "ext4") &&
+	    strcmp(type, "xfs") && strcmp(type, "jfs")) {
+		error(logopt, MODPREFIX
+		      "%s: mount type %s not valid as ufs mount type on Linux",
+		      type);
+		return 0;
+	}
+	return 1;
+}
+
 static unsigned int validate_host_options(unsigned int logopt,
 					  struct amd_entry *entry)
 {
@@ -1281,6 +1297,11 @@ static int amd_mount(struct autofs_point *ap, const char *name,
 			return 1;
 		ret = do_generic_mount(ap, name, entry, entry->rfs, flags);
 		break;
+
+	case AMD_MOUNT_TYPE_UFS:
+		if (!validate_ufs_fstype(ap->logopt, entry))
+			return 1;
+		/* fall through to validate generic options */
 
 	case AMD_MOUNT_TYPE_EXT:
 	case AMD_MOUNT_TYPE_XFS:

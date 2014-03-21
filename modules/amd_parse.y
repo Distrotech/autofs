@@ -269,6 +269,9 @@ option_assignment: MAP_OPTION OPTION_ASSIGN FS_TYPE
 			   !strcmp($3, "ext4")) {
 			entry.flags |= AMD_MOUNT_TYPE_EXT;
 			entry.type = amd_strdup($3);
+		} else if (!strcmp($3, "ufs")) {
+			entry.flags |= AMD_MOUNT_TYPE_UFS;
+			entry.type = conf_amd_get_linux_ufs_mount_type();
 		} else if (!strcmp($3, "cdfs")) {
 			entry.flags |= AMD_MOUNT_TYPE_CDFS;
 			entry.type = amd_strdup("iso9660");
