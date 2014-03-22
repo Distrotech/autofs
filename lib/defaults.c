@@ -43,6 +43,7 @@
 #define OLD_CONFIG_FILE			AUTOFS_CONF_DIR "/autofs"
 #define MAX_LINE_LEN			256
 #define MAX_SECTION_NAME		MAX_LINE_LEN
+#define MAX_CFG_NAME_LEN		31
 
 #define NAME_MASTER_MAP			"master_map_name"
 
@@ -661,7 +662,7 @@ static int conf_update(const char *section,
 	ret = CFG_FAIL;
 	co = conf_lookup(section, key);
 	if (!co)
-		ret = conf_add(section, key, value, flags);
+		return conf_add(section, key, value, flags);
 	else {
 		char *val = NULL, *tmp = NULL;
 		/* Environment overrides file value */
@@ -691,15 +692,29 @@ error:
 	return ret;
 }
 
+static u_int32_t get_hash(const char *key, unsigned int size)
+{
+	const char *pkey = key;
+	char lkey[MAX_CFG_NAME_LEN];
+	char *plkey = &lkey[0];
+
+	while (*pkey)
+		*plkey++ = tolower(*pkey++);
+	*plkey = '\0';
+	return hash(lkey, size);
+}
+
 static struct conf_option *conf_lookup(const char *section, const char *key)
 {
 	struct conf_option *co;
+	u_int32_t key_hash;
 	unsigned int size = CFG_TABLE_SIZE;
 
 	if (!key || !section)
 		return NULL;
 
-	for (co = config->hash[hash(key, size)]; co != NULL; co = co->next) {
+	key_hash = get_hash(key, size);
+	for (co = config->hash[key_hash]; co != NULL; co = co->next) {
 		if (strcasecmp(section, co->section))
 			continue;
 		if (!strcasecmp(key, co->name))
@@ -772,7 +787,7 @@ static int parse_line(char *line, char **sec, char **res, char **value)
 	if (*key == '#' || (*key != '[' && !isalpha(*key)))
 		return 0;
 
-	while (*key && *key == ' ')
+	while (*key && isblank(*key))
 		key++;
 
 	if (!*key)
@@ -780,13 +795,13 @@ static int parse_line(char *line, char **sec, char **res, char **value)
 
 	if (*key == '[') {
 		char *tmp;
-		while (*key && (*key == '[' || *key == ' '))
+		while (*key && (*key == '[' || isblank(*key)))
 			key++;
 		tmp = strchr(key, ']');
 		if (!tmp)
 			return 0;
 		*tmp = ' ';
-		while (*tmp && *tmp == ' ') {
+		while (*tmp && isblank(*tmp)) {
 			*tmp = '\0';
 			tmp--;
 		}
@@ -803,7 +818,7 @@ static int parse_line(char *line, char **sec, char **res, char **value)
 
 	*val++ = '\0';
 
-	while (*(--tmp) == ' ')
+	while (isblank(*(--tmp)))
 		*tmp = '\0';
 
 	while (*val && (*val == '"' || isblank(*val)))
