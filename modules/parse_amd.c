@@ -970,7 +970,7 @@ static int do_generic_mount(struct autofs_point *ap, const char *name,
 	unsigned int umount = 0;
 	int ret = 0;
 
-	if (!entry->sublink) {
+	if (!entry->fs) {
 		ret = do_mount(ap, ap->path, name, strlen(name),
 			       target, entry->type, entry->opts);
 	} else {
@@ -986,7 +986,7 @@ static int do_generic_mount(struct autofs_point *ap, const char *name,
 				goto out;
 			umount = 1;
 		}
-		/* We might be using an external mount */
+		/* We have an external mount */
 		ext_mount_add(&entry->ext_mount, entry->fs, umount);
 		ret = do_link_mount(ap, name, entry, flags);
 	}
@@ -1236,6 +1236,11 @@ static unsigned int validate_generic_options(unsigned int logopt,
 			error(logopt, "lofs: mount device not given");
 			return 0;
 		}
+	}
+	if (entry->sublink && !entry->fs) {
+		error(logopt, MODPREFIX
+		      "%s: sublink option requires option fs");
+		return 0;
 	}
 	return 1;
 }
