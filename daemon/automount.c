@@ -628,7 +628,7 @@ int umount_multi(struct autofs_point *ap, const char *path, int incl)
 	 * parent may have mounted over top of us.
 	 */
 	if (ap->submount)
-		left += umount_subtree_mounts(ap->parent, path, is_autofs_fs);
+		left += umount_subtree_mounts(ap->parent, path, 1);
 
 	left += umount_subtree_mounts(ap, path, is_autofs_fs);
 
