@@ -38,6 +38,7 @@
 - simple coverity fixes.
 - fix fix options compare.
 - use open(2) instead of access(2) to trigger dependent mounts.
+- fix fix map source with type lookup.
 
 17/10/2013 autofs-5.0.8
 =======================

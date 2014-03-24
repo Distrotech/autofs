@@ -418,8 +418,11 @@ static int lookup_map_read_map(struct autofs_point *ap,
 {
 	char *path;
 
-	if (!map->argv[0])
+	if (!map->argv[0]) {
+		if (!strcmp(map->type, "hosts"))
+			return do_read_map(ap, map, age);
 		return NSS_STATUS_UNKNOWN;
+	}
 
 	/*
 	 * This is only called when map->type != NULL.
@@ -809,8 +812,11 @@ static int do_name_lookup_mount(struct autofs_point *ap,
 {
 	char *path;
 
-	if (!map->argv[0])
+	if (!map->argv[0]) {
+		if (!strcmp(map->type, "hosts"))
+			return do_lookup_mount(ap, map, name, name_len);
 		return NSS_STATUS_UNKNOWN;
+	}
 
 	/*
 	 * This is only called when map->type != NULL.
