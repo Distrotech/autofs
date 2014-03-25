@@ -1011,7 +1011,7 @@ static int do_nfs_mount(struct autofs_point *ap, const char *name,
 	if (proximity == PROXIMITY_OTHER && entry->remopts)
 		opts = entry->remopts;
 
-	if (!entry->sublink) {
+	if (!entry->fs) {
 		ret = mount_nfs->mount_mount(ap, ap->path, name, strlen(name),
 					     target, entry->type, opts,
 					     mount_nfs->context);
@@ -1213,6 +1213,11 @@ static unsigned int validate_nfs_options(unsigned int logopt,
 			      "%s: remote file system not given", entry->type);
 			return 0;
 		}
+	}
+	if (entry->sublink && !entry->fs) {
+		error(logopt, MODPREFIX
+		      "%s: sublink option requires option fs");
+		return 0;
 	}
 	return 1;
 }
