@@ -157,9 +157,10 @@ The special character '&' will be replaced by the provided key.  So,
 in the example above, a lookup for the key 'foo' would yield a mount
 of server:/export/home/foo.
 .SS Variable Substitution
-The following special variables will be substituted in the key and location
-fields of an automounter map if prefixed with $ as customary from shell
-scripts (Curly braces can be used to separate the field name):
+The following special variables will be substituted in the location
+field of an automounter map entry if prefixed with $ as customary
+from shell scripts (curly braces can be used to separate the field
+name):
 .sp
 .RS +.2i
 .ta 1.5i
