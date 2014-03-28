@@ -27,9 +27,10 @@ Differences between version 4 and version 5.
 - `autofs' version 5.0.0 will refuse to run if it cannot find an
    autofs4 kernel module that supports protocol version 5.00 or above.
 
-- mount options present in the master map are now overridden by mount
-  options in map entries instead of being accumulated. This behaviour
-  is in line with other industry automount implementations.
+- mount options present in the master map are accumulated by default
+  which is different to the behavior of some other autofs
+  implementations. A configuration option is available to change this
+  behavior if required.
 
 New in 5.0.0 is:
 

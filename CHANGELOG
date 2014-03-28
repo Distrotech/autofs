@@ -41,6 +41,7 @@
 - fix fix map source with type lookup.
 - fixes for samples/auto.master.
 - fix variable substitution description.
+- fix incorrect append options description in README.v5-release.
 
 17/10/2013 autofs-5.0.8
 =======================
