@@ -139,7 +139,7 @@ the \fBdn\fP of an LDAP entry for maps of type \fBldap\fP.
 .br
 Any remaining command line arguments without leading dashes (\-) are
 taken as options (\fI\-o\fP) to \fBmount\fP.  Arguments with leading
-dashes are considered options for the maps.
+dashes are considered options for the maps and are passed to automount (8).
 .sp
 The \fBsun\fP format supports the following options:
 .RS

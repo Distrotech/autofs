@@ -1,8 +1,8 @@
 #
 # Sample auto.master file
-# This is an automounter map and it has the following format
-# key [ -mount-options-separated-by-comma ] location
-# For details of the format look at autofs(5).
+# This is a 'master' automounter map and it has the following format:
+# mount-point [map-type[,format]:]map [options]
+# For details of the format look at auto.master(5).
 #
 /misc	/etc/auto.misc
 #
@@ -13,6 +13,7 @@
 /net	-hosts
 #
 # Include /etc/auto.master.d/*.autofs
+# The included files must conform to the format of this file.
 #
 +dir:/etc/auto.master.d
 #
