@@ -1932,7 +1932,7 @@ int clean_stale_multi_triggers(struct autofs_point *ap,
 		/* Check for and umount stale subtree offsets */
 		oe_base = oe->key + strlen(root);
 		ret = clean_stale_multi_triggers(ap, oe, root, oe_base);
-		left =+ ret;
+		left += ret;
 		if (ret)
 			continue;
 
@@ -1977,7 +1977,7 @@ int clean_stale_multi_triggers(struct autofs_point *ap,
 		key = strdup(oe->key);
 		if (!key) {
 	                char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-        	        error(ap->logopt, "malloc: %s", estr);
+		        error(ap->logopt, "malloc: %s", estr);
 			left++;
 			continue;
 		}
