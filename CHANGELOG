@@ -5,6 +5,7 @@
 - fix reset flex scan buffer on init.
 - wait for master map available at start.
 - add master read wait option.
+- add serialization to sasl init.
 
 28/03/2014 autofs-5.0.9
 =======================
