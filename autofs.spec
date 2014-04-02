@@ -18,13 +18,14 @@
 
 Summary: A tool from automatically mounting and umounting filesystems.
 Name: autofs
-%define version 5.0.9
-%define release 1
+%define version 5.1.0
+%define release 0
+%define beta beta1
 Version: %{version}
-Release: %{release}
+Release: %{release}.%{beta}
 License: GPL
 Group: System Environment/Daemons
-Source: ftp://ftp.kernel.org/pub/linux/daemons/autofs/v4/autofs-%{version}.tar.gz
+Source: ftp://ftp.kernel.org/pub/linux/daemons/autofs/v4/autofs-%{version}-%{beta}.tar.gz
 Buildroot: %{_tmppath}/%{name}-tmp
 %if %{with_systemd}
 BuildRequires: systemd-units
@@ -73,7 +74,7 @@ unmountar dem när de har varit oanvända en bestämd tid.  Detta kan
 inkludera nätfilsystem, CD-ROM, floppydiskar, och så vidare.
 
 %prep
-%setup -q
+%setup -q -n %{name}-%{version}
 echo %{version}-%{release} > .version
 %if %{with_systemd}
   %define unitdir %{?_unitdir:/lib/systemd/system}
