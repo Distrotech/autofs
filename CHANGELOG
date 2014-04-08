@@ -7,6 +7,7 @@
 - add master read wait option.
 - add serialization to sasl init.
 - dont allocate dev_ctl_ops too early.
+- fix race accessing qdn in get_query_dn().
 
 28/03/2014 autofs-5.0.9
 =======================
