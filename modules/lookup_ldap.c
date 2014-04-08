@@ -578,7 +578,9 @@ static int do_bind(unsigned logopt, LDAP *ldap, const char *uri, struct lookup_c
 	      ctxt->auth_required, ctxt->sasl_mech);
 
 	if (ctxt->auth_required & LDAP_NEED_AUTH) {
+		ldapinit_mutex_lock();
 		rv = autofs_sasl_bind(logopt, ldap, ctxt);
+		ldapinit_mutex_unlock();
 		debug(logopt, MODPREFIX "autofs_sasl_bind returned %d", rv);
 	} else {
 		rv = bind_ldap_simple(logopt, ldap, uri, ctxt);
@@ -922,7 +924,9 @@ static LDAP *do_reconnect(unsigned logopt, struct lookup_context *ctxt)
 #ifdef WITH_SASL
 		/* Dispose of the sasl authentication connection and try again. */
 		if (!ldap && ctxt->auth_required & LDAP_NEED_AUTH) {
+			ldapinit_mutex_lock();
 			autofs_sasl_dispose(ctxt);
+			ldapinit_mutex_unlock();
 			ldap = connect_to_server(logopt, ctxt->server, ctxt);
 		}
 #endif
@@ -958,7 +962,9 @@ static LDAP *do_reconnect(unsigned logopt, struct lookup_context *ctxt)
 	 * current server again before trying other servers in the list.
 	 */
 	if (!ldap && ctxt->auth_required & LDAP_NEED_AUTH) {
+		ldapinit_mutex_lock();
 		autofs_sasl_dispose(ctxt);
+		ldapinit_mutex_unlock();
 		ldap = connect_to_server(logopt, ctxt->uri->uri, ctxt);
 	}
 #endif
@@ -969,7 +975,9 @@ static LDAP *do_reconnect(unsigned logopt, struct lookup_context *ctxt)
 
 find_server:
 #ifdef WITH_SASL
+	ldapinit_mutex_lock();
 	autofs_sasl_dispose(ctxt);
+	ldapinit_mutex_unlock();
 #endif
 
 	/* Current server failed, try the rest or dc connection */
@@ -1742,11 +1750,14 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 
 #ifdef WITH_SASL
 	/* Init the sasl callbacks */
+	ldapinit_mutex_lock();
 	if (!autofs_sasl_client_init(LOGOPT_NONE)) {
 		error(LOGOPT_ANY, "failed to init sasl client");
+		ldapinit_mutex_unlock();
 		free_context(ctxt);
 		return 1;
 	}
+	ldapinit_mutex_unlock();
 #endif
 
 	if (is_amd_format)
@@ -3678,8 +3689,10 @@ int lookup_done(void *context)
 	struct lookup_context *ctxt = (struct lookup_context *) context;
 	int rv = close_parse(ctxt->parse);
 #ifdef WITH_SASL
+	ldapinit_mutex_lock();
 	autofs_sasl_dispose(ctxt);
 	autofs_sasl_done();
+	ldapinit_mutex_unlock();
 #endif
 	free_context(ctxt);
 	return rv;
