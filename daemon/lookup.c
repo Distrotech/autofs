@@ -668,6 +668,17 @@ int lookup_ghost(struct autofs_point *ap, const char *root)
 		cache_readlock(mc);
 		me = cache_enumerate(mc, NULL);
 		while (me) {
+			/*
+			 * Map entries that have been created in the cache
+			 * due to a negative lookup but don't exist in the
+			 * map source shouldn't have directories created.
+			 * me->status of negative entries that are present
+			 * in the map source will have me->status set to 0
+			 * in lookup_prune_one_cache().
+			 */
+			if (me->status && !me->mapent)
+				goto next;
+
 			if (!strcmp(me->key, "*"))
 				goto next;
 
@@ -1205,7 +1216,10 @@ void lookup_prune_one_cache(struct autofs_point *ap, struct mapent_cache *mc, ti
 
 		if (valid)
 			cache_delete(mc, key);
-		else if (!is_mounted(_PROC_MOUNTS, path, MNTS_AUTOFS)) {
+		else if (this->status) {
+			cache_unlock(mc);
+			goto next;
+		 } else if (!is_mounted(_PROC_MOUNTS, path, MNTS_AUTOFS)) {
 			dev_t devid = ap->dev;
 			status = CHE_FAIL;
 			if (ap->type == LKP_DIRECT)
