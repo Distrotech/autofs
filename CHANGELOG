@@ -4,6 +4,7 @@
 - add serialization to sasl init.
 - dont allocate dev_ctl_ops too early.
 - fix incorrect round robin host detection.
+- fix race accessing qdn in get_query_dn().
 
 04/06/2014 autofs-5.1.0
 =======================

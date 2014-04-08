@@ -461,16 +461,19 @@ static int get_query_dn(unsigned logopt, LDAP *ldap, struct lookup_context *ctxt
 	}
 
 	free(query);
-	qdn = strdup(dn);
-	ldap_memfree(dn);
+	if (dn) {
+		qdn = strdup(dn);
+		ldap_memfree(dn);
+	}
 	ldap_msgfree(result);
 	if (!qdn)
 		return 0;
 
+	uris_mutex_lock(ctxt);
 	if (ctxt->qdn)
 		free(ctxt->qdn);
-
 	ctxt->qdn = qdn;
+	uris_mutex_unlock(ctxt);
 
 	return 1;
 }
