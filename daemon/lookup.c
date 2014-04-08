@@ -716,6 +716,14 @@ int lookup_ghost(struct autofs_point *ap, const char *root)
 		cache_readlock(mc);
 		me = cache_enumerate(mc, NULL);
 		while (me) {
+			/*
+			 * Map entries that have been created in the cache
+			 * due to a negative lookup shouldn't have directories
+			 * created if they haven't already been created.
+			 */
+			if (!me->mapent)
+				goto next;
+
 			if (!strcmp(me->key, "*"))
 				goto next;
 
