@@ -29,6 +29,7 @@
 #include <resolv.h>
 #include <lber.h>
 #include <libxml/tree.h>
+#include <stdlib.h>
 
 #define MODULE_LOOKUP
 #include "automount.h"
@@ -52,6 +53,14 @@ static struct ldap_schema common_schema[] = {
 };
 static unsigned int common_schema_count = sizeof(common_schema)/sizeof(struct ldap_schema);
 
+static struct ldap_schema amd_timestamp = {
+	"madmap", "amdmapName", "amdmapTimestamp", NULL, "amdmapTimestamp"
+};
+
+static struct ldap_schema amd_schema = {
+	"amdmap", "amdmapName", "amdmap", "amdmapKey", "amdmapValue"
+};
+
 /*
  * Initialization and de-initialization of LDAP and OpenSSL must be
  * always serialized to avoid corruption of context structures inside
@@ -62,6 +71,7 @@ pthread_mutex_t ldapinit_mutex = PTHREAD_MUTEX_INITIALIZER;
 struct ldap_search_params {
 	struct autofs_point *ap;
 	LDAP *ldap;
+	char *base;
 	char *query, **attrs;
 	struct berval *cookie;
 	ber_int_t pageSize;
@@ -531,6 +541,16 @@ static int find_query_dn(unsigned logopt, LDAP *ldap, struct lookup_context *ctx
 	if (ctxt->schema)
 		return 0;
 
+	if (ctxt->format & MAP_FLAG_FORMAT_AMD) {
+		schema = alloc_common_schema(&amd_schema);
+		if (!schema) {
+			error(logopt, MODPREFIX "failed to allocate schema");
+			return 0;
+		}
+		ctxt->schema = schema;
+		return 1;
+	}
+
 	for (i = 0; i < common_schema_count; i++) {
 		const char *class = common_schema[i].map_class;
 		const char *key = common_schema[i].map_attr;
@@ -587,8 +607,10 @@ static int do_bind(unsigned logopt, LDAP *ldap, const char *uri, struct lookup_c
 
 	if (!ctxt->cur_host) {
 		ctxt->cur_host = nhost;
-		/* Check if schema defined in conf first time only */
-		ctxt->schema = defaults_get_schema();
+		if (!(ctxt->format & MAP_FLAG_FORMAT_AMD)) {
+			/* Check if schema defined in conf first time only */
+			ctxt->schema = defaults_get_schema();
+		}
 	} else {
 		/* If connection host has changed update */
 		if (strcmp(ctxt->cur_host, nhost)) {
@@ -614,7 +636,7 @@ static int do_bind(unsigned logopt, LDAP *ldap, const char *uri, struct lookup_c
 			      MODPREFIX "failed to find valid query dn");
 			return 0;
 		}
-	} else {
+	} else if (!(ctxt->format & MAP_FLAG_FORMAT_AMD)) {
 		const char *class = ctxt->schema->map_class;
 		const char *key = ctxt->schema->map_attr;
 		if (!get_query_dn(logopt, ldap, ctxt, class, key)) {
@@ -646,6 +668,126 @@ static LDAP *do_connect(unsigned logopt, const char *uri, struct lookup_context 
 	}
 
 	return ldap;
+}
+
+static unsigned long get_amd_timestamp(struct lookup_context *ctxt)
+{
+	LDAP *ldap;
+	LDAPMessage *result = NULL, *e;
+	char *query;
+	int scope = LDAP_SCOPE_SUBTREE;
+	char *map, *class, *value;
+	char *attrs[2];
+	struct berval **bvValues;
+	unsigned long timestamp = 0;
+	int rv, l, ql;
+
+	ldap = do_connect(LOGOPT_ANY, ctxt->server, ctxt);
+	if (!ldap)
+		return 0;
+
+	map = amd_timestamp.map_attr;
+	class = amd_timestamp.entry_class;
+	value = amd_timestamp.value_attr;
+
+	attrs[0] = value;
+	attrs[1] = NULL;
+
+	/* Build a query string. */
+	l = strlen(class) +
+	    strlen(map) + strlen(ctxt->mapname) + 21;
+
+	query = malloc(l);
+	if (query == NULL) {
+		char buf[MAX_ERR_BUF];
+		char *estr = strerror_r(errno, buf, sizeof(buf));
+		crit(LOGOPT_ANY, MODPREFIX "malloc: %s", estr);
+		return 0;
+	}
+
+	/*
+	 * Look for an entry in class under ctxt-base
+	 * whose entry is equal to qKey.
+	 */
+	ql = sprintf(query, "(&(objectclass=%s)(%s=%s))",
+		     class, map, ctxt->mapname);
+	if (ql >= l) {
+		error(LOGOPT_ANY,
+		      MODPREFIX "error forming query string");
+		free(query);
+		return 0;
+	}
+
+	rv = ldap_search_s(ldap, ctxt->base, scope, query, attrs, 0, &result);
+	if ((rv != LDAP_SUCCESS) || !result) {
+		crit(LOGOPT_ANY, MODPREFIX "timestamp query failed %s", query);
+		unbind_ldap_connection(LOGOPT_ANY, ldap, ctxt);
+		if (result)
+			ldap_msgfree(result);
+		free(query);
+		return 0;
+	}
+
+	e = ldap_first_entry(ldap, result);
+	if (!e) {
+		debug(LOGOPT_ANY,
+		     MODPREFIX "got answer, but no entry for timestamp");
+		ldap_msgfree(result);
+		unbind_ldap_connection(LOGOPT_ANY, ldap, ctxt);
+		free(query);
+		return CHE_MISSING;
+	}
+
+	while (e) {
+		char *v_val;
+		char *endptr;
+
+		bvValues = ldap_get_values_len(ldap, e, value);
+		if (!bvValues || !*bvValues) {
+			debug(LOGOPT_ANY,
+			      MODPREFIX "no value found in timestamp");
+			goto next;
+		}
+
+		/* There should be one value for a timestamp */
+		v_val = bvValues[0]->bv_val;
+
+		timestamp = strtol(v_val, &endptr, 0);
+		if ((errno == ERANGE &&
+		    (timestamp == LONG_MAX || timestamp == LONG_MIN)) ||
+		    (errno != 0 && timestamp == 0)) {
+			debug(LOGOPT_ANY,
+			      MODPREFIX "invalid value in timestamp");
+			free(query);
+			return 0;
+		}
+
+		if (endptr == v_val) {
+			debug(LOGOPT_ANY,
+			      MODPREFIX "no digits found in timestamp");
+			free(query);
+			return 0;
+		}
+
+		if (*endptr != '\0') {
+			warn(LOGOPT_ANY, MODPREFIX
+			     "characters found after number: %s", endptr);
+			warn(LOGOPT_ANY,
+			     MODPREFIX "timestamp may be invalid");
+		}
+
+		ldap_value_free_len(bvValues);
+		break;
+next:
+		ldap_value_free_len(bvValues);
+		e = ldap_next_entry(ldap, e);
+	}
+
+	ldap_msgfree(result);
+	unbind_ldap_connection(LOGOPT_ANY, ldap, ctxt);
+	free(query);
+
+	return timestamp;
 }
 
 static LDAP *connect_to_server(unsigned logopt, const char *uri, struct lookup_context *ctxt)
@@ -1215,7 +1357,7 @@ static int parse_server_string(unsigned logopt, const char *url, struct lookup_c
 		const char *q = NULL;
 
 		/* Isolate the server(s). */
-		if ((q = strchr(s, '/'))) {
+		if ((q = strchr(s, '/')) || (q = strchr(s, '\0'))) {
 			l = q - s;
 			if (*proto) {
 				al_len = l + strlen(proto) + 2;
@@ -1318,8 +1460,7 @@ static int parse_server_string(unsigned logopt, const char *url, struct lookup_c
 		ptr += l + 1;
 	}
 
-	/* TODO: why did I do this - how can the map name "and" base dn be missing? */
-	if (!ptr)
+	if (!ptr || ctxt->format & MAP_FLAG_FORMAT_AMD)
 		goto done;
 
 	/*
@@ -1505,36 +1646,83 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 	/* If a map type isn't explicitly given, parse it like sun entries. */
 	if (mapfmt == NULL)
 		mapfmt = MAPFMT_DEFAULT;
-
-	/*
-	 * Parse out the server name and base dn, and fill them
-	 * into the proper places in the lookup context structure.
-	 */
-	if (!parse_server_string(LOGOPT_NONE, argv[0], ctxt)) {
-		error(LOGOPT_ANY, MODPREFIX "cannot parse server string");
-		free_context(ctxt);
-		return 1;
+	if (!strcmp(mapfmt, "amd")) {
+		ctxt->format = MAP_FLAG_FORMAT_AMD;
+		ctxt->check_defaults = 1;
 	}
-
-	if (!ctxt->base)
-		ctxt->sdns = defaults_get_searchdns();
 
 	ctxt->timeout = defaults_get_ldap_timeout();
 	ctxt->network_timeout = defaults_get_ldap_network_timeout();
 
-	if (!ctxt->server) {
-		struct list_head *uris = defaults_get_uris();
-		if (uris) {
-			validate_uris(uris);
-			if (!list_empty(uris))
-				ctxt->uris = uris;
-			else {
-				error(LOGOPT_ANY,
-				      "no valid uris found in config list"
-				      ", using default system config");
-				free(uris);
+	if (!(ctxt->format & MAP_FLAG_FORMAT_AMD)) {
+		/*
+		 * Parse out the server name and base dn, and fill them
+		 * into the proper places in the lookup context structure.
+		 */
+		if (!parse_server_string(LOGOPT_NONE, argv[0], ctxt)) {
+			error(LOGOPT_ANY, MODPREFIX "cannot parse server string");
+			free_context(ctxt);
+			return 1;
+		}
+
+		if (!ctxt->base)
+			ctxt->sdns = defaults_get_searchdns();
+
+		if (!ctxt->server) {
+			struct list_head *uris = defaults_get_uris();
+			if (uris) {
+				validate_uris(uris);
+				if (!list_empty(uris))
+					ctxt->uris = uris;
+				else {
+					error(LOGOPT_ANY, MODPREFIX
+					    "no valid uris found in config list"
+					    ", using default system config");
+					free(uris);
+				}
 			}
 		}
+	} else {
+		char *tmp = conf_amd_get_ldap_base();
+		if (!tmp) {
+			error(LOGOPT_ANY, MODPREFIX "failed to get base dn");
+			free_context(ctxt);
+			return 1;
+		}
+		ctxt->base = tmp;
+
+		tmp = conf_amd_get_ldap_hostports();
+		if (!tmp) {
+			error(LOGOPT_ANY,
+			      MODPREFIX "failed to get ldap_hostports");
+			free_context(ctxt);
+			return 1;
+		}
+
+		/*
+		 * Parse out the server name and port, and save them in
+		 * the proper places in the lookup context structure.
+		 */
+		if (!parse_server_string(LOGOPT_NONE, tmp, ctxt)) {
+			error(LOGOPT_ANY, MODPREFIX "cannot parse server string");
+			free_context(ctxt);
+			return 1;
+		}
+		free(tmp);
+
+		if (!ctxt->server) {
+			error(LOGOPT_ANY, MODPREFIX "ldap_hostports not valid");
+			free_context(ctxt);
+			return 1;
+		}
+
+		tmp = strdup(argv[0]);
+		if (!tmp) {
+			error(LOGOPT_ANY, MODPREFIX "failed to set mapname");
+			free_context(ctxt);
+			return 1;
+		}
+		ctxt->mapname = tmp;
 	}
 
 	/*
@@ -1557,6 +1745,8 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 		return 1;
 	}
 #endif
+
+	ctxt->timestamp = get_amd_timestamp(ctxt);
 
 	/* Open the parser, if we can. */
 	ctxt->parse = open_parse(mapfmt, MODPREFIX, argc - 1, argv + 1);
@@ -2029,7 +2219,7 @@ static int do_paged_query(struct ldap_search_params *sp, struct lookup_context *
 	if (sp->morePages == TRUE)
 		goto do_paged;
 
-	rv = ldap_search_s(sp->ldap, ctxt->qdn, scope, sp->query, sp->attrs, 0, &sp->result);
+	rv = ldap_search_s(sp->ldap, sp->base, scope, sp->query, sp->attrs, 0, &sp->result);
 	if ((rv != LDAP_SUCCESS) || !sp->result) {
 		/*
  		 * Check for Size Limit exceeded and force run through loop
@@ -2063,7 +2253,7 @@ do_paged:
 
 	/* Search for entries in the directory using the parmeters. */
 	rv = ldap_search_ext_s(sp->ldap,
-			       ctxt->qdn, scope, sp->query, sp->attrs,
+			       sp->base, scope, sp->query, sp->attrs,
 			       0, controls, NULL, NULL, 0, &sp->result);
 	if ((rv != LDAP_SUCCESS) && (rv != LDAP_PARTIAL_RESULTS)) {
 		ldap_control_free(pageControl);
@@ -2364,6 +2554,115 @@ next:
 	return LDAP_SUCCESS;
 }
 
+static int do_get_amd_entries(struct ldap_search_params *sp,
+			      struct map_source *source,
+			      struct lookup_context *ctxt)
+{
+	struct autofs_point *ap = sp->ap;
+	struct mapent_cache *mc = source->mc;
+	struct berval **bvKey;
+	struct berval **bvValues;
+	LDAPMessage *e;
+	char *entry, *value;
+	int rv, ret, count;
+
+	entry = ctxt->schema->entry_attr;
+	value = ctxt->schema->value_attr;
+
+	e = ldap_first_entry(sp->ldap, sp->result);
+	if (!e) {
+		debug(ap->logopt,
+		      MODPREFIX "query succeeded, no matches for %s",
+		      sp->query);
+		ret = ldap_parse_result(sp->ldap, sp->result,
+					&rv, NULL, NULL, NULL, NULL, 0);
+		if (ret == LDAP_SUCCESS)
+			return rv;
+		else
+			return LDAP_OPERATIONS_ERROR;
+	} else
+		debug(ap->logopt, MODPREFIX "examining entries");
+
+	while (e) {
+		char *k_val, *v_val;
+		ber_len_t k_len;
+		char *s_key;
+
+		bvKey = ldap_get_values_len(sp->ldap, e, entry);
+		if (!bvKey || !*bvKey) {
+			e = ldap_next_entry(sp->ldap, e);
+			if (!e) {
+				debug(ap->logopt, MODPREFIX
+				      "failed to get next entry for query %s",
+				      sp->query);
+				ret = ldap_parse_result(sp->ldap,
+							sp->result, &rv,
+							NULL, NULL, NULL, NULL, 0);
+				if (ret == LDAP_SUCCESS)
+					return rv;
+				else
+					return LDAP_OPERATIONS_ERROR;
+			}
+			continue;
+		}
+
+		/* By definition keys should be unique within each map entry */
+		k_val = NULL;
+		k_len = 0;
+
+		count = ldap_count_values_len(bvKey);
+		if (count > 1)
+			warn(ap->logopt, MODPREFIX
+			     "more than one %s, using first", entry);
+
+		k_val = bvKey[0]->bv_val;
+		k_len = bvKey[0]->bv_len;
+
+		bvValues = ldap_get_values_len(sp->ldap, e, value);
+		if (!bvValues || !*bvValues) {
+			debug(ap->logopt,
+			      MODPREFIX "no %s defined for %s",
+			      value, sp->query);
+			goto next;
+		}
+
+		count = ldap_count_values_len(bvValues);
+		if (count > 1)
+			warn(ap->logopt, MODPREFIX
+			     "more than one %s, using first", value);
+
+		v_val = bvValues[0]->bv_val;
+
+		/* Don't fail on "/" in key => type == 0 */
+		s_key = sanitize_path(k_val, k_len, 0, ap->logopt);
+		if (!s_key)
+			goto next;
+
+		cache_writelock(mc);
+		cache_update(mc, source, s_key, v_val, sp->age);
+		cache_unlock(mc);
+
+		free(s_key);
+next:
+		ldap_value_free_len(bvValues);
+		ldap_value_free_len(bvKey);
+		e = ldap_next_entry(sp->ldap, e);
+		if (!e) {
+			debug(ap->logopt, MODPREFIX
+			      "failed to get next entry for query %s",
+			      sp->query);
+			ret = ldap_parse_result(sp->ldap,
+						sp->result, &rv,
+						NULL, NULL, NULL, NULL, 0);
+			if (ret == LDAP_SUCCESS)
+				return rv;
+			else
+				return LDAP_OPERATIONS_ERROR;
+		}
+	}
+
+	return LDAP_SUCCESS;
+}
 
 static int read_one_map(struct autofs_point *ap,
 			struct map_source *source,
@@ -2419,9 +2718,14 @@ static int read_one_map(struct autofs_point *ap,
 		return NSS_STATUS_UNAVAIL;
 	}
 
+	if (ctxt->format & MAP_FLAG_FORMAT_AMD)
+		sp.base = ctxt->base;
+	else
+		sp.base = ctxt->qdn;
+
 	/* Look around. */
 	debug(ap->logopt,
-	      MODPREFIX "searching for \"%s\" under \"%s\"", sp.query, ctxt->qdn);
+	      MODPREFIX "searching for \"%s\" under \"%s\"", sp.query, sp.base);
 
 	sp.cookie = NULL;
 	sp.pageSize = 2000;
@@ -2465,7 +2769,10 @@ static int read_one_map(struct autofs_point *ap,
 			return NSS_STATUS_UNAVAIL;
 		}
 
-		rv = do_get_entries(&sp, source, ctxt);
+		if (source->flags & MAP_FLAG_FORMAT_AMD)
+			rv = do_get_amd_entries(&sp, source, ctxt);
+		else
+			rv = do_get_entries(&sp, source, ctxt);
 		if (rv != LDAP_SUCCESS) {
 			ldap_msgfree(sp.result);
 			unbind_ldap_connection(ap->logopt, sp.ldap, ctxt);
@@ -2874,6 +3181,219 @@ next:
 	return ret;
 }
 
+static int lookup_one_amd(struct autofs_point *ap,
+			  struct map_source *source,
+			  char *qKey, int qKey_len,
+			  struct lookup_context *ctxt)
+{
+	struct mapent_cache *mc = source->mc;
+	LDAP *ldap;
+	LDAPMessage *result = NULL, *e;
+	char *query;
+	int scope = LDAP_SCOPE_SUBTREE;
+	char *map, *class, *entry, *value;
+	char *attrs[3];
+	struct berval **bvKey;
+	struct berval **bvValues;
+	char buf[MAX_ERR_BUF];
+	time_t age = time(NULL);
+	int rv, l, ql, count;
+	int ret = CHE_MISSING;
+
+	if (ctxt == NULL) {
+		crit(ap->logopt, MODPREFIX "context was NULL");
+		return CHE_FAIL;
+	}
+
+	/* Initialize the LDAP context. */
+	ldap = do_reconnect(ap->logopt, ctxt);
+	if (!ldap)
+		return CHE_UNAVAIL;
+
+	map = ctxt->schema->map_attr;
+	class = ctxt->schema->entry_class;
+	entry = ctxt->schema->entry_attr;
+	value = ctxt->schema->value_attr;
+
+	attrs[0] = entry;
+	attrs[1] = value;
+	attrs[2] = NULL;
+
+	/* Build a query string. */
+	l = strlen(class) +
+	    strlen(map) + strlen(ctxt->mapname) +
+	    strlen(entry) + strlen(qKey) + 24;
+
+	query = malloc(l);
+	if (query == NULL) {
+		char *estr = strerror_r(errno, buf, sizeof(buf));
+		crit(ap->logopt, MODPREFIX "malloc: %s", estr);
+		return CHE_FAIL;
+	}
+
+	/*
+	 * Look for an entry in class under ctxt-base
+	 * whose entry is equal to qKey.
+	 */
+	ql = sprintf(query, "(&(objectclass=%s)(%s=%s)(%s=%s))",
+		     class, map, ctxt->mapname, entry, qKey);
+	if (ql >= l) {
+		error(ap->logopt,
+		      MODPREFIX "error forming query string");
+		free(query);
+		return CHE_FAIL;
+	}
+
+	debug(ap->logopt,
+	      MODPREFIX "searching for \"%s\" under \"%s\"", query, ctxt->base);
+
+	rv = ldap_search_s(ldap, ctxt->base, scope, query, attrs, 0, &result);
+	if ((rv != LDAP_SUCCESS) || !result) {
+		crit(ap->logopt, MODPREFIX "query failed for %s", query);
+		unbind_ldap_connection(ap->logopt, ldap, ctxt);
+		if (result)
+			ldap_msgfree(result);
+		free(query);
+		return CHE_FAIL;
+	}
+
+	debug(ap->logopt,
+	      MODPREFIX "getting first entry for %s=\"%s\"", entry, qKey);
+
+	e = ldap_first_entry(ldap, result);
+	if (!e) {
+		debug(ap->logopt,
+		     MODPREFIX "got answer, but no entry for %s", query);
+		ldap_msgfree(result);
+		unbind_ldap_connection(ap->logopt, ldap, ctxt);
+		free(query);
+		return CHE_MISSING;
+	}
+
+	while (e) {
+		char *k_val, *v_val;
+		ber_len_t k_len;
+		char *s_key;
+
+		bvKey = ldap_get_values_len(ldap, e, entry);
+		if (!bvKey || !*bvKey) {
+			e = ldap_next_entry(ldap, e);
+			continue;
+		}
+
+		/* By definition keys should be unique within each map entry */
+		k_val = NULL;
+		k_len = 0;
+
+		count = ldap_count_values_len(bvKey);
+		if (count > 1)
+			warn(ap->logopt, MODPREFIX
+			     "more than one %s, using first", entry);
+
+		k_val = bvKey[0]->bv_val;
+		k_len = bvKey[0]->bv_len;
+
+		debug(ap->logopt, MODPREFIX "examining first entry");
+
+		bvValues = ldap_get_values_len(ldap, e, value);
+		if (!bvValues || !*bvValues) {
+			debug(ap->logopt,
+			      MODPREFIX "no %s defined for %s", value, query);
+			goto next;
+		}
+
+		count = ldap_count_values_len(bvValues);
+		if (count > 1)
+			warn(ap->logopt, MODPREFIX
+			     "more than one %s, using first", value);
+
+		/* There should be one value for a key, use first value */
+		v_val = bvValues[0]->bv_val;
+
+		/* Don't fail on "/" in key => type == 0 */
+		s_key = sanitize_path(k_val, k_len, 0, ap->logopt);
+		if (!s_key)
+			goto next;
+
+		cache_writelock(mc);
+		ret = cache_update(mc, source, s_key, v_val, age);
+		cache_unlock(mc);
+
+		free(s_key);
+next:
+		ldap_value_free_len(bvValues);
+		ldap_value_free_len(bvKey);
+		e = ldap_next_entry(ldap, e);
+	}
+
+	ldap_msgfree(result);
+	unbind_ldap_connection(ap->logopt, ldap, ctxt);
+	free(query);
+
+	return ret;
+}
+
+static int match_key(struct autofs_point *ap,
+		     struct map_source *source,
+		     char *key, int key_len,
+		     struct lookup_context *ctxt)
+{
+	unsigned int is_amd_format = source->flags & MAP_FLAG_FORMAT_AMD;
+	char buf[MAX_ERR_BUF];
+	char *lkp_key;
+	char *prefix;
+	int ret;
+
+	if (is_amd_format)
+		ret = lookup_one_amd(ap, source, key, key_len, ctxt);
+	else
+		ret = lookup_one(ap, source, key, key_len, ctxt);
+
+	if (ret == CHE_OK || ret == CHE_UPDATED)
+		return ret;
+
+	if (!is_amd_format)
+		return CHE_FAIL;
+
+	lkp_key = strdup(key);
+	if (!lkp_key) {
+		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+		error(ap->logopt, MODPREFIX "strdup: %s", estr);
+		return CHE_FAIL;
+	}
+
+	ret = CHE_MISSING;
+
+	/*
+	 * Now strip successive directory components and try a
+	 * match against map entries ending with a wildcard and
+	 * finally try the wilcard entry itself.
+	 */
+	while ((prefix = strrchr(lkp_key, '/'))) {
+		char *match;
+		size_t len;
+		*prefix = '\0';
+		len = strlen(lkp_key + 3);
+		match = malloc(len);
+		if (!match) {
+			char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+			error(ap->logopt, MODPREFIX "malloc: %s", estr);
+			ret = CHE_FAIL;
+			goto done;
+		}
+		len--;
+		strcpy(match, lkp_key);
+		strcat(match, "/*");
+		ret = lookup_one_amd(ap, source, match, len, ctxt);
+		free(match);
+		if (ret == CHE_OK || ret == CHE_UPDATED)
+			goto done;
+	}
+done:
+	free(lkp_key);
+	return ret;
+}
+
 static int check_map_indirect(struct autofs_point *ap,
 			      struct map_source *source,
 			      char *key, int key_len,
@@ -2888,16 +3408,43 @@ static int check_map_indirect(struct autofs_point *ap,
 	mc = source->mc;
 
 	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cur_state);
-	ret = lookup_one(ap, source, key, key_len, ctxt);
+
+	pthread_mutex_lock(&ap->entry->current_mutex);
+	if (source->flags & MAP_FLAG_FORMAT_AMD) {
+		unsigned long timestamp = get_amd_timestamp(ctxt);
+		if (timestamp > ctxt->timestamp) {
+			ctxt->timestamp = timestamp;
+			source->stale = 1;
+			ctxt->check_defaults = 1;
+		}
+
+		if (ctxt->check_defaults) {
+			/* Check for a /defaults entry */
+			ret = lookup_one_amd(ap, source, "/defaults", 9, ctxt);
+			if (ret == CHE_FAIL) {
+				warn(ap->logopt, MODPREFIX
+				     "error getting /defaults from map %s",
+				     ctxt->mapname);
+			} else
+				ctxt->check_defaults = 0;
+		}
+	}
+	pthread_mutex_unlock(&ap->entry->current_mutex);
+
+	ret = match_key(ap, source, key, key_len, ctxt);
 	if (ret == CHE_FAIL) {
 		pthread_setcancelstate(cur_state, NULL);
 		return NSS_STATUS_NOTFOUND;
 	} else if (ret == CHE_UNAVAIL) {
+		struct mapent *exists;
 		/*
 		 * If the server is down and the entry exists in the cache
 		 * and belongs to this map return success and use the entry.
 		 */
-		struct mapent *exists = cache_lookup(mc, key);
+		if (source->flags & MAP_FLAG_FORMAT_AMD)
+			exists = match_cached_key(ap, MODPREFIX, source, key);
+		else
+			exists = cache_lookup(mc, key);
 		if (exists && exists->source == source) {
 			pthread_setcancelstate(cur_state, NULL);
 			return NSS_STATUS_SUCCESS;
@@ -2910,24 +3457,28 @@ static int check_map_indirect(struct autofs_point *ap,
 	}
 	pthread_setcancelstate(cur_state, NULL);
 
-	/*
-	 * Check for map change and update as needed for
-	 * following cache lookup.
-	 */
-	cache_readlock(mc);
-	t_last_read = ap->exp_runfreq + 1;
-	me = cache_lookup_first(mc);
-	while (me) {
-		if (me->source == source) {
-			t_last_read = now - me->age;
-			break;
+	if (!(source->flags & MAP_FLAG_FORMAT_AMD)) {
+		/*
+		 * Check for map change and update as needed for
+		 * following cache lookup.
+		 */
+		cache_readlock(mc);
+		t_last_read = ap->exp_runfreq + 1;
+		me = cache_lookup_first(mc);
+		while (me) {
+			if (me->source == source) {
+				t_last_read = now - me->age;
+				break;
+			}
+			me = cache_lookup_next(mc, me);
 		}
-		me = cache_lookup_next(mc, me);
-	}
-	cache_unlock(mc);
+		cache_unlock(mc);
 
-	if (t_last_read > ap->exp_runfreq && ret & CHE_UPDATED)
-		source->stale = 1;
+		pthread_mutex_lock(&ap->entry->current_mutex);
+		if (t_last_read > ap->exp_runfreq && ret & CHE_UPDATED)
+			source->stale = 1;
+		pthread_mutex_unlock(&ap->entry->current_mutex);
+	}
 
 	cache_readlock(mc);
 	me = cache_lookup_distinct(mc, "*");
@@ -2948,8 +3499,10 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 	struct mapent *me;
 	char key[KEY_MAX_LEN + 1];
 	int key_len;
+	char *lkp_key;
 	char *mapent = NULL;
 	char mapent_buf[MAPENT_MAX_LEN + 1];
+	char buf[MAX_ERR_BUF];
 	int status = 0;
 	int ret = 1;
 
@@ -2961,9 +3514,18 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 
 	debug(ap->logopt, MODPREFIX "looking up %s", name);
 
-	key_len = snprintf(key, KEY_MAX_LEN + 1, "%s", name);
-	if (key_len > KEY_MAX_LEN)
-		return NSS_STATUS_NOTFOUND;
+	if (!(source->flags & MAP_FLAG_FORMAT_AMD)) {
+		key_len = snprintf(key, KEY_MAX_LEN + 1, "%s", name);
+		if (key_len > KEY_MAX_LEN)
+			return NSS_STATUS_NOTFOUND;
+	} else {
+		key_len = expandamdent(name, NULL, NULL);
+		if (key_len > KEY_MAX_LEN)
+			return NSS_STATUS_NOTFOUND;
+		expandamdent(name, key, NULL);
+		key[key_len] = '\0';
+		debug(ap->logopt, MODPREFIX "expanded key: \"%s\"", key);
+	}
 
 	/* Check if we recorded a mount fail for this key anywhere */
 	me = lookup_source_mapent(ap, key, LKP_DISTINCT);
@@ -2997,18 +3559,26 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 	 * we never know about it.
 	 */
 	if (ap->type == LKP_INDIRECT && *key != '/') {
-		char *lkp_key;
-
 		cache_readlock(mc);
 		me = cache_lookup_distinct(mc, key);
 		if (me && me->multi)
 			lkp_key = strdup(me->multi->key);
-		else
+		else if (!ap->pref)
 			lkp_key = strdup(key);
+		else {
+			lkp_key = malloc(strlen(ap->pref) + strlen(key) + 1);
+			if (lkp_key) {
+				strcpy(lkp_key, ap->pref);
+				strcat(lkp_key, key);
+			}
+		}
 		cache_unlock(mc);
 
-		if (!lkp_key)
+		if (!lkp_key) {
+			char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+			error(ap->logopt, MODPREFIX "malloc: %s", estr);
 			return NSS_STATUS_UNKNOWN;
+		}
 
 		status = check_map_indirect(ap, source,
 					    lkp_key, strlen(lkp_key), ctxt);
@@ -3029,7 +3599,25 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 		cache_readlock(mc);
 	else
 		cache_writelock(mc);
-	me = cache_lookup(mc, key);
+
+	if (!ap->pref)
+		lkp_key = strdup(key);
+	else {
+		lkp_key = malloc(strlen(ap->pref) + strlen(key) + 1);
+		if (lkp_key) {
+			strcpy(lkp_key, ap->pref);
+			strcat(lkp_key, key);
+		}
+	}
+
+	if (!lkp_key) {
+		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+		error(ap->logopt, MODPREFIX "malloc: %s", estr);
+		cache_unlock(mc);
+		return NSS_STATUS_UNKNOWN;
+	}
+
+	me = match_cached_key(ap, MODPREFIX, source, lkp_key);
 	/* Stale mapent => check for entry in alternate source or wildcard */
 	if (me && !me->mapent) {
 		while ((me = cache_lookup_key_next(me)))
@@ -3055,6 +3643,7 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 		}
 	}
 	cache_unlock(mc);
+	free(lkp_key);
 
 	if (!mapent)
 		return NSS_STATUS_TRYAGAIN;

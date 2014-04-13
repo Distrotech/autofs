@@ -36,6 +36,7 @@ struct ldap_searchdn {
 
 struct lookup_context {
 	char *mapname;
+	unsigned int format;
 
 	char *server;
 	int port;
@@ -43,6 +44,8 @@ struct lookup_context {
 	char *qdn;
 	unsigned int timeout;
 	unsigned int network_timeout;
+	unsigned long timestamp;
+	unsigned int check_defaults;
 
 	/* LDAP version 2 or 3 */
 	int version;
