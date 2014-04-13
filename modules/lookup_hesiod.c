@@ -20,12 +20,15 @@
 #include "automount.h"
 #include "nsswitch.h"
 
-#define MAPFMT_DEFAULT "hesiod"
+#define MAPFMT_DEFAULT	   "hesiod"
+#define AMD_MAP_PREFIX	   "hesiod."
+#define AMD_MAP_PREFIX_LEN 7
 
 #define MODPREFIX "lookup(hesiod): "
 #define HESIOD_LEN 512
 
 struct lookup_context {
+	const char *mapname;
 	struct parse_mod *parser;
 	void *hesiod_context;
 };
@@ -50,6 +53,7 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 		logerr(MODPREFIX "malloc: %s", estr);
 		return 1;
 	}
+	memset(ctxt, 0, sizeof(struct lookup_context));
 
 	/* Initialize the resolver. */
 	res_init();
@@ -65,6 +69,20 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 	/* If a map type isn't explicitly given, parse it as hesiod entries. */
 	if (!mapfmt)
 		mapfmt = MAPFMT_DEFAULT;
+
+	if (!strcmp(mapfmt, "amd")) {
+		/* amd formated hesiod maps have a map name */
+		const char *mapname = argv[0];
+		if (strncmp(mapname, AMD_MAP_PREFIX, AMD_MAP_PREFIX_LEN)) {
+			logerr(MODPREFIX
+			      "incorrect prefix for hesiod map %s", mapname);
+			free(ctxt);
+			return 1;
+		}
+		ctxt->mapname = mapname;
+		argc--;
+		argv++;
+	}
 
 	/* Open the parser, if we can. */
 	ctxt->parser = open_parse(mapfmt, MODPREFIX, argc - 1, argv + 1);
@@ -97,16 +115,203 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
  * it's an ERR filesystem, it's an error message we should log.  Otherwise,
  * assume it's something we know how to deal with already (generic).
  */
+static int lookup_one(struct autofs_point *ap,
+		      struct map_source *source,
+		      const char *key, int key_len,
+		      struct lookup_context *ctxt)
+{
+	struct mapent_cache *mc;
+	char **hes_result;
+	char **record, *best_record = NULL, *p;
+	int priority, lowest_priority = INT_MAX;
+	int ret, status;
+
+	mc = source->mc;
+
+	status = pthread_mutex_lock(&hesiod_mutex);
+	if (status)
+		fatal(status);
+
+	hes_result = hesiod_resolve(ctxt->hesiod_context, key, "filsys");
+	if (!hes_result || !hes_result[0]) {
+		int err = errno;
+		error(ap->logopt,
+		      MODPREFIX "key \"%s\" not found in map", key);
+		status = pthread_mutex_unlock(&hesiod_mutex);
+		if (status)
+			fatal(status);
+		if (err == HES_ER_NOTFOUND)
+			return CHE_MISSING;
+		else
+			return CHE_FAIL;
+	}
+
+	/* autofs doesn't support falling back to alternate records, so just
+	   find the record with the lowest priority and hope it works.
+	   -- Aaron Ucko <amu@alum.mit.edu> 2002-03-11 */
+	for (record = hes_result; *record; ++record) {
+	    p = strrchr(*record, ' ');
+	    if ( p && isdigit(p[1]) ) {
+		priority = atoi(p+1);
+	    } else {
+		priority = INT_MAX - 1;
+	    }
+	    if (priority < lowest_priority) {
+		lowest_priority = priority;
+		best_record = *record;
+	    }
+	}
+
+	cache_writelock(mc);
+	ret = cache_update(mc, source, key, best_record, time(NULL));
+	cache_unlock(mc);
+	if (ret == CHE_FAIL) {
+		hesiod_free_list(ctxt->hesiod_context, hes_result);
+		status = pthread_mutex_unlock(&hesiod_mutex);
+		if (status)
+			fatal(status);
+		return ret;
+	}
+
+	debug(ap->logopt,
+	      MODPREFIX "lookup for \"%s\" gave \"%s\"",
+	      key, best_record);
+
+	hesiod_free_list(ctxt->hesiod_context, hes_result);
+
+	status = pthread_mutex_unlock(&hesiod_mutex);
+	if (status)
+		fatal(status);
+
+	return ret;
+}
+
+static int lookup_one_amd(struct autofs_point *ap,
+			  struct map_source *source,
+			  const char *key, int key_len,
+			  struct lookup_context *ctxt)
+{
+	struct mapent_cache *mc;
+	char *hesiod_base;
+	char **hes_result;
+	char *lkp_key;
+	int status, ret;
+
+	mc = source->mc;
+
+	hesiod_base = conf_amd_get_hesiod_base();
+	if (!hesiod_base)
+		return CHE_FAIL;
+
+	lkp_key = malloc(key_len + strlen(ctxt->mapname) - 7 + 2);
+	if (!lkp_key) {
+		free(hesiod_base);
+		return CHE_FAIL;
+	}
+
+	strcpy(lkp_key, key);
+	strcat(lkp_key, ".");
+	strcat(lkp_key, ctxt->mapname + AMD_MAP_PREFIX_LEN);
+
+	status = pthread_mutex_lock(&hesiod_mutex);
+	if (status)
+		fatal(status);
+
+	hes_result = hesiod_resolve(ctxt->hesiod_context, lkp_key, hesiod_base);
+	if (!hes_result || !hes_result[0]) {
+		int err = errno;
+		if (err == HES_ER_NOTFOUND)
+			ret = CHE_MISSING;
+		else
+			ret = CHE_FAIL;
+		goto done;
+	}
+
+	cache_writelock(mc);
+	ret = cache_update(mc, source, lkp_key, *hes_result, time(NULL));
+	cache_unlock(mc);
+
+	if (hes_result)
+		hesiod_free_list(ctxt->hesiod_context, hes_result);
+done:
+	free(lkp_key);
+
+	status = pthread_mutex_unlock(&hesiod_mutex);
+	if (status)
+		fatal(status);
+
+	return ret;
+}
+
+static int match_amd_key(struct autofs_point *ap,
+			 struct map_source *source,
+			 const char *key, int key_len,
+			 struct lookup_context *ctxt)
+{
+	char buf[MAX_ERR_BUF];
+	char *lkp_key;
+	char *prefix;
+	int ret;
+
+	ret = lookup_one_amd(ap, source, key, key_len, ctxt);
+	if (ret == CHE_OK || ret == CHE_UPDATED)
+		return ret;
+
+	lkp_key = strdup(key);
+	if (!lkp_key) {
+		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+		error(ap->logopt, MODPREFIX "strdup: %s", estr);
+		return CHE_FAIL;
+	}
+
+	ret = CHE_MISSING;
+
+	/*
+	 * Now strip successive directory components and try a
+	 * match against map entries ending with a wildcard and
+	 * finally try the wilcard entry itself.
+	 */
+	while ((prefix = strrchr(lkp_key, '/'))) {
+		char *match;
+		size_t len;
+		*prefix = '\0';
+		len = strlen(lkp_key) + 3;
+		match = malloc(len);
+		if (!match) {
+			char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+			error(ap->logopt, MODPREFIX "malloc: %s", estr);
+			ret = CHE_FAIL;
+			goto done;
+		}
+		len--;
+		strcpy(match, lkp_key);
+		strcat(match, "/*");
+		ret = lookup_one_amd(ap, source, match, len, ctxt);
+		free(match);
+		if (ret == CHE_OK || ret == CHE_UPDATED)
+			goto done;
+	}
+
+	/* Lastly try the wildcard */
+	ret = lookup_one_amd(ap, source, "*", 1, ctxt);
+done:
+	free(lkp_key);
+	return ret;
+}
+
 int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *context)
 {
 	struct lookup_context *ctxt = (struct lookup_context *) context;
-	struct map_source *source;
 	struct mapent_cache *mc;
+	char buf[MAX_ERR_BUF];
+	struct map_source *source;
 	struct mapent *me;
-	char **hes_result;
-	int status, rv;
-	char **record, *best_record = NULL, *p;
-	int priority, lowest_priority = INT_MAX;	
+	char key[KEY_MAX_LEN + 1];
+	size_t key_len;
+	char *lkp_key;
+	size_t len;
+	char *mapent;
+	int rv;
 
 	source = ap->entry->current;
 	ap->entry->current = NULL;
@@ -117,6 +322,19 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 	debug(ap->logopt,
 	      MODPREFIX "looking up root=\"%s\", name=\"%s\"",
 	      ap->path, name);
+
+	if (!(source->flags & MAP_FLAG_FORMAT_AMD)) {
+		key_len = snprintf(key, KEY_MAX_LEN + 1, "%s", name);
+		if (key_len > KEY_MAX_LEN)
+			return NSS_STATUS_NOTFOUND;
+	} else {
+		key_len = expandamdent(name, NULL, NULL);
+		if (key_len > KEY_MAX_LEN)
+			return NSS_STATUS_NOTFOUND;
+		expandamdent(name, key, NULL);
+		key[key_len] = '\0';
+		debug(ap->logopt, MODPREFIX "expanded key: \"%s\"", key);
+	}
 
 	/* Check if we recorded a mount fail for this key anywhere */
 	me = lookup_source_mapent(ap, name, LKP_DISTINCT);
@@ -144,69 +362,61 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 		}
 	}
 
-	chdir("/");		/* If this is not here the filesystem stays
-				   busy, for some reason... */
+	/* If this is not here the filesystem stays busy, for some reason... */
+	if (chdir("/"))
+		warn(ap->logopt,
+		     MODPREFIX "failed to set working directory to \"/\"");
 
-	status = pthread_mutex_lock(&hesiod_mutex);
-	if (status)
-		fatal(status);
+	len = key_len;
+	if (!(source->flags & MAP_FLAG_FORMAT_AMD))
+		lkp_key = strdup(key);
+	else {
+		rv = lookup_one_amd(ap, source, "/defaults", 9, ctxt);
+		if (rv == CHE_FAIL)
+			warn(ap->logopt,
+			     MODPREFIX "failed to lookup \"/defaults\" entry");
 
-	hes_result = hesiod_resolve(ctxt->hesiod_context, name, "filsys");
-	if (!hes_result || !hes_result[0]) {
-		/* Note: it is not clear to me how to distinguish between
-		 * the "no search results" case and other failures.  --JM */
-		error(ap->logopt,
-		      MODPREFIX "key \"%s\" not found in map", name);
-		status = pthread_mutex_unlock(&hesiod_mutex);
-		if (status)
-			fatal(status);
+		if (!ap->pref)
+			lkp_key = strdup(key);
+		else {
+			len += strlen(ap->pref);
+			lkp_key = malloc(len + 1);
+			if (lkp_key) {
+				strcpy(lkp_key, ap->pref);
+				strcat(lkp_key, name);
+			}
+		}
+	}
+
+	if (!lkp_key) {
+		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+		error(ap->logopt, "malloc: %s", estr);
+		return NSS_STATUS_UNKNOWN;
+	}
+
+	if (source->flags & MAP_FLAG_FORMAT_AMD)
+		rv = match_amd_key(ap, source, lkp_key, len, ctxt);
+	else
+		rv = lookup_one(ap, source, lkp_key, len, ctxt);
+
+	if (rv == CHE_FAIL) {
+		free(lkp_key);
+		return NSS_STATUS_UNAVAIL;
+	}
+
+	me = match_cached_key(ap, MODPREFIX, source, lkp_key);
+	free(lkp_key);
+	if (!me)
 		return NSS_STATUS_NOTFOUND;
-	}
 
-	/* autofs doesn't support falling back to alternate records, so just
-	   find the record with the lowest priority and hope it works.
-	   -- Aaron Ucko <amu@alum.mit.edu> 2002-03-11 */
-	for (record = hes_result; *record; ++record) {
-	    p = strrchr(*record, ' ');
-	    if ( p && isdigit(p[1]) ) {
-		priority = atoi(p+1);
-	    } else {
-		priority = INT_MAX - 1;
-	    }
-	    if (priority < lowest_priority) {
-		lowest_priority = priority;
-		best_record = *record;
-	    }
-	}
-
-	cache_writelock(mc);
-	rv = cache_update(mc, source, name, best_record, time(NULL));
-	cache_unlock(mc);
-	if (rv == CHE_FAIL)
+	if (!me->mapent)
 		return NSS_STATUS_UNAVAIL;
 
-	debug(ap->logopt,
-	      MODPREFIX "lookup for \"%s\" gave \"%s\"",
-	      name, best_record);
+	mapent = strdup(me->mapent);
 
-	rv = ctxt->parser->parse_mount(ap, name, name_len, best_record,
-				       ctxt->parser->context);
-
-	hesiod_free_list(ctxt->hesiod_context, hes_result);
-
-	status = pthread_mutex_unlock(&hesiod_mutex);
-	if (status)
-		fatal(status);
-
-	if (rv) {
-		/* Don't update negative cache when re-connecting */
-		if (ap->flags & MOUNT_FLAG_REMOUNT)
-			return NSS_STATUS_TRYAGAIN;
-		cache_writelock(mc);
-		cache_update_negative(mc, source, name, ap->negative_timeout);
-		cache_unlock(mc);
-		return NSS_STATUS_TRYAGAIN;
-	}
+	rv = ctxt->parser->parse_mount(ap, key, key_len,
+				       mapent, ctxt->parser->context);
+	free(mapent);
 
 	/*
 	 * Unavailable due to error such as module load fail 

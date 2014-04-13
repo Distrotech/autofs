@@ -7,6 +7,8 @@
 - fix fix negative status being reset on map read.
 - amd lookup update lookup ldap to handle amd keys.
   - inadvertantly dropped from initial series.
+- amd lookup update lookup hesiod to handle amd keys.
+  - inadvertantly dropped from initial series.
 
 28/03/2014 autofs-5.0.9
 =======================
