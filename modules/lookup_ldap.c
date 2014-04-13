@@ -3349,11 +3349,8 @@ static int match_key(struct autofs_point *ap,
 	else
 		ret = lookup_one(ap, source, key, key_len, ctxt);
 
-	if (ret == CHE_OK || ret == CHE_UPDATED)
+	if (ret == CHE_OK || ret == CHE_UPDATED || !is_amd_format)
 		return ret;
-
-	if (!is_amd_format)
-		return CHE_FAIL;
 
 	lkp_key = strdup(key);
 	if (!lkp_key) {
@@ -3399,6 +3396,7 @@ static int check_map_indirect(struct autofs_point *ap,
 			      char *key, int key_len,
 			      struct lookup_context *ctxt)
 {
+	unsigned int is_amd_format = source->flags & MAP_FLAG_FORMAT_AMD;
 	struct mapent_cache *mc;
 	struct mapent *me;
 	time_t now = time(NULL);
@@ -3410,7 +3408,7 @@ static int check_map_indirect(struct autofs_point *ap,
 	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cur_state);
 
 	pthread_mutex_lock(&ap->entry->current_mutex);
-	if (source->flags & MAP_FLAG_FORMAT_AMD) {
+	if (is_amd_format) {
 		unsigned long timestamp = get_amd_timestamp(ctxt);
 		if (timestamp > ctxt->timestamp) {
 			ctxt->timestamp = timestamp;
@@ -3457,7 +3455,7 @@ static int check_map_indirect(struct autofs_point *ap,
 	}
 	pthread_setcancelstate(cur_state, NULL);
 
-	if (!(source->flags & MAP_FLAG_FORMAT_AMD)) {
+	if (!is_amd_format) {
 		/*
 		 * Check for map change and update as needed for
 		 * following cache lookup.

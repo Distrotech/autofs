@@ -9,6 +9,7 @@
   - inadvertantly dropped from initial series.
 - amd lookup update lookup hesiod to handle amd keys.
   - inadvertantly dropped from initial series.
+- fix wildcard key lookup.
 
 28/03/2014 autofs-5.0.9
 =======================

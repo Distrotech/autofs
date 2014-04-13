@@ -457,6 +457,7 @@ static int match_key(struct autofs_point *ap,
 		     const char *key, int key_len,
 		     struct lookup_context *ctxt)
 {
+	unsigned int is_amd_format = source->flags & MAP_FLAG_FORMAT_AMD;
 	char buf[MAX_ERR_BUF];
 	char *lkp_key;
 	char *prefix;
@@ -465,11 +466,8 @@ static int match_key(struct autofs_point *ap,
 	ret = lookup_one(ap, source, key, strlen(key), ctxt);
 	if (ret < 0)
 		return ret;
-	if (ret == CHE_OK || ret == CHE_UPDATED)
+	if (ret == CHE_OK || ret == CHE_UPDATED || !is_amd_format)
 		return ret;
-
-	if (!(source->flags & MAP_FLAG_FORMAT_AMD))
-		return CHE_FAIL;
 
 	lkp_key = strdup(key);
 	if (!lkp_key) {

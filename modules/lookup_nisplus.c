@@ -339,6 +339,7 @@ static int match_key(struct autofs_point *ap,
 		     const char *key, int key_len,
 		     struct lookup_context *ctxt)
 {
+	unsigned int is_amd_format = source->flags & MAP_FLAG_FORMAT_AMD;
 	char buf[MAX_ERR_BUF];
 	char *lkp_key;
 	char *prefix;
@@ -347,11 +348,8 @@ static int match_key(struct autofs_point *ap,
 	ret = lookup_one(ap, source, key, key_len, ctxt);
 	if (ret < 0)
 		return ret;
-	if (ret == CHE_OK || ret == CHE_UPDATED)
+	if (ret == CHE_OK || ret == CHE_UPDATED || is_amd_format)
 		return ret;
-
-	if (!(source->flags & MAP_FLAG_FORMAT_AMD))
-		return CHE_FAIL;
 
 	lkp_key = strdup(key);
 	if (!lkp_key) {
@@ -504,6 +502,7 @@ static int check_map_indirect(struct autofs_point *ap,
 			      char *key, int key_len,
 			      struct lookup_context *ctxt)
 {
+	unsigned int is_amd_format = source->flags & MAP_FLAG_FORMAT_AMD;
 	struct mapent_cache *mc;
 	struct mapent *me, *exists;
 	time_t now = time(NULL);
@@ -512,7 +511,7 @@ static int check_map_indirect(struct autofs_point *ap,
 
 	mc = source->mc;
 
-	if (source->flags & MAP_FLAG_FORMAT_AMD) {
+	if (is_amd_format) {
 		/* Check for a /defaults entry to update the map source */
 		if (lookup_amd_defaults(ap, source, ctxt) == CHE_FAIL) {
 			warn(ap->logopt, MODPREFIX
@@ -559,7 +558,7 @@ static int check_map_indirect(struct autofs_point *ap,
 		}
 		me = cache_lookup_next(mc, me);
 	}
-	if (source->flags & MAP_FLAG_FORMAT_AMD)
+	if (is_amd_format)
 		exists = match_cached_key(ap, MODPREFIX, source, key);
 	else
 		exists = cache_lookup_distinct(mc, key);

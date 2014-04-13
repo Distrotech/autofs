@@ -382,7 +382,7 @@ static int match_key(struct autofs_point *ap,
 	char *prefix;
 	int ret;
 
-	if (source->flags & MAP_FLAG_FORMAT_AMD) {
+	if (is_amd_format) {
 		ret = lookup_amd_defaults(ap, source, ctxt);
 		if (ret != NSS_STATUS_SUCCESS) {
 			warn(ap->logopt,
@@ -420,7 +420,7 @@ static int match_key(struct autofs_point *ap,
 	ment = lookup_one(ap, lkp_key, lkp_len, ctxt);
 	if (ment) {
 		char *start = ment;
-		if (source->flags & MAP_FLAG_FORMAT_AMD) {
+		if (is_amd_format) {
 			start = ment + lkp_len;
 			while (isblank(*start))
 				start++;
