@@ -439,6 +439,8 @@ void master_set_scan_buffer(const char *buffer)
 	memset(buff, 0, sizeof(buff));
 	optr = buff;
 
+	YY_FLUSH_BUFFER;
+
 	line = buffer;
 	line_pos = &line[0];
 	/*
