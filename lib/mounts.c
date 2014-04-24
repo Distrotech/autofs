@@ -77,7 +77,7 @@ unsigned int linux_version_code(void)
 
 unsigned int query_kproto_ver(void)
 {
-	struct ioctl_ops *ops = get_ioctl_ops();
+	struct ioctl_ops *ops;
 	char dir[] = "/tmp/autoXXXXXX", *t_dir;
 	char options[MAX_OPTIONS_LEN + 1];
 	pid_t pgrp = getpgrp();
@@ -118,10 +118,19 @@ unsigned int query_kproto_ver(void)
 		return 0;
 	}
 
+	ops = get_ioctl_ops();
+	if (!ops) {
+		umount(t_dir);
+		close(pipefd[0]);
+		rmdir(t_dir);
+		return 0;
+	}
+
 	ops->open(LOGOPT_NONE, &ioctlfd, st.st_dev, t_dir);
 	if (ioctlfd == -1) {
 		umount(t_dir);
 		close(pipefd[0]);
+		close_ioctl_ctl();
 		rmdir(t_dir);
 		return 0;
 	}
@@ -133,6 +142,7 @@ unsigned int query_kproto_ver(void)
 		ops->close(LOGOPT_NONE, ioctlfd);
 		umount(t_dir);
 		close(pipefd[0]);
+		close_ioctl_ctl();
 		rmdir(t_dir);
 		return 0;
 	}
@@ -142,6 +152,7 @@ unsigned int query_kproto_ver(void)
 		ops->close(LOGOPT_NONE, ioctlfd);
 		umount(t_dir);
 		close(pipefd[0]);
+		close_ioctl_ctl();
 		rmdir(t_dir);
 		return 0;
 	}
@@ -149,6 +160,7 @@ unsigned int query_kproto_ver(void)
 	ops->close(LOGOPT_NONE, ioctlfd);
 	umount(t_dir);
 	close(pipefd[0]);
+	close_ioctl_ctl();
 	rmdir(t_dir);
 
 	return 1;
