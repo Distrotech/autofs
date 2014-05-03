@@ -1621,6 +1621,7 @@ static void validate_uris(struct list_head *list)
  */
 int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **context)
 {
+	unsigned int is_amd_format;
 	struct lookup_context *ctxt;
 	char buf[MAX_ERR_BUF];
 	int ret;
@@ -1647,6 +1648,7 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 	if (mapfmt == NULL)
 		mapfmt = MAPFMT_DEFAULT;
 	if (!strcmp(mapfmt, "amd")) {
+		is_amd_format = 1;
 		ctxt->format = MAP_FLAG_FORMAT_AMD;
 		ctxt->check_defaults = 1;
 	}
@@ -1654,7 +1656,7 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 	ctxt->timeout = defaults_get_ldap_timeout();
 	ctxt->network_timeout = defaults_get_ldap_network_timeout();
 
-	if (!(ctxt->format & MAP_FLAG_FORMAT_AMD)) {
+	if (!is_amd_format) {
 		/*
 		 * Parse out the server name and base dn, and fill them
 		 * into the proper places in the lookup context structure.
@@ -1746,7 +1748,8 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 	}
 #endif
 
-	ctxt->timestamp = get_amd_timestamp(ctxt);
+	if (is_amd_format)
+		ctxt->timestamp = get_amd_timestamp(ctxt);
 
 	/* Open the parser, if we can. */
 	ctxt->parse = open_parse(mapfmt, MODPREFIX, argc - 1, argv + 1);
