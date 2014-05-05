@@ -301,31 +301,6 @@ static int conf_load_autofs_defaults(void)
 	if (ret == CFG_FAIL)
 		goto error;
 
-	ret = conf_update(sec, NAME_MAP_OBJ_CLASS,
-			  DEFAULT_MAP_OBJ_CLASS, CONF_ENV);
-	if (ret == CFG_FAIL)
-		goto error;
-
-	ret = conf_update(sec, NAME_ENTRY_OBJ_CLASS,
-			  DEFAULT_ENTRY_OBJ_CLASS, CONF_ENV);
-	if (ret == CFG_FAIL)
-		goto error;
-
-	ret = conf_update(sec, NAME_MAP_ATTR,
-			  DEFAULT_MAP_ATTR, CONF_ENV);
-	if (ret == CFG_FAIL)
-		goto error;
-
-	ret = conf_update(sec, NAME_ENTRY_ATTR,
-			  DEFAULT_ENTRY_ATTR, CONF_ENV);
-	if (ret == CFG_FAIL)
-		goto error;
-
-	ret = conf_update(sec, NAME_VALUE_ATTR,
-			  DEFAULT_VALUE_ATTR, CONF_ENV);
-	if (ret == CFG_FAIL)
-		goto error;
-
 	ret = conf_update(sec, NAME_APPEND_OPTIONS,
 			  DEFAULT_APPEND_OPTIONS, CONF_ENV);
 	if (ret == CFG_FAIL)

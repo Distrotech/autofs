@@ -11,6 +11,7 @@
   - inadvertantly dropped from initial series.
 - fix wildcard key lookup.
 - fix out of order amd timestamp lookup.
+- fix ldap default schema config.
 
 28/03/2014 autofs-5.0.9
 =======================
