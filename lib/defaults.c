@@ -266,11 +266,6 @@ static int conf_load_autofs_defaults(void)
 	const char *sec = autofs_gbl_sec;
 	int ret;
 
-	ret = conf_update(sec, NAME_MASTER_MAP,
-			  DEFAULT_MASTER_MAP_NAME, CONF_ENV);
-	if (ret == CFG_FAIL)
-		goto error;
-
 	ret = conf_update(sec, NAME_TIMEOUT,
 			  DEFAULT_TIMEOUT, CONF_ENV);
 	if (ret == CFG_FAIL)

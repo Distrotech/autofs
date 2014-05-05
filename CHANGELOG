@@ -12,6 +12,7 @@
 - fix wildcard key lookup.
 - fix out of order amd timestamp lookup.
 - fix ldap default schema config.
+- fix ldap default master map name config.
 
 28/03/2014 autofs-5.0.9
 =======================
