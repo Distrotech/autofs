@@ -15,6 +15,7 @@
 - fix ldap default master map name config.
 - fix map format init in lookup_init().
 - fix incorrect max key length in defaults get_hash().
+- fix xfn sets incorrect lexer state.
 
 28/03/2014 autofs-5.0.9
 =======================

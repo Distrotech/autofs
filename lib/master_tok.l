@@ -258,7 +258,13 @@ OPTNTOUT	(-n{OPTWS}|-n{OPTWS}={OPTWS}|--negative-timeout{OPTWS}|--negative-timeo
 	}
 
 	"-xfn" {
-		BEGIN(OPTSTR);
+		/*
+		 * The X/Open Federated Naming service isn't supported
+		 * and the parser will call YYABORT() when it sees the
+		 * MAPXFN token so we must set the start state to the
+		 * INITIAL state here for the next yylex() call.
+		 */
+		BEGIN(INITIAL);
 		strcpy(master_lval.strtype, master_text);
 		return MAPXFN;
 	}
