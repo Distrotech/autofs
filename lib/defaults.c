@@ -673,17 +673,11 @@ static u_int32_t get_hash(const char *key, unsigned int size)
 	return hash(lkey, size);
 }
 
-static struct conf_option *conf_lookup(const char *section, const char *key)
+static struct conf_option *conf_lookup_key(const char *section, const char *key)
 {
 	struct conf_option *co;
 	u_int32_t key_hash;
 	unsigned int size = CFG_TABLE_SIZE;
-
-	if (!key || !section)
-		return NULL;
-
-	if (strlen(key) > PATH_MAX)
-		return NULL;
 
 	key_hash = get_hash(key, size);
 	for (co = config->hash[key_hash]; co != NULL; co = co->next) {
@@ -691,15 +685,30 @@ static struct conf_option *conf_lookup(const char *section, const char *key)
 			continue;
 		if (!strcasecmp(key, co->name))
 			break;
+	}
+
+	return co;
+}
+
+static struct conf_option *conf_lookup(const char *section, const char *key)
+{
+	struct conf_option *co;
+
+	if (!key || !section)
+		return NULL;
+
+	if (strlen(key) > PATH_MAX)
+		return NULL;
+
+	co = conf_lookup_key(section, key);
+	if (!co) {
 		/*
 		 * Strip "DEFAULT_" and look for config entry for
 		 * backward compatibility with old style config names.
+		 * Perhaps this should be a case sensitive compare?
 		 */
-		if (strlen(key) <= 8)
-			continue;
-		if (!strncasecmp("DEFAULT_", key, 8) &&
-		    !strcasecmp(key + 8, co->name))
-			break;
+		if (strlen(key) > 8 && !strncasecmp("DEFAULT_", key, 8))
+			co = conf_lookup_key(section, key + 8);
 	}
 
 	return co;
