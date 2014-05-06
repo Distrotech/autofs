@@ -1647,6 +1647,7 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 	/* If a map type isn't explicitly given, parse it like sun entries. */
 	if (mapfmt == NULL)
 		mapfmt = MAPFMT_DEFAULT;
+	is_amd_format = 0;
 	if (!strcmp(mapfmt, "amd")) {
 		is_amd_format = 1;
 		ctxt->format = MAP_FLAG_FORMAT_AMD;

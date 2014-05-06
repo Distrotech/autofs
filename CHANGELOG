@@ -13,6 +13,7 @@
 - fix out of order amd timestamp lookup.
 - fix ldap default schema config.
 - fix ldap default master map name config.
+- fix map format init in lookup_init().
 
 28/03/2014 autofs-5.0.9
 =======================
