@@ -14,6 +14,7 @@
 - fix ldap default schema config.
 - fix ldap default master map name config.
 - fix map format init in lookup_init().
+- fix incorrect max key length in defaults get_hash().
 
 28/03/2014 autofs-5.0.9
 =======================

@@ -43,7 +43,6 @@
 #define OLD_CONFIG_FILE			AUTOFS_CONF_DIR "/autofs"
 #define MAX_LINE_LEN			256
 #define MAX_SECTION_NAME		MAX_LINE_LEN
-#define MAX_CFG_NAME_LEN		31
 
 #define NAME_MASTER_MAP			"master_map_name"
 
@@ -665,7 +664,7 @@ error:
 static u_int32_t get_hash(const char *key, unsigned int size)
 {
 	const char *pkey = key;
-	char lkey[MAX_CFG_NAME_LEN];
+	char lkey[PATH_MAX + 1];
 	char *plkey = &lkey[0];
 
 	while (*pkey)
@@ -681,6 +680,9 @@ static struct conf_option *conf_lookup(const char *section, const char *key)
 	unsigned int size = CFG_TABLE_SIZE;
 
 	if (!key || !section)
+		return NULL;
+
+	if (strlen(key) > PATH_MAX)
 		return NULL;
 
 	key_hash = get_hash(key, size);
