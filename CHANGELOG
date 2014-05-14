@@ -4,6 +4,7 @@
 - add amd map format parser.
 - check for non existent negative entries in lookup_ghost().
 - fix reset flex scan buffer on init.
+- fix fix negative status being reset on map read.
 
 28/03/2014 autofs-5.0.9
 =======================

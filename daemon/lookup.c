@@ -1285,8 +1285,11 @@ void lookup_prune_one_cache(struct autofs_point *ap, struct mapent_cache *mc, ti
 			/*
 			 * Reset time of last fail for valid map entries to
 			 * force entry update and subsequent mount retry.
+			 * A map entry that's still invalid after a read
+			 * may have been created by a failed wildcard lookup
+			 * so reset the status on those too.
 			 */
-			if (me->mapent)
+			if (me->mapent || cache_lookup(mc, "*"))
 				me->status = 0;
 			me = cache_enumerate(mc, me);
 			continue;
