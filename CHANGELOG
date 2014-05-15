@@ -17,6 +17,7 @@
 - fix incorrect max key length in defaults get_hash().
 - fix xfn sets incorrect lexer state.
 - fix old style key lookup.
+- fix expire when server not responding.
 
 28/03/2014 autofs-5.0.9
 =======================
