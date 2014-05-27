@@ -1100,19 +1100,18 @@ struct list_head *defaults_get_uris(void)
 	struct list_head *list;
 
 	list = malloc(sizeof(struct list_head));
-	if (!list) {
+	if (!list)
 		return NULL;
-	}
 	INIT_LIST_HEAD(list);
 
-	if (defaults_read_config(0)) {
+	if (!defaults_read_config(0)) {
 		free(list);
 		return NULL;
 	}
 
 	pthread_mutex_lock(&conf_mutex);
 	co = conf_lookup(autofs_gbl_sec, NAME_LDAP_URI);
-	if (!co || !co->value) {
+	if (!co) {
 		pthread_mutex_unlock(&conf_mutex);
 		free(list);
 		return NULL;
@@ -1233,12 +1232,12 @@ struct ldap_searchdn *defaults_get_searchdns(void)
 	struct conf_option *co;
 	struct ldap_searchdn *sdn, *last;
 
-	if (defaults_read_config(0))
+	if (!defaults_read_config(0))
 		return NULL;
 
 	pthread_mutex_lock(&conf_mutex);
 	co = conf_lookup(autofs_gbl_sec, NAME_SEARCH_BASE);
-	if (!co || !co->value) {
+	if (!co) {
 		pthread_mutex_unlock(&conf_mutex);
 		return NULL;
 	}
