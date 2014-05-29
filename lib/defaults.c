@@ -320,7 +320,7 @@ static int conf_load_autofs_defaults(void)
 	if (ret == CFG_FAIL)
 		goto error;
 
-	/* LDAP_URI nad SEARCH_BASE can occur multiple times */
+	/* LDAP_URI and SEARCH_BASE can occur multiple times */
 	while ((co = conf_lookup(sec, NAME_LDAP_URI)))
 		conf_delete(co->section, co->name);
 

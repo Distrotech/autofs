@@ -19,6 +19,7 @@
 - fix old style key lookup.
 - fix expire when server not responding.
 - fix ldap_uri config update.
+- fix typo in conf_load_autofs_defaults().
 
 28/03/2014 autofs-5.0.9
 =======================
