@@ -524,12 +524,24 @@ error:
 	return 0;
 }
 
+static u_int32_t get_hash(const char *key, unsigned int size)
+{
+	const char *pkey = key;
+	char lkey[PATH_MAX + 1];
+	char *plkey = &lkey[0];
+
+	while (*pkey)
+		*plkey++ = tolower(*pkey++);
+	*plkey = '\0';
+	return hash(lkey, size);
+}
+
 static int conf_add(const char *section, const char *key, const char *value, unsigned long flags)
 {
 	struct conf_option *co;
 	char *sec, *name, *val, *tmp;
 	unsigned int size = CFG_TABLE_SIZE;
-	u_int32_t index;
+	u_int32_t key_hash;
 	int ret = CFG_FAIL;
 
 	sec = name = val = tmp = NULL;
@@ -568,12 +580,12 @@ static int conf_add(const char *section, const char *key, const char *value, uns
 	if (flags & CONF_ENV && value)
 		setenv(name, value, 0);
 
-	index = hash(key, size);
-	if (!config->hash[index])
-		config->hash[index] = co;
+	key_hash = get_hash(key, size);
+	if (!config->hash[key_hash])
+		config->hash[key_hash] = co;
 	else {
 		struct conf_option *last = NULL, *next;
-		next = config->hash[index];
+		next = config->hash[key_hash];
 		while (next) {
 			last = next;
 			next = last->next;
@@ -598,9 +610,11 @@ static void conf_delete(const char *section, const char *key)
 {
 	struct conf_option *co, *last;
 	unsigned int size = CFG_TABLE_SIZE;
+	u_int32_t key_hash;
 
 	last = NULL;
-	for (co = config->hash[hash(key, size)]; co != NULL; co = co->next) {
+	key_hash = get_hash(key, size);
+	for (co = config->hash[key_hash]; co != NULL; co = co->next) {
 		if (strcasecmp(section, co->section))
 			continue;
 		if (!strcasecmp(key, co->name))
@@ -613,6 +627,8 @@ static void conf_delete(const char *section, const char *key)
 
 	if (last)
 		last->next = co->next;
+	else
+		config->hash[key_hash] = co->next;
 
 	free(co->section);
 	free(co->name);
@@ -659,18 +675,6 @@ static int conf_update(const char *section,
 
 error:
 	return ret;
-}
-
-static u_int32_t get_hash(const char *key, unsigned int size)
-{
-	const char *pkey = key;
-	char lkey[PATH_MAX + 1];
-	char *plkey = &lkey[0];
-
-	while (*pkey)
-		*plkey++ = tolower(*pkey++);
-	*plkey = '\0';
-	return hash(lkey, size);
 }
 
 static struct conf_option *conf_lookup_key(const char *section, const char *key)

@@ -20,6 +20,7 @@
 - fix expire when server not responding.
 - fix ldap_uri config update.
 - fix typo in conf_load_autofs_defaults().
+- fix hash on confg option add and delete.
 
 28/03/2014 autofs-5.0.9
 =======================
