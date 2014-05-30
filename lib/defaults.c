@@ -916,6 +916,124 @@ static int read_config(unsigned int to_syslog, FILE *f, const char *name)
 	return 0;
 }
 
+struct conf_option *save_ldap_option_list(const char *key)
+{
+	struct conf_option *co, *head, *this, *last;
+	unsigned int size = CFG_TABLE_SIZE;
+	u_int32_t key_hash;
+
+	key_hash = get_hash(key, size);
+	co = config->hash[key_hash];
+	if (!co)
+		return NULL;
+	last = co;
+
+	head = this = NULL;
+	while (co) {
+		if (strcasecmp(autofs_gbl_sec, co->section)) {
+			last = co;
+			goto next;
+		}
+
+		if (!strcasecmp(co->name, key)) {
+			/* Unlink from old */
+			if (co == config->hash[key_hash])
+				config->hash[key_hash] = co->next;
+			else
+				last->next = co->next;
+			last = co->next;
+			co->next = NULL;
+			/* Add to new */
+			if (this)
+				this->next = co;
+			this = co;
+			/* If none have been found yet */
+			if (!head)
+				head = co;
+			co = last;
+			continue;
+		}
+next:
+		co = co->next;
+	}
+
+	return head;
+}
+
+void restore_ldap_option_list(struct conf_option *list)
+{
+	struct conf_option *co, *this, *last;
+	unsigned int size = CFG_TABLE_SIZE;
+	u_int32_t key_hash;
+
+	if (!list)
+		return;
+
+	this = list;
+	while (this) {
+		last = this;
+		this = this->next;
+	}
+
+	key_hash = get_hash(list->name, size);
+	co = config->hash[key_hash];
+	config->hash[key_hash] = list;
+	if (co)
+		last->next = co;
+
+	return;
+}
+
+void free_ldap_option_list(struct conf_option *list)
+{
+	struct conf_option *next, *this;
+
+	if (!list)
+		return;
+
+	this = list;
+	while (this) {
+		next = this->next;
+		free(this->section);
+		free(this->name);
+		free(this->value);
+		free(this);
+		this = next;
+	}
+
+	return;
+}
+
+static void clean_ldap_multi_option(const char *key)
+{
+	const char *sec = autofs_gbl_sec;
+	struct conf_option *co;
+
+	while ((co = conf_lookup(sec, key)))
+		conf_delete(co->section, co->name);
+
+	return;
+}
+
+static int reset_defaults(unsigned int to_syslog)
+{
+	int ret;
+
+	ret = conf_load_autofs_defaults();
+	if (!ret) {
+		message(to_syslog, "failed to reset autofs default config");
+		return 0;
+	}
+
+	ret = conf_load_amd_defaults();
+	if (!ret) {
+		message(to_syslog, "failed to reset amd default config");
+		return 0;
+	}
+
+	return 1;
+}
+
 /*
  * Read config env variables and check they have been set.
  *
@@ -925,74 +1043,109 @@ static int read_config(unsigned int to_syslog, FILE *f, const char *name)
  */
 unsigned int defaults_read_config(unsigned int to_syslog)
 {
-	FILE *f;
-	struct stat stb;
-	int ret;
+	FILE *conf, *oldconf;
+	struct stat stb, oldstb;
+	int ret, stat, oldstat;
+
+	ret = 1;
 
 	pthread_mutex_lock(&conf_mutex);
 	if (!config) {
 		if (conf_init()) {
-			pthread_mutex_unlock(&conf_mutex);
 			message(to_syslog, "failed to init config");
-			return 0;
-		}
-	}
-
-	/* Set configuration to defaults */
-	ret = conf_load_autofs_defaults();
-	if (!ret) {
-		pthread_mutex_unlock(&conf_mutex);
-		message(to_syslog, "failed to reset autofs default config");
-		return 0;
-	}
-
-	ret = conf_load_amd_defaults();
-	if (!ret) {
-		pthread_mutex_unlock(&conf_mutex);
-		message(to_syslog, "failed to reset amd default config");
-		return 0;
-	}
-
-	f = open_fopen_r(DEFAULT_CONFIG_FILE);
-	if (!f) {
-		message(to_syslog, "failed to to open config %s",
-			DEFAULT_CONFIG_FILE);
-		goto out;
-	}
-
-	if (fstat(fileno(f), &stb) != -1) {
-		/* Config hasn't been updated */
-		if (stb.st_mtime <= config->modified) {
-			fclose(f);
+			ret = 0;
 			goto out;
 		}
 	}
 
-	ret = read_config(to_syslog, f, DEFAULT_CONFIG_FILE);
+	conf = open_fopen_r(DEFAULT_CONFIG_FILE);
+	if (!conf)
+		message(to_syslog, "failed to to open config %s",
+			DEFAULT_CONFIG_FILE);
 
-	if (fstat(fileno(f), &stb) != -1)
-		config->modified = stb.st_mtime;
-	else
-		message(to_syslog, "failed to update config modified time");
+	oldconf = open_fopen_r(OLD_CONFIG_FILE);
+	if (!oldconf)
+		message(to_syslog, "failed to to open old config %s",
+			OLD_CONFIG_FILE);
 
-	fclose(f);
+	/* Neither config has been updated */
+	stat = oldstat = -1;
+	if (conf && oldconf &&
+	    (stat = fstat(fileno(conf), &stb) != -1) &&
+	    stb.st_mtime <= config->modified &&
+	    (oldstat = fstat(fileno(oldconf), &oldstb) == -1) &&
+	    oldstb.st_mtime <= config->modified) {
+		fclose(conf);
+		fclose(oldconf);
+		goto out;
+	}
+
+	if (conf || oldconf) {
+		if (!reset_defaults(to_syslog)) {
+			fclose(conf);
+			fclose(oldconf);
+			ret = 0;
+			goto out;
+		}
+	}
+
+	/* Update last modified */
+	if (stat != -1) {
+		if (oldstat == -1)
+			config->modified = stb.st_mtime;
+		else {
+			if (oldstb.st_mtime < stb.st_mtime)
+				config->modified = oldstb.st_mtime;
+			else
+				config->modified = stb.st_mtime;
+		}
+	}
+
+	if (conf) {
+		read_config(to_syslog, conf, DEFAULT_CONFIG_FILE);
+		fclose(conf);
+	}
 
 	/*
-	 * Try to read the old config file and override the installed
-	 * defaults in case user has a stale config following updating
-	 * to the new config file location.
+	 * Read the old config file and override the installed
+	 * defaults in case user has a stale config following
+	 * updating to the new config file location.
 	 */
+	if (oldconf) {
+		struct conf_option *ldap_search_base, *ldap_uris;
+		const char *sec = amd_gbl_sec;
+		struct conf_option *co;
 
-	f = open_fopen_r(OLD_CONFIG_FILE);
-	if (!f)
-		goto out;
+		ldap_search_base = save_ldap_option_list(NAME_SEARCH_BASE);
+		if (ldap_search_base)
+			clean_ldap_multi_option(NAME_SEARCH_BASE);
 
-	read_config(to_syslog, f, OLD_CONFIG_FILE);
+		ldap_uris = save_ldap_option_list(NAME_LDAP_URI);
+		if (ldap_uris)
+			clean_ldap_multi_option(NAME_LDAP_URI);
 
-	fclose(f);
+		read_config(to_syslog, oldconf, OLD_CONFIG_FILE);
+		fclose(oldconf);
+
+		if (ldap_search_base) {
+			co = conf_lookup(sec, NAME_SEARCH_BASE);
+			if (co)
+				free_ldap_option_list(ldap_search_base);
+			else
+				restore_ldap_option_list(ldap_search_base);
+		}
+
+		if (ldap_uris) {
+			co = conf_lookup(sec, NAME_LDAP_URI);
+			if (co)
+				free_ldap_option_list(ldap_uris);
+			else
+				restore_ldap_option_list(ldap_uris);
+		}
+	}
 out:
 	pthread_mutex_unlock(&conf_mutex);
-	return 1;
+	return ret;
 }
 
 static char *conf_get_string(const char *section, const char *name)

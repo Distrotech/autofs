@@ -22,6 +22,7 @@
 - fix typo in conf_load_autofs_defaults().
 - fix hash on confg option add and delete.
 - add plus to path match pattern.
+- fix multi entry ldap option handling.
 
 28/03/2014 autofs-5.0.9
 =======================
