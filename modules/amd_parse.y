@@ -360,17 +360,14 @@ option_assignment: MAP_OPTION OPTION_ASSIGN FS_TYPE
 	}
 	| MNT_OPTION OPTION_ASSIGN options
 	{
-		if (!strcmp($1, "opts")) {
+		memset(opts, 0, sizeof(opts));
+		if (!strcmp($1, "opts"))
 			entry.opts = amd_strdup(opts);
-			memset(opts, 0, sizeof(opts));
-		} else if (!strcmp($1, "addopts")) {
+		else if (!strcmp($1, "addopts"))
 			entry.addopts = amd_strdup(opts);
-			memset(opts, 0, sizeof(opts));
-		} else if (!strcmp($1, "remopts")) {
+		else if (!strcmp($1, "remopts"))
 			entry.remopts = amd_strdup(opts);
-			memset(opts, 0, sizeof(opts));
-		} else {
-			memset(opts, 0, sizeof(opts));
+		else {
 			amd_notify($1);
 			YYABORT;
 		}
