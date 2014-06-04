@@ -24,6 +24,7 @@
 - add plus to path match pattern.
 - fix multi entry ldap option handling.
 - cleanup options in amd_parse.c
+- allow empty value for some map options.
 
 28/03/2014 autofs-5.0.9
 =======================

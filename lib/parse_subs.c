@@ -889,14 +889,20 @@ char *merge_options(const char *opt1, const char *opt2)
 	char *tok, *ptr = NULL;
 	size_t len;
 
-	if (!opt1 && !opt2)
+	if ((!opt1 || !*opt1) && (!opt2 || !*opt2))
 		return NULL;
 
-	if (!opt2)
+	if (!opt2 || !*opt2) {
+		if (!*opt1)
+			return NULL;
 		return strdup(opt1);
+	}
 
-	if (!opt1)
+	if (!opt1 || !*opt1) {
+		if (!*opt2)
+			return NULL;
 		return strdup(opt2);
+	}
 
 	if (!strcmp(opt1, opt2))
 		return strdup(opt1);

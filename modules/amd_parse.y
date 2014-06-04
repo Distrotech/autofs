@@ -335,6 +335,15 @@ option_assignment: MAP_OPTION OPTION_ASSIGN FS_TYPE
 			YYABORT;
 		}
 	}
+	| MAP_OPTION OPTION_ASSIGN
+	{
+		if (!strcmp($1, "fs"))
+			entry.fs = amd_strdup("");
+		else {
+			amd_notify($1);
+			YYABORT;
+		}
+	}
 	| FS_OPTION OPTION_ASSIGN FS_OPT_VALUE
 	{
 		if (!strcmp($1, "rhost"))
@@ -358,6 +367,19 @@ option_assignment: MAP_OPTION OPTION_ASSIGN FS_TYPE
 			YYABORT;
 		}
 	}
+	| FS_OPTION OPTION_ASSIGN
+	{
+		if (!strcmp($1, "rhost"))
+			entry.rhost = amd_strdup("");
+		else if (!strcmp($1, "rfs"))
+			entry.rfs = amd_strdup("");
+		else if (!strcmp($1, "dev"))
+			entry.dev = amd_strdup("");
+		else {
+			amd_notify($1);
+			YYABORT;
+		}
+	}
 	| MNT_OPTION OPTION_ASSIGN options
 	{
 		memset(opts, 0, sizeof(opts));
@@ -367,6 +389,20 @@ option_assignment: MAP_OPTION OPTION_ASSIGN FS_TYPE
 			entry.addopts = amd_strdup(opts);
 		else if (!strcmp($1, "remopts"))
 			entry.remopts = amd_strdup(opts);
+		else {
+			amd_notify($1);
+			YYABORT;
+		}
+	}
+	| MNT_OPTION OPTION_ASSIGN
+	{
+		memset(opts, 0, sizeof(opts));
+		if (!strcmp($1, "opts"))
+			entry.opts = amd_strdup("");
+		else if (!strcmp($1, "addopts"))
+			entry.addopts = amd_strdup("");
+		else if (!strcmp($1, "remopts"))
+			entry.remopts = amd_strdup("");
 		else {
 			amd_notify($1);
 			YYABORT;

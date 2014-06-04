@@ -683,7 +683,7 @@ static struct substvar *expand_entry(struct autofs_point *ap,
 	unsigned int logopt = ap->logopt;
 	char *expand;
 
-	if (entry->rhost) {
+	if (entry->rhost && *entry->rhost) {
 		char *host = strdup(entry->rhost);
 		char *nn;
 		if (!host) {
@@ -720,7 +720,7 @@ next:
 		sv = macro_addvar(sv, "sublink", 7, entry->sublink);
 	}
 
-	if (entry->rfs) {
+	if (entry->rfs && *entry->rfs) {
 		if (expand_selectors(ap, entry->rfs, &expand, sv)) {
 			debug(logopt, MODPREFIX
 			      "rfs expand(\"%s\") -> %s", entry->rfs, expand);
@@ -730,7 +730,7 @@ next:
 		sv = macro_addvar(sv, "rfs", 3, entry->rfs);
 	}
 
-	if (entry->fs) {
+	if (entry->fs && *entry->fs) {
 		if (expand_selectors(ap, entry->fs, &expand, sv)) {
 			debug(logopt, MODPREFIX
 			      "fs expand(\"%s\") -> %s", entry->fs, expand);
@@ -740,7 +740,7 @@ next:
 		sv = macro_addvar(sv, "fs", 2, entry->fs);
 	}
 
-	if (entry->opts) {
+	if (entry->opts && *entry->opts) {
 		if (expand_selectors(ap, entry->opts, &expand, sv)) {
 			debug(logopt, MODPREFIX
 			      "ops expand(\"%s\") -> %s", entry->opts, expand);
@@ -750,7 +750,7 @@ next:
 		sv = macro_addvar(sv, "opts", 4, entry->opts);
 	}
 
-	if (entry->addopts) {
+	if (entry->addopts && *entry->addopts) {
 		if (expand_selectors(ap, entry->addopts, &expand, sv)) {
 			debug(logopt, MODPREFIX
 			      "addopts expand(\"%s\") -> %s",
@@ -761,7 +761,7 @@ next:
 		sv = macro_addvar(sv, "addopts", 7, entry->addopts);
 	}
 
-	if (entry->remopts) {
+	if (entry->remopts && *entry->remopts) {
 		if (expand_selectors(ap, entry->remopts, &expand, sv)) {
 			debug(logopt, MODPREFIX
 			      "remopts expand(\"%s\") -> %s",
@@ -781,7 +781,7 @@ static void expand_merge_options(struct autofs_point *ap,
 {
 	char *tmp;
 
-	if (entry->opts) {
+	if (entry->opts && *entry->opts) {
 		if (!expand_selectors(ap, entry->opts, &tmp, sv))
 			error(ap->logopt, MODPREFIX "failed to expand opts");
 		else {
@@ -790,7 +790,7 @@ static void expand_merge_options(struct autofs_point *ap,
 		}
 	}
 
-	if (entry->addopts) {
+	if (entry->addopts && *entry->addopts) {
 		if (!expand_selectors(ap, entry->addopts, &tmp, sv))
 			error(ap->logopt, MODPREFIX "failed to expand addopts");
 		else {
@@ -799,7 +799,7 @@ static void expand_merge_options(struct autofs_point *ap,
 		}
 	}
 
-	if (entry->remopts) {
+	if (entry->remopts && *entry->remopts) {
 		if (!expand_selectors(ap, entry->remopts, &tmp, sv))
 			error(ap->logopt, MODPREFIX "failed to expand remopts");
 		else {
@@ -832,11 +832,13 @@ static struct substvar *merge_entry_options(struct autofs_point *ap,
 			entry->opts = tmp;
 			sv = macro_addvar(sv, "opts", 4, entry->opts);
 		}
-		tmp = strdup(entry->opts);
-		if (tmp) {
-			free(entry->remopts);
-			entry->remopts = tmp;
-			sv = macro_addvar(sv, "remopts", 7, entry->remopts);
+		if (*entry->opts) {
+			tmp = strdup(entry->opts);
+			if (tmp) {
+				free(entry->remopts);
+				entry->remopts = tmp;
+				sv = macro_addvar(sv, "remopts", 7, entry->remopts);
+			}
 		}
 		return sv;
 	}
@@ -853,7 +855,7 @@ static struct substvar *merge_entry_options(struct autofs_point *ap,
 			entry->opts = tmp;
 			sv = macro_addvar(sv, "opts", 4, entry->opts);
 		}
-	} else if (entry->addopts) {
+	} else if (entry->addopts && *entry->addopts) {
 		tmp = strdup(entry->addopts);
 		if (tmp) {
 			info(ap->logopt, MODPREFIX
@@ -875,7 +877,7 @@ static struct substvar *merge_entry_options(struct autofs_point *ap,
 			entry->remopts = tmp;
 			sv = macro_addvar(sv, "remopts", 7, entry->remopts);
 		}
-	} else if (entry->addopts) {
+	} else if (entry->addopts && *entry->addopts) {
 		tmp = strdup(entry->addopts);
 		if (tmp) {
 			info(ap->logopt, MODPREFIX
@@ -910,6 +912,7 @@ static int do_link_mount(struct autofs_point *ap, const char *name,
 			 struct amd_entry *entry, unsigned int flags)
 {
 	char target[PATH_MAX + 1];
+	const char *opts = (entry->opts && *entry->opts) ? entry->opts : NULL;
 	int ret;
 
 	if (entry->sublink)
@@ -922,7 +925,7 @@ static int do_link_mount(struct autofs_point *ap, const char *name,
 
 	/* For a sublink this might cause an external mount */
 	ret = do_mount(ap, ap->path,
-		       name, strlen(name), target, "bind", entry->opts);
+		       name, strlen(name), target, "bind", opts);
 	if (!ret)
 		goto out;
 
@@ -967,12 +970,13 @@ static int do_generic_mount(struct autofs_point *ap, const char *name,
 			    struct amd_entry *entry, const char *target,
 			    unsigned int flags)
 {
+	const char *opts = (entry->opts && *entry->opts) ? entry->opts : NULL;
 	unsigned int umount = 0;
 	int ret = 0;
 
 	if (!entry->fs) {
-		ret = do_mount(ap, ap->path, name, strlen(name),
-			       target, entry->type, entry->opts);
+		ret = do_mount(ap, ap->path, name,
+			       strlen(name), target, entry->type, opts);
 	} else {
 		/*
 		 * Careful, external mounts may get mounted
@@ -981,7 +985,7 @@ static int do_generic_mount(struct autofs_point *ap, const char *name,
 		 */
 		if (!is_mounted(_PATH_MOUNTED, entry->fs, MNTS_REAL)) {
 			ret = do_mount(ap, entry->fs, "/", 1,
-				       target, entry->type, entry->opts);
+				       target, entry->type, opts);
 			if (ret)
 				goto out;
 			umount = 1;
@@ -999,7 +1003,7 @@ static int do_nfs_mount(struct autofs_point *ap, const char *name,
 {
 	char target[PATH_MAX + 1];
 	unsigned int proximity;
-	char *opts = entry->opts;
+	char *opts = (entry->opts && *entry->opts) ? entry->opts : NULL;
 	unsigned int umount = 0;
 	int ret = 0;
 
@@ -1008,7 +1012,7 @@ static int do_nfs_mount(struct autofs_point *ap, const char *name,
 	strcat(target, entry->rfs);
 
 	proximity = get_network_proximity(entry->rhost);
-	if (proximity == PROXIMITY_OTHER && entry->remopts)
+	if (proximity == PROXIMITY_OTHER && entry->remopts && *entry->remopts)
 		opts = entry->remopts;
 
 	if (!entry->fs) {
@@ -1120,7 +1124,7 @@ static int do_host_mount(struct autofs_point *ap, const char *name,
 			goto out;
 	}
 
-	if (entry->opts) {
+	if (entry->opts && *entry->opts) {
 		argv[0] = entry->opts;
 		argv[1] = NULL;
 		pargv = argv;
@@ -1180,9 +1184,13 @@ static unsigned int validate_auto_options(unsigned int logopt,
 	/*
 	 * The amd manual implies all the mount type auto options
 	 * are optional but I don't think there's much point if
-	 * no map is given.
+	 * no map is given. If the option has been intentionally
+	 * left blank the mount must be expected to fail so don't
+	 * report the error.
 	 */
-	if (!entry->fs) {
+	if (!*entry->fs)
+		return 0;
+	else if (!entry->fs) {
 		error(logopt, MODPREFIX
 		      "%s: file system not given", entry->type);
 		return 0;
@@ -1201,11 +1209,19 @@ static unsigned int validate_nfs_options(unsigned int logopt,
 					 struct amd_entry *entry)
 {
 	/*
-	 * Required option rhost will always have a value.
-	 * It is set from ${host} if it is found to be NULL
-	 * earlier in the parsing process.
+	 * Required option rhost will always have a value unless
+	 * it has been intentionally left blank. It is set from
+	 * ${host} if it is found to be NULL earlier in the parsing
+	 * process. Don't report the error if it has been left blank
+	 * or if the fs option has been left blank since the mount is
+	 * expected to fail.
 	 */
-	if (!entry->rfs) {
+	if (!entry->rfs || !*entry->rfs) {
+		if (!*entry->rfs)
+			return 0;
+		/* Map option fs has been intentionally left blank */
+		if (entry->fs && !*entry->fs)
+			return 0;
 		if (entry->fs)
 			entry->rfs = strdup(entry->fs);
 		if (!entry->rfs) {
@@ -1226,14 +1242,22 @@ static unsigned int validate_generic_options(unsigned int logopt,
 					     unsigned long fstype,
 					     struct amd_entry *entry)
 {
+	/*
+	 * If dev or rfs are empty in the map entry the mount is
+	 * expected to fail so don't report the error.
+	 */
 	if (fstype != AMD_MOUNT_TYPE_LOFS) {
-		if (!entry->dev) {
+		if (!*entry->dev)
+			return 0;
+		else if (!entry->dev) {
 			error(logopt, MODPREFIX
 			      "%s: mount device not given", entry->type);
 			return 0;
 		}
 	} else {
-		if (!entry->rfs) {
+		if (!*entry->rfs)
+			return 0;
+		else if (!entry->rfs) {
 			/*
 			 * Can't use entry->type as the mount type to reprot
 			 * the error since entry->type == "bind" not "lofs".
@@ -1270,11 +1294,14 @@ static unsigned int validate_host_options(unsigned int logopt,
 					  struct amd_entry *entry)
 {
 	/*
-	 * Not really that useful since rhost is always non-null
-	 * because it will have the the value of the host name if
-	 * it isn't set in the map entry.
+	 * rhost is always non-null, unless it is intentionally left
+	 * empty, because it will have the the value of the host name
+	 * if it isn't given in the map entry. Don't report an error
+	 * if it has been left empty since it's expected to fail.
 	 */
-	if (!entry->rhost) {
+	if (!*entry->rhost)
+		return 0;
+	else if (!entry->rhost) {
 		error(logopt, MODPREFIX
 		      "%s: remote host name not given", entry->type);
 		return 0;
@@ -1382,7 +1409,7 @@ void dequote_entry(struct autofs_point *ap, struct amd_entry *entry)
 		}
 	}
 
-	if (entry->fs) {
+	if (entry->fs && *entry->fs) {
 		res = dequote(entry->fs, strlen(entry->fs), ap->logopt);
 		if (res) {
 			debug(ap->logopt,
@@ -1393,7 +1420,7 @@ void dequote_entry(struct autofs_point *ap, struct amd_entry *entry)
 		}
 	}
 
-	if (entry->rfs) {
+	if (entry->rfs && *entry->rfs) {
 		res = dequote(entry->rfs, strlen(entry->rfs), ap->logopt);
 		if (res) {
 			debug(ap->logopt,
@@ -1404,7 +1431,7 @@ void dequote_entry(struct autofs_point *ap, struct amd_entry *entry)
 		}
 	}
 
-	if (entry->opts) {
+	if (entry->opts && *entry->opts) {
 		res = dequote(entry->opts, strlen(entry->opts), ap->logopt);
 		if (res) {
 			debug(ap->logopt,
@@ -1415,7 +1442,7 @@ void dequote_entry(struct autofs_point *ap, struct amd_entry *entry)
 		}
 	}
 
-	if (entry->remopts) {
+	if (entry->remopts && *entry->remopts) {
 		res = dequote(entry->remopts, strlen(entry->remopts), ap->logopt);
 		if (res) {
 			debug(ap->logopt,
@@ -1426,7 +1453,7 @@ void dequote_entry(struct autofs_point *ap, struct amd_entry *entry)
 		}
 	}
 
-	if (entry->addopts) {
+	if (entry->addopts && *entry->addopts) {
 		res = dequote(entry->addopts, strlen(entry->addopts), ap->logopt);
 		if (res) {
 			debug(ap->logopt,
@@ -1445,6 +1472,10 @@ static void normalize_sublink(unsigned int logopt,
 {
 	char *new;
 	size_t len;
+
+	/* Normalizing sublink requires a non-blank fs option */
+	if (!*entry->fs)
+		return;
 
 	if (entry->sublink && *entry->sublink != '/') {
 		len = strlen(entry->fs) + strlen(entry->sublink) + 2;
@@ -1559,37 +1590,39 @@ static struct amd_entry *dup_defaults_entry(struct amd_entry *defaults)
 			entry->fs = tmp;
 	}
 
-	if (defaults->rfs) {
+	/* These shouldn't be blank in a defaults entry but ... */
+
+	if (defaults->rfs && *defaults->rfs) {
 		tmp = strdup(defaults->rfs);
 		if (tmp)
 			entry->rfs = tmp;
 	}
 
-	if (defaults->rhost) {
+	if (defaults->rhost && *defaults->rfs) {
 		tmp = strdup(defaults->rhost);
 		if (tmp)
 			entry->rhost = tmp;
 	}
 
-	if (defaults->dev) {
+	if (defaults->dev && *defaults->dev) {
 		tmp = strdup(defaults->dev);
 		if (tmp)
 			entry->dev = tmp;
 	}
 
-	if (defaults->opts) {
+	if (defaults->opts && *defaults->opts) {
 		tmp = strdup(defaults->opts);
 		if (tmp)
 			entry->opts = tmp;
 	}
 
-	if (defaults->addopts) {
+	if (defaults->addopts && *defaults->addopts) {
 		tmp = strdup(defaults->addopts);
 		if (tmp)
 			entry->addopts = tmp;
 	}
 
-	if (defaults->remopts) {
+	if (defaults->remopts && *defaults->remopts) {
 		tmp = strdup(defaults->remopts);
 		if (tmp)
 			entry->remopts = tmp;

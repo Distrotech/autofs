@@ -177,9 +177,14 @@ CUTSEP		(\|\||\/)
 }
 
 <MAPOPTVAL>{
-	{NL} |
+	{NL} {
+		BEGIN(INITIAL);
+		yyless(1);
+	}
+
 	\x00 {
 		BEGIN(INITIAL);
+		return SEPERATOR;
 		yyless(1);
 	}
 
@@ -217,9 +222,14 @@ CUTSEP		(\|\||\/)
 }
 
 <FSOPTVAL>{
-	{NL} |
+	{NL} {
+		BEGIN(INITIAL);
+		yyless(1);
+	}
+
 	\x00 {
 		BEGIN(INITIAL);
+		return SEPERATOR;
 		yyless(1);
 	}
 
@@ -242,9 +252,14 @@ CUTSEP		(\|\||\/)
 }
 
 <MNTOPTVAL>{
-	{NL} |
+	{NL} {
+		BEGIN(INITIAL);
+		yyless(1);
+	}
+
 	\x00 {
 		BEGIN(INITIAL);
+		return SEPERATOR;
 		yyless(1);
 	}
 
@@ -269,9 +284,14 @@ CUTSEP		(\|\||\/)
 }
 
 <SELOPTVAL>{
-	{NL} |
+	{NL} {
+		BEGIN(INITIAL);
+		yyless(1);
+	}
+
 	\x00 {
 		BEGIN(INITIAL);
+		return SEPERATOR;
 		yyless(1);
 	}
 
@@ -296,9 +316,14 @@ CUTSEP		(\|\||\/)
 }
 
 <SELARGVAL>{
-	{NL} |
+	{NL} {
+		BEGIN(INITIAL);
+		yyless(1);
+	}
+
 	\x00 {
 		BEGIN(INITIAL);
+		return SEPERATOR;
 		yyless(1);
 	}
 
