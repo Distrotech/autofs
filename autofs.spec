@@ -19,13 +19,12 @@
 Summary: A tool from automatically mounting and umounting filesystems.
 Name: autofs
 %define version 5.1.0
-%define release 0
-%define beta beta1
+%define release 1
 Version: %{version}
-Release: %{release}.%{beta}
+Release: %{release}
 License: GPL
 Group: System Environment/Daemons
-Source: ftp://ftp.kernel.org/pub/linux/daemons/autofs/v4/autofs-%{version}-%{beta}.tar.gz
+Source: ftp://ftp.kernel.org/pub/linux/daemons/autofs/v4/autofs-%{version}.tar.gz
 Buildroot: %{_tmppath}/%{name}-tmp
 %if %{with_systemd}
 BuildRequires: systemd-units
