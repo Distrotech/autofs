@@ -350,8 +350,13 @@ static int eval_selector(unsigned int logopt,
 			break;
 
 		case SEL_FLAG_NUM:
-			res = atoi(v->val);
-			val = atoi(s->comp.value);
+			if (!*s->comp.value) {
+				res = 1;
+				val = 0;
+			} else {
+				res = atoi(v->val);
+				val = atoi(s->comp.value);
+			}
 			if (s->compare & SEL_COMP_EQUAL && res == val) {
 				debug(logopt, MODPREFIX
 				      "matched selector %s(%s) equal to %s",

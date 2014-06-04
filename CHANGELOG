@@ -25,6 +25,7 @@
 - fix multi entry ldap option handling.
 - cleanup options in amd_parse.c
 - allow empty value for some map options.
+- allow empty value in macro selectors.
 
 28/03/2014 autofs-5.0.9
 =======================

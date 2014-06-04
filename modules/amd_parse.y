@@ -200,9 +200,23 @@ selection: SELECTOR IS_EQUAL SELECTOR_VALUE
 			YYABORT;
 		}
 	}
+	| SELECTOR IS_EQUAL
+	{
+		if (!make_selector($1, "", NULL, SEL_COMP_EQUAL)) {
+			amd_notify($1);
+			YYABORT;
+		}
+	}
 	| SELECTOR NOT_EQUAL SELECTOR_VALUE
 	{
 		if (!make_selector($1, $3, NULL, SEL_COMP_NOTEQUAL)) {
+			amd_notify($1);
+			YYABORT;
+		}
+	}
+	| SELECTOR NOT_EQUAL
+	{
+		if (!make_selector($1, "", NULL, SEL_COMP_EQUAL)) {
 			amd_notify($1);
 			YYABORT;
 		}
