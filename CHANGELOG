@@ -2,6 +2,7 @@
 =======================
 - fix compile error in defaults.c.
 - add serialization to sasl init.
+- dont allocate dev_ctl_ops too early.
 
 04/06/2014 autofs-5.1.0
 =======================
