@@ -3,6 +3,7 @@
 - fix compile error in defaults.c.
 - add serialization to sasl init.
 - dont allocate dev_ctl_ops too early.
+- fix incorrect round robin host detection.
 
 04/06/2014 autofs-5.1.0
 =======================
