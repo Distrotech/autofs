@@ -1749,6 +1749,9 @@ static void usage(void)
 		"	-C --dont-check-daemon\n"
 		"			don't check if daemon is already running\n"
 		"	-F --force	forceably clean up known automounts at start\n"
+		"	-M --master-wait n\n"
+		"			maximum time to wait for the master map to\n"
+		"			become available at start up\n"
 		"	-V --version	print version, build config and exit\n"
 		, program);
 }
@@ -1963,10 +1966,11 @@ int main(int argc, char *argv[])
 	unsigned ghost, logging, daemon_check;
 	unsigned dumpmaps, foreground, have_global_options;
 	unsigned master_read;
+	int master_wait;
 	time_t timeout;
 	time_t age = time(NULL);
 	struct rlimit rlim;
-	const char *options = "+hp:t:vmdD:fVrO:l:n:CF";
+	const char *options = "+hp:t:vmdD:fVrO:l:n:CFM";
 	static const struct option long_options[] = {
 		{"help", 0, 0, 'h'},
 		{"pid-file", 1, 0, 'p'},
@@ -1983,6 +1987,7 @@ int main(int argc, char *argv[])
 		{"set-log-priority", 1, 0, 'l'},
 		{"dont-check-daemon", 0, 0, 'C'},
 		{"force", 0, 0, 'F'},
+		{"master-wait", 1, 0, 'M'},
 		{0, 0, 0, 0}
 	};
 
@@ -2003,6 +2008,7 @@ int main(int argc, char *argv[])
 	nfs_mount_uses_string_options = check_nfs_mount_version(&vers, &check);
 
 	kpkt_len = get_kpkt_len();
+	master_wait = defaults_get_master_wait();
 	timeout = defaults_get_timeout();
 	ghost = defaults_get_browse_mode();
 	logging = defaults_get_logging();
@@ -2060,6 +2066,10 @@ int main(int argc, char *argv[])
 
 		case 'm':
 			dumpmaps = 1;
+			break;
+
+		case 'M':
+			master_wait = getnumopt(optarg, opt);
 			break;
 
 		case 'O':
