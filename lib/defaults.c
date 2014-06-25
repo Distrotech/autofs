@@ -1795,6 +1795,7 @@ unsigned int conf_amd_get_log_options(void)
 			if (log_level < LOG_CRIT)
 				log_level = LOG_CRIT;
 		}
+		free(tmp);
 	}
 
 	if (log_level == -1)
