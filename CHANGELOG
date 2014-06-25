@@ -1,3 +1,7 @@
+??/??/2014 autofs-5.1.1
+=======================
+- fix compile error in defaults.c.
+
 04/06/2014 autofs-5.1.0
 =======================
 - fix mistake in assignment.

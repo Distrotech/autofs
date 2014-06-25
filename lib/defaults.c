@@ -20,6 +20,7 @@
 #include <string.h>
 #include <sys/utsname.h>
 #include <sys/stat.h>
+#include <stdarg.h>
 
 #include "config.h"
 #include "list.h"
