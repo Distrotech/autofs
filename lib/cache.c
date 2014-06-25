@@ -203,7 +203,7 @@ int cache_push_mapent(struct mapent *me, char *mapent)
 
 	s->mapent = me->mapent;
 	s->age = me->age;
-	me->mapent = mapent;
+	me->mapent = new;
 
 	if (me->stack)
 		s->next = me->stack;
