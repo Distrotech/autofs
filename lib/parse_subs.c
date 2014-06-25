@@ -446,9 +446,10 @@ unsigned int get_network_proximity(const char *name)
 		return PROXIMITY_ERROR;
 
 	net = get_network_number(name);
-	if (net)
+	if (net) {
 		strcpy(name_or_num, net);
-	else {
+		free(net);
+	} else {
 		char this[NI_MAXHOST + 1];
 		char *mask;
 
