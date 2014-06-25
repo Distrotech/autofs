@@ -9,6 +9,7 @@
 - fix config entry read buffer not checked.
 - fix FILE pointer check in defaults_read_config().
 - fix memory leak in conf_amd_get_log_options().
+- fix signed comparison in inet_fill_net().
 
 04/06/2014 autofs-5.1.0
 =======================

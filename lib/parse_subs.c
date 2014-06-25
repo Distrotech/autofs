@@ -378,7 +378,7 @@ unsigned int get_proximity(struct sockaddr *host_addr)
 static char *inet_fill_net(const char *net_num, char *net)
 {
 	char *np;
-	unsigned int dots = 3;
+	int dots = 3;
 
 	if (strlen(net_num) > INET_ADDRSTRLEN)
 		return NULL;
