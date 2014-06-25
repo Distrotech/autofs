@@ -6,6 +6,7 @@
 - fix incorrect round robin host detection.
 - fix race accessing qdn in get_query_dn().
 - fix leak in cache_push_mapent().
+- fix config entry read buffer not checked.
 
 04/06/2014 autofs-5.1.0
 =======================

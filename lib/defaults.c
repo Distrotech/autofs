@@ -835,7 +835,7 @@ static int parse_line(char *line, char **sec, char **res, char **value)
 
 static int read_config(unsigned int to_syslog, FILE *f, const char *name)
 {
-	char buf[MAX_LINE_LEN];
+	char buf[MAX_LINE_LEN + 2];
 	char secbuf[MAX_SECTION_NAME];
 	char *new_sec;
 	char *res;
@@ -843,6 +843,12 @@ static int read_config(unsigned int to_syslog, FILE *f, const char *name)
 	new_sec = NULL;
 	while ((res = fgets(buf, MAX_LINE_LEN, f))) {
 		char *sec, *key, *value;
+
+		if (strlen(res) > MAX_LINE_LEN) {
+			message(to_syslog, "%s was truncated, ignored", res);
+			continue;
+		}
+
 		sec = key = value = NULL;
 		if (!parse_line(res, &sec, &key, &value))
 			continue;
