@@ -437,7 +437,7 @@ unsigned int get_network_proximity(const char *name)
 {
 	struct addrinfo hints;
 	struct addrinfo *ni, *this;
-	char name_or_num[NI_MAXHOST];
+	char name_or_num[NI_MAXHOST + 1];
 	unsigned int proximity;
 	char *net;
 	int ret;
@@ -449,16 +449,18 @@ unsigned int get_network_proximity(const char *name)
 	if (net)
 		strcpy(name_or_num, net);
 	else {
-		char this[NI_MAXHOST];
+		char this[NI_MAXHOST + 1];
 		char *mask;
 
+		if (strlen(name) > NI_MAXHOST)
+			return PROXIMITY_ERROR;
 		strcpy(this, name);
 		if ((mask = strchr(this, '/')))
 			*mask++ = '\0';
 		if (!strchr(this, '.'))
 			strcpy(name_or_num, this);
 		else {
-			char buf[NI_MAXHOST], *new;
+			char buf[NI_MAXHOST + 1], *new;
 			new = inet_fill_net(this, buf);
 			if (!new)
 				return PROXIMITY_ERROR;
