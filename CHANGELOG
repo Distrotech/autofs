@@ -12,6 +12,7 @@
 - fix signed comparison in inet_fill_net().
 - fix buffer size checks in get_network_proximity().
 - fix leak in get_network_proximity().
+- fix buffer size checks in merge_options().
 
 04/06/2014 autofs-5.1.0
 =======================

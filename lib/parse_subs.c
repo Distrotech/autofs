@@ -886,11 +886,11 @@ static char *hasopt(const char *str, const char *opt)
 
 char *merge_options(const char *opt1, const char *opt2)
 {
-	char str[MAX_OPTIONS_LEN];
-	char result[MAX_OPTIONS_LEN];
-	char neg[MAX_OPTION_LEN];
+	char str[MAX_OPTIONS_LEN + 1];
+	char result[MAX_OPTIONS_LEN + 1];
+	char neg[MAX_OPTION_LEN + 1];
 	char *tok, *ptr = NULL;
-	size_t len;
+	size_t resultlen, len;
 
 	if ((!opt1 || !*opt1) && (!opt2 || !*opt2))
 		return NULL;
@@ -910,9 +910,12 @@ char *merge_options(const char *opt1, const char *opt2)
 	if (!strcmp(opt1, opt2))
 		return strdup(opt1);
 
+	if (strlen(str) > MAX_OPTIONS_LEN)
+		return NULL;
 	memset(result, 0, sizeof(result));
 	strcpy(str, opt1);
 
+	resultlen = 0;
 	tok = strtok_r(str, ",", &ptr);
 	while (tok) {
 		const char *this = (const char *) tok;
@@ -920,12 +923,15 @@ char *merge_options(const char *opt1, const char *opt2)
 		if (eq) {
 			*eq = '\0';
 			if (!hasopt(opt2, this)) {
+				if (resultlen + strlen(this) > MAX_OPTIONS_LEN)
+					return NULL;
 				*eq = '=';
 				if (!*result)
 					strcpy(result, this);
 				else
 					strcat(result, this);
 				strcat(result, ",");
+				resultlen += strlen(this) + 1;
 				goto next;
 			}
 		}
@@ -946,10 +952,14 @@ char *merge_options(const char *opt1, const char *opt2)
 			goto next;
 
 		if (!strncmp(this, "no", 2)) {
+			if (strlen(this + 2) > MAX_OPTION_LEN)
+				return NULL;
 			strcpy(neg, this + 2);
 			if (hasopt(opt2, neg))
 				goto next;
 		} else {
+			if ((strlen(this) + 2) > MAX_OPTION_LEN)
+				return NULL;
 			strcpy(neg, "no");
 			strcat(neg, this);
 			if (hasopt(opt2, neg))
@@ -959,14 +969,21 @@ char *merge_options(const char *opt1, const char *opt2)
 		if (hasopt(opt2, tok))
 			goto next;
 
+		if (resultlen + strlen(this) + 1 > MAX_OPTIONS_LEN)
+			return NULL;
+
 		if (!*result)
 			strcpy(result, this);
 		else
 			strcat(result, this);
 		strcat(result, ",");
+		resultlen =+ strlen(this) + 1;
 next:
 		tok = strtok_r(NULL, ",", &ptr);
 	}
+
+	if (resultlen + strlen(opt2) > MAX_OPTIONS_LEN)
+		return NULL;
 
 	if (!*result)
 		strcpy(result, opt2);
