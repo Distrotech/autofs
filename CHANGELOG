@@ -7,6 +7,7 @@
 - fix race accessing qdn in get_query_dn().
 - fix leak in cache_push_mapent().
 - fix config entry read buffer not checked.
+- fix FILE pointer check in defaults_read_config().
 
 04/06/2014 autofs-5.1.0
 =======================

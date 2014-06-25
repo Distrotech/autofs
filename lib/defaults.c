@@ -1056,6 +1056,8 @@ unsigned int defaults_read_config(unsigned int to_syslog)
 
 	ret = 1;
 
+	conf = oldconf = NULL;
+
 	pthread_mutex_lock(&conf_mutex);
 	if (!config) {
 		if (conf_init()) {
@@ -1082,15 +1084,11 @@ unsigned int defaults_read_config(unsigned int to_syslog)
 	    stb.st_mtime <= config->modified &&
 	    (oldstat = fstat(fileno(oldconf), &oldstb) == -1) &&
 	    oldstb.st_mtime <= config->modified) {
-		fclose(conf);
-		fclose(oldconf);
 		goto out;
 	}
 
 	if (conf || oldconf) {
 		if (!reset_defaults(to_syslog)) {
-			fclose(conf);
-			fclose(oldconf);
 			ret = 0;
 			goto out;
 		}
@@ -1108,10 +1106,8 @@ unsigned int defaults_read_config(unsigned int to_syslog)
 		}
 	}
 
-	if (conf) {
+	if (conf)
 		read_config(to_syslog, conf, DEFAULT_CONFIG_FILE);
-		fclose(conf);
-	}
 
 	/*
 	 * Read the old config file and override the installed
@@ -1132,7 +1128,6 @@ unsigned int defaults_read_config(unsigned int to_syslog)
 			clean_ldap_multi_option(NAME_LDAP_URI);
 
 		read_config(to_syslog, oldconf, OLD_CONFIG_FILE);
-		fclose(oldconf);
 
 		if (ldap_search_base) {
 			co = conf_lookup(sec, NAME_SEARCH_BASE);
@@ -1151,6 +1146,10 @@ unsigned int defaults_read_config(unsigned int to_syslog)
 		}
 	}
 out:
+	if (conf)
+		fclose(conf);
+	if (oldconf)
+		fclose(oldconf);
 	pthread_mutex_unlock(&conf_mutex);
 	return ret;
 }
