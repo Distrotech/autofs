@@ -14,6 +14,7 @@
 - fix leak in get_network_proximity().
 - fix buffer size checks in merge_options().
 - check amd lex buffer len before copy.
+- add return check in ldap check_map_indirect().
 
 04/06/2014 autofs-5.1.0
 =======================

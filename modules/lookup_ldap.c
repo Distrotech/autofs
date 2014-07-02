@@ -3420,12 +3420,15 @@ static int check_map_indirect(struct autofs_point *ap,
 	time_t now = time(NULL);
 	time_t t_last_read;
 	int ret, cur_state;
+	int status;
 
 	mc = source->mc;
 
 	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cur_state);
 
-	pthread_mutex_lock(&ap->entry->current_mutex);
+	status = pthread_mutex_lock(&ap->entry->current_mutex);
+	if (status)
+		fatal(status);
 	if (is_amd_format) {
 		unsigned long timestamp = get_amd_timestamp(ctxt);
 		if (timestamp > ctxt->timestamp) {
@@ -3445,7 +3448,9 @@ static int check_map_indirect(struct autofs_point *ap,
 				ctxt->check_defaults = 0;
 		}
 	}
-	pthread_mutex_unlock(&ap->entry->current_mutex);
+	status = pthread_mutex_unlock(&ap->entry->current_mutex);
+	if (status)
+		fatal(status);
 
 	ret = match_key(ap, source, key, key_len, ctxt);
 	if (ret == CHE_FAIL) {
@@ -3490,10 +3495,14 @@ static int check_map_indirect(struct autofs_point *ap,
 		}
 		cache_unlock(mc);
 
-		pthread_mutex_lock(&ap->entry->current_mutex);
+		status = pthread_mutex_lock(&ap->entry->current_mutex);
+		if (status)
+			fatal(status);
 		if (t_last_read > ap->exp_runfreq && ret & CHE_UPDATED)
 			source->stale = 1;
-		pthread_mutex_unlock(&ap->entry->current_mutex);
+		status = pthread_mutex_unlock(&ap->entry->current_mutex);
+		if (status)
+			fatal(status);
 	}
 
 	cache_readlock(mc);
