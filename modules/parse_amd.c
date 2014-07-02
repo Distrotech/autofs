@@ -906,9 +906,20 @@ static int do_auto_mount(struct autofs_point *ap, const char *name,
 {
 	char target[PATH_MAX + 1];
 
-	if (!entry->map_type)
+	if (!entry->map_type) {
+		if (strlen(entry->fs) > PATH_MAX) {
+			error(ap->logopt, MODPREFIX
+			     "error: fs option length is too long");
+			return 0;
+		}
 		strcpy(target, entry->fs);
-	else {
+	} else {
+		if (strlen(entry->fs) +
+		    strlen(entry->map_type) + 5 > PATH_MAX) {
+			error(ap->logopt, MODPREFIX
+			     "error: fs + maptype options length is too long");
+			return 0;
+		}
 		strcpy(target, entry->map_type);
 		strcat(target, ",amd:");
 		strcat(target, entry->fs);
@@ -925,10 +936,21 @@ static int do_link_mount(struct autofs_point *ap, const char *name,
 	const char *opts = (entry->opts && *entry->opts) ? entry->opts : NULL;
 	int ret;
 
-	if (entry->sublink)
+	if (entry->sublink) {
+		if (strlen(entry->sublink) > PATH_MAX) {
+			error(ap->logopt, MODPREFIX
+			     "error: sublink option length is too long");
+			return 0;
+		}
 		strcpy(target, entry->sublink);
-	else
+	} else {
+		if (strlen(entry->fs) > PATH_MAX) {
+			error(ap->logopt, MODPREFIX
+			     "error: fs option length is too long");
+			return 0;
+		}
 		strcpy(target, entry->fs);
+	}
 
 	if (!(flags & CONF_AUTOFS_USE_LOFS))
 		goto symlink;
@@ -1016,6 +1038,12 @@ static int do_nfs_mount(struct autofs_point *ap, const char *name,
 	char *opts = (entry->opts && *entry->opts) ? entry->opts : NULL;
 	unsigned int umount = 0;
 	int ret = 0;
+
+	if (strlen(entry->rhost) + strlen(entry->rfs) + 1 > PATH_MAX) {
+		error(ap->logopt, MODPREFIX
+		     "error: rhost + rfs options length is too long");
+		return 0;
+	}
 
 	strcpy(target, entry->rhost);
 	strcat(target, ":");
