@@ -1226,13 +1226,12 @@ static unsigned int validate_auto_options(unsigned int logopt,
 	 * left blank the mount must be expected to fail so don't
 	 * report the error.
 	 */
-	if (!*entry->fs)
-		return 0;
-	else if (!entry->fs) {
+	if (!entry->fs) {
 		error(logopt, MODPREFIX
 		      "%s: file system not given", entry->type);
 		return 0;
-	}
+	} else if (!*entry->fs)
+		return 0;
 	return 1;
 }
 
@@ -1255,13 +1254,12 @@ static unsigned int validate_nfs_options(unsigned int logopt,
 	 * expected to fail.
 	 */
 	if (!entry->rfs || !*entry->rfs) {
-		if (!*entry->rfs)
+		if (entry->rfs && !*entry->rfs)
 			return 0;
 		/* Map option fs has been intentionally left blank */
 		if (entry->fs && !*entry->fs)
 			return 0;
-		if (entry->fs)
-			entry->rfs = strdup(entry->fs);
+		entry->rfs = strdup(entry->fs);
 		if (!entry->rfs) {
 			error(logopt, MODPREFIX
 			      "%s: remote file system not given", entry->type);
@@ -1285,24 +1283,22 @@ static unsigned int validate_generic_options(unsigned int logopt,
 	 * expected to fail so don't report the error.
 	 */
 	if (fstype != AMD_MOUNT_TYPE_LOFS) {
-		if (!*entry->dev)
-			return 0;
-		else if (!entry->dev) {
+		if (!entry->dev) {
 			error(logopt, MODPREFIX
 			      "%s: mount device not given", entry->type);
 			return 0;
-		}
-	} else {
-		if (!*entry->rfs)
+		} else if (!*entry->dev)
 			return 0;
-		else if (!entry->rfs) {
+	} else {
+		if (!entry->rfs) {
 			/*
 			 * Can't use entry->type as the mount type to reprot
 			 * the error since entry->type == "bind" not "lofs".
 			 */
 			error(logopt, "lofs: mount device not given");
 			return 0;
-		}
+		} else if (!*entry->rfs)
+			return 0;
 	}
 	if (entry->sublink && !entry->fs) {
 		error(logopt, MODPREFIX
@@ -1337,13 +1333,12 @@ static unsigned int validate_host_options(unsigned int logopt,
 	 * if it isn't given in the map entry. Don't report an error
 	 * if it has been left empty since it's expected to fail.
 	 */
-	if (!*entry->rhost)
-		return 0;
-	else if (!entry->rhost) {
+	if (!entry->rhost) {
 		error(logopt, MODPREFIX
 		      "%s: remote host name not given", entry->type);
 		return 0;
-	}
+	} else if (!*entry->rhost)
+		return 0;
 	return 1;
 }
 
