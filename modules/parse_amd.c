@@ -1631,7 +1631,7 @@ static struct amd_entry *dup_defaults_entry(struct amd_entry *defaults)
 			entry->rfs = tmp;
 	}
 
-	if (defaults->rhost && *defaults->rfs) {
+	if (defaults->rhost && *defaults->rhost) {
 		tmp = strdup(defaults->rhost);
 		if (tmp)
 			entry->rhost = tmp;

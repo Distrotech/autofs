@@ -18,6 +18,7 @@
 - check host macro is set before use.
 - check options length before use in parse_amd.c.
 - fix some out of order evaluations in parse_amd.c.
+- fix copy and paste error in dup_defaults_entry().
 
 04/06/2014 autofs-5.1.0
 =======================
