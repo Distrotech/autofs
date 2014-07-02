@@ -22,6 +22,7 @@
 # undef ECHO
 #endif
 static void amd_echo(void);	/* forward definition */
+static void amd_copy_buffer(void);
 #define ECHO amd_echo()
 int amd_wrap(void);
 
@@ -125,26 +126,26 @@ CUTSEP		(\|\||\/)
 
 	{MAPOPT} {
 		BEGIN(MAPOPTVAL);
-		strcpy(amd_lval.strtype, amd_text);
+		amd_copy_buffer();
 		return MAP_OPTION;
 
 	}
 
 	{FSOPTS} {
 		BEGIN(FSOPTVAL);
-		strcpy(amd_lval.strtype, amd_text);
+		amd_copy_buffer();
 		return FS_OPTION;
 	}
 
 	{MNTOPT} {
 		BEGIN(MNTOPTVAL);
-		strcpy(amd_lval.strtype, amd_text);
+		amd_copy_buffer();
 		return MNT_OPTION;
 	}
 
 	{SELOPT} {
 		BEGIN(SELOPTVAL);
-		strcpy(amd_lval.strtype, amd_text);
+		amd_copy_buffer();
 		return SELECTOR;
 	}
 
@@ -152,13 +153,13 @@ CUTSEP		(\|\||\/)
 
 	{SEL1ARG} {
 		BEGIN(SELARGVAL);
-		strcpy(amd_lval.strtype, amd_text);
+		amd_copy_buffer();
 		return SELECTOR;
 	}
 
 	{SEL2ARG} {
 		BEGIN(SELARGVAL);
-		strcpy(amd_lval.strtype, amd_text);
+		amd_copy_buffer();
 		return SELECTOR;
 	}
 
@@ -171,7 +172,7 @@ CUTSEP		(\|\||\/)
 	#.*  { return COMMENT; }
 
 	{OTHR} {
-		strcpy(amd_lval.strtype, amd_text);
+		amd_copy_buffer();
 		return OTHER;
 	}
 }
@@ -201,22 +202,22 @@ CUTSEP		(\|\||\/)
 	":=" { return OPTION_ASSIGN; }
 
 	{FSTYPE} {
-		strcpy(amd_lval.strtype, amd_text);
+		amd_copy_buffer();
 		return FS_TYPE;
 	}
 
 	{MAPTYPE} {
-		strcpy(amd_lval.strtype, amd_text);
+		amd_copy_buffer();
 		return MAP_TYPE;
 	}
 
 	{CHEOPT} {
-		strcpy(amd_lval.strtype, amd_text);
+		amd_copy_buffer();
 		return CACHE_OPTION;
 	}
 
 	{FOPT} {
-		strcpy(amd_lval.strtype, amd_text);
+		amd_copy_buffer();
 		return FS_OPT_VALUE;
 	}
 }
@@ -246,7 +247,7 @@ CUTSEP		(\|\||\/)
 	":=" { return OPTION_ASSIGN; }
 
 	{FOPT} {
-		strcpy(amd_lval.strtype, amd_text);
+		amd_copy_buffer();
 		return FS_OPT_VALUE;
 	}
 }
@@ -278,7 +279,7 @@ CUTSEP		(\|\||\/)
 	"," { return COMMA; }
 
 	{OPTS} {
-		strcpy(amd_lval.strtype, amd_text);
+		amd_copy_buffer();
 		return OPTION;
 	}
 }
@@ -310,7 +311,7 @@ CUTSEP		(\|\||\/)
 	"!=" { return NOT_EQUAL; }
 
 	{SOPT} {
-		strcpy(amd_lval.strtype, amd_text);
+		amd_copy_buffer();
 		return SELECTOR_VALUE;
 	}
 }
@@ -335,24 +336,24 @@ CUTSEP		(\|\||\/)
 	"(" { return LBRACKET; }
 
 	{NOPT} {
-		strcpy(amd_lval.strtype, amd_text);
+		amd_copy_buffer();
 		return SEL_ARG_VALUE;
 	}
 
 	{SOPT}/"," {
-		strcpy(amd_lval.strtype, amd_text);
+		amd_copy_buffer();
 		return SEL_ARG_VALUE;
 	}
 
 	"," { return COMMA; }
 
 	{SOPT} {
-		strcpy(amd_lval.strtype, amd_text);
+		amd_copy_buffer();
 		return SEL_ARG_VALUE;
 	}
 
 	{FOPT} {
-		strcpy(amd_lval.strtype, amd_text);
+		amd_copy_buffer();
 		return SEL_ARG_VALUE;
 	}
 
@@ -366,6 +367,18 @@ CUTSEP		(\|\||\/)
 int amd_wrap(void)
 {
 	return 1;
+}
+
+static void amd_copy_buffer(void)
+{
+	if (amd_leng < 2048)
+		strcpy(amd_lval.strtype, amd_text);
+	else {
+		strncpy(amd_lval.strtype, amd_text, 2047);
+		amd_lval.strtype[2047] = '\0';
+		logmsg("warning: truncated option near %s\n",
+			&amd_lval.strtype[2030]);
+	}
 }
 
 static void amd_echo(void)
