@@ -238,6 +238,11 @@ static int match_my_name(unsigned int logopt, const char *name, struct substvar 
 			return 1;
 	}
 
+	if (!v || !v->val) {
+		error(logopt, "error: ${host} not set");
+		goto out;
+	}
+
 	/* Check if comparison value is an alias */
 
 	memset(&hints, 0, sizeof(hints));
