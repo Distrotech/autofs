@@ -20,6 +20,7 @@
 - fix some out of order evaluations in parse_amd.c.
 - fix copy and paste error in dup_defaults_entry().
 - fix leak in parse_mount().
+- add mutex call return check in defaults.c.
 
 04/06/2014 autofs-5.1.0
 =======================
