@@ -1567,7 +1567,10 @@ int parse_mount(struct autofs_point *ap, const char *name,
 		 */
 		if ((strstr(options, "fstype=autofs") &&
 		     strstr(options, "hosts"))) {
-			loc = NULL;
+			if (loc) {
+				free(loc);
+				loc = NULL;
+			}
 			loclen = 0;
 		} else {
 			loclen = strlen(loc);
@@ -1591,7 +1594,8 @@ int parse_mount(struct autofs_point *ap, const char *name,
 			rv = sun_mount(ap, ap->path, name, name_len,
 				       loc, loclen, options, ctxt);
 
-		free(loc);
+		if (loc)
+			free(loc);
 		free(options);
 		pthread_setcancelstate(cur_state, NULL);
 	}
