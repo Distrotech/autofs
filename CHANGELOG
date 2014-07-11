@@ -21,6 +21,7 @@
 - fix copy and paste error in dup_defaults_entry().
 - fix leak in parse_mount().
 - add mutex call return check in defaults.c.
+- force disable browse mode for amd format maps.
 
 04/06/2014 autofs-5.1.0
 =======================

@@ -810,6 +810,8 @@ int master_parse_entry(const char *buffer, unsigned int default_timeout, unsigne
 			logopt = LOGOPT_DEBUG;
 		else if (loglevel <= LOG_INFO && loglevel > LOG_ERR)
 			logopt = LOGOPT_VERBOSE;
+		/* amd mounts don't support browse mode */
+		ghost = 0;
 	}
 
 
