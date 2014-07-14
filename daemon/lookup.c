@@ -843,7 +843,7 @@ static int lookup_amd_instance(struct autofs_point *ap,
 		return NSS_STATUS_UNKNOWN;
 	}
 
-	if (entry->opts) {
+	if (entry->opts && *entry->opts) {
 		argv[0] = entry->opts;
 		argv[1] = NULL;
 		pargv = argv;

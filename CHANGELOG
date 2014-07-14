@@ -22,6 +22,7 @@
 - fix leak in parse_mount().
 - add mutex call return check in defaults.c.
 - force disable browse mode for amd format maps.
+- fix hosts map options check in lookup_amd_instance().
 
 04/06/2014 autofs-5.1.0
 =======================
