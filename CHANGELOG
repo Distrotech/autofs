@@ -23,6 +23,7 @@
 - add mutex call return check in defaults.c.
 - force disable browse mode for amd format maps.
 - fix hosts map options check in lookup_amd_instance().
+- fix memory leak in create_client().
 
 04/06/2014 autofs-5.1.0
 =======================

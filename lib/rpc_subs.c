@@ -720,8 +720,10 @@ static int create_client(struct conn_info *info, CLIENT **client)
 		ret = rpc_do_create_client(haddr->ai_addr, info, &fd, client);
 		if (ret == 0)
 			break;
-		if (ret == -EHOSTUNREACH)
+		if (ret == -EHOSTUNREACH) {
+			freeaddrinfo(ai);
 			goto out_close;
+		}
 
 		if (!info->client && fd != RPC_ANYSOCK) {
 			close(fd);
