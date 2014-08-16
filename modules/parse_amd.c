@@ -1797,8 +1797,10 @@ static struct amd_entry *get_defaults_entry(struct autofs_point *ap,
 		char *expand;
 		if (!expand_selectors(ap, defaults, &expand, sv))
 			goto out;
-		if (amd_parse_list(ap, expand, &dflts, &sv))
+		if (amd_parse_list(ap, expand, &dflts, &sv)) {
+			free(expand);
 			goto out;
+		}
 		entry = select_default_entry(ap, &dflts, sv);
 		if (!entry->map_type) {
 			/*

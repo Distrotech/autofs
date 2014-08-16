@@ -25,6 +25,7 @@
 - fix hosts map options check in lookup_amd_instance().
 - fix memory leak in create_client().
 - fix memory leak in get_exports().
+- fix memory leak in get_defaults_entry().
 
 04/06/2014 autofs-5.1.0
 =======================
