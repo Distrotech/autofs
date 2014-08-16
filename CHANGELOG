@@ -28,6 +28,7 @@
 - fix memory leak in get_defaults_entry().
 - fix out of order clearing of options buffer.
 - fix reset amd lexer scan buffer.
+- ignore multiple commas in options strings.
 
 04/06/2014 autofs-5.1.0
 =======================

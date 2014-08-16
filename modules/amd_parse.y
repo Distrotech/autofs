@@ -465,6 +465,10 @@ options: OPTION
 	{
 		prepend_opt(opts, $1);
 	}
+	| OPTION COMMA
+	{
+		prepend_opt(opts, $1);
+	}
 	;
 
 %%

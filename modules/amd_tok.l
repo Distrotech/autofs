@@ -284,9 +284,9 @@ CUTSEP		(\|\||\/)
 		return SPACE;
 	}
 
-	":=" { return OPTION_ASSIGN; }
+	(:=)(,+)? { return OPTION_ASSIGN; }
 
-	"," { return COMMA; }
+	,+ { return COMMA; }
 
 	{OPTS} {
 		amd_copy_buffer();
