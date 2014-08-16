@@ -396,7 +396,6 @@ option_assignment: MAP_OPTION OPTION_ASSIGN FS_TYPE
 	}
 	| MNT_OPTION OPTION_ASSIGN options
 	{
-		memset(opts, 0, sizeof(opts));
 		if (!strcmp($1, "opts"))
 			entry.opts = amd_strdup(opts);
 		else if (!strcmp($1, "addopts"))
@@ -407,6 +406,7 @@ option_assignment: MAP_OPTION OPTION_ASSIGN FS_TYPE
 			amd_notify($1);
 			YYABORT;
 		}
+		memset(opts, 0, sizeof(opts));
 	}
 	| MNT_OPTION OPTION_ASSIGN
 	{

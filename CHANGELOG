@@ -26,6 +26,7 @@
 - fix memory leak in create_client().
 - fix memory leak in get_exports().
 - fix memory leak in get_defaults_entry().
+- fix out of order clearing of options buffer.
 
 04/06/2014 autofs-5.1.0
 =======================
