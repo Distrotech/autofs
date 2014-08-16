@@ -1,4 +1,3 @@
-%{
 /* ----------------------------------------------------------------------- *
  *
  *  Copyright 2013 Ian Kent <raven@themaw.net>
@@ -17,6 +16,12 @@
  *  GNU General Public License for more details.
  *
  * ----------------------------------------------------------------------- */
+
+%s START MAPOPTVAL FSOPTVAL MNTOPTVAL SELOPTVAL SELARGVAL
+
+%{
+
+static int reset_start_state = 0;
 
 #ifdef ECHO
 # undef ECHO
@@ -71,8 +76,6 @@ int amd_yyinput(char *, int);
 
 %option nounput
 
-%x MAPOPTVAL FSOPTVAL MNTOPTVAL SELOPTVAL SELARGVAL
-
 NL		\r?\n
 OPTWS		[[:blank:]]*
 OTHR		[^!;:=/|\- \t\r\n#]*
@@ -120,7 +123,14 @@ CUTSEP		(\|\||\/)
 
 %%
 
-<INITIAL>{
+%{
+	if (reset_start_state) {
+		BEGIN START;
+		reset_start_state = 0;
+	}
+%}
+
+<START>{
 	{NL} |
 	\x00 { }
 
@@ -179,23 +189,23 @@ CUTSEP		(\|\||\/)
 
 <MAPOPTVAL>{
 	{NL} {
-		BEGIN(INITIAL);
+		BEGIN(START);
 		yyless(1);
 	}
 
 	\x00 {
-		BEGIN(INITIAL);
+		BEGIN(START);
 		return SEPERATOR;
 		yyless(1);
 	}
 
 	";" {
-		BEGIN(INITIAL);
+		BEGIN(START);
 		return SEPERATOR;
 	}
 
 	{OPTWS} {
-		BEGIN(INITIAL);
+		BEGIN(START);
 		return SPACE;
 	}
 
@@ -224,23 +234,23 @@ CUTSEP		(\|\||\/)
 
 <FSOPTVAL>{
 	{NL} {
-		BEGIN(INITIAL);
+		BEGIN(START);
 		yyless(1);
 	}
 
 	\x00 {
-		BEGIN(INITIAL);
+		BEGIN(START);
 		return SEPERATOR;
 		yyless(1);
 	}
 
 	";" {
-		BEGIN(INITIAL);
+		BEGIN(START);
 		return SEPERATOR;
 	}
 
 	{OPTWS} {
-		BEGIN(INITIAL);
+		BEGIN(START);
 		return SPACE;
 	}
 
@@ -254,23 +264,23 @@ CUTSEP		(\|\||\/)
 
 <MNTOPTVAL>{
 	{NL} {
-		BEGIN(INITIAL);
+		BEGIN(START);
 		yyless(1);
 	}
 
 	\x00 {
-		BEGIN(INITIAL);
+		BEGIN(START);
 		return SEPERATOR;
 		yyless(1);
 	}
 
 	";" {
-		BEGIN(INITIAL);
+		BEGIN(START);
 		return SEPERATOR;
 	}
 
 	{OPTWS} {
-		BEGIN(INITIAL);
+		BEGIN(START);
 		return SPACE;
 	}
 
@@ -286,23 +296,23 @@ CUTSEP		(\|\||\/)
 
 <SELOPTVAL>{
 	{NL} {
-		BEGIN(INITIAL);
+		BEGIN(START);
 		yyless(1);
 	}
 
 	\x00 {
-		BEGIN(INITIAL);
+		BEGIN(START);
 		return SEPERATOR;
 		yyless(1);
 	}
 
 	";" {
-		BEGIN(INITIAL);
+		BEGIN(START);
 		return SEPERATOR;
 	}
 
 	{OPTWS} {
-		BEGIN(INITIAL);
+		BEGIN(START);
 		return SPACE;
 	}
 
@@ -318,18 +328,18 @@ CUTSEP		(\|\||\/)
 
 <SELARGVAL>{
 	{NL} {
-		BEGIN(INITIAL);
+		BEGIN(START);
 		yyless(1);
 	}
 
 	\x00 {
-		BEGIN(INITIAL);
+		BEGIN(START);
 		return SEPERATOR;
 		yyless(1);
 	}
 
 	";" {
-		BEGIN(INITIAL);
+		BEGIN(START);
 		return SEPERATOR;
 	}
 
@@ -391,6 +401,9 @@ static void amd_echo(void)
 
 void amd_set_scan_buffer(const char *buffer)
 {
+	YY_FLUSH_BUFFER;
+	reset_start_state = 1;
+
 	line = buffer;
 	line_pos = &line[0];
 	/*

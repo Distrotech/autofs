@@ -1798,6 +1798,9 @@ static struct amd_entry *get_defaults_entry(struct autofs_point *ap,
 		if (!expand_selectors(ap, defaults, &expand, sv))
 			goto out;
 		if (amd_parse_list(ap, expand, &dflts, &sv)) {
+			error(ap->logopt, MODPREFIX
+			     "failed to parse defaults entry, "
+			     "attempting to use internal default");
 			free(expand);
 			goto out;
 		}
