@@ -11,6 +11,7 @@
 - fix incorrect round robin host detection.
 - fix memory leak in create_client().
 - fix memory leak in get_exports().
+- fix typo in flagdir configure option.
 
 28/03/2014 autofs-5.0.9
 =======================
