@@ -1143,7 +1143,7 @@ try_name:
 	}
 
 	this = ni;
-	while (this->ai_next) {
+	while (this) {
 		if (this->ai_family == AF_INET) {
 			struct sockaddr_in *addr = (struct sockaddr_in *) this->ai_addr;
 			if (addr->sin_addr.s_addr != INADDR_LOOPBACK)
