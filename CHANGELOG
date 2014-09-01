@@ -10,6 +10,7 @@
 - fix race accessing qdn in get_query_dn().
 - fix incorrect round robin host detection.
 - fix memory leak in create_client().
+- fix memory leak in get_exports().
 
 28/03/2014 autofs-5.0.9
 =======================
