@@ -114,7 +114,7 @@ AC_ARG_WITH(flagdir,
 	then
 		:
 	else
-		filagdir="${withval}"
+		flagdir="${withval}"
 	fi
 )
 AC_MSG_CHECKING([for autofs flag file directory])

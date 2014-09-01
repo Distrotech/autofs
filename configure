@@ -2381,7 +2381,7 @@ if test "${with_flagdir+set}" = set; then :
 	then
 		:
 	else
-		filagdir="${withval}"
+		flagdir="${withval}"
 	fi
 
 fi
