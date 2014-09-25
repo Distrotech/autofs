@@ -30,6 +30,7 @@
 - fix reset amd lexer scan buffer.
 - ignore multiple commas in options strings.
 - fix typo in flagdir configure option.
+- clarify multiple mounts description.
 
 04/06/2014 autofs-5.1.0
 =======================
