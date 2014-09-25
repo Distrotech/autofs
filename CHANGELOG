@@ -12,6 +12,7 @@
 - fix memory leak in create_client().
 - fix memory leak in get_exports().
 - fix typo in flagdir configure option.
+- clarify multiple mounts description.
 
 28/03/2014 autofs-5.0.9
 =======================

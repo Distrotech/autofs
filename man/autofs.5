@@ -210,15 +210,19 @@ can be used to name multiple filesystems to mount.  It takes the form:
 .RS +.2i
 .ta 1.0i
 .nf
-.BI "key [" -options "] [mount-point [" -options "] location...]..."
+.BI "key [ -options ] [[/] location [/relative-mount-point [ -options ] location...]..."
 .fi
 .RE
 .sp
 .P
 This may extend over multiple lines, quoting the line-breaks with \`\\\'.
 If present, the per-mountpoint mount-options are appended to the
-default mount-options.
+default mount-options. This behaviour may be overridden by the append_options
+configuration setting.
 .SS Replicated Server
+A mount location can specify multiple hosts for a location, portentially
+with a different export path for the same file system. Historically these
+different locations are read-only and provide the same replicated file system.
 .sp
 .RS +.2i
 .ta 1.5i
