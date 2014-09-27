@@ -2165,7 +2165,8 @@ int umount_multi_triggers(struct autofs_point *ap, struct mapent *me, char *root
 		 */
 		if (is_mounted(_PATH_MOUNTED, root, MNTS_REAL)) {
 			info(ap->logopt, "unmounting dir = %s", root);
-			if (umount_ent(ap, root)) {
+			if (umount_ent(ap, root) &&
+			    is_mounted(_PATH_MOUNTED, root, MNTS_REAL)) {
 				if (mount_multi_triggers(ap, me, root, strlen(root), "/") < 0)
 					warn(ap->logopt,
 					     "failed to remount offset triggers");
@@ -2266,7 +2267,8 @@ int clean_stale_multi_triggers(struct autofs_point *ap,
 		 */
 		if (oe->ioctlfd != -1 ||
 		    is_mounted(_PROC_MOUNTS, oe->key, MNTS_REAL)) {
-			if (umount_ent(ap, oe->key)) {
+			if (umount_ent(ap, oe->key) &&
+			    is_mounted(_PROC_MOUNTS, oe->key, MNTS_REAL)) {
 				debug(ap->logopt,
 				      "offset %s has active mount, invalidate",
 				      oe->key);

@@ -31,6 +31,7 @@
 - ignore multiple commas in options strings.
 - fix typo in flagdir configure option.
 - clarify multiple mounts description.
+- gaurd against incorrect umount return.
 
 04/06/2014 autofs-5.1.0
 =======================
