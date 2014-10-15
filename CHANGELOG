@@ -13,6 +13,7 @@
 - fix memory leak in get_exports().
 - fix typo in flagdir configure option.
 - clarify multiple mounts description.
+- gaurd against incorrect umount return.
 
 28/03/2014 autofs-5.0.9
 =======================
