@@ -14,6 +14,7 @@
 - fix typo in flagdir configure option.
 - clarify multiple mounts description.
 - gaurd against incorrect umount return.
+- update man page autofs(8) for systemd.
 
 28/03/2014 autofs-5.0.9
 =======================
