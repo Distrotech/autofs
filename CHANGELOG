@@ -36,6 +36,7 @@
 - dont pass sloppy option for other than nfs mounts.
 - make service want network-online.
 - fix fix master map type check.
+- init qdn before use in get_query_dn().
 
 04/06/2014 autofs-5.1.0
 =======================

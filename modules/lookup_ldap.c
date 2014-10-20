@@ -335,7 +335,7 @@ LDAP *init_ldap_connection(unsigned logopt, const char *uri, struct lookup_conte
 static int get_query_dn(unsigned logopt, LDAP *ldap, struct lookup_context *ctxt, const char *class, const char *key)
 {
 	char buf[MAX_ERR_BUF];
-	char *query, *dn, *qdn;
+	char *query, *dn, *qdn = NULL;
 	LDAPMessage *result = NULL, *e;
 	char *attrs[2];
 	struct berval **value;
