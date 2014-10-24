@@ -19,6 +19,7 @@
 - make service want network-online.
 - fix fix master map type check.
 - init qdn before use in get_query_dn().
+- fix typo in update_hosts_mounts().
 
 28/03/2014 autofs-5.0.9
 =======================

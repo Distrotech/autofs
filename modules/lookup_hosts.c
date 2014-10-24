@@ -214,7 +214,7 @@ next:
 			goto cont;
 
 		debug(ap->logopt, MODPREFIX
-		      "attempt to update exports for exports for %s", me->key);
+		      "attempt to update exports for %s", me->key);
 
 		master_source_current_wait(ap->entry);
 		ap->entry->current = source;
