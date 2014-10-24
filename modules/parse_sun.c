@@ -1356,16 +1356,35 @@ int parse_mount(struct autofs_point *ap, const char *name,
 		}
 
 		cache_multi_writelock(me);
-		/* Someone beat us to it, return success */
-		if (me->multi) {
-			free(options);
-			cache_multi_unlock(me);
-			cache_unlock(mc);
-			pthread_setcancelstate(cur_state, NULL);
-			return 0;
-		}
 		/* So we know we're the multi-mount root */
-		me->multi = me;
+		if (!me->multi)
+			me->multi = me;
+		else {
+			/*
+			 * The amd host mount type assumes the lookup name
+			 * is the host name for the host mount but amd uses
+			 * ${rhost} for this.
+			 *
+			 * This introduces the possibility of multiple
+			 * concurrent mount requests since constructing a
+			 * mount tree that isn't under the lookup name can't
+			 * take advantage of the kernel queuing of other
+			 * concurrent lookups while the mount tree is
+			 * constructed.
+			 *
+			 * Consequently multi-mount updates (currently only
+			 * done for the internal hosts map which the amd
+			 * parser also uses for its hosts map) can't be
+			 * allowed for amd mounts.
+			 */
+			if (source->flags & MAP_FLAG_FORMAT_AMD) {
+				free(options);
+				cache_multi_unlock(me);
+				cache_unlock(mc);
+				pthread_setcancelstate(cur_state, NULL);
+				return 0;
+			}
+		}
 
 		age = me->age;
 
