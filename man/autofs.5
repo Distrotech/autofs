@@ -190,6 +190,11 @@ SHOST	Short hostname (domain part removed if present)
 .fi
 .RE
 .sp
+If a program map is used these standard environment variables will have
+a prefix of "AUTOFS_" to prevent interpreted languages like python from
+being able to load and execute arbitray code from a user home directory.
+.RE
+.sp
 Additional entries can be defined with the -Dvariable=Value map-option to
 .BR automount (8).
 .SS Executable Maps

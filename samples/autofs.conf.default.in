@@ -52,6 +52,17 @@ browse_mode = no
 #
 #logging = none
 #
+# force_standard_program_map_env - disable the use of the "AUTOFS_"
+#			prefix for standard environemt variables when
+#			executing a program map. Since program maps
+#			are run as the privileded user this opens
+#			automount(8) to potential user privilege
+#			escalation when the program map is written
+#			in a language that  can load components from,
+#			for example, a user home directory.
+#
+# force_standard_program_map_env = no
+#
 # Define base dn for map dn lookup.
 #
 # Define server URIs

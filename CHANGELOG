@@ -43,6 +43,7 @@
 - ensure negative cache isn't updated on remount.
 - dont add wildcard to negative cache.
 - add a prefix to program map stdvars.
+- add config option to force use of program map stdvars.
 
 04/06/2014 autofs-5.1.0
 =======================

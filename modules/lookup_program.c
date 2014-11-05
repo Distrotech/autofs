@@ -129,6 +129,7 @@ static char *lookup_one(struct autofs_point *ap,
 	int distance;
 	int alloci = 1;
 	int status;
+	char *prefix;
 
 	mapent = (char *) malloc(MAPENT_MAX_LEN + 1);
 	if (!mapent) {
@@ -174,6 +175,17 @@ static char *lookup_one(struct autofs_point *ap,
 			warn(ap->logopt,
 			     MODPREFIX "failed to set PWD to %s for map %s",
 			     ap->path, ctxt->mapname);
+
+		/*
+		 * By default use a prefix with standard environment
+		 * variables to prevent system subversion by interpreted
+		 * languages.
+		 */
+		if (defaults_force_std_prog_map_env())
+			prefix = NULL;
+		else
+			prefix = "AUTOFS_";
+
 		/*
 		 * MAPFMT_DEFAULT must be "sun" for ->parse_init() to have setup
 		 * the macro table.
@@ -181,7 +193,7 @@ static char *lookup_one(struct autofs_point *ap,
 		if (ctxt->mapfmt && strcmp(ctxt->mapfmt, "MAPFMT_DEFAULT")) {
 			struct parse_context *pctxt = (struct parse_context *) ctxt->parse->context;
 			/* Add standard environment as seen by sun map parser */
-			pctxt->subst = addstdenv(pctxt->subst, "AUTOFS_");
+			pctxt->subst = addstdenv(pctxt->subst, prefix);
 			macro_setenv(pctxt->subst);
 		}
 		execl(ctxt->mapname, ctxt->mapname, name, NULL);

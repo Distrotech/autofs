@@ -51,6 +51,7 @@
 #define NAME_NEGATIVE_TIMEOUT		"negative_timeout"
 #define NAME_BROWSE_MODE		"browse_mode"
 #define NAME_LOGGING			"logging"
+#define NAME_FORCE_STD_PROG_MAP_ENV	"force_standard_program_map_env"
 
 #define NAME_LDAP_URI			"ldap_uri"
 #define NAME_LDAP_TIMEOUT		"ldap_timeout"
@@ -1588,6 +1589,17 @@ unsigned int defaults_get_logging(void)
 	free(res);
 
 	return logging;
+}
+
+unsigned int defaults_force_std_prog_map_env(void)
+{
+	int res;
+
+	res = conf_get_yesno(autofs_gbl_sec, NAME_FORCE_STD_PROG_MAP_ENV);
+	if (res < 0)
+		res = atoi(DEFAULT_FORCE_STD_PROG_MAP_ENV);
+
+	return res;
 }
 
 unsigned int defaults_get_ldap_timeout(void)
