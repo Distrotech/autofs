@@ -41,6 +41,7 @@
 - fix hosts map update on reload.
 - make negative cache update consistent for all lookup modules.
 - ensure negative cache isn't updated on remount.
+- dont add wildcard to negative cache.
 
 04/06/2014 autofs-5.1.0
 =======================
