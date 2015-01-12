@@ -158,13 +158,12 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 		if (!status)
 			existed = 0;
 
-		debug(ap->logopt,
-		      MODPREFIX
-		      "calling mount --bind " SLOPPY " -o %s %s %s",
+		debug(ap->logopt, MODPREFIX
+		      "calling mount --bind -o %s %s %s",
 		      options, what, fullpath);
 
-		err = spawn_bind_mount(ap->logopt,
-			     SLOPPYOPT "-o", options, what, fullpath, NULL);
+		err = spawn_bind_mount(ap->logopt, "-o",
+				       options, what, fullpath, NULL);
 
 		if (err) {
 			if (ap->type != LKP_INDIRECT)

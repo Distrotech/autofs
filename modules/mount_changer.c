@@ -103,12 +103,12 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name, int
 	}
 
 	if (options && options[0]) {
-		debug(ap->logopt,
-		      MODPREFIX "calling mount -t %s " SLOPPY "-o %s %s %s",
+		debug(ap->logopt, MODPREFIX
+		      "calling mount -t %s -o %s %s %s",
 		      fstype, options, what, fullpath);
 
 		err = spawn_mount(ap->logopt, "-t", fstype,
-			     SLOPPYOPT "-o", options, what, fullpath, NULL);
+			          "-o", options, what, fullpath, NULL);
 	} else {
 		debug(ap->logopt,
 		      MODPREFIX "calling mount -t %s %s %s",
