@@ -87,8 +87,8 @@ extern unsigned int nfs_mount_uses_string_options;
 
 struct amd_entry;
 
-struct substvar *addstdenv(struct substvar *sv);
-struct substvar *removestdenv(struct substvar *sv);
+struct substvar *addstdenv(struct substvar *sv, const char *prefix);
+struct substvar *removestdenv(struct substvar *sv, const char *prefix);
 void add_std_amd_vars(struct substvar *sv);
 void remove_std_amd_vars(void);
 struct amd_entry *new_amd_entry(const struct substvar *sv);
