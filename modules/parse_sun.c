@@ -509,7 +509,8 @@ static int sun_mount(struct autofs_point *ap, const char *root,
 				fstype[typelen] = '\0';
 			} else if (_strncmp("nonstrict", cp, 9) == 0) {
 				nonstrict = 1;
-			} else if (_strncmp("strict", cp, 6) == 0) {
+			} else if (_strncmp("strict", cp, 6) == 0 &&
+				   comma - cp == 6) {
 				nonstrict = 0;
 			} else if (_strncmp("nobrowse", cp, 8) == 0 ||
 				   _strncmp("browse", cp, 6) == 0 ||
