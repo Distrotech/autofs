@@ -733,8 +733,25 @@ int cache_update_offset(struct mapent_cache *mc, const char *mkey, const char *k
 
 	me = cache_lookup_distinct(mc, key);
 	if (me && me->age == age) {
-		if (me == owner || strcmp(me->key, key) == 0)
+		if (me == owner || strcmp(me->key, key) == 0) {
+			char *pent;
+
+			warn(logopt,
+			     "duplcate offset detected for key %s", me->key);
+
+			pent = malloc(strlen(mapent) + 1);
+			if (!pent)
+				warn(logopt,
+				     "map entry not updated: %s", me->mapent);
+			else {
+				if (me->mapent)
+					free(me->mapent);
+				me->mapent = strcpy(pent, mapent);
+				warn(logopt,
+				     "map entry updated with: %s", mapent);
+			}
 			return CHE_DUPLICATE;
+		}
 	}
 
 	ret = cache_update(mc, owner->source, key, mapent, age);
