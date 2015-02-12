@@ -48,6 +48,7 @@
 - handle duplicates in multi mounts.
 - revert special case cifs escapes.
 - fix map option parsing for 'strictatime'.
+- fix showmount search in auto.net.
 
 04/06/2014 autofs-5.1.0
 =======================

@@ -25,7 +25,7 @@ do
 		if [ -x $P/$M ]
 		then
 			SMNT=$P/$M
-			break
+			break 2
 		fi
 	done
 done
