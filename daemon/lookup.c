@@ -194,8 +194,8 @@ int lookup_nss_read_master(struct master *master, time_t age)
 			memset(source, 0, 10);
 			if ((!strncmp(name, "file", 4) &&
 				 (name[4] == ',' || name[4] == ':')) ||
-			    (!strncmp(name, "yp", 3) &&
-				 (name[3] == ',' || name[3] == ':')) ||
+			    (!strncmp(name, "yp", 2) &&
+				 (name[2] == ',' || name[2] == ':')) ||
 			    (!strncmp(name, "nis", 3) &&
 				 (name[3] == ',' || name[3] == ':')) ||
 			    (!strncmp(name, "nisplus", 7) &&

@@ -17,6 +17,7 @@
 - update man page autofs(8) for systemd.
 - dont pass sloppy option for other than nfs mounts.
 - make service want network-online.
+- fix fix master map type check.
 
 28/03/2014 autofs-5.0.9
 =======================
