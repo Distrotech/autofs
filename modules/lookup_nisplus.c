@@ -594,24 +594,13 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 	ret = ctxt->parse->parse_mount(ap, key, key_len,
 				       mapent, ctxt->parse->context);
 	if (ret) {
-		time_t now = time(NULL);
-		int rv = CHE_OK;
-
 		free(mapent);
 
 		/* Don't update negative cache when re-connecting */
 		if (ap->flags & MOUNT_FLAG_REMOUNT)
 			return NSS_STATUS_TRYAGAIN;
 		cache_writelock(mc);
-		me = cache_lookup_distinct(mc, key);
-		if (me)
-			rv = cache_push_mapent(me, NULL);
-		else
-			rv = cache_update(mc, source, key, NULL, now);
-		if (rv != CHE_FAIL) {
-			me = cache_lookup_distinct(mc, key);
-			me->status = time(NULL) + ap->negative_timeout;
-		}
+		cache_update_negative(mc, source, key, ap->negative_timeout);
 		cache_unlock(mc);
 		return NSS_STATUS_TRYAGAIN;
 	}
