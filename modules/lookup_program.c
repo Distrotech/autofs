@@ -448,6 +448,9 @@ out_free:
 		free(mapent);
 
 	if (ret) {
+		/* Don't update negative cache when re-connecting */
+		if (ap->flags & MOUNT_FLAG_REMOUNT)
+			return NSS_STATUS_TRYAGAIN;
 		cache_writelock(mc);
 		cache_update_negative(mc, source, name, ap->negative_timeout);
 		cache_unlock(mc);
