@@ -940,6 +940,10 @@ static void update_negative_cache(struct autofs_point *ap, struct map_source *so
 	if (source && source->depth)
 		return;
 
+	/* Don't update the wildcard */
+	if (strlen(name) == 1 && *name == '*')
+		return;
+
 	/* Have we recorded the lookup fail for negative caching? */
 	me = lookup_source_mapent(ap, name, LKP_DISTINCT);
 	if (me)

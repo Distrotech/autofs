@@ -753,6 +753,10 @@ void cache_update_negative(struct mapent_cache *mc,
 	struct mapent *me;
 	int rv = CHE_OK;
 
+	/* Don't update the wildcard */
+	if (strlen(key) == 1 && *key == '*')
+		return;
+
 	me = cache_lookup_distinct(mc, key);
 	if (me)
 		rv = cache_push_mapent(me, NULL);

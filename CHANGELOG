@@ -22,6 +22,7 @@
 - fix typo in update_hosts_mounts().
 - make negative cache update consistent for all lookup modules.
 - ensure negative cache isn't updated on remount.
+- dont add wildcard to negative cache.
 
 28/03/2014 autofs-5.0.9
 =======================
