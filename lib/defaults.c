@@ -36,6 +36,7 @@
 #define ENV_NAME_NEGATIVE_TIMEOUT	"NEGATIVE_TIMEOUT"
 #define ENV_NAME_BROWSE_MODE		"BROWSE_MODE"
 #define ENV_NAME_LOGGING		"LOGGING"
+#define ENV_NAME_FORCE_STD_PROG_MAP_ENV	"FORCE_STANDARD_PROGRAM_MAP_ENV"
 
 #define LDAP_URI			"LDAP_URI"
 #define ENV_LDAP_TIMEOUT		"LDAP_TIMEOUT"
@@ -521,6 +522,7 @@ unsigned int defaults_read_config(unsigned int to_syslog)
 		    check_set_config_value(key, ENV_NAME_NEGATIVE_TIMEOUT, value, to_syslog) ||
 		    check_set_config_value(key, ENV_NAME_BROWSE_MODE, value, to_syslog) ||
 		    check_set_config_value(key, ENV_NAME_LOGGING, value, to_syslog) ||
+		    check_set_config_value(key, ENV_NAME_FORCE_STD_PROG_MAP_ENV, value, to_syslog) ||
 		    check_set_config_value(key, ENV_LDAP_TIMEOUT, value, to_syslog) ||
 		    check_set_config_value(key, ENV_LDAP_NETWORK_TIMEOUT, value, to_syslog) ||
 		    check_set_config_value(key, ENV_NAME_MAP_OBJ_CLASS, value, to_syslog) ||
@@ -640,6 +642,17 @@ unsigned int defaults_get_logging(void)
 	free(res);
 
 	return logging;
+}
+
+unsigned int defaults_force_std_prog_map_env(void)
+{
+	int res;
+
+	res = get_env_yesno(ENV_NAME_FORCE_STD_PROG_MAP_ENV);
+	if (res < 0)
+		res = DEFAULT_FORCE_STD_PROG_MAP_ENV;
+
+	return res;
 }
 
 unsigned int defaults_get_ldap_timeout(void)

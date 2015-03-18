@@ -57,6 +57,17 @@ BROWSE_MODE="no"
 #
 #LOGGING="none"
 #
+# FORCE_STANDARD_PROGRAM_MAP_ENV - disable the use of the "AUTOFS_"
+#			prefix for standard environemt variables when
+#			executing a program map. Since program maps
+#			are run as the privileded user this opens
+#			automount(8) to potential user privilege
+#			escalation when the program map is written
+#			in a language that  can load components from,
+#			for example, a user home directory.
+#
+# FORCE_STANDARD_PROGRAM_MAP_ENV="no"
+#
 # Define server URIs
 #
 # LDAP_URI - space seperated list of server uris of the form
