@@ -756,6 +756,8 @@ update_offset_entry(struct autofs_point *ap, const char *name,
 
 	mc = source->mc;
 
+	memset(m_mapent, 0, MAPENT_MAX_LEN + 1);
+
 	/* Internal hosts map may have loc == NULL */
 	if (!*path) {
 		error(ap->logopt,
@@ -782,7 +784,7 @@ update_offset_entry(struct autofs_point *ap, const char *name,
 	if (*myoptions)
 		m_options_len = strlen(myoptions) + 2;
 
-	m_mapent_len = strlen(loc);
+	m_mapent_len = loc ? strlen(loc) : 0;
 	if (m_mapent_len + m_options_len > MAPENT_MAX_LEN) {
 		error(ap->logopt, MODPREFIX "multi mount mapent too long");
 		return CHE_FAIL;
@@ -793,10 +795,13 @@ update_offset_entry(struct autofs_point *ap, const char *name,
 		strcat(m_mapent, myoptions);
 		if (loc) {
 			strcat(m_mapent, " ");
-			strcat(m_mapent, loc);
+			if (loc)
+				strcat(m_mapent, loc);
 		}
-	} else
-		strcpy(m_mapent, loc);
+	} else {
+		if (loc)
+			strcpy(m_mapent, loc);
+	}
 
 	ret = cache_update_offset(mc, name, m_key, m_mapent, age);
 	if (ret == CHE_DUPLICATE)
@@ -923,9 +928,15 @@ static int parse_mapent(const char *ent, char *g_options, char **options, char *
 	l = chunklen(p, check_colon(p));
 	loc = dequote(p, l, logopt);
 	if (!loc) {
-		warn(logopt, MODPREFIX "possible missing location");
-		free(myoptions);
-		return 0;
+		if (strstr(myoptions, "fstype=autofs") &&
+		    strstr(myoptions, "hosts")) {
+			warn(logopt, MODPREFIX "possible missing location");
+			free(myoptions);
+			return 0;
+		}
+		*options = myoptions;
+		*location = NULL;
+		return (p - ent);
 	}
 
 	/* Location can't begin with a '/' */
@@ -953,10 +964,15 @@ static int parse_mapent(const char *ent, char *g_options, char **options, char *
 		l = chunklen(p, check_colon(p));
 		ent_chunk = dequote(p, l, logopt);
 		if (!ent_chunk) {
-			warn(logopt, MODPREFIX "null location or out of memory");
-			free(myoptions);
-			free(loc);
-			return 0;
+			if (strstr(myoptions, "fstype=autofs") &&
+			    strstr(myoptions, "hosts")) {
+				warn(logopt, MODPREFIX
+				     "null location or out of memory");
+				free(myoptions);
+				free(loc);
+				return 0;
+			}
+			goto next;
 		}
 
 		/* Location can't begin with a '/' */
@@ -992,7 +1008,7 @@ static int parse_mapent(const char *ent, char *g_options, char **options, char *
 		strcat(loc, ent_chunk);
 
 		free(ent_chunk);
-
+next:
 		p += l;
 		p = skipspace(p);
 	}
@@ -1093,7 +1109,9 @@ static int mount_subtree(struct autofs_point *ap, struct mapent *me,
 				cache_delete_offset_list(me->mc, name);
 				return 1;
 			}
-			ro_len = strlen(ro_loc);
+			ro_len = 0;
+			if (ro_loc)
+				ro_len = strlen(ro_loc);
 
 			tmp = alloca(mnt_root_len + 2);
 			strcpy(tmp, mnt_root);
@@ -1104,7 +1122,8 @@ static int mount_subtree(struct autofs_point *ap, struct mapent *me,
 			rv = sun_mount(ap, root, name, namelen, ro_loc, ro_len, myoptions, ctxt);
 
 			free(myoptions);
-			free(ro_loc);
+			if (ro_loc)
+				free(ro_loc);
 		}
 
 		if (ro && rv == 0) {
@@ -1395,16 +1414,13 @@ int parse_mount(struct autofs_point *ap, const char *name,
 
 			l = parse_mapent(p, options, &myoptions, &loc, ap->logopt);
 			if (!l) {
-				if (!(strstr(myoptions, "fstype=autofs") &&
-				      strstr(myoptions, "hosts"))) {
-					cache_delete_offset_list(mc, name);
-					cache_multi_unlock(me);
-					cache_unlock(mc);
-					free(path);
-					free(options);
-					pthread_setcancelstate(cur_state, NULL);
-					return 1;
-				}
+				cache_delete_offset_list(mc, name);
+				cache_multi_unlock(me);
+				cache_unlock(mc);
+				free(path);
+				free(options);
+				pthread_setcancelstate(cur_state, NULL);
+				return 1;
 			}
 
 			p += l;
@@ -1425,12 +1441,14 @@ int parse_mount(struct autofs_point *ap, const char *name,
 				free(path);
 				free(options);
 				free(myoptions);
-				free(loc);
+				if (loc)
+					free(loc);
 				pthread_setcancelstate(cur_state, NULL);
 				return 1;
 			}
 
-			free(loc);
+			if (loc)
+				free(loc);
 			free(path);
 			free(myoptions);
 		} while (*p == '/' || (*p == '"' && *(p + 1) == '/'));

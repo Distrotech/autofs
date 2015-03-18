@@ -25,6 +25,7 @@
 - dont add wildcard to negative cache.
 - add a prefix to program map stdvars.
 - add config option to force use of program map stdvars.
+- fix incorrect check in parse_mount().
 
 28/03/2014 autofs-5.0.9
 =======================
