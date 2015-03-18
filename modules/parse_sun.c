@@ -1214,12 +1214,12 @@ int parse_mount(struct autofs_point *ap, const char *name,
 	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cur_state);
 	macro_lock();
 
-	ctxt->subst = addstdenv(ctxt->subst);
+	ctxt->subst = addstdenv(ctxt->subst, NULL);
 
 	mapent_len = expandsunent(mapent, NULL, name, ctxt->subst, slashify);
 	if (mapent_len == 0) {
 		error(ap->logopt, MODPREFIX "failed to expand map entry");
-		ctxt->subst = removestdenv(ctxt->subst);
+		ctxt->subst = removestdenv(ctxt->subst, NULL);
 		macro_unlock();
 		pthread_setcancelstate(cur_state, NULL);
 		return 1;
@@ -1229,7 +1229,7 @@ int parse_mount(struct autofs_point *ap, const char *name,
 	if (!pmapent) {	
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
 		logerr(MODPREFIX "alloca: %s", estr);
-		ctxt->subst = removestdenv(ctxt->subst);
+		ctxt->subst = removestdenv(ctxt->subst, NULL);
 		macro_unlock();
 		pthread_setcancelstate(cur_state, NULL);
 		return 1;
@@ -1237,7 +1237,7 @@ int parse_mount(struct autofs_point *ap, const char *name,
 	pmapent[mapent_len] = '\0';
 
 	expandsunent(mapent, pmapent, name, ctxt->subst, slashify);
-	ctxt->subst = removestdenv(ctxt->subst);
+	ctxt->subst = removestdenv(ctxt->subst, NULL);
 
 	macro_unlock();
 	pthread_setcancelstate(cur_state, NULL);

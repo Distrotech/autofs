@@ -31,6 +31,7 @@
 
 #define MAX_OPTIONS_LEN		80
 #define MAX_MNT_NAME_LEN	30
+#define MAX_ENV_NAME		15
 
 #define EBUFSIZ 1024
 
@@ -315,7 +316,61 @@ int check_nfs_mount_version(struct nfs_mount_vers *vers,
 }
 #endif
 
-struct substvar *addstdenv(struct substvar *sv)
+static char *set_env_name(const char *prefix, const char *name, char *buf)
+{
+	size_t len;
+
+	len = strlen(name);
+	if (prefix)
+		len += strlen(prefix);
+	len++;
+
+	if (len > MAX_ENV_NAME)
+		return NULL;
+
+	if (!prefix)
+		strcpy(buf, name);
+	else {
+		strcpy(buf, prefix);
+		strcat(buf, name);
+	}
+	return buf;
+}
+
+static struct substvar *do_macro_addvar(struct substvar *list,
+					const char *prefix,
+					const char *name,
+					const char *val)
+{
+	char buf[MAX_ENV_NAME + 1];
+	char *new;
+	size_t len;
+
+	new = set_env_name(prefix, name, buf);
+	if (new) {
+		len = strlen(new);
+		list = macro_addvar(list, new, len, val);
+	}
+	return list;
+}
+
+static struct substvar *do_macro_removevar(struct substvar *list,
+					   const char *prefix,
+					   const char *name)
+{
+	char buf[MAX_ENV_NAME + 1];
+	char *new;
+	size_t len;
+
+	new = set_env_name(prefix, name, buf);
+	if (new) {
+		len = strlen(new);
+		list = macro_removevar(list, new, len);
+	}
+	return list;
+}
+
+struct substvar *addstdenv(struct substvar *sv, const char *prefix)
 {
 	struct substvar *list = sv;
 	struct thread_stdenv_vars *tsv;
@@ -330,14 +385,14 @@ struct substvar *addstdenv(struct substvar *sv)
 		num = (long) tsv->uid;
 		ret = sprintf(numbuf, "%ld", num);
 		if (ret > 0)
-			list = macro_addvar(list, "UID", 3, numbuf);
+			list = do_macro_addvar(list, prefix, "UID", numbuf);
 		num = (long) tsv->gid;
 		ret = sprintf(numbuf, "%ld", num);
 		if (ret > 0)
-			list = macro_addvar(list, "GID", 3, numbuf);
-		list = macro_addvar(list, "USER", 4, tsv->user);
-		list = macro_addvar(list, "GROUP", 5, tsv->group);
-		list = macro_addvar(list, "HOME", 4, tsv->home);
+			list = do_macro_addvar(list, prefix, "GID", numbuf);
+		list = do_macro_addvar(list, prefix, "USER", tsv->user);
+		list = do_macro_addvar(list, prefix, "GROUP", tsv->group);
+		list = do_macro_addvar(list, prefix, "HOME", tsv->home);
 		mv = macro_findvar(list, "HOST", 4);
 		if (mv) {
 			char *shost = strdup(mv->val);
@@ -345,7 +400,8 @@ struct substvar *addstdenv(struct substvar *sv)
 				char *dot = strchr(shost, '.');
 				if (dot)
 					*dot = '\0';
-				list = macro_addvar(list, "SHOST", 5, shost);
+				list = do_macro_addvar(list,
+						       prefix, "SHOST", shost);
 				free(shost);
 			}
 		}
@@ -353,16 +409,16 @@ struct substvar *addstdenv(struct substvar *sv)
 	return list;
 }
 
-struct substvar *removestdenv(struct substvar *sv)
+struct substvar *removestdenv(struct substvar *sv, const char *prefix)
 {
 	struct substvar *list = sv;
 
-	list = macro_removevar(list, "UID", 3);
-	list = macro_removevar(list, "USER", 4);
-	list = macro_removevar(list, "HOME", 4);
-	list = macro_removevar(list, "GID", 3);
-	list = macro_removevar(list, "GROUP", 5);
-	list = macro_removevar(list, "SHOST", 5);
+	list = do_macro_removevar(list, prefix, "UID");
+	list = do_macro_removevar(list, prefix, "USER");
+	list = do_macro_removevar(list, prefix, "HOME");
+	list = do_macro_removevar(list, prefix, "GID");
+	list = do_macro_removevar(list, prefix, "GROUP");
+	list = do_macro_removevar(list, prefix, "SHOST");
 	return list;
 }
 

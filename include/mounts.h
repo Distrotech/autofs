@@ -85,8 +85,8 @@ unsigned int linux_version_code(void);
 int check_nfs_mount_version(struct nfs_mount_vers *, struct nfs_mount_vers *);
 extern unsigned int nfs_mount_uses_string_options;
 
-struct substvar *addstdenv(struct substvar *sv);
-struct substvar *removestdenv(struct substvar *sv);
+struct substvar *addstdenv(struct substvar *sv, const char *prefix);
+struct substvar *removestdenv(struct substvar *sv, const char *prefix);
 
 unsigned int query_kproto_ver(void);
 unsigned int get_kver_major(void);
