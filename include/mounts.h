@@ -68,11 +68,6 @@ struct mnt_list {
 	struct list_head list;
 	struct list_head entries;
 	struct list_head sublist;
-	/*
-	 * Offset mount handling ie. add_ordered_list
-	 * and get_offset.
-	 */
-	struct list_head ordered;
 };
 
 
@@ -109,9 +104,6 @@ void free_mnt_list(struct mnt_list *list);
 int contained_in_local_fs(const char *path);
 int is_mounted(const char *table, const char *path, unsigned int type);
 int has_fstab_option(const char *opt);
-char *get_offset(const char *prefix, char *offset,
-                 struct list_head *head, struct list_head **pos);
-void add_ordered_list(struct mnt_list *ent, struct list_head *head);
 void tree_free_mnt_tree(struct mnt_list *tree);
 struct mnt_list *tree_make_mnt_tree(const char *table, const char *path);
 int tree_get_mnt_list(struct mnt_list *mnts, struct list_head *list, const char *path, int include);

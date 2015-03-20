@@ -1090,100 +1090,6 @@ int has_fstab_option(const char *opt)
 	return ret;
 }
 
-char *get_offset(const char *prefix, char *offset,
-		 struct list_head *head, struct list_head **pos)
-{
-	struct list_head *next;
-	struct mnt_list *this;
-	size_t plen = strlen(prefix);
-	size_t len = 0;
-
-	*offset = '\0';
-	next = *pos ? (*pos)->next : head->next;
-	while (next != head) {
-		char *pstart, *pend;
-
-		this = list_entry(next, struct mnt_list, ordered);
-		*pos = next;
-		next = next->next;
-
-		if (strlen(this->path) <= plen)
-			continue;
-
-		if (!strncmp(prefix, this->path, plen)) {
-			pstart = &this->path[plen];
-
-			/* not part of this sub-tree */
-			if (*pstart != '/')
-				continue;
-
-			/* get next offset */
-			pend = pstart;
-			while (*pend++) ;
-			len = pend - pstart - 1;
-			strncpy(offset, pstart, len);
-			offset[len] ='\0';
-			break;
-		}
-	}
-
-	while (next != head) {
-		char *pstart;
-
-		this = list_entry(next, struct mnt_list, ordered);
-
-		if (strlen(this->path) <= plen + len)
-			break;
-
-		pstart = &this->path[plen];
-
-		/* not part of this sub-tree */
-		if (*pstart != '/')
-			break;
-
-		/* new offset */
-		if (!*(pstart + len + 1))
-			break;
-
-		/* compare next offset */
-		if (pstart[len] != '/' || strncmp(offset, pstart, len))
-			break;
-
-		*pos = next;
-		next = next->next;
-	}
-
-	return *offset ? offset : NULL;
-}
-
-void add_ordered_list(struct mnt_list *ent, struct list_head *head)
-{
-	struct list_head *p;
-	struct mnt_list *this;
-
-	list_for_each(p, head) {
-		size_t tlen;
-		int eq;
-
-		this = list_entry(p, struct mnt_list, ordered);
-		tlen = strlen(this->path);
-
-		eq = strncmp(this->path, ent->path, tlen);
-		if (!eq && tlen == strlen(ent->path))
-			return;
-
-		if (eq > 0) {
-			INIT_LIST_HEAD(&ent->ordered);
-			list_add_tail(&ent->ordered, p);
-			return;
-		}
-	}
-	INIT_LIST_HEAD(&ent->ordered);
-	list_add_tail(&ent->ordered, p);
-
-	return;
-}
-
 /*
  * Since we have to look at the entire mount tree for direct
  * mounts (all mounts under "/") and we may have a large number
@@ -1283,7 +1189,6 @@ struct mnt_list *tree_make_mnt_tree(const char *table, const char *path)
 		INIT_LIST_HEAD(&ent->list);
 		INIT_LIST_HEAD(&ent->entries);
 		INIT_LIST_HEAD(&ent->sublist);
-		INIT_LIST_HEAD(&ent->ordered);
 
 		ent->path = malloc(len + 1);
 		if (!ent->path) {
