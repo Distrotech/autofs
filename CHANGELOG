@@ -53,6 +53,7 @@
 - fix macro usage in lookup_program.c.
 - fix gcc5 complaints.
 - remove unused offset handling code.
+- fix mount as you go offset selection.
 
 04/06/2014 autofs-5.1.0
 =======================

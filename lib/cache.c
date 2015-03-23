@@ -1183,7 +1183,6 @@ struct mapent *cache_enumerate(struct mapent_cache *mc, struct mapent *me)
  * Get each offset from list head under prefix.
  * Maintain traversal current position in pos for subsequent calls. 
  * Return each offset into offset.
- * TODO: length check on offset.
  */
 /* cache must be read locked by caller */
 char *cache_get_offset(const char *prefix, char *offset, int start,
@@ -1212,6 +1211,9 @@ char *cache_get_offset(const char *prefix, char *offset, int start,
 			continue;
 
 		if (!strncmp(prefix, offset_start, plen)) {
+			struct mapent *np = NULL;
+			char pe[PATH_MAX + 1];
+
 			/* "/" doesn't count for root offset */
 			if (plen == 1)
 				pstart = &offset_start[plen - 1];
@@ -1224,7 +1226,24 @@ char *cache_get_offset(const char *prefix, char *offset, int start,
 
 			/* get next offset */
 			pend = pstart;
-			while (*pend++) ;
+			while (*pend++) {
+				size_t nest_pt_offset;
+
+				if (*pend != '/')
+					continue;
+
+				nest_pt_offset = start + pend - pstart;
+				if (plen > 1)
+					nest_pt_offset += plen;
+				strcpy(pe, this->key);
+				pe[nest_pt_offset] = '\0';
+
+				np = cache_lookup_distinct(this->mc, pe);
+				if (np)
+					break;
+			}
+			if (np)
+				continue;
 			len = pend - pstart - 1;
 			strncpy(offset, pstart, len);
 			offset[len] ='\0';
@@ -1257,7 +1276,9 @@ char *cache_get_offset(const char *prefix, char *offset, int start,
 			break;
 
 		/* compare offset */
-		if (pstart[len] != '/' || strncmp(offset, pstart, len))
+		if (pstart[len] != '/' ||
+		    strlen(pstart) != len ||
+		    strncmp(offset, pstart, len))
 			break;
 
 		*pos = next;
