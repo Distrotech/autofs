@@ -1712,7 +1712,7 @@ int master_done(struct master *master)
 	return res;
 }
 
-inline unsigned int master_get_logopt(void)
+unsigned int master_get_logopt(void)
 {
 	return master_list ? master_list->logopt : LOGOPT_NONE;
 }

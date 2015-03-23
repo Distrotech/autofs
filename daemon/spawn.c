@@ -36,7 +36,7 @@ static pthread_mutex_t spawn_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 #define MTAB_LOCK_RETRIES	3
 
-inline void dump_core(void)
+void dump_core(void)
 {
 	sigset_t segv;
 
