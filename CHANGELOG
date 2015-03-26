@@ -10,6 +10,7 @@
 - make find_dc_server() return a status.
 - make find_server() return a status.
 - fix return handling of do_reconnect() in ldap module.
+- fix rwlock unlock crash.
 
 21/04/2015 autofs-5.1.1
 =======================

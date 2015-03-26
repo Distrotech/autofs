@@ -1757,6 +1757,7 @@ void *handle_mounts(void *arg)
 			 */
 			if (ap->type == LKP_DIRECT) {
 				umount_autofs(ap, NULL, 1);
+				handle_mounts_cleanup(ap);
 				break;
 			}
 
@@ -1767,8 +1768,10 @@ void *handle_mounts(void *arg)
 			 * occurs while we're trying to umount.
 			 */
 			ret = umount_autofs(ap, NULL, 1);
-			if (!ret)
+			if (!ret) {
+				handle_mounts_cleanup(ap);
 				break;
+			}
 
 			/* Failed shutdown returns to ready */
 			warn(ap->logopt,
@@ -1788,8 +1791,6 @@ void *handle_mounts(void *arg)
 
 		}
 	}
-
-	handle_mounts_cleanup(ap);
 
 	return NULL;
 }
