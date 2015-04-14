@@ -804,10 +804,11 @@ update_offset_entry(struct autofs_point *ap, const char *name,
 	}
 
 	ret = cache_update_offset(mc, name, m_key, m_mapent, age);
-	if (ret == CHE_DUPLICATE)
+	if (ret == CHE_DUPLICATE) {
 		warn(ap->logopt, MODPREFIX
 		     "syntax error or duplicate offset %s -> %s", path, loc);
-	else if (ret == CHE_FAIL)
+		ret = CHE_OK;
+	} else if (ret == CHE_FAIL)
 		debug(ap->logopt, MODPREFIX
 		      "failed to update multi-mount offset %s -> %s", path, m_mapent);
 	else {
