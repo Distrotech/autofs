@@ -266,8 +266,8 @@ user setting these standard environment variables opens automount(8) to
 potential user privilege escalation when the program map is written in a
 language that can load components from, for example, a user home directory
 (program default "no").
-.SH BUILTIN MAP -hosts
-If "-hosts" is given as the map then accessing a key under the mount point
+.SH BUILTIN MAP \-hosts
+If "\-hosts" is given as the map then accessing a key under the mount point
 which corresponds to a hostname will allow access to the exports of that
 host. The hosts map cannot be dynamically updated and requires a HUP signal
 to be sent to the daemon for it to check hosts for an update. Due to possible
@@ -276,7 +276,7 @@ updated during the HUP signal processing.
 .P
 For example, with an entry in the master map of
 .nh
-.B /net  -hosts
+.B /net  \-hosts
 .hy
 accessing /net/myserver will mount exports from myserver on directories below
 /net/myserver.
