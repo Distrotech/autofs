@@ -56,6 +56,7 @@
 - fix mount as you go offset selection.
 - link daemon with pthread library (Debian patch).
 - manpage corrections (Debian patch).
+- fix manpages hyphenation (Debian patch).
 
 04/06/2014 autofs-5.1.0
 =======================

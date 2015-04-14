@@ -23,7 +23,7 @@ This is a description of the text file format.  Other methods of specifying
 these files may exist.  All empty lines or lines beginning with # are
 ignored. The basic format of one line in such maps is:
 .P
-.BR key\  [ -options ]\  location
+.BR key\  [ \-options ]\  location
 .TP
 .B key
 .br
@@ -47,26 +47,26 @@ command.
 There are several special options
 .RS
 .TP
-.B -fstype=
+.B \-fstype=
 .br
 is used to specify a filesystem type if the filesystem is not of the default
 NFS type.  This option is processed by the automounter and not by the mount
 command.
 .TP
-.B -strict
+.B \-strict
 .br
 is used to treat errors when mounting file systems as fatal. This is important when
 multiple file systems should be mounted (`multi-mounts'). If this option
 is given, no file system is mounted at all if at least one file system
 can't be mounted.
 .TP
-.B -use-weight-only
+.B \-use-weight-only
 .br
 is used to make the weight the sole factor in selecting a server when multiple
 servers are present in a map entry.
 and
 .TP
-.B -no-use-weight-only
+.B \-no-use-weight-only
 .br
 can be used to negate the option if it is present in the master map entry
 for the map but is not wanted for the given mount.
@@ -87,13 +87,13 @@ Indirect map:
 .RS +.2i
 .ta 1.0i 3.0i
 .nf
-kernel	-ro,soft,intr	ftp.kernel.org:/pub/linux
-boot	-fstype=ext2	:/dev/hda1
-windoze	-fstype=smbfs	://windoze/c
-removable	-fstype=ext2	:/dev/hdd
-cd	-fstype=iso9660,ro	:/dev/hdc
-floppy	-fstype=auto	:/dev/fd0
-server	-rw,hard,intr	/ -ro myserver.me.org:/ \\
+kernel	\-ro,soft,intr	ftp.kernel.org:/pub/linux
+boot	\-fstype=ext2	:/dev/hda1
+windoze	\-fstype=smbfs	://windoze/c
+removable	\-fstype=ext2	:/dev/hdd
+cd	\-fstype=iso9660,ro	:/dev/hdc
+floppy	\-fstype=auto	:/dev/fd0
+server	\-rw,hard,intr	/ \-ro myserver.me.org:/ \\
 			/usr myserver.me.org:/usr \\
 			/home myserver.me.org:/home
 .fi
@@ -119,7 +119,7 @@ example entry for an autofs map:
 .RS +.2i
 .ta 1.0i 3.0i
 .nf
-floppy-vfat  -fstype=vfat,sync,gid=floppy,umask=002  :/dev/fd0
+floppy-vfat  \-fstype=vfat,sync,gid=floppy,umask=002  :/dev/fd0
 .fi
 .RE
 .sp
@@ -166,12 +166,12 @@ name):
 .RS +.2i
 .ta 1.5i
 .nf
-ARCH	Architecture (uname -m)
+ARCH	Architecture (uname \-m)
 CPU	Processor Type
-HOST	Hostname (uname -n)
-OSNAME	Operating System (uname -s)
-OSREL	Release of OS (uname -r)
-OSVERS	Version of OS (uname -v)
+HOST	Hostname (uname \-n)
+OSNAME	Operating System (uname \-s)
+OSREL	Release of OS (uname \-r)
+OSVERS	Version of OS (uname \-v)
 .fi
 .RE
 .sp
@@ -195,7 +195,7 @@ a prefix of "AUTOFS_" to prevent interpreted languages like python from
 being able to load and execute arbitray code from a user home directory.
 .RE
 .sp
-Additional entries can be defined with the -Dvariable=Value map-option to
+Additional entries can be defined with the \-Dvariable=Value map-option to
 .BR automount (8).
 .SS Executable Maps
 A map can be marked as executable. A
@@ -216,7 +216,7 @@ can be used to name multiple filesystems to mount.  It takes the form:
 .RS +.2i
 .ta 1.0i
 .nf
-.BI "key [ -options ] [[/] location [/relative-mount-point [ -options ] location...]..."
+.BI "key [ \-options ] [[/] location [/relative-mount-point [ \-options ] location...]..."
 .fi
 .RE
 .sp
