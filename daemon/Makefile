@@ -20,7 +20,7 @@ CFLAGS += -DAUTOFS_FIFO_DIR=\"$(autofsfifodir)\"
 CFLAGS += -DAUTOFS_FLAG_DIR=\"$(autofsflagdir)\"
 CFLAGS += -DVERSION_STRING=\"$(version)\"
 LDFLAGS += -rdynamic
-LIBS += -ldl
+LIBS += -ldl -lpthread
 
 ifeq ($(LDAP), 1)
     CFLAGS += $(XML_FLAGS)
