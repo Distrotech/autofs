@@ -11,13 +11,6 @@ key="$1"
 # add "nonstrict" to make it OK for some filesystems to not mount
 opts="-fstype=nfs,hard,intr,nodev,nosuid"
 
-# Showmount comes in a number of names and varieties.  "showmount" is
-# typically an older version which accepts the '--no-headers' flag
-# but ignores it.  "kshowmount" is the newer version installed with knfsd,
-# which both accepts and acts on the '--no-headers' flag.
-#SHOWMOUNT="kshowmount --no-headers -e $key"
-#SHOWMOUNT="showmount -e $key | tail -n +2"
-
 for P in /bin /sbin /usr/bin /usr/sbin
 do
 	for M in showmount kshowmount
