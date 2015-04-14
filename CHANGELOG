@@ -28,6 +28,7 @@
 - fix incorrect check in parse_mount().
 - handle duplicates in multi mounts.
 - revert special case cifs escapes.
+- fix map option parsing for 'strictatime'.
 
 28/03/2014 autofs-5.0.9
 =======================
