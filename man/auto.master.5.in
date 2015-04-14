@@ -471,5 +471,5 @@ configuration will be used to locate the source of the map
 .BR autofs_ldap_auth.conf (5)
 .SH AUTHOR
 This manual page was written by Christoph Lameter <chris@waterf.org>,
-for the Dean GNU/Linux system.  Edited by <hpa@transmeta.com> and
+for the Debian GNU/Linux system.  Edited by <hpa@transmeta.com> and
 Ian Kent <raven@themaw.net> .

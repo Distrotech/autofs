@@ -36,6 +36,7 @@
 - remove unused offset handling code.
 - fix mount as you go offset selection.
 - link daemon with pthread library (Debian patch).
+- manpage corrections (Debian patch).
 
 28/03/2014 autofs-5.0.9
 =======================
