@@ -96,7 +96,7 @@ Set the network response timeout (default 8).
 .TP
 .B ldap_uri
 .br
-A space seperated list of server uris of the form <proto>://<server>[/]
+A space separated list of server uris of the form <proto>://<server>[/]
 where <proto> can be ldap or ldaps. The option can be given multiple times.
 Map entries that include a server name override this option and it is then
 not used. Default is an empty list in which case either the server given
@@ -338,7 +338,7 @@ default.
 .TP
 .B search_path
 .br
-Colon seperated paths to search for maps that are not specified
+Colon separated paths to search for maps that are not specified
 as a full path.
 .TP
 .B dismount_interval
@@ -393,7 +393,7 @@ that is used for queries if ldap is to be used as a map source.
 .br
 This option has no default value set. It must be set to the URI
 of the LDAP server to be used for lookups wheni ldap is used a
-map source. It may contain a comma or space seperated list of
+map source. It may contain a comma or space separated list of
 LDAP URIs.
 .TP
 .B hesiod_base
@@ -402,7 +402,7 @@ Sets the base name used for hesiod map sources.
 .TP
 .B linux_ufs_mount_type
 .br
-This is an aditional configuration option for the autofs amd format
+This is an additional configuration option for the autofs amd format
 parser implementation.
 
 There's no simple way to determine what the system default filesystem

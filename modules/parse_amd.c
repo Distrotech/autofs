@@ -1409,7 +1409,7 @@ static int amd_mount(struct autofs_point *ap, const char *name,
 
 	default:
 		info(ap->logopt,
-		     MODPREFIX "unkown file system type %x", fstype);
+		     MODPREFIX "unknown file system type %x", fstype);
 		break;
 	}
 

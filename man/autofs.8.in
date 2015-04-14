@@ -60,8 +60,8 @@ service control reload action must be rerun to activate the changes.
 or
 .B systemctl autofs.service status
 will display the status of,
-.BR automount (8)
-,running or not. When using the systemd init system the status output includes
+.BR automount (8),
+running or not. When using the systemd init system the status output includes
 somewhat more information related to the service status.
 .P
 .B systemctl(1)
@@ -77,5 +77,5 @@ for more information.
 .BR systemctl(1)
 .SH AUTHOR
 This manual page was written by Christoph Lameter <chris@waterf.org>,
-for the Debi GNU/Linux system.  Edited by H. Peter Anvin
+for the Debian GNU/Linux system.  Edited by H. Peter Anvin
 <hpa@transmeta.com> and Ian Kent <raven@themaw.net>.
