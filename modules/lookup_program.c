@@ -283,7 +283,7 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 		 * MAPFMT_DEFAULT must be "sun" for ->parse_init() to have setup
 		 * the macro table.
 		 */
-		if (ctxt->mapfmt && strcmp(ctxt->mapfmt, "MAPFMT_DEFAULT")) {
+		if (ctxt->mapfmt && !strcmp(ctxt->mapfmt, MAPFMT_DEFAULT)) {
 			struct parse_context *pctxt = (struct parse_context *) ctxt->parse->context;
 			/* Add standard environment as seen by sun map parser */
 			pctxt->subst = addstdenv(pctxt->subst, prefix);
