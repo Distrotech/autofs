@@ -9,7 +9,7 @@ AC_PREREQ(2.5)
 #
 define([AC_CACHE_LOAD], )dnl
 define([AC_CACHE_SAVE], )dnl
-AC_INIT(.autofs-5.0.9)
+AC_INIT(.autofs-5.0.10)
 
 #
 # autofs installs by default in /usr
