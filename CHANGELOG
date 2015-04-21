@@ -1,4 +1,4 @@
-??/??/2014 autofs-5.1.1
+21/04/2014 autofs-5.1.1
 =======================
 - fix compile error in defaults.c.
 - add serialization to sasl init.
