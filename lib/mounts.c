@@ -2131,7 +2131,7 @@ int umount_multi_triggers(struct autofs_point *ap, struct mapent *me, char *root
 				if (mount_multi_triggers(ap, me, root, strlen(root), "/") < 0)
 					warn(ap->logopt,
 					     "failed to remount offset triggers");
-				return left++;
+				return ++left;
 			}
 		}
 
