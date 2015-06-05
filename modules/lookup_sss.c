@@ -148,9 +148,8 @@ static int setautomntent(unsigned int logopt,
 		error(logopt, MODPREFIX "setautomntent: %s", estr);
 		if (*sss_ctxt)
 			free(*sss_ctxt);
-		return 0;
 	}
-	return 1;
+	return ret;
 }
 
 static int endautomntent(unsigned int logopt,
@@ -161,9 +160,8 @@ static int endautomntent(unsigned int logopt,
 		char buf[MAX_ERR_BUF];
 		char *estr = strerror_r(ret, buf, MAX_ERR_BUF);
 		error(logopt, MODPREFIX "endautomntent: %s", estr);
-		return 0;
 	}
-	return 1;
+	return ret;
 }
 
 int lookup_read_master(struct master *master, time_t age, void *context)
@@ -180,8 +178,12 @@ int lookup_read_master(struct master *master, time_t age, void *context)
 	char *value = NULL;
 	int count, ret;
 
-	if (!setautomntent(logopt, ctxt, ctxt->mapname, &sss_ctxt))
+	ret = setautomntent(logopt, ctxt, ctxt->mapname, &sss_ctxt);
+	if (ret) {
+		if (ret == ENOENT)
+			return NSS_STATUS_NOTFOUND;
 		return NSS_STATUS_UNAVAIL;
+	}
 
 	count = 0;
 	while (1) {
@@ -280,8 +282,12 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 		return NSS_STATUS_SUCCESS;
 	}
 
-	if (!setautomntent(ap->logopt, ctxt, ctxt->mapname, &sss_ctxt))
+	ret = setautomntent(ap->logopt, ctxt, ctxt->mapname, &sss_ctxt);
+	if (ret) {
+		if (ret == ENOENT)
+			return NSS_STATUS_NOTFOUND;
 		return NSS_STATUS_UNAVAIL;
+	}
 
 	count = 0;
 	while (1) {
@@ -386,8 +392,12 @@ static int lookup_one(struct autofs_point *ap,
 
 	mc = source->mc;
 
-	if (!setautomntent(ap->logopt, ctxt, ctxt->mapname, &sss_ctxt))
+	ret = setautomntent(ap->logopt, ctxt, ctxt->mapname, &sss_ctxt);
+	if (ret) {
+		if (ret == ENOENT)
+			return NSS_STATUS_NOTFOUND;
 		return NSS_STATUS_UNAVAIL;
+	}
 
 	ret = ctxt->getautomntbyname_r(qKey, &value, sss_ctxt);
 	if (ret && ret != ENOENT) {
