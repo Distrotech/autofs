@@ -4,6 +4,7 @@
 - revert fix libtirpc name clash.
 - fix left mount count return from umount_multi_triggers().
 - fix return handling in sss lookup module.
+- move query dn calculation from do_bind() to do_connect().
 
 21/04/2015 autofs-5.1.1
 =======================
