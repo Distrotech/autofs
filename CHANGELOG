@@ -6,6 +6,7 @@
 - fix return handling in sss lookup module.
 - move query dn calculation from do_bind() to do_connect().
 - make do_connect() return a status.
+- make connect_to_server() return a status.
 
 21/04/2015 autofs-5.1.1
 =======================

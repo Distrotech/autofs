@@ -824,20 +824,19 @@ next:
 	return timestamp;
 }
 
-static LDAP *connect_to_server(unsigned logopt, const char *uri, struct lookup_context *ctxt)
+static int connect_to_server(unsigned logopt, LDAP **ldap,
+			     const char *uri, struct lookup_context *ctxt)
 {
-	LDAP *ldap;
 	int ret;
 
-	ret = do_connect(logopt, &ldap, uri, ctxt);
+	ret = do_connect(logopt, ldap, uri, ctxt);
 	if (ret != NSS_STATUS_SUCCESS) {
 		warn(logopt,
 		     MODPREFIX "couldn't connect to server %s",
 		     uri ? uri : "default");
-		return NULL;
 	}
 
-	return ldap;
+	return ret;
 }
 
 static LDAP *find_dc_server(unsigned logopt, const char *uri, struct lookup_context *ctxt)
@@ -852,9 +851,11 @@ static LDAP *find_dc_server(unsigned logopt, const char *uri, struct lookup_cont
 	tok = strtok_r(str, " ", &ptr);
 	while (tok) {
 		const char *this = (const char *) tok;
+		int ret;
+
 		debug(logopt, "trying server uri %s", this);
-		ldap = connect_to_server(logopt, this, ctxt);
-		if (ldap) {
+		ret = connect_to_server(logopt, &ldap, this, ctxt);
+		if (ret == NSS_STATUS_SUCCESS) {
 			info(logopt, "connected to uri %s", this);
 			free(str);
 			return ldap;
@@ -874,6 +875,7 @@ static LDAP *find_server(unsigned logopt, struct lookup_context *ctxt)
 	struct list_head *p, *first;
 	struct dclist *dclist;
 	char *uri = NULL;
+	int ret;
 
 	uris_mutex_lock(ctxt);
 	dclist = ctxt->dclist;
@@ -896,8 +898,8 @@ static LDAP *find_server(unsigned logopt, struct lookup_context *ctxt)
 		if (!strstr(this->uri, ":///")) {
 			uri = strdup(this->uri);
 			debug(logopt, "trying server uri %s", uri);
-			ldap = connect_to_server(logopt, uri, ctxt);
-			if (ldap) {
+			ret = connect_to_server(logopt, &ldap, uri, ctxt);
+			if (ret == NSS_STATUS_SUCCESS) {
 				info(logopt, "connected to uri %s", uri);
 				free(uri);
 				break;
@@ -962,7 +964,8 @@ static LDAP *do_reconnect(unsigned logopt, struct lookup_context *ctxt)
 			ldapinit_mutex_lock();
 			autofs_sasl_dispose(ctxt);
 			ldapinit_mutex_unlock();
-			ldap = connect_to_server(logopt, ctxt->server, ctxt);
+			ret = connect_to_server(logopt, &ldap,
+						ctxt->server, ctxt);
 		}
 #endif
 		return ldap;
@@ -1001,7 +1004,7 @@ static LDAP *do_reconnect(unsigned logopt, struct lookup_context *ctxt)
 		ldapinit_mutex_lock();
 		autofs_sasl_dispose(ctxt);
 		ldapinit_mutex_unlock();
-		ldap = connect_to_server(logopt, ctxt->uri->uri, ctxt);
+		ret = connect_to_server(logopt, &ldap, ctxt->uri->uri, ctxt);
 	}
 #endif
 	if (ldap)
