@@ -839,33 +839,36 @@ static int connect_to_server(unsigned logopt, LDAP **ldap,
 	return ret;
 }
 
-static LDAP *find_dc_server(unsigned logopt, const char *uri, struct lookup_context *ctxt)
+static int find_dc_server(unsigned logopt, LDAP **ldap,
+			  const char *uri, struct lookup_context *ctxt)
 {
 	char *str, *tok, *ptr = NULL;
-	LDAP *ldap = NULL;
+	int ret = NSS_STATUS_UNAVAIL;
 
 	str = strdup(uri);
 	if (!str)
-		return NULL;
+		return ret;
 
 	tok = strtok_r(str, " ", &ptr);
 	while (tok) {
 		const char *this = (const char *) tok;
-		int ret;
+		int rv;
 
 		debug(logopt, "trying server uri %s", this);
-		ret = connect_to_server(logopt, &ldap, this, ctxt);
-		if (ret == NSS_STATUS_SUCCESS) {
+		rv = connect_to_server(logopt, ldap, this, ctxt);
+		if (rv == NSS_STATUS_SUCCESS) {
 			info(logopt, "connected to uri %s", this);
 			free(str);
-			return ldap;
+			return rv;
 		}
+		if (rv == NSS_STATUS_NOTFOUND)
+			ret = NSS_STATUS_NOTFOUND;
 		tok = strtok_r(NULL, " ", &ptr);
 	}
 
 	free(str);
 
-	return NULL;
+	return ret;
 }
 
 static LDAP *find_server(unsigned logopt, struct lookup_context *ctxt)
@@ -917,8 +920,8 @@ static LDAP *find_server(unsigned logopt, struct lookup_context *ctxt)
 				dclist = tmp;
 				uri = strdup(dclist->uri);
 			}
-			ldap = find_dc_server(logopt, uri, ctxt);
-			if (ldap) {
+			ret = find_dc_server(logopt, &ldap, uri, ctxt);
+			if (ret == NSS_STATUS_SUCCESS) {
 				free(uri);
 				break;
 			}
@@ -972,8 +975,8 @@ static LDAP *do_reconnect(unsigned logopt, struct lookup_context *ctxt)
 	}
 
 	if (ctxt->dclist) {
-		ldap = find_dc_server(logopt, ctxt->dclist->uri, ctxt);
-		if (ldap)
+		ret = find_dc_server(logopt, &ldap, ctxt->dclist->uri, ctxt);
+		if (ret == NSS_STATUS_SUCCESS)
 			return ldap;
 	}
 
