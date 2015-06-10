@@ -134,8 +134,10 @@ browse_mode = no
 #auth_conf_file = @@autofsmapdir@@/autofs_ldap_auth.conf
 #
 # map_hash_table_size - set the map cache hash table size.
-# 			Should be a power of 2 with a ratio roughly
-# 			between 1:10 and 1:20 for each map.
+# 			Should be a power of 2 with a ratio of
+# 			close to 1:8 for acceptable performance
+# 			with maps up to around 8000 entries.
+# 			See autofs.conf(5) for more details.
 #
 #map_hash_table_size = 1024
 #

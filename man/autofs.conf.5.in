@@ -80,6 +80,37 @@ user setting these standard environment variables opens automount(8) to
 potential user privilege escalation when the program map is written in a
 language that can load components from, for example, a user home directory
 (program default "no").
+.TP
+.B map_hash_table_size
+.br
+This configuration option may be used to change the number of hash
+table slots (default 1024).
+
+This configuration option affects the overhead of searching the map
+entry cache for map entries when there are a large number of entries.
+It affects the number of entries that must be looked at to locate a
+map entry in the map entry cache. For example, the default of 1024
+and a direct map with 8000 entries would result in each slot
+containing an average of 8 entries, which should be acceptable.
+
+However, if excessive CPU usage is observed during automount lookups
+increasing this option can reduce the CPU overhead considerably becuase
+it reduces the length of the search chains.
+
+Note that the number of entries in a map doesn't necessarily relate
+to the number of entries used in the map entry cache.
+
+There are three distinct cases, direct maps and indirect maps that
+use the "browse" option must be read in their entirity at program
+start so, in these two cases the map size does retate directly to
+the map entry cache size.
+
+For indirect maps that do not use the "browse" option entries are
+added to the map entry cache at lookup so the number of active cache
+entries, in this case, is usually much less than the number of entries
+in the map. In this last case it would be unusual for the map entry
+cache to grow large enough to warrant increasing the default before
+an event that cleans stale entries, a map re-read for example.
 .SS LDAP Configuration
 .P
 Configuration settings available are:
