@@ -513,6 +513,7 @@ static void *do_readmap(void *arg)
 			}
 			lookup_prune_one_cache(ap, map->mc, now);
 			pthread_cleanup_pop(1);
+			clear_stale_instances(map);
 			map->stale = 0;
 			map = map->next;
 		}
