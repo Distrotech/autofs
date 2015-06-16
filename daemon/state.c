@@ -488,6 +488,7 @@ static void *do_readmap(void *arg)
 		status = lookup_ghost(ap, ap->path);
 	} else {
 		struct mapent *me;
+		unsigned int append_alarm = !ap->exp_runfreq;
 
 		mnts = tree_make_mnt_tree(_PROC_MOUNTS, "/");
 		pthread_cleanup_push(tree_mnts_cleanup, mnts);
@@ -517,6 +518,15 @@ static void *do_readmap(void *arg)
 			map->stale = 0;
 			map = map->next;
 		}
+
+		/* If the direct mount map was empty at startup no expire
+		 * alarm will have been added. So add it here if there are
+		 * now map entries.
+		 */
+		if (append_alarm && ap->exp_runfreq)
+			alarm_add(ap, ap->exp_runfreq +
+				  rand() % ap->exp_runfreq);
+
 		pthread_cleanup_pop(1);
 		pthread_cleanup_pop(1);
 		pthread_cleanup_pop(1);
