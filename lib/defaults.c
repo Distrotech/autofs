@@ -728,6 +728,17 @@ static struct conf_option *conf_lookup(const char *section, const char *key)
 		 */
 		if (strlen(key) > 8 && !strncasecmp("DEFAULT_", key, 8))
 			co = conf_lookup_key(section, key + 8);
+		else {
+			/* A new key name has been given but the value
+			 * we seek is stored under an old key name (which
+			 * includes the "DEFAULT_" prefix or doesn't exist.
+			 */
+			char old_key[PATH_MAX + 1];
+
+			strcpy(old_key, "DEFAULT_");
+			strcat(old_key, key);
+			co = conf_lookup_key(section, old_key);
+		}
 	}
 
 	return co;

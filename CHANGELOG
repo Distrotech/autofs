@@ -11,6 +11,7 @@
 - make find_server() return a status.
 - fix return handling of do_reconnect() in ldap module.
 - fix rwlock unlock crash.
+- fix config old name lookup.
 
 21/04/2015 autofs-5.1.1
 =======================
