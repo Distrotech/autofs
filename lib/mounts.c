@@ -1032,12 +1032,19 @@ static int table_is_mounted(const char *table, const char *path, unsigned int ty
 	return ret;
 }
 
-static int ioctl_is_mounted(const char *path, unsigned int type)
+static int ioctl_is_mounted(const char *table, const char *path, unsigned int type)
 {
 	struct ioctl_ops *ops = get_ioctl_ops();
 	unsigned int mounted;
+	int ret;
 
-	ops->ismountpoint(LOGOPT_NONE, -1, path, &mounted);
+	/* If the ioctl fails fall back to the potentially resource
+	 * intensive mount table check.
+	 */
+	ret = ops->ismountpoint(LOGOPT_NONE, -1, path, &mounted);
+	if (ret == -1)
+		return table_is_mounted(table, path, type);
+
 	if (mounted) {
 		switch (type) {
 		case MNTS_ALL:
@@ -1056,7 +1063,7 @@ int is_mounted(const char *table, const char *path, unsigned int type)
 	struct ioctl_ops *ops = get_ioctl_ops();
 
 	if (ops->ismountpoint)
-		return ioctl_is_mounted(path, type);
+		return ioctl_is_mounted(table, path, type);
 	else
 		return table_is_mounted(table, path, type);
 }
@@ -1439,7 +1446,7 @@ int tree_is_mounted(struct mnt_list *mnts, const char *path, unsigned int type)
 	int mounted = 0;
 
 	if (ops->ismountpoint)
-		return ioctl_is_mounted(path, type);
+		return ioctl_is_mounted(_PROC_MOUNTS, path, type);
 
 	INIT_LIST_HEAD(&list);
 

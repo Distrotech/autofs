@@ -21,6 +21,7 @@
 - update map_hash_table_size description.
 - add configuration option to use fqdn in mounts.
 - fix out of order call in program map lookup.
+- fix error handling of is_mounted().
 
 21/04/2015 autofs-5.1.1
 =======================
