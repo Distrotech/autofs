@@ -73,6 +73,8 @@
 
 #define NAME_MAP_HASH_TABLE_SIZE	"map_hash_table_size"
 
+#define NAME_USE_HOSTNAME_FOR_MOUNTS	"use_hostname_for_mounts"
+
 #define NAME_AMD_ARCH				"arch"
 #define NAME_AMD_AUTO_ATTRCACHE			"auto_attrcache"
 #define NAME_AMD_AUTO_DIR			"auto_dir"
@@ -332,6 +334,11 @@ static int conf_load_autofs_defaults(void)
 
 	ret = conf_update(sec, NAME_MOUNT_NFS_DEFAULT_PROTOCOL,
 			  DEFAULT_MOUNT_NFS_DEFAULT_PROTOCOL, CONF_ENV);
+	if (ret == CFG_FAIL)
+		goto error;
+
+	ret = conf_update(sec, NAME_USE_HOSTNAME_FOR_MOUNTS,
+			  DEFAULT_USE_HOSTNAME_FOR_MOUNTS, CONF_ENV);
 	if (ret == CFG_FAIL)
 		goto error;
 
@@ -1699,6 +1706,17 @@ unsigned int defaults_get_map_hash_table_size(void)
 		size = atoi(DEFAULT_MAP_HASH_TABLE_SIZE);
 
 	return (unsigned int) size;
+}
+
+unsigned int defaults_use_hostname_for_mounts(void)
+{
+	int res;
+
+	res = conf_get_yesno(autofs_gbl_sec, NAME_USE_HOSTNAME_FOR_MOUNTS);
+	if (res < 0)
+		res = atoi(DEFAULT_USE_HOSTNAME_FOR_MOUNTS);
+
+	return res;
 }
 
 unsigned int conf_amd_mount_section_exists(const char *section)

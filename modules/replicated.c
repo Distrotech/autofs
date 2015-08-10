@@ -667,6 +667,12 @@ int prune_host_list(unsigned logopt, struct host **list,
 	if (!*list)
 		return 0;
 
+	/* If we're using the host name then there's no point probing
+	 * avialability and respose time.
+	 */
+	if (defaults_use_hostname_for_mounts())
+		return 1;
+
 	/* Use closest hosts to choose NFS version */
 
 	first = *list;

@@ -316,7 +316,8 @@ dont_probe:
 
 		/* Not a local host - do an NFS mount */
 
-		if (this->rr && this->addr) {
+		if (this->rr && this->addr &&
+		    !defaults_use_hostname_for_mounts()) {
 			socklen_t len = INET6_ADDRSTRLEN;
 			char n_buf[len + 1];
 			const char *n_addr;

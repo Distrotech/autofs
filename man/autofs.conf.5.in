@@ -111,6 +111,24 @@ entries, in this case, is usually much less than the number of entries
 in the map. In this last case it would be unusual for the map entry
 cache to grow large enough to warrant increasing the default before
 an event that cleans stale entries, a map re-read for example.
+.TP
+.B use_hostname_for_mounts
+.br
+NFS mounts where the host name resolves to more than one IP address
+are probed for availability and to establish the order in which mounts
+to them should be tried. To ensure that mount attempts are made only
+to hosts that are responding and are tried in the order of hosts with
+the quickest response the IP address of the host needs to be used for
+the mount.
+
+If it is necessary to use the hostname given in the map entry for the
+mount regardless, then set this option to "yes".
+
+Be aware that if this is done there is no defense against the host
+name resolving to one that isn't responding and while the number
+of attempts at a successful mount will correspond to the number of
+addresses the host name resolves to the order will also not correspond
+to fastest responding hosts.
 .SS LDAP Configuration
 .P
 Configuration settings available are:

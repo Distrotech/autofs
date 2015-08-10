@@ -141,6 +141,14 @@ browse_mode = no
 #
 #map_hash_table_size = 1024
 #
+# use_hostname_for_mounts - nfs mounts where the host name resolves
+# 			to more than one IP address normally need
+# 			to use the IP address to esure a mount to
+# 			a host that isn't responding isn't done.
+# 			If that behaviour is not wanted then set
+#			ths to "yes", default is "no".
+#
+#use_hostname_for_mounts = "no"
 #
 # Otions for the amd parser within autofs.
 #

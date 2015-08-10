@@ -47,6 +47,8 @@
 
 #define DEFAULT_MAP_HASH_TABLE_SIZE	"1024"
 
+#define DEFAULT_USE_HOSTNAME_FOR_MOUNTS	"0"
+
 /* Config entry flags */
 #define CONF_NONE			0x00000000
 #define CONF_ENV			0x00000001
@@ -162,6 +164,7 @@ unsigned int defaults_get_mount_wait(void);
 unsigned int defaults_get_umount_wait(void);
 const char *defaults_get_auth_conf_file(void);
 unsigned int defaults_get_map_hash_table_size(void);
+unsigned int defaults_use_hostname_for_mounts(void);
 
 unsigned int conf_amd_mount_section_exists(const char *);
 char *conf_amd_get_arch(void);

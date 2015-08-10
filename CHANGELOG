@@ -19,6 +19,7 @@
 - fix update_hosts_mounts() return.
 - change lookup to use reinit instead of reopen.
 - update map_hash_table_size description.
+- add configuration option to use fqdn in mounts.
 
 21/04/2015 autofs-5.1.1
 =======================
