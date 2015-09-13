@@ -200,6 +200,16 @@ static char *lookup_one(struct autofs_point *ap,
 	}
 
 	/*
+	 * By default use a prefix with standard environment
+	 * variables to prevent system subversion by interpreted
+	 * languages.
+	 */
+	if (defaults_force_std_prog_map_env())
+		prefix = NULL;
+	else
+		prefix = "AUTOFS_";
+
+	/*
 	 * We don't use popen because we don't want to run /bin/sh plus we
 	 * want to send stderr to the syslog, and we don't use spawnl()
 	 * because we need the pipe hooks
@@ -236,16 +246,6 @@ static char *lookup_one(struct autofs_point *ap,
 			warn(ap->logopt,
 			     MODPREFIX "failed to set PWD to %s for map %s",
 			     ap->path, ctxt->mapname);
-
-		/*
-		 * By default use a prefix with standard environment
-		 * variables to prevent system subversion by interpreted
-		 * languages.
-		 */
-		if (defaults_force_std_prog_map_env())
-			prefix = NULL;
-		else
-			prefix = "AUTOFS_";
 
 		/*
 		 * MAPFMT_DEFAULT must be "sun" for ->parse_init() to have setup
