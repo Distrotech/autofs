@@ -84,7 +84,7 @@ unsigned int tlen;
 
 %option nounput
 
-%x PATHSTR MAPSTR DNSTR OPTSTR
+%x PATHSTR MAPSTR DNSTR OPTSTR OCTAL
 
 WS		[[:blank:]]+
 OPTWS		[[:blank:]]*
@@ -95,6 +95,7 @@ OPTIONSTR	([\-]?([[:alpha:]_]([[:alnum:]_\-])*(=(\"?([[:alnum:]_\-\:])+\"?))?)+)
 MACROSTR	(-D{OPTWS}([[:alpha:]_]([[:alnum:]_\-\.])*)=([[:alnum:]_\-\.])+)
 SLASHIFYSTR	(--(no-)?slashify-colons)
 NUMBER		[0-9]+
+OCTALNUMBER	[0-7]+
 
 DNSERVSTR1	([[:alpha:]][[:alnum:]\-.]*(:[0-9]+)?:)
 DNSERVSTR2	(\[([[:xdigit:]]:.)+\](:[0-9]+)?:)
@@ -124,6 +125,8 @@ MTYPE		((file|program|exec|sss|yp|nis|nisplus|ldap|ldaps|hesiod|userdir)(,(sun|h
 
 OPTTOUT		(-t{OPTWS}|-t{OPTWS}={OPTWS}|--timeout{OPTWS}|--timeout{OPTWS}={OPTWS})
 OPTNTOUT	(-n{OPTWS}|-n{OPTWS}={OPTWS}|--negative-timeout{OPTWS}|--negative-timeout{OPTWS}={OPTWS})
+
+MODE		(--mode{OPTWS}|--mode{OPTWS}={OPTWS})
 
 %%
 
@@ -392,6 +395,11 @@ OPTNTOUT	(-n{OPTWS}|-n{OPTWS}={OPTWS}|--negative-timeout{OPTWS}|--negative-timeo
 	-w|--use-weight-only	{ return(OPT_USE_WEIGHT); }
 	-r|--random-multimount-selection { return(OPT_RANDOM); }
 
+	{MODE}/{OCTALNUMBER} {
+		BEGIN(OCTAL);
+		return(OPT_MODE);
+	}
+
 	{OPTWS}","{OPTWS}	{ return(COMMA); }
 
 	{OPTWS} {}
@@ -421,6 +429,15 @@ OPTNTOUT	(-n{OPTWS}|-n{OPTWS}={OPTWS}|--negative-timeout{OPTWS}|--negative-timeo
 	\x00 { BEGIN(INITIAL); }
 
 	<<EOF>> { BEGIN(INITIAL); }
+}
+
+<OCTAL>{
+	{OCTALNUMBER} {
+		master_lval.longtype = strtoul(master_text, NULL, 8);
+		return(OCTALNUMBER);
+	}
+
+	. { BEGIN(OPTSTR); yyless(0); }
 }
 
 %%

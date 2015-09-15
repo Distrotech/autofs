@@ -95,6 +95,7 @@ static int do_mount_autofs_indirect(struct autofs_point *ap, const char *root)
 	struct stat st;
 	struct mnt_list *mnts;
 	int ret;
+	int err;
 
 	ap->exp_runfreq = (timeout + CHECK_RATIO - 1) / CHECK_RATIO;
 
@@ -162,6 +163,9 @@ static int do_mount_autofs_indirect(struct autofs_point *ap, const char *root)
 		     "failed to stat mount for autofs path %s", ap->path);
 		goto out_umount;
 	}
+
+	if (ap->mode && (err = chmod(root, ap->mode)))
+		warn(ap->logopt, "failed to change mode of %s", ap->path);
 
 	if (ops->open(ap->logopt, &ap->ioctlfd, st.st_dev, root)) {
 		crit(ap->logopt,

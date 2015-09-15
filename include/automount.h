@@ -508,6 +508,7 @@ struct kernel_mod_version {
 struct autofs_point {
 	pthread_t thid;
 	char *path;			/* Mount point name */
+	mode_t mode;			/* Mount point mode */
 	char *pref;			/* amd prefix */
 	int pipefd;			/* File descriptor for pipe */
 	int kpipefd;			/* Kernel end descriptor for pipe */

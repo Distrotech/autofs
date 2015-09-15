@@ -339,6 +339,7 @@ int do_mount_autofs_direct(struct autofs_point *ap,
 	int status, ret, ioctlfd;
 	const char *map_name;
 	time_t runfreq;
+	int err;
 
 	if (timeout) {
 		/* Calculate the expire run frequency */
@@ -432,6 +433,9 @@ int do_mount_autofs_direct(struct autofs_point *ap,
 		      "failed to stat direct mount trigger %s", me->key);
 		goto out_umount;
 	}
+
+	if (ap->mode && (err = chmod(me->key, ap->mode)))
+		warn(ap->logopt, "failed to change mode of %s", me->key);
 
 	ops->open(ap->logopt, &ioctlfd, st.st_dev, me->key);
 	if (ioctlfd < 0) {

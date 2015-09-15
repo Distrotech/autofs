@@ -63,6 +63,7 @@ static unsigned ghost;
 extern unsigned global_selection_options;
 static unsigned random_selection;
 static unsigned use_weight;
+static unsigned long mode;
 static char **tmp_argv;
 static int tmp_argc;
 static char **local_argv;
@@ -101,7 +102,7 @@ static int master_fprintf(FILE *, char *, ...);
 %token COMMENT
 %token MAP
 %token OPT_TIMEOUT OPT_NTIMEOUT OPT_NOBIND OPT_NOGHOST OPT_GHOST OPT_VERBOSE
-%token OPT_DEBUG OPT_RANDOM OPT_USE_WEIGHT OPT_SYMLINK
+%token OPT_DEBUG OPT_RANDOM OPT_USE_WEIGHT OPT_SYMLINK OPT_MODE
 %token COLON COMMA NL DDASH
 %type <strtype> map
 %type <strtype> options
@@ -126,6 +127,7 @@ static int master_fprintf(FILE *, char *, ...);
 %token <strtype> MAPXFN
 %token <strtype> MAPNAME
 %token <longtype> NUMBER
+%token <longtype> OCTALNUMBER
 %token <strtype> OPTION
 
 %start file
@@ -192,6 +194,7 @@ line:
 	| PATH OPT_GHOST { master_notify($1); YYABORT; }
 	| PATH OPT_NOGHOST { master_notify($1); YYABORT; }
 	| PATH OPT_VERBOSE { master_notify($1); YYABORT; }
+	| PATH OPT_MODE { master_notify($1); YYABORT; }
 	| PATH { master_notify($1); YYABORT; }
 	| QUOTE { master_notify($1); YYABORT; }
 	| OPTION { master_notify($1); YYABORT; }
@@ -576,6 +579,7 @@ daemon_option: OPT_TIMEOUT NUMBER { timeout = $2; }
 	| OPT_DEBUG	{ debug = 1; }
 	| OPT_RANDOM	{ random_selection = 1; }
 	| OPT_USE_WEIGHT { use_weight = 1; }
+	| OPT_MODE OCTALNUMBER { mode = $2; }
 	;
 
 mount_option: OPTION
@@ -644,6 +648,7 @@ static void local_init_vars(void)
 	ghost = defaults_get_browse_mode();
 	random_selection = global_selection_options & MOUNT_FLAG_RANDOM_SELECT;
 	use_weight = 0;
+	mode = 0;
 	tmp_argv = NULL;
 	tmp_argc = 0;
 	local_argv = NULL;
@@ -847,6 +852,8 @@ int master_parse_entry(const char *buffer, unsigned int default_timeout, unsigne
 		entry->ap->flags |= MOUNT_FLAG_SYMLINK;
 	if (negative_timeout)
 		entry->ap->negative_timeout = negative_timeout;
+	if (mode && mode < LONG_MAX)
+		entry->ap->mode = mode;
 
 /*
 	source = master_find_map_source(entry, type, format,

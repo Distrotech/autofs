@@ -211,6 +211,11 @@ or in the configuration.
 Set the timeout for caching failed key lookups. This option can be
 used to override the global default given either on the command line
 or in the configuration.
+.TP
+.I "\-\-mode <octal_mode>"
+Set the directory mode for the base location of the \fBautofs\fP mount point.
+If this option is given, \fBautofs\fP will chmod that directory with this
+mode.
 .SH BUILTIN MAP \-hosts
 If "\-hosts" is given as the map then accessing a key under the mount point
 which corresponds to a hostname will allow access to the exports of that
