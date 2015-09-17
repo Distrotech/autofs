@@ -222,7 +222,7 @@ static int lookup_one(struct autofs_point *ap,
 	}
 
 	cache_writelock(mc);
-	ret = cache_update(mc, source, key, best_record, time(NULL));
+	ret = cache_update(mc, source, key, best_record, monotonic_time(NULL));
 	cache_unlock(mc);
 	if (ret == CHE_FAIL) {
 		hesiod_free_list(ctxt->hesiod_context, hes_result);
@@ -287,7 +287,7 @@ static int lookup_one_amd(struct autofs_point *ap,
 	}
 
 	cache_writelock(mc);
-	ret = cache_update(mc, source, lkp_key, *hes_result, time(NULL));
+	ret = cache_update(mc, source, lkp_key, *hes_result, monotonic_time(NULL));
 	cache_unlock(mc);
 
 	if (hes_result)
@@ -398,7 +398,7 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 	/* Check if we recorded a mount fail for this key anywhere */
 	me = lookup_source_mapent(ap, name, LKP_DISTINCT);
 	if (me) {
-		if (me->status >= time(NULL)) {
+		if (me->status >= monotonic_time(NULL)) {
 			cache_unlock(me->mc);
 			return NSS_STATUS_NOTFOUND;
 		} else {

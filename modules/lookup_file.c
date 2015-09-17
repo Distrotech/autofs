@@ -795,7 +795,7 @@ static int match_key(struct autofs_point *ap,
 {
 	char buf[MAX_ERR_BUF];
 	struct mapent_cache *mc;
-	time_t age = time(NULL);
+	time_t age = monotonic_time(NULL);
 	char *lkp_key;
 	char *prefix;
 	size_t map_key_len;
@@ -860,7 +860,7 @@ static int lookup_one(struct autofs_point *ap,
 	struct mapent_cache *mc = source->mc;
 	char mkey[KEY_MAX_LEN + 1];
 	char mapent[MAPENT_MAX_LEN + 1];
-	time_t age = time(NULL);
+	time_t age = monotonic_time(NULL);
 	FILE *f;
 	unsigned int k_len, m_len;
 	int entry, ret;
@@ -966,7 +966,7 @@ static int lookup_wild(struct autofs_point *ap,
 	struct mapent_cache *mc;
 	char mkey[KEY_MAX_LEN + 1];
 	char mapent[MAPENT_MAX_LEN + 1];
-	time_t age = time(NULL);
+	time_t age = monotonic_time(NULL);
 	FILE *f;
 	unsigned int k_len, m_len;
 	int entry, ret;
@@ -1170,7 +1170,7 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 	/* Check if we recorded a mount fail for this key anywhere */
 	me = lookup_source_mapent(ap, key, LKP_DISTINCT);
 	if (me) {
-		if (me->status >= time(NULL)) {
+		if (me->status >= monotonic_time(NULL)) {
 			cache_unlock(me->mc);
 			return NSS_STATUS_NOTFOUND;
 		} else {

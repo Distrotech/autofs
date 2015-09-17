@@ -775,7 +775,7 @@ void cache_update_negative(struct mapent_cache *mc,
 			   struct map_source *ms, const char *key,
 			   time_t timeout)
 {
-	time_t now = time(NULL);
+	time_t now = monotonic_time(NULL);
 	struct mapent *me;
 	int rv = CHE_OK;
 

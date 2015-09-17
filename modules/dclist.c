@@ -568,7 +568,7 @@ struct dclist *get_dc_list(unsigned int logopt, const char *uri)
 	if (!list)
 		goto out_error;
 
-	dclist->expire = time(NULL) + min_ttl;
+	dclist->expire = monotonic_time(NULL) + min_ttl;
 	dclist->uri = list;
 
 	return dclist;

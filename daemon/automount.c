@@ -1454,7 +1454,7 @@ static void *statemachine(void *arg)
 			break;
 
 		case SIGHUP:
-			do_hup_signal(master_list, time(NULL));
+			do_hup_signal(master_list, monotonic_time(NULL));
 			break;
 
 		default:
@@ -2005,7 +2005,7 @@ int main(int argc, char *argv[])
 	unsigned ghost, logging, daemon_check;
 	unsigned dumpmaps, foreground, have_global_options;
 	time_t timeout;
-	time_t age = time(NULL);
+	time_t age = monotonic_time(NULL);
 	struct rlimit rlim;
 	const char *options = "+hp:t:vmdD:fVrO:l:n:CF";
 	static const struct option long_options[] = {

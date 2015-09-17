@@ -247,7 +247,7 @@ int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 
 	source = master_add_map_source(entry,
 				       info->type, info->format,
-				       time(NULL), argc, argv);
+				       monotonic_time(NULL), argc, argv);
 	if (!source) {
 		error(ap->logopt,
 		      MODPREFIX "failed to add map source to entry");

@@ -338,7 +338,7 @@ static int lookup_one(struct autofs_point *ap,
 	nis_result *result;
 	nis_object *this;
 	char *mapent;
-	time_t age = time(NULL);
+	time_t age = monotonic_time(NULL);
 	int ret, cur_state;
 	char buf[MAX_ERR_BUF];
 
@@ -450,7 +450,7 @@ static int lookup_wild(struct autofs_point *ap,
 	nis_result *result;
 	nis_object *this;
 	char *mapent;
-	time_t age = time(NULL);
+	time_t age = monotonic_time(NULL);
 	int ret, cur_state;
 	char buf[MAX_ERR_BUF];
 
@@ -537,7 +537,7 @@ static int lookup_amd_defaults(struct autofs_point *ap,
 	mapent = ENTRY_VAL(this, 1);
 
 	cache_writelock(mc);
-	ret = cache_update(mc, source, "/defaults", mapent, time(NULL));
+	ret = cache_update(mc, source, "/defaults", mapent, monotonic_time(NULL));
 	cache_unlock(mc);
 
 	nis_freeresult(result);
@@ -555,7 +555,7 @@ static int check_map_indirect(struct autofs_point *ap,
 	unsigned int is_amd_format = source->flags & MAP_FLAG_FORMAT_AMD;
 	struct mapent_cache *mc;
 	struct mapent *me, *exists;
-	time_t now = time(NULL);
+	time_t now = monotonic_time(NULL);
 	time_t t_last_read;
 	int ret = 0;
 
@@ -700,7 +700,7 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 	/* Check if we recorded a mount fail for this key anywhere */
 	me = lookup_source_mapent(ap, key, LKP_DISTINCT);
 	if (me) {
-		if (me->status >= time(NULL)) {
+		if (me->status >= monotonic_time(NULL)) {
 			cache_unlock(me->mc);
 			return NSS_STATUS_NOTFOUND;
 		} else {

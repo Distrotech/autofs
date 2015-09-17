@@ -69,14 +69,14 @@ void seed_random(void)
 
 	fd = open_fd("/dev/urandom", O_RDONLY);
 	if (fd < 0) {
-		srandom(time(NULL));
+		srandom(monotonic_time(NULL));
 		return;
 	}
 
 	if (read(fd, &seed, sizeof(seed)) != -1)
 		srandom(seed);
 	else
-		srandom(time(NULL));
+		srandom(monotonic_time(NULL));
 
 	close(fd);
 

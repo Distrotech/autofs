@@ -468,7 +468,7 @@ int mount_autofs_direct(struct autofs_point *ap)
 	struct mapent_cache *nc, *mc;
 	struct mapent *me, *ne, *nested;
 	struct mnt_list *mnts;
-	time_t now = time(NULL);
+	time_t now = monotonic_time(NULL);
 
 	if (strcmp(ap->path, "/-")) {
 		error(ap->logopt, "expected direct map, exiting");
@@ -1387,7 +1387,7 @@ int handle_packet_missing_direct(struct autofs_point *ap, autofs_packet_missing_
 	}
 
 	/* Check if we recorded a mount fail for this key */
-	if (me->status >= time(NULL)) {
+	if (me->status >= monotonic_time(NULL)) {
 		ops->send_fail(ap->logopt,
 			       ioctlfd, pkt->wait_queue_token, -ENOENT);
 		ops->close(ap->logopt, ioctlfd);

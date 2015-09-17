@@ -1484,7 +1484,7 @@ int dump_map(struct master *master, const char *type, const char *name)
 		struct map_source *source;
 		struct master_mapent *this;
 		struct autofs_point *ap;
-		time_t now = time(NULL);
+		time_t now = monotonic_time(NULL);
 
 		this = list_entry(p, struct master_mapent, list);
 		p = p->next;
@@ -1602,7 +1602,7 @@ int master_show_mounts(struct master *master)
 		struct map_source *source;
 		struct master_mapent *this;
 		struct autofs_point *ap;
-		time_t now = time(NULL);
+		time_t now = monotonic_time(NULL);
 		unsigned int count = 0;
 
 		this = list_entry(p, struct master_mapent, list);

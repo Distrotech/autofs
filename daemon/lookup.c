@@ -841,7 +841,7 @@ static int lookup_name_file_source_instance(struct autofs_point *ap, struct map_
 	struct map_source *instance;
 	char src_file[] = "file";
 	char src_prog[] = "program";
-	time_t age = time(NULL);
+	time_t age = monotonic_time(NULL);
 	struct stat st;
 	char *type, *format;
 
@@ -881,7 +881,7 @@ static int lookup_name_source_instance(struct autofs_point *ap, struct map_sourc
 {
 	struct map_source *instance;
 	const char *format;
-	time_t age = time(NULL);
+	time_t age = monotonic_time(NULL);
 
 	if (*name == '/' && map->flags & MAP_FLAG_FORMAT_AMD)
 		return lookup_amd_instance(ap, map, name, name_len);
@@ -1045,7 +1045,7 @@ static void update_negative_cache(struct autofs_point *ap, struct map_source *so
 		else
 			map = entry->maps;
 		if (map) {
-			time_t now = time(NULL);
+			time_t now = monotonic_time(NULL);
 			int rv = CHE_FAIL;
 
 			cache_writelock(map->mc);

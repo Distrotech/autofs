@@ -1188,7 +1188,7 @@ static int do_host_mount(struct autofs_point *ap, const char *name,
 					 "hosts", "sun", argc, pargv);
 	if (!instance) {
 		instance = master_add_source_instance(source,
-				 "hosts", "sun", time(NULL), argc, pargv);
+				 "hosts", "sun", monotonic_time(NULL), argc, pargv);
 		if (!instance) {
 			error(ap->logopt, MODPREFIX
 			     "failed to create source instance for hosts map");

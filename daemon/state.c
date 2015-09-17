@@ -564,7 +564,7 @@ static unsigned int st_readmap(struct autofs_point *ap)
 	pthread_t thid;
 	struct readmap_args *ra;
 	int status;
-	int now = time(NULL);
+	int now = monotonic_time(NULL);
 
 	debug(ap->logopt, "state %d path %s", ap->state, ap->path);
 

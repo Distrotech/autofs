@@ -302,7 +302,7 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 	struct mapent *me;
 	char *mapent = NULL;
 	int mapent_len;
-	time_t now = time(NULL);
+	time_t now = monotonic_time(NULL);
 	int ret;
 
 	source = ap->entry->current;
@@ -314,7 +314,7 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 	/* Check if we recorded a mount fail for this key anywhere */
 	me = lookup_source_mapent(ap, name, LKP_DISTINCT);
 	if (me) {
-		if (me->status >= time(NULL)) {
+		if (me->status >= monotonic_time(NULL)) {
 			cache_unlock(me->mc);
 			return NSS_STATUS_NOTFOUND;
 		} else {

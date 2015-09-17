@@ -29,6 +29,7 @@
 - use monotonic clock for direct mount condition.
 - use monotonic clock for indirect mount condition.
 - change remaining gettimeofday() to use clock_gettime().
+- change time() to use monotonic_clock().
 
 21/04/2015 autofs-5.1.1
 =======================

@@ -201,7 +201,7 @@ out_err:
 
 int mount_autofs_indirect(struct autofs_point *ap, const char *root)
 {
-	time_t now = time(NULL);
+	time_t now = monotonic_time(NULL);
 	int status;
 	int map;
 
@@ -817,7 +817,7 @@ int handle_packet_missing_indirect(struct autofs_point *ap, autofs_packet_missin
 	/* Check if we recorded a mount fail for this key anywhere */
 	me = lookup_source_mapent(ap, pkt->name, LKP_DISTINCT);
 	if (me) {
-		if (me->status >= time(NULL)) {
+		if (me->status >= monotonic_time(NULL)) {
 			ops->send_fail(ap->logopt, ap->ioctlfd,
 				       pkt->wait_queue_token, -ENOENT);
 			cache_unlock(me->mc);

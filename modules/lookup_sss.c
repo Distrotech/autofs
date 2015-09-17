@@ -447,7 +447,7 @@ static int lookup_one(struct autofs_point *ap,
 	struct mapent_cache *mc;
 	struct mapent *we;
 	void *sss_ctxt = NULL;
-	time_t age = time(NULL);
+	time_t age = monotonic_time(NULL);
 	char buf[MAX_ERR_BUF];
 	char *value = NULL;
 	char *s_key;
@@ -568,7 +568,7 @@ static int check_map_indirect(struct autofs_point *ap,
 	struct map_source *source;
 	struct mapent_cache *mc;
 	struct mapent *me;
-	time_t now = time(NULL);
+	time_t now = monotonic_time(NULL);
 	time_t t_last_read;
 	int ret, cur_state;
 
@@ -662,7 +662,7 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 	/* Check if we recorded a mount fail for this key anywhere */
 	me = lookup_source_mapent(ap, key, LKP_DISTINCT);
 	if (me) {
-		if (me->status >= time(NULL)) {
+		if (me->status >= monotonic_time(NULL)) {
 			cache_unlock(me->mc);
 			return NSS_STATUS_NOTFOUND;
 		} else {
