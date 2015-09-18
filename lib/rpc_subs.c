@@ -1075,6 +1075,17 @@ double elapsed(struct timeval start, struct timeval end)
 	return t2-t1;
 }
 
+double monotonic_elapsed(struct timespec start, struct timespec end)
+{
+	double t1, t2;
+
+	t1 =  (double) start.tv_sec +
+		(double) (start.tv_nsec/(1000*1000*1000));
+	t2 =  (double) end.tv_sec +
+		(double) (end.tv_nsec/(1000*1000*1000));
+	return t2 - t1;
+}
+
 int rpc_time(const char *host,
 	     unsigned int ping_vers, unsigned int ping_proto,
 	     long seconds, long micros, unsigned int option, double *result)

@@ -582,6 +582,16 @@ do { \
 		fatal(_m_unlock); \
 } while(0)
 
+static inline time_t monotonic_time(time_t *t)
+{
+	struct timespec ts;
+
+	clock_gettime(CLOCK_MONOTONIC, &ts);
+	if (t)
+		*t = (time_t) ts.tv_sec;
+	return (time_t) ts.tv_sec;
+}
+
 /* Expire alarm handling routines */
 int alarm_start_handler(void);
 int alarm_add(struct autofs_point *ap, time_t seconds);
