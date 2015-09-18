@@ -27,6 +27,7 @@
 - use monotonic clock for alarm thread condition wait.
 - define pending condition init helper function.
 - use monotonic clock for direct mount condition.
+- use monotonic clock for indirect mount condition.
 
 21/04/2015 autofs-5.1.1
 =======================

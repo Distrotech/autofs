@@ -640,7 +640,6 @@ int handle_packet_expire_indirect(struct autofs_point *ap, autofs_packet_expire_
 	char buf[MAX_ERR_BUF];
 	pthread_t thid;
 	struct timespec wait;
-	struct timeval now;
 	int status, state;
 
 	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &state);
@@ -658,9 +657,7 @@ int handle_packet_expire_indirect(struct autofs_point *ap, autofs_packet_expire_
 		return 1;
 	}
 
-	status = pthread_cond_init(&mt->cond, NULL);
-	if (status)
-		fatal(status);
+	pending_cond_init(mt);
 
 	status = pthread_mutex_init(&mt->mutex, NULL);
 	if (status)
@@ -695,9 +692,8 @@ int handle_packet_expire_indirect(struct autofs_point *ap, autofs_packet_expire_
 
 	mt->signaled = 0;
 	while (!mt->signaled) {
-		gettimeofday(&now, NULL);
-		wait.tv_sec = now.tv_sec + 2;
-		wait.tv_nsec = now.tv_usec * 1000;
+		clock_gettime(CLOCK_MONOTONIC, &wait);
+		wait.tv_sec += 2;
 		status = pthread_cond_timedwait(&mt->cond, &mt->mutex, &wait);
 		if (status && status != ETIMEDOUT)
 			fatal(status);
@@ -799,7 +795,6 @@ int handle_packet_missing_indirect(struct autofs_point *ap, autofs_packet_missin
 	char buf[MAX_ERR_BUF];
 	struct pending_args *mt;
 	struct timespec wait;
-	struct timeval now;
 	struct mapent *me;
 	int status, state;
 
@@ -845,9 +840,7 @@ int handle_packet_missing_indirect(struct autofs_point *ap, autofs_packet_missin
 	}
 	memset(mt, 0, sizeof(struct pending_args));
 
-	status = pthread_cond_init(&mt->cond, NULL);
-	if (status)
-		fatal(status);
+	pending_cond_init(mt);
 
 	status = pthread_mutex_init(&mt->mutex, NULL);
 	if (status)
@@ -888,9 +881,8 @@ int handle_packet_missing_indirect(struct autofs_point *ap, autofs_packet_missin
 
 	mt->signaled = 0;
 	while (!mt->signaled) {
-		gettimeofday(&now, NULL);
-		wait.tv_sec = now.tv_sec + 2;
-		wait.tv_nsec = now.tv_usec * 1000;
+		clock_gettime(CLOCK_MONOTONIC, &wait);
+		wait.tv_sec += 2;
 		status = pthread_cond_timedwait(&mt->cond, &mt->mutex, &wait);
 		if (status && status != ETIMEDOUT)
 			fatal(status);
