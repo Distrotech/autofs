@@ -1045,7 +1045,6 @@ int handle_packet_expire_direct(struct autofs_point *ap, autofs_packet_expire_di
 	char buf[MAX_ERR_BUF];
 	pthread_t thid;
 	struct timespec wait;
-	struct timeval now;
 	int status, state;
 
 	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &state);
@@ -1115,9 +1114,7 @@ int handle_packet_expire_direct(struct autofs_point *ap, autofs_packet_expire_di
 		return 1;
 	}
 
-	status = pthread_cond_init(&mt->cond, NULL);
-	if (status)
-		fatal(status);
+	pending_cond_init(mt);
 
 	status = pthread_mutex_init(&mt->mutex, NULL);
 	if (status)
@@ -1163,9 +1160,8 @@ int handle_packet_expire_direct(struct autofs_point *ap, autofs_packet_expire_di
 
 	mt->signaled = 0;
 	while (!mt->signaled) {
-		gettimeofday(&now, NULL);
-		wait.tv_sec = now.tv_sec + 2;
-		wait.tv_nsec = now.tv_usec * 1000;
+		clock_gettime(CLOCK_MONOTONIC, &wait);
+		wait.tv_sec += 2;
 		status = pthread_cond_timedwait(&mt->cond, &mt->mutex, &wait);
 		if (status && status != ETIMEDOUT)
 			fatal(status);
@@ -1300,7 +1296,6 @@ int handle_packet_missing_direct(struct autofs_point *ap, autofs_packet_missing_
 	char buf[MAX_ERR_BUF];
 	int status = 0;
 	struct timespec wait;
-	struct timeval now;
 	int ioctlfd, len, state;
 	unsigned int kver_major = get_kver_major();
 	unsigned int kver_minor = get_kver_minor();
@@ -1431,9 +1426,7 @@ int handle_packet_missing_direct(struct autofs_point *ap, autofs_packet_missing_
 	}
 	memset(mt, 0, sizeof(struct pending_args));
 
-	status = pthread_cond_init(&mt->cond, NULL);
-	if (status)
-		fatal(status);
+	pending_cond_init(mt);
 
 	status = pthread_mutex_init(&mt->mutex, NULL);
 	if (status)
@@ -1482,9 +1475,8 @@ int handle_packet_missing_direct(struct autofs_point *ap, autofs_packet_missing_
 
 	mt->signaled = 0;
 	while (!mt->signaled) {
-		gettimeofday(&now, NULL);
-		wait.tv_sec = now.tv_sec + 2;
-		wait.tv_nsec = now.tv_usec * 1000;
+		clock_gettime(CLOCK_MONOTONIC, &wait);
+		wait.tv_sec += 2;
 		status = pthread_cond_timedwait(&mt->cond, &mt->mutex, &wait);
 		if (status && status != ETIMEDOUT)
 			fatal(status);
