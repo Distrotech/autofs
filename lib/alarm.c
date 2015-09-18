@@ -23,7 +23,7 @@ struct alarm {
 };
 
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
-static pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
+static pthread_cond_t cond;
 static LIST_HEAD(alarms);
 
 #define alarm_lock() \
@@ -46,7 +46,7 @@ int alarm_add(struct autofs_point *ap, time_t seconds)
 	struct list_head *head;
 	struct list_head *p;
 	struct alarm *new;
-	time_t now = time(NULL);
+	time_t now = monotonic_time(NULL);
 	time_t next_alarm = 0;
 	unsigned int empty = 1;
 	int status;
@@ -175,17 +175,18 @@ static void *alarm_handler(void *arg)
 
 		first = list_entry(head->next, struct alarm, list);
 
-		now = time(NULL);
+		now = monotonic_time(NULL);
 
 		if (first->time > now) {
-			struct timeval usecs;
+			struct timespec nsecs;
+
 			/* 
 			 * Wait for alarm to trigger or a new alarm 
 			 * to be added.
 			 */
-			gettimeofday(&usecs, NULL);
+			clock_gettime(CLOCK_MONOTONIC, &nsecs);
 			expire.tv_sec = first->time;
-			expire.tv_nsec = usecs.tv_usec * 1000;
+			expire.tv_nsec = nsecs.tv_nsec;
 
 			status = pthread_cond_timedwait(&cond, &mutex, &expire);
 			if (status && status != ETIMEDOUT)
@@ -212,6 +213,7 @@ int alarm_start_handler(void)
 	pthread_t thid;
 	pthread_attr_t attrs;
 	pthread_attr_t *pattrs = &attrs;
+	pthread_condattr_t condattrs;
 	int status;
 
 	status = pthread_attr_init(pattrs);
@@ -224,7 +226,21 @@ int alarm_start_handler(void)
 #endif
 	}
 
+	status = pthread_condattr_init(&condattrs);
+	if (status)
+		fatal(status);
+
+	status = pthread_condattr_setclock(&condattrs, CLOCK_MONOTONIC);
+	if (status)
+		fatal(status);
+
+	status = pthread_cond_init(&cond, &condattrs);
+	if (status)
+		fatal(status);
+
 	status = pthread_create(&thid, pattrs, alarm_handler, NULL);
+
+	pthread_condattr_destroy(&condattrs);
 
 	if (pattrs)
 		pthread_attr_destroy(pattrs);
