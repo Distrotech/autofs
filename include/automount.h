@@ -429,6 +429,27 @@ struct pending_args {
 };
 
 #ifdef INCLUDE_PENDING_FUNCTIONS
+static void pending_cond_init(void *arg)
+{
+	struct pending_args *mt = (struct pending_args *) arg;
+	pthread_condattr_t condattrs;
+	int status;
+
+	status = pthread_condattr_init(&condattrs);
+	if (status)
+		fatal(status);
+
+	status = pthread_condattr_setclock(&condattrs, CLOCK_MONOTONIC);
+	if (status)
+		fatal(status);
+
+	status = pthread_cond_init(&mt->cond, &condattrs);
+	if (status)
+		fatal(status);
+
+	pthread_condattr_destroy(&condattrs);
+}
+
 static void pending_cond_destroy(void *arg)
 {
 	struct pending_args *mt = (struct pending_args *) arg;

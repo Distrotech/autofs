@@ -25,6 +25,7 @@
 - Add a mode option for master map entries.
 - define monotonic clock helper functions.
 - use monotonic clock for alarm thread condition wait.
+- define pending condition init helper function.
 
 21/04/2015 autofs-5.1.1
 =======================
