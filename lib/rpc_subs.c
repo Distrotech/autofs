@@ -1092,19 +1092,18 @@ int rpc_time(const char *host,
 {
 	int status;
 	double taken;
-	struct timeval start, end;
-	struct timezone tz;
+	struct timespec start, end;
 	int proto = (ping_proto & RPC_PING_UDP) ? IPPROTO_UDP : IPPROTO_TCP;
 	unsigned long vers = ping_vers;
 
-	gettimeofday(&start, &tz);
+	clock_gettime(CLOCK_MONOTONIC, &start);
 	status = __rpc_ping(host, vers, proto, seconds, micros, option);
-	gettimeofday(&end, &tz);
+	clock_gettime(CLOCK_MONOTONIC, &end);
 
 	if (status == RPC_PING_FAIL || status < 0)
 		return status;
 
-	taken = elapsed(start, end);
+	taken = monotonic_elapsed(start, end);
 
 	if (result != NULL)
 		*result = taken;

@@ -231,8 +231,7 @@ static unsigned int get_nfs_info(unsigned logopt, struct host *host,
 	socklen_t len = INET6_ADDRSTRLEN;
 	char buf[len + 1];
 	struct pmap parms;
-	struct timeval start, end;
-	struct timezone tz;
+	struct timespec start, end;
 	unsigned int supported = 0;
 	double taken = 0;
 	int status, count = 0;
@@ -292,9 +291,9 @@ static unsigned int get_nfs_info(unsigned logopt, struct host *host,
 		supported = status;
 		goto done_ver;
 	} else if (!status) {
-		gettimeofday(&start, &tz);
+		clock_gettime(CLOCK_MONOTONIC, &start);
 		status = rpc_ping_proto(rpc_info);
-		gettimeofday(&end, &tz);
+		clock_gettime(CLOCK_MONOTONIC, &end);
 		if (status == -ETIMEDOUT) {
 			supported = status;
 			goto done_ver;
@@ -306,7 +305,7 @@ static unsigned int get_nfs_info(unsigned logopt, struct host *host,
 				debug(logopt,
 				      "nfs v4 random selection time: %f", reply);
 			} else {
-				reply = elapsed(start, end);
+				reply = monotonic_elapsed(start, end);
 				debug(logopt, "nfs v4 rpc ping time: %f", reply);
 			}
 			taken += reply;
@@ -351,9 +350,9 @@ v3_ver:
 		supported = status;
 		goto done_ver;
 	} else if (!status) {
-		gettimeofday(&start, &tz);
+		clock_gettime(CLOCK_MONOTONIC, &start);
 		status = rpc_ping_proto(rpc_info);
-		gettimeofday(&end, &tz);
+		clock_gettime(CLOCK_MONOTONIC, &end);
 		if (status == -ETIMEDOUT) {
 			supported = status;
 			goto done_ver;
@@ -365,7 +364,7 @@ v3_ver:
 				debug(logopt,
 				      "nfs v3 random selection time: %f", reply);
 			} else {
-				reply = elapsed(start, end);
+				reply = monotonic_elapsed(start, end);
 				debug(logopt, "nfs v3 rpc ping time: %f", reply);
 			}
 			taken += reply;
@@ -407,9 +406,9 @@ v2_ver:
 		supported = status;
 		goto done_ver;
 	} else if (!status) {
-		gettimeofday(&start, &tz);
+		clock_gettime(CLOCK_MONOTONIC, &start);
 		status = rpc_ping_proto(rpc_info);
-		gettimeofday(&end, &tz);
+		clock_gettime(CLOCK_MONOTONIC, &end);
 		if (status == -ETIMEDOUT)
 			supported = status;
 		else if (status > 0) {
@@ -420,7 +419,7 @@ v2_ver:
 				debug(logopt,
 				      "nfs v2 random selection time: %f", reply);
 			} else {
-				reply = elapsed(start, end);;
+				reply = monotonic_elapsed(start, end);;
 				debug(logopt, "nfs v2 rpc ping time: %f", reply);
 			}
 			taken += reply;
@@ -523,8 +522,7 @@ static int get_supported_ver_and_cost(unsigned logopt, struct host *host,
 	struct conn_info pm_info, rpc_info;
 	int proto;
 	unsigned int vers;
-	struct timeval start, end;
-	struct timezone tz;
+	struct timespec start, end;
 	double taken = 0;
 	time_t timeout = RPC_TIMEOUT;
 	int status = 0;
@@ -610,16 +608,16 @@ static int get_supported_ver_and_cost(unsigned logopt, struct host *host,
 	if (status == -EHOSTUNREACH)
 		goto done;
 	else if (!status) {
-		gettimeofday(&start, &tz);
+		clock_gettime(CLOCK_MONOTONIC, &start);
 		status = rpc_ping_proto(&rpc_info);
-		gettimeofday(&end, &tz);
+		clock_gettime(CLOCK_MONOTONIC, &end);
 		if (status > 0) {
 			if (random_selection) {
 				/* Random value between 0 and 1 */
 				taken = ((float) random())/((float) RAND_MAX+1);
 				debug(logopt, "random selection time %f", taken);
 			} else {
-				taken = elapsed(start, end);
+				taken = monotonic_elapsed(start, end);
 				debug(logopt, "rpc ping time %f", taken);
 			}
 		}
