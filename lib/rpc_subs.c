@@ -1067,14 +1067,6 @@ int rpc_ping(const char *host, long seconds, long micros, unsigned int option)
 	return status;
 }
 
-double elapsed(struct timeval start, struct timeval end)
-{
-	double t1, t2;
-	t1 =  (double)start.tv_sec + (double)start.tv_usec/(1000*1000);
-	t2 =  (double)end.tv_sec + (double)end.tv_usec/(1000*1000);
-	return t2-t1;
-}
-
 double monotonic_elapsed(struct timespec start, struct timespec end)
 {
 	double t1, t2;

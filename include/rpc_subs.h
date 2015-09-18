@@ -70,7 +70,6 @@ int rpc_portmap_getclient(struct conn_info *, const char *, struct sockaddr *, s
 int rpc_portmap_getport(struct conn_info *, struct pmap *, unsigned short *);
 int rpc_ping_proto(struct conn_info *);
 int rpc_ping(const char *, long, long, unsigned int);
-double elapsed(struct timeval, struct timeval);
 double monotonic_elapsed(struct timespec, struct timespec);
 int rpc_time(const char *, unsigned int, unsigned int, long, long, unsigned int, double *);
 const char *get_addr_string(struct sockaddr *, char *, socklen_t);
