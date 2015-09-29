@@ -162,9 +162,9 @@ static int do_parse_mount(struct autofs_point *ap, struct map_source *source,
 	return NSS_STATUS_SUCCESS;
 }
 
-static int update_hosts_mounts(struct autofs_point *ap,
-			       struct map_source *source, time_t age,
-			       struct lookup_context *ctxt)
+static void update_hosts_mounts(struct autofs_point *ap,
+				struct map_source *source, time_t age,
+				struct lookup_context *ctxt)
 {
 	struct mapent_cache *mc;
 	struct mapent *me;
@@ -212,13 +212,14 @@ next:
 		ap->flags |= MOUNT_FLAG_REMOUNT;
 		ret = ctxt->parse->parse_mount(ap, me->key, strlen(me->key),
 					       me->mapent, ctxt->parse->context);
+		if (ret)
+			warn(ap->logopt, MODPREFIX
+			     "failed to parse mount %s", me->mapent);
 		ap->flags &= ~MOUNT_FLAG_REMOUNT;
 cont:
 		me = cache_lookup_next(mc, me);
 	}
 	pthread_cleanup_pop(1);
-
-	return NSS_STATUS_SUCCESS;
 }
 
 int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
