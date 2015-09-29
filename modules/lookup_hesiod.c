@@ -37,13 +37,69 @@ static pthread_mutex_t hesiod_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 int lookup_version = AUTOFS_LOOKUP_VERSION;	/* Required by protocol */
 
+static int do_init(const char *mapfmt,
+		   int argc, const char *const *argv,
+		   struct lookup_context *ctxt, unsigned int reinit)
+{
+	char buf[MAX_ERR_BUF];
+	int ret = 0;
+
+	/* Initialize the resolver. */
+	res_init();
+
+	/* Initialize the hesiod context. */
+	if (hesiod_init(&(ctxt->hesiod_context)) != 0) {
+		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+		logerr(MODPREFIX "hesiod_init(): %s", estr);
+		return 1;
+	}
+
+	/* If a map type isn't explicitly given, parse it as hesiod entries. */
+	if (!mapfmt)
+		mapfmt = MAPFMT_DEFAULT;
+
+	if (!strcmp(mapfmt, "amd")) {
+		/* amd formated hesiod maps have a map name */
+		const char *mapname = argv[0];
+		if (strncmp(mapname, AMD_MAP_PREFIX, AMD_MAP_PREFIX_LEN)) {
+			hesiod_end(ctxt->hesiod_context);
+			logerr(MODPREFIX
+			      "incorrect prefix for hesiod map %s", mapname);
+			return 1;
+		}
+		ctxt->mapname = mapname;
+		argc--;
+		argv++;
+	}
+
+	if (reinit) {
+		ret = reinit_parse(ctxt->parser, mapfmt,
+				   MODPREFIX, argc - 1, argv - 1);
+		if (ret)
+			logerr(MODPREFIX "failed to reinit parse context");
+	} else {
+		ctxt->parser = open_parse(mapfmt,
+					  MODPREFIX, argc - 1, argv + 1);
+		if (!ctxt->parser) {
+			logerr(MODPREFIX "failed to open parse context");
+			ret = 1;
+		}
+	}
+
+	if (ret)
+		hesiod_end(ctxt->hesiod_context);
+
+	return ret;
+}
+
 /* This initializes a context (persistent non-global data) for queries to
    this module. */
 int lookup_init(const char *mapfmt,
 		int argc, const char *const *argv, void **context)
 {
-	struct lookup_context *ctxt = NULL;
+	struct lookup_context *ctxt;
 	char buf[MAX_ERR_BUF];
+	int ret;
 
 	*context = NULL;
 
@@ -56,42 +112,12 @@ int lookup_init(const char *mapfmt,
 	}
 	memset(ctxt, 0, sizeof(struct lookup_context));
 
-	/* Initialize the resolver. */
-	res_init();
-
-	/* Initialize the hesiod context. */
-	if (hesiod_init(&(ctxt->hesiod_context)) != 0) {
-		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		logerr(MODPREFIX "hesiod_init(): %s", estr);
+	ret = do_init(mapfmt, argc, argv, ctxt, 0);
+	if (ret) {
 		free(ctxt);
 		return 1;
 	}
 
-	/* If a map type isn't explicitly given, parse it as hesiod entries. */
-	if (!mapfmt)
-		mapfmt = MAPFMT_DEFAULT;
-
-	if (!strcmp(mapfmt, "amd")) {
-		/* amd formated hesiod maps have a map name */
-		const char *mapname = argv[0];
-		if (strncmp(mapname, AMD_MAP_PREFIX, AMD_MAP_PREFIX_LEN)) {
-			logerr(MODPREFIX
-			      "incorrect prefix for hesiod map %s", mapname);
-			free(ctxt);
-			return 1;
-		}
-		ctxt->mapname = mapname;
-		argc--;
-		argv++;
-	}
-
-	/* Open the parser, if we can. */
-	ctxt->parser = open_parse(mapfmt, MODPREFIX, argc - 1, argv + 1);
-	if (!ctxt->parser) {
-		logerr(MODPREFIX "failed to open parse context");
-		free(ctxt);
-		return 1;
-	}
 	*context = ctxt;
 
 	return 0;
@@ -100,6 +126,32 @@ int lookup_init(const char *mapfmt,
 int lookup_reinit(const char *mapfmt,
 		  int argc, const char *const *argv, void **context)
 {
+	struct lookup_context *ctxt = (struct lookup_context *) *context;
+	struct lookup_context *new;
+	char buf[MAX_ERR_BUF];
+	int ret;
+
+	/* If we can't build a context, bail. */
+	new = malloc(sizeof(struct lookup_context));
+	if (!new) {
+		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+		logerr(MODPREFIX "malloc: %s", estr);
+		return 1;
+	}
+	memset(new, 0, sizeof(struct lookup_context));
+
+	new->parser = ctxt->parser;
+	ret = do_init(mapfmt, argc, argv, new, 1);
+	if (ret) {
+		free(new);
+		return 1;
+	}
+
+	*context = new;
+
+	hesiod_end(ctxt->hesiod_context);
+	free(ctxt);
+
 	return 0;
 }
 
