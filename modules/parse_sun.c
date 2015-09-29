@@ -413,6 +413,11 @@ options_done:
 	return 0;
 }
 
+int parse_reinit(int argc, const char *const *argv, void **context)
+{
+	return 0;
+}
+
 static const char *parse_options(const char *str, char **ret, unsigned int logopt)
 {
 	const char *cp = str;

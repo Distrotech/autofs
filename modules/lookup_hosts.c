@@ -46,7 +46,8 @@ int lookup_version = AUTOFS_LOOKUP_VERSION;	/* Required by protocol */
 exports rpc_get_exports(const char *host, long seconds, long micros, unsigned int option);
 void rpc_exports_free(exports list);
 
-int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **context)
+int lookup_init(const char *mapfmt,
+		int argc, const char *const *argv, void **context)
 {
 	struct lookup_context *ctxt;
 	char buf[MAX_ERR_BUF];
@@ -70,6 +71,12 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 	}
 	*context = ctxt;
 
+	return 0;
+}
+
+int lookup_reinit(const char *mapfmt,
+		  int argc, const char *const *argv, void **context)
+{
 	return 0;
 }
 

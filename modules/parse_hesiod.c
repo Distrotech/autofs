@@ -261,6 +261,11 @@ int parse_init(int argc, const char *const *argv, void **context)
 	return 0;
 }
 
+int parse_reinit(int argc, const char *const *argv, void **context)
+{
+	return 0;
+}
+
 int parse_done(void *context)
 {
 	return 0;

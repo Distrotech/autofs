@@ -29,7 +29,14 @@
 
 int lookup_version = AUTOFS_LOOKUP_VERSION;	/* Required by protocol */
 
-int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **context)
+int lookup_init(const char *mapfmt,
+		int argc, const char *const *argv, void **context)
+{
+	return 0;		/* Nothing to do */
+}
+
+int lookup_reinit(const char *mapfmt,
+		  int argc, const char *const *argv, void **context)
 {
 	return 0;		/* Nothing to do */
 }

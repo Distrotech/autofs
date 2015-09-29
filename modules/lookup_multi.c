@@ -150,7 +150,8 @@ static struct lookup_mod *nss_open_lookup(const char *format, int argc, const ch
 	return NULL;
 }
 
-int lookup_init(const char *my_mapfmt, int argc, const char *const *argv, void **context)
+int lookup_init(const char *my_mapfmt,
+		int argc, const char *const *argv, void **context)
 {
 	struct lookup_context *ctxt;
 	char buf[MAX_ERR_BUF];
@@ -242,6 +243,12 @@ error_out:
 		free(ctxt);
 	}
 	return 1;
+}
+
+int lookup_reinit(const char *my_mapfmt,
+		  int argc, const char *const *argv, void **context)
+{
+	return 0;
 }
 
 int lookup_read_master(struct master *master, time_t age, void *context)

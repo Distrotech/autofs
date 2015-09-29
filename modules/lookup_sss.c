@@ -56,7 +56,8 @@ struct lookup_context {
 
 int lookup_version = AUTOFS_LOOKUP_VERSION;	/* Required by protocol */
 
-int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **context)
+int lookup_init(const char *mapfmt,
+		int argc, const char *const *argv, void **context)
 {
 	struct lookup_context *ctxt;
 	char buf[MAX_ERR_BUF];
@@ -135,6 +136,12 @@ lib_names_fail:
 	dlclose(dh);
 	free(ctxt);
 	return 1;
+}
+
+int lookup_reinit(const char *mapfmt,
+		  int argc, const char *const *argv, void **context)
+{
+	return 0;
 }
 
 static int setautomntent(unsigned int logopt,

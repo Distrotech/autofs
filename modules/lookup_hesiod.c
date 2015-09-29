@@ -39,7 +39,8 @@ int lookup_version = AUTOFS_LOOKUP_VERSION;	/* Required by protocol */
 
 /* This initializes a context (persistent non-global data) for queries to
    this module. */
-int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **context)
+int lookup_init(const char *mapfmt,
+		int argc, const char *const *argv, void **context)
 {
 	struct lookup_context *ctxt = NULL;
 	char buf[MAX_ERR_BUF];
@@ -93,6 +94,12 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 	}
 	*context = ctxt;
 
+	return 0;
+}
+
+int lookup_reinit(const char *mapfmt,
+		  int argc, const char *const *argv, void **context)
+{
 	return 0;
 }
 

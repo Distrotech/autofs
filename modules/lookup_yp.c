@@ -103,7 +103,8 @@ static unsigned int get_map_order(const char *domain, const char *map)
 	return (unsigned int) last_changed;
 }
 
-int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **context)
+int lookup_init(const char *mapfmt,
+		int argc, const char *const *argv, void **context)
 {
 	struct lookup_context *ctxt;
 	char buf[MAX_ERR_BUF];
@@ -162,6 +163,12 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 	}
 	*context = ctxt;
 
+	return 0;
+}
+
+int lookup_reinit(const char *mapfmt,
+		  int argc, const char *const *argv, void **context)
+{
 	return 0;
 }
 

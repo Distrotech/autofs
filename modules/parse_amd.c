@@ -130,6 +130,11 @@ int parse_init(int argc, const char *const *argv, void **context)
 	return 0;
 }
 
+int parse_reinit(int argc, const char *const *argv, void **context)
+{
+	return 0;
+}
+
 static struct substvar *add_lookup_vars(struct autofs_point *ap,
 					const char *key, int key_len,
 					struct map_source *source,

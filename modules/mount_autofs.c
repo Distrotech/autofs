@@ -39,6 +39,11 @@ int mount_init(void **context)
 	return 0;
 }
 
+int mount_reinit(void **context)
+{
+	return 0;
+}
+
 int mount_mount(struct autofs_point *ap, const char *root, const char *name,
 		int name_len, const char *what, const char *fstype,
 		const char *c_options, void *context)

@@ -1687,7 +1687,8 @@ static void validate_uris(struct list_head *list)
  * This initializes a context (persistent non-global data) for queries to
  * this module.  Return zero if we succeed.
  */
-int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **context)
+int lookup_init(const char *mapfmt,
+		int argc, const char *const *argv, void **context)
 {
 	unsigned int is_amd_format;
 	struct lookup_context *ctxt;
@@ -1832,6 +1833,12 @@ int lookup_init(const char *mapfmt, int argc, const char *const *argv, void **co
 	}
 	*context = ctxt;
 
+	return 0;
+}
+
+int lookup_reinit(const char *mapfmt,
+		  int argc, const char *const *argv, void **context)
+{
 	return 0;
 }
 

@@ -105,6 +105,7 @@ int open_lookup(const char *name, const char *err_prefix, const char *mapfmt,
 	}
 
 	if (!(mod->lookup_init = (lookup_init_t) dlsym(dh, "lookup_init")) ||
+	    !(mod->lookup_reinit = (lookup_reinit_t) dlsym(dh, "lookup_reinit")) ||
 	    !(mod->lookup_read_master = (lookup_read_master_t) dlsym(dh, "lookup_read_master")) ||
 	    !(mod->lookup_read_map = (lookup_read_map_t) dlsym(dh, "lookup_read_map")) ||
 	    !(mod->lookup_mount = (lookup_mount_t) dlsym(dh, "lookup_mount")) ||
@@ -125,6 +126,19 @@ int open_lookup(const char *name, const char *err_prefix, const char *mapfmt,
 	*lookup = mod;
 
 	return NSS_STATUS_SUCCESS;
+}
+
+int reinit_lookup(struct lookup_mod *mod, const char *name,
+		  const char *err_prefix, const char *mapfmt,
+		  int argc, const char *const *argv)
+{
+	if (mod->lookup_reinit(mapfmt, argc, argv, &mod->context)) {
+		if (err_prefix)
+			logerr("%scould not reinit lookup module %s",
+			       err_prefix, name);
+		return 1;
+	}
+	return 0;
 }
 
 int close_lookup(struct lookup_mod *mod)
@@ -185,6 +199,7 @@ struct parse_mod *open_parse(const char *name, const char *err_prefix,
 	}
 
 	if (!(mod->parse_init = (parse_init_t) dlsym(dh, "parse_init")) ||
+	    !(mod->parse_reinit = (parse_reinit_t) dlsym(dh, "parse_reinit")) ||
 	    !(mod->parse_mount = (parse_mount_t) dlsym(dh, "parse_mount")) ||
 	    !(mod->parse_done = (parse_done_t) dlsym(dh, "parse_done"))) {
 		if (err_prefix)
@@ -202,6 +217,18 @@ struct parse_mod *open_parse(const char *name, const char *err_prefix,
 	}
 	mod->dlhandle = dh;
 	return mod;
+}
+
+int reinit_parse(struct parse_mod *mod, const char *name,
+		 const char *err_prefix, int argc, const char *const *argv)
+{
+	if (mod->parse_reinit(argc, argv, &mod->context)) {
+		if (err_prefix)
+			logerr("%scould not reinit parse module %s",
+			       err_prefix, name);
+		return 1;
+	}
+	return 0;
 }
 
 int close_parse(struct parse_mod *mod)
@@ -261,6 +288,7 @@ struct mount_mod *open_mount(const char *name, const char *err_prefix)
 	}
 
 	if (!(mod->mount_init = (mount_init_t) dlsym(dh, "mount_init")) ||
+	    !(mod->mount_reinit = (mount_reinit_t) dlsym(dh, "mount_reinit")) ||
 	    !(mod->mount_mount = (mount_mount_t) dlsym(dh, "mount_mount")) ||
 	    !(mod->mount_done = (mount_done_t) dlsym(dh, "mount_done"))) {
 		if (err_prefix)
@@ -278,6 +306,17 @@ struct mount_mod *open_mount(const char *name, const char *err_prefix)
 	}
 	mod->dlhandle = dh;
 	return mod;
+}
+
+int reinit_mount(struct mount_mod *mod, const char *name, const char *err_prefix)
+{
+	if (mod->mount_reinit(&mod->context)) {
+		if (err_prefix)
+			logerr("%scould not reinit mount module %s",
+			       err_prefix, name);
+		return 1;
+	}
+	return 0;
 }
 
 int close_mount(struct mount_mod *mod)
