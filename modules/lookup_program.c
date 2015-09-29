@@ -49,6 +49,61 @@ struct parse_context {
 
 int lookup_version = AUTOFS_LOOKUP_VERSION;	/* Required by protocol */
 
+static int do_init(const char *mapfmt,
+		   int argc, const char *const *argv,
+		   struct lookup_context *ctxt, unsigned int reinit)
+{
+	int ret = 0;
+
+	if (argc < 1) {
+		logmsg(MODPREFIX "No map name");
+		ret = 1;
+		goto out;
+	}
+	ctxt->mapname = argv[0];
+
+	if (ctxt->mapname[0] != '/') {
+		logmsg(MODPREFIX "program map %s is not an absolute pathname",
+		     ctxt->mapname);
+		ret = 1;
+		goto out;
+	}
+
+	if (access(ctxt->mapname, X_OK)) {
+		logmsg(MODPREFIX "program map %s missing or not executable",
+		     ctxt->mapname);
+		ret = 1;
+		goto out;
+	}
+
+	if (!mapfmt)
+		mapfmt = MAPFMT_DEFAULT;
+
+	ctxt->mapfmt = strdup(mapfmt);
+	if (!ctxt->mapfmt) {
+		logmsg(MODPREFIX "failed to allocate storage for map format");
+		ret = 1;
+		goto out;
+	}
+
+	if (reinit) {
+		ret = reinit_parse(ctxt->parse, mapfmt, MODPREFIX, argc - 1, argv + 1);
+		if (ret)
+			logmsg(MODPREFIX "failed to reinit parse context");
+	} else {
+		ctxt->parse = open_parse(mapfmt, MODPREFIX, argc - 1, argv + 1);
+		if (!ctxt->parse) {
+			logmsg(MODPREFIX "failed to open parse context");
+			ret = 1;
+		}
+	}
+out:
+	if (ret && ctxt->mapfmt)
+		free(ctxt->mapfmt);
+
+	return ret;
+}
+
 int lookup_init(const char *mapfmt,
 		int argc, const char *const *argv, void **context)
 {
@@ -63,39 +118,13 @@ int lookup_init(const char *mapfmt,
 		logerr(MODPREFIX "malloc: %s", estr);
 		return 1;
 	}
+	memset(ctxt, 0, sizeof(struct lookup_context));
 
-	if (argc < 1) {
-		logmsg(MODPREFIX "No map name");
-		free(ctxt);
-		return 1;
-	}
-	ctxt->mapname = argv[0];
-
-	if (ctxt->mapname[0] != '/') {
-		logmsg(MODPREFIX "program map %s is not an absolute pathname",
-		     ctxt->mapname);
+	if (do_init(mapfmt, argc, argv, ctxt, 0)) {
 		free(ctxt);
 		return 1;
 	}
 
-	if (access(ctxt->mapname, X_OK)) {
-		logmsg(MODPREFIX "program map %s missing or not executable",
-		     ctxt->mapname);
-		free(ctxt);
-		return 1;
-	}
-
-	if (!mapfmt)
-		mapfmt = MAPFMT_DEFAULT;
-
-	ctxt->mapfmt = strdup(mapfmt);
-
-	ctxt->parse = open_parse(mapfmt, MODPREFIX, argc - 1, argv + 1);
-	if (!ctxt->parse) {
-		logmsg(MODPREFIX "failed to open parse context");
-		free(ctxt);
-		return 1;
-	}
 	*context = ctxt;
 
 	return 0;
@@ -104,6 +133,31 @@ int lookup_init(const char *mapfmt,
 int lookup_reinit(const char *mapfmt,
 		  int argc, const char *const *argv, void **context)
 {
+	struct lookup_context *ctxt = (struct lookup_context *) *context;
+	struct lookup_context *new;
+	char buf[MAX_ERR_BUF];
+	int ret;
+
+	new = malloc(sizeof(struct lookup_context));
+	if (!new) {
+		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+		logerr(MODPREFIX "malloc: %s", estr);
+		return 1;
+	}
+	memset(new, 0, sizeof(struct lookup_context));
+
+	new->parse = ctxt->parse;
+	ret = do_init(mapfmt, argc, argv, new, 1);
+	if (ret) {
+		free(new);
+		return 1;
+	}
+
+	*context = new;
+
+	free(ctxt->mapfmt);
+	free(ctxt);
+
 	return 0;
 }
 
