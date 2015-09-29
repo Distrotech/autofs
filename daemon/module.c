@@ -61,6 +61,7 @@ int open_lookup(const char *name, const char *err_prefix, const char *mapfmt,
 	char buf[MAX_ERR_BUF];
 	char fnbuf[PATH_MAX];
 	size_t size;
+	char *type;
 	void *dh;
 	int *ver;
 
@@ -75,10 +76,20 @@ int open_lookup(const char *name, const char *err_prefix, const char *mapfmt,
 		return NSS_STATUS_UNAVAIL;
 	}
 
+	type = strdup(name);
+	if (!type) {
+		free(mod);
+		if (err_prefix) {
+			char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+			logerr("%s%s", err_prefix, estr);
+		}
+	}
+
 	size = snprintf(fnbuf, sizeof(fnbuf),
 			"%s/lookup_%s.so", AUTOFS_LIB_DIR, name);
 	if (size >= sizeof(fnbuf)) {
 		free(mod);
+		free(type);
 		if (err_prefix) {
 			char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
 			logerr("%s%s", err_prefix, estr);
@@ -91,6 +102,7 @@ int open_lookup(const char *name, const char *err_prefix, const char *mapfmt,
 			logerr("%scannot open lookup module %s (%s)",
 			       err_prefix, name, dlerror());
 		free(mod);
+		free(type);
 		return NSS_STATUS_UNAVAIL;
 	}
 
@@ -101,6 +113,7 @@ int open_lookup(const char *name, const char *err_prefix, const char *mapfmt,
 			     err_prefix, name);
 		dlclose(dh);
 		free(mod);
+		free(type);
 		return NSS_STATUS_UNAVAIL;
 	}
 
@@ -114,14 +127,18 @@ int open_lookup(const char *name, const char *err_prefix, const char *mapfmt,
 			logerr("%slookup module %s corrupt", err_prefix, name);
 		dlclose(dh);
 		free(mod);
+		free(type);
 		return NSS_STATUS_UNAVAIL;
 	}
 
 	if (mod->lookup_init(mapfmt, argc, argv, &mod->context)) {
 		dlclose(dh);
 		free(mod);
+		free(type);
 		return NSS_STATUS_NOTFOUND;
 	}
+
+	mod->type = type;
 	mod->dlhandle = dh;
 	*lookup = mod;
 
@@ -145,6 +162,7 @@ int close_lookup(struct lookup_mod *mod)
 {
 	int rv = mod->lookup_done(mod->context);
 	dlclose(mod->dlhandle);
+	free(mod->type);
 	free(mod);
 	return rv;
 }

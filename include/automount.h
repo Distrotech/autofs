@@ -301,6 +301,7 @@ struct lookup_mod {
 	lookup_read_map_t lookup_read_map;
 	lookup_mount_t lookup_mount;
 	lookup_done_t lookup_done;
+	char *type;
 	void *dlhandle;
 	void *context;
 };
