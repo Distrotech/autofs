@@ -300,17 +300,27 @@ static int do_read_map(struct autofs_point *ap, struct map_source *map, time_t a
 	struct lookup_mod *lookup;
 	int status;
 
-	status = open_lookup(map->type, "", map->format,
-			     map->argc, map->argv, &lookup);
-	if (status != NSS_STATUS_SUCCESS) {
-		debug(ap->logopt, "lookup module %s failed", map->type);
-		return status;
-	}
-
+	lookup = NULL;
 	master_source_writelock(ap->entry);
-	if (map->lookup)
-		close_lookup(map->lookup);
-	map->lookup = lookup;
+	if (!map->lookup) {
+		status = open_lookup(map->type, "", map->format,
+				     map->argc, map->argv, &lookup);
+		if (status != NSS_STATUS_SUCCESS) {
+			master_source_unlock(ap->entry);
+			debug(ap->logopt,
+			      "lookup module %s open failed", map->type);
+			return status;
+		}
+		map->lookup = lookup;
+	} else {
+		lookup = map->lookup;
+		status = lookup->lookup_reinit(map->format,
+					       map->argc, map->argv,
+					       &lookup->context);
+		if (status)
+			warn(ap->logopt,
+			     "lookup module %s reinit failed", map->type);
+	}
 	master_source_unlock(ap->entry);
 
 	if (!map->stale)
@@ -742,7 +752,7 @@ int do_lookup_mount(struct autofs_point *ap, struct map_source *map, const char 
 				     map->format, map->argc, map->argv, &lookup);
 		if (status != NSS_STATUS_SUCCESS) {
 			debug(ap->logopt,
-			      "lookup module %s failed", map->type);
+			      "lookup module %s open failed", map->type);
 			return status;
 		}
 		map->lookup = lookup;

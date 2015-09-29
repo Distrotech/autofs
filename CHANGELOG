@@ -17,6 +17,7 @@
 - fix direct map expire not set for initail empty map.
 - fix missing source sss in multi map lookup.
 - fix update_hosts_mounts() return.
+- change lookup to use reinit instead of reopen.
 
 21/04/2015 autofs-5.1.1
 =======================
