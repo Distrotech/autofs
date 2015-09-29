@@ -232,27 +232,15 @@ int expandsunent(const char *src, char *dst, const char *key,
 	return len;
 }
 
-int parse_init(int argc, const char *const *argv, void **context)
+static int do_init(int argc, const char *const *argv, struct parse_context *ctxt)
 {
-	struct parse_context *ctxt;
-	char buf[MAX_ERR_BUF];
 	char *noptstr, *def, *val, *macros, *gbl_options;
-	const char *xopt;
+	char buf[MAX_ERR_BUF];
 	int optlen, len, offset;
+	const char *xopt;
 	int i, bval;
 	unsigned int append_options;
 
-	/* Set up context and escape chain */
-
-	if (!(ctxt = (struct parse_context *) malloc(sizeof(struct parse_context)))) {
-		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		logerr(MODPREFIX "malloc: %s", estr);
-		*context = NULL;
-		return 1;
-	}
-	*context = (void *) ctxt;
-
-	*ctxt = default_context;
 	optlen = 0;
 
 	/* Look for options and capture, and create new defines if we need to */
@@ -359,7 +347,6 @@ int parse_init(int argc, const char *const *argv, void **context)
 				char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
 				kill_context(ctxt);
 				logerr(MODPREFIX "%s", estr);
-				*context = NULL;
 				return 1;
 			}
 			ctxt->optstr = noptstr;
@@ -391,8 +378,35 @@ int parse_init(int argc, const char *const *argv, void **context)
 		}
 	}
 options_done:
+
 	debug(LOGOPT_NONE,
 	      MODPREFIX "init gathered global options: %s", ctxt->optstr);
+
+	return 0;
+}
+
+int parse_init(int argc, const char *const *argv, void **context)
+{
+	struct parse_context *ctxt;
+	char buf[MAX_ERR_BUF];
+
+	*context = NULL;
+
+	/* Set up context and escape chain */
+
+	ctxt = (struct parse_context *) malloc(sizeof(struct parse_context));
+	if (!ctxt) {
+		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+		logerr(MODPREFIX "malloc: %s", estr);
+		return 1;
+	}
+
+	*ctxt = default_context;
+
+	if (do_init(argc, argv, ctxt)) {
+		free(ctxt);
+		return 1;
+	}
 
 	/* We only need this once.  NFS mounts are so common that we cache
 	   this module. */
@@ -404,17 +418,39 @@ options_done:
 			init_ctr++;
 		} else {
 			kill_context(ctxt);
-			*context = NULL;
 			instance_mutex_unlock();
 			return 1;
 		}
 	}
 	instance_mutex_unlock();
+
+	*context = (void *) ctxt;
+
 	return 0;
 }
 
 int parse_reinit(int argc, const char *const *argv, void **context)
 {
+	struct parse_context *ctxt = (struct parse_context *) *context;
+	struct parse_context *new;
+	char buf[MAX_ERR_BUF];
+
+	new = (struct parse_context *) malloc(sizeof(struct parse_context));
+	if (!new) {
+		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+		logerr(MODPREFIX "malloc: %s", estr);
+		return 1;
+	}
+
+	*new = default_context;
+
+	if (do_init(argc, argv, new))
+		return 1;
+
+	kill_context(ctxt);
+
+	*context = (void *) new;
+
 	return 0;
 }
 

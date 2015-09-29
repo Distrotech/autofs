@@ -258,6 +258,7 @@ static int parse_generic(struct autofs_point *ap,
 
 int parse_init(int argc, const char *const *argv, void **context)
 {
+	*context = NULL;
 	return 0;
 }
 
