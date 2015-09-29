@@ -12,6 +12,7 @@
 - fix return handling of do_reconnect() in ldap module.
 - fix rwlock unlock crash.
 - fix config old name lookup.
+- fix error handling on ldap bind fail.
 
 21/04/2015 autofs-5.1.1
 =======================

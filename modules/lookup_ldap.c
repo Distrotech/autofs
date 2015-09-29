@@ -216,15 +216,18 @@ int bind_ldap_simple(unsigned logopt, LDAP *ldap, const char *uri, struct lookup
 
 int __unbind_ldap_connection(unsigned logopt, LDAP *ldap, struct lookup_context *ctxt)
 {
-	int rv;
+	int rv = LDAP_SUCCESS;
 
 	if (ctxt->use_tls == LDAP_TLS_RELEASE)
 		ctxt->use_tls = LDAP_TLS_INIT;
 #ifdef WITH_SASL
-	autofs_sasl_unbind(ctxt);
-#endif
-
+	if (ctxt->auth_required & LDAP_NEED_AUTH)
+		autofs_sasl_unbind(ctxt);
+	else
+		rv = ldap_unbind_ext(ldap, NULL, NULL);
+#else
 	rv = ldap_unbind_ext(ldap, NULL, NULL);
+#endif
 	if (rv != LDAP_SUCCESS)
 		error(logopt, "unbind failed: %s", ldap_err2string(rv));
 
@@ -302,7 +305,7 @@ LDAP *__init_ldap_connection(unsigned logopt, const char *uri, struct lookup_con
 
 		rv = ldap_start_tls_s(ldap, NULL, NULL);
 		if (rv != LDAP_SUCCESS) {
-			__unbind_ldap_connection(logopt, ldap, ctxt);
+			ldap_unbind_ext(ldap, NULL, NULL);
 			if (ctxt->tls_required) {
 				error(logopt, MODPREFIX
 				      "TLS required but START_TLS failed: %s",
@@ -576,14 +579,13 @@ static int do_bind(unsigned logopt, LDAP *ldap, const char *uri, struct lookup_c
 	char *host = NULL, *nhost;
 	int rv;
 
+	ldapinit_mutex_lock();
 #ifdef WITH_SASL
 	debug(logopt, MODPREFIX "auth_required: %d, sasl_mech %s",
 	      ctxt->auth_required, ctxt->sasl_mech);
 
 	if (ctxt->auth_required & LDAP_NEED_AUTH) {
-		ldapinit_mutex_lock();
 		rv = autofs_sasl_bind(logopt, ldap, ctxt);
-		ldapinit_mutex_unlock();
 		debug(logopt, MODPREFIX "autofs_sasl_bind returned %d", rv);
 	} else {
 		rv = bind_ldap_simple(logopt, ldap, uri, ctxt);
@@ -593,6 +595,7 @@ static int do_bind(unsigned logopt, LDAP *ldap, const char *uri, struct lookup_c
 	rv = bind_ldap_simple(logopt, ldap, uri, ctxt);
 	debug(logopt, MODPREFIX "ldap simple bind returned %d", rv);
 #endif
+	ldapinit_mutex_unlock();
 
 	if (rv != 0)
 		return 0;
