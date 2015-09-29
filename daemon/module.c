@@ -17,6 +17,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include "automount.h"
+#include "nsswitch.h"
 
 int load_autofs4_module(void)
 {
@@ -53,8 +54,8 @@ int load_autofs4_module(void)
 	return 1;
 }
 
-struct lookup_mod *open_lookup(const char *name, const char *err_prefix,
-			       const char *mapfmt, int argc, const char *const *argv)
+int open_lookup(const char *name, const char *err_prefix, const char *mapfmt,
+		int argc, const char *const *argv, struct lookup_mod **lookup)
 {
 	struct lookup_mod *mod;
 	char buf[MAX_ERR_BUF];
@@ -63,6 +64,7 @@ struct lookup_mod *open_lookup(const char *name, const char *err_prefix,
 	void *dh;
 	int *ver;
 
+	*lookup = NULL;
 
 	mod = malloc(sizeof(struct lookup_mod));
 	if (!mod) {
@@ -70,7 +72,7 @@ struct lookup_mod *open_lookup(const char *name, const char *err_prefix,
 			char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
 			logerr("%s%s", err_prefix, estr);
 		}
-		return NULL;
+		return NSS_STATUS_UNAVAIL;
 	}
 
 	size = snprintf(fnbuf, sizeof(fnbuf),
@@ -81,7 +83,7 @@ struct lookup_mod *open_lookup(const char *name, const char *err_prefix,
 			char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
 			logerr("%s%s", err_prefix, estr);
 		}
-		return NULL;
+		return NSS_STATUS_UNAVAIL;
 	}
 
 	if (!(dh = dlopen(fnbuf, RTLD_NOW))) {
@@ -89,7 +91,7 @@ struct lookup_mod *open_lookup(const char *name, const char *err_prefix,
 			logerr("%scannot open lookup module %s (%s)",
 			       err_prefix, name, dlerror());
 		free(mod);
-		return NULL;
+		return NSS_STATUS_UNAVAIL;
 	}
 
 	if (!(ver = (int *) dlsym(dh, "lookup_version"))
@@ -99,7 +101,7 @@ struct lookup_mod *open_lookup(const char *name, const char *err_prefix,
 			     err_prefix, name);
 		dlclose(dh);
 		free(mod);
-		return NULL;
+		return NSS_STATUS_UNAVAIL;
 	}
 
 	if (!(mod->lookup_init = (lookup_init_t) dlsym(dh, "lookup_init")) ||
@@ -111,16 +113,18 @@ struct lookup_mod *open_lookup(const char *name, const char *err_prefix,
 			logerr("%slookup module %s corrupt", err_prefix, name);
 		dlclose(dh);
 		free(mod);
-		return NULL;
+		return NSS_STATUS_UNAVAIL;
 	}
 
 	if (mod->lookup_init(mapfmt, argc, argv, &mod->context)) {
 		dlclose(dh);
 		free(mod);
-		return NULL;
+		return NSS_STATUS_NOTFOUND;
 	}
 	mod->dlhandle = dh;
-	return mod;
+	*lookup = mod;
+
+	return NSS_STATUS_SUCCESS;
 }
 
 int close_lookup(struct lookup_mod *mod)

@@ -44,9 +44,9 @@ static int do_read_master(struct master *master, char *type, time_t age)
 	argv[0] = master->name;
 	argv[1] = NULL;
 
-	lookup = open_lookup(type, "", NULL, argc, argv);
-	if (!lookup)
-		return NSS_STATUS_UNAVAIL;
+	status = open_lookup(type, "", NULL, argc, argv, &lookup);
+	if (status != NSS_STATUS_SUCCESS)
+		return status;
 
 	status = lookup->lookup_read_master(master, age, lookup->context);
 
@@ -300,10 +300,11 @@ static int do_read_map(struct autofs_point *ap, struct map_source *map, time_t a
 	struct lookup_mod *lookup;
 	int status;
 
-	lookup = open_lookup(map->type, "", map->format, map->argc, map->argv);
-	if (!lookup) {
+	status = open_lookup(map->type, "", map->format,
+			     map->argc, map->argv, &lookup);
+	if (status != NSS_STATUS_SUCCESS) {
 		debug(ap->logopt, "lookup module %s failed", map->type);
-		return NSS_STATUS_UNAVAIL;
+		return status;
 	}
 
 	master_source_writelock(ap->entry);
@@ -737,12 +738,12 @@ int do_lookup_mount(struct autofs_point *ap, struct map_source *map, const char 
 	int status;
 
 	if (!map->lookup) {
-		lookup = open_lookup(map->type, "",
-				     map->format, map->argc, map->argv);
-		if (!lookup) {
+		status = open_lookup(map->type, "",
+				     map->format, map->argc, map->argv, &lookup);
+		if (status != NSS_STATUS_SUCCESS) {
 			debug(ap->logopt,
 			      "lookup module %s failed", map->type);
-			return NSS_STATUS_UNAVAIL;
+			return status;
 		}
 		map->lookup = lookup;
 	}

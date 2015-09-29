@@ -50,8 +50,10 @@ static struct lookup_mod *nss_open_lookup(const char *format, int argc, const ch
 	if (!argv || !argv[0])
 		return NULL;
 
-	if (*argv[0] == '/')
-		return open_lookup("file", MODPREFIX, format, argc, argv);
+	if (*argv[0] == '/') {
+		open_lookup("file", MODPREFIX, format, argc, argv, &mod);
+		return mod;
+	}
 
 	if (!strncmp(argv[0], "file", 4) ||
 	    !strncmp(argv[0], "yp", 2) ||
@@ -65,7 +67,8 @@ static struct lookup_mod *nss_open_lookup(const char *format, int argc, const ch
 			fmt++;
 		else
 			fmt = format;
-		return open_lookup(argv[0], MODPREFIX, fmt, argc -1, argv + 1);
+		open_lookup(argv[0], MODPREFIX, fmt, argc - 1, argv + 1, &mod);
+		return mod;
 	}
 
 	INIT_LIST_HEAD(&nsslist);
@@ -80,6 +83,7 @@ static struct lookup_mod *nss_open_lookup(const char *format, int argc, const ch
 	head = &nsslist;
 	list_for_each(p, head) {
 		struct nss_source *this;
+		int status;
 
 		this = list_entry(p, struct nss_source, list);
 
@@ -113,8 +117,9 @@ static struct lookup_mod *nss_open_lookup(const char *format, int argc, const ch
 			save_argv0 = (char *) argv[0];
 			argv[0] = path;
 
-			mod = open_lookup(type, MODPREFIX, format, argc, argv);
-			if (mod) {
+			status = open_lookup(type, MODPREFIX,
+					     format, argc, argv, &mod);
+			if (status == NSS_STATUS_SUCCESS) {
 				free_sources(&nsslist);
 				free(save_argv0);
 				return mod;
@@ -124,8 +129,9 @@ static struct lookup_mod *nss_open_lookup(const char *format, int argc, const ch
 			free(path);
 		}
 
-		mod = open_lookup(this->source, MODPREFIX, format, argc, argv);
-		if (mod) {
+		status = open_lookup(this->source, MODPREFIX,
+				     format, argc, argv, &mod);
+		if (status == NSS_STATUS_SUCCESS) {
 			free_sources(&nsslist);
 			return mod;
 		}

@@ -31,6 +31,7 @@
 
 #define MODULE_PARSE
 #include "automount.h"
+#include "nsswitch.h"
 
 #define MODPREFIX "parse(amd): "
 
@@ -1129,6 +1130,7 @@ static int do_host_mount(struct autofs_point *ap, const char *name,
 	struct mapent *me;
 	const char *argv[2];
 	const char **pargv = NULL;
+	int status;
 	int argc = 0;
 	int ret = 1;
 
@@ -1170,8 +1172,8 @@ static int do_host_mount(struct autofs_point *ap, const char *name,
 	}
 
 	instance_mutex_lock();
-	lookup = open_lookup("hosts", MODPREFIX, NULL, argc, pargv);
-	if (!lookup) {
+	status = open_lookup("hosts", MODPREFIX, NULL, argc, pargv, &lookup);
+	if (status != NSS_STATUS_SUCCESS) {
 		debug(ap->logopt, "open lookup module hosts failed");
 		instance_mutex_unlock();
 		goto out;

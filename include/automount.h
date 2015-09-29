@@ -302,8 +302,8 @@ struct lookup_mod {
 	void *context;
 };
 
-struct lookup_mod *open_lookup(const char *name, const char *err_prefix,
-			       const char *mapfmt, int argc, const char *const *argv);
+int open_lookup(const char *name, const char *err_prefix, const char *mapfmt,
+		int argc, const char *const *argv, struct lookup_mod **lookup);
 int close_lookup(struct lookup_mod *);
 
 /* parse module */
