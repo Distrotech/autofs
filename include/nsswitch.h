@@ -56,6 +56,7 @@ struct nss_source {
 }; 
 
 int set_action(struct nss_action *a, char *status, char *action, int negated);
+int check_nss_result(struct nss_source *this, enum nsswitch_status result);
 struct nss_source *add_source(struct list_head *head, char *source);
 int free_sources(struct list_head *list);
 
