@@ -69,6 +69,7 @@ int lookup_init(const char *mapfmt,
 		free(ctxt);
 		return 1;
 	}
+
 	*context = ctxt;
 
 	return 0;
@@ -77,6 +78,15 @@ int lookup_init(const char *mapfmt,
 int lookup_reinit(const char *mapfmt,
 		  int argc, const char *const *argv, void **context)
 {
+	struct lookup_context *ctxt = (struct lookup_context *) *context;
+	int ret;
+
+	mapfmt = MAPFMT_DEFAULT;
+
+	ret = reinit_parse(ctxt->parse, mapfmt, MODPREFIX, argc, argv);
+	if (ret)
+		return 1;
+
 	return 0;
 }
 
