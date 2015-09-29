@@ -58,7 +58,8 @@ static struct lookup_mod *nss_open_lookup(const char *format, int argc, const ch
 	    !strncmp(argv[0], "nisplus", 7) ||
 	    !strncmp(argv[0], "nis", 3) ||
 	    !strncmp(argv[0], "ldaps", 5) ||
-	    !strncmp(argv[0], "ldap", 4)) {
+	    !strncmp(argv[0], "ldap", 4) ||
+	    !strncmp(argv[0], "sss", 3)) {
 		const char *fmt = strchr(argv[0], ',');
 		if (fmt)
 			fmt++;
