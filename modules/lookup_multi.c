@@ -24,6 +24,8 @@
 #include "automount.h"
 #include "nsswitch.h"
 
+#define MAX_MAP_TYPE_STRING	20
+
 #define MODPREFIX "lookup(multi): "
 
 struct module_info {
@@ -166,11 +168,17 @@ static struct lookup_mod *nss_open_lookup(const char *format, int argc, const ch
 	    !strncmp(argv[0], "ldaps", 5) ||
 	    !strncmp(argv[0], "ldap", 4) ||
 	    !strncmp(argv[0], "sss", 3)) {
-		const char *fmt = strchr(argv[0], ',');
-		if (fmt)
+		char type[MAX_MAP_TYPE_STRING];
+		char *fmt;
+
+		strcpy(type, argv[0]);
+		fmt = strchr(type, ',');
+		if (!fmt)
+			fmt = (char *) format;
+		else {
+			*fmt = '\0';
 			fmt++;
-		else
-			fmt = format;
+		}
 		open_lookup(argv[0], MODPREFIX, fmt, argc - 1, argv + 1, &mod);
 		return mod;
 	}
