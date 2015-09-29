@@ -84,6 +84,7 @@ static struct lookup_mod *nss_open_lookup(const char *format, int argc, const ch
 	list_for_each(p, head) {
 		struct nss_source *this;
 		int status;
+		int ret;
 
 		this = list_entry(p, struct nss_source, list);
 
@@ -127,6 +128,10 @@ static struct lookup_mod *nss_open_lookup(const char *format, int argc, const ch
 
 			argv[0] = save_argv0;
 			free(path);
+
+			ret = check_nss_result(this, status);
+			if (ret >= 0)
+				break;
 		}
 
 		status = open_lookup(this->source, MODPREFIX,
@@ -135,6 +140,10 @@ static struct lookup_mod *nss_open_lookup(const char *format, int argc, const ch
 			free_sources(&nsslist);
 			return mod;
 		}
+
+		ret = check_nss_result(this, status);
+		if (ret >= 0)
+			break;
 	}
 	free_sources(&nsslist);
 
