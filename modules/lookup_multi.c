@@ -40,6 +40,32 @@ struct lookup_context {
 
 int lookup_version = AUTOFS_LOOKUP_VERSION;	/* Required by protocol */
 
+static int free_multi_context(struct lookup_context *ctxt)
+{
+	int rv;
+
+	if (!ctxt)
+		return 0;
+
+	rv = 0;
+	if (ctxt->m) {
+		int i;
+
+		for (i = 0; i < ctxt->n; i++) {
+			if (ctxt->m[i].mod)
+				rv = rv || close_lookup(ctxt->m[i].mod);
+			if (ctxt->m[i].argv)
+				free_argv(ctxt->m[i].argc, ctxt->m[i].argv);
+		}
+		free(ctxt->m);
+	}
+
+	if (ctxt->argl)
+		free(ctxt->argl);
+
+	return rv;
+}
+
 static struct lookup_mod *nss_open_lookup(const char *format, int argc, const char **argv)
 {
 	struct list_head nsslist;
@@ -306,16 +332,10 @@ int lookup_mount(struct autofs_point *ap, const char *name, int name_len, void *
 int lookup_done(void *context)
 {
 	struct lookup_context *ctxt = (struct lookup_context *) context;
-	int i, rv = 0;
+	int rv;
 
-	for (i = 0; i < ctxt->n; i++) {
-		if (ctxt->m[i].mod)
-			rv = rv || close_lookup(ctxt->m[i].mod);
-		if (ctxt->m[i].argv)
-			free_argv(ctxt->m[i].argc, ctxt->m[i].argv);
-	}
-	free(ctxt->argl);
-	free(ctxt->m);
+	rv = free_multi_context(ctxt);
 	free(ctxt);
+
 	return rv;
 }
