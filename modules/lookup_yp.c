@@ -103,27 +103,18 @@ static unsigned int get_map_order(const char *domain, const char *map)
 	return (unsigned int) last_changed;
 }
 
-int lookup_init(const char *mapfmt,
-		int argc, const char *const *argv, void **context)
+static int do_init(const char *mapfmt,
+		   int argc, const char *const *argv,
+		   struct lookup_context *ctxt, unsigned int reinit)
 {
-	struct lookup_context *ctxt;
 	char buf[MAX_ERR_BUF];
 	int err;
-
-	*context = NULL;
-
-	ctxt = malloc(sizeof(struct lookup_context));
-	if (!ctxt) {
-		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-		logerr(MODPREFIX "malloc: %s", estr);
-		return 1;
-	}
-	memset(ctxt, 0, sizeof(struct lookup_context));
+	int ret = 0;
 
 	if (argc < 1) {
-		free(ctxt);
 		logerr(MODPREFIX "no map name");
-		return 1;
+		ret = 1;
+		goto out;
 	}
 	ctxt->mapname = argv[0];
 	ctxt->check_defaults = 1;
@@ -138,15 +129,15 @@ int lookup_init(const char *mapfmt,
 		if (err) {
 			logerr(MODPREFIX
 			      "map %s: %s", ctxt->mapname, yperr_string(err));
-			free(ctxt);
-			return 1;
+			ret = 1;
+			goto out;
 		}
 		ctxt->domainname = strdup(domainname);
 		if (!ctxt->domainname) {
 			char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
 			logerr(MODPREFIX "strdup: %s", estr);
-			free(ctxt);
-			return 1;
+			ret = 1;
+			goto out;
 		}
 	}
 
@@ -155,12 +146,45 @@ int lookup_init(const char *mapfmt,
 	if (!mapfmt)
 		mapfmt = MAPFMT_DEFAULT;
 
-	ctxt->parse = open_parse(mapfmt, MODPREFIX, argc - 1, argv + 1);
-	if (!ctxt->parse) {
-		free(ctxt);
-		logmsg(MODPREFIX "failed to open parse context");
+	if (reinit) {
+		ret = reinit_parse(ctxt->parse, mapfmt, MODPREFIX, argc - 1, argv + 1);
+		if (ret)
+			logmsg(MODPREFIX "failed to reinit parse context");
+	} else {
+		ctxt->parse = open_parse(mapfmt, MODPREFIX, argc - 1, argv + 1);
+		if (!ctxt->parse) {
+			logmsg(MODPREFIX "failed to open parse context");
+			ret = 1;
+		}
+	}
+out:
+	if (ret && ctxt->domainname)
+		free(ctxt->domainname);
+
+	return ret;
+}
+
+int lookup_init(const char *mapfmt,
+		int argc, const char *const *argv, void **context)
+{
+	struct lookup_context *ctxt;
+	char buf[MAX_ERR_BUF];
+
+	*context = NULL;
+
+	ctxt = malloc(sizeof(struct lookup_context));
+	if (!ctxt) {
+		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+		logerr(MODPREFIX "malloc: %s", estr);
 		return 1;
 	}
+	memset(ctxt, 0, sizeof(struct lookup_context));
+
+	if (do_init(mapfmt, argc, argv, ctxt, 0)) {
+		free(ctxt);
+		return 1;
+	}
+
 	*context = ctxt;
 
 	return 0;
@@ -169,6 +193,31 @@ int lookup_init(const char *mapfmt,
 int lookup_reinit(const char *mapfmt,
 		  int argc, const char *const *argv, void **context)
 {
+	struct lookup_context *ctxt = (struct lookup_context *) *context;
+	struct lookup_context *new;
+	char buf[MAX_ERR_BUF];
+	int ret;
+
+	new = malloc(sizeof(struct lookup_context));
+	if (!new) {
+		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
+		logerr(MODPREFIX "malloc: %s", estr);
+		return 1;
+	}
+	memset(new, 0, sizeof(struct lookup_context));
+
+	new->parse = ctxt->parse;
+	ret = do_init(mapfmt, argc, argv, new, 1);
+	if (ret) {
+		free(new);
+		return 1;
+	}
+
+	*context = new;
+
+	free(ctxt->domainname);
+	free(ctxt);
+
 	return 0;
 }
 
