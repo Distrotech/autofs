@@ -121,8 +121,8 @@ int authtype_requires_creds(const char *authtype);
 int autofs_sasl_client_init(unsigned logopt);
 int autofs_sasl_init(unsigned logopt, LDAP *ldap, struct lookup_context *ctxt);
 int autofs_sasl_bind(unsigned logopt, LDAP *ldap, struct lookup_context *ctxt);
-void autofs_sasl_unbind(struct lookup_context *ctxt);
-void autofs_sasl_dispose(struct lookup_context *ctxt);
+void autofs_sasl_unbind(LDAP *ldap, struct lookup_context *ctxt);
+void autofs_sasl_dispose(LDAP *ldap, struct lookup_context *ctxt);
 void autofs_sasl_done(void);
 /* cyrus-sasl-extern */
 int do_sasl_extern(LDAP *ldap, struct lookup_context *ctxt);

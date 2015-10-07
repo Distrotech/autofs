@@ -222,7 +222,7 @@ int __unbind_ldap_connection(unsigned logopt, LDAP *ldap, struct lookup_context 
 		ctxt->use_tls = LDAP_TLS_INIT;
 #ifdef WITH_SASL
 	if (ctxt->auth_required & LDAP_NEED_AUTH)
-		autofs_sasl_unbind(ctxt);
+		autofs_sasl_unbind(ldap, ctxt);
 	else
 		rv = ldap_unbind_ext(ldap, NULL, NULL);
 #else
@@ -978,7 +978,7 @@ static int do_reconnect(unsigned logopt,
 		if (ctxt->auth_required & LDAP_NEED_AUTH &&
 		    ret != NSS_STATUS_SUCCESS && ret != NSS_STATUS_NOTFOUND) {
 			ldapinit_mutex_lock();
-			autofs_sasl_dispose(ctxt);
+			autofs_sasl_dispose(*ldap, ctxt);
 			ldapinit_mutex_unlock();
 			ret = connect_to_server(logopt, ldap,
 						ctxt->server, ctxt);
@@ -1018,7 +1018,7 @@ static int do_reconnect(unsigned logopt,
 	if (ctxt->auth_required & LDAP_NEED_AUTH &&
 	    rv != NSS_STATUS_SUCCESS && rv != NSS_STATUS_NOTFOUND) {
 		ldapinit_mutex_lock();
-		autofs_sasl_dispose(ctxt);
+		autofs_sasl_dispose(*ldap, ctxt);
 		ldapinit_mutex_unlock();
 		rv = connect_to_server(logopt, ldap, ctxt->uri->uri, ctxt);
 	}
@@ -1031,7 +1031,7 @@ static int do_reconnect(unsigned logopt,
 find_server:
 #ifdef WITH_SASL
 	ldapinit_mutex_lock();
-	autofs_sasl_dispose(ctxt);
+	autofs_sasl_dispose(*ldap, ctxt);
 	ldapinit_mutex_unlock();
 #endif
 
@@ -1879,7 +1879,7 @@ int lookup_reinit(const char *mapfmt,
 
 #ifdef WITH_SASL
 	ldapinit_mutex_lock();
-	autofs_sasl_dispose(ctxt);
+	autofs_sasl_dispose(NULL, ctxt);
 	ldapinit_mutex_unlock();
 #endif
 	free_context(ctxt);
@@ -3816,7 +3816,7 @@ int lookup_done(void *context)
 	int rv = close_parse(ctxt->parse);
 #ifdef WITH_SASL
 	ldapinit_mutex_lock();
-	autofs_sasl_dispose(ctxt);
+	autofs_sasl_dispose(NULL, ctxt);
 	autofs_sasl_done();
 	ldapinit_mutex_unlock();
 #endif

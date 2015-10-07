@@ -31,6 +31,7 @@
 - change remaining gettimeofday() to use clock_gettime().
 - change time() to use monotonic_clock().
 - remove unused function elapsed().
+- fix unbind sasl external mech.
 
 21/04/2015 autofs-5.1.1
 =======================
