@@ -34,6 +34,13 @@ struct ldap_searchdn {
 	struct ldap_searchdn *next;
 };
 
+struct ldap_conn {
+	LDAP *ldap;
+#ifdef WITH_SASL
+	sasl_conn_t *sasl_conn;
+#endif
+};
+
 struct lookup_context {
 	char *mapname;
 	unsigned int format;
@@ -86,7 +93,6 @@ struct lookup_context {
 	/* Kerberos */
 	krb5_context krb5ctxt;
 	krb5_ccache  krb5_ccache;
-	sasl_conn_t  *sasl_conn;
 	/* SASL external */
 	char	     *extern_cert;
 	char	     *extern_key;
@@ -113,16 +119,16 @@ struct lookup_context {
 
 /* lookup_ldap.c */
 LDAP *init_ldap_connection(unsigned logopt, const char *uri, struct lookup_context *ctxt);
-int unbind_ldap_connection(unsigned logopt, LDAP *ldap, struct lookup_context *ctxt);
+int unbind_ldap_connection(unsigned logopt, struct ldap_conn *conn, struct lookup_context *ctxt);
 int authtype_requires_creds(const char *authtype);
 
 #ifdef WITH_SASL
 /* cyrus-sasl.c */
 int autofs_sasl_client_init(unsigned logopt);
 int autofs_sasl_init(unsigned logopt, LDAP *ldap, struct lookup_context *ctxt);
-int autofs_sasl_bind(unsigned logopt, LDAP *ldap, struct lookup_context *ctxt);
-void autofs_sasl_unbind(LDAP *ldap, struct lookup_context *ctxt);
-void autofs_sasl_dispose(LDAP *ldap, struct lookup_context *ctxt);
+int autofs_sasl_bind(unsigned logopt, struct ldap_conn *conn, struct lookup_context *ctxt);
+void autofs_sasl_unbind(struct ldap_conn *conn, struct lookup_context *ctxt);
+void autofs_sasl_dispose(struct ldap_conn *conn, struct lookup_context *ctxt);
 void autofs_sasl_done(void);
 /* cyrus-sasl-extern */
 int do_sasl_extern(LDAP *ldap, struct lookup_context *ctxt);

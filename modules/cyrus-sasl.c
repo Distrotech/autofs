@@ -885,16 +885,19 @@ sasl_choose_mech(unsigned logopt, LDAP *ldap, struct lookup_context *ctxt)
  *  Routine called when unbinding an ldap connection.
  */
 void
-autofs_sasl_unbind(LDAP *ldap, struct lookup_context *ctxt)
+autofs_sasl_unbind(struct ldap_conn *conn, struct lookup_context *ctxt)
 {
 	if (ctxt->sasl_mech && !strncmp(ctxt->sasl_mech, "EXTERNAL", 8)) {
-		ldap_unbind_s(ldap);
+		if (conn->ldap) {
+			ldap_unbind_s(conn->ldap);
+			conn->ldap = NULL;
+		}
 		return;
 	}
 
-	if (ctxt->sasl_conn) {
-		sasl_dispose(&ctxt->sasl_conn);
-		ctxt->sasl_conn = NULL;
+	if (conn->sasl_conn) {
+		sasl_dispose(&conn->sasl_conn);
+		conn->sasl_conn = NULL;
 	}
 }
 
@@ -908,13 +911,10 @@ autofs_sasl_unbind(LDAP *ldap, struct lookup_context *ctxt)
  * -1  -  Failure
  */
 int
-autofs_sasl_bind(unsigned logopt, LDAP *ldap, struct lookup_context *ctxt)
+autofs_sasl_bind(unsigned logopt,
+		 struct ldap_conn *conn, struct lookup_context *ctxt)
 {
-	sasl_conn_t *conn = NULL;
-
-	/* If we already have a connection use it */
-	if (ctxt->sasl_conn)
-		return 0;
+	sasl_conn_t *sasl_conn = NULL;
 
 	if (ctxt->sasl_mech && !strncmp(ctxt->sasl_mech, "EXTERNAL", 8)) {
 		int result;
@@ -923,7 +923,7 @@ autofs_sasl_bind(unsigned logopt, LDAP *ldap, struct lookup_context *ctxt)
 		      "Attempting sasl bind with mechanism %s",
 		      ctxt->sasl_mech);
 
-		result = do_sasl_extern(ldap, ctxt);
+		result = do_sasl_extern(conn->ldap, ctxt);
 		if (result)
 			debug(logopt,
 			      "Failed to authenticate with mech %s",
@@ -953,14 +953,16 @@ autofs_sasl_bind(unsigned logopt, LDAP *ldap, struct lookup_context *ctxt)
 	 *  auth mechanism.
 	 */
 	if (ctxt->sasl_mech)
-		conn = sasl_bind_mech(logopt, ldap, ctxt, ctxt->sasl_mech);
+		sasl_conn = sasl_bind_mech(logopt,
+					   conn->ldap, ctxt, ctxt->sasl_mech);
 	else
-		conn = sasl_choose_mech(logopt, ldap, ctxt);
+		sasl_conn = sasl_choose_mech(logopt, conn->ldap, ctxt);
 
 	if (!conn)
 		return -1;
 
-	ctxt->sasl_conn = conn;
+	conn->sasl_conn = sasl_conn;
+
 	return 0;
 }
 
@@ -968,19 +970,21 @@ autofs_sasl_bind(unsigned logopt, LDAP *ldap, struct lookup_context *ctxt)
  *  Destructor routine.  This should be called when finished with an ldap
  *  session.
  */
-void autofs_sasl_dispose(LDAP *ldap, struct lookup_context *ctxt)
+void autofs_sasl_dispose(struct ldap_conn *conn, struct lookup_context *ctxt)
 {
 	int status, ret;
 
 	if (ctxt->sasl_mech && !strncmp(ctxt->sasl_mech, "EXTERNAL", 8)) {
-		if (ldap)
-			ldap_unbind_s(ldap);
+		if (conn && conn->ldap) {
+			ldap_unbind_s(conn->ldap);
+			conn->ldap = NULL;
+		}
 		return;
 	}
 
-	if (ctxt->sasl_conn) {
-		sasl_dispose(&ctxt->sasl_conn);
-		ctxt->sasl_conn = NULL;
+	if (conn && conn->sasl_conn) {
+		sasl_dispose(&conn->sasl_conn);
+		conn->sasl_conn = NULL;
 	}
 
 	if (ctxt->kinit_successful) {
