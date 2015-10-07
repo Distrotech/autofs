@@ -77,7 +77,6 @@ static const rpcvers_t mount_vers[] = {
 };
 
 static int connect_nb(int, struct sockaddr *, socklen_t, struct timeval *);
-inline void dump_core(void);
 
 /*
  *  Perform a non-blocking connect on the socket fd.
