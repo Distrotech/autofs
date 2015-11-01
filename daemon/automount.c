@@ -2393,6 +2393,8 @@ int main(int argc, char *argv[])
 	void *dh_tirpc = dlopen("libtirpc.so", RTLD_NOW);
 	if (!dh_tirpc)
 		dh_tirpc = dlopen("libtirpc.so.1", RTLD_NOW);
+	if (!dh_tirpc)
+		dh_tirpc = dlopen("libtirpc.so.3", RTLD_NOW);
 #endif
 
 	if (!master_read_master(master_list, age, 0)) {
