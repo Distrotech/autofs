@@ -82,6 +82,65 @@ static void mnts_cleanup(void *arg)
 	return;
 }
 
+/* When exiting direct mount triggers must be set catatonic, regardless
+ * of whether they are busy on not, to avoid a hang on access once the
+ * daemon has gone away.
+ */
+static int set_direct_mount_catatonic(struct autofs_point *ap, struct mapent *me, int ioctlfd)
+{
+	struct ioctl_ops *ops = get_ioctl_ops();
+	unsigned int opened = 0;
+	char buf[MAX_ERR_BUF];
+	int fd = -1;
+	int error;
+
+	/* In case the miscellaneous device isn't being used try
+	 * and use an existing ioctl control fd. In this case if
+	 * we don't already have an ioctl fd the mount can't be
+	 * set catatonic if it's covered.
+	 */
+	if (ioctlfd >= 0)
+		fd = ioctlfd;
+	else if (me->ioctlfd >= 0)
+		fd = me->ioctlfd;
+	else {
+		error = ops->open(ap->logopt, &fd, me->dev, me->key);
+		if (error == -1) {
+			int err = errno;
+			char *estr;
+
+			estr = strerror_r(errno, buf, MAX_ERR_BUF);
+			error(ap->logopt,
+			      "failed to open ioctlfd for %s, error: %s",
+			      me->key, estr);
+			return err;
+		}
+		opened = 1;
+	}
+
+	if (fd >= 0) {
+		error = ops->catatonic(ap->logopt, fd);
+		if (error == -1) {
+			int err = errno;
+			char *estr;
+
+			estr = strerror_r(errno, buf, MAX_ERR_BUF);
+			error(ap->logopt,
+			      "failed to set %s catatonic, error: %s",
+			      me->key, estr);
+			if (opened)
+				ops->close(ap->logopt, fd);
+			return err;
+		}
+		if (opened)
+			ops->close(ap->logopt, fd);
+	}
+
+	debug(ap->logopt, "set %s catatonic", me->key);
+
+	return 0;
+}
+
 int do_umount_autofs_direct(struct autofs_point *ap, struct mnt_list *mnts, struct mapent *me)
 {
 	struct ioctl_ops *ops = get_ioctl_ops();
@@ -97,7 +156,8 @@ int do_umount_autofs_direct(struct autofs_point *ap, struct mnt_list *mnts, stru
 	}
 
 	if (me->ioctlfd != -1) {
-		if (tree_is_mounted(mnts, me->key, MNTS_REAL)) {
+		if (ap->state == ST_READMAP &&
+		    tree_is_mounted(mnts, me->key, MNTS_REAL)) {
 			error(ap->logopt,
 			      "attempt to umount busy direct mount %s",
 			      me->key);
@@ -116,7 +176,12 @@ int do_umount_autofs_direct(struct autofs_point *ap, struct mnt_list *mnts, stru
 		if (rv) {
 			char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
 			error(ap->logopt, "ioctl failed: %s", estr);
-			if (opened && ioctlfd != -1)
+			/* The ioctl failed so this probably won't
+			 * work either but since we opened it here
+			 * try anyway. We should set these catatonic
+			 * too but ....
+			 */
+			if (opened)
 				ops->close(ap->logopt, ioctlfd);
 			return 1;
 		} else if (!status) {
@@ -124,18 +189,20 @@ int do_umount_autofs_direct(struct autofs_point *ap, struct mnt_list *mnts, stru
 				error(ap->logopt,
 				      "ask umount returned busy for %s",
 				      me->key);
-				if (opened && ioctlfd != -1)
+				if (ap->state != ST_READMAP)
+					set_direct_mount_catatonic(ap, me, ioctlfd);
+				if (opened)
 					ops->close(ap->logopt, ioctlfd);
 				return 1;
 			} else {
 				me->ioctlfd = -1;
-				ops->catatonic(ap->logopt, ioctlfd);
+				set_direct_mount_catatonic(ap, me, ioctlfd);
 				ops->close(ap->logopt, ioctlfd);
 				goto force_umount;
 			}
 		}
 		me->ioctlfd = -1;
-		ops->catatonic(ap->logopt, ioctlfd);
+		set_direct_mount_catatonic(ap, me, ioctlfd);
 		ops->close(ap->logopt, ioctlfd);
 	} else {
 		error(ap->logopt,
@@ -212,15 +279,31 @@ int umount_autofs_direct(struct autofs_point *ap)
 		cache_readlock(mc);
 		me = cache_enumerate(mc, NULL);
 		while (me) {
+			int error;
+
 			ne = cache_lookup_distinct(nc, me->key);
 			if (ne && map->master_line > ne->age) {
 				me = cache_enumerate(mc, me);
 				continue;
 			}
 
-			/* TODO: check return, locking me */
-			do_umount_autofs_direct(ap, mnts, me);
+			/* The daemon is exiting so ...
+			 * If we get a fail here we must make our
+			 * best effort to set the direct mount trigger
+			 * catatonic regardless of the reason for the
+			 * failed umount.
+			 */
+			error = do_umount_autofs_direct(ap, mnts, me);
+			if (!error)
+				goto done;
 
+			error = set_direct_mount_catatonic(ap, me, me->ioctlfd);
+			if (!error)
+				goto done;
+
+			/* We really need to set this, last ditch attempt */
+			set_direct_mount_catatonic(ap, me, -1);
+done:
 			me = cache_enumerate(mc, me);
 		}
 		pthread_cleanup_pop(1);

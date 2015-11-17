@@ -41,6 +41,7 @@
 - fix memory leak in get_network_proximity().
 - fix use after free in match_my_name().
 - improve scalability of direct mount path component.
+- always set direct mounts catatonic at exit.
 
 21/04/2015 autofs-5.1.1
 =======================
