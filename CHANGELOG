@@ -38,6 +38,7 @@
 - fix use after free in sun parser parse_init().
 - fix use after free in open_lookup().
 - fix typo in autofs_sasl_bind().
+- fix memory leak in get_network_proximity().
 
 21/04/2015 autofs-5.1.1
 =======================

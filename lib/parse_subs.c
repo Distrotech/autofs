@@ -488,6 +488,7 @@ unsigned int get_network_proximity(const char *name)
 			proximity = prx;
 		this = this->ai_next;
 	}
+	freeaddrinfo(ni);
 
 	return proximity;
 }
