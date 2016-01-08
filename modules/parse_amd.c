@@ -285,7 +285,6 @@ static int match_my_name(unsigned int logopt, const char *name, struct substvar 
 			error(logopt,
 			      "host address info lookup failed: %s\n",
 			      gai_strerror(ret));
-			freeaddrinfo(cni);
 			goto next;
 		}
 
@@ -296,7 +295,6 @@ static int match_my_name(unsigned int logopt, const char *name, struct substvar 
 			error(logopt,
 			      "host address info lookup failed: %s\n",
 			      gai_strerror(ret));
-			freeaddrinfo(cni);
 			goto next;
 		}
 
