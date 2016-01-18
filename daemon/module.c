@@ -83,6 +83,7 @@ int open_lookup(const char *name, const char *err_prefix, const char *mapfmt,
 			char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
 			logerr("%s%s", err_prefix, estr);
 		}
+		return NSS_STATUS_UNAVAIL;
 	}
 
 	size = snprintf(fnbuf, sizeof(fnbuf),

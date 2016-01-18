@@ -36,6 +36,7 @@
 - fix memory leak in nisplus lookup_reinit().
 - fix memory leak in ldap do_init().
 - fix use after free in sun parser parse_init().
+- fix use after free in open_lookup().
 
 21/04/2015 autofs-5.1.1
 =======================
