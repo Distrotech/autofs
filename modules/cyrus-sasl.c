@@ -958,7 +958,7 @@ autofs_sasl_bind(unsigned logopt,
 	else
 		sasl_conn = sasl_choose_mech(logopt, conn->ldap, ctxt);
 
-	if (!conn)
+	if (!sasl_conn)
 		return -1;
 
 	conn->sasl_conn = sasl_conn;
