@@ -345,7 +345,6 @@ static int do_init(int argc, const char *const *argv, struct parse_context *ctxt
 			}
 			if (!noptstr) {
 				char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
-				kill_context(ctxt);
 				logerr(MODPREFIX "%s", estr);
 				return 1;
 			}
