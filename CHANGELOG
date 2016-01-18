@@ -33,6 +33,7 @@
 - remove unused function elapsed().
 - fix unbind sasl external mech.
 - fix sasl connection concurrancy problem.
+- fix memory leak in nisplus lookup_reinit().
 
 21/04/2015 autofs-5.1.1
 =======================

@@ -116,8 +116,10 @@ int lookup_reinit(const char *mapfmt,
 
 	new->parse = ctxt->parse;
 	ret = do_init(mapfmt, argc, argv, new, 1);
-	if (ret)
+	if (ret) {
+		free(new);
 		return 1;
+	}
 
 	*context = new;
 
