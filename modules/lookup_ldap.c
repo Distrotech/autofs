@@ -1752,6 +1752,7 @@ static int do_init(const char *mapfmt,
 		 */
 		if (!parse_server_string(LOGOPT_NONE, tmp, ctxt)) {
 			error(LOGOPT_ANY, MODPREFIX "cannot parse server string");
+			free(tmp);
 			return 1;
 		}
 		free(tmp);
