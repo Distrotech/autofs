@@ -43,6 +43,7 @@
 - improve scalability of direct mount path component.
 - always set direct mounts catatonic at exit.
 - fix use-after-free in st_queue_handler().
+- log pipe read errors.
 
 21/04/2015 autofs-5.1.1
 =======================

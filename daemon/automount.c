@@ -996,6 +996,8 @@ static int get_pkt(struct autofs_point *ap, union autofs_v5_packet_union *pkt)
 	struct pollfd fds[3];
 	int pollfds = 3;
 	char buf[MAX_ERR_BUF];
+	size_t read;
+	char *estr;
 
 	fds[0].fd = ap->pipefd;
 	fds[0].events = POLLIN;
@@ -1008,7 +1010,6 @@ static int get_pkt(struct autofs_point *ap, union autofs_v5_packet_union *pkt)
 
 	for (;;) {
 		if (poll(fds, pollfds, -1) == -1) {
-			char *estr;
 			if (errno == EINTR)
 				continue;
 			estr = strerror_r(errno, buf, MAX_ERR_BUF);
@@ -1027,7 +1028,13 @@ static int get_pkt(struct autofs_point *ap, union autofs_v5_packet_union *pkt)
 
 			state_pipe = ap->state_pipe[0];
 
-			if (fullread(state_pipe, &next_state, read_size)) {
+			read = fullread(state_pipe, &next_state, read_size);
+			if (read) {
+				estr = strerror_r(errno, buf, MAX_ERR_BUF);
+				error(ap->logopt,
+				      "read error on state pipe, "
+				      "read %u, error %s",
+				      read, estr);
 				st_mutex_unlock();
 				continue;
 			}
@@ -1038,8 +1045,17 @@ static int get_pkt(struct autofs_point *ap, union autofs_v5_packet_union *pkt)
 				return -1;
 		}
 
-		if (fds[0].revents & POLLIN)
-			return fullread(ap->pipefd, pkt, kpkt_len);
+		if (fds[0].revents & POLLIN) {
+			read = fullread(ap->pipefd, pkt, kpkt_len);
+			if (read) {
+				estr = strerror_r(errno, buf, MAX_ERR_BUF);
+				error(ap->logopt,
+				      "read error on request pipe, "
+				      "read %u, expected %u error %s",
+				       read, kpkt_len, estr);
+			}
+			return read;
+		}
 
 		if (fds[2].fd != -1 && fds[2].revents & POLLIN) {
 			debug(ap->logopt, "message pending on control fifo.");
