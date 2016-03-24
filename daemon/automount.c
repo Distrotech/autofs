@@ -98,10 +98,25 @@ static int umount_all(struct autofs_point *ap, int force);
 
 extern struct master *master_list;
 
+static int is_remote_fstype(unsigned int fs_type)
+{
+	int ret = 0;
+	switch (fs_type) {
+	case SMB_SUPER_MAGIC:
+	case CIFS_MAGIC_NUMBER:
+	case NCP_SUPER_MAGIC:
+	case NFS_SUPER_MAGIC:
+		ret = 1;
+		break;
+	};
+	return ret;
+}
+
 static int do_mkdir(const char *parent, const char *path, mode_t mode)
 {
 	int status;
-	struct stat st;
+	mode_t mask;
+	struct stat st, root;
 	struct statfs fs;
 
 	/* If path exists we're done */
@@ -114,24 +129,37 @@ static int do_mkdir(const char *parent, const char *path, mode_t mode)
 	}
 
 	/*
-	 * If we're trying to create a directory within an autofs fs
-	 * or the path is contained in a localy mounted fs go ahead.
+	 * We don't want to create the path on a remote file system
+	 * unless it's the root file system.
+	 * An empty parent means it's the root directory and always ok.
 	 */
-	status = -1;
-	if (*parent)
+	if (*parent) {
 		status = statfs(parent, &fs);
-	if ((status != -1 && fs.f_type == (__SWORD_TYPE) AUTOFS_SUPER_MAGIC) ||
-	    contained_in_local_fs(path)) {
-		mode_t mask = umask(0022);
-		int ret = mkdir(path, mode);
-		(void) umask(mask);
-		if (ret == -1) {
-			errno = EACCES;
-			return 0;
+		if (status == -1)
+			goto fail;
+
+		if (is_remote_fstype(fs.f_type)) {
+			status = stat(parent, &st);
+			if (status == -1)
+				goto fail;
+
+			status = stat("/", &root);
+			if (status == -1)
+				goto fail;
+
+			if (st.st_dev != root.st_dev)
+				goto fail;
 		}
-		return 1;
 	}
 
+	mask = umask(0022);
+	status = mkdir(path, mode);
+	(void) umask(mask);
+	if (status == -1)
+		goto fail;
+
+	return 1;
+fail:
 	errno = EACCES;
 	return 0;
 }

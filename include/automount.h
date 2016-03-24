@@ -75,6 +75,8 @@ int load_autofs4_module(void);
 #define AUTOFS_SUPER_MAGIC 0x00000187L
 #define SMB_SUPER_MAGIC    0x0000517BL
 #define CIFS_MAGIC_NUMBER  0xFF534D42L
+#define NCP_SUPER_MAGIC    0x0000564CL
+#define NFS_SUPER_MAGIC    0x00006969L
 
 /* This sould be enough for at least 20 host aliases */
 #define HOST_ENT_BUF_SIZE	2048

@@ -101,7 +101,6 @@ int ext_mount_remove(struct list_head *, const char *);
 struct mnt_list *get_mnt_list(const char *table, const char *path, int include);
 struct mnt_list *reverse_mnt_list(struct mnt_list *list);
 void free_mnt_list(struct mnt_list *list);
-int contained_in_local_fs(const char *path);
 int is_mounted(const char *table, const char *path, unsigned int type);
 int has_fstab_option(const char *opt);
 void tree_free_mnt_tree(struct mnt_list *tree);
