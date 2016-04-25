@@ -264,6 +264,7 @@ dont_probe:
 		char *estr = strerror_r(errno, buf, MAX_ERR_BUF);
 		error(ap->logopt,
 		      MODPREFIX "mkdir_path %s failed: %s", fullpath, estr);
+		free_host_list(&hosts);
 		return 1;
 	}
 
