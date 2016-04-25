@@ -17,7 +17,7 @@ MODS :=	lookup_file.so lookup_program.so lookup_userhome.so \
 	mount_generic.so mount_nfs.so mount_afs.so mount_autofs.so \
 	mount_changer.so mount_bind.so
 
-YACCSRC = amd_tok.c amd_parse.tab.c amd_parse.tab.h \
+YACCSRC = amd_tok.c amd_parse.tab.c amd_parse.tab.h
 
 ifeq ($(EXT2FS), 1)
   SRCS += mount_ext2.c
@@ -69,7 +69,7 @@ CFLAGS += -DAUTOFS_MAP_DIR=\"$(autofsmapdir)\"
 all: $(MODS)
 
 clean:
-	rm -f *.o *.s *.so *~
+	rm -f *.o *.s *.so *~ *.output $(YACCSRC)
 
 # mount_smbfs.so is an obsolete module which must be removed
 install: all
