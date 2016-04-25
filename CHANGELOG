@@ -45,6 +45,7 @@
 - fix use-after-free in st_queue_handler().
 - log pipe read errors.
 - fix handle_mounts() termination condition check.
+- fix Makefile linking dependencies.
 
 21/04/2015 autofs-5.1.1
 =======================

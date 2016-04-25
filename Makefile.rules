@@ -67,5 +67,5 @@ LIBS += $(LIBNSL)
 	$(CC) $(CFLAGS) -S $<
 
 .c.so:
-	$(CC) $(LDFLAGS) $(SOLDFLAGS) $(CFLAGS) -o $*.so $< $(AUTOFS_LIB) $(LIBS)
+	$(CC) $(SOLDFLAGS) $(CFLAGS) -o $*.so $< $(LDFLAGS) $(AUTOFS_LIB) $(LIBS)
 	$(STRIP) $*.so
