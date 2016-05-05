@@ -591,6 +591,12 @@ configuration option auto_dir) and the path /test/local either
 symlinked or bind mounted (depending on the setting autofs_use_lofs)
 to the "local" subdirectory of the external mount.
 .BR
+.SH "NOTES"
+To be able to use IPv6 within autofs maps the package must be build
+to use the libtirpc library for its RPC communications. This is
+becuase the glibc RPC implementation doesn't support IPv6 and is
+depricated so this is not likely to change.
+.BR
 .SH "SEE ALSO"
 .BR automount (8),
 .BR auto.master (5),
