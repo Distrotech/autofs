@@ -431,17 +431,16 @@ int lookup_read_map(struct autofs_point *ap, time_t age, void *context)
 			err = yp_all((char *) ctxt->domainname, mapname, &ypcb);
 		}
 
-		if (err == YPERR_SUCCESS)
-			return NSS_STATUS_SUCCESS;
+		if (err != YPERR_SUCCESS) {
+			warn(ap->logopt,
+			     MODPREFIX "read of map %s failed: %s",
+			     ap->path, yperr_string(err));
 
-		warn(ap->logopt,
-		     MODPREFIX "read of map %s failed: %s",
-		     ap->path, yperr_string(err));
+			if (err == YPERR_PMAP || err == YPERR_YPSERV)
+				return NSS_STATUS_UNAVAIL;
 
-		if (err == YPERR_PMAP || err == YPERR_YPSERV)
-			return NSS_STATUS_UNAVAIL;
-
-		return NSS_STATUS_NOTFOUND;
+			return NSS_STATUS_NOTFOUND;
+		}
 	}
 
 	source->age = age;

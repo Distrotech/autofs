@@ -51,6 +51,7 @@
 - add autofs(5) note of IPv6 libtirpc requirement.
 - add remote-fs.target systemd dependency.
 - fix typo in autofs.conf.
+- fix yp map age not updated during map lookup.
 
 21/04/2015 autofs-5.1.1
 =======================
