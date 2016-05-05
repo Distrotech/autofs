@@ -3,8 +3,8 @@
 .SH NAME
 autofs \- Format of the automounter maps
 .SH "DESCRIPTION"
-The automounter maps are FILE, NIS, NISPLUS or LDAP maps referred to by
-the master map of the automounter (see
+The automounter maps are FILE, NIS, NISPLUS or LDAP (including LDAP via SSS)
+referred to by the master map of the automounter (see
 .BR auto.master (5)).
 These maps describe how file systems below the mount point of the map
 (given in the master map) are to be mounted.  This page describes the
@@ -254,7 +254,7 @@ Anything else is questionable and unsupported, but these variations will also wo
 .RE
 .SH UNSUPPORTED
 This version of the automounter supports direct maps stored in FILE, NIS, NISPLUS
-and LDAP only.
+and LDAP (including LDAP via SSS) only.
 .P
 .SH "AMD FORMAT"
 This is a description of the text file format. Other methods of specifying

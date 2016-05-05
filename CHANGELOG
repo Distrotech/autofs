@@ -47,6 +47,7 @@
 - fix handle_mounts() termination condition check.
 - fix Makefile linking dependencies.
 - fix modules make clean target.
+- fix autofs(5) description of supported map sources.
 
 21/04/2015 autofs-5.1.1
 =======================
