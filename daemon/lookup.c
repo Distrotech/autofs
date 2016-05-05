@@ -1073,7 +1073,7 @@ int lookup_nss_mount(struct autofs_point *ap, struct map_source *source, const c
 	struct nss_source *this;
 	struct map_source *map;
 	enum nsswitch_status status;
-	int result = 0;
+	int result = NSS_STATUS_UNKNOWN;
 
 	/*
 	 * For each map source (ie. each entry for the mount
@@ -1092,6 +1092,7 @@ int lookup_nss_mount(struct autofs_point *ap, struct map_source *source, const c
 		 * the map entry was last updated.
 		 */
 		if (entry->age > map->age) {
+			status = NSS_STATUS_UNAVAIL;
 			map = map->next;
 			continue;
 		}
@@ -1113,6 +1114,7 @@ int lookup_nss_mount(struct autofs_point *ap, struct map_source *source, const c
 				char *tmp = strdup("ldap");
 				if (!tmp) {
 					map = map->next;
+					status = NSS_STATUS_TRYAGAIN;
 					continue;
 				}
 				map->type = tmp;
@@ -1145,6 +1147,7 @@ int lookup_nss_mount(struct autofs_point *ap, struct map_source *source, const c
 			    !strcmp(this->source, "sss")) {
 				warn(ap->logopt,
 				     "source sss is not available for amd maps.");
+				result = NSS_STATUS_UNAVAIL;
 				continue;
 			}
 
