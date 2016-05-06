@@ -114,7 +114,7 @@ browse_mode = no
 #entry_attribute = cn
 #value_attribute= nisMapEntry
 #
-# Other common LDAP nameing
+# Other common LDAP naming
 #
 #map_object_class = automountMap
 #entry_object_class = automount

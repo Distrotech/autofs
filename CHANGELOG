@@ -50,6 +50,7 @@
 - fix autofs(5) description of supported map sources.
 - add autofs(5) note of IPv6 libtirpc requirement.
 - add remote-fs.target systemd dependency.
+- fix typo in autofs.conf.
 
 21/04/2015 autofs-5.1.1
 =======================

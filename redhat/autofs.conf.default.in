@@ -115,7 +115,7 @@ mount_nfs_default_protocol = 4
 #entry_attribute = cn
 #value_attribute= nisMapEntry
 #
-# Other common LDAP nameing
+# Other common LDAP naming
 #
 #map_object_class = automountMap
 #entry_object_class = automount
