@@ -49,6 +49,7 @@
 - fix modules make clean target.
 - fix autofs(5) description of supported map sources.
 - add autofs(5) note of IPv6 libtirpc requirement.
+- add remote-fs.target systemd dependency.
 
 21/04/2015 autofs-5.1.1
 =======================

@@ -1,6 +1,6 @@
 [Unit]
 Description=Automounts filesystems on demand
-After=network.target ypbind.service sssd.service network-online.target
+After=network.target ypbind.service sssd.service network-online.target remote-fs.target
 Wants=network-online.target
 
 [Service]
