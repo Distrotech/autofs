@@ -74,6 +74,7 @@
 #define NAME_MAP_HASH_TABLE_SIZE	"map_hash_table_size"
 
 #define NAME_USE_HOSTNAME_FOR_MOUNTS	"use_hostname_for_mounts"
+#define NAME_DISABLE_NOT_FOUND_MESSAGE	"disable_not_found_message"
 
 #define NAME_AMD_ARCH				"arch"
 #define NAME_AMD_AUTO_ATTRCACHE			"auto_attrcache"
@@ -339,6 +340,11 @@ static int conf_load_autofs_defaults(void)
 
 	ret = conf_update(sec, NAME_USE_HOSTNAME_FOR_MOUNTS,
 			  DEFAULT_USE_HOSTNAME_FOR_MOUNTS, CONF_ENV);
+	if (ret == CFG_FAIL)
+		goto error;
+
+	ret = conf_update(sec, NAME_DISABLE_NOT_FOUND_MESSAGE,
+			  DEFAULT_DISABLE_NOT_FOUND_MESSAGE, CONF_ENV);
 	if (ret == CFG_FAIL)
 		goto error;
 
@@ -1715,6 +1721,17 @@ unsigned int defaults_use_hostname_for_mounts(void)
 	res = conf_get_yesno(autofs_gbl_sec, NAME_USE_HOSTNAME_FOR_MOUNTS);
 	if (res < 0)
 		res = atoi(DEFAULT_USE_HOSTNAME_FOR_MOUNTS);
+
+	return res;
+}
+
+unsigned int defaults_disable_not_found_message(void)
+{
+	int res;
+
+	res = conf_get_yesno(autofs_gbl_sec, NAME_DISABLE_NOT_FOUND_MESSAGE);
+	if (res < 0)
+		res = atoi(DEFAULT_DISABLE_NOT_FOUND_MESSAGE);
 
 	return res;
 }

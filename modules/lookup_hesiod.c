@@ -194,8 +194,10 @@ static int lookup_one(struct autofs_point *ap,
 	hes_result = hesiod_resolve(ctxt->hesiod_context, key, "filsys");
 	if (!hes_result || !hes_result[0]) {
 		int err = errno;
-		error(ap->logopt,
-		      MODPREFIX "key \"%s\" not found in map", key);
+		if (!defaults_disable_not_found_message()) {
+			error(ap->logopt,
+			      MODPREFIX "key \"%s\" not found in map", key);
+		}
 		status = pthread_mutex_unlock(&hesiod_mutex);
 		if (status)
 			fatal(status);

@@ -1036,8 +1036,15 @@ static void update_negative_cache(struct autofs_point *ap, struct map_source *so
 		 */
 		cache_unlock(me->mc);
 	else {
-		/* Notify only once after fail */
-		logmsg("key \"%s\" not found in map source(s).", name);
+		if (!defaults_disable_not_found_message()) {
+			/* This really should be a warning but the original
+			 * request for this needed it to be unconditional.
+			 * That produces, IMHO, unnecessary noise in the log
+			 * so a configuration option has been added to provide
+			 * the ability to turn it off.
+			 */
+			logmsg("key \"%s\" not found in map source(s).", name);
+		}
 
 		/* Doesn't exist in any source, just add it somewhere */
 		if (source)

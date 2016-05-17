@@ -129,6 +129,13 @@ name resolving to one that isn't responding and while the number
 of attempts at a successful mount will correspond to the number of
 addresses the host name resolves to the order will also not correspond
 to fastest responding hosts.
+.TP
+.B disable_not_found_message
+.br
+The original request to add this log message needed it to be unconditional.
+That produces, IMHO, unnecessary noise in the log so a configuration option
+has been added to provide the ability to turn it off. The default is "no"
+to maintain the current behaviour.
 .SS LDAP Configuration
 .P
 Configuration settings available are:

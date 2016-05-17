@@ -151,6 +151,14 @@ mount_nfs_default_protocol = 4
 #
 #use_hostname_for_mounts = "no"
 #
+# disable_not_found_message - The original request to add this log message
+# 			 needed it to be unconditional. That produces, IMHO,
+# 			 unnecessary noise in the log so a configuration option
+# 			 has been added to provide the ability to turn it off.
+# 			 The default is "no" to maintain the current behaviour.
+#
+#disable_not_found_message = "no"
+#
 # Otions for the amd parser within autofs.
 #
 # amd configuration options that are aren't used, haven't been
