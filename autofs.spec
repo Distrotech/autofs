@@ -18,13 +18,13 @@
 
 Summary: A tool from automatically mounting and umounting filesystems.
 Name: autofs
-%define version 5.1.1
+%define version 5.1.2
 %define release 1
 Version: %{version}
 Release: %{release}
 License: GPL
 Group: System Environment/Daemons
-Source: ftp://ftp.kernel.org/pub/linux/daemons/autofs/v4/autofs-%{version}.tar.gz
+Source: ftp://ftp.kernel.org/pub/linux/daemons/autofs/v5/autofs-%{version}.tar.gz
 Buildroot: %{_tmppath}/%{name}-tmp
 %if %{with_systemd}
 BuildRequires: systemd-units
@@ -191,72 +191,6 @@ fi
 %dir /etc/auto.master.d
 
 %changelog
-* Fri Mar 28 2014 Ian Kent <raven@themaw.net>
-- Update package to version 5.0.9.
-
-* Thu Oct 17 2013 Ian Kent <raven@themaw.net>
-- Update package to version 5.0.8.
-
-* Wed Jul 25 2012 Ian Kent <raven@themaw.net>
-- Update package to version 5.0.7.
-
-* Tue Jun 3 2011 Ian Kent <raven@themaw.net>
-- Update package to version 5.0.6.
-
-* Thu Sep 3 2009 Ian Kent <raven@themaw.net>
-- Update package to version 5.0.5.
-
-* Tue Nov 4 2008 Ian Kent <raven@themaw.net>
-- Update package to version 5.0.4.
-
-* Tue Jun 18 2007 Ian Kent <raven@themaw.net>
-- Update package to version 5.0.3.
-
-* Tue Jun 18 2007 Ian Kent <raven@themaw.net>
-- Update package to version 5.0.2.
-
-* Thu Jul 13 2006 Ian Kent <raven@themaw.net>
-- Rename package to version 5.0.1 to prevent problems when upgrading
-  from packages labeled with beta.
-
-* Tue Jun 29 2006 Ian Kent <raven@themaw.net>
-- Update package to version 5.0.0_beta6.
-
-* Tue Jun 20 2006 Ian Kent <raven@themaw.net>
-- Update package to version 5.0.0_beta5.
-
-* Fri Jun 2 2006 Ian Kent <raven@themaw.net>
-- Update package to version 5.0.0_beta4.
-
-* Tue May 23 2006 Ian Kent <raven@themaw.net>
-- Update package to version 5.0.0_beta3.
-
-* Tue May 9 2006 Ian Kent <raven@themaw.net>
-- Update package to version 5.0.0_beta2.
-
-* Mon May 1 2006 Ian Kent <raven@themaw.net>
-- Update package to version 5.0.0_beta1.
-
-* Wed Apr 6 2005 Ian Kent <raven@themaw.net>
-- Update package to version 4.1.4.
-
-* Mon Jan 4 2005 Ian Kent <raven@themaw.net>
-- Update package spec file to add auto.smb program map example.
-
-* Mon Jan 3 2005 Ian Kent <raven@themaw.net>
-- Update package spec file to use autofs.sysconfig.
-
-* Sat Jan 1 2005 Ian Kent <raven@themaw.net>
-- Update package to version 4.1.4_beta1.
-
-* Sat Apr 3 2004 Ian Kent <raven@themaw.net>
-- Update package to version 4.1.2.
-
-* Tue Jan 19 2004 Ian Kent <raven@themaw.net>
-- Update spec file to version 4.1.1.
-- Remove BuildRequires on LDAP and Hesoid as make allows
-  for them to be missing.
-
-* Thu Dec 11 2003 Ian Kent <raven@themaw.net>
-- Updated spec file to standardise paths etc.
+* Wed Jun  15 2016 Ian Kent <raven@themaw.net>
+- Update package to version 5.1.2.
 
